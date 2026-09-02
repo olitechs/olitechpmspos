@@ -1,49 +1,11 @@
 import React from 'react';
-import {
-  LayoutDashboard, UtensilsCrossed, CalendarCheck, Users, ChefHat,
-  BedDouble, PackageSearch, Sparkles, Wrench, BarChart3, Settings, LayoutGrid, IdCard, Hotel,
-} from 'lucide-react';
-import { MODULES } from '@/data/platformData';
-import { NAVY, BORDER_DARK, TEAL_LIGHT, MUTED_DARK } from '@/data/themePalette';
-
-const ICON_MAP = {
-  LayoutDashboard, UtensilsCrossed, CalendarCheck, Users, ChefHat,
-  BedDouble, PackageSearch, Sparkles, Wrench, BarChart3, Settings, LayoutGrid, IdCard, Hotel,
-};
-
-// Bottom tab bar shown on small screens instead of the full icon sidebar.
-// Surfaces the most-used modules; everything else stays reachable via
-// Settings > … on mobile, keeping the bar from overflowing.
-const PRIMARY_IDS = ['dashboard', 'pos', 'rooms', 'kitchen', 'settings'];
+import { useNavigate } from 'react-router-dom';
+import { UtensilsCrossed, LayoutDashboard, Package, ShieldCheck } from 'lucide-react';
+import { useAuth } from '@/lib/AuthContext';
 
 export default function POSTabs({ activeModule, onModuleChange }) {
-  const tabs = PRIMARY_IDS
-    .map((id) => MODULES.find((m) => m.id === id))
-    .filter(Boolean);
-
-  return (
-    <nav
-      className="flex items-stretch shrink-0 w-full"
-      style={{ height: '60px', background: NAVY, borderTop: `1px solid ${BORDER_DARK}` }}
-    >
-      {tabs.map((mod) => {
-        const Icon = ICON_MAP[mod.icon];
-        const isActive = activeModule === mod.id;
-        return (
-          <button
-            key={mod.id}
-            onClick={() => !mod.comingSoon && onModuleChange(mod.id)}
-            disabled={mod.comingSoon}
-            className="flex-1 flex flex-col items-center justify-center gap-1"
-            style={{ opacity: mod.comingSoon ? 0.35 : 1 }}
-          >
-            {Icon && <Icon size={18} style={{ color: isActive ? TEAL_LIGHT : MUTED_DARK }} />}
-            <span className="text-[10px] font-medium" style={{ color: isActive ? TEAL_LIGHT : MUTED_DARK }}>
-              {mod.label}
-            </span>
-          </button>
-        );
-      })}
-    </nav>
-  );
+  const navigate=useNavigate(); const {user}=useAuth();
+  const canAdmin=user?.isPlatformOwner||['owner','admin','hotel_admin','super_admin'].includes(String(user?.staff?.role||user?.propertyRole||'').toLowerCase());
+  const tabs=[{id:'pos',label:'POS',icon:UtensilsCrossed,path:'/pos'},{id:'dashboard',label:'Back Office',icon:LayoutDashboard,path:'/backoffice'},{id:'store',label:'Store',icon:Package,path:'/store'},...(canAdmin?[{id:'roles',label:'Admin',icon:ShieldCheck,path:'/admin/roles'}]:[])];
+  return <nav className="flex items-stretch shrink-0 w-full bg-[#090C11] border-t border-white/10" style={{height:'60px'}}>{tabs.map(({id,label,icon:Icon,path})=>{const active=id==='dashboard'?['dashboard','reservations','rooms','guests','kitchen','housekeeping','maintenance','reports'].includes(activeModule):activeModule===id;return <button key={id} onClick={()=>{if(id==='roles'){navigate(path);return;}onModuleChange(id);navigate(path);}} className="flex-1 flex flex-col items-center justify-center gap-1"><Icon size={18} className={active?'text-[#FFD300]':'text-white/45'}/><span className={`text-[10px] font-black ${active?'text-[#FFD300]':'text-white/45'}`}>{label}</span></button>})}</nav>;
 }

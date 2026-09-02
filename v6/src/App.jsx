@@ -1,7 +1,7 @@
-import { Toaster } from "@/components/ui/toaster"
-import { QueryClientProvider } from '@tanstack/react-query'
-import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import { Toaster } from "@/components/ui/toaster";
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClientInstance } from '@/lib/query-client';
+import { BrowserRouter as Router, Route, Routes, Navigate, Outlet } from 'react-router-dom';
 import PageNotFound from '@/lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import AdminRoute from '@/lib/AdminRoute';
@@ -19,99 +19,68 @@ import AdminDashboard from '@/pages/admin/AdminDashboard';
 import AdminProperties from '@/pages/admin/AdminProperties';
 import AdminPropertyDetail from '@/pages/admin/AdminPropertyDetail';
 import AdminAuditLog from '@/pages/admin/AdminAuditLog';
+import Roles from '@/pages/Admin/Roles';
 import SupabaseSetupNotice from '@/pages/SupabaseSetupNotice';
+import PublicHome from '@/pages/PublicHome';
+import PublicSignIn from '@/pages/PublicSignIn';
+import PublicSignUp from '@/pages/PublicSignUp';
 import { isSupabaseConfigured } from '@/lib/supabaseClient';
 
-const AuthenticatedApp = () => {
-  const { user, isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+function AdminHome(){ const { user } = useAuth(); return user?.isPlatformOwner ? <AdminDashboard/> : <Roles/>; }
 
-  // Show loading spinner while checking app public settings or auth
-  if (isLoadingPublicSettings || isLoadingAuth) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
-      </div>
-    );
-  }
-
-  // Handle authentication errors
-  if (authError) {
-    if (authError.type === 'user_not_registered') {
-      return <UserNotRegisteredError />;
-    } else if (authError.type === 'auth_required') {
-      // Redirect to login automatically
-      navigateToLogin();
-      return null;
-    }
-  }
-
-  // Platform owners don't operate a property's PMS/POS day-to-day — send
-  // them to the admin console instead of the operational app.
-  if (user?.isPlatformOwner) {
-    return <Navigate to="/admin" replace />;
-  }
-
-  // A signed-in property user only gets the real PMS/POS once their
-  // property is ACTIVE and has a package assigned. Anything else
-  // (pending/rejected/suspended/inactive, or active with no package yet)
-  // shows the onboarding/status screen instead — never the full app.
-  const property = user?.property;
-  const hasFullAccess = property?.status === 'active' && property?.package && property.package !== 'none';
-  if (!hasFullAccess) {
-    return <PendingApproval />;
-  }
-
-  // Render the main app
-  return <POSApp />;
-};
-
-function AppRoutes() {
-  return (
-    <AuthProvider>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-
-        {/* Platform owner console — see src/lib/AdminRoute.jsx for the
-            client-side guard and supabase/migrations for the server-side
-            (RLS) enforcement that actually protects this data. */}
-        <Route path="/admin/login" element={<AdminLogin />} />
-        <Route element={<AdminRoute />}>
-          <Route element={<AdminLayout />}>
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/admin/properties" element={<AdminProperties />} />
-            <Route path="/admin/properties/:id" element={<AdminPropertyDetail />} />
-            <Route path="/admin/audit-log" element={<AdminAuditLog />} />
-          </Route>
-        </Route>
-
-        <Route path="/" element={<AuthenticatedApp />} />
-        <Route path="*" element={<PageNotFound />} />
-      </Routes>
-    </AuthProvider>
-  );
+function AuthLoading(){
+  return <div className="fixed inset-0 flex items-center justify-center bg-[#F5F3EF]"><div className="w-8 h-8 border-4 border-[#D6D6D6] border-t-[#FFD300] rounded-full animate-spin"/></div>;
 }
 
-function App() {
-  // Checked before anything that touches Supabase (auth, routing) so a
-  // missing/unset .env produces a clear message instead of the app
-  // silently failing every network call, or — worse — the blank white
-  // screen that used to happen when supabaseClient.js threw at import time.
-  if (!isSupabaseConfigured) {
-    return <SupabaseSetupNotice />;
-  }
-
-  return (
-    <QueryClientProvider client={queryClientInstance}>
-      <Router>
-        <ScrollToTop />
-        <AppRoutes />
-      </Router>
-      <Toaster />
-    </QueryClientProvider>
-  )
+function PublicRoute(){
+  const {user,isLoadingAuth,isLoadingPublicSettings}=useAuth();
+  if(isLoadingAuth||isLoadingPublicSettings) return <AuthLoading/>;
+  if(user) return <Navigate to={user.isPlatformOwner?'/admin':'/backoffice'} replace/>;
+  return <Outlet/>;
 }
 
-export default App
+function ProtectedApp({initialModule='dashboard'}){
+  const {user,isLoadingAuth,isLoadingPublicSettings}=useAuth();
+  if(isLoadingAuth||isLoadingPublicSettings) return <AuthLoading/>;
+  if(!user) return <Navigate to="/signin" replace/>;
+  if(user?.isPlatformOwner) return <Navigate to="/admin" replace/>;
+  const property=user?.property;
+  const hasFullAccess=property?.status==='active' && property?.package && property.package!=='none';
+  if(!hasFullAccess) return <PendingApproval/>;
+  return <POSApp initialModule={initialModule}/>;
+}
+
+function AppRoutes(){
+  return <AuthProvider><Routes>
+    <Route element={<PublicRoute/>}>
+      <Route path="/" element={<PublicHome/>}/>
+      <Route path="/home" element={<PublicHome/>}/>
+      <Route path="/signin" element={<PublicSignIn/>}/>
+      <Route path="/signup" element={<PublicSignUp/>}/>
+      <Route path="/login" element={<Login/>}/>
+      <Route path="/register" element={<Register/>}/>
+    </Route>
+    <Route path="/forgot-password" element={<ForgotPassword/>}/>
+    <Route path="/reset-password" element={<ResetPassword/>}/>
+    <Route path="/dashboard" element={<Navigate to="/backoffice" replace/>}/>
+    <Route path="/backoffice" element={<ProtectedApp initialModule="dashboard"/>}/>
+    <Route path="/pos" element={<ProtectedApp initialModule="pos"/>}/>
+    <Route path="/store" element={<ProtectedApp initialModule="store"/>}/>
+    <Route path="/rooms" element={<ProtectedApp initialModule="rooms"/>}/>
+    <Route path="/admin/login" element={<AdminLogin/>}/>
+    <Route element={<AdminRoute/>}><Route element={<AdminLayout/>}>
+      <Route path="/admin" element={<AdminHome/>}/>
+      <Route path="/admin/properties" element={<AdminProperties/>}/>
+      <Route path="/admin/properties/:id" element={<AdminPropertyDetail/>}/>
+      <Route path="/admin/audit-log" element={<AdminAuditLog/>}/>
+      <Route path="/admin/roles" element={<Roles/>}/>
+    </Route></Route>
+    <Route path="*" element={<PageNotFound/>}/>
+  </Routes></AuthProvider>;
+}
+
+function App(){
+  if(!isSupabaseConfigured) return <SupabaseSetupNotice/>;
+  return <QueryClientProvider client={queryClientInstance}><Router><ScrollToTop/><AppRoutes/></Router><Toaster/></QueryClientProvider>;
+}
+export default App;

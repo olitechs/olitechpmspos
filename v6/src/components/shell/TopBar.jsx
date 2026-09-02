@@ -1,59 +1,13 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Search, ChevronDown } from 'lucide-react';
 import { CURRENT_USER, BUSINESSES, BRANCHES } from '@/data/platformData';
 import { tableLabel } from '@/data/mockData';
 
 export default function TopBar({ moduleLabel, activeTable }) {
-  const business = BUSINESSES[0];
-  const branch = BRANCHES['b1'][0];
-  const now = new Date();
-  const timeStr = now.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' });
-  const dateStr = now.toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-
-  return (
-    <header className="flex items-center justify-between h-16 px-6 bg-[#202020] text-white shrink-0 gap-4">
-      <div className="flex items-center gap-4 min-w-0">
-        <div className="min-w-0 shrink-0">
-          <div className="font-semibold text-sm leading-tight truncate">{moduleLabel}</div>
-          {activeTable && (
-            <div className="text-xs mt-0.5 text-[#757B81] truncate">
-              Table {tableLabel(activeTable)} · {activeTable.seats} seats
-            </div>
-          )}
-        </div>
-        <div className="hidden md:flex items-center gap-2 rounded-lg px-3 py-2 bg-[#333533] border border-white/10 w-64 lg:w-80 shrink-0">
-          <Search size={15} className="text-[#757B81] shrink-0" />
-          <input
-            type="text"
-            placeholder="Search tables, guests, orders…"
-            className="bg-transparent text-sm outline-none flex-1 min-w-0 text-white placeholder:text-[#757B81] border-0"
-          />
-        </div>
-      </div>
-
-      <div className="flex items-center gap-4 ml-auto flex-shrink-0">
-        <button className="flex items-center gap-2 px-4 py-1.5 rounded-full text-sm bg-[#333533] text-white hover:bg-[#262B32] transition-all duration-200 max-w-[220px]">
-          <span className="font-semibold truncate">{business.name}</span>
-          <span className="text-[#757B81]">·</span>
-          <span className="text-[#D6D6D6] truncate hidden lg:inline">{branch.name}</span>
-          <ChevronDown size={14} className="text-[#757B81] shrink-0" />
-        </button>
-
-        <div className="text-right hidden lg:block leading-tight">
-          <div className="font-mono text-sm font-bold">{timeStr}</div>
-          <div className="text-xs text-[#757B81]">{dateStr}</div>
-        </div>
-
-        <div className="flex items-center gap-2 pl-4 border-l border-white/10 min-w-0">
-          <div className="w-9 h-9 rounded-full bg-[#FFD300] text-[#090C11] flex items-center justify-center text-xs font-bold shrink-0">
-            {CURRENT_USER.avatar}
-          </div>
-          <div className="hidden sm:block min-w-0">
-            <div className="text-xs font-semibold leading-tight truncate max-w-[130px]">{CURRENT_USER.name}</div>
-            <div className="text-xs text-[#757B81] truncate max-w-[130px]">{CURRENT_USER.role}</div>
-          </div>
-        </div>
-      </div>
-    </header>
-  );
+  const business = BUSINESSES[0]; const branch = BRANCHES.b1[0];
+  const [activeStaff,setActiveStaff]=useState(()=>{try{return JSON.parse(sessionStorage.getItem('olitech_active_staff_v2')||'null')}catch{return null}});
+  useEffect(()=>{const h=e=>setActiveStaff(e.detail||null);window.addEventListener('olitech:staff-changed',h);return()=>window.removeEventListener('olitech:staff-changed',h)},[]);
+  const now = new Date(); const timeStr = now.toLocaleTimeString('en-KE',{hour:'2-digit',minute:'2-digit'}); const dateStr=now.toLocaleDateString('en-KE',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+  const displayName=activeStaff?.full_name||CURRENT_USER.name; const displayRole=activeStaff?.role||CURRENT_USER.role; const avatar=activeStaff?.avatar||displayName.split(/\s+/).slice(0,2).map(x=>x[0]).join('').toUpperCase();
+  return <header className="flex items-center justify-between h-16 px-6 bg-[#202020] text-white shrink-0 gap-4"><div className="flex items-center gap-4 min-w-0"><div className="min-w-0 shrink-0"><div className="font-semibold text-sm leading-tight truncate">{moduleLabel}</div>{activeTable&&<div className="text-xs mt-0.5 text-[#757B81] truncate">Table {tableLabel(activeTable)} · {activeTable.seats} seats</div>}</div><div className="hidden md:flex items-center gap-2 rounded-lg px-3 py-2 bg-[#333533] border border-white/10 w-64 lg:w-80 shrink-0"><Search size={15} className="text-[#757B81] shrink-0"/><input type="text" placeholder="Search tables, guests, orders…" className="bg-transparent text-sm outline-none flex-1 min-w-0 text-white placeholder:text-[#757B81] border-0"/></div></div><div className="flex items-center gap-4 ml-auto flex-shrink-0"><button className="flex items-center gap-2 px-4 py-1.5 rounded-full text-sm bg-[#333533] text-white max-w-[220px]"><span className="font-semibold truncate">{business.name}</span><span className="text-[#757B81]">·</span><span className="text-[#D6D6D6] truncate hidden lg:inline">{branch.name}</span><ChevronDown size={14} className="text-[#757B81] shrink-0"/></button><div className="text-right hidden lg:block leading-tight"><div className="font-mono text-sm font-bold">{timeStr}</div><div className="text-xs text-[#757B81]">{dateStr}</div></div><div className="flex items-center gap-2 pl-4 border-l border-white/10 min-w-0"><div className="w-9 h-9 rounded-full bg-[#FFD300] text-[#090C11] flex items-center justify-center text-xs font-bold shrink-0">{avatar}</div><div className="hidden sm:block min-w-0"><div className="text-xs font-semibold leading-tight truncate max-w-[130px]">{displayName}</div><div className="text-xs text-[#757B81] truncate max-w-[130px]">{displayRole}</div></div></div></div></header>;
 }

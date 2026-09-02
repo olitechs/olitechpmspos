@@ -23,8 +23,10 @@ export default function AdminRoute() {
 		return <Navigate to="/admin/login" replace />;
 	}
 
-	if (!user.isPlatformOwner) {
-		return <Navigate to="/" replace />;
+	const propertyAdmin = ['owner','admin','manager'].includes(String(user?.propertyRole || '').toLowerCase());
+	const staffAdmin = ['hotel_admin','super_admin'].includes(String(user?.staff?.role || '').toLowerCase());
+	if (!user.isPlatformOwner && !propertyAdmin && !staffAdmin) {
+		return <Navigate to="/backoffice" replace />;
 	}
 
 	return <Outlet />;

@@ -17,7 +17,7 @@ export default function AppHeader({ activeTab, onTabChange, activeTable }) {
       {/* Brand */}
       <div className="flex items-center gap-3">
         <div className="flex flex-col leading-none">
-          <span className="font-bold text-white tracking-wide text-base" className="font-mono tracking-[0.05em]">
+          <span className="font-bold text-white tracking-wide text-base font-mono tracking-[0.05em]">
             OliTechs POS
           </span>
           <span className="text-xs" style={{ color: TEAL_LIGHT }}>Visiwa Beach Resort</span>

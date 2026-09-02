@@ -13,6 +13,7 @@
 export const MODULES = [
 	{ id: 'dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
 	{ id: 'pos', label: 'Point of Sale', icon: 'UtensilsCrossed' },
+	{ id: 'store', label: 'Store / Controls', icon: 'Package' },
 	{ id: 'reservations', label: 'Reservations', icon: 'CalendarCheck' },
 	{ id: 'rooms', label: 'Rooms & Room Types', icon: 'BedDouble' },
 	{ id: 'guests', label: 'Guests', icon: 'Users' },

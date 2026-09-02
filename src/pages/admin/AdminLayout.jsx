@@ -1,15 +1,18 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Building2, ScrollText, ShieldCheck, LogOut } from 'lucide-react';
+import { LayoutDashboard, Building2, ScrollText, ShieldCheck, LogOut, UsersRound } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 
 const NAV = [
 	{ to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
 	{ to: '/admin/properties', label: 'Properties', icon: Building2 },
 	{ to: '/admin/audit-log', label: 'Audit Log', icon: ScrollText },
+	{ to: '/admin/roles', label: 'Staff & Roles', icon: UsersRound },
 ];
 
 export default function AdminLayout() {
 	const { user, logout } = useAuth();
+	const propertyAdmin = !user?.isPlatformOwner;
+	const navItems = propertyAdmin ? NAV.filter((item) => item.to === '/admin/roles') : NAV;
 
 	return (
 		<div className="min-h-screen flex bg-background">
@@ -19,7 +22,7 @@ export default function AdminLayout() {
 					<span className="font-bold text-foreground">OliTechs Admin</span>
 				</div>
 				<nav className="flex-1 p-3 space-y-1">
-					{NAV.map(({ to, label, icon: Icon, end }) => (
+					{navItems.map(({ to, label, icon: Icon, end }) => (
 						<NavLink
 							key={to}
 							to={to}

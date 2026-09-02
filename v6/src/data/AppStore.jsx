@@ -50,8 +50,11 @@ export function StoreProvider({ children }) {
   const openTable = useCallback((id, { guests, waiter }) => {
     setSessions((prev) => ({
       ...prev,
-      [id]: { status: 'occupied', guests: Number(guests), waiter, openedAt: Date.now() },
+      [id]: { status: 'occupied', guests: Number(guests), waiter, openedAt: Date.now(), total: 0, orderCount: 0 },
     }));
+  }, []);
+  const updateSessionTotals = useCallback((id, { total = 0, orderCount = 0 } = {}) => {
+    setSessions((prev) => (prev[id] ? { ...prev, [id]: { ...prev[id], total: Number(total) || 0, orderCount: Number(orderCount) || 0 } } : prev));
   }, []);
   const setUnsettled = useCallback((id) => {
     setSessions((prev) => (prev[id] ? { ...prev, [id]: { ...prev[id], status: 'unsettled' } } : prev));
@@ -314,7 +317,7 @@ export function StoreProvider({ children }) {
 
   const value = {
     zones, staff, sessions, printers, saleReceipts, kitchenOrders,
-    getSession, openTable, setUnsettled, closeTable,
+    getSession, openTable, updateSessionTotals, setUnsettled, closeTable,
     addZone, renameZone, removeZone, addTable, removeTable, updateTable, moveTable,
     addStaff, updateStaff, removeStaff,
     addPrinter, updatePrinter, removePrinter, togglePurpose,
@@ -329,7 +332,7 @@ export function StoreProvider({ children }) {
 // Null-safe hook: degrades to an inert fallback if ever called without a provider.
 const FALLBACK = {
   zones: [], staff: [], sessions: {}, printers: [], saleReceipts: [], kitchenOrders: [],
-  getSession: () => null, openTable: () => {}, setUnsettled: () => {}, closeTable: () => {},
+  getSession: () => null, openTable: () => {}, updateSessionTotals: () => {}, setUnsettled: () => {}, closeTable: () => {},
   addZone: () => {}, renameZone: () => {}, removeZone: () => {}, addTable: () => {}, removeTable: () => {}, updateTable: () => {}, moveTable: () => {},
   addStaff: () => {}, updateStaff: () => {}, removeStaff: () => {},
   addPrinter: () => {}, updatePrinter: () => {}, removePrinter: () => {}, togglePurpose: () => {},

@@ -205,6 +205,31 @@ export const pmsService = {
 		if (error) throw new Error(error.message);
 	},
 
+	async listRoomClosures(propertyId) {
+		const { data, error } = await supabase
+			.from('room_closures')
+			.select('*')
+			.eq('property_id', propertyId)
+			.order('start_date');
+		if (error) throw new Error(error.message);
+		return data || [];
+	},
+
+	async createRoomClosure(payload) {
+		const { data, error } = await supabase
+			.from('room_closures')
+			.insert(payload)
+			.select()
+			.single();
+		if (error) throw new Error(error.message);
+		return data;
+	},
+
+	async deleteRoomClosure(id) {
+		const { error } = await supabase.from('room_closures').delete().eq('id', id);
+		if (error) throw new Error(error.message);
+	},
+
 	// Housekeeping (spec section 31) — rooms already carry a status column
 	// (0002_pms_core.sql); this just updates it directly, RLS-protected
 	// the same as every other write in this file.
@@ -239,20 +264,13 @@ export const pmsService = {
 	// POS → PMS room charge (spec section 30). Called from BillPayment.jsx
 	// when the cashier selects "Room Charge" as the payment method.
 	async listActiveStays(propertyId) {
-		const { data, error } = await supabase
-			.from('reservations')
-			.select('id, guest_name, room:rooms(number)')
-			.eq('property_id', propertyId)
-			.eq('status', 'checked-in')
-			.order('guest_name');
+		const { data, error } = await supabase.rpc('list_room_charge_stays', { p_property_id: propertyId });
 		if (error) throw new Error(error.message);
-		return data;
+		return (data || []).map((row) => ({ id: row.id, guest_name: row.guest_name, room: { number: row.room_number } }));
 	},
 
 	async chargeToRoom({ propertyId, reservationId, description, amount }) {
-		const { error } = await supabase
-			.from('folio_charges')
-			.insert({ property_id: propertyId, reservation_id: reservationId, source: 'pos', description, amount });
+		const { error } = await supabase.rpc('charge_restaurant_to_room', { p_property_id: propertyId, p_reservation_id: reservationId, p_description: description, p_amount: amount });
 		if (error) throw new Error(error.message);
 	},
 };

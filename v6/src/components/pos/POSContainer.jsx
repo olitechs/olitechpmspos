@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useStore } from '@/data/AppStore';
 import { tableLabel } from '@/data/mockData';
@@ -7,6 +7,9 @@ import FloorPlan from '@/components/pos/FloorPlan';
 import OrderTaking from '@/components/pos/OrderTaking';
 import BillPayment from '@/components/pos/BillPayment';
 import OpenTableDialog from '@/components/pos/OpenTableDialog';
+import PinPad from '@/components/auth/PinPad';
+import { authService } from '@/services/authService';
+import { useAuth } from '@/lib/AuthContext';
 
 function buildKitchenTicketText(center, lines, { orderNumber, table }) {
 	return [
@@ -24,6 +27,13 @@ function buildKitchenTicketText(center, lines, { orderNumber, table }) {
 // opening a new table session, taking an order, and settling the bill.
 export default function POSContainer() {
 	const store = useStore();
+	const { user } = useAuth();
+	const propertyId = user?.property?.id;
+	const [posStaff, setPosStaff] = useState([]);
+	const [switchStaff, setSwitchStaff] = useState(null);
+	const [switchError, setSwitchError] = useState('');
+	useEffect(() => { if (!propertyId) return; authService.listStaff(propertyId, 'pos').then(setPosStaff).catch(() => {}); }, [propertyId]);
+	const verifySwitch = async (pin) => { try { const result = await authService.verifyStaffPin({ propertyId, module: 'pos', pin }); if (!result?.ok) { setSwitchError('Wrong PIN'); return; } sessionStorage.setItem('olitech_active_staff_v2', JSON.stringify(result.staff)); window.dispatchEvent(new CustomEvent('olitech:staff-changed', { detail: result.staff })); setSwitchStaff(null); setSwitchError(''); } catch (e) { setSwitchError(e.message); } };
 	const [activeTab, setActiveTab] = useState('floor');
 	const [activeTable, setActiveTable] = useState(null);
 	const [pendingTable, setPendingTable] = useState(null); // table awaiting "open" dialog
@@ -33,6 +43,13 @@ export default function POSContainer() {
 	// Stable per-table order numbers (regenerated each time a table is opened).
 	const orderNumbersRef = useRef({});
 	const orderLines = activeTable ? orderLinesByTable[activeTable.id] || [] : [];
+	useEffect(() => {
+		if (!activeTable) return;
+		const lines = orderLinesByTable[activeTable.id] || [];
+		const total = lines.reduce((sum, line) => sum + Number(line.price || 0) * Number(line.qty || 0), 0);
+		store.updateSessionTotals(activeTable.id, { total, orderCount: lines.length });
+	}, [activeTable, orderLinesByTable, store.updateSessionTotals]);
+
 	const setOrderLines = useCallback((updater) => {
 		if (!activeTable) return;
 		setOrderLinesByTable((prev) => {
@@ -125,7 +142,7 @@ export default function POSContainer() {
 			<AppHeader activeTab={activeTab} onTabChange={setActiveTab} activeTable={activeTable} />
 
 			<div className="flex-1 min-h-0">
-				{activeTab === 'floor' && <FloorPlan onTableSelect={handleTableSelect} />}
+				{activeTab === 'floor' && <div className="relative h-full"><FloorPlan onTableSelect={handleTableSelect} /><div className="absolute bottom-3 left-3 z-20 flex items-center gap-1 rounded-2xl border-2 border-[#090C11] bg-white p-2 shadow-lg"><span className="px-1 text-[9px] font-black uppercase tracking-wider text-[#6B7280]">Staff</span>{posStaff.slice(0,8).map(person => <button key={person.id} title={`Switch to ${person.full_name}`} onClick={()=>{setSwitchStaff(person);setSwitchError('');}} className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-[#090C11] bg-[#FFD300] text-[10px] font-black text-[#090C11] hover:scale-105">{person.avatar || person.full_name?.slice(0,2).toUpperCase()}</button>)}</div>{switchStaff&&<PinPad title="Switch POS Staff" staffName={switchStaff.full_name} error={switchError} onSubmit={verifySwitch} onClose={()=>setSwitchStaff(null)}/>}</div>}
 
 				{activeTab === 'order' && activeTable && (
 					<OrderTaking

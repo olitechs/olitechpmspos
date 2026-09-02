@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { RefreshCw, Loader2 } from 'lucide-react';
 import { VAT_RATE, tableLabel } from '@/data/mockData';
 import { useStore } from '@/data/AppStore';
 import { useAuth } from '@/lib/AuthContext';
 import { pmsService } from '@/services/pmsService';
+import { getSessionStaff } from '@/services/authService';
+import { inventoryService } from '@/services/inventoryService';
 import { PrintJobStatus } from '@/services/printerService';
 import PrintWarn from '@/components/pos/PrintWarn';
 import { NAVY, TEAL, TEAL_DARK, TEAL_LIGHT, SAND, SURFACE, SURFACE2, BORDER, BORDER_DARK, MUTED, MUTED_DARK, DESTRUCTIVE } from '@/data/themePalette';
@@ -43,8 +46,12 @@ export default function BillPayment({ table, orderLines, onConfirmPayment }) {
   const store = useStore();
   const { user } = useAuth();
   const propertyId = user?.property?.id;
+  const sessionStaff = getSessionStaff();
+  const effectiveRole = String(sessionStaff?.role || user?.staff?.role || user?.propertyRole || '').toLowerCase().replace(/\s+/g,'_');
+  const canRoomCharge = user?.isPlatformOwner || ['hotel_admin','super_admin','cashier','front_office_manager','owner','admin','manager'].includes(effectiveRole);
   const hasBillPrinter = !!store.billPrinterName();
   const [paymentMethod, setPaymentMethod] = useState('cash');
+  useEffect(() => { if (!canRoomCharge && paymentMethod === 'room') setPaymentMethod('cash'); }, [canRoomCharge, paymentMethod]);
   const [discountPct, setDiscountPct] = useState('');
   const [splitBill, setSplitBill] = useState(false);
   const [splitCount, setSplitCount] = useState(2);
@@ -77,6 +84,14 @@ export default function BillPayment({ table, orderLines, onConfirmPayment }) {
 
   const receiptText = () => buildReceiptText({ orderNumber, table, orderLines, subtotal, discountAmt, discountPct, vat, total, methodLabel });
 
+  const printUnsettledProforma = () => {
+    const rows = orderLines.map((l) => `<tr><td>${String(l.name || '').replace(/[<>]/g, '')}</td><td>${l.qty}</td><td style=\"text-align:right\">KES ${(Number(l.price || 0) * Number(l.qty || 0)).toLocaleString('en-KE')}</td></tr>`).join('');
+    const w = window.open('', '_blank', 'width=420,height=760');
+    if (!w) { toast.error('Allow pop-ups to print the proforma receipt.'); return; }
+    w.document.write(`<!doctype html><html><head><title>Unsettled Receipt</title><style>@page{size:80mm auto;margin:4mm}body{width:72mm;font-family:Arial,sans-serif;color:#090C11;font-size:11px;margin:0}.watermark{font-size:14px;font-weight:900;text-align:center;border:2px dashed #F97316;padding:8px;margin-bottom:10px}h2{text-align:center;font-size:15px;margin:0 0 4px}p{margin:2px 0;text-align:center;font-size:10px}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{padding:4px 0;border-bottom:1px dashed #ccc}th{text-align:left}.totals{margin-top:8px}.row{display:flex;justify-content:space-between;padding:2px 0}.total{font-size:14px;font-weight:900;border-top:2px solid #090C11;margin-top:4px;padding-top:5px}</style></head><body><div class=\"watermark\">UNSETTLED RECEIPT - NOT PAID</div><h2>VISIWA BEACH RESORT</h2><p>Table ${tableLabel(table)} · ${orderNumber}</p><p>${new Date().toLocaleString('en-KE')}</p><table><thead><tr><th>Item</th><th>Qty</th><th style=\"text-align:right\">Amount</th></tr></thead><tbody>${rows}</tbody></table><div class=\"totals\"><div class=\"row\"><span>Subtotal</span><b>KES ${subtotal.toLocaleString('en-KE')}</b></div>${discountAmt > 0 ? `<div class=\"row\"><span>Discount</span><b>- KES ${discountAmt.toLocaleString('en-KE')}</b></div>` : ''}<div class=\"row\"><span>VAT 16%</span><b>KES ${vat.toLocaleString('en-KE')}</b></div><div class=\"row total\"><span>TOTAL</span><b>KES ${total.toLocaleString('en-KE')}</b></div></div><p style=\"margin-top:12px\">This is a proforma only. No payment received.</p><script>window.onload=()=>{window.print();setTimeout(()=>window.close(),300)}</script></body></html>`);
+    w.document.close();
+  };
+
   const handleConfirm = async () => {
     if (paymentMethod === 'room' && !chargeReservationId) {
       setChargeError('Select which guest/room to charge before confirming.');
@@ -85,6 +100,22 @@ export default function BillPayment({ table, orderLines, onConfirmPayment }) {
     // Payment is recorded first and unconditionally — nothing below can undo it.
     const result = await store.completeSale({ table, orderLines, total, method: methodLabel, receiptText: receiptText() });
     setSale({ id: result.id, printStatus: result.printStatus, printError: result.printError, orderNumber, total, methodLabel });
+
+    // Inventory is downstream from the completed sale. A stock error must never
+    // cancel or duplicate a payment, so the service handles each deduction
+    // independently and returns skipped mappings for staff visibility.
+    if (propertyId) {
+      const inventoryResult = await inventoryService.deductStockForOrder({
+        propertyId,
+        orderItems: orderLines.map((line) => ({ productId: line.productId || line.id, qty: line.qty, name: line.name })),
+        reference: `POS Sale - Table ${tableLabel(table)}`,
+      });
+      if (inventoryResult.skipped.length) {
+        console.warn('[inventory] POS deduction skipped', inventoryResult.skipped);
+      }
+      const lowProducts = inventoryResult.deducted.filter(({ product, result }) => Number(result?.current_stock) <= Number(product.min_stock));
+      if (lowProducts.length) toast.warning(`Stock alert: ${lowProducts.map(({ product }) => product.name).join(', ')} is low or out of stock.`);
+    }
 
     // The room folio charge is a second, independent write that happens
     // AFTER the sale is already recorded. If it fails, the sale itself is
@@ -215,7 +246,7 @@ export default function BillPayment({ table, orderLines, onConfirmPayment }) {
         <div>
           <div className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: MUTED }}>Payment Method</div>
           <div className="grid grid-cols-2 gap-2">
-            {PAYMENT_METHODS.map((m) => (
+            {PAYMENT_METHODS.filter((m) => m.id !== 'room' || canRoomCharge).map((m) => (
               <button
                 key={m.id} onClick={() => setPaymentMethod(m.id)}
                 className="py-3 rounded-xl text-sm font-semibold transition-all active:scale-95"
@@ -290,6 +321,15 @@ export default function BillPayment({ table, orderLines, onConfirmPayment }) {
             <span>Via</span><span className="font-semibold" style={{ color: TEAL_LIGHT }}>{methodLabel}</span>
           </div>
         </div>
+
+        <button
+          onClick={printUnsettledProforma}
+          disabled={orderLines.length === 0}
+          className="w-full py-3 rounded-xl text-sm font-bold"
+          style={{ background: '#FFFFFF', color: '#090C11', border: '2px solid #E5E7EB', cursor: orderLines.length ? 'pointer' : 'not-allowed', opacity: orderLines.length ? 1 : .5 }}
+        >
+          Print Unsettled / Proforma
+        </button>
 
         <button
           onClick={handleConfirm} disabled={orderLines.length === 0 || (paymentMethod === 'room' && !chargeReservationId)}

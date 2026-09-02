@@ -1,37 +1,252 @@
+import * as XLSX from 'xlsx';
+import Papa from 'papaparse';
 import { supabase } from '@/lib/supabaseClient';
+import { getSessionStaff } from '@/services/authService';
+
+export const STORE_CATEGORIES = ['F&B', 'Housekeeping', 'Laundry', 'Bar', 'Room Amenities', 'General'];
+export const STORE_UNITS = ['kg', 'ltr', 'pcs', 'bottle'];
+export const STORE_LOCATIONS = ['Main Store', 'Kitchen Store', 'Bar Store', 'Housekeeping Store'];
+
+const isUuid = (value) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ''));
+
+function cleanProduct(row, propertyId, supplierId = null) {
+  return {
+    property_id: propertyId,
+    sku: String(row.sku || '').trim() || null,
+    name: String(row.name || '').trim(),
+    category: String(row.category || 'General').trim() || 'General',
+    unit: String(row.unit || 'pcs').trim() || 'pcs',
+    current_stock: Number(row.current_stock ?? row.quantity ?? 0) || 0,
+    min_stock: Number(row.min_stock ?? row.low_stock_threshold ?? 5) || 0,
+    max_stock: Number(row.max_stock ?? 0) || 0,
+    cost_price: Number(row.cost_price ?? 0) || 0,
+    selling_price: Number(row.selling_price ?? 0) || 0,
+    supplier_id: supplierId || row.supplier_id || null,
+    location: String(row.location || 'Main Store').trim() || 'Main Store',
+    expiry_date: row.expiry_date || null,
+  };
+}
 
 export const inventoryService = {
-	async listItems(propertyId) {
-		const { data, error } = await supabase.from('inventory_items').select('*').eq('property_id', propertyId).order('name');
-		if (error) throw new Error(error.message);
-		return data;
-	},
+  async listProducts(propertyId, { category, location, search } = {}) {
+    let query = supabase.from('products').select('*, supplier:suppliers(id,name)').eq('property_id', propertyId).order('name');
+    if (category && category !== 'all') query = query.eq('category', category);
+    if (location && location !== 'all') query = query.eq('location', location);
+    if (search) query = query.or(`name.ilike.%${search}%,sku.ilike.%${search}%`);
+    const { data, error } = await query;
+    if (error) throw new Error(error.message);
+    const role = String(getSessionStaff()?.role || '').toLowerCase();
+    const canSeeCost = ['store_manager','fb_manager','hotel_admin','super_admin'].includes(role);
+    return (data || []).map((product) => canSeeCost ? product : { ...product, cost_price: null });
+  },
 
-	async createItem({ propertyId, name, category, unit, quantity, lowStockThreshold }) {
-		const { error } = await supabase.from('inventory_items').insert({
-			property_id: propertyId,
-			name,
-			category: category || null,
-			unit: unit || 'pcs',
-			quantity: quantity || 0,
-			low_stock_threshold: lowStockThreshold ?? 5,
-		});
-		if (error) throw new Error(error.message);
-	},
+  async createProduct(product) {
+    const { data, error } = await supabase.from('products').insert(product).select('*, supplier:suppliers(id,name)').single();
+    if (error) throw new Error(error.message);
+    return data;
+  },
 
-	// Stock changes always go through the DB function so the movement log
-	// (audit trail for section 33) can never drift from the live quantity.
-	async adjustStock(itemId, change, reason) {
-		const { data, error } = await supabase.rpc('fn_adjust_stock', { p_item_id: itemId, p_change: change, p_reason: reason });
-		if (error) throw new Error(error.message);
-		return data;
-	},
+  async updateProduct(id, patch) {
+    const { data, error } = await supabase.from('products').update(patch).eq('id', id).select('*, supplier:suppliers(id,name)').single();
+    if (error) throw new Error(error.message);
+    return data;
+  },
 
-	async listMovements(propertyId, itemId) {
-		let query = supabase.from('inventory_movements').select('*, item:inventory_items(name)').eq('property_id', propertyId).order('created_at', { ascending: false });
-		if (itemId) query = query.eq('item_id', itemId);
-		const { data, error } = await query.limit(50);
-		if (error) throw new Error(error.message);
-		return data;
-	},
+  async listSuppliers(propertyId) {
+    const { data, error } = await supabase.from('suppliers').select('*').eq('property_id', propertyId).order('name');
+    if (error) throw new Error(error.message);
+    return data || [];
+  },
+
+  async createSupplier({ propertyId, name, contact, phone, email, productsSupplied }) {
+    const { data, error } = await supabase.from('suppliers').insert({ property_id: propertyId, name, contact, phone, email, products_supplied: productsSupplied || null }).select('*').single();
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  async listMovements(propertyId, { from, to, category } = {}) {
+    let query = supabase.from('stock_movements').select('*, product:products(id,name,sku,category,unit), user_profile:profiles(full_name,email)').eq('property_id', propertyId).order('created_at', { ascending: false });
+    if (from) query = query.gte('created_at', `${from}T00:00:00`);
+    if (to) query = query.lte('created_at', `${to}T23:59:59`);
+    const { data, error } = await query.limit(500);
+    if (error) throw new Error(error.message);
+    if (category && category !== 'all') return (data || []).filter((m) => m.product?.category === category);
+    return data || [];
+  },
+
+  async listUsage(propertyId) {
+    const { data, error } = await supabase.from('stock_usage').select('*, product:products(name,sku,unit)').eq('property_id', propertyId).order('created_at', { ascending: false }).limit(500);
+    if (error) throw new Error(error.message);
+    return data || [];
+  },
+
+  async recordUsage({ propertyId, date, department, productId, qty, reference, notes }) {
+    const amount = Number(qty) || 0;
+    if (!productId || amount <= 0) throw new Error('Select a product and enter a quantity greater than zero.');
+    const { data, error } = await supabase.from('stock_usage').insert({ property_id: propertyId, usage_date: date, department, product_id: productId, qty: amount, reference: reference || null, notes: notes || null }).select('*').single();
+    if (error) throw new Error(error.message);
+    await this.deductStock(productId, amount, `${department} Usage${reference ? ` - ${reference}` : ''}`);
+    return data;
+  },
+
+  async listPurchases(propertyId) {
+    const { data, error } = await supabase.from('purchase_orders').select('*, supplier:suppliers(id,name)').eq('property_id', propertyId).order('purchase_date', { ascending: false });
+    if (error) throw new Error(error.message);
+    return data || [];
+  },
+
+  async createPurchase({ propertyId, supplierId, invoiceNo, purchaseDate, lines }) {
+    const cleanLines = (lines || []).filter((l) => l.productId && Number(l.qty) > 0).map((l) => ({ product_id: l.productId, qty: Number(l.qty), cost_price: Number(l.costPrice) || 0 }));
+    if (!cleanLines.length) throw new Error('Add at least one purchase line.');
+    const total = cleanLines.reduce((sum, l) => sum + l.qty * l.cost_price, 0);
+    const { data, error } = await supabase.from('purchase_orders').insert({ property_id: propertyId, supplier_id: supplierId || null, invoice_no: invoiceNo || null, purchase_date: purchaseDate, lines: cleanLines, total }).select('*').single();
+    if (error) throw new Error(error.message);
+    for (const line of cleanLines) await this.adjustProductStock(line.product_id, line.qty, `Stock In${invoiceNo ? ` - Invoice ${invoiceNo}` : ''}`);
+    return data;
+  },
+
+  async adjustProductStock(productId, change, reason) {
+    const { data, error } = await supabase.rpc('fn_adjust_product_stock', { p_product_id: productId, p_change: Number(change), p_reason: reason || 'Stock adjustment' });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  async deductStock(productId, qty, reason) {
+    return this.adjustProductStock(productId, -Math.abs(Number(qty) || 0), reason || 'Stock deduction');
+  },
+
+  // POS integration. Product IDs may already be UUIDs; legacy/mock menu IDs are
+  // resolved by name so existing POS menu items continue to work after the Store
+  // module is enabled. Missing mappings are deliberately skipped and surfaced as
+  // a non-blocking result so inventory can never roll back a completed sale.
+  async deductStockForOrder({ propertyId, orderItems = [], reference = 'POS Sale' }) {
+    if (!propertyId || !orderItems.length) return { deducted: [], skipped: [] };
+    const deducted = [], skipped = [];
+    for (const item of orderItems) {
+      try {
+        let product = null;
+        if (isUuid(item.productId)) {
+          const { data } = await supabase.from('products').select('*').eq('property_id', propertyId).eq('id', item.productId).maybeSingle();
+          product = data;
+        }
+        if (!product && item.name) {
+          const { data } = await supabase.from('products').select('*').eq('property_id', propertyId).ilike('name', item.name).limit(1).maybeSingle();
+          product = data;
+        }
+        if (!product) { skipped.push({ ...item, reason: 'Product not mapped in Store' }); continue; }
+        const result = await this.deductStock(product.id, Number(item.qty) || 0, `${reference} - ${item.qty}x ${product.name}`);
+        deducted.push({ product, qty: Number(item.qty) || 0, result });
+      } catch (error) {
+        skipped.push({ ...item, reason: error.message });
+      }
+    }
+    return { deducted, skipped };
+  },
+
+  async deductRoomAmenities({ propertyId, items = [], roomNumber }) {
+    return this.deductStockForOrder({ propertyId, orderItems: items, reference: `PMS Check-in - Room ${roomNumber || ''}`.trim() });
+  },
+
+  async deductHousekeepingUsage({ productId, qty, roomNumber }) {
+    return this.deductStock(productId, qty, `Housekeeping - Room ${roomNumber || ''}`.trim());
+  },
+
+  async deductLaundryUsage({ productId, qty, reference = 'Laundry Issue' }) {
+    return this.deductStock(productId, qty, reference);
+  },
+
+  async getAlerts(propertyId) {
+    const products = await this.listProducts(propertyId);
+    const today = new Date();
+    const in30 = new Date(today.getTime() + 30 * 86400000);
+    return products.map((p) => {
+      const stock = Number(p.current_stock || 0);
+      const expiry = p.expiry_date ? new Date(p.expiry_date) : null;
+      if (stock <= 0) return { id: `out-${p.id}`, product: p, type: 'out_of_stock', severity: 'critical', message: 'Out of stock' };
+      if (stock <= Number(p.min_stock || 0)) return { id: `low-${p.id}`, product: p, type: 'low_stock', severity: 'critical', message: `Low stock: ${stock} ${p.unit}` };
+      if (expiry && expiry <= in30) return { id: `exp-${p.id}`, product: p, type: 'expiry', severity: 'warning', message: `Expires ${expiry.toLocaleDateString('en-KE')}` };
+      return null;
+    }).filter(Boolean);
+  },
+
+  async exportStockReport(movements, filename = 'olitechs-stock-report.xlsx') {
+    const rows = movements.map((m) => ({ Date: m.created_at, Product: m.product?.name || '', SKU: m.product?.sku || '', Category: m.product?.category || '', Type: m.type || (Number(m.qty) >= 0 ? 'in' : 'out'), Qty: Math.abs(Number(m.qty) || 0), Reason: m.reason || '', User: m.user_profile?.full_name || '' }));
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(rows), 'Stock Report');
+    XLSX.writeFile(workbook, filename);
+  },
+
+  async exportProducts(products, filename = 'olitechs-products.xlsx') {
+    const rows = products.map((p) => ({ SKU: p.sku || '', Name: p.name, Category: p.category, Unit: p.unit, Current_Stock: p.current_stock, Min_Stock: p.min_stock, Max_Stock: p.max_stock, Cost_Price: p.cost_price, Selling_Price: p.selling_price, Supplier: p.supplier?.name || '', Location: p.location || '', Expiry_Date: p.expiry_date || '' }));
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(rows), 'Products');
+    XLSX.writeFile(workbook, filename);
+  },
+
+  parseImportFile(file) {
+    return new Promise((resolve, reject) => {
+      const name = file.name.toLowerCase();
+      if (name.endsWith('.csv')) {
+        Papa.parse(file, { header: true, skipEmptyLines: true, complete: (result) => resolve(normalizeImportRows(result.data)), error: reject });
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const workbook = XLSX.read(reader.result, { type: 'array' });
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          resolve(normalizeImportRows(XLSX.utils.sheet_to_json(sheet, { defval: '' })));
+        } catch (error) { reject(error); }
+      };
+      reader.onerror = reject;
+      reader.readAsArrayBuffer(file);
+    });
+  },
+
+  async bulkUpsertProducts(propertyId, rows) {
+    const suppliers = await this.listSuppliers(propertyId);
+    const payload = rows.map((row) => {
+      let supplierId = row.supplier_id || null;
+      if (!supplierId && row.supplier) {
+        const found = suppliers.find((s) => s.name.toLowerCase() === String(row.supplier).toLowerCase());
+        supplierId = found?.id || null;
+      }
+      return cleanProduct(row, propertyId, supplierId);
+    }).filter((p) => p.name);
+    if (!payload.length) return [];
+    const { data, error } = await supabase.from('products').upsert(payload, { onConflict: 'property_id,sku', ignoreDuplicates: false }).select('*');
+    if (error) throw new Error(error.message);
+    return data || [];
+  },
 };
+
+function normalizeImportRows(rows) {
+  return rows.map((raw) => {
+    const normalized = {};
+    Object.entries(raw || {}).forEach(([key, value]) => {
+      normalized[String(key).trim().toLowerCase().replace(/[\s-]+/g, '_')] = value;
+    });
+    return normalized;
+  }).map((row) => ({
+    name: row.name,
+    sku: row.sku,
+    category: row.category || 'General',
+    unit: row.unit || 'pcs',
+    current_stock: row.current_stock ?? row.quantity ?? 0,
+    min_stock: row.min_stock ?? row.low_stock_threshold ?? 5,
+    max_stock: row.max_stock ?? 0,
+    cost_price: row.cost_price ?? 0,
+    selling_price: row.selling_price ?? 0,
+    supplier: row.supplier || '',
+    location: row.location || 'Main Store',
+    expiry_date: row.expiry_date || null,
+  }));
+}
+
+export function downloadImportTemplate() {
+  const rows = [{ name: 'Tusker Lager', sku: 'B4', category: 'F&B', unit: 'bottle', current_stock: 100, min_stock: 20, max_stock: 300, cost_price: 180, selling_price: 450, supplier: 'Sample Supplier', location: 'Bar Store', expiry_date: '' }];
+  const csv = Papa.unparse(rows);
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'olitechs-store-import-template.csv'; a.click(); URL.revokeObjectURL(url);
+}

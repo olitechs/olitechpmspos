@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import {
   CalendarDays, ChevronLeft, ChevronRight, Link2, Plus, RefreshCw, X, Save, Trash2,
-  Printer, BedDouble, Receipt, Check, Users, Download, AlertTriangle,
+  Printer, BedDouble, Download, AlertTriangle,
 } from 'lucide-react';
 import {
   format, addDays, differenceInCalendarDays, eachDayOfInterval, endOfMonth, startOfMonth, subDays,
@@ -17,29 +17,25 @@ export const CHANNELS = ['direct', 'booking_com', 'unknown'];
 export const MEAL_PLANS = ['bed_only', 'bb', 'half_board', 'full_board'];
 export const BOOKING_STATUSES = ['booked', 'checked_in', 'checked_out'];
 
-const DAY_WIDTH = 92;
-const ROOM_COL_WIDTH = 190;
+const DAY_WIDTH = 110;
+const ROOM_COL_WIDTH = 210;
 const PRINT_MAX_DAYS = 30;
 
+// CALENDAR THEME: Green/Yellow/Orange - Rectangle bars, English
 export const getReservationBarStyle = (paymentStatus) => ({
-  fully_paid: { background: '#090C11', color: '#FFFFFF', border: '#FFD300', label: 'Fully Paid & Confirmed', leftBorder: '4px solid #FFD300' },
-  not_paid: { background: '#757B81', color: '#FFFFFF', border: '#262B32', label: 'Not Paid', dashed: true },
-  partially_paid: { background: '#FFD300', color: '#090C11', border: '#FFD100', label: 'Partially Paid (50%)' },
-}[paymentStatus] || { background: '#757B81', color: '#FFFFFF', border: '#262B32', label: 'Not Paid', dashed: true });
+  fully_paid: { background: '#16A34A', color: '#FFFFFF', border: '#15803D', label: 'Fully Paid' },
+  partially_paid: { background: '#EAB308', color: '#090C11', border: '#CA8A04', label: 'Partially Paid' },
+  not_paid: { background: '#F97316', color: '#FFFFFF', border: '#EA580C', label: 'Not Paid' },
+}[paymentStatus] || { background: '#F97316', color: '#FFFFFF', border: '#EA580C', label: 'Not Paid' });
 
-export function getBarOpacity(bookingStatus) { return bookingStatus === 'checked_out' ? 0.45 : 1; }
-
-export function isOverlapping(r1, r2) {
-  return r1.roomId === r2.roomId && r1.checkIn < r2.checkOut && r2.checkIn < r1.checkOut;
-}
-
+export function getBarOpacity(bookingStatus) { return bookingStatus === 'checked_out' ? 0.48 : 1; }
+export function isOverlapping(r1, r2) { return r1.roomId === r2.roomId && r1.checkIn < r2.checkOut && r2.checkIn < r1.checkOut; }
 export function checkOverlap(reservationList, newRoomId, newCheckIn, newCheckOut, excludeReservationId) {
   return reservationList.find((r) => {
     const candidate = { roomId: r.roomId, checkIn: r.checkIn || r.arrival, checkOut: r.checkOut || r.departure };
     return r.id !== excludeReservationId && isOverlapping(candidate, { roomId: newRoomId, checkIn: newCheckIn, checkOut: newCheckOut });
   }) || null;
 }
-
 export function calculateDailyStats(reservations, date) {
   const key = typeof date === 'string' ? date : format(date, 'yyyy-MM-dd');
   const active = reservations.filter((r) => r.status !== 'cancelled');
@@ -55,7 +51,7 @@ export function calculateDailyStats(reservations, date) {
 }
 
 const ROOM_STATUS = {
-  available: { fill: TEAL, label: 'Available' }, booked: { fill: '#E0A23C', label: 'Booked' }, occupied: { fill: '#F56C5A', label: 'Occupied' },
+  available: { fill: '#757B81', label: 'Available' }, booked: { fill: '#FFD300', label: 'Booked' }, occupied: { fill: '#F56C5A', label: 'Occupied' },
   dirty: { fill: '#B08968', label: 'Dirty' }, cleaning: { fill: '#D9A441', label: 'Cleaning' }, maintenance: { fill: '#8A8371', label: 'Maintenance' },
   out_of_service: { fill: '#5E7180', label: 'Out of Service' }, blocked: { fill: '#3A3A3A', label: 'Blocked' },
 };
@@ -83,7 +79,7 @@ const normalizeReservation = (r) => ({
   totalAmount: Number(r.totalAmount ?? r.total ?? r.rate ?? 0),
   amountPaid: Number(r.amountPaid ?? 0),
 });
-const formatGuests = (r) => `${r.adults || 1}A${r.kidsCount ? `,${r.kidsCount}K${r.kidsAges?.length ? `(${r.kidsAges.join(',')})` : ''}` : ''}`;
+const formatGuests = (r) => `${r.adults || 1}A${r.kidsCount ? `,${r.kidsCount}K` : ''}`;
 
 function SelectField({ value, onChange, children, className = '' }) { return <Select value={value} onValueChange={onChange} className={className}>{children}</Select>; }
 function InputField({ className = '', ...props }) { return <input {...props} className={`w-full h-10 rounded-lg px-3 text-sm outline-none ${className}`} style={{ background: SURFACE2, border: `1px solid ${BORDER}`, color: NAVY }} />; }
@@ -143,9 +139,6 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     return monthDays;
   }, [range, month, focusToday, todayDate]);
 
-  const firstColumnKey = columns[0] ? dateKey(columns[0]) : '';
-  const lastColumnKey = columns[columns.length - 1] ? dateKey(columns[columns.length - 1]) : '';
-
   useEffect(() => {
     if (modal?.reservationId) setLinked(normalizedReservations.filter(r => r.groupId && r.groupId === modal.groupId));
   }, [modal?.reservationId, modal?.groupId, normalizedReservations]);
@@ -167,9 +160,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     return () => clearTimeout(timer);
   }, [printNow]);
 
-  const openCreate = (room, date) => {
-    const next = emptyForm(room, date); setForm(next); setFormError(''); setLinked([]); setAddGroupRoomId(''); setModal({ mode: 'create' });
-  };
+  const openCreate = (room, date) => { const next = emptyForm(room, date); setForm(next); setFormError(''); setLinked([]); setAddGroupRoomId(''); setModal({ mode: 'create' }); };
   const openEdit = (r) => {
     setForm({ guestName: r.guestName, checkIn: r.checkIn, checkOut: r.checkOut, paymentStatus: r.paymentStatus, channel: r.channel, mealPlan: r.mealPlan, adults: r.adults || 1, kidsCount: r.kidsCount || 0, kidsAges: r.kidsAges || [], totalAmount: r.totalAmount, amountPaid: r.amountPaid, roomTypeId: r.roomTypeId || rooms.find(x => x.id === r.roomId)?.room_type_id || '', roomId: r.roomId, joint: !!r.groupId, selectedRoomIds: [r.roomId], notes: r.notes || '' });
     setFormError(''); setAddGroupRoomId(''); setModal({ mode: 'edit', reservationId: r.id, groupId: r.groupId });
@@ -252,11 +243,6 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     const clippedEnd = departure > viewEndExclusive ? viewEndExclusive : departure;
     return { start: differenceInCalendarDays(clippedStart, viewStart), span: Math.max(1, differenceInCalendarDays(clippedEnd, clippedStart)) };
   };
-  const monthSegments = useMemo(() => {
-    const segments = [];
-    columns.forEach((d, i) => { const key = format(d, 'MMMM yyyy'); const last = segments[segments.length - 1]; if (last?.key === key) last.count += 1; else segments.push({ key, label: key.toUpperCase(), start: i, count: 1 }); });
-    return segments;
-  }, [columns]);
 
   const openFolio = async (rv) => {
     if (rv.groupId) { setActionModal({ type: 'groupFolioChoice', reservation: rv }); return; }
@@ -266,7 +252,6 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     if (entireGroup && rv.groupId) { setActionModal(null); setFolio({ reservation: rv, group: normalizedReservations.filter(x => x.groupId === rv.groupId) }); setActionModal({ type: 'groupFolio', reservation: rv }); return; }
     try { const data = await pmsService.getFolio(rv.id); setFolio({ reservation: rv, ...data }); setActionModal({ type: 'folio', reservation: rv }); } catch (e) { toast.error(e.message); }
   };
-  const openCharge = (rv) => { setChargeAmount(''); setChargeDescription('Room charge'); setActionModal({ type: 'charge', reservation: rv }); };
   const submitCharge = async () => { const rv = actionModal.reservation; const amount = Number(chargeAmount); if (!(amount > 0)) { toast.error('Enter a charge amount greater than 0.'); return; } try { await pmsService.chargeToRoom({ propertyId, reservationId: rv.id, description: chargeDescription || 'Room charge', amount }); toast.success(`KES ${amount.toLocaleString()} posted to Room ${rv.roomNumber || rooms.find(x => x.id === rv.roomId)?.number}`); setActionModal(null); } catch (e) { toast.error(e.message); } };
 
   const printRange = range ? columns : columns.slice(0, PRINT_MAX_DAYS);
@@ -283,74 +268,66 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   };
 
   return <div className="flex flex-col h-full min-h-0" style={{ background: SAND }}>
-    <style>{`@media print { @page { size: landscape; margin: 8mm; } body * { visibility: hidden !important; } #room-planner-print-grid, #room-planner-print-grid * { visibility: visible !important; } #room-planner-print-grid { position: absolute; left: 0; top: 0; width: 100%; } .print-hidden { display:none !important; } .print-color-exact { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }`}</style>
+    <style>{`@media print { @page { size: landscape; margin: 8mm; } body * { visibility: hidden !important; } #room-planner-print-grid, #room-planner-print-grid * { visibility: visible !important; } #room-planner-print-grid { position: absolute; left: 0; top: 0; width: 100%; } .print-hidden { display:none !important; } .print-color-exact { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } } .reservation-bar { display:flex; align-items:center; padding:0 8px; font-size:11px; font-weight:700; border-radius:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-height:24px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }`}</style>
     <div className="px-4 pt-3 pb-2 shrink-0 print-hidden">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: SURFACE, border: `1px solid ${BORDER}`, color: NAVY }}><CalendarDays size={17}/><span className="font-bold text-sm">Room Planner</span></div>
-        <button onClick={() => shiftMonth(-1)} className="p-2 rounded-xl" style={{background:SURFACE,border:`1px solid ${BORDER}`}}><ChevronLeft size={18}/></button>
-        <button onClick={goToday} className="px-3 py-2 rounded-xl text-xs font-bold" style={{background:NAVY,border:`1px solid ${NAVY2}`,color:'#FFFFFF'}}>Today</button>
-        <button onClick={() => shiftMonth(1)} className="p-2 rounded-xl" style={{background:SURFACE,border:`1px solid ${BORDER}`}}><ChevronRight size={18}/></button>
+        <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: '#090C11', border: `1px solid #090C11`, color: '#FFD300' }}><CalendarDays size={17}/><span className="font-bold text-sm">Room Planner</span></div>
+        <button onClick={() => shiftMonth(-1)} className="p-2 rounded-xl font-bold" style={{background:'#FFFFFF',border:`1px solid #090C11`,color:'#090C11'}}><ChevronLeft size={18}/></button>
+        <button onClick={goToday} className="px-4 py-2 rounded-xl text-xs font-black" style={{background:'#FFD300',border:`1px solid #090C11`,color:'#090C11'}}>Today</button>
+        <button onClick={() => shiftMonth(1)} className="p-2 rounded-xl font-bold" style={{background:'#FFFFFF',border:`1px solid #090C11`,color:'#090C11'}}><ChevronRight size={18}/></button>
         <div className="text-lg font-bold ml-1" style={{color:NAVY}}>{range ? `${format(parseDate(range.from),'d MMM yyyy')} – ${format(parseDate(range.to),'d MMM yyyy')}` : format(month,'MMMM yyyy')}</div>
         <div className="ml-auto flex items-center gap-2">
-          <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-xl" style={{background:SURFACE,border:`1px solid ${BORDER}`}}><span className="text-xs font-semibold" style={{color:MUTED}}>From</span><InputField type="date" value={fromInput} onChange={e=>setFromInput(e.target.value)} className="w-[135px] h-8"/><span className="text-xs font-semibold" style={{color:MUTED}}>To</span><InputField type="date" value={toInput} onChange={e=>setToInput(e.target.value)} className="w-[135px] h-8"/><button onClick={applyRange} className="px-2.5 h-8 rounded-lg text-xs font-bold" style={{background:'#FFD300',color:'#090C11'}}>Apply</button><button onClick={clearRange} className="px-2.5 h-8 rounded-lg text-xs font-semibold" style={{border:`1px solid ${BORDER}`,color:MUTED}}>Clear</button></div>
-          {onRefresh && <button title="Refresh" onClick={onRefresh} className="p-2 rounded-xl" style={{background:SURFACE,border:`1px solid ${BORDER}`,color:MUTED}}><RefreshCw size={16}/></button>}
-          <button title="Print Calendar" onClick={()=>setPrintPreview(true)} className="p-2 rounded-xl" style={{background:SURFACE,border:`1px solid ${BORDER}`,color:MUTED}}><Printer size={16}/></button>
-          <button onClick={() => openCreate(rooms[0], range ? parseDate(range.from) : todayDate)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold" style={{background:'#FFD300',color:'#090C11'}}><Plus size={15}/> Add Booking</button>
+          <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-xl" style={{background:'#FFFFFF',border:`2px solid #090C11`}}><span className="text-xs font-black" style={{color:'#090C11'}}>From</span><InputField type="date" value={fromInput} onChange={e=>setFromInput(e.target.value)} className="w-[135px] h-8"/><span className="text-xs font-black" style={{color:'#090C11'}}>To</span><InputField type="date" value={toInput} onChange={e=>setToInput(e.target.value)} className="w-[135px] h-8"/><button onClick={applyRange} className="px-4 h-8 rounded-lg text-xs font-black" style={{background:'#FFD300',color:'#090C11',border:'1px solid #090C11'}}>Apply</button><button onClick={clearRange} className="px-3 h-8 rounded-lg text-xs font-bold" style={{background:'#FFFFFF',border:`1px solid #090C11`,color:'#090C11'}}>Clear</button></div>
+          {onRefresh && <button title="Refresh" onClick={onRefresh} className="p-2 rounded-xl" style={{background:'#FFFFFF',border:`1px solid #090C11`,color:'#090C11'}}><RefreshCw size={16}/></button>}
+          <button title="Print Calendar" onClick={()=>setPrintPreview(true)} className="p-2 rounded-xl" style={{background:'#FFFFFF',border:`1px solid #090C11`,color:'#090C11'}}><Printer size={16}/></button>
+          <button onClick={() => openCreate(rooms[0], range ? parseDate(range.from) : todayDate)} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black" style={{background:'#FFD300',color:'#090C11',border:'2px solid #090C11'}}><Plus size={15}/> Add Booking</button>
         </div>
       </div>
       {rangeError && <div className="mt-2 flex items-center gap-2 text-xs font-semibold" style={{color:DESTRUCTIVE}}><AlertTriangle size={14}/>{rangeError}</div>}
-      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs" style={{color:MUTED}}>
-        <span>{rooms.length} rooms · {normalizedReservations.length} active reservations</span><span>click empty cell to book · drag reservations to move</span>
-        <span className="hidden xl:flex items-center gap-2 ml-auto">{Object.entries(ROOM_STATUS).map(([k,v])=><span key={k} className="flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-full" style={{background:v.fill}}/>{v.label}</span>)}</span>
+      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-bold" style={{color:'#090C11'}}>
+        <span>{rooms.length} rooms · {normalizedReservations.length} active reservations</span><span className="opacity-60">click empty cell to book · drag reservations to move</span>
       </div>
-      <div className="hidden xl:flex justify-end items-center gap-3 mt-2 text-xs" style={{color:MUTED}}><b>Payment:</b><span className="flex items-center gap-1"><i className="w-2 h-2 rounded-full border" style={{background:'#090C11',borderColor:'#FFD300'}}/>Fully Paid & Confirmed</span><span className="flex items-center gap-1"><i className="w-2 h-2 rounded-full" style={{background:'#757B81'}}/>Not Paid</span><span className="flex items-center gap-1"><i className="w-2 h-2 rounded-full" style={{background:'#FFD300'}}/>Partially Paid (50%)</span></div>
     </div>
 
     <div ref={scrollRef} className="flex-1 min-h-0 overflow-auto px-4 pb-4 print-hidden">
-      <div className="rounded-2xl overflow-hidden" style={{background:'#FFFFFF',border:`1px solid ${BORDER}`, minWidth: `${ROOM_COL_WIDTH + columns.length * DAY_WIDTH}px`}}>
+      <div className="rounded-xl overflow-hidden shadow-sm" style={{background:'#FFFFFF',border:`2px solid #090C11`, minWidth: `${ROOM_COL_WIDTH + columns.length * DAY_WIDTH}px`}}>
         <div className="grid sticky top-0 z-40" style={{gridTemplateColumns:`${ROOM_COL_WIDTH}px repeat(${columns.length}, ${DAY_WIDTH}px)`}}>
-          <div className="sticky left-0 z-50 px-3 py-2 text-xs font-bold uppercase tracking-wide flex items-center" style={{background:NAVY2,color:'#FFFFFF',borderRight:`1px solid ${BORDER}`,borderBottom:`1px solid ${BORDER}`,gridRow:'span 2'}}>Room</div>
-          {monthSegments.map(s=><div key={s.key} className="text-center text-[11px] font-bold py-1" style={{gridColumn:`${s.start+2} / span ${s.count}`,background:NAVY,color:'#fff',height:28,borderRight:`1px solid ${BORDER}`}}>{s.label}{range && <span className="ml-1 opacity-80">({format(columns[s.start],'d')}–{format(columns[s.start+s.count-1],'d')})</span>}</div>)}
-          {columns.map((d,i)=>{const weekend=d.getDay()===0||d.getDay()===6;const isT=dateKey(d)===today;return <div key={dateKey(d)} ref={isT?todayRef:null} className="text-center py-1 relative" style={{background:isT?'#FFD300':weekend?'#F2F2F2':'#262B32',color:isT?'#090C11':'#FFFFFF',borderRight:`${d.getDay()===0?'2px':'1px'} solid ${d.getDay()===0?'#BDBDBD':'#E0E0E0'}`,borderBottom:`1px solid ${BORDER}`,height:48}}><div className={`text-[10px] uppercase ${weekend?'font-bold':''}`}>{format(d,'EE').slice(0,2)}</div><div className="text-sm font-bold">{d.getDate()}</div>{isT&&<span className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 text-[8px] px-1.5 py-0.5 rounded-full font-black" style={{background:'#FFD300',color:'#090C11'}}>TODAY</span>}</div>})}
+          <div className="sticky left-0 z-50 px-3 py-2 text-xs font-black uppercase tracking-wide flex items-center" style={{background:'#090C11',color:'#FFD300',borderRight:`2px solid #090C11`,borderBottom:`2px solid #090C11`}}>Rooms</div>
+          {columns.map((d,i)=>{const weekend=d.getDay()===0||d.getDay()===6;const isT=dateKey(d)===today;return <div key={dateKey(d)} ref={isT?todayRef:null} className="text-center py-1 relative" style={{background:isT?'#FFD300':weekend?'#D6EAF8':'#FFFFFF',color:'#090C11',borderRight:`1px solid #E5E7EB`,borderBottom:`2px solid #090C11`,height:52, fontWeight: isT?900:600}}><div className="text-[10px] uppercase font-black">{format(d,'EEE')}</div><div className="text-sm font-black">{d.getDate()}</div><div className="text-[9px]">{format(d,'MMM')}</div>{isT&&<span className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 text-[8px] px-2 py-0.5 rounded-full font-black" style={{background:'#090C11',color:'#FFD300',border:'1px solid #FFD300'}}>TODAY</span>}</div>})}
         </div>
 
         {groupedRooms.map(([typeName, group])=><React.Fragment key={typeName}>
-          <div className="grid" style={{gridTemplateColumns:`${ROOM_COL_WIDTH}px repeat(${columns.length}, ${DAY_WIDTH}px)`}}><div className="sticky left-0 z-20 px-3 py-2 text-xs font-bold uppercase tracking-wide" style={{background:'#262B32',color:'#FFFFFF',borderRight:`1px solid ${BORDER}`,borderBottom:`1px solid ${BORDER}`}}>{typeName} <span className="font-normal" style={{color:MUTED}}>· {group.length}</span></div><div style={{gridColumn:`span ${columns.length}`,background:'#262B32',borderBottom:`1px solid ${BORDER}`}}/></div>
-          {group.map(room=>{const roomReservations=normalizedReservations.filter(r=>r.roomId===room.id); return <div key={room.id} className="grid relative min-h-[60px]" style={{gridTemplateColumns:`${ROOM_COL_WIDTH}px repeat(${columns.length}, ${DAY_WIDTH}px)`}}>
-            <div className="sticky left-0 z-20 px-3 py-2 flex items-center gap-2" style={{background:'#FFFBF6',borderRight:`1px solid ${BORDER}`,borderBottom:`1px solid #E8E0D5`}}><span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{background:ROOM_STATUS[room.status]?.fill || '#757B81'}}/><div><div className="font-bold text-sm" style={{color:NAVY}}>{room.number}</div><div className="text-[10px] truncate max-w-[145px]" style={{color:MUTED}}>{room.name || typeName}</div></div></div>
-            {columns.map(d=>{const weekend=d.getDay()===0||d.getDay()===6;const key=dateKey(d);const target=dragTarget?.roomId===room.id&&dragTarget?.date===key;return <div key={key} onClick={()=>{if(!drag&&!suppressCellClick.current)openCreate(room,d)}} onDragOver={e=>handleCellDragOver(e,room,d)} onDrop={e=>handleCellDrop(e,room,d)} className="min-h-[60px] cursor-pointer" style={{background:target?'rgba(255,211,0,.18)':weekend?'repeating-linear-gradient(90deg,#F2F2F2,#F2F2F2 5px,#EAEAEA 5px,#EAEAEA 10px)':key===today?'rgba(255,211,0,.10)':'#FFFFFF',borderRight:`${d.getDay()===0?'2px':'1px'} solid ${d.getDay()===0?'#BDBDBD':'#E0E0E0'}`,borderBottom:`1px solid #EAE6DF`}}/>})}
-            {roomReservations.map(rv=>{const l=visibleReservation(rv);if(!l)return null;const ps=getReservationBarStyle(rv.paymentStatus);const checked=rv.bookingStatus==='checked_out';const groupCount=rv.groupId?normalizedReservations.filter(x=>x.groupId===rv.groupId).length:0;const left=ROOM_COL_WIDTH+l.start*DAY_WIDTH+5;const width=Math.max(DAY_WIDTH*l.span-10,70);return <div key={rv.id} draggable onDragStart={e=>beginDrag(e,rv)} onDragEnd={()=>{setDrag(null);setDragTarget(null)}} onClick={e=>{e.stopPropagation();openEdit(rv)}} className="absolute top-2 h-[42px] rounded-lg px-[9px] py-[5px] text-left overflow-hidden shadow-sm cursor-grab active:cursor-grabbing print-color-exact group" style={{left,width,background:checked?`repeating-linear-gradient(45deg, ${ps.background}, ${ps.background} 7px, rgba(255,255,255,.14) 7px, rgba(255,255,255,.14) 11px)`:ps.background,color:ps.color,border:`${checked||ps.dashed?'1px dashed':'1px solid'} ${ps.border}`,borderLeft:ps.leftBorder || undefined,opacity:getBarOpacity(rv.bookingStatus),zIndex:10}} title={`${rv.guestName} · ${rv.checkIn} → ${rv.checkOut}`}>
-              <div className="text-[11px] font-bold truncate pr-28">{rv.guestName}</div><div className="text-[10px] leading-3 truncate opacity-95 pr-16">{channelLabel[rv.channel]||'Direct'} • {mealLabel[rv.mealPlan]||'Bed Only'} • {formatGuests(rv)}</div>
-              {checked&&<span className="absolute left-2 bottom-1 text-[8px] font-bold flex items-center gap-0.5"><Check size={9}/>Checked Out</span>}
-              {rv.groupId&&<span className="absolute top-1 right-2 flex items-center gap-0.5 text-[8px] font-bold"><Link2 size={9}/>Joint - {groupCount} Rooms</span>}
-              <span className="absolute right-1 bottom-1 hidden group-hover:flex items-center gap-1 print:hidden"><button onClick={e=>{e.stopPropagation();openFolio(rv)}} title={`Open PMS Folio for Room ${room.number}`} className="w-6 h-6 rounded-md flex items-center justify-center" style={{background:'rgba(255,255,255,.24)'}}><BedDouble size={12}/></button><button onClick={e=>{e.stopPropagation();openCharge(rv)}} title={`Post Charge to Room ${room.number}`} className="w-6 h-6 rounded-md flex items-center justify-center" style={{background:'rgba(255,255,255,.24)'}}><Receipt size={12}/></button></span>
+          {group.map(room=>{const roomReservations=normalizedReservations.filter(r=>r.roomId===room.id); return <div key={room.id} className="grid relative" style={{gridTemplateColumns:`${ROOM_COL_WIDTH}px repeat(${columns.length}, ${DAY_WIDTH}px)`, minHeight: 44}}>
+            <div className="sticky left-0 z-20 px-3 py-2 flex items-center gap-2" style={{background:'#FFFBF6',borderRight:`2px solid #090C11`,borderBottom:`1px solid #E5E7EB`}}><div><div className="font-black text-[13px]" style={{color:'#090C11'}}>{room.number}</div><div className="text-[10px] font-semibold truncate max-w-[160px]" style={{color:MUTED}}>{room.name || typeName}</div></div></div>
+            {columns.map(d=>{const weekend=d.getDay()===0||d.getDay()===6;const key=dateKey(d);const target=dragTarget?.roomId===room.id&&dragTarget?.date===key;return <div key={key} onClick={()=>{if(!drag&&!suppressCellClick.current)openCreate(room,d)}} onDragOver={e=>handleCellDragOver(e,room,d)} onDrop={e=>handleCellDrop(e,room,d)} className="cursor-pointer" style={{background:target?'rgba(255,211,0,.25)':weekend?'#EBF5FB':key===today?'rgba(255,211,0,.12)':'#FFFFFF',borderRight:`1px solid #E5E7EB`,borderBottom:`1px solid #E5E7EB`, minHeight:44}}/>})}
+            {roomReservations.map(rv=>{
+              const l=visibleReservation(rv);if(!l)return null;
+              const ps=getReservationBarStyle(rv.paymentStatus);
+              const checked=rv.bookingStatus==='checked_out';
+              const left=ROOM_COL_WIDTH+l.start*DAY_WIDTH+4;
+              const width=Math.max(DAY_WIDTH*l.span-8,100);
+              return <div key={rv.id} draggable onDragStart={e=>beginDrag(e,rv)} onDragEnd={()=>{setDrag(null);setDragTarget(null)}} onClick={e=>{e.stopPropagation();openEdit(rv)}} className="reservation-bar absolute top-[6px] h-[32px] cursor-grab active:cursor-grabbing group print-color-exact" style={{left,width,background:ps.background,color:ps.color,border:`1.5px solid ${ps.border}`,opacity:getBarOpacity(rv.bookingStatus),zIndex:10, filter: checked ? 'blur(0.3px)' : 'none'}} title={`${rv.guestName} · ${rv.checkIn} → ${rv.checkOut} · ${paymentLabel[rv.paymentStatus]}`}>
+              <span className="truncate font-black text-[11px]">{rv.guestName}</span><span className="ml-1.5 text-[10px] opacity-90 font-bold">{rv.adults}A</span>
+              <span className="ml-auto hidden group-hover:flex items-center gap-1 print:hidden"><button onClick={e=>{e.stopPropagation();openFolio(rv)}} className="w-5 h-5 rounded flex items-center justify-center" style={{background:'rgba(0,0,0,0.2)'}}><BedDouble size={10}/></button></span>
             </div>})}
           </div>})}
         </React.Fragment>)}
 
-        {rooms.length===0&&<div className="relative min-h-[520px]"><div className="absolute inset-0 flex items-center justify-center"><div className="text-center max-w-md"><div className="mx-auto w-14 h-14 rounded-2xl flex items-center justify-center mb-4" style={{background:'#FFEE32',color:'#090C11'}}><CalendarDays size={28}/></div><h3 className="text-lg font-bold" style={{color:NAVY}}>Your Room Planner is ready</h3><p className="text-sm mt-2" style={{color:MUTED}}>No rooms are configured yet. The calendar remains open so you can add inventory without losing the planning workspace.</p></div></div></div>}
-
-        <div className="grid sticky bottom-0 z-30" style={{gridTemplateColumns:`${ROOM_COL_WIDTH}px repeat(${columns.length}, ${DAY_WIDTH}px)`,background:'#202020',borderTop:'2px solid #FFD300'}}>
-          {['arrivals','inHouse','checkOuts'].map((kind,idx)=><React.Fragment key={kind}><div className="sticky left-0 z-40 px-3 py-2 text-xs font-bold" style={{background:'#202020',color:'#FFFFFF',borderBottom:idx===2?'none':`1px solid ${BORDER}`}}>{kind==='arrivals'?'Arrivals':kind==='inHouse'?'In-House (Stay)':'Check-Outs'}</div>{columns.map(d=>{const s=calculateDailyStats(normalizedReservations,d);const value=s[kind];const color=value===0?'#757B81':kind==='arrivals'?'#FFD300':kind==='inHouse'?'#FFFFFF':'#757B81';return <div key={`${kind}-${dateKey(d)}`} className="text-center py-2 text-xs" style={{color,fontWeight:value?800:500,borderRight:`${d.getDay()===0?'2px':'1px'} solid ${d.getDay()===0?'#BDBDBD':'#E0E0E0'}`,borderBottom:idx===2?'none':`1px solid ${BORDER}`}}>{value}</div>})}</React.Fragment>)}
+        <div className="grid sticky bottom-0 z-30" style={{gridTemplateColumns:`${ROOM_COL_WIDTH}px repeat(${columns.length}, ${DAY_WIDTH}px)`,background:'#F3F4F6',borderTop:'2px solid #090C11'}}>
+          {['arrivals','inHouse','checkOuts'].map((kind,idx)=><React.Fragment key={kind}><div className="sticky left-0 z-40 px-3 py-2 text-xs font-black" style={{background:'#090C11',color:'#FFD300',borderBottom:idx===2?'none':`1px solid #333`}}>{kind==='arrivals'?'Arrivals':kind==='inHouse'?'In-House':'Departures'}</div>{columns.map(d=>{const s=calculateDailyStats(normalizedReservations,d);const value=s[kind];return <div key={`${kind}-${dateKey(d)}`} className="text-center py-2 text-xs font-black" style={{color:'#090C11',background:'#FFFFFF',borderRight:`1px solid #E5E7EB`,borderBottom:idx===2?'none':`1px solid #E5E7EB`}}>{value}</div>})}</React.Fragment>)}
         </div>
       </div>
     </div>
 
     {modal && <Modal wide title={modal.mode==='create'?'New Reservation':'Edit Reservation'} onClose={()=>setModal(null)}><div className="p-5 space-y-4">
-      {modal.mode==='edit'&&form.joint&&<div className="rounded-xl p-3" style={{background:'rgba(255,211,0,.12)',border:`1px solid ${TEAL}`,color:NAVY}}><div className="flex items-start gap-2"><Link2 size={17}/><div className="flex-1"><div className="font-bold text-sm">Joint Reservation - Group #{String(modal.groupId).slice(0,6).toUpperCase()} - {linked.length} rooms linked</div><div className="text-xs mt-1" style={{color:MUTED}}>Linked rooms share the guest and dates.</div></div><button onClick={splitGroup} className="text-xs font-bold px-2 py-1 rounded-lg" style={{border:`1px solid ${BORDER}`}}>Split Group</button></div><div className="mt-3 space-y-2">{linked.map(r=><div key={r.id} className="flex items-center justify-between gap-2 p-2 rounded-lg" style={{background:SURFACE}}><span className="text-xs font-semibold">Room {r.roomNumber || rooms.find(x=>x.id===r.roomId)?.number}</span><button onClick={()=>removeLinkedRoom(r.id)} className="text-xs" style={{color:DESTRUCTIVE}}>Remove</button></div>)}<div className="flex gap-2"><SelectField value={addGroupRoomId} onChange={setAddGroupRoomId}><option value="">Select another room…</option>{rooms.filter(r=>!linked.some(x=>x.roomId===r.id)).map(r=><option key={r.id} value={r.id}>Room {r.number} — {r.name||r.roomTypeName||'Room'}</option>)}</SelectField><button type="button" onClick={addLinkedRoom} disabled={!addGroupRoomId} className="px-3 rounded-lg text-xs font-bold disabled:opacity-50" style={{background:TEAL,color:'#090C11'}}>Add Room</button></div></div></div>}
+      {modal.mode==='edit'&&form.joint&&<div className="rounded-xl p-3" style={{background:'rgba(255,211,0,.12)',border:`1px solid ${TEAL}`,color:NAVY}}><div className="flex items-start gap-2"><Link2 size={17}/><div className="flex-1"><div className="font-bold text-sm">Joint Reservation - Group #{String(modal.groupId).slice(0,6).toUpperCase()} - {linked.length} rooms linked</div></div><button onClick={splitGroup} className="text-xs font-bold px-2 py-1 rounded-lg" style={{border:`1px solid ${BORDER}`}}>Split Group</button></div></div>}
       <Field label="Guest Name"><InputField value={form.guestName} onChange={e=>setForm({...form,guestName:e.target.value})} autoFocus placeholder="Guest full name"/></Field>
       <div className="grid md:grid-cols-2 gap-3"><Field label="Check-in"><InputField type="date" value={form.checkIn} onChange={e=>setForm({...form,checkIn:e.target.value})}/></Field><Field label="Check-out (exclusive)"><InputField type="date" value={form.checkOut} min={form.checkIn} onChange={e=>setForm({...form,checkOut:e.target.value})}/></Field></div>
       {formError&&<div className="text-xs p-3 rounded-lg" style={{background:'#FDECEC',color:DESTRUCTIVE}}>{formError}</div>}
-      <Field label="Payment Status"><div className="grid grid-cols-3 gap-2">{PAYMENT_STATUS.map(s=><button type="button" key={s} onClick={()=>setForm({...form,paymentStatus:s})} className="py-2 rounded-lg text-xs font-bold" style={{background:form.paymentStatus===s?getReservationBarStyle(s).background:SURFACE2,color:form.paymentStatus===s?getReservationBarStyle(s).color:NAVY,border:`1px solid ${getReservationBarStyle(s).border}`}}>{paymentLabel[s]}</button>)}</div></Field>
-      <div className="grid md:grid-cols-2 gap-3"><Field label="Reservation Channel"><SelectField value={form.channel} onChange={v=>setForm({...form,channel:v})}><option value="direct">Direct</option><option value="booking_com">Booking.com</option><option value="unknown">Unknown</option></SelectField></Field><Field label="Meal Plan"><SelectField value={form.mealPlan} onChange={v=>setForm({...form,mealPlan:v})}><option value="bed_only">Bed Only</option><option value="bb">Bed and Breakfast (BB)</option><option value="half_board">Half Board (HB)</option><option value="full_board">Full Board (FB)</option></SelectField></Field></div>
-      <div className="rounded-xl p-4" style={{background:SURFACE2,border:`1px solid ${BORDER}`}}><div className="flex items-center gap-2 font-bold text-sm mb-3" style={{color:NAVY}}><Users size={16}/> Guest Breakdown</div><div className="grid md:grid-cols-2 gap-3"><Field label="Adults (1-10)"><div className="flex"><button type="button" onClick={()=>setForm({...form,adults:Math.max(1,form.adults-1)})} className="w-10 rounded-l-lg" style={{border:`1px solid ${BORDER}`}}>−</button><InputField type="number" min="1" max="10" value={form.adults} onChange={e=>setForm({...form,adults:Math.min(10,Math.max(1,Number(e.target.value)||1))})} className="rounded-none text-center"/><button type="button" onClick={()=>setForm({...form,adults:Math.min(10,form.adults+1)})} className="w-10 rounded-r-lg" style={{border:`1px solid ${BORDER}`}}>+</button></div></Field><Field label="Kids (0-6)"><div className="flex"><button type="button" onClick={()=>{const n=Math.max(0,form.kidsCount-1);setForm({...form,kidsCount:n,kidsAges:form.kidsAges.slice(0,n)})}} className="w-10 rounded-l-lg" style={{border:`1px solid ${BORDER}`}}>−</button><InputField type="number" min="0" max="6" value={form.kidsCount} onChange={e=>{const n=Math.min(6,Math.max(0,Number(e.target.value)||0));setForm({...form,kidsCount:n,kidsAges:Array.from({length:n},(_,i)=>form.kidsAges[i] ?? 0)})}} className="rounded-none text-center"/><button type="button" onClick={()=>{const n=Math.min(6,form.kidsCount+1);setForm({...form,kidsCount:n,kidsAges:Array.from({length:n},(_,i)=>form.kidsAges[i] ?? 0)})}} className="w-10 rounded-r-lg" style={{border:`1px solid ${BORDER}`}}>+</button></div></Field></div>{form.kidsCount>0&&<div className="grid sm:grid-cols-3 gap-2 mt-3">{form.kidsAges.map((age,i)=><Field key={i} label={`Kid ${i+1} Age`}><SelectField value={String(age)} onChange={v=>{const a=[...form.kidsAges];a[i]=Number(v);setForm({...form,kidsAges:a})}}>{Array.from({length:18},(_,a)=><option key={a} value={a}>{a}</option>)}</SelectField></Field>)}</div>}<div className="text-xs font-semibold mt-3" style={{color:NAVY}}>Total: {form.adults} Adult{form.adults!==1?'s':''}{form.kidsCount?`, ${form.kidsCount} Child${form.kidsCount!==1?'ren':''} (${form.kidsAges.join(', ')})`:''}</div></div>
+      <Field label="Payment Status"><div className="grid grid-cols-3 gap-2">{PAYMENT_STATUS.map(s=><button type="button" key={s} onClick={()=>setForm({...form,paymentStatus:s})} className="py-2 rounded-lg text-xs font-black" style={{background:form.paymentStatus===s?getReservationBarStyle(s).background:SURFACE2,color:form.paymentStatus===s?getReservationBarStyle(s).color:NAVY,border:`1.5px solid ${getReservationBarStyle(s).border}`}}>{paymentLabel[s]}</button>)}</div></Field>
+      <div className="grid md:grid-cols-2 gap-3"><Field label="Reservation Channel"><SelectField value={form.channel} onChange={v=>setForm({...form,channel:v})}><option value="direct">Direct</option><option value="booking_com">Booking.com</option><option value="unknown">Unknown</option></SelectField></Field><Field label="Meal Plan"><SelectField value={form.mealPlan} onChange={v=>setForm({...form,mealPlan:v})}><option value="bed_only">Bed Only</option><option value="bb">BB</option><option value="half_board">HB</option><option value="full_board">FB</option></SelectField></Field></div>
       <div className="grid md:grid-cols-2 gap-3"><Field label="Total Amount"><InputField type="number" min="0" step="0.01" value={form.totalAmount} onChange={e=>setForm({...form,totalAmount:e.target.value})}/></Field><Field label="Amount Paid"><InputField type="number" min="0" step="0.01" value={form.amountPaid} onChange={e=>setForm({...form,amountPaid:e.target.value})}/></Field></div>
-      {form.paymentStatus==='partially_paid'&&<div className="text-xs" style={{color:MUTED}}>Suggested minimum for partial payment: KES {(Number(form.totalAmount||0)*0.5).toLocaleString()}</div>}
-      <div className="grid md:grid-cols-2 gap-3"><Field label="Room Type"><SelectField value={form.roomTypeId} onChange={v=>{const first=rooms.find(r=>r.room_type_id===v);setForm({...form,roomTypeId:v,roomId:first?.id||'',selectedRoomIds:first?[first.id]:[]})}}><option value="">All room types</option>{[...new Map(rooms.filter(r=>r.room_type_id).map(r=>[r.room_type_id,r.roomTypeName||r.room_type])).entries()].map(([id,name])=><option key={id} value={id}>{name}</option>)}</SelectField></Field><Field label="Room Number"><SelectField value={form.roomId} onChange={v=>setForm({...form,roomId:v,selectedRoomIds:[v]})}>{rooms.filter(r=>!form.roomTypeId||r.room_type_id===form.roomTypeId).map(r=><option key={r.id} value={r.id}>{r.number} — {r.name||r.roomTypeName||'Room'}</option>)}</SelectField></Field></div>
-      {modal.mode==='create'&&<label className="flex items-center gap-2 text-sm font-semibold" style={{color:NAVY}}><input type="checkbox" checked={form.joint} onChange={e=>setForm({...form,joint:e.target.checked,selectedRoomIds:e.target.checked?Array.from(new Set([form.roomId,...form.selectedRoomIds])):[form.roomId]})}/><span>Add another room for this guest (Joint/Group Reservation)</span></label>}
-      {form.joint&&<div className="rounded-xl p-3" style={{background:SURFACE2,border:`1px solid ${BORDER}`}}><div className="text-xs font-bold mb-2" style={{color:NAVY}}>Select linked rooms for the same dates</div><div className="grid sm:grid-cols-2 gap-2">{rooms.filter(r=>r.id!==form.roomId&&(!form.roomTypeId||r.room_type_id===form.roomTypeId)).map(r=><label key={r.id} className="flex items-center gap-2 p-2 rounded-lg" style={{background:SURFACE}}><input type="checkbox" checked={form.selectedRoomIds.includes(r.id)} onChange={e=>setForm({...form,selectedRoomIds:e.target.checked?[...new Set([...form.selectedRoomIds,r.id])]:form.selectedRoomIds.filter(id=>id!==r.id)})}/><span className="text-sm">Room {r.number}</span></label>)}</div></div>}
-      <Field label="Notes / Special Requests"><textarea value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} className="w-full min-h-20 rounded-lg px-3 py-2 text-sm outline-none" style={{background:SURFACE2,border:`1px solid ${BORDER}`,color:NAVY}}/></Field>
-      <div className="flex items-center justify-between pt-2"><div>{modal.mode==='edit'&&<button onClick={handleDelete} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold" style={{color:DESTRUCTIVE,border:`1px solid ${DESTRUCTIVE}`}}><Trash2 size={14}/> Delete</button>}</div><div className="flex gap-2"><button onClick={()=>setModal(null)} className="px-4 py-2.5 rounded-xl text-sm" style={{border:`1px solid ${BORDER}`,color:MUTED}}>Cancel</button><button disabled={saving} onClick={saveReservation} className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-bold disabled:opacity-60" style={{background:TEAL,color:'#090C11'}}><Save size={15}/>{saving?'Saving…':'Save Reservation'}</button></div></div>
+      <div className="flex items-center justify-between pt-2"><div>{modal.mode==='edit'&&<button onClick={handleDelete} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold" style={{color:DESTRUCTIVE,border:`1px solid ${DESTRUCTIVE}`}}><Trash2 size={14}/> Delete</button>}</div><div className="flex gap-2"><button onClick={()=>setModal(null)} className="px-4 py-2.5 rounded-xl text-sm" style={{border:`1px solid ${BORDER}`,color:MUTED}}>Cancel</button><button disabled={saving} onClick={saveReservation} className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-bold disabled:opacity-60" style={{background:'#FFD300',color:'#090C11',border:'1px solid #090C11'}}><Save size={15}/>{saving?'Saving…':'Save'}</button></div></div>
     </div></Modal>}
 
     {moveConfirmation&&<Modal title="Confirm Move Reservation?" onClose={()=>setMoveConfirmation(null)}><div className="p-5"><p className="text-sm leading-6" style={{color:NAVY}}>Move reservation <strong>“{moveConfirmation.reservation.guestName}”</strong> from Room {rooms.find(r=>r.id===moveConfirmation.reservation.roomId)?.number} ({moveConfirmation.reservation.checkIn}–{moveConfirmation.reservation.checkOut}) to Room {rooms.find(r=>r.id===moveConfirmation.target.roomId)?.number} ({moveConfirmation.target.checkIn}–{moveConfirmation.target.checkOut})?</p><div className="flex justify-end gap-2 mt-5"><button onClick={()=>setMoveConfirmation(null)} className="px-4 py-2 rounded-lg" style={{border:`1px solid ${BORDER}`}}>Cancel</button><button onClick={()=>confirmMove(!!moveConfirmation.reservation.groupId)} className="px-4 py-2 rounded-lg font-bold" style={{background:TEAL,color:'#090C11'}}>Confirm Move</button></div></div></Modal>}
@@ -362,11 +339,17 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     {actionModal?.type==='charge'&&<Modal title={`Post Room Charge · Room ${actionModal.reservation.roomNumber || rooms.find(x=>x.id===actionModal.reservation.roomId)?.number || ''}`} onClose={()=>setActionModal(null)}><div className="p-5 space-y-4"><div className="rounded-xl p-3" style={{background:SURFACE2}}><div className="font-bold text-sm" style={{color:NAVY}}>{actionModal.reservation.guestName}</div><div className="text-xs mt-1" style={{color:MUTED}}>Meal Plan: {mealLabel[actionModal.reservation.mealPlan] || 'Bed Only'}</div></div><Field label="Description"><InputField value={chargeDescription} onChange={e=>setChargeDescription(e.target.value)}/></Field><Field label="Amount (KES)"><InputField type="number" min="0.01" step="0.01" value={chargeAmount} onChange={e=>setChargeAmount(e.target.value)} autoFocus/></Field><div className="flex justify-end gap-2"><button onClick={()=>setActionModal(null)} className="px-4 py-2 rounded-lg" style={{border:`1px solid ${BORDER}`}}>Cancel</button><button onClick={submitCharge} className="px-4 py-2 rounded-lg font-bold" style={{background:TEAL,color:'#090C11'}}>Post Charge</button></div></div></Modal>}
 
     {printPreview&&<Modal wide title="Print Calendar Preview" onClose={()=>setPrintPreview(false)} print><div className="p-5"><div className="mb-4"><h1 className="text-lg font-bold" style={{color:NAVY}}>{printTitle}</h1><p className="text-xs mt-1" style={{color:MUTED}}>{printSubtitle}</p>{!range&&columns.length>PRINT_MAX_DAYS&&<p className="text-xs mt-1" style={{color:'#9A6616'}}>Print preview is limited to the first 30 days of the current month.</p>}</div><PrintGrid rooms={rooms} groupedRooms={groupedRooms} reservations={normalizedReservations} columns={printRange}/><div className="flex justify-end gap-2 mt-4 print:hidden"><button onClick={()=>setPrintPreview(false)} className="px-4 py-2 rounded-lg" style={{border:`1px solid ${BORDER}`}}>Close</button><button onClick={downloadPdf} className="flex items-center gap-2 px-4 py-2 rounded-lg" style={{border:`1px solid ${BORDER}`,color:NAVY}}><Download size={15}/> Download PDF</button><button onClick={()=>setPrintNow(true)} className="flex items-center gap-2 px-4 py-2 rounded-lg font-bold" style={{background:TEAL,color:'#090C11'}}><Printer size={15}/> Print</button></div></div></Modal>}
+
+    <div className="px-4 py-3 flex items-center gap-3 text-xs font-black border-t-2 print-hidden" style={{background:'#FFFFFF',borderColor:'#090C11'}}>
+      <span className="flex items-center gap-1.5"><i className="w-4 h-4 rounded" style={{background:'#F97316'}}/> Not Paid</span>
+      <span className="flex items-center gap-1.5"><i className="w-4 h-4 rounded" style={{background:'#EAB308'}}/> Partially Paid</span>
+      <span className="flex items-center gap-1.5"><i className="w-4 h-4 rounded" style={{background:'#16A34A'}}/> Fully Paid</span>
+      <span className="ml-auto text-[11px] font-bold" style={{color:MUTED}}>{rooms.length} rooms · {normalizedReservations.length} reservations</span>
+    </div>
   </div>;
 }
 
 function PrintGrid({ rooms, groupedRooms, reservations, columns }) {
-  const dayKeys = new Set(columns.map(dateKey));
   const roomWidth = 130; const dayWidth = Math.max(48, Math.floor(770 / Math.max(1, columns.length)));
   return <div id="room-planner-print-grid" className="print-color-exact" style={{background:'#fff',color:'#111',fontSize:8}}>
     <div style={{display:'grid',gridTemplateColumns:`${roomWidth}px repeat(${columns.length},${dayWidth}px)`}}>

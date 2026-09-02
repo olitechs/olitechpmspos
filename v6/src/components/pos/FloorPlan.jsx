@@ -1,8 +1,15 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Circle, Grid2X2, Move, Pencil, Save, X } from 'lucide-react';
 import { useStore } from '@/data/AppStore';
-import { TABLE_CARD, RESERVATIONS_TONIGHT, tableLabel } from '@/data/mockData';
-import FitText from '@/components/pos/FitText';
-import { STATUS, NAVY, NAVY2, TEAL_LIGHT, SAND, SURFACE, BORDER, BORDER_DARK, MUTED, MUTED_DARK } from '@/data/themePalette';
+import { RESERVATIONS_TONIGHT, tableLabel } from '@/data/mockData';
+import { NAVY2, SAND, SURFACE, BORDER, BORDER_DARK, MUTED_DARK } from '@/data/themePalette';
+
+const SHAPE_KEY = 'tableShapeMode';
+const POSITION_KEY = 'tableLayoutPositions';
+const SHAPES = {
+  square: { width: 112, height: 84, radius: 12 },
+  circle: { width: 88, height: 88, radius: '50%' },
+};
 
 function elapsedLabel(openedAt) {
   const mins = Math.max(0, Math.floor((Date.now() - openedAt) / 60000));
@@ -10,53 +17,75 @@ function elapsedLabel(openedAt) {
   return `${Math.floor(mins / 60)}h ${mins % 60}m`;
 }
 
-function Tile({ table, session, onSelect }) {
+function safeRead(key, fallback) {
+  try { return JSON.parse(localStorage.getItem(key) || 'null') ?? fallback; } catch { return fallback; }
+}
+
+function Tile({ table, session, shape, designMode, onSelect, onMove }) {
   const status = session?.status || 'free';
-  const s = STATUS[status];
-  const w = table.w || TABLE_CARD.w;
-  const h = table.h || TABLE_CARD.h;
-  const isUnset = status === 'unsettled';
-  const numFont = Math.max(12, Math.min(16, w / 6));
+  const colors = status === 'occupied'
+    ? { fill: '#EF4444', border: '#DC2626', text: '#FFFFFF', dot: '#FFFFFF' }
+    : status === 'unsettled'
+      ? { fill: '#FFFFFF', border: '#D1D5DB', text: '#090C11', dot: '#FFD300' }
+      : { fill: '#EAB308', border: '#CA8A04', text: '#090C11', dot: '#090C11' };
+  const geometry = SHAPES[shape];
+  const orderCount = Number(session?.orderCount || 0);
+  const guests = Number(session?.guests || 0);
+  const dragRef = useRef(null);
+  const movedRef = useRef(false);
+
+  const pointerDown = (e) => {
+    if (!designMode) return;
+    e.preventDefault();
+    movedRef.current = false;
+    dragRef.current = { startX: e.clientX, startY: e.clientY, x: table.x, y: table.y };
+    const move = (event) => {
+      if (!dragRef.current) return;
+      const dx = event.clientX - dragRef.current.startX;
+      const dy = event.clientY - dragRef.current.startY;
+      if (Math.abs(dx) + Math.abs(dy) > 4) movedRef.current = true;
+      onMove(table.id, Math.max(8, dragRef.current.x + dx), Math.max(8, dragRef.current.y + dy));
+    };
+    const up = () => {
+      dragRef.current = null;
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
 
   return (
     <button
-      onClick={() => onSelect(table)}
+      type="button"
+      onPointerDown={pointerDown}
+      onClick={() => { if (!designMode || !movedRef.current) onSelect(table); }}
+      title={designMode ? `Drag ${tableLabel(table)}` : `Open ${tableLabel(table)}`}
+      className="absolute flex flex-col items-center justify-center select-none overflow-hidden transition-shadow"
       style={{
-        position: 'absolute', left: table.x, top: table.y, width: w, height: h,
-        borderRadius: 10, padding: '6px 8px', cursor: 'pointer', touchAction: 'none',
-        display: 'flex', flexDirection: 'column',
-        background: s.fill, border: isUnset ? `2px solid ${s.border}` : 'none',
+        left: designMode ? table.x : undefined, top: designMode ? table.y : undefined, width: geometry.width, height: geometry.height,
+        borderRadius: geometry.radius, background: colors.fill, color: colors.text,
+        border: `2px solid ${colors.border}`,
+        boxShadow: table.selected ? '0 0 0 2px #FFD300, 0 10px 24px rgba(9,12,17,.18)' : 'none',
+        position: designMode ? 'absolute' : 'relative', cursor: designMode ? 'grab' : 'pointer', padding: 8, touchAction: 'none',
       }}
     >
-      <div className="flex items-center justify-between">
-        <span className="font-mono font-bold" style={{ color: s.text, fontSize: numFont }}>{tableLabel(table)}</span>
-        <span style={{ width: 7, height: 7, borderRadius: '50%', background: s.dot }} />
+      <div className="flex items-center justify-center gap-2 w-full min-w-0">
+        <span className="font-black text-[13px] leading-none truncate max-w-[72px]">{tableLabel(table)}</span>
+        <span className="shrink-0" style={{ width: 7, height: 7, borderRadius: '50%', background: colors.dot }} />
       </div>
-
-      {status === 'free' && (
-        <div style={{ color: s.text, fontSize: 11, marginTop: 'auto' }}>{table.seats} seats</div>
-      )}
-
+      <div className="font-bold text-[10px] leading-tight mt-1">{table.seats} seats</div>
       {status === 'occupied' && (
-        <>
-          <div className="font-mono font-bold" style={{ color: s.text, fontSize: Math.max(11, Math.min(15, w / 6)) }}>
-            {elapsedLabel(session.openedAt)}
-          </div>
-          <div style={{ marginTop: 'auto' }}>
-            <FitText text={session.waiter} min={9} max={12} color={s.text} />
-            <div style={{ color: s.text, fontSize: 10, opacity: 0.9 }}>{session.guests} guests</div>
-          </div>
-        </>
+        <div className="font-black text-[10px] leading-tight mt-1 truncate max-w-full">{guests}p • {elapsedLabel(session.openedAt)}</div>
       )}
-
-      {isUnset && (
-        <>
-          <div style={{ color: s.text, fontSize: 9, fontWeight: 700, letterSpacing: '0.4px', textTransform: 'uppercase' }}>Bill printed</div>
-          <div style={{ marginTop: 'auto' }}>
-            <FitText text={session.waiter} min={9} max={12} color={s.text} />
-            <div style={{ color: s.text, fontSize: 10, opacity: 0.8 }}>{session.guests} guests</div>
-          </div>
-        </>
+      {status === 'unsettled' && (
+        <span className="mt-1 max-w-full truncate rounded px-1.5 py-0.5 text-[8px] font-black uppercase leading-tight" style={{ background: '#FFD300', color: '#090C11' }}>
+          BILL PRINTED
+        </span>
+      )}
+      {designMode && <Move size={11} className="absolute bottom-1 opacity-50" />}
+      {status === 'occupied' && orderCount > 0 && (
+        <span className="absolute top-1 right-1 min-w-4 h-4 px-1 rounded-full bg-[#090C11] text-white text-[8px] font-black flex items-center justify-center">{orderCount}</span>
       )}
     </button>
   );
@@ -64,73 +93,88 @@ function Tile({ table, session, onSelect }) {
 
 export default function FloorPlan({ onTableSelect }) {
   const store = useStore();
+  const [selectedTableId, setSelectedTableId] = useState(null);
   const [activeZoneId, setActiveZoneId] = useState(store.zones[0]?.id);
+  const [shape, setShape] = useState(() => safeRead(SHAPE_KEY, 'square'));
+  const [designMode, setDesignMode] = useState(false);
+  const [positions, setPositions] = useState(() => safeRead(POSITION_KEY, {}));
   const zone = store.zones.find((z) => z.id === activeZoneId) || store.zones[0];
+
+  useEffect(() => { localStorage.setItem(SHAPE_KEY, shape); }, [shape]);
+  useEffect(() => { localStorage.setItem(POSITION_KEY, JSON.stringify(positions)); }, [positions]);
+
+  const displayTables = useMemo(() => (zone?.tables || []).map((t) => ({
+    ...t,
+    ...(positions[t.id] || {}),
+    zoneId: zone?.id,
+    zoneName: zone?.name,
+  })), [zone, positions]);
+
+  const moveTable = (id, x, y) => {
+    setPositions((prev) => ({ ...prev, [id]: { x: Math.round(x), y: Math.round(y) } }));
+    const t = zone?.tables.find((item) => item.id === id);
+    if (t && store.moveTable) store.moveTable(zone.id, id, x, y);
+  };
+
+  const saveLayout = () => {
+    try { localStorage.setItem(POSITION_KEY, JSON.stringify(positions)); } catch { /* ignore storage errors */ }
+    setDesignMode(false);
+  };
 
   if (!zone) return null;
 
-  const canvasW = Math.max(320, ...zone.tables.map((t) => t.x + (t.w || TABLE_CARD.w) + TABLE_CARD.pad));
-  const canvasH = Math.max(300, ...zone.tables.map((t) => t.y + (t.h || TABLE_CARD.h) + TABLE_CARD.pad));
-
+  const geometry = SHAPES[shape];
+  const canvasW = Math.max(620, ...displayTables.map((t) => t.x + geometry.width + 24));
+  const canvasH = Math.max(430, ...displayTables.map((t) => t.y + geometry.height + 24));
   let covers = 0, occupied = 0, openChecks = 0;
   store.zones.forEach((z) => z.tables.forEach((t) => {
     const s = store.getSession(t.id);
     if (!s) return;
-    if (s.status === 'occupied') { occupied++; openChecks++; covers += s.guests; }
-    else if (s.status === 'unsettled') { openChecks++; covers += s.guests; }
+    if (s.status === 'occupied') { occupied++; openChecks++; covers += s.guests || 0; }
+    else if (s.status === 'unsettled') { openChecks++; covers += s.guests || 0; }
   }));
 
   return (
     <div className="flex flex-col h-full overflow-hidden" style={{ background: SAND }}>
-      <div className="flex gap-2 px-4 pt-3 pb-2 shrink-0 overflow-x-auto">
+      <div className="flex items-center gap-2 px-4 pt-3 pb-2 shrink-0 overflow-x-auto">
         {store.zones.map((z) => (
-          <button
-            key={z.id} onClick={() => setActiveZoneId(z.id)}
-            className="px-5 py-2 rounded-full text-sm font-semibold whitespace-nowrap shrink-0"
-            style={{
-              background: z.id === zone.id ? TEAL_LIGHT : 'transparent',
-              color: z.id === zone.id ? NAVY : MUTED,
-              border: `1.5px solid ${z.id === zone.id ? TEAL_LIGHT : BORDER}`,
-            }}
-          >
-            {z.name}
-          </button>
+          <button key={z.id} onClick={() => setActiveZoneId(z.id)} className="px-5 py-2 rounded-full text-sm font-semibold whitespace-nowrap shrink-0" style={{ background: z.id === zone.id ? '#FFD300' : 'transparent', color: '#090C11', border: `1.5px solid ${z.id === zone.id ? '#CA8A04' : BORDER}` }}>{z.name}</button>
         ))}
+        <div className="ml-auto flex items-center gap-1 shrink-0 rounded-xl p-1 bg-white border-2 border-[#090C11]">
+          <button type="button" onClick={() => setShape('square')} className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-black" style={{ background: shape === 'square' ? '#FFD300' : '#FFFFFF', color: '#090C11' }}><Grid2X2 size={14} /> Square</button>
+          <button type="button" onClick={() => setShape('circle')} className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-black" style={{ background: shape === 'circle' ? '#FFD300' : '#FFFFFF', color: '#090C11' }}><Circle size={14} /> Circle</button>
+          <button type="button" onClick={() => setDesignMode((v) => !v)} className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-black border-l-2 border-[#090C11]" style={{ background: designMode ? '#090C11' : '#FFFFFF', color: designMode ? '#FFD300' : '#090C11' }}><Pencil size={14} /> Design Layout</button>
+          {designMode && <button type="button" onClick={saveLayout} className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-black" style={{ background: '#FFD300', color: '#090C11' }}><Save size={14} /> Save</button>}
+          {designMode && <button type="button" onClick={() => setDesignMode(false)} className="p-2 rounded-lg text-[#090C11]" title="Close design mode"><X size={14} /></button>}
+        </div>
       </div>
+
+      {designMode && <div className="mx-4 mb-2 rounded-lg px-3 py-2 text-xs font-bold bg-[#090C11] text-[#FFD300] shrink-0">Design Layout ON — drag tables to rearrange them. Amounts are intentionally hidden from the floor.</div>}
 
       <div className="flex flex-1 gap-4 px-4 pb-4 min-h-0">
         <div className="flex-1 overflow-auto rounded-xl" style={{ background: SURFACE, border: `1px solid ${BORDER}` }}>
-          <div className="relative" style={{ width: canvasW, height: canvasH, minWidth: '100%' }}>
-            {zone.tables.map((t) => (
-              <Tile
-                key={t.id}
-                table={{ ...t, zoneId: zone.id, zoneName: zone.name }}
-                session={store.getSession(t.id)}
-                onSelect={onTableSelect}
-              />
-            ))}
-          </div>
+          {designMode ? (
+            <div className="relative" style={{ width: canvasW, height: canvasH, minWidth: '100%' }}>
+              {displayTables.map((t) => <Tile key={t.id} table={{ ...t, selected: selectedTableId === t.id }} session={store.getSession(t.id)} shape={shape} designMode={designMode} onSelect={(table) => { setSelectedTableId(table.id); onTableSelect(table); }} onMove={moveTable} />)}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 p-5 items-center justify-items-center">
+              {displayTables.map((t) => <Tile key={t.id} table={{ ...t, selected: selectedTableId === t.id }} session={store.getSession(t.id)} shape={shape} designMode={false} onSelect={(table) => { setSelectedTableId(table.id); onTableSelect(table); }} onMove={moveTable} />)}
+            </div>
+          )}
         </div>
 
-        <div className="shrink-0 rounded-xl p-4 flex flex-col gap-3" style={{ background: NAVY2, width: '180px' }}>
-          <h3 className="text-xs font-bold uppercase tracking-widest" style={{ color: TEAL_LIGHT }}>Today</h3>
+        <div className="hidden xl:flex shrink-0 rounded-xl p-4 flex-col gap-3" style={{ background: NAVY2, width: 180 }}>
+          <h3 className="text-xs font-bold uppercase tracking-widest" style={{ color: '#FFD300' }}>Today</h3>
           <SummaryRow label="Covers Seated" value={covers} />
           <SummaryRow label="Tables Occupied" value={occupied} />
           <SummaryRow label="Open Checks" value={openChecks} />
           <SummaryRow label="Reservations Tonight" value={RESERVATIONS_TONIGHT} />
-
           <div className="mt-2 pt-3" style={{ borderTop: `1px solid ${BORDER_DARK}` }}>
-            <h4 className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: TEAL_LIGHT }}>Legend</h4>
-            {[
-              { label: 'Free', fill: STATUS.free.fill },
-              { label: 'Occupied', fill: STATUS.occupied.fill },
-              { label: 'Bill printed', fill: STATUS.unsettled.fill, border: STATUS.unsettled.border },
-            ].map((l) => (
-              <div key={l.label} className="flex items-center gap-2 mb-1.5">
-                <span className="w-3.5 h-3.5 rounded shrink-0" style={{ background: l.fill, border: l.border ? `2px solid ${l.border}` : 'none' }} />
-                <span className="text-xs" style={{ color: MUTED_DARK }}>{l.label}</span>
-              </div>
-            ))}
+            <h4 className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: '#FFD300' }}>Legend</h4>
+            <Legend label="Open / Available" fill="#EAB308" border="#CA8A04" />
+            <Legend label="Occupied" fill="#EF4444" border="#DC2626" />
+            <Legend label="Printed / Unsettled" fill="#FFFFFF" border="#D1D5DB" />
           </div>
         </div>
       </div>
@@ -138,11 +182,5 @@ export default function FloorPlan({ onTableSelect }) {
   );
 }
 
-function SummaryRow({ label, value }) {
-  return (
-    <div className="flex flex-col">
-      <span className="text-2xl font-mono font-bold text-white">{value}</span>
-      <span className="text-xs leading-tight" style={{ color: MUTED_DARK }}>{label}</span>
-    </div>
-  );
-}
+function Legend({ label, fill, border }) { return <div className="flex items-center gap-2 mb-1.5"><span className="w-3.5 h-3.5 rounded shrink-0" style={{ background: fill, border: `2px solid ${border}` }} /><span className="text-xs" style={{ color: MUTED_DARK }}>{label}</span></div>; }
+function SummaryRow({ label, value }) { return <div className="flex flex-col"><span className="text-2xl font-mono font-bold text-white">{value}</span><span className="text-xs leading-tight" style={{ color: MUTED_DARK }}>{label}</span></div>; }

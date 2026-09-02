@@ -19,11 +19,14 @@ import AdminDashboard from '@/pages/admin/AdminDashboard';
 import AdminProperties from '@/pages/admin/AdminProperties';
 import AdminPropertyDetail from '@/pages/admin/AdminPropertyDetail';
 import AdminAuditLog from '@/pages/admin/AdminAuditLog';
+import Roles from '@/pages/Admin/Roles';
 import SupabaseSetupNotice from '@/pages/SupabaseSetupNotice';
 import PublicHome from '@/pages/PublicHome';
 import PublicSignIn from '@/pages/PublicSignIn';
 import PublicSignUp from '@/pages/PublicSignUp';
 import { isSupabaseConfigured } from '@/lib/supabaseClient';
+
+function AdminHome(){ const { user } = useAuth(); return user?.isPlatformOwner ? <AdminDashboard/> : <Roles/>; }
 
 function AuthLoading(){
   return <div className="fixed inset-0 flex items-center justify-center bg-[#F5F3EF]"><div className="w-8 h-8 border-4 border-[#D6D6D6] border-t-[#FFD300] rounded-full animate-spin"/></div>;
@@ -32,7 +35,7 @@ function AuthLoading(){
 function PublicRoute(){
   const {user,isLoadingAuth,isLoadingPublicSettings}=useAuth();
   if(isLoadingAuth||isLoadingPublicSettings) return <AuthLoading/>;
-  if(user) return <Navigate to={user.isPlatformOwner?'/admin':'/dashboard'} replace/>;
+  if(user) return <Navigate to={user.isPlatformOwner?'/admin':'/backoffice'} replace/>;
   return <Outlet/>;
 }
 
@@ -59,14 +62,18 @@ function AppRoutes(){
     </Route>
     <Route path="/forgot-password" element={<ForgotPassword/>}/>
     <Route path="/reset-password" element={<ResetPassword/>}/>
-    <Route path="/dashboard" element={<ProtectedApp initialModule="dashboard"/>}/>
+    <Route path="/dashboard" element={<Navigate to="/backoffice" replace/>}/>
+    <Route path="/backoffice" element={<ProtectedApp initialModule="dashboard"/>}/>
+    <Route path="/pos" element={<ProtectedApp initialModule="pos"/>}/>
+    <Route path="/store" element={<ProtectedApp initialModule="store"/>}/>
     <Route path="/rooms" element={<ProtectedApp initialModule="rooms"/>}/>
     <Route path="/admin/login" element={<AdminLogin/>}/>
     <Route element={<AdminRoute/>}><Route element={<AdminLayout/>}>
-      <Route path="/admin" element={<AdminDashboard/>}/>
+      <Route path="/admin" element={<AdminHome/>}/>
       <Route path="/admin/properties" element={<AdminProperties/>}/>
       <Route path="/admin/properties/:id" element={<AdminPropertyDetail/>}/>
       <Route path="/admin/audit-log" element={<AdminAuditLog/>}/>
+      <Route path="/admin/roles" element={<Roles/>}/>
     </Route></Route>
     <Route path="*" element={<PageNotFound/>}/>
   </Routes></AuthProvider>;

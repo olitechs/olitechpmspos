@@ -13,7 +13,54 @@
 
 import { supabase } from '@/lib/supabaseClient';
 
-function toAppUser({ profile, property, propertyRole }) {
+export const STAFF_ROLES = [
+  'super_admin','hotel_admin','front_office_manager','receptionist','front_desk',
+  'pos_staff','waiter','cashier','store_manager','fb_manager','housekeeping_supervisor',
+];
+export const MODULE_NAMES = ['pos','backoffice','store'];
+export const ROLE_LABELS = {
+  super_admin: 'Super Admin / Owner', hotel_admin: 'Hotel Admin', front_office_manager: 'Front Office Manager',
+  receptionist: 'Receptionist', front_desk: 'Front Desk', pos_staff: 'POS Staff', waiter: 'Waiter', cashier: 'Cashier',
+  store_manager: 'Store Manager', fb_manager: 'F&B Manager', housekeeping_supervisor: 'Housekeeping Supervisor',
+};
+export function normalizeStaffRole(role) {
+  const value = String(role || '').toLowerCase().trim().replace(/\s+/g, '_');
+  const aliases = { owner:'hotel_admin', administrator:'hotel_admin', general_manager:'hotel_admin', manager:'front_office_manager', storekeeper:'store_manager', housekeeping:'housekeeping_supervisor' };
+  return aliases[value] || value;
+}
+export function getDefaultModulesForRole(role) {
+  switch (normalizeStaffRole(role)) {
+    case 'super_admin': case 'hotel_admin': return [...MODULE_NAMES];
+    case 'front_office_manager': return ['backoffice','store'];
+    case 'receptionist': case 'front_desk': return ['backoffice'];
+    case 'pos_staff': case 'waiter': case 'cashier': return ['pos'];
+    case 'store_manager': return ['store'];
+    case 'fb_manager': return ['pos','store'];
+    case 'housekeeping_supervisor': return ['backoffice','store'];
+    default: return [];
+  }
+}
+export function generatePin(length = 4) {
+  const digits = [];
+  const bytes = new Uint32Array(length);
+  globalThis.crypto?.getRandomValues?.(bytes);
+  for (let i = 0; i < length; i += 1) digits.push(String((bytes[i] || Math.floor(Math.random() * 10)) % 10));
+  if (digits[0] === '0') digits[0] = '1';
+  return digits.join('');
+}
+export function getSessionStaff() {
+  try { return JSON.parse(sessionStorage.getItem('olitech_active_staff_v2') || 'null'); } catch { return null; }
+}
+export async function hashPin(pin) {
+  const value = String(pin || '');
+  if (!/^\d{4,6}$/.test(value)) throw new Error('PIN must contain 4 to 6 digits.');
+  if (!globalThis.crypto?.subtle) throw new Error('Secure PIN hashing is not available in this browser.');
+  const bytes = new TextEncoder().encode(`OliTechs::PIN::${value}`);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2,'0')).join('');
+}
+
+function toAppUser({ profile, property, propertyRole, staff = null }) {
 	if (!profile) return null;
 	return {
 		id: profile.id,
@@ -26,6 +73,7 @@ function toAppUser({ profile, property, propertyRole }) {
 		isPlatformOwner: profile.platform_role === 'platform_owner',
 		property: property || null,
 		propertyRole: propertyRole || null,
+		staff,
 	};
 }
 
@@ -68,11 +116,18 @@ async function loadCurrentUserDetails() {
 		.eq('user_id', authUser.id)
 		.limit(1)
 		.maybeSingle();
+	const propertyId = membership?.property?.id;
+	let staff = null;
+	if (propertyId) {
+		const { data: staffRow } = await supabase.from('staff').select('id,full_name,email,phone,role,assigned_modules,is_active,property_id,avatar,last_login,user_id').eq('property_id', propertyId).ilike('email', authUser.email || '').maybeSingle();
+		staff = staffRow || null;
+	}
 
 	return toAppUser({
 		profile,
 		property: membership?.property || null,
 		propertyRole: membership?.role || null,
+		staff,
 	});
 }
 
@@ -160,8 +215,61 @@ export const authService = {
 	},
 
 	async logout() {
+		try { await supabase.rpc('clear_active_staff_session'); } catch { /* migration may not be applied yet */ }
 		await supabase.auth.signOut();
 	},
+	async listStaff(propertyId, module) {
+		let query = supabase.from('staff').select('id,full_name,email,phone,role,assigned_modules,is_active,property_id,avatar,last_login,user_id').eq('property_id', propertyId).eq('is_active', true).order('full_name');
+		const { data, error } = await query;
+		if (error) throw new Error(error.message);
+		const rows = data || [];
+		return module ? rows.filter((row) => Array.isArray(row.assigned_modules) && row.assigned_modules.includes(module)) : rows;
+	},
+
+	async listAllStaff(propertyId) {
+		const { data, error } = await supabase.from('staff').select('id,full_name,email,phone,role,assigned_modules,is_active,property_id,avatar,last_login,user_id,created_at').eq('property_id', propertyId).order('full_name');
+		if (error) throw new Error(error.message); return data || [];
+	},
+
+	async createStaff({ propertyId, fullName, email, phone, role, assignedModules, pin, avatar, userId }) {
+		const pinHash = await hashPin(pin);
+		const { data, error } = await supabase.rpc('create_staff_member', { p_property_id: propertyId, p_full_name: fullName, p_email: email || null, p_phone: phone || null, p_role: role, p_assigned_modules: assignedModules || getDefaultModulesForRole(role), p_pin_hash: pinHash, p_avatar: avatar || null, p_user_id: userId || null });
+		if (error) throw new Error(error.message); return data;
+	},
+
+	async updateStaff(id, patch) {
+		const safe = { ...patch }; delete safe.pin; delete safe.pin_hash;
+		const { data, error } = await supabase.from('staff').update(safe).eq('id', id).select('id,full_name,email,phone,role,assigned_modules,is_active,property_id,avatar,last_login,user_id,created_at').single();
+		if (error) throw new Error(error.message); return data;
+	},
+
+	async resetStaffPin(id, pin) {
+		const pinHash = await hashPin(pin);
+		const { error } = await supabase.rpc('reset_staff_pin', { p_staff_id: id, p_pin_hash: pinHash });
+		if (error) throw new Error(error.message); return true;
+	},
+
+	async listStaffLogs(propertyId) {
+		const { data, error } = await supabase.from('staff_logs').select('id,staff_id,staff_name,module,action,created_at').eq('property_id', propertyId).order('created_at', { ascending: false }).limit(200);
+		if (error) throw new Error(error.message); return data || [];
+	},
+
+	async deleteStaff(id) {
+		const { error } = await supabase.from('staff').delete().eq('id', id);
+		if (error) throw new Error(error.message); return true;
+	},
+
+	async touchActiveStaffSession() {
+		const { error } = await supabase.rpc('touch_active_staff_session');
+		if (error) throw new Error(error.message);
+	},
+
+	async verifyStaffPin({ propertyId, module, pin }) {
+		const pinHash = await hashPin(pin);
+		const { data, error } = await supabase.rpc('verify_staff_pin', { p_property_id: propertyId, p_module: module, p_pin_hash: pinHash });
+		if (error) throw new Error(error.message); return data || { ok: false };
+	},
+
 
 	async requestPasswordReset({ email }) {
 		const redirectTo = typeof window !== 'undefined' ? `${window.location.origin}/reset-password` : undefined;
