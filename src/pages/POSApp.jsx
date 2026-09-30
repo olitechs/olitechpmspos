@@ -33,6 +33,7 @@ import Store from '@/pages/Store';
 import POSContainer from '@/components/pos/POSContainer';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import RouteGuard from '@/components/auth/RouteGuard';
+import PaywallGuard from '@/components/auth/PaywallGuard';
 
 const COMING_SOON_IDS = new Set(MODULES.filter((m) => m.comingSoon).map((m) => m.id));
 
@@ -139,7 +140,7 @@ export default function POSApp({ initialModule = 'dashboard' }) {
 						<div className="flex-1 min-h-0 flex flex-col overflow-hidden">
 							<ErrorBoundary label={currentModule?.label || 'This section'}>
 								<RouteGuard module={activeModule === 'pos' ? 'pos' : activeModule === 'store' || activeModule === 'inventory' || activeModule === 'purchasing' || activeModule === 'recipes' || activeModule === 'transfers' || activeModule === 'channels' ? 'store' : 'backoffice'}>
-									{content}
+									{activeModule === 'settings' ? content : <PaywallGuard module={activeModule}>{content}</PaywallGuard>}
 								</RouteGuard>
 							</ErrorBoundary>
 						</div>
