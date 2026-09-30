@@ -239,6 +239,39 @@ export const pmsService = {
 		if (error) throw new Error(error.message);
 	},
 
+	async listHousekeepingTasks(propertyId) {
+		const { data, error } = await supabase.rpc('fn_housekeeping_list_tasks', { p_property_id: propertyId });
+		if (error) throw new Error(error.message);
+		return data || [];
+	},
+	async createHousekeepingTask({ propertyId, roomId, taskType='checkout_clean', priority='normal', reservationId=null, notes=null }) {
+		const { data, error } = await supabase.rpc('fn_create_housekeeping_task', {
+			p_property_id: propertyId, p_room_id: roomId, p_task_type: taskType, p_priority: priority,
+			p_reservation_id: reservationId, p_notes: notes,
+		});
+		if (error) throw new Error(error.message);
+		return data;
+	},
+	async updateHousekeepingTask({ taskId, status, assignedTo=null, notes=null }) {
+		const { data, error } = await supabase.rpc('fn_update_housekeeping_task', {
+			p_task_id: taskId, p_status: status, p_assigned_to: assignedTo, p_notes: notes,
+		});
+		if (error) throw new Error(error.message);
+		return data;
+	},
+	async inspectHousekeepingTask({ taskId, pass, notes=null }) {
+		const { data, error } = await supabase.rpc('fn_inspect_housekeeping_task', {
+			p_task_id: taskId, p_pass: Boolean(pass), p_notes: notes,
+		});
+		if (error) throw new Error(error.message);
+		return data;
+	},
+	async getHousekeepingDashboard(propertyId) {
+		const { data, error } = await supabase.rpc('fn_housekeeping_dashboard', { p_property_id: propertyId });
+		if (error) throw new Error(error.message);
+		return data || {};
+	},
+
 	// Maintenance (spec section 32).
 	async listMaintenanceTickets(propertyId) {
 		const { data, error } = await supabase
