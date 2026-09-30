@@ -26,6 +26,8 @@ import Purchasing from '@/components/modules/Purchasing';
 import Recipes from '@/components/modules/Recipes';
 import Laundry from '@/components/modules/Laundry';
 import Transfers from '@/components/modules/Transfers';
+import BookingEngine from '@/components/modules/BookingEngine';
+import ChannelManager from '@/components/modules/ChannelManager';
 import Inventory from '@/components/modules/Inventory';
 import Store from '@/pages/Store';
 import POSContainer from '@/components/pos/POSContainer';
@@ -104,6 +106,8 @@ export default function POSApp({ initialModule = 'dashboard' }) {
 			case 'recipes': content = <Recipes />; break;
 			case 'laundry': content = <Laundry />; break;
 			case 'transfers': content = <Transfers />; break;
+			case 'booking-engine': content = <BookingEngine />; break;
+			case 'channels': content = <ChannelManager />; break;
 			case 'inventory':
 				content = <Inventory />;
 				break;
@@ -134,7 +138,7 @@ export default function POSApp({ initialModule = 'dashboard' }) {
 						{showTopBar && <TopBar moduleLabel={currentModule?.label || ''} />}
 						<div className="flex-1 min-h-0 flex flex-col overflow-hidden">
 							<ErrorBoundary label={currentModule?.label || 'This section'}>
-								<RouteGuard module={activeModule === 'pos' ? 'pos' : activeModule === 'store' || activeModule === 'inventory' || activeModule === 'purchasing' || activeModule === 'recipes' || activeModule === 'transfers' ? 'store' : 'backoffice'}>
+								<RouteGuard module={activeModule === 'pos' ? 'pos' : activeModule === 'store' || activeModule === 'inventory' || activeModule === 'purchasing' || activeModule === 'recipes' || activeModule === 'transfers' || activeModule === 'channels' ? 'store' : 'backoffice'}>
 									{content}
 								</RouteGuard>
 							</ErrorBoundary>
