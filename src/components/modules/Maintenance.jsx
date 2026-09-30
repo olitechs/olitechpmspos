@@ -20,6 +20,8 @@ function MaintenanceInner() {
 	const [issue, setIssue] = useState('');
 	const [roomId, setRoomId] = useState('');
 	const [priority, setPriority] = useState('medium');
+	const [returnStatus, setReturnStatus] = useState('dirty');
+	const [resolutionNotes, setResolutionNotes] = useState('');
 	const [error, setError] = useState('');
 
 	const load = useCallback(() => {
@@ -57,7 +59,11 @@ function MaintenanceInner() {
 		const next = STATUS_FLOW[ticket.status];
 		if (!next) return;
 		try {
-			await pmsService.updateMaintenanceTicket(ticket.id, { status: next });
+			await pmsService.updateMaintenanceTicket(ticket.id, {
+				status: next,
+				returnStatus: next === 'resolved' || next === 'closed' ? returnStatus : null,
+				resolutionNotes: next === 'resolved' || next === 'closed' ? resolutionNotes : null,
+			});
 			setError('');
 			load();
 		} catch (err) {
@@ -120,6 +126,14 @@ function MaintenanceInner() {
 								</div>
 								<div className="text-xs" style={{ color: MUTED }}>{STATUS_LABEL[t.status]} · {t.priority}</div>
 							</div>
+							{(t.status === 'in_progress' || t.status === 'resolved') && (
+								<div className="flex items-center gap-2 shrink-0">
+									<select value={returnStatus} onChange={(e) => setReturnStatus(e.target.value)} className="text-xs px-2 py-1.5 rounded-lg" style={{ background: SURFACE2, border: `1px solid ${BORDER}`, color: NAVY }} aria-label="Room return status">
+										<option value="dirty">Return dirty</option><option value="available">Return available</option>
+									</select>
+									<input value={resolutionNotes} onChange={(e) => setResolutionNotes(e.target.value)} placeholder="Resolution note" className="text-xs px-2 py-1.5 rounded-lg w-32" style={{ background: SURFACE2, border: `1px solid ${BORDER}`, color: NAVY }} aria-label="Resolution note" />
+								</div>
+							)}
 							{t.status !== 'closed' && (
 								<button onClick={() => advance(t)} className="text-xs font-bold px-3 py-1.5 rounded-lg shrink-0" style={{ background: SURFACE2, border: `1px solid ${BORDER}`, color: NAVY }}>
 									Mark {STATUS_LABEL[STATUS_FLOW[t.status]]}
