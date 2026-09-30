@@ -72,7 +72,7 @@ export default function POSContainer() {
 			return;
 		}
 		if (!orderNumbersRef.current[table.id]) {
-			orderNumbersRef.current[table.id] = session.orderNumber || `ORD-${String(table.number).padStart(3, '0')}-${Math.floor(Date.now() / 10000) % 1000}`;
+			orderNumbersRef.current[table.id] = session.orderNumber || `ORD-${String(table.number).padStart(3, '0')}-${Date.now().toString(36).slice(-7).toUpperCase()}`;
 			store.setSessionOrderLines(table.id, session.orderLines || [], orderNumbersRef.current[table.id]);
 		}
 		setActiveTable(table);
@@ -80,7 +80,7 @@ export default function POSContainer() {
 	};
 
 	const handleStartTable = ({ guests, waiter }) => {
-		const orderNumber = `ORD-${String(pendingTable.number).padStart(3, '0')}-${Math.floor(Date.now() / 10000) % 1000}`;
+		const orderNumber = `ORD-${String(pendingTable.number).padStart(3, '0')}-${Date.now().toString(36).slice(-7).toUpperCase()}`;
 		orderNumbersRef.current[pendingTable.id] = orderNumber;
 		store.openTable(pendingTable.id, {
 			guests,
