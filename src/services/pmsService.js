@@ -272,7 +272,7 @@ export const pmsService = {
 		return data || {};
 	},
 
-	// Maintenance (spec section 32).
+	// Maintenance 2.0 — room-safe workflow is enforced by server-side RPCs.
 	async listMaintenanceTickets(propertyId) {
 		const { data, error } = await supabase
 			.from('maintenance_tickets')
@@ -280,19 +280,36 @@ export const pmsService = {
 			.eq('property_id', propertyId)
 			.order('created_at', { ascending: false });
 		if (error) throw new Error(error.message);
-		return data;
+		return data || [];
 	},
 
 	async createMaintenanceTicket({ propertyId, roomId, issue, priority }) {
-		const { error } = await supabase
-			.from('maintenance_tickets')
-			.insert({ property_id: propertyId, room_id: roomId || null, issue, priority: priority || 'medium' });
+		const { data, error } = await supabase.rpc('fn_create_maintenance_ticket', {
+			p_property_id: propertyId,
+			p_room_id: roomId || null,
+			p_issue: issue,
+			p_priority: priority || 'medium',
+		});
 		if (error) throw new Error(error.message);
+		return data;
 	},
 
-	async updateMaintenanceTicket(id, patch) {
-		const { error } = await supabase.from('maintenance_tickets').update(patch).eq('id', id);
+	async updateMaintenanceTicket(id, { status, assignedTo = null, resolutionNotes = null, returnStatus = null }) {
+		const { data, error } = await supabase.rpc('fn_update_maintenance_ticket', {
+			p_ticket_id: id,
+			p_status: status,
+			p_assigned_to: assignedTo,
+			p_resolution_notes: resolutionNotes,
+			p_return_status: returnStatus,
+		});
 		if (error) throw new Error(error.message);
+		return data;
+	},
+
+	async getMaintenanceDashboard(propertyId) {
+		const { data, error } = await supabase.rpc('fn_maintenance_dashboard', { p_property_id: propertyId });
+		if (error) throw new Error(error.message);
+		return data || {};
 	},
 
 	// POS → PMS room charge (spec section 30). Called from BillPayment.jsx
