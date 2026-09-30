@@ -273,4 +273,20 @@ export const pmsService = {
 		const { error } = await supabase.rpc('charge_restaurant_to_room', { p_property_id: propertyId, p_reservation_id: reservationId, p_description: description, p_amount: amount });
 		if (error) throw new Error(error.message);
 	},
+	async recordPosSale({ propertyId, tableNumber, orderNumber, items, subtotal, discountAmount, vat, total, paymentMethod, reservationId }) {
+		const { data, error } = await supabase.rpc('fn_record_pos_sale', { p_property_id: propertyId, p_table_number: tableNumber, p_order_number: orderNumber, p_items: items, p_subtotal: subtotal, p_discount_amount: discountAmount || 0, p_vat: vat, p_total: total, p_payment_method: paymentMethod, p_reservation_id: reservationId || null });
+		if (error) throw new Error(error.message);
+		return data;
+	},
+	async listReceiptsForReservation(reservationId) {
+		const { data, error } = await supabase.from('pos_receipts').select('*').eq('reservation_id', reservationId).order('created_at', { ascending: false });
+		if (error) throw new Error(error.message);
+		return data || [];
+	},
+	async listReceiptsForProperty(propertyId, { limit = 200 } = {}) {
+		const { data, error } = await supabase.from('pos_receipts').select('*').eq('property_id', propertyId).order('created_at', { ascending: false }).limit(limit);
+		if (error) throw new Error(error.message);
+		return data || [];
+	},
+
 };
