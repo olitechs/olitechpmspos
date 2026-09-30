@@ -58,6 +58,35 @@ export function StoreProvider({ children }) {
     }).catch((error) => console.error('[POS] failed to load persisted sessions', error));
     return () => { active = false; };
   }, [propertyId]);
+  const [kitchenOrders, setKitchenOrders] = useState([]);
+  const kitchenOrdersRef = useRef(kitchenOrders);
+  kitchenOrdersRef.current = kitchenOrders;
+
+  useEffect(() => {
+    let active = true;
+    if (!propertyId) { setKitchenOrders([]); return undefined; }
+    posService.listActiveKitchenOrders(propertyId).then((rows) => {
+      if (!active) return;
+      setKitchenOrders((rows || []).map((row) => ({
+        id: row.id,
+        tableId: row.table_key || row.table_number,
+        tableNumber: row.table_number,
+        orderNumber: row.order_number,
+        waiter: row.waiter || '',
+        orderLines: Array.isArray(row.order_lines) ? row.order_lines : [],
+        firedAt: row.fired_at ? new Date(row.fired_at).getTime() : Date.now(),
+        status: row.status || 'new',
+        printJobs: row.print_jobs || {},
+      })));
+    }).catch((error) => {
+      // The app remains usable during migration rollout; the KDS simply
+      // has no persisted orders until 0036 is applied.
+      console.error('[KDS] failed to load persisted kitchen orders', error);
+      if (active) setKitchenOrders([]);
+    });
+    return () => { active = false; };
+  }, [propertyId]);
+
   const [printers, setPrinters] = useState(seedPrinters);
   // Async connectivity/print calls span multiple ticks, so callbacks read
   // through refs (kept in sync below) instead of capturing stale state.
@@ -326,53 +355,126 @@ export function StoreProvider({ children }) {
     return result;
   }, [receiptPrinter]);
 
-  // --- Kitchen orders: firing an order is recorded independently of
-  // whether the kitchen/bar ticket actually printed. ---
-  const [kitchenOrders, setKitchenOrders] = useState([]);
-  const kitchenOrdersRef = useRef(kitchenOrders);
-  kitchenOrdersRef.current = kitchenOrders;
+  // --- Kitchen orders: firing is persisted before printer work so a KDS
+  // terminal can recover the order even when a printer is offline. ---
+  const persistKitchenOrder = useCallback((order) => {
+    if (!propertyId || !order?.id || String(order.id).startsWith('korder-')) return;
+    posService.updateKitchenOrder({
+      propertyId,
+      orderId: order.id,
+      status: order.status || 'new',
+      printJobs: order.printJobs || {},
+    }).catch((error) => console.error('[KDS] failed to persist kitchen order update', error));
+  }, [propertyId]);
 
   const fireKitchenOrder = useCallback(async ({ table, orderLines, orderNumber, buildTicketText }) => {
-    const id = newId('korder');
     const centers = [...new Set(orderLines.map((l) => l.center).filter(Boolean))];
     const printJobs = {};
     for (const center of centers) printJobs[center] = { status: PrintJobStatus.PENDING, printerId: null, printerName: null, error: null };
-    const record = { id, tableId: table.id, tableNumber: table.number, orderNumber, orderLines, firedAt: Date.now(), printJobs };
+
+    const draft = {
+      id: newId('korder'),
+      tableId: table.id,
+      tableNumber: table.number,
+      orderNumber,
+      waiter: storeStaffName(table),
+      orderLines,
+      firedAt: Date.now(),
+      status: 'new',
+      printJobs,
+    };
+
+    let record = draft;
+    if (propertyId) {
+      try {
+        const saved = await posService.createKitchenOrder({
+          propertyId,
+          tableKey: table.id,
+          tableNumber: table.number,
+          orderNumber,
+          waiter: draft.waiter,
+          orderLines,
+          printJobs,
+        });
+        if (saved?.id) record = { ...draft, id: saved.id, firedAt: saved.fired_at ? new Date(saved.fired_at).getTime() : draft.firedAt };
+      } catch (error) {
+        // Keep the POS usable if the new KDS migration has not reached the
+        // connected Supabase project yet. Once 0036 is applied, the server row
+        // becomes the source of truth and is shared across terminals.
+        console.error('[KDS] failed to persist fired order', error);
+      }
+    }
+
     setKitchenOrders((prev) => [record, ...prev]);
+
+    const updateLocal = (patch) => {
+      setKitchenOrders((prev) => {
+        const next = prev.map((o) => (o.id === record.id ? { ...o, ...patch } : o));
+        const changed = next.find((o) => o.id === record.id);
+        if (changed) persistKitchenOrder(changed);
+        return next;
+      });
+    };
 
     for (const center of centers) {
       const printer = orderPrinterForCenter(center);
       if (!printer) {
-        setKitchenOrders((prev) => prev.map((o) => (o.id === id ? { ...o, printJobs: { ...o.printJobs, [center]: { status: PrintJobStatus.FAILED, printerId: null, printerName: null, error: `No order printer configured for ${center}.` } } } : o)));
+        updateLocal({ printJobs: { ...record.printJobs, [center]: { status: PrintJobStatus.FAILED, printerId: null, printerName: null, error: `No order printer configured for ${center}.` } } });
+        record = { ...record, printJobs: { ...record.printJobs, [center]: { status: PrintJobStatus.FAILED, printerId: null, printerName: null, error: `No order printer configured for ${center}.` } } };
         continue;
       }
-      setKitchenOrders((prev) => prev.map((o) => (o.id === id ? { ...o, printJobs: { ...o.printJobs, [center]: { ...o.printJobs[center], status: PrintJobStatus.PRINTING, printerId: printer.id, printerName: printer.name } } } : o)));
+      const printingJobs = { ...record.printJobs, [center]: { ...record.printJobs[center], status: PrintJobStatus.PRINTING, printerId: printer.id, printerName: printer.name } };
+      record = { ...record, printJobs: printingJobs };
+      updateLocal({ printJobs: printingJobs });
       const text = buildTicketText(center, orderLines.filter((l) => l.center === center));
       const result = await sendPrintJob(printer, text, { title: `Kitchen Ticket — ${center}` });
-      setKitchenOrders((prev) => prev.map((o) => (o.id === id ? { ...o, printJobs: { ...o.printJobs, [center]: { status: result.ok ? PrintJobStatus.PRINTED : PrintJobStatus.FAILED, printerId: printer.id, printerName: printer.name, error: result.ok ? null : result.friendlyError } } } : o)));
+      const finalJobs = { ...record.printJobs, [center]: { status: result.ok ? PrintJobStatus.PRINTED : PrintJobStatus.FAILED, printerId: printer.id, printerName: printer.name, error: result.ok ? null : result.friendlyError } };
+      record = { ...record, printJobs: finalJobs };
+      updateLocal({ printJobs: finalJobs });
     }
 
-    const finalOrder = kitchenOrdersRef.current.find((o) => o.id === id) || record;
-    const failedCenters = Object.entries(finalOrder.printJobs || printJobs).filter(([, j]) => j.status === PrintJobStatus.FAILED).map(([c]) => c);
-    return { id, failedCenters };
-  }, [orderPrinterForCenter]);
+    const finalOrder = kitchenOrdersRef.current.find((o) => o.id === record.id) || record;
+    const failedCenters = Object.entries(finalOrder.printJobs || {}).filter(([, j]) => j.status === PrintJobStatus.FAILED).map(([c]) => c);
+    return { id: record.id, failedCenters };
+  }, [orderPrinterForCenter, persistKitchenOrder, propertyId]);
+
+  const storeStaffName = (table) => {
+    const session = sessions[table.id];
+    return session?.waiter || '';
+  };
+
+  const updateKitchenOrderStatus = useCallback((orderId, status) => {
+    setKitchenOrders((prev) => {
+      const next = prev.map((o) => (o.id === orderId ? { ...o, status } : o));
+      const changed = next.find((o) => o.id === orderId);
+      if (changed) persistKitchenOrder(changed);
+      return next;
+    });
+  }, [persistKitchenOrder]);
 
   // Retries ONLY the kitchen ticket for one center — never re-fires the order.
   const retryKitchenPrint = useCallback(async (orderId, center, buildTicketText) => {
     const order = kitchenOrdersRef.current.find((o) => o.id === orderId);
     if (!order) return { ok: false, friendlyError: 'Order not found.' };
-    setKitchenOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, printJobs: { ...o.printJobs, [center]: { ...o.printJobs[center], status: PrintJobStatus.RETRYING } } } : o)));
+    const retryJobs = { ...order.printJobs, [center]: { ...order.printJobs[center], status: PrintJobStatus.RETRYING } };
+    setKitchenOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, printJobs: retryJobs } : o)));
     const printer = orderPrinterForCenter(center);
     if (!printer) {
       const error = `No order printer configured for ${center}.`;
-      setKitchenOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, printJobs: { ...o.printJobs, [center]: { status: PrintJobStatus.FAILED, printerId: null, printerName: null, error } } } : o)));
+      const failedJobs = { ...retryJobs, [center]: { status: PrintJobStatus.FAILED, printerId: null, printerName: null, error } };
+      const nextOrder = { ...order, printJobs: failedJobs };
+      setKitchenOrders((prev) => prev.map((o) => (o.id === orderId ? nextOrder : o)));
+      persistKitchenOrder(nextOrder);
       return { ok: false, friendlyError: error };
     }
     const text = buildTicketText(center, order.orderLines.filter((l) => l.center === center));
     const result = await sendPrintJob(printer, text, { title: `Kitchen Ticket — ${center}` });
-    setKitchenOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, printJobs: { ...o.printJobs, [center]: { status: result.ok ? PrintJobStatus.PRINTED : PrintJobStatus.FAILED, printerId: printer.id, printerName: printer.name, error: result.ok ? null : result.friendlyError } } } : o)));
+    const finalJobs = { ...order.printJobs, [center]: { status: result.ok ? PrintJobStatus.PRINTED : PrintJobStatus.FAILED, printerId: printer.id, printerName: printer.name, error: result.ok ? null : result.friendlyError } };
+    const nextOrder = { ...order, printJobs: finalJobs };
+    setKitchenOrders((prev) => prev.map((o) => (o.id === orderId ? nextOrder : o)));
+    persistKitchenOrder(nextOrder);
     return result;
-  }, [orderPrinterForCenter]);
+  }, [orderPrinterForCenter, persistKitchenOrder]);
 
   const value = {
     zones, staff, sessions, printers, saleReceipts, kitchenOrders,
@@ -382,7 +484,7 @@ export function StoreProvider({ children }) {
     addPrinter, updatePrinter, removePrinter, togglePurpose,
     testPrinterConnection, connectPrinter, disconnectPrinter, testPrint,
     orderPrinters, orderPrinterForCenter, billPrinter, billPrinterName, receiptPrinter, receiptPrinterName,
-    completeSale, retryReceiptPrint, fireKitchenOrder, retryKitchenPrint,
+    completeSale, retryReceiptPrint, fireKitchenOrder, retryKitchenPrint, updateKitchenOrderStatus,
   };
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
@@ -401,6 +503,7 @@ const FALLBACK = {
   retryReceiptPrint: async () => ({ ok: false, friendlyError: 'No provider' }),
   fireKitchenOrder: async () => ({ id: null, failedCenters: [] }),
   retryKitchenPrint: async () => ({ ok: false, friendlyError: 'No provider' }),
+  updateKitchenOrderStatus: () => {},
 };
 
 export const useStore = () => useContext(StoreContext) || FALLBACK;
