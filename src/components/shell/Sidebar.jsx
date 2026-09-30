@@ -10,6 +10,9 @@ import {
   Boxes,
   Package,
   ShoppingCart,
+  ChefHat,
+  Shirt,
+  ArrowRightLeft,
   BarChart3,
   Banknote,
   ClipboardCheck,
@@ -132,6 +135,18 @@ const SECTIONS = [
         roles: ['hotel_admin', 'super_admin', 'front_office_manager', 'store_manager', 'fb_manager', 'housekeeping_supervisor'],
         path: '/store',
         active: ['store', 'inventory'],
+      },
+      {
+        id: 'recipes', label: 'Recipes / BOM', sub: 'F&B Costing', icon: ChefHat,
+        roles: ['hotel_admin','super_admin','store_manager','fb_manager'], path: '/store?module=recipes', active: ['recipes'],
+      },
+      {
+        id: 'laundry', label: 'Laundry', sub: 'Guest Services', icon: Shirt,
+        roles: ['hotel_admin','super_admin','front_office_manager','housekeeping_supervisor'], path: '/backoffice?module=laundry', active: ['laundry'],
+      },
+      {
+        id: 'transfers', label: 'Stock Transfers', sub: 'Department Movement', icon: ArrowRightLeft,
+        roles: ['hotel_admin','super_admin','store_manager','fb_manager','housekeeping_supervisor'], path: '/store?module=transfers', active: ['transfers'],
       },
       {
         id: 'purchasing',
