@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import { INITIAL_ZONES, INITIAL_STAFF, TABLE_CARD } from './mockData';
+import { useAuth } from '@/lib/AuthContext';
+import { posService } from '@/services/posService';
 import {
   PrinterStatus, PrintJobStatus, testConnection as psTestConnection,
   pairUsbDevice, pairBluetoothDevice, forgetDevice,
@@ -9,17 +11,7 @@ import {
 const StoreContext = createContext(null);
 
 // Demo table sessions — replace with API when backend is ready.
-function seedSessions() {
-  const now = Date.now();
-  return {
-    'bar-3':   { status: 'occupied',  guests: 4, waiter: 'David Lumumba', openedAt: now - 14 * 60000 },
-    'pool-25': { status: 'occupied',  guests: 2, waiter: 'Amina Kariuki', openedAt: now - 30 * 60000 },
-    'pool-30': { status: 'unsettled', guests: 6, waiter: 'Peter Obieno Otieno', openedAt: now - 122 * 60000 },
-    'room-5':  { status: 'occupied',  guests: 3, waiter: 'Grace Wanjiru Kamau', openedAt: now - 22 * 60000 },
-    'room-12': { status: 'unsettled', guests: 2, waiter: 'John Mwangi', openedAt: now - 55 * 60000 },
-  };
-}
-
+// Active POS sessions are loaded from Supabase; there are no seeded production sessions.
 // Printers carry a `purposes` list (order / bill / receipt) and, when used as
 // an order printer, a `center` (Kitchen / Bar / Dessert / All) for routing.
 // `status` reflects a REAL connectivity result (see services/printerService)
@@ -38,7 +30,34 @@ const newId = (prefix) => `${prefix}-${Date.now()}-${counter++}`;
 export function StoreProvider({ children }) {
   const [zones, setZones] = useState(INITIAL_ZONES);
   const [staff, setStaff] = useState(INITIAL_STAFF);
-  const [sessions, setSessions] = useState(seedSessions);
+  const { user } = useAuth();
+  const propertyId = user?.property?.id;
+  const [sessions, setSessions] = useState({});
+
+  useEffect(() => {
+    let active = true;
+    if (!propertyId) { setSessions({}); return undefined; }
+    posService.listActiveSessions(propertyId).then((rows) => {
+      if (!active) return;
+      const next = {};
+      for (const row of rows || []) {
+        next[row.table_key] = {
+          status: row.status,
+          guests: Number(row.guests || 1),
+          waiter: row.waiter || '',
+          openedAt: row.opened_at ? new Date(row.opened_at).getTime() : Date.now(),
+          total: 0,
+          orderCount: Array.isArray(row.order_lines) ? row.order_lines.length : 0,
+          tableNumber: row.table_number,
+          zoneId: row.zone_id || null,
+          orderNumber: row.order_number || null,
+          orderLines: Array.isArray(row.order_lines) ? row.order_lines : [],
+        };
+      }
+      setSessions(next);
+    }).catch((error) => console.error('[POS] failed to load persisted sessions', error));
+    return () => { active = false; };
+  }, [propertyId]);
   const [printers, setPrinters] = useState(seedPrinters);
   // Async connectivity/print calls span multiple ticks, so callbacks read
   // through refs (kept in sync below) instead of capturing stale state.
@@ -47,25 +66,65 @@ export function StoreProvider({ children }) {
 
   const getSession = useCallback((id) => sessions[id] || null, [sessions]);
 
-  const openTable = useCallback((id, { guests, waiter }) => {
-    setSessions((prev) => ({
-      ...prev,
-      [id]: { status: 'occupied', guests: Number(guests), waiter, openedAt: Date.now(), total: 0, orderCount: 0 },
-    }));
-  }, []);
+  const persistSession = useCallback((id, session) => {
+    if (!propertyId || !session) return;
+    posService.saveSession({
+      propertyId,
+      tableKey: id,
+      tableNumber: session.tableNumber || id,
+      zoneId: session.zoneId || null,
+      status: session.status || 'occupied',
+      guests: session.guests || 1,
+      waiter: session.waiter || null,
+      orderNumber: session.orderNumber || null,
+      orderLines: session.orderLines || [],
+    }).catch((error) => console.error('[POS] failed to persist table session', error));
+  }, [propertyId]);
+
+  const openTable = useCallback((id, { guests, waiter, tableNumber, zoneId, orderNumber = null }) => {
+    const next = { status: 'occupied', guests: Number(guests) || 1, waiter: waiter || '', openedAt: Date.now(), total: 0, orderCount: 0, tableNumber: String(tableNumber ?? ''), zoneId: zoneId || null, orderNumber, orderLines: [] };
+    setSessions((prev) => ({ ...prev, [id]: next }));
+    persistSession(id, next);
+  }, [persistSession]);
+
   const updateSessionTotals = useCallback((id, { total = 0, orderCount = 0 } = {}) => {
-    setSessions((prev) => (prev[id] ? { ...prev, [id]: { ...prev[id], total: Number(total) || 0, orderCount: Number(orderCount) || 0 } } : prev));
-  }, []);
+    setSessions((prev) => {
+      const next = prev[id] ? { ...prev, [id]: { ...prev[id], total: Number(total) || 0, orderCount: Number(orderCount) || 0 } } : prev;
+      if (next[id]) persistSession(id, next[id]);
+      return next;
+    });
+  }, [persistSession]);
+
+  const setSessionOrderLines = useCallback((id, orderLines, orderNumber = null) => {
+    setSessions((prev) => {
+      if (!prev[id]) return prev;
+      const next = { ...prev, [id]: { ...prev[id], orderLines: Array.isArray(orderLines) ? orderLines : [], orderCount: Array.isArray(orderLines) ? orderLines.length : 0, orderNumber: orderNumber || prev[id].orderNumber || null } };
+      persistSession(id, next[id]);
+      return next;
+    });
+  }, [persistSession]);
+
   const setUnsettled = useCallback((id) => {
-    setSessions((prev) => (prev[id] ? { ...prev, [id]: { ...prev[id], status: 'unsettled' } } : prev));
-  }, []);
+    setSessions((prev) => {
+      if (!prev[id]) return prev;
+      const next = { ...prev, [id]: { ...prev[id], status: 'unsettled' } };
+      persistSession(id, next[id]);
+      return next;
+    });
+  }, [persistSession]);
+
   const closeTable = useCallback((id) => {
     setSessions((prev) => {
+      const session = prev[id];
+      if (session && propertyId) {
+        posService.closeSession({ propertyId, tableKey: id, orderLines: session.orderLines || [] })
+          .catch((error) => console.error('[POS] failed to close table session', error));
+      }
       const copy = { ...prev };
       delete copy[id];
       return copy;
     });
-  }, []);
+  }, [propertyId]);
 
   // Zone ops (Floor Setup)
   const addZone = useCallback((name) => {
@@ -317,7 +376,7 @@ export function StoreProvider({ children }) {
 
   const value = {
     zones, staff, sessions, printers, saleReceipts, kitchenOrders,
-    getSession, openTable, updateSessionTotals, setUnsettled, closeTable,
+    getSession, openTable, updateSessionTotals, setSessionOrderLines, setUnsettled, closeTable,
     addZone, renameZone, removeZone, addTable, removeTable, updateTable, moveTable,
     addStaff, updateStaff, removeStaff,
     addPrinter, updatePrinter, removePrinter, togglePurpose,
@@ -332,7 +391,7 @@ export function StoreProvider({ children }) {
 // Null-safe hook: degrades to an inert fallback if ever called without a provider.
 const FALLBACK = {
   zones: [], staff: [], sessions: {}, printers: [], saleReceipts: [], kitchenOrders: [],
-  getSession: () => null, openTable: () => {}, updateSessionTotals: () => {}, setUnsettled: () => {}, closeTable: () => {},
+  getSession: () => null, openTable: () => {}, updateSessionTotals: () => {}, setSessionOrderLines: () => {}, setUnsettled: () => {}, closeTable: () => {},
   addZone: () => {}, renameZone: () => {}, removeZone: () => {}, addTable: () => {}, removeTable: () => {}, updateTable: () => {}, moveTable: () => {},
   addStaff: () => {}, updateStaff: () => {}, removeStaff: () => {},
   addPrinter: () => {}, updatePrinter: () => {}, removePrinter: () => {}, togglePurpose: () => {},
