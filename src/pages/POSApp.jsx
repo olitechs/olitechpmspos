@@ -22,6 +22,7 @@ import Rooms from '@/components/pms/Rooms';
 import RoomManagement from '@/components/pms/RoomManagement';
 import Housekeeping from '@/components/modules/Housekeeping';
 import Maintenance from '@/components/modules/Maintenance';
+import Purchasing from '@/components/modules/Purchasing';
 import Inventory from '@/components/modules/Inventory';
 import Store from '@/pages/Store';
 import POSContainer from '@/components/pos/POSContainer';
@@ -95,6 +96,9 @@ export default function POSApp({ initialModule = 'dashboard' }) {
 				break;
 			case 'maintenance':
 				content = <Maintenance />;
+				break;
+			case 'purchasing':
+				content = <Purchasing />;
 				break;
 			case 'inventory':
 				content = <Inventory />;
