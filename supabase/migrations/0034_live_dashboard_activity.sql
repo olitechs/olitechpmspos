@@ -16,9 +16,10 @@ begin
   end if;
 
   return coalesce((
-    select jsonb_agg(row_to_json(x) order by x.created_at desc)
+    select jsonb_agg(row_to_json(limited_rows) order by limited_rows.created_at desc)
     from (
-      select
+      select * from (
+        select
         r.created_at,
         'payment'::text as type,
         'POS payment recorded'::text as action,
@@ -48,8 +49,10 @@ begin
         ) as detail
       from public.reservations res
       where res.property_id = p_property_id
-    ) x
-    limit greatest(1, least(coalesce(p_limit,8),25))
+      ) x
+      order by x.created_at desc
+      limit greatest(1, least(coalesce(p_limit,8),25))
+    ) limited_rows
   ), '[]'::jsonb);
 end;
 $$;
