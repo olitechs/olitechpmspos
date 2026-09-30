@@ -18,6 +18,7 @@ export const MODULES = [
 	{ id: 'rooms', label: 'Rooms & Room Types', icon: 'BedDouble' },
 	{ id: 'guests', label: 'Guests', icon: 'Users' },
 	{ id: 'receipts', label: 'Receipts', icon: 'Receipt' },
+	{ id: 'cashier', label: 'Cashier Control', icon: 'Banknote' },
 	{ id: 'kitchen', label: 'Kitchen Display', icon: 'ChefHat' },
 	{ id: 'housekeeping', label: 'Housekeeping', icon: 'Sparkles' },
 	{ id: 'maintenance', label: 'Maintenance', icon: 'Wrench' },
