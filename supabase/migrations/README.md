@@ -105,3 +105,13 @@ Adds room types (e.g. Standard Garden View, Double Terrace, 2 Bedroom Apartment)
 
 ## 0014 — Production Room Planner
 Adds the production reservation model used by the Room Planner: payment status, channel, meal plan, kids ages, total/paid amounts, joint/group reservations, transactional create/edit/delete/move operations, and strict date-overlap validation. Run after 0013 and refresh the app. The planner uses `fn_create_reservation_bundle`, `fn_update_planner_reservation`, `fn_move_planner_reservation`, `fn_move_reservation_group`, `fn_add_room_to_reservation_group`, `fn_split_reservation_group`, and `fn_delete_planner_reservation`.
+
+
+### 0033 — Persistent POS table sessions
+Adds server-side active POS table sessions and in-progress order lines. Apply this migration before using the production POS on multiple terminals or relying on refresh recovery.
+
+### 0034 — Live dashboard activity
+Adds a property-scoped dashboard activity RPC using posted POS receipts and reservation events. It intentionally exposes only operational metadata.
+
+### 0035 — Void-safe POS reporting
+Updates the daily POS summary so voided receipts are excluded from revenue, transaction counts, payment breakdowns, top items, and hourly reporting.
