@@ -233,9 +233,8 @@ end;
 $$;
 
 create or replace function public.fn_complete_stock_transfer(p_transfer_id uuid)
-returns public.stock_transfers language plpgsql security definer set search_path=public
-as $$
-declare v public.stock_transfers; l jsonb; pid uuid; qty numeric; from_qty numeric;
+returns public.stock_transfers language plpgsql security definer set search_path=public as $$
+declare v public.stock_transfers; l jsonb; pid uuid; v_qty numeric; from_qty numeric;
 begin
  select * into v from public.stock_transfers where id=p_transfer_id for update;
  if not found then raise exception 'Transfer not found'; end if;
@@ -243,23 +242,19 @@ begin
  if v.status<>'pending' then raise exception 'Transfer is not pending'; end if;
  if v.from_location_id=v.to_location_id then raise exception 'Source and destination must differ'; end if;
  for l in select value from jsonb_array_elements(v.lines) loop
-   pid:=nullif(l->>'product_id','')::uuid; qty:=coalesce((l->>'qty')::numeric,0);
-   if pid is null or qty<=0 then raise exception 'Invalid transfer line'; end if;
-   select coalesce(sum(qty),0) into from_qty from public.product_stock_locations where product_id=pid and location_id=v.from_location_id;
-   if from_qty<qty then raise exception 'Insufficient stock at source location'; end if;
-   update public.product_stock_locations set qty=qty-qty where product_id=pid and location_id=v.from_location_id;
-   insert into public.product_stock_locations(property_id,product_id,location_id,qty)
-     values(v.property_id,pid,v.to_location_id,qty)
+   pid:=nullif(l->>'product_id','')::uuid; v_qty:=coalesce((l->>'qty')::numeric,0);
+   if pid is null or v_qty<=0 then raise exception 'Invalid transfer line'; end if;
+   select coalesce(qty,0) into from_qty from public.product_stock_locations where product_id=pid and location_id=v.from_location_id for update;
+   if from_qty<v_qty then raise exception 'Insufficient stock at source location'; end if;
+   update public.product_stock_locations set qty=qty-v_qty where product_id=pid and location_id=v.from_location_id;
+   insert into public.product_stock_locations(property_id,product_id,location_id,qty) values(v.property_id,pid,v.to_location_id,v_qty)
      on conflict(product_id,location_id) do update set qty=product_stock_locations.qty+excluded.qty;
-   insert into public.stock_movements(property_id,product_id,type,qty,reason,user_id)
-     values(v.property_id,pid,'out',qty,'Transfer '||v.id::text,auth.uid());
-   insert into public.stock_movements(property_id,product_id,type,qty,reason,user_id)
-     values(v.property_id,pid,'in',qty,'Transfer '||v.id::text,auth.uid());
+   insert into public.stock_movements(property_id,product_id,type,qty,reason,user_id) values(v.property_id,pid,'out',v_qty,'Transfer '||v.id::text,auth.uid());
+   insert into public.stock_movements(property_id,product_id,type,qty,reason,user_id) values(v.property_id,pid,'in',v_qty,'Transfer '||v.id::text,auth.uid());
  end loop;
  update public.stock_transfers set status='completed',completed_by=auth.uid(),completed_at=now() where id=v.id returning * into v;
  return v;
-end;
-$$;
+end; $$;
 
 grant execute on function public.fn_create_laundry_order(uuid,uuid,uuid,text,jsonb,numeric,text) to authenticated;
 grant execute on function public.fn_update_laundry_order(uuid,text,text) to authenticated;
