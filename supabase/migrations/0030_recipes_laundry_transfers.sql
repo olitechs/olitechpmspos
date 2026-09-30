@@ -84,6 +84,24 @@ do $$ declare t text; begin
   end loop;
 end $$;
 
+
+create or replace function public.fn_ensure_inventory_locations(p_property_id uuid)
+returns setof public.inventory_locations language plpgsql security definer set search_path=public as $
+declare n text; v_location public.inventory_locations;
+begin
+ if not(public.is_platform_owner() or public.is_member_of_property(p_property_id)) then raise exception 'Not authorized'; end if;
+ foreach n in array array['Main Store','Kitchen','Bar','Laundry','Housekeeping'] loop
+   insert into public.inventory_locations(property_id,name) values(p_property_id,n) on conflict(property_id,name) do nothing;
+ end loop;
+ select id into v_location from public.inventory_locations where property_id=p_property_id and name='Main Store';
+ insert into public.product_stock_locations(property_id,product_id,location_id,qty)
+ select p.property_id,p.id,v_location.id,p.current_stock from public.products p
+ where p.property_id=p_property_id
+ on conflict(product_id,location_id) do nothing;
+ return query select * from public.inventory_locations where property_id=p_property_id order by name;
+end; $;
+grant execute on function public.fn_ensure_inventory_locations(uuid) to authenticated;
+
 create or replace function public.fn_upsert_recipe(
   p_property_id uuid,
   p_menu_item_name text,
@@ -229,12 +247,14 @@ begin
    if pid is null or qty<=0 then raise exception 'Invalid transfer line'; end if;
    select coalesce(sum(qty),0) into from_qty from public.product_stock_locations where product_id=pid and location_id=v.from_location_id;
    if from_qty<qty then raise exception 'Insufficient stock at source location'; end if;
-   update public.product_stock_locations set qty=qty-l.qty where product_id=pid and location_id=v.from_location_id;
+   update public.product_stock_locations set qty=qty-qty where product_id=pid and location_id=v.from_location_id;
    insert into public.product_stock_locations(property_id,product_id,location_id,qty)
      values(v.property_id,pid,v.to_location_id,qty)
      on conflict(product_id,location_id) do update set qty=product_stock_locations.qty+excluded.qty;
    insert into public.stock_movements(property_id,product_id,type,qty,reason,user_id)
      values(v.property_id,pid,'out',qty,'Transfer '||v.id::text,auth.uid());
+   insert into public.stock_movements(property_id,product_id,type,qty,reason,user_id)
+     values(v.property_id,pid,'in',qty,'Transfer '||v.id::text,auth.uid());
  end loop;
  update public.stock_transfers set status='completed',completed_by=auth.uid(),completed_at=now() where id=v.id returning * into v;
  return v;
