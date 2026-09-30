@@ -121,7 +121,8 @@ export const pmsService = {
 	},
 
 	async recordPayment({ propertyId, reservationId, amount, method }) {
-		const { error } = await supabase.from('payments').insert({ property_id: propertyId, reservation_id: reservationId, amount, method });
+		const shift = await this.getOpenCashierShift(propertyId);
+		const { error } = await supabase.from('payments').insert({ property_id: propertyId, reservation_id: reservationId, amount, method, shift_id: shift?.id || null });
 		if (error) throw new Error(error.message);
 	},
 
@@ -298,6 +299,63 @@ export const pmsService = {
 		const { data, error } = await supabase.from('folio_charges').insert({
 			property_id: propertyId, reservation_id: reservationId, source, description, amount: Number(amount || 0),
 		}).select().single();
+		if (error) throw new Error(error.message);
+		return data;
+	},
+
+	async getOpenCashierShift(propertyId) {
+		const { data, error } = await supabase
+			.from('cashier_shifts')
+			.select('*')
+			.eq('property_id', propertyId)
+			.eq('opened_by', (await supabase.auth.getUser()).data.user?.id)
+			.eq('status', 'open')
+			.order('opened_at', { ascending: false })
+			.limit(1)
+			.maybeSingle();
+		if (error) throw new Error(error.message);
+		return data;
+	},
+
+	async openCashierShift({ propertyId, openingFloat = 0 }) {
+		const { data, error } = await supabase.rpc('fn_open_cashier_shift', { p_property_id: propertyId, p_opening_float: Number(openingFloat || 0) });
+		if (error) throw new Error(error.message);
+		return data;
+	},
+
+	async closeCashierShift({ shiftId, closingCashCount, notes }) {
+		const { data, error } = await supabase.rpc('fn_close_cashier_shift', { p_shift_id: shiftId, p_closing_cash_count: Number(closingCashCount || 0), p_notes: notes || null });
+		if (error) throw new Error(error.message);
+		return data;
+	},
+
+	async getCashierShiftSummary(shiftId) {
+		const { data, error } = await supabase.rpc('fn_cashier_shift_summary', { p_shift_id: shiftId });
+		if (error) throw new Error(error.message);
+		return data || {};
+	},
+
+	async listCashierReceipts(propertyId, shiftId) {
+		let query = supabase.from('pos_receipts').select('*').eq('property_id', propertyId).order('created_at', { ascending: false }).limit(100);
+		if (shiftId) query = query.eq('shift_id', shiftId);
+		const { data, error } = await query;
+		if (error) throw new Error(error.message);
+		return data || [];
+	},
+
+	async listCashierAdjustments(propertyId, shiftId) {
+		let query = supabase.from('cashier_adjustments').select('*').eq('property_id', propertyId).order('created_at', { ascending: false }).limit(100);
+		if (shiftId) query = query.eq('shift_id', shiftId);
+		const { data, error } = await query;
+		if (error) throw new Error(error.message);
+		return data || [];
+	},
+
+	async recordCashierAdjustment({ propertyId, shiftId, adjustmentType, targetType, targetId, amount, reason }) {
+		const { data, error } = await supabase.rpc('fn_record_cashier_adjustment', {
+			p_property_id: propertyId, p_shift_id: shiftId || null, p_adjustment_type: adjustmentType,
+			p_target_type: targetType, p_target_id: targetId, p_amount: Number(amount || 0), p_reason: reason,
+		});
 		if (error) throw new Error(error.message);
 		return data;
 	},
