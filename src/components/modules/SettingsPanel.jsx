@@ -5,6 +5,8 @@ import Printers from '@/components/admin/Printers';
 import StaffAdmin from '@/components/admin/StaffAdmin';
 import TableSetup from '@/components/admin/TableSetup';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
+import SubscriptionPanel from '@/components/admin/SubscriptionPanel';
+import { useAuth } from '@/lib/AuthContext';
 
 const SECTIONS = [
   { id: 'business', icon: Building2, label: 'Business & Branches', desc: 'Name, logo, address, currency, timezone, tax configuration' },
@@ -13,6 +15,7 @@ const SECTIONS = [
   { id: 'payments', icon: CreditCard, label: 'Payment Methods', desc: 'Configure accepted payment types per branch' },
   { id: 'printers', icon: Printer, label: 'Printers & KDS', desc: 'Receipt / kitchen printers, connection types and defaults' },
   { id: 'integrations', icon: Globe, label: 'Integrations', desc: 'Payment gateways, accounting exports, online ordering' },
+  { id: 'subscription', icon: CreditCard, label: 'Subscription & Paywall', desc: 'Plan, access status, billing period and grace period' },
 ];
 
 // Sections that link to a working screen. Others are shown as
@@ -33,6 +36,8 @@ function Breadcrumb({ label, onBack }) {
 
 export default function SettingsPanel() {
   const [view, setView] = React.useState('list');
+  const { user } = useAuth();
+  const canManageBilling = user?.isPlatformOwner || ['owner','admin'].includes(String(user?.propertyRole || '').toLowerCase()) || ['super_admin','hotel_admin'].includes(String(user?.staff?.role || '').toLowerCase());
 
   if (view === 'printers') {
     return (
@@ -54,6 +59,8 @@ export default function SettingsPanel() {
     );
   }
 
+  if (view === 'subscription') return <div className="flex-1 overflow-y-auto" style={{ background: SAND }}><Breadcrumb label="Subscription & Paywall" onBack={() => setView('list')} /><SubscriptionPanel /></div>;
+
   if (view === 'dining') {
     return (
       <div className="flex-1 overflow-hidden flex flex-col" style={{ background: SAND }}>
@@ -72,9 +79,9 @@ export default function SettingsPanel() {
             <button
               key={s.id}
               onClick={() => ROUTED[s.id] && setView(s.id)}
-              disabled={!ROUTED[s.id]}
+              disabled={!ROUTED[s.id] && !(s.id === 'subscription' && canManageBilling)}
               className="flex items-center gap-4 p-4 rounded-2xl text-left transition-all"
-              style={{ background: SURFACE, border: `1px solid ${BORDER}`, opacity: ROUTED[s.id] ? 1 : 0.55, cursor: ROUTED[s.id] ? 'pointer' : 'default' }}
+              style={{ background: SURFACE, border: `1px solid ${BORDER}`, opacity: (ROUTED[s.id] || (s.id === 'subscription' && canManageBilling)) ? 1 : 0.55, cursor: (ROUTED[s.id] || (s.id === 'subscription' && canManageBilling)) ? 'pointer' : 'default' }}
             >
               <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${TEAL}14` }}>
                 <s.icon size={18} style={{ color: TEAL_DARK }} />
@@ -84,7 +91,7 @@ export default function SettingsPanel() {
                 <div className="text-xs mt-0.5" style={{ color: MUTED }}>{s.desc}</div>
               </div>
               <div className="text-xs px-2 py-1 rounded-lg" style={{ background: SURFACE, border: `1px solid ${BORDER}`, color: MUTED }}>
-                {ROUTED[s.id] ? 'Configure →' : 'Coming soon'}
+                {ROUTED[s.id] || (s.id === 'subscription' && canManageBilling) ? 'Configure →' : 'Coming soon'}
               </div>
             </button>
           ))}
