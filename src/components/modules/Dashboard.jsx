@@ -9,7 +9,6 @@ import {
   Users,
   Utensils,
 } from 'lucide-react';
-import { DASHBOARD_STATS } from '@/data/platformData';
 import { usePms } from '@/data/PmsStore';
 import { useAuth } from '@/lib/AuthContext';
 import { pmsService } from '@/services/pmsService';
@@ -48,7 +47,7 @@ function SectionHeader({ title, meta, icon: Icon }) {
 }
 
 export default function Dashboard({ onNavigateToPOS, onNavigateToRooms, onNavigateToReservations }) {
-  const s = DASHBOARD_STATS;
+  const [liveActivity, setLiveActivity] = useState([]);
   const { user } = useAuth();
   const propertyId = user?.property?.id;
   const pms = usePms();
@@ -57,11 +56,26 @@ export default function Dashboard({ onNavigateToPOS, onNavigateToRooms, onNaviga
 
   useEffect(() => {
     let active = true;
-    if (!propertyId) return undefined;
+    if (!propertyId) {
+      setSummary(null);
+      setLiveActivity([]);
+      return undefined;
+    }
     setReportLoading(true);
-    pmsService.getDailyPosSummary(propertyId)
-      .then((data) => { if (active) setSummary(data); })
-      .catch(() => { if (active) setSummary(null); })
+    Promise.all([
+      pmsService.getDailyPosSummary(propertyId),
+      pmsService.getRecentDashboardActivity(propertyId, 8),
+    ])
+      .then(([data, activity]) => {
+        if (!active) return;
+        setSummary(data);
+        setLiveActivity(activity || []);
+      })
+      .catch(() => {
+        if (!active) return;
+        setSummary(null);
+        setLiveActivity([]);
+      })
       .finally(() => { if (active) setReportLoading(false); });
     return () => { active = false; };
   }, [propertyId]);
@@ -151,16 +165,21 @@ export default function Dashboard({ onNavigateToPOS, onNavigateToRooms, onNaviga
           <section className="rounded-2xl p-4 sm:p-5" style={{ background: SURFACE, border: `1px solid ${BORDER}` }}>
             <SectionHeader title="Recent activity" meta="Latest" icon={Activity} />
             <div>
-              {s.recentActivity.map((a, i) => (
-                <div key={i} className="flex gap-3 border-b py-3 last:border-b-0" style={{ borderColor: BORDER }}>
+              {liveActivity.map((a, i) => (
+                <div key={`${a.created_at}-${i}`} className="flex gap-3 border-b py-3 last:border-b-0" style={{ borderColor: BORDER }}>
                   <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full" style={{ background: ACTIVITY_COLORS[a.type] || MUTED }} aria-hidden="true" />
                   <div className="min-w-0 flex-1">
                     <div className="text-xs font-semibold" style={{ color: NAVY }}>{a.action}</div>
                     <div className="truncate text-xs" style={{ color: MUTED }}>{a.detail}</div>
                   </div>
-                  <time className="shrink-0 font-mono text-[11px]" style={{ color: MUTED }}>{a.time}</time>
+                  <time className="shrink-0 font-mono text-[11px]" style={{ color: MUTED }}>
+                    {a.created_at ? new Date(a.created_at).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' }) : '—'}
+                  </time>
                 </div>
               ))}
+              {!reportLoading && !liveActivity.length && (
+                <div className="py-8 text-center text-sm" style={{ color: MUTED }}>No recent activity.</div>
+              )}
             </div>
           </section>
         </div>
