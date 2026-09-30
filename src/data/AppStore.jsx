@@ -87,7 +87,32 @@ export function StoreProvider({ children }) {
     return () => { active = false; };
   }, [propertyId]);
 
-  const [printers, setPrinters] = useState(seedPrinters);
+  const [printers, setPrinters] = useState([]);
+
+  useEffect(() => {
+    let active = true;
+    if (!propertyId) { setPrinters([]); return undefined; }
+    posService.listPrinters(propertyId).then((rows) => {
+      if (!active) return;
+      setPrinters((rows || []).map((row) => ({
+        id: row.client_key,
+        name: row.name,
+        connectionType: row.connection_type,
+        host: row.host || '',
+        port: row.port || '',
+        agentUrl: row.agent_url || '',
+        status: PrinterStatus.NOT_CONFIGURED,
+        lastChecked: null,
+        lastError: null,
+        purposes: Array.isArray(row.purposes) ? row.purposes : ['receipt'],
+        center: row.center || '',
+      })));
+    }).catch((error) => {
+      console.error('[POS] failed to load persisted printer configuration', error);
+      if (active) setPrinters([]);
+    });
+    return () => { active = false; };
+  }, [propertyId]);
   // Async connectivity/print calls span multiple ticks, so callbacks read
   // through refs (kept in sync below) instead of capturing stale state.
   const printersRef = useRef(printers);
@@ -213,9 +238,24 @@ export function StoreProvider({ children }) {
 
   // Printer ops (Settings > Printers) — see services/printerService for the
   // actual connectivity/printing logic. This layer only owns state.
+  const persistPrinter = useCallback((printer) => {
+    if (!propertyId || !printer) return;
+    posService.savePrinter({
+      propertyId,
+      clientKey: printer.id,
+      name: printer.name,
+      connectionType: printer.connectionType,
+      host: printer.host,
+      port: printer.port,
+      agentUrl: printer.agentUrl,
+      purposes: printer.purposes,
+      center: printer.center,
+    }).catch((error) => console.error('[POS] failed to persist printer configuration', error));
+  }, [propertyId]);
+
   const addPrinter = useCallback((partial) => {
     const id = newId('p');
-    setPrinters((prev) => [...prev, {
+    const printer = {
       id,
       name: partial.name || 'New Printer',
       connectionType: partial.connectionType || 'network',
@@ -227,32 +267,45 @@ export function StoreProvider({ children }) {
       lastError: null,
       purposes: partial.purposes || ['receipt'],
       center: partial.center || '',
-    }]);
+    };
+    setPrinters((prev) => [...prev, printer]);
+    persistPrinter(printer);
     return id;
-  }, []);
+  }, [persistPrinter]);
 
   const updatePrinter = useCallback((id, patch) => {
-    setPrinters((prev) => prev.map((p) => (p.id === id ? {
-      ...p, ...patch,
-      // Editing connection settings invalidates any prior verified status —
-      // saving a config must never be conflated with "connected".
-      status: ('host' in patch || 'port' in patch || 'connectionType' in patch || 'agentUrl' in patch) ? PrinterStatus.NOT_CONFIGURED : p.status,
-    } : p)));
-  }, []);
+    setPrinters((prev) => {
+      const next = prev.map((p) => (p.id === id ? {
+        ...p, ...patch,
+        // Editing connection settings invalidates any prior verified status —
+        // saving a config must never be conflated with "connected".
+        status: ('host' in patch || 'port' in patch || 'connectionType' in patch || 'agentUrl' in patch) ? PrinterStatus.NOT_CONFIGURED : p.status,
+      } : p));
+      const changed = next.find((p) => p.id === id);
+      if (changed) persistPrinter(changed);
+      return next;
+    });
+  }, [persistPrinter]);
 
   const removePrinter = useCallback((id) => {
     forgetDevice(id);
+    if (propertyId) posService.deletePrinter({ propertyId, clientKey: id }).catch((error) => console.error('[POS] failed to delete printer configuration', error));
     setPrinters((prev) => prev.filter((p) => p.id !== id));
-  }, []);
+  }, [propertyId]);
 
   const togglePurpose = useCallback((id, purpose) => {
-    setPrinters((prev) => prev.map((p) => {
-      if (p.id !== id) return p;
-      const has = p.purposes.includes(purpose);
-      const purposes = has ? p.purposes.filter((x) => x !== purpose) : [...p.purposes, purpose];
-      return { ...p, purposes, center: purpose === 'order' && !has ? (p.center || 'All') : p.center };
-    }));
-  }, []);
+    setPrinters((prev) => {
+      const next = prev.map((p) => {
+        if (p.id !== id) return p;
+        const has = p.purposes.includes(purpose);
+        const purposes = has ? p.purposes.filter((x) => x !== purpose) : [...p.purposes, purpose];
+        return { ...p, purposes, center: purpose === 'order' && !has ? (p.center || 'All') : p.center };
+      });
+      const changed = next.find((p) => p.id === id);
+      if (changed) persistPrinter(changed);
+      return next;
+    });
+  }, [persistPrinter]);
 
   // Real connectivity test — sets CONNECTING immediately, then the genuine
   // result (see printerService: network needs a print agent, USB/Bluetooth
