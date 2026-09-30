@@ -9,6 +9,7 @@ import {
   Users,
   Boxes,
   Package,
+  ShoppingCart,
   BarChart3,
   Banknote,
   ClipboardCheck,
@@ -131,6 +132,15 @@ const SECTIONS = [
         roles: ['hotel_admin', 'super_admin', 'front_office_manager', 'store_manager', 'fb_manager', 'housekeeping_supervisor'],
         path: '/store',
         active: ['store', 'inventory'],
+      },
+      {
+        id: 'purchasing',
+        label: 'Purchasing',
+        sub: 'Suppliers & Receiving',
+        icon: ShoppingCart,
+        roles: ['hotel_admin', 'super_admin', 'front_office_manager', 'store_manager', 'fb_manager'],
+        path: '/store?module=purchasing',
+        active: ['purchasing'],
       },
       {
         id: 'products',
