@@ -27,6 +27,43 @@ export const pmsService = {
 		if (error) throw new Error(error.message);
 		return data;
 	},
+
+	async listRecipes(propertyId) {
+		const { data, error } = await supabase.from('recipes').select('*, recipe_ingredients(*, product:products(name,unit))').eq('property_id', propertyId).order('menu_item_name');
+		if (error) throw new Error(error.message); return data || [];
+	},
+	async upsertRecipe({ propertyId, menuItemName, yieldQty=1, ingredients, notes }) {
+		const { data, error } = await supabase.rpc('fn_upsert_recipe', { p_property_id: propertyId, p_menu_item_name: menuItemName, p_yield_qty: Number(yieldQty || 1), p_ingredients: ingredients || [], p_notes: notes || null });
+		if (error) throw new Error(error.message); return data;
+	},
+	async listLaundryOrders(propertyId) {
+		const { data, error } = await supabase.from('laundry_orders').select('*').eq('property_id', propertyId).order('created_at', { ascending: false });
+		if (error) throw new Error(error.message); return data || [];
+	},
+	async createLaundryOrder(payload) {
+		const { data, error } = await supabase.rpc('fn_create_laundry_order', { p_property_id: payload.propertyId, p_reservation_id: payload.reservationId || null, p_room_id: payload.roomId || null, p_guest_name: payload.guestName || null, p_items: payload.items || [], p_total: Number(payload.total || 0), p_notes: payload.notes || null });
+		if (error) throw new Error(error.message); return data;
+	},
+	async updateLaundryOrder({ orderId, status, notes }) {
+		const { data, error } = await supabase.rpc('fn_update_laundry_order', { p_order_id: orderId, p_status: status, p_notes: notes || null });
+		if (error) throw new Error(error.message); return data;
+	},
+	async listInventoryLocations(propertyId) {
+		const { data, error } = await supabase.from('inventory_locations').select('*').eq('property_id', propertyId).order('name');
+		if (error) throw new Error(error.message); return data || [];
+	},
+	async listStockTransfers(propertyId) {
+		const { data, error } = await supabase.from('stock_transfers').select('*, from_location:inventory_locations!stock_transfers_from_location_id_fkey(name), to_location:inventory_locations!stock_transfers_to_location_id_fkey(name)').eq('property_id', propertyId).order('created_at', { ascending: false });
+		if (error) throw new Error(error.message); return data || [];
+	},
+	async createStockTransfer({ propertyId, fromLocationId, toLocationId, lines, reference }) {
+		const { data, error } = await supabase.from('stock_transfers').insert({ property_id: propertyId, from_location_id: fromLocationId, to_location_id: toLocationId, lines, reference: reference || null, created_by: (await supabase.auth.getUser()).data.user?.id }).select().single();
+		if (error) throw new Error(error.message); return data;
+	},
+	async completeStockTransfer(transferId) {
+		const { data, error } = await supabase.rpc('fn_complete_stock_transfer', { p_transfer_id: transferId });
+		if (error) throw new Error(error.message); return data;
+	},
 	async listRoomTypes(propertyId) {
 		const { data, error } = await supabase.from('room_types').select('*').eq('property_id', propertyId).order('name');
 		if (error) throw new Error(error.message);
