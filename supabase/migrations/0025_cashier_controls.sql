@@ -48,7 +48,7 @@ create table if not exists public.cashier_adjustments (
   reason text not null,
   created_by uuid not null references auth.users(id),
   approved_by uuid references auth.users(id),
-  status text not null default 'approved' check (status in ('approved','rejected')),
+  status text not null default 'pending' check (status in ('pending','approved','rejected')),
   created_at timestamptz not null default now()
 );
 create index if not exists cashier_adjustments_property_idx on public.cashier_adjustments(property_id, created_at desc);
@@ -184,6 +184,8 @@ declare
   v_role text;
   v_property uuid;
   v_total numeric;
+  v_is_manager boolean := false;
+  v_target_status text;
 begin
   if not (public.is_platform_owner() or public.is_member_of_property(p_property_id)) then raise exception 'Not allowed.'; end if;
   if p_amount <= 0 or nullif(trim(p_reason),'') is null then raise exception 'Amount and reason are required.'; end if;
@@ -191,33 +193,87 @@ begin
   if p_target_type not in ('pos_receipt','payment') then raise exception 'Invalid target type.'; end if;
 
   v_role := public.current_staff_role(p_property_id);
-  if v_role is not null then
-    if v_role not in ('hotel_admin','super_admin','cashier','fb_manager') then raise exception 'Only authorised cashier staff can adjust transactions.'; end if;
-  elsif not (public.is_platform_owner() or public.property_role(p_property_id) in ('owner','admin','manager','cashier')) then
-    raise exception 'Only authorised cashier staff can adjust transactions.';
+  v_is_manager := public.is_platform_owner()
+    or public.property_role(p_property_id) in ('owner','admin','manager')
+    or v_role in ('hotel_admin','super_admin','fb_manager');
+
+  if v_role is not null and v_role not in ('hotel_admin','super_admin','cashier','fb_manager') then
+    raise exception 'Only authorised cashier staff can request transaction adjustments.';
+  elsif v_role is null and not (public.is_platform_owner() or public.property_role(p_property_id) in ('owner','admin','manager','cashier')) then
+    raise exception 'Only authorised cashier staff can request transaction adjustments.';
   end if;
 
   if p_target_type = 'pos_receipt' then
-    select property_id, total into v_property, v_total from public.pos_receipts where id = p_target_id;
+    select property_id, total, status into v_property, v_total, v_target_status
+    from public.pos_receipts where id = p_target_id;
   else
-    select property_id, amount into v_property, v_total from public.payments where id = p_target_id;
+    select property_id, amount, status into v_property, v_total, v_target_status
+    from public.payments where id = p_target_id;
   end if;
+
   if v_property is null or v_property <> p_property_id then raise exception 'Transaction not found.'; end if;
+  if v_target_status <> 'posted' then raise exception 'Only posted transactions can be adjusted.'; end if;
   if p_amount > v_total then raise exception 'Adjustment exceeds transaction amount.'; end if;
 
-  if p_adjustment_type = 'void' and p_target_type = 'pos_receipt' then
-    update public.pos_receipts set status = 'voided', voided_at = now(), voided_by = auth.uid(), void_reason = p_reason where id = p_target_id and status = 'posted';
-  elsif p_adjustment_type = 'void' and p_target_type = 'payment' then
-    update public.payments set status = 'voided', voided_at = now(), voided_by = auth.uid(), void_reason = p_reason where id = p_target_id and status = 'posted';
+  insert into public.cashier_adjustments(
+    property_id,shift_id,adjustment_type,target_type,target_id,amount,reason,created_by,approved_by,status
+  ) values(
+    p_property_id,p_shift_id,p_adjustment_type,p_target_type,p_target_id,p_amount,p_reason,auth.uid(),
+    case when v_is_manager then auth.uid() else null end,
+    case when v_is_manager then 'approved' else 'pending' end
+  ) returning * into v_adjustment;
+
+  if v_is_manager and p_adjustment_type = 'void' then
+    if p_target_type = 'pos_receipt' then
+      update public.pos_receipts set status='voided',voided_at=now(),voided_by=auth.uid(),void_reason=p_reason where id=p_target_id and status='posted';
+    else
+      update public.payments set status='voided',voided_at=now(),voided_by=auth.uid(),void_reason=p_reason where id=p_target_id and status='posted';
+    end if;
   end if;
 
-  insert into public.cashier_adjustments(property_id,shift_id,adjustment_type,target_type,target_id,amount,reason,created_by,approved_by)
-  values(p_property_id,p_shift_id,p_adjustment_type,p_target_type,p_target_id,p_amount,p_reason,auth.uid(),auth.uid())
-  returning * into v_adjustment;
   return v_adjustment;
 end;
 $$;
-grant execute on function public.fn_record_cashier_adjustment(uuid,uuid,text,text,uuid,numeric,text) to authenticated;
+grant execute on function public.fn_record_cashier_adjustment(uuid,uuid,text, text,uuid,numeric,text) to authenticated;
+
+create or replace function public.fn_approve_cashier_adjustment(
+  p_adjustment_id uuid,
+  p_approve boolean,
+  p_reason text default null
+) returns public.cashier_adjustments
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_adjustment public.cashier_adjustments;
+  v_role text;
+  v_manager boolean;
+begin
+  select * into v_adjustment from public.cashier_adjustments where id=p_adjustment_id for update;
+  if v_adjustment.id is null then raise exception 'Adjustment not found.'; end if;
+  v_role := public.current_staff_role(v_adjustment.property_id);
+  v_manager := public.is_platform_owner()
+    or public.property_role(v_adjustment.property_id) in ('owner','admin','manager')
+    or v_role in ('hotel_admin','super_admin','fb_manager');
+  if not v_manager then raise exception 'Manager approval is required.'; end if;
+  if v_adjustment.status <> 'pending' then raise exception 'Adjustment is already decided.'; end if;
+
+  update public.cashier_adjustments
+  set status=case when p_approve then 'approved' else 'rejected' end,
+      approved_by=case when p_approve then auth.uid() else null end,
+      reason=case when nullif(trim(p_reason),'') is not null then reason || ' | Approval note: ' || trim(p_reason) else reason end
+  where id=p_adjustment_id returning * into v_adjustment;
+
+  if p_approve and v_adjustment.adjustment_type='void' then
+    if v_adjustment.target_type='pos_receipt' then
+      update public.pos_receipts set status='voided',voided_at=now(),voided_by=auth.uid(),void_reason=v_adjustment.reason where id=v_adjustment.target_id and status='posted';
+    else
+      update public.payments set status='voided',voided_at=now(),voided_by=auth.uid(),void_reason=v_adjustment.reason where id=v_adjustment.target_id and status='posted';
+    end if;
+  end if;
+  return v_adjustment;
+end;
+$$;
+grant execute on function public.fn_approve_cashier_adjustment(uuid,boolean,text) to authenticated;
 
 create or replace function public.fn_cashier_shift_summary(p_shift_id uuid)
 returns jsonb
