@@ -55,6 +55,7 @@ export default function POSContainer() {
 		setOrderLinesByTable((prev) => {
 			const current = prev[activeTable.id] || [];
 			const next = typeof updater === 'function' ? updater(current) : updater;
+			store.setSessionOrderLines(activeTable.id, next, orderNumbersRef.current[activeTable.id] || null);
 			return { ...prev, [activeTable.id]: next };
 		});
 	}, [activeTable]);
@@ -67,15 +68,23 @@ export default function POSContainer() {
 			return;
 		}
 		if (!orderNumbersRef.current[table.id]) {
-			orderNumbersRef.current[table.id] = `ORD-${String(table.number).padStart(3, '0')}-${Math.floor(Date.now() / 10000) % 1000}`;
+			orderNumbersRef.current[table.id] = session.orderNumber || `ORD-${String(table.number).padStart(3, '0')}-${Math.floor(Date.now() / 10000) % 1000}`;
+			store.setSessionOrderLines(table.id, session.orderLines || [], orderNumbersRef.current[table.id]);
 		}
 		setActiveTable(table);
 		setActiveTab(session.status === 'unsettled' ? 'bill' : 'order');
 	};
 
 	const handleStartTable = ({ guests, waiter }) => {
-		store.openTable(pendingTable.id, { guests, waiter });
-		orderNumbersRef.current[pendingTable.id] = `ORD-${String(pendingTable.number).padStart(3, '0')}-${Math.floor(Date.now() / 10000) % 1000}`;
+		const orderNumber = `ORD-${String(pendingTable.number).padStart(3, '0')}-${Math.floor(Date.now() / 10000) % 1000}`;
+		orderNumbersRef.current[pendingTable.id] = orderNumber;
+		store.openTable(pendingTable.id, {
+			guests,
+			waiter,
+			tableNumber: pendingTable.number,
+			zoneId: pendingTable.zoneId || null,
+			orderNumber,
+		});
 		setActiveTable(pendingTable);
 		setPendingTable(null);
 		setActiveTab('order');
