@@ -97,9 +97,14 @@ export default function BillPayment({ table, orderLines, onConfirmPayment }) {
       setChargeError('Select which guest/room to charge before confirming.');
       return;
     }
-    // Payment is recorded first and unconditionally — nothing below can undo it.
-    const result = await store.completeSale({ table, orderLines, total, method: methodLabel, receiptText: receiptText() });
-    if (paymentMethod !== 'room' && propertyId) {
+    if (!propertyId) {
+      setChargeError('This POS session is not attached to a property.');
+      return;
+    }
+
+    // Supabase is the source of truth. Persist the sale before printing so a
+    // backend failure can never be presented as a completed payment.
+    try {
       await pmsService.recordPosSale({
         propertyId,
         tableNumber: tableLabel(table),
@@ -110,58 +115,49 @@ export default function BillPayment({ table, orderLines, onConfirmPayment }) {
         vat,
         total,
         paymentMethod,
-        reservationId: null,
+        reservationId: paymentMethod === 'room' ? chargeReservationId : null,
       });
+    } catch (err) {
+      setChargeError(`Payment was not recorded: ${err.message}`);
+      toast.error('Payment was not recorded. No receipt was issued.');
+      return;
     }
+
+    // The sale is now safely persisted. Printing is independent and can be
+    // retried without charging the guest again.
+    const result = await store.completeSale({
+      table,
+      orderLines,
+      total,
+      method: methodLabel,
+      receiptText: receiptText(),
+    });
     setSale({ id: result.id, printStatus: result.printStatus, printError: result.printError, orderNumber, total, methodLabel });
 
-    // Inventory is downstream from the completed sale. A stock error must never
-    // cancel or duplicate a payment, so the service handles each deduction
-    // independently and returns skipped mappings for staff visibility.
+    // Inventory is downstream from the completed sale. A stock failure must
+    // never cancel or duplicate an already-recorded payment.
     if (propertyId) {
-      const inventoryResult = await inventoryService.deductStockForOrder({
-        propertyId,
-        orderItems: orderLines.map((line) => ({ productId: line.productId || line.id, qty: line.qty, name: line.name })),
-        reference: `POS Sale - Table ${tableLabel(table)}`,
-      });
-      if (inventoryResult.skipped.length) {
-        console.warn('[inventory] POS deduction skipped', inventoryResult.skipped);
-      }
-      const lowProducts = inventoryResult.deducted.filter(({ product, result }) => Number(result?.current_stock) <= Number(product.min_stock));
-      if (lowProducts.length) toast.warning(`Stock alert: ${lowProducts.map(({ product }) => product.name).join(', ')} is low or out of stock.`);
-    }
-
-    // The room folio charge is a second, independent write that happens
-    // AFTER the sale is already recorded. If it fails, the sale itself is
-    // NOT rolled back or blocked — same principle as inventory in section
-    // 33: a downstream failure never corrupts an already-completed sale.
-    // It's surfaced to staff instead, who can post it to the folio manually.
-    if (paymentMethod === 'room' && chargeReservationId) {
       try {
-        await pmsService.recordPosSale({
+        const inventoryResult = await inventoryService.deductStockForOrder({
           propertyId,
-          tableNumber: tableLabel(table),
-          orderNumber,
-          items: orderLines.map((line) => ({ name: line.name, qty: line.qty, price: line.price })),
-          subtotal,
-          discountAmount: discountAmt,
-          vat,
-          total,
-          paymentMethod: 'room',
-          reservationId: chargeReservationId,
+          orderItems: orderLines.map((line) => ({ productId: line.productId || line.id, qty: line.qty, name: line.name })),
+          reference: `POS Sale - Table ${tableLabel(table)}`,
         });
+        if (inventoryResult.skipped.length) {
+          console.warn('[inventory] POS deduction skipped', inventoryResult.skipped);
+        }
+        const lowProducts = inventoryResult.deducted.filter(({ product, result: stockResult }) => Number(stockResult?.current_stock) <= Number(product.min_stock));
+        if (lowProducts.length) toast.warning(`Stock alert: ${lowProducts.map(({ product }) => product.name).join(', ')} is low or out of stock.`);
       } catch (err) {
-        setChargeError(`Sale completed, but posting to the room folio failed: ${err.message}. Post it manually from the guest's folio.`);
+        console.warn('[inventory] POS deduction failed after sale', err);
       }
     }
 
     if (result.printStatus === PrintJobStatus.PRINTED) {
       setTimeout(() => onConfirmPayment(), 1500);
     }
-    // On print failure we stay on this screen so staff can see the error and
-    // retry before returning to the floor plan.
+    // On print failure we stay here so staff can retry printing.
   };
-
   const handleRetryPrint = async () => {
     if (!sale) return;
     setRetrying(true);
