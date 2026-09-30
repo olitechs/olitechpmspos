@@ -68,6 +68,11 @@ export const pmsService = {
 	async getBookingEngineConfig(propertyId) { const { data,error }=await supabase.rpc('fn_public_booking_engine_config',{p_property_id:propertyId}); if(error) throw new Error(error.message); return data; },
 	async listChannelConnections(propertyId) { const { data,error }=await supabase.from('channel_connections').select('*').eq('property_id',propertyId).order('channel'); if(error) throw new Error(error.message); return data||[]; },
 	async upsertChannelConnection({propertyId,channel,externalPropertyId}) { const { data,error }=await supabase.rpc('fn_channel_connection_upsert',{p_property_id:propertyId,p_channel:channel,p_external_property_id:externalPropertyId||null}); if(error) throw new Error(error.message); return data; },
+
+	async queueChannelSync({propertyId,connectionId,eventType,payload,idempotencyKey}) { const {data,error}=await supabase.rpc('fn_queue_channel_sync',{p_property_id:propertyId,p_connection_id:connectionId,p_event_type:eventType,p_payload:payload||{},p_idempotency_key:idempotencyKey}); if(error) throw new Error(error.message); return data; },
+	async listChannelSyncQueue(propertyId) { const {data,error}=await supabase.from('channel_sync_queue').select('*').eq('property_id',propertyId).order('created_at',{ascending:false}).limit(100); if(error) throw new Error(error.message); return data||[]; },
+	async listChannelReservationEvents(propertyId) { const {data,error}=await supabase.from('channel_reservation_events').select('*').eq('property_id',propertyId).order('received_at',{ascending:false}).limit(100); if(error) throw new Error(error.message); return data||[]; },
+	async listConfirmationMessages(propertyId) { const {data,error}=await supabase.from('confirmation_messages').select('*').eq('property_id',propertyId).order('created_at',{ascending:false}).limit(100); if(error) throw new Error(error.message); return data||[]; },
 	async listRoomTypes(propertyId) {
 		const { data, error } = await supabase.from('room_types').select('*').eq('property_id', propertyId).order('name');
 		if (error) throw new Error(error.message);
