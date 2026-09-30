@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Activity,
   ArrowUpRight,
@@ -11,6 +11,8 @@ import {
 } from 'lucide-react';
 import { DASHBOARD_STATS } from '@/data/platformData';
 import { usePms } from '@/data/PmsStore';
+import { useAuth } from '@/lib/AuthContext';
+import { pmsService } from '@/services/pmsService';
 import { NAVY, TEAL, TEAL_DARK, SAND, SURFACE, BORDER, MUTED, SLATE } from '@/data/themePalette';
 
 function StatCard({ label, value, sub, icon: Icon, emphasis = false }) {
@@ -47,7 +49,22 @@ function SectionHeader({ title, meta, icon: Icon }) {
 
 export default function Dashboard({ onNavigateToPOS, onNavigateToRooms, onNavigateToReservations }) {
   const s = DASHBOARD_STATS;
+  const { user } = useAuth();
+  const propertyId = user?.property?.id;
   const pms = usePms();
+  const [summary, setSummary] = useState(null);
+  const [reportLoading, setReportLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    if (!propertyId) return undefined;
+    setReportLoading(true);
+    pmsService.getDailyPosSummary(propertyId)
+      .then((data) => { if (active) setSummary(data); })
+      .catch(() => { if (active) setSummary(null); })
+      .finally(() => { if (active) setReportLoading(false); });
+    return () => { active = false; };
+  }, [propertyId]);
   const liveRooms = pms?.rooms || [];
   const liveReservations = pms?.reservations || [];
   const liveRoomCounts = liveRooms.reduce((acc, room) => { acc[room.status] = (acc[room.status] || 0) + 1; return acc; }, {});
@@ -55,8 +72,13 @@ export default function Dashboard({ onNavigateToPOS, onNavigateToRooms, onNaviga
   const liveInHouse = liveReservations.filter((r) => r.status === 'checked-in').length;
   const liveAvailable = liveRoomCounts.available || 0;
   const liveOccupied = liveRoomCounts.occupied || 0;
-  const revenueFormatted = `KES ${s.revenueToday.toLocaleString('en-KE')}`;
-  const paymentTotal = s.paymentBreakdown.reduce((a, b) => a + b.amount, 0);
+  const liveRevenue = Number(summary?.total_revenue || 0);
+  const liveTransactions = Number(summary?.transactions || 0);
+  const liveAverageCheck = Number(summary?.average_check || 0);
+  const livePayments = summary?.payment_breakdown || [];
+  const liveTopItems = summary?.top_items || [];
+  const revenueFormatted = reportLoading ? '—' : `KES ${liveRevenue.toLocaleString('en-KE')}`;
+  const paymentTotal = livePayments.reduce((a, b) => a + Number(b.amount || 0), 0);
 
   return (
     <div className="flex-1 overflow-y-auto" style={{ background: SAND }}>
@@ -69,7 +91,7 @@ export default function Dashboard({ onNavigateToPOS, onNavigateToRooms, onNaviga
             </div>
             <h1 className="text-xl font-extrabold tracking-tight sm:text-2xl" style={{ color: NAVY }}>Today at a glance</h1>
             <p className="mt-1 max-w-2xl text-sm" style={{ color: MUTED }}>
-              Front-office status is sourced from the PMS. Revenue and POS summaries remain clearly marked as sample data until their live reporting queries are connected.
+              Front-office status is sourced from the PMS. Revenue and POS summaries are sourced from completed POS receipts for the current Kenya business date.
             </p>
           </div>
           <div className="flex items-center gap-2 self-start rounded-xl border px-3 py-2 text-xs font-semibold sm:self-auto" style={{ background: SURFACE, borderColor: BORDER, color: NAVY }}>
@@ -83,16 +105,16 @@ export default function Dashboard({ onNavigateToPOS, onNavigateToRooms, onNaviga
           <button type="button" onClick={onNavigateToRooms} className="text-left"><StatCard label="Available rooms" value={pms.loading ? '—' : liveAvailable} sub={`${liveOccupied} occupied`} icon={CalendarCheck} emphasis /></button>
           <button type="button" onClick={onNavigateToReservations} className="text-left"><StatCard label="Arrivals / bookings" value={pms.loading ? '—' : liveArrivals} sub="Active reservations" icon={CalendarCheck} /></button>
           <StatCard label="In-house guests" value={pms.loading ? '—' : liveInHouse} sub="Checked in" icon={Users} />
-          <StatCard label="Revenue today" value={revenueFormatted} sub="Sample until live report" icon={TrendingUp} />
-          <StatCard label="Open checks" value={s.openChecks} sub="POS sample data" icon={Receipt} />
-          <StatCard label="Average check" value={`KES ${s.avgCheck.toLocaleString()}`} sub="POS sample data" icon={TrendingUp} />
+          <StatCard label="POS revenue today" value={revenueFormatted} sub={`${liveTransactions.toLocaleString()} completed transactions`} icon={TrendingUp} />
+          <StatCard label="Completed checks" value={reportLoading ? "—" : liveTransactions} sub="Live POS receipts" icon={Receipt} />
+          <StatCard label="Average check" value={reportLoading ? "—" : `KES ${liveAverageCheck.toLocaleString("en-KE")}`} sub="Live POS receipts" icon={TrendingUp} />
         </div>
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_1fr_1fr]">
           <section className="rounded-2xl p-4 sm:p-5" style={{ background: SURFACE, border: `1px solid ${BORDER}` }}>
-            <SectionHeader title="Top sellers" meta="Sample POS data" icon={TrendingUp} />
+            <SectionHeader title="Top sellers" meta="Live POS data" icon={TrendingUp} />
             <div className="divide-y" style={{ borderColor: BORDER }}>
-              {s.topItems.map((item, i) => (
+              {liveTopItems.slice(0, 5).map((item, i) => (
                 <div key={i} className="flex items-center gap-3 py-3">
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold" style={{ background: i === 0 ? TEAL : SAND, color: NAVY }}>{i + 1}</span>
                   <div className="min-w-0 flex-1">
@@ -101,27 +123,29 @@ export default function Dashboard({ onNavigateToPOS, onNavigateToRooms, onNaviga
                   </div>
                   <div className="shrink-0 text-right">
                     <div className="font-mono text-sm font-bold" style={{ color: NAVY }}>×{item.qty}</div>
-                    <div className="font-mono text-[11px]" style={{ color: MUTED }}>KES {item.revenue.toLocaleString()}</div>
+                    <div className="font-mono text-[11px]" style={{ color: MUTED }}>KES {Number(item.revenue || 0).toLocaleString()}</div>
                   </div>
                 </div>
               ))}
             </div>
+            {!reportLoading && !liveTopItems.length && <div className="py-8 text-center text-sm" style={{ color: MUTED }}>No completed POS sales today.</div>}
           </section>
 
           <section className="rounded-2xl p-4 sm:p-5" style={{ background: SURFACE, border: `1px solid ${BORDER}` }}>
-            <SectionHeader title="Payments" meta="Sample POS data" icon={Receipt} />
-            {s.paymentBreakdown.map((p, i) => {
+            <SectionHeader title="Payments" meta="Live POS data" icon={Receipt} />
+            {livePayments.map((p, i) => {
               const pct = paymentTotal ? Math.round((p.amount / paymentTotal) * 100) : 0;
               return (
                 <div key={i} className="mb-4 last:mb-0">
                   <div className="mb-1.5 flex items-center justify-between gap-3 text-xs">
-                    <span className="font-semibold" style={{ color: NAVY }}>{p.method}</span>
-                    <span className="font-mono" style={{ color: MUTED }}>KES {p.amount.toLocaleString()} · {pct}%</span>
+                    <span className="font-semibold capitalize" style={{ color: NAVY }}>{p.method.replace("_", " ")}</span>
+                    <span className="font-mono" style={{ color: MUTED }}>KES {Number(p.amount || 0).toLocaleString()} · {pct}%</span>
                   </div>
                   <div className="h-2 overflow-hidden rounded-full" style={{ background: BORDER }} aria-hidden="true"><div className="h-full rounded-full" style={{ width: `${pct}%`, background: TEAL_DARK }} /></div>
                 </div>
               );
             })}
+            {!reportLoading && !livePayments.length && <div className="py-8 text-center text-sm" style={{ color: MUTED }}>No completed POS payments today.</div>}
           </section>
 
           <section className="rounded-2xl p-4 sm:p-5" style={{ background: SURFACE, border: `1px solid ${BORDER}` }}>
