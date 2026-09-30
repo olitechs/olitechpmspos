@@ -288,5 +288,10 @@ export const pmsService = {
 		if (error) throw new Error(error.message);
 		return data || [];
 	},
+	async getDailyPosSummary(propertyId, businessDate) {
+		const { data, error } = await supabase.rpc('fn_daily_pos_summary', { p_property_id: propertyId, p_business_date: businessDate || undefined });
+		if (error) throw new Error(error.message);
+		return data || { total_revenue: 0, transactions: 0, average_check: 0, payment_breakdown: [], top_items: [], hourly_revenue: [] };
+	},
 
 };
