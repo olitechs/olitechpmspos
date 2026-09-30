@@ -124,11 +124,17 @@ export default function BillPayment({ table, orderLines, onConfirmPayment }) {
     // It's surfaced to staff instead, who can post it to the folio manually.
     if (paymentMethod === 'room' && chargeReservationId) {
       try {
-        await pmsService.chargeToRoom({
+        await pmsService.recordPosSale({
           propertyId,
+          tableNumber: tableLabel(table),
+          orderNumber,
+          items: orderLines.map((line) => ({ name: line.name, qty: line.qty, price: line.price })),
+          subtotal,
+          discountAmount: discountAmt,
+          vat,
+          total,
+          paymentMethod: 'room',
           reservationId: chargeReservationId,
-          description: `POS ${orderNumber} — Table ${tableLabel(table)}`,
-          amount: total,
         });
       } catch (err) {
         setChargeError(`Sale completed, but posting to the room folio failed: ${err.message}. Post it manually from the guest's folio.`);
