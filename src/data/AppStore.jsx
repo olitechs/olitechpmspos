@@ -65,26 +65,36 @@ export function StoreProvider({ children }) {
   useEffect(() => {
     let active = true;
     if (!propertyId) { setKitchenOrders([]); return undefined; }
-    posService.listActiveKitchenOrders(propertyId).then((rows) => {
-      if (!active) return;
-      setKitchenOrders((rows || []).map((row) => ({
-        id: row.id,
-        tableId: row.table_key || row.table_number,
-        tableNumber: row.table_number,
-        orderNumber: row.order_number,
-        waiter: row.waiter || '',
-        orderLines: Array.isArray(row.order_lines) ? row.order_lines : [],
-        firedAt: row.fired_at ? new Date(row.fired_at).getTime() : Date.now(),
-        status: row.status || 'new',
-        printJobs: row.print_jobs || {},
-      })));
-    }).catch((error) => {
-      // The app remains usable during migration rollout; the KDS simply
-      // has no persisted orders until 0036 is applied.
-      console.error('[KDS] failed to load persisted kitchen orders', error);
-      if (active) setKitchenOrders([]);
-    });
-    return () => { active = false; };
+
+    const hydrateKitchenOrders = async () => {
+      try {
+        const rows = await posService.listActiveKitchenOrders(propertyId);
+        if (!active) return;
+        setKitchenOrders((rows || []).map((row) => ({
+          id: row.id,
+          tableId: row.table_key || row.table_number,
+          tableNumber: row.table_number,
+          orderNumber: row.order_number,
+          waiter: row.waiter || '',
+          orderLines: Array.isArray(row.order_lines) ? row.order_lines : [],
+          firedAt: row.fired_at ? new Date(row.fired_at).getTime() : Date.now(),
+          status: row.status || 'new',
+          printJobs: row.print_jobs || {},
+        })));
+      } catch (error) {
+        // The app remains usable during migration rollout; the KDS simply
+        // has no persisted orders until 0036 is applied.
+        console.error('[KDS] failed to load persisted kitchen orders', error);
+        if (active) setKitchenOrders([]);
+      }
+    };
+
+    hydrateKitchenOrders();
+    const timer = window.setInterval(hydrateKitchenOrders, 10000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
   }, [propertyId]);
 
   const [printers, setPrinters] = useState([]);
