@@ -1,6 +1,49 @@
 import { supabase } from '@/lib/supabaseClient';
 
 export const posService = {
+  async listPrinters(propertyId) {
+    const { data, error } = await supabase.rpc('fn_list_pos_printers', {
+      p_property_id: propertyId,
+    });
+    if (error) throw new Error(error.message);
+    return data || [];
+  },
+
+  async savePrinter({
+    propertyId,
+    clientKey,
+    name,
+    connectionType,
+    host = '',
+    port = '',
+    agentUrl = '',
+    purposes = ['receipt'],
+    center = '',
+  }) {
+    const { data, error } = await supabase.rpc('fn_upsert_pos_printer', {
+      p_property_id: propertyId,
+      p_client_key: clientKey,
+      p_name: name,
+      p_connection_type: connectionType,
+      p_host: host || null,
+      p_port: port || null,
+      p_agent_url: agentUrl || null,
+      p_purposes: Array.isArray(purposes) ? purposes : ['receipt'],
+      p_center: center || null,
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  async deletePrinter({ propertyId, clientKey }) {
+    const { data, error } = await supabase.rpc('fn_delete_pos_printer', {
+      p_property_id: propertyId,
+      p_client_key: clientKey,
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
   async listActiveSessions(propertyId) {
     const { data, error } = await supabase.rpc('fn_list_active_pos_table_sessions', {
       p_property_id: propertyId,
