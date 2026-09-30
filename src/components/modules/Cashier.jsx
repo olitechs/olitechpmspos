@@ -25,6 +25,7 @@ export default function Cashier() {
   const [busy, setBusy] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState('');
+  const [approvalNote, setApprovalNote] = React.useState('');
 
   const load = React.useCallback(async () => {
     if (!propertyId) return;
@@ -84,6 +85,11 @@ export default function Cashier() {
       targetId: selected.id, amount, reason: reason.trim(),
     });
     setSelected(null); setAdjustmentAmount(''); setReason('');
+  });
+
+  const decideAdjustment = (adjustmentId, approve) => run(async () => {
+    await pmsService.approveCashierAdjustment({ adjustmentId, approve, reason: approvalNote.trim() || null });
+    setApprovalNote('');
   });
 
   const variance = shift && shift.closing_cash_count != null ? Number(shift.variance || 0) : null;
@@ -170,10 +176,13 @@ export default function Cashier() {
 
         <section className="rounded-xl border border-slate-200 bg-white p-4">
           <div className="flex items-center justify-between"><div><h2 className="font-bold">Adjustment history</h2><p className="mt-1 text-xs text-slate-500">Controlled changes recorded for this shift.</p></div><span className="text-xs font-semibold text-slate-500">{adjustments.length} record(s)</span></div>
+          <div className="mb-3 rounded-lg bg-slate-50 p-3">
+            <label className="block text-xs font-semibold text-slate-600">Manager approval note (used when approving or rejecting a pending adjustment)<input className={input + ' mt-1'} value={approvalNote} onChange={(e) => setApprovalNote(e.target.value)} placeholder="Optional note"/></label>
+          </div>
           <div className="mt-3 overflow-x-auto">
-            <table className="w-full min-w-[700px] text-sm"><thead><tr className="border-b border-slate-200 text-left text-[10px] uppercase tracking-wide text-slate-500"><th className="px-3 py-2">Time</th><th className="px-3 py-2">Type</th><th className="px-3 py-2">Amount</th><th className="px-3 py-2">Reason</th><th className="px-3 py-2">Status</th></tr></thead>
-              <tbody>{adjustments.map((a) => <tr key={a.id} className="border-b border-slate-100"><td className="px-3 py-2 text-xs text-slate-500">{dateTime(a.created_at)}</td><td className="px-3 py-2 capitalize">{a.adjustment_type}</td><td className="px-3 py-2 font-mono">{money(a.amount)}</td><td className="px-3 py-2">{a.reason}</td><td className="px-3 py-2 capitalize">{a.status}</td></tr>)}
-              {!adjustments.length && <tr><td colSpan="5" className="px-3 py-8 text-center text-sm text-slate-500">No adjustments recorded for this shift.</td></tr>}</tbody>
+            <table className="w-full min-w-[700px] text-sm"><thead><tr className="border-b border-slate-200 text-left text-[10px] uppercase tracking-wide text-slate-500"><th className="px-3 py-2">Time</th><th className="px-3 py-2">Type</th><th className="px-3 py-2">Amount</th><th className="px-3 py-2">Reason</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Action</th></tr></thead>
+              <tbody>{adjustments.map((a) => <tr key={a.id} className="border-b border-slate-100"><td className="px-3 py-2 text-xs text-slate-500">{dateTime(a.created_at)}</td><td className="px-3 py-2 capitalize">{a.adjustment_type}</td><td className="px-3 py-2 font-mono">{money(a.amount)}</td><td className="px-3 py-2">{a.reason}</td><td className="px-3 py-2 capitalize">{a.status}</td><td className="px-3 py-2">{a.status === 'pending' ? <div className="flex gap-2"><button className="text-xs font-bold text-emerald-700 hover:underline" disabled={busy} onClick={() => decideAdjustment(a.id, true)}>Approve</button><button className="text-xs font-bold text-red-700 hover:underline" disabled={busy} onClick={() => decideAdjustment(a.id, false)}>Reject</button></div> : '—'}</td></tr>)}
+              {!adjustments.length && <tr><td colSpan="6" className="px-3 py-8 text-center text-sm text-slate-500">No adjustments recorded for this shift.</td></tr>}</tbody>
             </table>
           </div>
         </section>
