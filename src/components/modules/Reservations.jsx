@@ -152,7 +152,7 @@ export default function Reservations() {
                 <option value="all">All reservations</option>
                 <option value="booked">Booked</option>
                 <option value="checked-in">In house</option>
-                <option value="checked_out">Checked out</option>
+                <option value="checked-out">Checked out</option>
               </select>
               <div className="relative sm:w-44">
                 <CalendarDays size={15} className="absolute left-3 top-3 text-slate-400" />
