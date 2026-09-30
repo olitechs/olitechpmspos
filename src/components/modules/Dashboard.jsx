@@ -1,93 +1,155 @@
 import React from 'react';
-import { TrendingUp, Users, Receipt, CalendarCheck, Utensils } from 'lucide-react';
+import {
+  Activity,
+  ArrowUpRight,
+  CalendarCheck,
+  Clock3,
+  Receipt,
+  TrendingUp,
+  Users,
+  Utensils,
+} from 'lucide-react';
 import { DASHBOARD_STATS } from '@/data/platformData';
+import { usePms } from '@/data/PmsStore';
 import { NAVY, TEAL, TEAL_DARK, SAND, SURFACE, BORDER, MUTED, SLATE } from '@/data/themePalette';
 
-function StatCard({ label, value, sub, icon: Icon }) {
+function StatCard({ label, value, sub, icon: Icon, emphasis = false }) {
   return (
-    <div className="rounded-2xl p-4 flex flex-col gap-2" style={{ background: SURFACE, border: `1px solid ${BORDER}` }}>
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: MUTED }}>{label}</span>
-        {Icon && <Icon size={16} style={{ color: TEAL_DARK }} />}
+    <div
+      className="rounded-2xl p-4 flex min-h-[116px] flex-col justify-between transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-0.5 hover:shadow-sm"
+      style={{ background: SURFACE, border: `1px solid ${emphasis ? TEAL_DARK : BORDER}` }}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: MUTED }}>{label}</span>
+        {Icon && <Icon size={17} aria-hidden="true" style={{ color: emphasis ? NAVY : TEAL_DARK }} />}
       </div>
-      <div className="text-2xl font-bold font-mono" style={{ color: NAVY }}>{value}</div>
-      {sub && <div className="text-xs" style={{ color: MUTED }}>{sub}</div>}
+      <div>
+        <div className="text-2xl font-bold font-mono tracking-tight" style={{ color: NAVY }}>{value}</div>
+        {sub && <div className="mt-1 text-xs" style={{ color: MUTED }}>{sub}</div>}
+      </div>
     </div>
   );
 }
 
 const ACTIVITY_COLORS = { order: NAVY, payment: TEAL_DARK, reserve: SLATE };
 
-export default function Dashboard({ onNavigateToPOS }) {
+function SectionHeader({ title, meta, icon: Icon }) {
+  return (
+    <div className="mb-3 flex items-center justify-between gap-3">
+      <div className="flex min-w-0 items-center gap-2">
+        {Icon && <Icon size={16} aria-hidden="true" style={{ color: TEAL_DARK }} />}
+        <h2 className="truncate text-xs font-bold uppercase tracking-[0.14em]" style={{ color: NAVY }}>{title}</h2>
+      </div>
+      {meta && <span className="shrink-0 text-[11px] font-medium" style={{ color: MUTED }}>{meta}</span>}
+    </div>
+  );
+}
+
+export default function Dashboard({ onNavigateToPOS, onNavigateToRooms, onNavigateToReservations }) {
   const s = DASHBOARD_STATS;
+  const pms = usePms();
+  const liveRooms = pms?.rooms || [];
+  const liveReservations = pms?.reservations || [];
+  const liveRoomCounts = liveRooms.reduce((acc, room) => { acc[room.status] = (acc[room.status] || 0) + 1; return acc; }, {});
+  const liveArrivals = liveReservations.filter((r) => r.status === 'booked').length;
+  const liveInHouse = liveReservations.filter((r) => r.status === 'checked-in').length;
+  const liveAvailable = liveRoomCounts.available || 0;
+  const liveOccupied = liveRoomCounts.occupied || 0;
   const revenueFormatted = `KES ${s.revenueToday.toLocaleString('en-KE')}`;
+  const paymentTotal = s.paymentBreakdown.reduce((a, b) => a + b.amount, 0);
 
   return (
-    <div className="flex-1 overflow-y-auto p-4" style={{ background: SAND }}>
-      <div className="grid grid-cols-2 gap-3 mb-4 sm:grid-cols-3 lg:grid-cols-6">
-        <StatCard label="Revenue Today" value={revenueFormatted} icon={TrendingUp} />
-        <StatCard label="Open Tables" value={s.openTables} sub="tap to manage" icon={Utensils} />
-        <StatCard label="Open Checks" value={s.openChecks} icon={Receipt} />
-        <StatCard label="Covers Seated" value={s.coversSeated} icon={Users} />
-        <StatCard label="Reservations" value={s.reservationsTonight} sub="tonight" icon={CalendarCheck} />
-        <StatCard label="Avg. Check" value={`KES ${s.avgCheck.toLocaleString()}`} icon={TrendingUp} />
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="rounded-2xl p-4" style={{ background: SURFACE, border: `1px solid ${BORDER}` }}>
-          <h3 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: MUTED }}>Top Sellers Today</h3>
-          {s.topItems.map((item, i) => (
-            <div key={i} className="flex items-center justify-between py-2" style={{ borderBottom: `1px solid ${BORDER}` }}>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-mono w-4" style={{ color: MUTED }}>{i + 1}</span>
-                <span className="text-sm font-medium truncate" style={{ color: NAVY, maxWidth: '160px' }}>{item.name}</span>
-              </div>
-              <div className="text-right shrink-0">
-                <div className="text-xs font-mono font-bold" style={{ color: NAVY }}>×{item.qty}</div>
-                <div className="text-xs" style={{ color: MUTED }}>{item.revenue.toLocaleString()}</div>
-              </div>
+    <div className="flex-1 overflow-y-auto" style={{ background: SAND }}>
+      <div className="mx-auto w-full max-w-[1600px] p-4 sm:p-5 lg:p-6">
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <div className="mb-1 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em]" style={{ color: MUTED }}>
+              <Activity size={14} aria-hidden="true" />
+              Operations overview
             </div>
-          ))}
-        </div>
-
-        <div className="rounded-2xl p-4" style={{ background: SURFACE, border: `1px solid ${BORDER}` }}>
-          <h3 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: MUTED }}>Payments by Method</h3>
-          {s.paymentBreakdown.map((p, i) => {
-            const total = s.paymentBreakdown.reduce((a, b) => a + b.amount, 0);
-            const pct = Math.round((p.amount / total) * 100);
-            return (
-              <div key={i} className="mb-3">
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="font-medium" style={{ color: NAVY }}>{p.method}</span>
-                  <span style={{ color: MUTED }}>KES {p.amount.toLocaleString()} · {pct}%</span>
-                </div>
-                <div className="h-2 rounded-full overflow-hidden" style={{ background: BORDER }}>
-                  <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: TEAL_DARK }} />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="rounded-2xl p-4" style={{ background: SURFACE, border: `1px solid ${BORDER}` }}>
-          <h3 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: MUTED }}>Recent Activity</h3>
-          <div className="flex flex-col gap-0">
-            {s.recentActivity.map((a, i) => (
-              <div key={i} className="flex gap-3 py-2" style={{ borderBottom: `1px solid ${BORDER}` }}>
-                <div className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: ACTIVITY_COLORS[a.type] || MUTED }} />
-                <div className="min-w-0">
-                  <div className="text-xs font-medium" style={{ color: NAVY }}>{a.action}</div>
-                  <div className="text-xs truncate" style={{ color: MUTED }}>{a.detail}</div>
-                </div>
-                <div className="text-xs font-mono shrink-0 ml-auto" style={{ color: MUTED }}>{a.time}</div>
-              </div>
-            ))}
+            <h1 className="text-xl font-extrabold tracking-tight sm:text-2xl" style={{ color: NAVY }}>Today at a glance</h1>
+            <p className="mt-1 max-w-2xl text-sm" style={{ color: MUTED }}>
+              Front-office status is sourced from the PMS. Revenue and POS summaries remain clearly marked as sample data until their live reporting queries are connected.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 self-start rounded-xl border px-3 py-2 text-xs font-semibold sm:self-auto" style={{ background: SURFACE, borderColor: BORDER, color: NAVY }}>
+            <Clock3 size={14} aria-hidden="true" style={{ color: TEAL_DARK }} />
+            Business day
+            <span className="font-mono" style={{ color: MUTED }}>Today</span>
           </div>
         </div>
-      </div>
 
-      <div className="mt-4">
-        <button onClick={onNavigateToPOS} className="w-full py-4 rounded-2xl text-sm font-bold transition-all" style={{ background: TEAL, color: '#090C11', border: `1.5px solid ${BORDER}` }}>Open POS → Floor Plan</button>
+        <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+          <button type="button" onClick={onNavigateToRooms} className="text-left"><StatCard label="Available rooms" value={pms.loading ? '—' : liveAvailable} sub={`${liveOccupied} occupied`} icon={CalendarCheck} emphasis /></button>
+          <button type="button" onClick={onNavigateToReservations} className="text-left"><StatCard label="Arrivals / bookings" value={pms.loading ? '—' : liveArrivals} sub="Active reservations" icon={CalendarCheck} /></button>
+          <StatCard label="In-house guests" value={pms.loading ? '—' : liveInHouse} sub="Checked in" icon={Users} />
+          <StatCard label="Revenue today" value={revenueFormatted} sub="Sample until live report" icon={TrendingUp} />
+          <StatCard label="Open checks" value={s.openChecks} sub="POS sample data" icon={Receipt} />
+          <StatCard label="Average check" value={`KES ${s.avgCheck.toLocaleString()}`} sub="POS sample data" icon={TrendingUp} />
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_1fr_1fr]">
+          <section className="rounded-2xl p-4 sm:p-5" style={{ background: SURFACE, border: `1px solid ${BORDER}` }}>
+            <SectionHeader title="Top sellers" meta="Sample POS data" icon={TrendingUp} />
+            <div className="divide-y" style={{ borderColor: BORDER }}>
+              {s.topItems.map((item, i) => (
+                <div key={i} className="flex items-center gap-3 py-3">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold" style={{ background: i === 0 ? TEAL : SAND, color: NAVY }}>{i + 1}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold" style={{ color: NAVY }}>{item.name}</div>
+                    <div className="mt-0.5 text-xs" style={{ color: MUTED }}>Quantity sold</div>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <div className="font-mono text-sm font-bold" style={{ color: NAVY }}>×{item.qty}</div>
+                    <div className="font-mono text-[11px]" style={{ color: MUTED }}>KES {item.revenue.toLocaleString()}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-2xl p-4 sm:p-5" style={{ background: SURFACE, border: `1px solid ${BORDER}` }}>
+            <SectionHeader title="Payments" meta="Sample POS data" icon={Receipt} />
+            {s.paymentBreakdown.map((p, i) => {
+              const pct = paymentTotal ? Math.round((p.amount / paymentTotal) * 100) : 0;
+              return (
+                <div key={i} className="mb-4 last:mb-0">
+                  <div className="mb-1.5 flex items-center justify-between gap-3 text-xs">
+                    <span className="font-semibold" style={{ color: NAVY }}>{p.method}</span>
+                    <span className="font-mono" style={{ color: MUTED }}>KES {p.amount.toLocaleString()} · {pct}%</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full" style={{ background: BORDER }} aria-hidden="true"><div className="h-full rounded-full" style={{ width: `${pct}%`, background: TEAL_DARK }} /></div>
+                </div>
+              );
+            })}
+          </section>
+
+          <section className="rounded-2xl p-4 sm:p-5" style={{ background: SURFACE, border: `1px solid ${BORDER}` }}>
+            <SectionHeader title="Recent activity" meta="Latest" icon={Activity} />
+            <div>
+              {s.recentActivity.map((a, i) => (
+                <div key={i} className="flex gap-3 border-b py-3 last:border-b-0" style={{ borderColor: BORDER }}>
+                  <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full" style={{ background: ACTIVITY_COLORS[a.type] || MUTED }} aria-hidden="true" />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-semibold" style={{ color: NAVY }}>{a.action}</div>
+                    <div className="truncate text-xs" style={{ color: MUTED }}>{a.detail}</div>
+                  </div>
+                  <time className="shrink-0 font-mono text-[11px]" style={{ color: MUTED }}>{a.time}</time>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        <div className="mt-4 flex flex-col gap-3 rounded-2xl p-4 sm:flex-row sm:items-center sm:justify-between" style={{ background: NAVY, color: '#FFFFFF' }}>
+          <div>
+            <div className="text-sm font-bold">Need to work the dining floor?</div>
+            <div className="mt-1 text-xs text-white/60">Open the POS workspace to manage tables, orders, bills, and payments.</div>
+          </div>
+          <button type="button" onClick={onNavigateToPOS} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold transition-colors hover:bg-[#FFEE32] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD300] focus-visible:ring-offset-2 focus-visible:ring-offset-[#090C11]" style={{ background: TEAL, color: NAVY }}>
+            Open POS <ArrowUpRight size={16} aria-hidden="true" />
+          </button>
+        </div>
       </div>
     </div>
   );
