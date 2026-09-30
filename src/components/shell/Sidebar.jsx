@@ -10,6 +10,7 @@ import {
   Boxes,
   Package,
   BarChart3,
+  Banknote,
   ShieldCheck,
   Settings,
   LockKeyhole,
@@ -47,6 +48,15 @@ const SECTIONS = [
         roles: ['hotel_admin', 'super_admin', 'pos_staff', 'waiter', 'cashier', 'fb_manager'],
         path: '/pos',
         active: ['pos'],
+      },
+      {
+        id: 'cashier',
+        label: 'Cashier Control',
+        sub: 'Shift & Reconciliation',
+        icon: Banknote,
+        roles: ['hotel_admin', 'super_admin', 'cashier', 'fb_manager'],
+        path: '/backoffice?module=cashier',
+        active: ['cashier'],
       },
       {
         id: 'dining-tables',
