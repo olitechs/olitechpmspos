@@ -289,6 +289,30 @@ export const pmsService = {
 		if (error) throw new Error(error.message);
 		return data || [];
 	},
+	async getBusinessDate(propertyId) {
+		const { data, error } = await supabase.rpc('fn_get_business_date', { p_property_id: propertyId });
+		if (error) throw new Error(error.message);
+		return data;
+	},
+
+	async getNightAuditPrecheck(propertyId, businessDate) {
+		const { data, error } = await supabase.rpc('fn_night_audit_precheck', { p_property_id: propertyId, p_business_date: businessDate });
+		if (error) throw new Error(error.message);
+		return data || {};
+	},
+
+	async runNightAudit({ propertyId, notes }) {
+		const { data, error } = await supabase.rpc('fn_run_night_audit', { p_property_id: propertyId, p_notes: notes || null });
+		if (error) throw new Error(error.message);
+		return data;
+	},
+
+	async listNightAudits(propertyId) {
+		const { data, error } = await supabase.rpc('fn_night_audit_history', { p_property_id: propertyId });
+		if (error) throw new Error(error.message);
+		return data || [];
+	},
+
 	async getDailyPosSummary(propertyId, businessDate) {
 		const { data, error } = await supabase.rpc('fn_daily_pos_summary', { p_property_id: propertyId, p_business_date: businessDate || undefined });
 		if (error) throw new Error(error.message);
