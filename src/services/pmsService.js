@@ -439,6 +439,15 @@ export const pmsService = {
 		return data || { total_revenue: 0, transactions: 0, average_check: 0, payment_breakdown: [], top_items: [], hourly_revenue: [] };
 	},
 
+	async getRecentDashboardActivity(propertyId, limit = 8) {
+		const { data, error } = await supabase.rpc('fn_recent_dashboard_activity', {
+			p_property_id: propertyId,
+			p_limit: limit,
+		});
+		if (error) throw new Error(error.message);
+		return Array.isArray(data) ? data : [];
+	},
+
 	async addFolioCharge({ propertyId, reservationId, source = 'other', description, amount }) {
 		const { data, error } = await supabase.from('folio_charges').insert({
 			property_id: propertyId, reservation_id: reservationId, source, description, amount: Number(amount || 0),
