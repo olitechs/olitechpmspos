@@ -28,6 +28,7 @@ import Laundry from '@/components/modules/Laundry';
 import Transfers from '@/components/modules/Transfers';
 import BookingEngine from '@/components/modules/BookingEngine';
 import ChannelManager from '@/components/modules/ChannelManager';
+import DistributionOps from '@/components/modules/DistributionOps';
 import Inventory from '@/components/modules/Inventory';
 import Store from '@/pages/Store';
 import POSContainer from '@/components/pos/POSContainer';
@@ -108,6 +109,7 @@ export default function POSApp({ initialModule = 'dashboard' }) {
 			case 'transfers': content = <Transfers />; break;
 			case 'booking-engine': content = <BookingEngine />; break;
 			case 'channels': content = <ChannelManager />; break;
+			case 'distribution-ops': content = <DistributionOps />; break;
 			case 'inventory':
 				content = <Inventory />;
 				break;
