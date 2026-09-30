@@ -62,19 +62,14 @@ export default function Dashboard({ onNavigateToPOS, onNavigateToRooms, onNaviga
       return undefined;
     }
     setReportLoading(true);
-    Promise.all([
+    Promise.allSettled([
       pmsService.getDailyPosSummary(propertyId),
       pmsService.getRecentDashboardActivity(propertyId, 8),
     ])
-      .then(([data, activity]) => {
+      .then(([summaryResult, activityResult]) => {
         if (!active) return;
-        setSummary(data);
-        setLiveActivity(activity || []);
-      })
-      .catch(() => {
-        if (!active) return;
-        setSummary(null);
-        setLiveActivity([]);
+        setSummary(summaryResult.status === 'fulfilled' ? summaryResult.value : null);
+        setLiveActivity(activityResult.status === 'fulfilled' ? (activityResult.value || []) : []);
       })
       .finally(() => { if (active) setReportLoading(false); });
     return () => { active = false; };
