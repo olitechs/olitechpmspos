@@ -1,6 +1,32 @@
 import { supabase } from '@/lib/supabaseClient';
 
 export const pmsService = {
+
+	async listProducts(propertyId) {
+		const { data, error } = await supabase.from('products').select('*').eq('property_id', propertyId).order('name');
+		if (error) throw new Error(error.message);
+		return data || [];
+	},
+	async listSuppliers(propertyId) {
+		const { data, error } = await supabase.from('suppliers').select('*').eq('property_id', propertyId).order('name');
+		if (error) throw new Error(error.message);
+		return data || [];
+	},
+	async listPurchaseOrders(propertyId) {
+		const { data, error } = await supabase.from('purchase_orders').select('*, supplier:suppliers(name)').eq('property_id', propertyId).order('purchase_date', { ascending: false });
+		if (error) throw new Error(error.message);
+		return data || [];
+	},
+	async createPurchaseOrder({ propertyId, supplierId, lines, invoiceNo }) {
+		const { data, error } = await supabase.rpc('fn_create_purchase_order', { p_property_id: propertyId, p_supplier_id: supplierId || null, p_lines: lines, p_invoice_no: invoiceNo || null });
+		if (error) throw new Error(error.message);
+		return data;
+	},
+	async receivePurchaseOrder({ purchaseOrderId, receivedLines = null }) {
+		const { data, error } = await supabase.rpc('fn_receive_purchase_order', { p_purchase_order_id: purchaseOrderId, p_received_lines: receivedLines });
+		if (error) throw new Error(error.message);
+		return data;
+	},
 	async listRoomTypes(propertyId) {
 		const { data, error } = await supabase.from('room_types').select('*').eq('property_id', propertyId).order('name');
 		if (error) throw new Error(error.message);

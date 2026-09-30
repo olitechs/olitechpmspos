@@ -22,6 +22,7 @@ import Rooms from '@/components/pms/Rooms';
 import RoomManagement from '@/components/pms/RoomManagement';
 import Housekeeping from '@/components/modules/Housekeeping';
 import Maintenance from '@/components/modules/Maintenance';
+import Purchasing from '@/components/modules/Purchasing';
 import Inventory from '@/components/modules/Inventory';
 import Store from '@/pages/Store';
 import POSContainer from '@/components/pos/POSContainer';
@@ -96,6 +97,9 @@ export default function POSApp({ initialModule = 'dashboard' }) {
 			case 'maintenance':
 				content = <Maintenance />;
 				break;
+			case 'purchasing':
+				content = <Purchasing />;
+				break;
 			case 'inventory':
 				content = <Inventory />;
 				break;
@@ -126,7 +130,7 @@ export default function POSApp({ initialModule = 'dashboard' }) {
 						{showTopBar && <TopBar moduleLabel={currentModule?.label || ''} />}
 						<div className="flex-1 min-h-0 flex flex-col overflow-hidden">
 							<ErrorBoundary label={currentModule?.label || 'This section'}>
-								<RouteGuard module={activeModule === 'pos' ? 'pos' : activeModule === 'store' || activeModule === 'inventory' ? 'store' : 'backoffice'}>
+								<RouteGuard module={activeModule === 'pos' ? 'pos' : activeModule === 'store' || activeModule === 'inventory' || activeModule === 'purchasing' ? 'store' : 'backoffice'}>
 									{content}
 								</RouteGuard>
 							</ErrorBoundary>
