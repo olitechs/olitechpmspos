@@ -58,10 +58,14 @@
   }
 
   * { @apply border-border outline-ring/50; }
-
   html, body, #root { min-height: 100%; }
   body { @apply bg-background text-foreground font-body; background-color: #F8F8F7; }
-  button, a, input, select, textarea { transition: all 200ms ease; }
+  button, a, input, select, textarea { transition: all 180ms ease-out; }
+  :focus-visible { outline: 2px solid #FFD300; outline-offset: 2px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+  }
 }
 
 @layer components {
@@ -87,8 +91,3 @@
 @media print {
   .app-shell { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
-
-/* V7 Yellow/Black contrast safeguards */
-.btn-yellow { background: #FFD300; color: #090C11 !important; font-weight: 600; }
-.btn-dark { background: #090C11; color: #FFFFFF !important; }
-.btn-charcoal { background: #262B32; color: #FFFFFF !important; }
