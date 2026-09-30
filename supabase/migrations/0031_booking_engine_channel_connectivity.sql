@@ -53,3 +53,59 @@ $$;
 grant execute on function public.fn_channel_connection_upsert(uuid,text,text) to authenticated;
 grant execute on function public.fn_public_booking_engine_config(uuid) to anon,authenticated;
 notify pgrst,'reload schema';
+create table if not exists public.channel_sync_queue (
+ id uuid primary key default gen_random_uuid(), property_id uuid not null references public.properties(id) on delete cascade,
+ connection_id uuid references public.channel_connections(id) on delete set null, event_type text not null,
+ payload jsonb not null default '{}'::jsonb, status text not null default 'queued' check(status in ('queued','processing','sent','failed')),
+ attempts integer not null default 0, available_at timestamptz not null default now(), locked_at timestamptz, processed_at timestamptz, last_error text, idempotency_key text unique, created_at timestamptz not null default now()
+);
+create table if not exists public.channel_reservation_events (
+ id uuid primary key default gen_random_uuid(), property_id uuid not null references public.properties(id) on delete cascade,
+ connection_id uuid references public.channel_connections(id) on delete set null, external_reservation_id text not null,
+ event_type text not null, payload jsonb not null default '{}'::jsonb, status text not null default 'received' check(status in ('received','processing','processed','failed')),
+ error_message text, received_at timestamptz not null default now(), processed_at timestamptz,
+ unique(connection_id,external_reservation_id,event_type)
+);
+create table if not exists public.confirmation_messages (
+ id uuid primary key default gen_random_uuid(), property_id uuid not null references public.properties(id) on delete cascade,
+ reservation_id uuid references public.reservations(id) on delete cascade, channel text not null default 'email',
+ recipient text, subject text, body text, status text not null default 'queued' check(status in ('queued','sent','failed')),
+ attempts integer not null default 0, last_error text, sent_at timestamptz, created_at timestamptz not null default now()
+);
+alter table public.channel_sync_queue enable row level security;
+alter table public.channel_reservation_events enable row level security;
+alter table public.confirmation_messages enable row level security;
+create policy if not exists channel_sync_queue_select on public.channel_sync_queue for select using(public.is_platform_owner() or public.is_member_of_property(property_id));
+create policy if not exists channel_reservation_events_select on public.channel_reservation_events for select using(public.is_platform_owner() or public.is_member_of_property(property_id));
+create policy if not exists confirmation_messages_select on public.confirmation_messages for select using(public.is_platform_owner() or public.is_member_of_property(property_id));
+create or replace function public.fn_queue_channel_sync(p_property_id uuid,p_connection_id uuid,p_event_type text,p_payload jsonb,p_idempotency_key text)
+returns public.channel_sync_queue language plpgsql security definer set search_path=public as $$
+declare v public.channel_sync_queue;
+begin
+ if not(public.is_platform_owner() or public.is_member_of_property(p_property_id)) then raise exception 'Not authorized'; end if;
+ insert into public.channel_sync_queue(property_id,connection_id,event_type,payload,idempotency_key)
+ values(p_property_id,p_connection_id,p_event_type,coalesce(p_payload,'{}'::jsonb),p_idempotency_key)
+ on conflict(idempotency_key) do update set payload=excluded.payload where public.channel_sync_queue.status in ('queued','failed')
+ returning * into v; return v;
+end; $$;
+create or replace function public.fn_receive_channel_reservation(p_property_id uuid,p_connection_id uuid,p_external_reservation_id text,p_event_type text,p_payload jsonb)
+returns public.channel_reservation_events language plpgsql security definer set search_path=public as $$
+declare v public.channel_reservation_events;
+begin
+ insert into public.channel_reservation_events(property_id,connection_id,external_reservation_id,event_type,payload)
+ values(p_property_id,p_connection_id,p_external_reservation_id,p_event_type,coalesce(p_payload,'{}'::jsonb))
+ on conflict(connection_id,external_reservation_id,event_type) do update set payload=excluded.payload
+ returning * into v; return v;
+end; $$;
+create or replace function public.fn_queue_confirmation(p_property_id uuid,p_reservation_id uuid,p_recipient text,p_subject text,p_body text)
+returns public.confirmation_messages language plpgsql security definer set search_path=public as $$
+declare v public.confirmation_messages;
+begin
+ if not(public.is_platform_owner() or public.is_member_of_property(p_property_id)) then raise exception 'Not authorized'; end if;
+ insert into public.confirmation_messages(property_id,reservation_id,recipient,subject,body)
+ values(p_property_id,p_reservation_id,p_recipient,p_subject,p_body) returning * into v; return v;
+end; $$;
+grant execute on function public.fn_queue_channel_sync(uuid,uuid,text,jsonb,text) to authenticated;
+grant execute on function public.fn_receive_channel_reservation(uuid,uuid,text,text,jsonb) to anon,authenticated;
+grant execute on function public.fn_queue_confirmation(uuid,uuid,text,text,text) to authenticated;
+notify pgrst,'reload schema';
