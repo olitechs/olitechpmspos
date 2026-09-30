@@ -11,6 +11,7 @@ import {
   Package,
   BarChart3,
   Banknote,
+  ClipboardCheck,
   ShieldCheck,
   Settings,
   LockKeyhole,
@@ -48,6 +49,15 @@ const SECTIONS = [
         roles: ['hotel_admin', 'super_admin', 'pos_staff', 'waiter', 'cashier', 'fb_manager'],
         path: '/pos',
         active: ['pos'],
+      },
+      {
+        id: 'night-audit',
+        label: 'Night Audit',
+        sub: 'Business Day Close',
+        icon: ClipboardCheck,
+        roles: ['hotel_admin', 'super_admin', 'fb_manager'],
+        path: '/backoffice?module=night-audit',
+        active: ['night-audit'],
       },
       {
         id: 'cashier',
