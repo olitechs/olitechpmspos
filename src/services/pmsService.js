@@ -294,4 +294,18 @@ export const pmsService = {
 		return data || { total_revenue: 0, transactions: 0, average_check: 0, payment_breakdown: [], top_items: [], hourly_revenue: [] };
 	},
 
+	async addFolioCharge({ propertyId, reservationId, source = 'other', description, amount }) {
+		const { data, error } = await supabase.from('folio_charges').insert({
+			property_id: propertyId, reservation_id: reservationId, source, description, amount: Number(amount || 0),
+		}).select().single();
+		if (error) throw new Error(error.message);
+		return data;
+	},
+
+	async listPayments(reservationId) {
+		const { data, error } = await supabase.from('payments').select('*').eq('reservation_id', reservationId).order('created_at', { ascending: false });
+		if (error) throw new Error(error.message);
+		return data || [];
+	},
+
 };
