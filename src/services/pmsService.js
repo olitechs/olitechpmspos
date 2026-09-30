@@ -49,7 +49,7 @@ export const pmsService = {
 		if (error) throw new Error(error.message); return data;
 	},
 	async listInventoryLocations(propertyId) {
-		const { data, error } = await supabase.from('inventory_locations').select('*').eq('property_id', propertyId).order('name');
+		const { data, error } = await supabase.rpc('fn_ensure_inventory_locations', { p_property_id: propertyId });
 		if (error) throw new Error(error.message); return data || [];
 	},
 	async listStockTransfers(propertyId) {
