@@ -13,6 +13,8 @@ import {
   ChefHat,
   Shirt,
   ArrowRightLeft,
+  Globe2,
+  PlugZap,
   BarChart3,
   Banknote,
   ClipboardCheck,
@@ -147,6 +149,14 @@ const SECTIONS = [
       {
         id: 'transfers', label: 'Stock Transfers', sub: 'Department Movement', icon: ArrowRightLeft,
         roles: ['hotel_admin','super_admin','store_manager','fb_manager','housekeeping_supervisor'], path: '/store?module=transfers', active: ['transfers'],
+      },
+      {
+        id: 'booking-engine', label: 'Booking Engine', sub: 'Direct Reservations', icon: Globe2,
+        roles: ['hotel_admin','super_admin','front_office_manager'], path: '/backoffice?module=booking-engine', active: ['booking-engine'],
+      },
+      {
+        id: 'channels', label: 'Channel Manager', sub: 'OTA Connectivity', icon: PlugZap,
+        roles: ['hotel_admin','super_admin'], path: '/backoffice?module=channels', active: ['channels'],
       },
       {
         id: 'purchasing',

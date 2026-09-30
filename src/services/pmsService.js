@@ -64,6 +64,10 @@ export const pmsService = {
 		const { data, error } = await supabase.rpc('fn_complete_stock_transfer', { p_transfer_id: transferId });
 		if (error) throw new Error(error.message); return data;
 	},
+
+	async getBookingEngineConfig(propertyId) { const { data,error }=await supabase.rpc('fn_public_booking_engine_config',{p_property_id:propertyId}); if(error) throw new Error(error.message); return data; },
+	async listChannelConnections(propertyId) { const { data,error }=await supabase.from('channel_connections').select('*').eq('property_id',propertyId).order('channel'); if(error) throw new Error(error.message); return data||[]; },
+	async upsertChannelConnection({propertyId,channel,externalPropertyId}) { const { data,error }=await supabase.rpc('fn_channel_connection_upsert',{p_property_id:propertyId,p_channel:channel,p_external_property_id:externalPropertyId||null}); if(error) throw new Error(error.message); return data; },
 	async listRoomTypes(propertyId) {
 		const { data, error } = await supabase.from('room_types').select('*').eq('property_id', propertyId).order('name');
 		if (error) throw new Error(error.message);
