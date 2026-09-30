@@ -21,6 +21,7 @@ end; $$;
 create or replace function public.fn_subscription_access(p_property_id uuid,p_module text) returns jsonb language plpgsql security definer set search_path=public as $$
 declare s public.property_subscriptions; allowed boolean:=false;
 begin
+ if not(public.is_platform_owner() or public.is_member_of_property(p_property_id)) then raise exception 'Not authorized'; end if;
  if public.is_platform_owner() then return jsonb_build_object('allowed',true,'reason','platform_owner'); end if;
  select * into s from public.property_subscriptions where property_id=p_property_id;
  if s.id is null then return jsonb_build_object('allowed',false,'reason','subscription_not_configured'); end if;
