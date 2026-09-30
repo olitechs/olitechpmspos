@@ -117,3 +117,6 @@ Adds a property-scoped dashboard activity RPC using posted POS receipts and rese
 Updates the daily POS summary so voided receipts are excluded from revenue, transaction counts, payment breakdowns, top items, and hourly reporting.
 ### 0036 — Persistent kitchen display
 Adds server-side fired kitchen/bar orders and KDS status transitions (`new` → `preparing` → `ready` → `served`). POS fires the order before attempting printer work, and the Kitchen Display can recover active orders after refresh or from another terminal. Apply this migration before using the production KDS.
+
+### 0037 — Persistent printer configuration
+Persists property-level printer definitions, routing purposes, centers, and connection settings. Live connection state is intentionally reset to `Not Configured` on reload because USB/Bluetooth/network connectivity is device-specific.
