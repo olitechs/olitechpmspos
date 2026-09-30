@@ -2,6 +2,11 @@ import { supabase } from '@/lib/supabaseClient';
 
 export const pmsService = {
 
+	async listProducts(propertyId) {
+		const { data, error } = await supabase.from('products').select('*').eq('property_id', propertyId).order('name');
+		if (error) throw new Error(error.message);
+		return data || [];
+	},
 	async listSuppliers(propertyId) {
 		const { data, error } = await supabase.from('suppliers').select('*').eq('property_id', propertyId).order('name');
 		if (error) throw new Error(error.message);
