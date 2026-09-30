@@ -99,6 +99,20 @@ export default function BillPayment({ table, orderLines, onConfirmPayment }) {
     }
     // Payment is recorded first and unconditionally — nothing below can undo it.
     const result = await store.completeSale({ table, orderLines, total, method: methodLabel, receiptText: receiptText() });
+    if (paymentMethod !== 'room' && propertyId) {
+      await pmsService.recordPosSale({
+        propertyId,
+        tableNumber: tableLabel(table),
+        orderNumber,
+        items: orderLines.map((line) => ({ name: line.name, qty: line.qty, price: line.price })),
+        subtotal,
+        discountAmount: discountAmt,
+        vat,
+        total,
+        paymentMethod,
+        reservationId: null,
+      });
+    }
     setSale({ id: result.id, printStatus: result.printStatus, printError: result.printError, orderNumber, total, methodLabel });
 
     // Inventory is downstream from the completed sale. A stock error must never
