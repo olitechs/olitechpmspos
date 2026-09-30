@@ -39,6 +39,10 @@ export default function POSContainer() {
 	const [pendingTable, setPendingTable] = useState(null); // table awaiting "open" dialog
 	// Order lines are kept per-table so switching tabs/tables doesn't lose an in-progress order.
 	const [orderLinesByTable, setOrderLinesByTable] = useState({});
+	useEffect(() => {
+		setOrderLinesByTable({});
+		orderNumbersRef.current = {};
+	}, [propertyId]);
 
 	// Stable per-table order numbers (regenerated each time a table is opened).
 	const orderNumbersRef = useRef({});
