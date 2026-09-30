@@ -15,6 +15,7 @@ import {
   ArrowRightLeft,
   Globe2,
   PlugZap,
+  RefreshCw,
   BarChart3,
   Banknote,
   ClipboardCheck,
@@ -157,6 +158,10 @@ const SECTIONS = [
       {
         id: 'channels', label: 'Channel Manager', sub: 'OTA Connectivity', icon: PlugZap,
         roles: ['hotel_admin','super_admin'], path: '/backoffice?module=channels', active: ['channels'],
+      },
+      {
+        id: 'distribution-ops', label: 'Distribution Ops', sub: 'Sync & Confirmations', icon: RefreshCw,
+        roles: ['hotel_admin','super_admin','front_office_manager'], path: '/backoffice?module=distribution-ops', active: ['distribution-ops'],
       },
       {
         id: 'purchasing',
