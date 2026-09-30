@@ -360,6 +360,14 @@ export const pmsService = {
 		return data;
 	},
 
+	async approveCashierAdjustment({ adjustmentId, approve, reason }) {
+		const { data, error } = await supabase.rpc('fn_approve_cashier_adjustment', {
+			p_adjustment_id: adjustmentId, p_approve: Boolean(approve), p_reason: reason || null,
+		});
+		if (error) throw new Error(error.message);
+		return data;
+	},
+
 	async listPayments(reservationId) {
 		const { data, error } = await supabase.from('payments').select('*').eq('reservation_id', reservationId).order('created_at', { ascending: false });
 		if (error) throw new Error(error.message);
