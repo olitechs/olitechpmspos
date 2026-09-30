@@ -14,6 +14,7 @@ import GuestList from '@/components/modules/GuestList';
 import Receipts from '@/components/modules/Receipts';
 import Folio from '@/components/modules/Folio';
 import Cashier from '@/components/modules/Cashier';
+import NightAudit from '@/components/modules/NightAudit';
 import KitchenDisplay from '@/components/modules/KitchenDisplay';
 import Reports from '@/components/modules/Reports';
 import SettingsPanel from '@/components/modules/SettingsPanel';
@@ -82,6 +83,9 @@ export default function POSApp({ initialModule = 'dashboard' }) {
 				break;
 			case 'cashier':
 				content = <Cashier />;
+				break;
+			case 'night-audit':
+				content = <NightAudit />;
 				break;
 			case 'kitchen':
 				content = <KitchenDisplay />;
