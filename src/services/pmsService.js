@@ -68,6 +68,9 @@ export const pmsService = {
 	async getBookingEngineConfig(propertyId) { const { data,error }=await supabase.rpc('fn_public_booking_engine_config',{p_property_id:propertyId}); if(error) throw new Error(error.message); return data; },
 	async listChannelConnections(propertyId) { const { data,error }=await supabase.from('channel_connections').select('*').eq('property_id',propertyId).order('channel'); if(error) throw new Error(error.message); return data||[]; },
 	async upsertChannelConnection({propertyId,channel,externalPropertyId}) { const { data,error }=await supabase.rpc('fn_channel_connection_upsert',{p_property_id:propertyId,p_channel:channel,p_external_property_id:externalPropertyId||null}); if(error) throw new Error(error.message); return data; },
+	async getSubscription(propertyId) { const {data,error}=await supabase.rpc('fn_get_subscription',{p_property_id:propertyId}); if(error) throw new Error(error.message); return data; },
+	async getSubscriptionAccess(propertyId,module) { const {data,error}=await supabase.rpc('fn_subscription_access',{p_property_id:propertyId,p_module:module}); if(error) throw new Error(error.message); return data||{allowed:false}; },
+	async upsertSubscription({propertyId,planCode,status,trialEndsAt=null,currentPeriodEndsAt=null,graceEndsAt=null,enabledModules=[]}) { const {data,error}=await supabase.rpc('fn_upsert_subscription',{p_property_id:propertyId,p_plan_code:planCode,p_status:status,p_trial_ends_at:trialEndsAt,p_current_period_ends_at:currentPeriodEndsAt,p_grace_ends_at:graceEndsAt,p_enabled_modules:enabledModules}); if(error) throw new Error(error.message); return data; },
 	async listRoomTypes(propertyId) {
 		const { data, error } = await supabase.from('room_types').select('*').eq('property_id', propertyId).order('name');
 		if (error) throw new Error(error.message);
