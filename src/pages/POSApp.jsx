@@ -11,6 +11,7 @@ import TopBar from '@/components/shell/TopBar';
 import Dashboard from '@/components/modules/Dashboard';
 import Reservations from '@/components/modules/Reservations';
 import GuestList from '@/components/modules/GuestList';
+import Receipts from '@/components/modules/Receipts';
 import KitchenDisplay from '@/components/modules/KitchenDisplay';
 import Reports from '@/components/modules/Reports';
 import SettingsPanel from '@/components/modules/SettingsPanel';
@@ -70,6 +71,9 @@ export default function POSApp({ initialModule = 'dashboard' }) {
 				break;
 			case 'guests':
 				content = <GuestList />;
+				break;
+			case 'receipts':
+				content = <Receipts />;
 				break;
 			case 'kitchen':
 				content = <KitchenDisplay />;
