@@ -142,3 +142,7 @@ Adds database-authoritative reservation race protection, a server-side available
 
 ## 0042 — Phase 2 Front Desk transactions
 Hardens atomic reservation check-in/check-out and links folio payments to the active cashier shift when one exists. Payment totals also update the reservation payment status.
+
+
+### 0043 — Phase 2C reservation workflow hardening
+Strengthens `fn_update_planner_reservation` validation, keeps reservation room/date changes server-authoritative, validates channel/meal-plan/guest counts, and prevents `amount_paid` from diverging from the payment ledger once ledger payments exist. Run after 0042 and refresh the PostgREST schema.
