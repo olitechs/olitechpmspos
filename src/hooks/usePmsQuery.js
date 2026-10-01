@@ -6,6 +6,7 @@ export const pmsQueryKeys = {
   roomTypes: (propertyId) => ['pms', 'room-types', propertyId],
   reservations: (propertyId) => ['pms', 'reservations', propertyId],
   guests: (propertyId) => ['pms', 'guests', propertyId],
+  guestHistory: (propertyId, guestId) => ['pms', 'guest-history', propertyId, guestId],
   ratePlans: (propertyId) => ['pms', 'rate-plans', propertyId],
   housekeeping: (propertyId) => ['pms', 'housekeeping', propertyId],
   housekeepingDashboard: (propertyId) => ['pms', 'housekeeping-dashboard', propertyId],
@@ -49,6 +50,15 @@ export function usePmsGuestsQuery(propertyId) {
     queryFn: () => pmsService.listGuests(propertyId),
     enabled: Boolean(propertyId),
     staleTime: 60_000,
+  });
+}
+
+export function usePmsGuestHistoryQuery({ propertyId, guestId }) {
+  return useQuery({
+    queryKey: pmsQueryKeys.guestHistory(propertyId, guestId),
+    queryFn: () => pmsService.listGuestHistory({ propertyId, guestId }),
+    enabled: Boolean(propertyId && guestId),
+    staleTime: 15_000,
   });
 }
 
