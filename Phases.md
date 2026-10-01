@@ -372,3 +372,29 @@ Research references: Loyverse open tickets, bill printing and synchronization; T
 - [ ] Migration 0044 executed against deployment Supabase.
 - [ ] npm build/lint/typecheck pass locally.
 - [ ] Manual multi-round table regression completed.
+
+
+## Phase 2F — Open-check settlement integrity
+
+Implemented additively on top of Phase 2E:
+
+- Settlement is now an atomic database transaction against the persistent table session; the same open check cannot be successfully settled twice.
+- POS receipts are linked to the exact table-session record, giving Cashier/Night Audit a durable check-to-receipt relationship.
+- Payment allocations are persisted independently for Cash, Card, M-Pesa and Room Charge, allowing one check to be settled with multiple methods.
+- Allocation totals must equal the final amount due; overpayment, underpayment and zero-value allocations are rejected server-side.
+- Room Charge allocations require an authorised cashier/manager and a real active checked-in reservation in the same property; the room folio receives only the room allocation amount.
+- Bill/proforma printing remains non-final; the final receipt is created only after successful settlement.
+- Settlement audit events record the table session, receipt, total, allocation methods/amounts and actor.
+- Existing KDS/printer, inventory deduction, Cashier shift and receipt-print retry behavior remain downstream of the authoritative settlement write.
+
+### Phase 2F Definition of Done
+
+- [x] Atomic open-check settlement RPC added.
+- [x] Duplicate settlement protection added through table-session locking and unique receipt linkage.
+- [x] Persisted multi-method payment allocations added.
+- [x] Room-folio settlement remains property-scoped and checked-in-stay validated.
+- [x] Split Cash/Card/M-Pesa/Room Charge allocation UI added.
+- [x] Settlement audit event persisted.
+- [ ] Migration 0045 executed against deployment Supabase.
+- [ ] npm build/lint/typecheck pass locally.
+- [ ] Manual settlement regression completed across single payment, split payment, room charge, failed print and refresh/reopen cases.
