@@ -119,13 +119,16 @@ export default function POSContainer() {
 		setActiveTab('floor');
 		setActiveTable(null);
 
-		const { id: kitchenOrderId, failedCenters } = await store.fireKitchenOrder({
+		const { id: kitchenOrderId, failedCenters, persisted } = await store.fireKitchenOrder({
 			table, orderLines: pendingLines, orderNumber,
 			buildTicketText: (center, lines) => buildKitchenTicketText(center, lines, { orderNumber, table }),
 		});
 
-		if (failedCenters.length === 0) {
+		if (persisted) {
 			store.markSessionSentLines(table.id, linesSnapshot);
+		}
+
+		if (failedCenters.length === 0) {
 			toast.success(`Round sent for ${tableLabel(table)}.`);
 			return;
 		}
