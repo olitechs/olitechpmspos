@@ -107,6 +107,12 @@ begin
     raise exception 'Total must be greater than zero.';
   end if;
 
+  select * into v_session
+  from public.pos_table_sessions
+  where id = p_table_session_id
+    and property_id = p_property_id
+  for update;
+
   select coalesce(sum(
     coalesce((line->>'price')::numeric, 0) * coalesce((line->>'qty')::numeric, 0)
   ), 0)
@@ -129,12 +135,6 @@ begin
   if abs(round(p_total,2) - round(v_session_subtotal - coalesce(p_discount_amount,0) + coalesce(p_vat,0),2)) > 0.009 then
     raise exception 'Settlement total does not match the persisted open check.';
   end if;
-
-  select * into v_session
-  from public.pos_table_sessions
-  where id = p_table_session_id
-    and property_id = p_property_id
-  for update;
 
   if v_session.id is null then
     raise exception 'Open table session not found.';
