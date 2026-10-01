@@ -103,4 +103,33 @@ export const platformService = {
 		return this.buildDashboardStats(properties);
 	},
 
+	async findUserByEmail(email) {
+		const { data, error } = await supabase.rpc('platform_find_user_by_email', { p_email: email.trim() });
+		if (error) throw new Error(error.message);
+		return Array.isArray(data) ? data[0] || null : data || null;
+	},
+
+	async createProperty(input) {
+		const { data, error } = await supabase.rpc('platform_create_property', {
+			p_name: input.name,
+			p_business_name: input.business_name || null,
+			p_property_type: input.property_type || null,
+			p_address: input.address || null,
+			p_country: input.country || null,
+			p_city: input.city || null,
+			p_phone: input.phone || null,
+			p_email: input.email || null,
+			p_website: input.website || null,
+			p_currency: input.currency || 'USD',
+			p_timezone: input.timezone || 'UTC',
+			p_business_registration: input.business_registration || null,
+			p_contact_person: input.contact_person || null,
+			p_status: input.status || 'active',
+			p_package: input.package || 'standard',
+			p_owner_user_id: input.ownerUserId || null,
+		});
+		if (error) throw new Error(error.message);
+		return data;
+	},
+
 };
