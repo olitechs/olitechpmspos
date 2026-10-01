@@ -274,3 +274,26 @@ Implemented incrementally without replacing the operational Room Planner:
 - [ ] Supabase migrations executed against the deployment database.
 - [ ] npm build/lint/typecheck pass locally.
 - [ ] Manual Room Rack → Reservation → Check-in → Folio → Payment → Check-out regression completed.
+
+
+## Phase 2B — Front Desk + Room Rack
+
+Implemented as an additive operational layer on top of the existing PMS:
+
+- Added `src/components/pms/RoomRack.jsx` with date-based room availability, room-type filtering, search, operational status and active guest/reservation context.
+- Room Rack availability is sourced from the server-authoritative `fn_get_available_rooms` RPC; the UI does not use client-side overlap checks to declare a room bookable.
+- Added direct Front Desk check-in from the Room Rack while continuing to use the existing server-authoritative check-in RPC.
+- Added refresh/re-fetch behavior after check-in so room state and date availability reconcile immediately.
+- Preserved Room Planner, joint reservations, Reservations, Room Management, RoomPanel, POS/KDS/printers, Cashier and Night Audit.
+- No component-level Supabase calls were introduced.
+
+### Phase 2B Definition of Done
+
+- [x] Dedicated Front Desk Room Rack view exists.
+- [x] Date-based availability comes from the database RPC.
+- [x] Room operational status and active reservation context are shown together.
+- [x] Check-in can be initiated from the Rack.
+- [x] Existing Room Planner and reservation workflows remain available.
+- [ ] Supabase migrations executed against the deployment database.
+- [ ] npm build/lint/typecheck pass locally.
+- [ ] Manual Rack → reservation → check-in → folio → payment → check-out regression completed.
