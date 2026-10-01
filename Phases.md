@@ -249,3 +249,28 @@ Security, performance, accessibility, offline behavior, financial reconciliation
 - [ ] Manual authorization regression is completed before Gate 1 approval.
 
 **Status: DRAFT - Awaiting Approval**
+
+
+## Phase 2A — Core PMS transaction foundation
+
+Implemented incrementally without replacing the operational Room Planner:
+
+- Database-authoritative reservation overlap protection with per-property/room transaction locks.
+- Server-side date-range available-room query for Room Rack/Planner consumers.
+- Folio charge/payment writes moved behind server-side RPC validation.
+- Initial reservation deposits are reconciled into the payment ledger.
+- Check-in and check-out are atomic and property-scoped; check-out leaves the room dirty for housekeeping.
+- Folio payments can be linked to the active cashier shift and update reservation payment status.
+- Folio reads and PMS reservation reads use the TanStack Query cache instead of component-owned server collections.
+- Existing joint reservations, Room Planner drag/move/group behavior, POS/KDS/printers, Cashier and Night Audit are preserved.
+
+### Phase 2A Definition of Done
+
+- [x] Reservation writes have database-level concurrency protection.
+- [x] Room availability is date-range based using `[arrival, departure)` semantics.
+- [x] Folio charge/payment mutations are property-scoped and server-validated.
+- [x] Check-in/out mutations are server-authoritative.
+- [x] Folio UI consumes property-scoped query state.
+- [ ] Supabase migrations executed against the deployment database.
+- [ ] npm build/lint/typecheck pass locally.
+- [ ] Manual Room Rack → Reservation → Check-in → Folio → Payment → Check-out regression completed.
