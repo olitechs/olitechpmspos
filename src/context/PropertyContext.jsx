@@ -49,6 +49,7 @@ export function PropertyProvider({ children }) {
     if (!propertyId) throw new Error('No active property.');
     const next = await propertyService.updateProperty(propertyId, patch);
     setPropertyOverride(next);
+    queryClient.setQueryData(propertyQueryKeys.detail(propertyId), next);
     return next;
   }, [propertyId, queryClient]);
 
