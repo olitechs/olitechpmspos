@@ -14,8 +14,8 @@ export const reservationFormSchema = dateRange(
     departure: z.string().min(1, 'Departure date is required.'),
     partySize: z.coerce.number().int().min(1, 'At least one guest is required.').max(50),
     rate: z.coerce.number().finite().min(0, 'Rate cannot be negative.').max(100000000),
-    channel: z.string().min(1),
-    mealPlan: z.string().min(1),
+    channel: z.enum(['direct', 'booking_com', 'unknown']),
+    mealPlan: z.enum(['bed_only', 'bb', 'half_board', 'full_board']),
   })
 );
 
