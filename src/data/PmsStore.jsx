@@ -94,6 +94,7 @@ export function PmsProvider({ children }) {
   const roomTypesQuery = usePmsRoomTypesQuery(propertyId);
   const reservationsQuery = usePmsReservationsQuery(propertyId);
   const guestsQuery = usePmsGuestsQuery(propertyId);
+  const [mutationError, setMutationError] = useState('');
 
   const rawRooms = roomsQuery.data || [];
   const roomTypes = roomTypesQuery.data || [];
@@ -124,11 +125,12 @@ export function PmsProvider({ children }) {
     guestsQuery.isLoading
   ) : false;
 
-  const error = roomsQuery.error
+  const queryError = roomsQuery.error
     ? roomsQuery.error.message
     : roomTypesQuery.error
       ? 'Room type setup is unavailable. Run the latest Supabase room setup migration.'
       : reservationsQuery.error?.message || guestsQuery.error?.message || '';
+  const error = mutationError || queryError;
 
   const reload = useCallback(async () => {
     if (!propertyId) return;
@@ -140,13 +142,16 @@ export function PmsProvider({ children }) {
     ]);
   }, [propertyId, roomsQuery, roomTypesQuery, reservationsQuery, guestsQuery]);
 
-  const runMutation = useCallback(async (operation) => {
+  const runMutation = useCallback(async (operation, { rethrow = false } = {}) => {
+    setMutationError('');
     try {
       const result = await operation();
       await reload();
       return result;
     } catch (err) {
-      throw err;
+      setMutationError(err?.message || 'Operation failed.');
+      if (rethrow) throw err;
+      return undefined;
     }
   }, [reload]);
 
@@ -185,25 +190,25 @@ export function PmsProvider({ children }) {
   })), [propertyId, runMutation]);
 
   const updatePlannerReservation = useCallback((id, patch) =>
-    runMutation(() => pmsService.updatePlannerReservation(id, patch)), [runMutation]);
+    runMutation(() => pmsService.updatePlannerReservation(id, patch), { rethrow: true }), [runMutation]);
 
   const addRoomToReservationGroup = useCallback((payload) =>
-    runMutation(() => pmsService.addRoomToReservationGroup(payload)), [runMutation]);
+    runMutation(() => pmsService.addRoomToReservationGroup(payload), { rethrow: true }), [runMutation]);
 
   const removeRoomFromReservationGroup = useCallback((id) =>
-    runMutation(() => pmsService.removeRoomFromReservationGroup(id)), [runMutation]);
+    runMutation(() => pmsService.removeRoomFromReservationGroup(id), { rethrow: true }), [runMutation]);
 
   const splitReservationGroup = useCallback((groupId) =>
-    runMutation(() => pmsService.splitReservationGroup(groupId)), [runMutation]);
+    runMutation(() => pmsService.splitReservationGroup(groupId), { rethrow: true }), [runMutation]);
 
   const deletePlannerReservation = useCallback((id) =>
-    runMutation(() => pmsService.deletePlannerReservation(id)), [runMutation]);
+    runMutation(() => pmsService.deletePlannerReservation(id), { rethrow: true }), [runMutation]);
 
   const movePlannerReservation = useCallback((payload) =>
-    runMutation(() => pmsService.movePlannerReservation(payload)), [runMutation]);
+    runMutation(() => pmsService.movePlannerReservation(payload), { rethrow: true }), [runMutation]);
 
   const moveReservationGroup = useCallback((payload) =>
-    runMutation(() => pmsService.moveReservationGroup(payload)), [runMutation]);
+    runMutation(() => pmsService.moveReservationGroup(payload), { rethrow: true }), [runMutation]);
 
   const removeReservation = useCallback((resId) =>
     runMutation(() => pmsService.removeReservation(resId)), [runMutation]);
