@@ -78,6 +78,16 @@ export const posService = {
     return data;
   },
 
+  async markSessionSentLines({ propertyId, tableKey, sentOrderLines = [] }) {
+    const { data, error } = await supabase.rpc('fn_mark_pos_table_sent_lines', {
+      p_property_id: propertyId,
+      p_table_key: tableKey,
+      p_sent_order_lines: Array.isArray(sentOrderLines) ? sentOrderLines : [],
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
   async closeSession({ propertyId, tableKey, orderLines = [] }) {
     return this.saveSession({
       propertyId,
