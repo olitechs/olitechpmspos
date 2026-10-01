@@ -33,18 +33,18 @@
     --font-body: ui-sans-serif, system-ui, sans-serif;
     --font-display: ui-sans-serif, system-ui, sans-serif;
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
-    --sidebar-background: 210 29% 4%;
-    --sidebar-foreground: 0 0% 100%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 210 29% 4%;
     --sidebar-primary: 50 100% 50%;
     --sidebar-primary-foreground: 210 29% 4%;
-    --sidebar-accent: 212 13% 16%;
-    --sidebar-accent-foreground: 50 100% 50%;
-    --sidebar-border: 212 13% 16%;
+    --sidebar-accent: 0 0% 96%;
+    --sidebar-accent-foreground: 210 29% 4%;
+    --sidebar-border: 0 0% 90%;
     --sidebar-ring: 50 100% 50%;
     --bg-app: #F8F8F7;
-    --bg-sidebar: #090C11;
-    --bg-sidebar-hover: #262B32;
-    --bg-topnav: #202020;
+    --bg-sidebar: #FFFFFF;
+    --bg-sidebar-hover: #F3F4F6;
+    --bg-topnav: #FFFFFF;
     --bg-card: #FFFFFF;
     --bg-card-secondary: #F2F2F2;
     --color-primary: #FFD300;
@@ -70,8 +70,6 @@
 
 @layer components {
   .app-shell { background: #F8F8F7; }
-  .app-shell > aside { width: 64px !important; min-width: 64px !important; max-width: 64px !important; background: #090C11 !important; }
-  .app-shell > aside button:hover { background: #262B32; }
   .app-shell input:focus, .app-shell select:focus, .app-shell textarea:focus {
     border-color: #FFD300 !important;
     box-shadow: 0 0 0 1px #FFD300;
