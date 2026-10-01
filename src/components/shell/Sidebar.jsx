@@ -4,7 +4,6 @@ import{UtensilsCrossed,Grid3X3,CalendarDays,ClipboardList,Sparkles,Users,Boxes,P
 import{useAuth}from"@/lib/AuthContext";
 import{getDefaultModulesForRole,getSessionStaff,normalizeStaffRole}from"@/services/authService";
 
-const COLORS={dark:"#121418",yellow:"#FFC400",muted:"#6B7280"};
 const MASTER_ROLES=new Set(["hotel_admin","super_admin"]);
 const SECTIONS=[
  {key:"general",title:"General",module:"backoffice",items:[
