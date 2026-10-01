@@ -8,7 +8,7 @@ function fmt(n) {
   return `KES ${n.toLocaleString('en-KE', { minimumFractionDigits: 0 })}`;
 }
 
-export default function OrderTaking({ table, orderLines, setOrderLines, onSendToKitchen, onBill, orderNumber: orderNumberProp }) {
+export default function OrderTaking({ table, orderLines, setOrderLines, onSendToKitchen, onBill, orderNumber: orderNumberProp, sentOrderLines = [] }) {
   const store = useStore();
   const [activeCategory, setActiveCategory] = useState(CATEGORIES[0]);
 
@@ -20,10 +20,15 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
     });
   };
 
+  const sentQty = (id) => Number(sentOrderLines.find((line) => line.id === id)?.qty || 0);
   const changeQty = (id, delta) => {
     setOrderLines((prev) =>
       prev
-        .map((l) => (l.id === id ? { ...l, qty: l.qty + delta } : l))
+        .map((l) => {
+          if (l.id !== id) return l;
+          const nextQty = l.qty + delta;
+          return { ...l, qty: Math.max(sentQty(id), nextQty) };
+        })
         .filter((l) => l.qty > 0)
     );
   };
@@ -89,8 +94,9 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
         </div>
       </div>
 
-      {/* Kitchen ticket */}
-      <div className="shrink-0 flex flex-col" style={{ width: '260px', background: NAVY, borderLeft: `1px solid ${BORDER_DARK}`, fontFamily: '"Courier New", Courier, monospace' }}>
+      {/* Running check / bill */}
+
+      <div className="shrink-0 flex flex-col" style={{ width: '360px', background: NAVY, borderLeft: `1px solid ${BORDER_DARK}`, fontFamily: '"Courier New", Courier, monospace' }}>
         <div className="px-4 py-3 text-center" style={{ borderBottom: `1px dashed ${BORDER_DARK}` }}>
           <div className="text-xs uppercase tracking-widest mb-1" style={{ color: TEAL_LIGHT }}>Visiwa Beach Resort</div>
           <div className="text-xs" style={{ color: MUTED_DARK }}>{orderNumber}</div>
@@ -100,24 +106,34 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-3 py-2">
+        <div className="flex-1 min-h-0 overflow-y-auto px-3 py-2">
+          <div className="mb-3 rounded-lg px-3 py-2" style={{ background: NAVY2, border: `1px solid ${BORDER_DARK}` }}>
+            <div className="mb-2 text-[10px] font-bold uppercase tracking-widest" style={{ color: TEAL_LIGHT }}>Placed orders</div>
+            {store.kitchenOrders.filter((o) => String(o.tableId) === String(table.id) || String(o.tableNumber) === String(table.number)).slice(0, 8).map((o) => (
+              <div key={o.id} className="mb-2 rounded-md px-2 py-2" style={{ background: '#111827', border: `1px solid ${BORDER_DARK}` }}>
+                <div className="flex items-center justify-between gap-2"><span className="text-[10px] font-bold text-white">{o.orderNumber || 'KOT'}</span><span className="text-[9px] uppercase" style={{ color: o.status === 'ready' ? TEAL_LIGHT : MUTED_DARK }}>{o.status || 'sent'}</span></div>
+                <div className="mt-1 space-y-0.5">{(o.orderLines || []).map((line, index) => <div key={`${o.id}-${line.id}-${index}`} className="flex justify-between gap-2 text-[10px]" style={{ color: '#D8E2EC' }}><span className="truncate">{line.qty}× {line.name}</span><span>{(Number(line.price || 0) * Number(line.qty || 0)).toLocaleString()}</span></div>)}</div>
+              </div>
+            ))}
+            {store.kitchenOrders.filter((o) => String(o.tableId) === String(table.id) || String(o.tableNumber) === String(table.number)).length === 0 && <div className="text-[10px]" style={{ color: MUTED_DARK }}>No kitchen round has been sent yet.</div>}
+          </div>
+
+          <div className="mb-1 text-[10px] font-bold uppercase tracking-widest" style={{ color: TEAL_LIGHT }}>Running bill</div>
           {orderLines.length === 0 ? (
-            <div className="text-center mt-8 text-xs" style={{ color: MUTED_DARK }}>Tap menu items<br />to add to ticket</div>
+            <div className="py-5 text-center text-xs" style={{ color: MUTED_DARK }}>Add items for the next round.</div>
           ) : (
-            orderLines.map((line) => (
-              <div key={line.id} className="flex items-center gap-1 py-1.5" style={{ borderBottom: `1px solid ${BORDER_DARK}` }}>
+            orderLines.map((line) => {
+              const locked = sentQty(line.id) >= Number(line.qty || 0);
+              return <div key={line.id} className="flex items-center gap-1 py-1.5" style={{ borderBottom: `1px solid ${BORDER_DARK}` }}>
                 <div className="flex items-center gap-0.5">
-                  <button onClick={() => changeQty(line.id, -1)} className="w-6 h-6 rounded text-xs font-bold flex items-center justify-center" style={{ background: NAVY2, color: MUTED_DARK }}>−</button>
+                  <button disabled={locked} onClick={() => changeQty(line.id, -1)} className="w-6 h-6 rounded text-xs font-bold flex items-center justify-center" style={{ background: locked ? '#111827' : NAVY2, color: locked ? '#4B5563' : MUTED_DARK }}>−</button>
                   <span className="w-5 text-center text-xs font-bold font-mono text-white">{line.qty}</span>
                   <button onClick={() => changeQty(line.id, 1)} className="w-6 h-6 rounded text-xs font-bold flex items-center justify-center" style={{ background: NAVY2, color: TEAL_LIGHT }}>+</button>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs leading-tight truncate" style={{ color: '#D8E2EC' }}>{line.name}</div>
-                  {line.center && <div className="text-xs" style={{ color: MUTED_DARK, fontSize: '10px' }}>{line.center}</div>}
-                </div>
+                <div className="flex-1 min-w-0"><div className="text-xs leading-tight truncate" style={{ color: '#D8E2EC' }}>{line.name}</div>{sentQty(line.id) > 0 && <div className="text-[9px]" style={{ color: MUTED_DARK }}>{sentQty(line.id)} sent · new additions {Math.max(0, line.qty - sentQty(line.id))}</div>}</div>
                 <div className="text-xs font-mono shrink-0" style={{ color: TEAL_LIGHT }}>{(line.price * line.qty).toLocaleString()}</div>
-              </div>
-            ))
+              </div>;
+            })
           )}
         </div>
 
@@ -137,7 +153,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
 
         <div className="px-3 pb-3 flex flex-col gap-2">
           <button
-            onClick={onSendToKitchen} disabled={orderLines.length === 0}
+            onClick={onSendToKitchen} disabled={orderLines.every((line) => Number(line.qty || 0) <= sentQty(line.id))}
             className="w-full py-3 rounded-xl text-sm font-bold transition-all active:scale-95"
             style={{ background: orderLines.length > 0 ? TEAL : NAVY2, color: orderLines.length > 0 ? '#fff' : MUTED_DARK, cursor: orderLines.length > 0 ? 'pointer' : 'not-allowed' }}
           >
