@@ -134,7 +134,7 @@ export default function POSApp({ initialModule = 'dashboard' }) {
 		<StoreProvider>
 			<PmsProvider>
 				<div className="app-shell flex h-screen w-screen overflow-hidden">
-					{!isMobile && <Sidebar activeModule={activeModule} onModuleChange={setActiveModule} />}
+					<Sidebar activeModule={activeModule} onModuleChange={setActiveModule} />
 					<div className="flex flex-col flex-1 min-w-0">
 						{showTopBar && <TopBar moduleLabel={currentModule?.label || ''} />}
 						<div className="flex-1 min-h-0 flex flex-col overflow-hidden">
