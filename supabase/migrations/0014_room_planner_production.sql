@@ -97,7 +97,7 @@ begin
       where r.room_id = v_room_id and r.status in ('booked','checked-in')
         and r.arrival < p_departure and p_arrival < r.departure
     ) then
-      raise exception 'Room % is already booked for part of those dates.', v_room_id;
+      raise exception using message = format('Room %s is already booked for part of those dates.', v_room_id);
     end if;
   end loop;
 
