@@ -343,3 +343,32 @@ Implemented additively:
 - [ ] Supabase migrations 0041–0043 executed against the deployment database.
 - [ ] npm build/lint/typecheck pass locally.
 - [ ] Full Room Rack → Reservation → Check-in → Folio → Payment → Check-out regression completed.
+
+
+## Phase 2E — Running table checks / open-order lifecycle
+
+Research-backed POS behavior applied from Loyverse, Toast, Lightspeed and hotel POS patterns:
+
+- A table remains an **open check** across multiple ordering rounds until settlement.
+- Previously fired items remain visible as historical/locked lines; later additions become a new round rather than re-firing the entire check.
+- Opening a table shows recent kitchen rounds plus the complete running bill.
+- The running total is calculated from the complete table order, while kitchen firing sends only newly added quantities.
+- Fired quantities cannot be accidentally reduced from the active check; additional quantities can still be added.
+- The existing kitchen printer/KDS workflow remains the operational source for each fired round.
+- Existing settlement flow remains available for Cash, Card, M-Pesa and Room Charge; room charge continues through PMS folio validation.
+- Existing persistent POS table sessions are extended with sent-line state so refreshes do not lose which items have already been fired.
+
+Research references: Loyverse open tickets, bill printing and synchronization; Toast open/paid/closed checks; Lightspeed additional-item firing; hotel POS room-charge patterns. citeturn1search1turn1search2turn1search0turn2search11turn1search13
+
+### Phase 2E Definition of Done
+
+- [x] Existing table session survives reopening and displays persisted order lines.
+- [x] Fired quantities are tracked separately from the live running check.
+- [x] Additional rounds fire only newly added quantities.
+- [x] Previously fired quantities are protected from accidental reduction.
+- [x] Recent KOT rounds are visible when the table is opened.
+- [x] Running bill remains visible with the complete order total.
+- [x] Existing payment and room-folio settlement path preserved.
+- [ ] Migration 0044 executed against deployment Supabase.
+- [ ] npm build/lint/typecheck pass locally.
+- [ ] Manual multi-round table regression completed.
