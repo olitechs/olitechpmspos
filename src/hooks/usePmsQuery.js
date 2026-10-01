@@ -6,6 +6,10 @@ export const pmsQueryKeys = {
   roomTypes: (propertyId) => ['pms', 'room-types', propertyId],
   reservations: (propertyId) => ['pms', 'reservations', propertyId],
   guests: (propertyId) => ['pms', 'guests', propertyId],
+  ratePlans: (propertyId) => ['pms', 'rate-plans', propertyId],
+  housekeeping: (propertyId) => ['pms', 'housekeeping', propertyId],
+  housekeepingDashboard: (propertyId) => ['pms', 'housekeeping-dashboard', propertyId],
+  laundry: (propertyId) => ['pms', 'laundry', propertyId],
 };
 
 export function usePmsRoomsQuery(propertyId) {
@@ -41,5 +45,41 @@ export function usePmsGuestsQuery(propertyId) {
     queryFn: () => pmsService.listGuests(propertyId),
     enabled: Boolean(propertyId),
     staleTime: 60_000,
+  });
+}
+
+export function usePmsRatePlansQuery(propertyId) {
+  return useQuery({
+    queryKey: pmsQueryKeys.ratePlans(propertyId),
+    queryFn: () => pmsService.listRatePlans(propertyId),
+    enabled: Boolean(propertyId),
+    staleTime: 60_000,
+  });
+}
+
+export function usePmsHousekeepingQuery(propertyId) {
+  return useQuery({
+    queryKey: pmsQueryKeys.housekeeping(propertyId),
+    queryFn: () => pmsService.listHousekeepingTasks(propertyId),
+    enabled: Boolean(propertyId),
+    staleTime: 10_000,
+  });
+}
+
+export function usePmsHousekeepingDashboardQuery(propertyId) {
+  return useQuery({
+    queryKey: pmsQueryKeys.housekeepingDashboard(propertyId),
+    queryFn: () => pmsService.getHousekeepingDashboard(propertyId),
+    enabled: Boolean(propertyId),
+    staleTime: 10_000,
+  });
+}
+
+export function usePmsLaundryQuery(propertyId) {
+  return useQuery({
+    queryKey: pmsQueryKeys.laundry(propertyId),
+    queryFn: () => pmsService.listLaundryOrders(propertyId),
+    enabled: Boolean(propertyId),
+    staleTime: 10_000,
   });
 }
