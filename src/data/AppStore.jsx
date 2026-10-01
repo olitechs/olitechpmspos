@@ -52,6 +52,7 @@ export function StoreProvider({ children }) {
           zoneId: row.zone_id || null,
           orderNumber: row.order_number || null,
           orderLines: Array.isArray(row.order_lines) ? row.order_lines : [],
+          sentOrderLines: Array.isArray(row.sent_order_lines) ? row.sent_order_lines : [],
         };
       }
       setSessions(next);
@@ -158,6 +159,18 @@ export function StoreProvider({ children }) {
       return next;
     });
   }, [persistSession]);
+
+  const markSessionSentLines = useCallback((id, sentOrderLines) => {
+    setSessions((prev) => {
+      if (!prev[id]) return prev;
+      const next = { ...prev, [id]: { ...prev[id], sentOrderLines: Array.isArray(sentOrderLines) ? sentOrderLines : [] } };
+      if (propertyId) {
+        posService.markSessionSentLines({ propertyId, tableKey: id, sentOrderLines: next[id].sentOrderLines })
+          .catch((error) => console.error('[POS] failed to persist fired-line state', error));
+      }
+      return next;
+    });
+  }, [propertyId]);
 
   const setSessionOrderLines = useCallback((id, orderLines, orderNumber = null) => {
     setSessions((prev) => {
@@ -541,7 +554,7 @@ export function StoreProvider({ children }) {
 
   const value = {
     zones, staff, sessions, printers, saleReceipts, kitchenOrders,
-    getSession, openTable, updateSessionTotals, setSessionOrderLines, setUnsettled, closeTable,
+    getSession, openTable, updateSessionTotals, setSessionOrderLines, markSessionSentLines, setUnsettled, closeTable,
     addZone, renameZone, removeZone, addTable, removeTable, updateTable, moveTable,
     addStaff, updateStaff, removeStaff,
     addPrinter, updatePrinter, removePrinter, togglePurpose,
@@ -556,7 +569,7 @@ export function StoreProvider({ children }) {
 // Null-safe hook: degrades to an inert fallback if ever called without a provider.
 const FALLBACK = {
   zones: [], staff: [], sessions: {}, printers: [], saleReceipts: [], kitchenOrders: [],
-  getSession: () => null, openTable: () => {}, updateSessionTotals: () => {}, setSessionOrderLines: () => {}, setUnsettled: () => {}, closeTable: () => {},
+  getSession: () => null, openTable: () => {}, updateSessionTotals: () => {}, setSessionOrderLines: () => {}, markSessionSentLines: () => {}, setUnsettled: () => {}, closeTable: () => {},
   addZone: () => {}, renameZone: () => {}, removeZone: () => {}, addTable: () => {}, removeTable: () => {}, updateTable: () => {}, moveTable: () => {},
   addStaff: () => {}, updateStaff: () => {}, removeStaff: () => {},
   addPrinter: () => {}, updatePrinter: () => {}, removePrinter: () => {}, togglePurpose: () => {},
