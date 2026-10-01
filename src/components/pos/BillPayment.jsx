@@ -42,7 +42,7 @@ function buildReceiptText({ orderNumber, table, orderLines, subtotal, discountAm
 // separate, independently-tracked outcomes. A failed print never cancels,
 // duplicates, or re-triggers the payment — retrying only resends the print
 // job for the same already-recorded sale.
-export default function BillPayment({ table, orderLines, onConfirmPayment }) {
+export default function BillPayment({ table, orderLines, onConfirmPayment, onBackToOrder }) {
   const store = useStore();
   const { user } = useAuth();
   const propertyId = user?.property?.id;
@@ -258,6 +258,13 @@ export default function BillPayment({ table, orderLines, onConfirmPayment }) {
 
       {/* Payment panel */}
       <div className="shrink-0 flex flex-col gap-4 p-4 overflow-y-auto" style={{ width: '280px' }}>
+        <button
+          onClick={onBackToOrder}
+          className="w-full rounded-xl px-3 py-2 text-xs font-bold"
+          style={{ background: SURFACE, color: NAVY, border: `1.5px solid ${BORDER}` }}
+        >
+          ← Add More Items
+        </button>
         {!hasBillPrinter && <PrintWarn message="No bill printer set — configure in Settings" />}
         <div>
           <div className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: MUTED }}>Payment Method</div>
