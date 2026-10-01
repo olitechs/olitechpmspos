@@ -272,7 +272,7 @@ export const authService = {
 
 
 	async requestPasswordReset({ email }) {
-		const redirectTo = typeof window !== 'undefined' ? `${window.location.origin}/reset-password` : undefined;
+		const redirectTo = 'https://olitechpmspos.vercel.app/reset-password';
 		await supabase.auth.resetPasswordForEmail((email || '').trim().toLowerCase(), { redirectTo });
 		// Always resolve successfully — don't reveal whether the email exists.
 		return { sent: true };
