@@ -181,6 +181,17 @@ export const pmsService = {
 		return data;
 	},
 
+	async listGuestHistory({ propertyId, guestId }) {
+		const { data, error } = await supabase
+			.from('reservations')
+			.select('id, room_id, guest_name, arrival, departure, status, rate, total_amount, amount_paid, payment_status, channel, meal_plan, created_at')
+			.eq('property_id', propertyId)
+			.eq('guest_id', guestId)
+			.order('arrival', { ascending: false });
+		if (error) throw new Error(error.message);
+		return data || [];
+	},
+
 	async listGuestSummaries(propertyId) {
 		const { data, error } = await supabase.from('guest_summary').select('*').eq('property_id', propertyId).order('name');
 		if (error) throw new Error(error.message);
