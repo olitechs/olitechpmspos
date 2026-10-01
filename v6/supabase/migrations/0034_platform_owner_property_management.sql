@@ -486,7 +486,7 @@ returns public.properties
 language plpgsql
 security definer
 set search_path = public
-as $
+as $$
 declare
   v_property public.properties;
   v_old_status public.property_status;
@@ -536,7 +536,7 @@ begin
 
   return v_property;
 end;
-$;
+$$;
 
 grant execute on function public.approve_property(uuid,public.property_package) to authenticated;
 revoke execute on function public.approve_property(uuid,public.property_package) from anon, public;
