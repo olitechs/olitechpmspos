@@ -19,17 +19,16 @@ export const reservationFormSchema = dateRange(
   })
 );
 
-export const walkInCheckInSchema = dateRange(
-  z.object({
+export const walkInCheckInSchema = z.object({
     name: z.string().trim().min(2, 'Guest name is required.').max(120),
     phone: z.string().trim().min(7, 'Enter a valid phone number.').max(30),
     checkIn: z.string().min(1, 'Check-in date is required.'),
     checkOut: z.string().min(1, 'Check-out date is required.'),
     partySize: z.coerce.number().int().min(1, 'At least one guest is required.').max(50),
     rate: z.coerce.number().finite().min(0, 'Rate cannot be negative.').max(100000000),
-  }, { errorMap: (issue, ctx) => ({ message: ctx.defaultError }) })
-    .transform((data) => ({ ...data, arrival: data.checkIn, departure: data.checkOut }))
-);
+  }).refine((data) => data.checkIn < data.checkOut, {
+    message: 'Check-out must be after check-in.', path: ['checkOut']
+  });
 
 export const propertyPatchSchema = z.object({
   name: z.string().trim().min(2).max(160).optional(),
