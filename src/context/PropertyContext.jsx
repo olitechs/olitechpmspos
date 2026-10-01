@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, useMemo, useState } from
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
 import { propertyService } from '@/services/propertyService';
-import { propertyQueryKeys } from '@/hooks/usePropertyQuery';
+import { propertyQueryKeys } from '@/hooks/propertyQueryKeys';
 
 const PropertyContext = createContext(null);
 
