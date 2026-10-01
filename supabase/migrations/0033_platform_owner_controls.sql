@@ -142,13 +142,13 @@ language sql
 security definer
 set search_path = public
 stable
-as $
+as $$
   select p.id, p.email, p.full_name
   from public.profiles p
   where public.is_platform_owner()
     and lower(p.email) = lower(trim(p_email))
   limit 1;
-$;
+$$;
 
 grant execute on function public.platform_find_user_by_email(text) to authenticated;
 revoke execute on function public.platform_find_user_by_email(text) from anon, public;
