@@ -149,7 +149,18 @@ export const pmsService = {
 			.eq('property_id', propertyId)
 			.order('arrival');
 		if (error) throw new Error(error.message);
-		return data;
+		return data || [];
+	},
+
+	async listAvailableRooms({ propertyId, arrival, departure, roomTypeId = null }) {
+		const { data, error } = await supabase.rpc('fn_get_available_rooms', {
+			p_property_id: propertyId,
+			p_arrival: arrival,
+			p_departure: departure,
+			p_room_type_id: roomTypeId,
+		});
+		if (error) throw new Error(error.message);
+		return data || [];
 	},
 
 	async listGuests(propertyId) {
@@ -175,9 +186,14 @@ export const pmsService = {
 	},
 
 	async recordPayment({ propertyId, reservationId, amount, method }) {
-		const shift = await this.getOpenCashierShift(propertyId);
-		const { error } = await supabase.from('payments').insert({ property_id: propertyId, reservation_id: reservationId, amount, method, shift_id: shift?.id || null });
+		const { data, error } = await supabase.rpc('fn_record_folio_payment', {
+			p_property_id: propertyId,
+			p_reservation_id: reservationId,
+			p_amount: Number(amount || 0),
+			p_method: method,
+		});
 		if (error) throw new Error(error.message);
+		return data;
 	},
 
 	async createReservationBundle({ propertyId, roomIds, groupId, guestName, phone, checkIn, checkOut, paymentStatus, channel, mealPlan, adults, kidsCount, kidsAges, totalAmount, amountPaid, notes }) {
@@ -433,9 +449,13 @@ export const pmsService = {
 	},
 
 	async addFolioCharge({ propertyId, reservationId, source = 'other', description, amount }) {
-		const { data, error } = await supabase.from('folio_charges').insert({
-			property_id: propertyId, reservation_id: reservationId, source, description, amount: Number(amount || 0),
-		}).select().single();
+		const { data, error } = await supabase.rpc('fn_add_folio_charge', {
+			p_property_id: propertyId,
+			p_reservation_id: reservationId,
+			p_source: source,
+			p_description: description,
+			p_amount: Number(amount || 0),
+		});
 		if (error) throw new Error(error.message);
 		return data;
 	},
