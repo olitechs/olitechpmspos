@@ -42,6 +42,7 @@ export function StoreProvider({ children }) {
       const next = {};
       for (const row of rows || []) {
         next[row.table_key] = {
+          id: row.id,
           status: row.status,
           guests: Number(row.guests || 1),
           waiter: row.waiter || '',
@@ -147,7 +148,7 @@ export function StoreProvider({ children }) {
   }, [propertyId]);
 
   const openTable = useCallback((id, { guests, waiter, tableNumber, zoneId, orderNumber = null }) => {
-    const next = { status: 'occupied', guests: Number(guests) || 1, waiter: waiter || '', openedAt: Date.now(), total: 0, orderCount: 0, tableNumber: String(tableNumber ?? ''), zoneId: zoneId || null, orderNumber, orderLines: [] };
+    const next = { id: null, status: 'occupied', guests: Number(guests) || 1, waiter: waiter || '', openedAt: Date.now(), total: 0, orderCount: 0, tableNumber: String(tableNumber ?? ''), zoneId: zoneId || null, orderNumber, orderLines: [], sentOrderLines: [] };
     setSessions((prev) => ({ ...prev, [id]: next }));
     persistSession(id, next);
   }, [persistSession]);
