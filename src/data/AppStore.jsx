@@ -150,8 +150,22 @@ export function StoreProvider({ children }) {
   const openTable = useCallback((id, { guests, waiter, tableNumber, zoneId, orderNumber = null }) => {
     const next = { id: null, status: 'occupied', guests: Number(guests) || 1, waiter: waiter || '', openedAt: Date.now(), total: 0, orderCount: 0, tableNumber: String(tableNumber ?? ''), zoneId: zoneId || null, orderNumber, orderLines: [], sentOrderLines: [] };
     setSessions((prev) => ({ ...prev, [id]: next }));
-    persistSession(id, next);
-  }, [persistSession]);
+    if (!propertyId) return;
+    posService.saveSession({
+      propertyId,
+      tableKey: id,
+      tableNumber: next.tableNumber,
+      zoneId: next.zoneId,
+      status: next.status,
+      guests: next.guests,
+      waiter: next.waiter,
+      orderNumber: next.orderNumber,
+      orderLines: [],
+    }).then((saved) => {
+      if (!saved?.id) return;
+      setSessions((prev) => prev[id] ? { ...prev, [id]: { ...prev[id], id: saved.id } } : prev);
+    }).catch((error) => console.error('[POS] failed to open table session', error));
+  }, [persistSession, propertyId]);
 
   const updateSessionTotals = useCallback((id, { total = 0, orderCount = 0 } = {}) => {
     setSessions((prev) => {
