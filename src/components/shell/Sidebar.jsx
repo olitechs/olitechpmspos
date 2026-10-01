@@ -10,16 +10,16 @@ const SECTIONS=[
  {key:"general",title:"General",module:"backoffice",items:[
   {id:"dashboard",label:"Dashboard",icon:LayoutDashboard,roles:["hotel_admin","super_admin","front_office_manager","receptionist","front_desk"],path:"/backoffice",active:["dashboard"]},
   {id:"pos",label:"Point of Sale",icon:UtensilsCrossed,roles:["hotel_admin","super_admin","pos_staff","waiter","cashier","fb_manager"],path:"/pos",active:["pos"]},
-  {id:"rooms",label:"Room Planner",icon:CalendarDays,roles:["hotel_admin","super_admin","front_office_manager","receptionist","front_desk","housekeeping_supervisor"],path:"/backoffice?module=rooms",active:["rooms"]},
+  {id:"night-audit",label:"Night Audit",icon:ClipboardCheck,roles:["hotel_admin","super_admin","fb_manager"],path:"/backoffice?module=night-audit",active:["night-audit"]},\n  {id:"rooms",label:"Room Planner",icon:CalendarDays,roles:["hotel_admin","super_admin","front_office_manager","receptionist","front_desk","housekeeping_supervisor"],path:"/backoffice?module=rooms",active:["rooms"]},
   {id:"reservations",label:"Reservations",icon:ClipboardList,roles:["hotel_admin","super_admin","front_office_manager","receptionist","front_desk"],path:"/backoffice?module=reservations",active:["reservations"]},
   {id:"guests",label:"Guests & Folio",icon:Users,roles:["hotel_admin","super_admin","front_office_manager","receptionist","front_desk"],path:"/backoffice?module=guests",active:["guests"]},
   {id:"receipts",label:"Receipts",icon:Receipt,roles:["hotel_admin","super_admin","front_office_manager","receptionist","front_desk"],path:"/backoffice?module=receipts",active:["receipts"]},
-  {id:"housekeeping",label:"Housekeeping",icon:Sparkles,roles:["hotel_admin","super_admin","front_office_manager","housekeeping_supervisor"],path:"/backoffice?module=housekeeping",active:["housekeeping"]},
+  {id:"maintenance",label:"Maintenance",icon:Settings,roles:["hotel_admin","super_admin","front_office_manager","housekeeping_supervisor"],path:"/backoffice?module=maintenance",active:["maintenance"]},\n  {id:"housekeeping",label:"Housekeeping",icon:Sparkles,roles:["hotel_admin","super_admin","front_office_manager","housekeeping_supervisor"],path:"/backoffice?module=housekeeping",active:["housekeeping"]},
  ]},
  {key:"tools",title:"Tools",module:"store",items:[
-  {id:"cashier",label:"Cashier Control",icon:Banknote,roles:["hotel_admin","super_admin","cashier","fb_manager"],path:"/backoffice?module=cashier",active:["cashier"]},
+  {id:"dining-tables",label:"Dining Tables",icon:Grid3X3,roles:["hotel_admin","super_admin","pos_staff","waiter","cashier","fb_manager"],path:"/pos",active:["pos","dining-tables"]},\n  {id:"cashier",label:"Cashier Control",icon:Banknote,roles:["hotel_admin","super_admin","cashier","fb_manager"],path:"/backoffice?module=cashier",active:["cashier"]},
   {id:"store",label:"Inventory & Stock",icon:Boxes,roles:["hotel_admin","super_admin","front_office_manager","store_manager","fb_manager","housekeeping_supervisor"],path:"/store",active:["store","inventory"]},
-  {id:"products",label:"Products",icon:Package,roles:["hotel_admin","super_admin","front_office_manager","store_manager","fb_manager"],path:"/store",active:["products"]},
+  {id:"inventory",label:"Inventory",icon:Package,roles:["hotel_admin","super_admin","front_office_manager","store_manager","fb_manager"],path:"/store",active:["inventory"]},\n  {id:"products",label:"Products",icon:Package,roles:["hotel_admin","super_admin","front_office_manager","store_manager","fb_manager"],path:"/store",active:["products"]},
   {id:"recipes",label:"Recipes / BOM",icon:ChefHat,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/store?module=recipes",active:["recipes"]},
   {id:"purchasing",label:"Purchasing",icon:ShoppingCart,roles:["hotel_admin","super_admin","front_office_manager","store_manager","fb_manager"],path:"/store?module=purchasing",active:["purchasing"]},
   {id:"laundry",label:"Laundry",icon:Shirt,roles:["hotel_admin","super_admin","front_office_manager","housekeeping_supervisor"],path:"/backoffice?module=laundry",active:["laundry"]},
@@ -36,6 +36,7 @@ const SECTIONS=[
 ];
 
 function getRole(user){const s=getSessionStaff();return normalizeStaffRole(s?.role||user?.staff?.role||user?.propertyRole||user?.role||"")}
+function itemModule(item){if(["pos","cashier","dining-tables"].includes(item.id))return"pos";if(["store","products","recipes","purchasing","laundry","transfers","booking-engine","channels","reports","inventory"].includes(item.id))return"store";return"backoffice"}
 function getAssigned(user,role){const s=getSessionStaff();const a=s?.assigned_modules??user?.staff?.assigned_modules;return Array.isArray(a)&&a.length?a:getDefaultModulesForRole(role)}
 
 export default function Sidebar({activeModule,onModuleChange,collapsed:collapsedProp,setCollapsed:setCollapsedProp,staffRole}){
@@ -45,7 +46,7 @@ export default function Sidebar({activeModule,onModuleChange,collapsed:collapsed
  const collapsed=typeof collapsedProp==="boolean"?collapsedProp:stored;
  const setCollapsed=v=>{if(setCollapsedProp)setCollapsedProp(v);else{setStored(v);try{localStorage.setItem("olitech_sidebar_collapsed",String(v))}catch{}}};
  const role=normalizeStaffRole(staffRole||getRole(user));const assigned=useMemo(()=>getAssigned(user,role),[user,role]);const master=user?.isPlatformOwner||MASTER_ROLES.has(role);
- const canAccess=item=>master||item.roles.includes(role)&&((SECTIONS.find(s=>s.items.includes(item))?.module==="admin")||assigned.includes(SECTIONS.find(s=>s.items.includes(item))?.module));
+ const canAccess=item=>master||item.roles.includes(role)&&(itemModule(item)==="admin"||assigned.includes(itemModule(item)));
  const sections=SECTIONS.map(s=>({...s,items:s.items.filter(canAccess)})).filter(s=>s.items.length);
  const hotelName=user?.property?.name||user?.property?.business_name||"OliTechs Hotel";
  const initials=(user?.name||getSessionStaff()?.full_name||"OT").split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join("").toUpperCase();
