@@ -1,99 +1,17 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
-import { Hotel, Mail, Lock, Loader2 } from "lucide-react";
-import AuthLayout from "@/components/ui/AuthLayout";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useAuth } from "@/lib/AuthContext";
+import React,{useState}from"react";
+import{Link}from"react-router-dom";
+import{Building2,Mail,Lock,Eye,EyeOff,Loader2}from"lucide-react";
+import{useAuth}from"@/lib/AuthContext";
 
-export default function Login() {
-	const { login } = useAuth();
-	const [email, setEmail] = useState("");
-	const [password, setPassword] = useState("");
-	const [error, setError] = useState("");
-	const [loading, setLoading] = useState(false);
-
-	const handleSubmit = async (e) => {
-		e.preventDefault();
-		setError("");
-		setLoading(true);
-		try {
-			await login(email, password);
-		} catch (err) {
-			setError(err.message || "Failed to sign in");
-		} finally {
-			setLoading(false);
-		}
-	};
-
-	return (
-		<AuthLayout
-			icon={Hotel}
-			title="Welcome back"
-			subtitle="Sign in to OliTechs PMS & POS"
-			footer={
-				<>
-					Don't have an account?{" "}
-					<Link to="/register" className="text-primary font-medium hover:underline">
-						Create one
-					</Link>
-				</>
-			}
-		>
-			{error && (
-				<div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">{error}</div>
-			)}
-			<form onSubmit={handleSubmit} className="space-y-4">
-				<div className="space-y-2">
-					<Label htmlFor="email">Email</Label>
-					<div className="relative">
-						<Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
-						<Input
-							id="email"
-							type="email"
-							autoComplete="email"
-							autoFocus
-							placeholder="you@hotel.com"
-							value={email}
-							onChange={(e) => setEmail(e.target.value)}
-							className="pl-10 h-12"
-							required
-						/>
-					</div>
-				</div>
-				<div className="space-y-2">
-					<div className="flex items-center justify-between">
-						<Label htmlFor="password">Password</Label>
-						<Link to="/forgot-password" className="text-xs text-primary hover:underline">
-							Forgot password?
-						</Link>
-					</div>
-					<div className="relative">
-						<Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
-						<Input
-							id="password"
-							type="password"
-							autoComplete="current-password"
-							placeholder="••••••••"
-							value={password}
-							onChange={(e) => setPassword(e.target.value)}
-							className="pl-10 h-12"
-							required
-						/>
-					</div>
-				</div>
-				<Button type="submit" className="w-full h-12 font-medium" disabled={loading}>
-					{loading ? (
-						<>
-							<Loader2 className="w-4 h-4 mr-2 animate-spin" />
-							Signing in...
-						</>
-					) : (
-						"Sign in"
-					)}
-				</Button>
-			</form>
-		</AuthLayout>
-	);
+export default function Login(){
+ const{login}=useAuth();const[email,setEmail]=useState("");const[password,setPassword]=useState("");const[show,setShow]=useState(false);const[remember,setRemember]=useState(false);const[error,setError]=useState("");const[loading,setLoading]=useState(false);
+ const submit=async e=>{e.preventDefault();setError("");setLoading(true);try{if(remember)localStorage.setItem("olitech_remember_email","true");else localStorage.removeItem("olitech_remember_email");await login(email,password)}catch(err){setError(err.message||"Failed to sign in")}finally{setLoading(false)}};
+ return <main className="flex min-h-screen items-center justify-center bg-[#F7F6F3] px-4 py-8 sm:px-6"><div className="w-full max-w-[1120px] overflow-hidden rounded-[28px] bg-[#121418] shadow-[0_28px_70px_rgba(18,20,24,.18)]"><div className="grid min-h-[620px] md:grid-cols-[3fr_2fr]">
+ <section className="relative flex min-h-[340px] items-center overflow-hidden px-7 py-12 text-white sm:px-12 lg:px-16 md:min-h-[620px]"><div className="absolute -bottom-28 -left-24 h-72 w-72 rounded-full bg-[#FFC400]/10"/><div className="absolute -right-28 -top-28 h-80 w-80 rounded-full border border-white/5"/><div className="relative z-10 max-w-xl"><div className="mb-12 flex items-center gap-3"><div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#FFC400] text-[#121418]"><Building2 size={26}/></div><div><div className="text-sm font-black">OliTechs</div><div className="text-[9px] font-bold uppercase tracking-[.2em] text-white/50">PMS & POS</div></div></div><p className="mb-3 text-[11px] font-black uppercase tracking-[.28em] text-[#FFC400]">WELCOME</p><h1 className="text-3xl font-black leading-[1.08] tracking-[-.03em] sm:text-4xl lg:text-5xl">Welcome to OliTechs PMS & POS</h1><p className="mt-5 max-w-lg text-sm leading-7 text-white/65 sm:text-base">Manage your hotel operations, reservations, and point of sale from one powerful dashboard.</p></div></section>
+ <section className="relative flex items-center bg-[#121418] px-4 py-8 sm:px-8 md:-ml-12 md:py-12 lg:px-10"><div className="relative z-20 w-full rounded-[24px] border border-[#E5E7EB] bg-white p-6 text-[#121418] shadow-[0_24px_55px_rgba(0,0,0,.18)] sm:p-8 lg:p-9"><h2 className="text-2xl font-black sm:text-3xl">Sign in</h2><p className="mt-2 text-xs text-[#6B7280]">Access your OliTechs hotel operations dashboard.</p>{error&&<div role="alert" className="mt-5 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700">{error}</div>}<form onSubmit={submit} className="mt-6 space-y-4">
+ <div><label htmlFor="login-email" className="mb-1.5 block text-[11px] font-bold">User Name / Email</label><div className="relative"><Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#9CA3AF]" size={16}/><input id="login-email" type="email" autoComplete="email" autoFocus placeholder="you@hotel.com" value={email} onChange={e=>setEmail(e.target.value)} required className="h-12 w-full rounded-xl border border-[#E5E7EB] pl-10 text-sm outline-none focus:border-[#FFC400] focus:ring-4 focus:ring-[#FFC400]/15"/></div></div>
+ <div><label htmlFor="login-password" className="mb-1.5 block text-[11px] font-bold">Password</label><div className="relative"><Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#9CA3AF]" size={16}/><input id="login-password" type={show?"text":"password"} autoComplete="current-password" placeholder="Enter your password" value={password} onChange={e=>setPassword(e.target.value)} required className="h-12 w-full rounded-xl border border-[#E5E7EB] pl-10 pr-12 text-sm outline-none focus:border-[#FFC400] focus:ring-4 focus:ring-[#FFC400]/15"/><button type="button" onClick={()=>setShow(v=>!v)} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-[#6B7280]" aria-label={show?"Hide password":"Show password"}>{show?<EyeOff size={15}/>:<Eye size={15}/>}</button></div></div>
+ <div className="flex items-center justify-between gap-3"><label className="flex cursor-pointer items-center gap-2 text-[11px] text-[#6B7280]"><input type="checkbox" checked={remember} onChange={e=>setRemember(e.target.checked)} className="h-4 w-4 accent-[#FFC400]"/>Remember me</label><Link to="/forgot-password" className="text-[11px] font-bold hover:text-[#FFC400]">Forgot Password?</Link></div>
+ <button type="submit" disabled={loading} className="flex h-12 w-full items-center justify-center rounded-xl bg-[#FFC400] text-sm font-black text-[#121418] transition hover:bg-[#FFD60A] disabled:opacity-60">{loading?<><Loader2 className="mr-2 animate-spin" size={17}/>Signing in...</>:"Sign in"}</button></form><p className="mt-7 text-center text-xs text-[#6B7280]">Don't have an account? <Link to="/register" className="font-black underline decoration-[#FFC400] decoration-2 underline-offset-4 hover:text-[#FFC400]">Sign up</Link></p></div></section>
+ </div></div></main>
 }
