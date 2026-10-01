@@ -461,6 +461,7 @@ export function StoreProvider({ children }) {
     };
 
     let record = draft;
+    let persisted = false;
     if (propertyId) {
       try {
         const saved = await posService.createKitchenOrder({
@@ -472,7 +473,10 @@ export function StoreProvider({ children }) {
           orderLines,
           printJobs,
         });
-        if (saved?.id) record = { ...draft, id: saved.id, firedAt: saved.fired_at ? new Date(saved.fired_at).getTime() : draft.firedAt };
+        if (saved?.id) {
+          record = { ...draft, id: saved.id, firedAt: saved.fired_at ? new Date(saved.fired_at).getTime() : draft.firedAt };
+          persisted = true;
+        }
       } catch (error) {
         // Keep the POS usable if the new KDS migration has not reached the
         // connected Supabase project yet. Once 0036 is applied, the server row
@@ -511,7 +515,7 @@ export function StoreProvider({ children }) {
 
     const finalOrder = kitchenOrdersRef.current.find((o) => o.id === record.id) || record;
     const failedCenters = Object.entries(finalOrder.printJobs || {}).filter(([, j]) => j.status === PrintJobStatus.FAILED).map(([c]) => c);
-    return { id: record.id, failedCenters };
+    return { id: record.id, failedCenters, persisted };
   }, [orderPrinterForCenter, persistKitchenOrder, propertyId]);
 
   const storeStaffName = (table) => {
