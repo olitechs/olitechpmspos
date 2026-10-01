@@ -135,3 +135,10 @@ This migration is additive and does not rename prior migration files. It:
 The existing transactional reservation RPCs remain the preferred mutation path. The trigger is a second server-side integrity boundary.
 
 After applying 0040, verify tenant isolation with two authenticated property users: each user must be unable to read or write another property's rooms, guests, reservations, folios, payments or membership rows.
+
+
+## 0041 — Phase 2 Core PMS integrity
+Adds database-authoritative reservation race protection, a server-side available-room endpoint, reservation-deposit reconciliation into the folio payment ledger, and RPC-only folio charge/payment writes.
+
+## 0042 — Phase 2 Front Desk transactions
+Hardens atomic reservation check-in/check-out and links folio payments to the active cashier shift when one exists. Payment totals also update the reservation payment status.
