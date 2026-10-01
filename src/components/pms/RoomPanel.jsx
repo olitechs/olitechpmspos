@@ -1,4 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { walkInCheckInSchema } from '@/validation/pmsSchemas';
 import { X, User, Phone, Calendar, DoorOpen, LogOut } from 'lucide-react';
 import { usePms } from '@/data/PmsStore';
 import { NAVY, TEAL, DESTRUCTIVE, SAND, SURFACE, SURFACE2, BORDER, MUTED } from '@/data/palette';
@@ -9,13 +12,10 @@ function fmtKes(n) {
 
 export default function RoomPanel({ room, onClose }) {
 	const pms = usePms();
-	const [name, setName] = useState('');
-	const [phone, setPhone] = useState('');
-	const [checkIn, setCheckIn] = useState('');
-	const [checkOut, setCheckOut] = useState('');
-	const [partySize, setPartySize] = useState(1);
-	const [rate, setRate] = useState('');
-	const [error, setError] = useState('');
+	const { register, handleSubmit, formState: { errors, isSubmitting }, setError } = useForm({
+		resolver: zodResolver(walkInCheckInSchema),
+		defaultValues: { name: '', phone: '', checkIn: '', checkOut: '', partySize: 1, rate: room?.guest?.rate || 0 },
+	});
 
 	if (!room) return null;
 
@@ -24,19 +24,14 @@ export default function RoomPanel({ room, onClose }) {
 	const isOccupied = room.status === 'occupied';
 	const isHousekeepingState = ['dirty', 'cleaning', 'maintenance', 'out_of_service', 'blocked'].includes(room.status);
 
-	const submitCheckIn = () => {
-		if (!name || !phone || !checkIn || !checkOut) {
-			setError('Guest name, phone, check-in and check-out dates are required.');
-			return;
+	const submitCheckIn = async (data) => {
+		try {
+			await pms.checkInRoom(room.id, data);
+			onClose();
+		} catch (error) {
+			setError('root', { type: 'server', message: error?.message || 'Could not check in guest.' });
 		}
-		pms.checkInRoom(room.id, {
-			name, phone, checkIn, checkOut,
-			partySize: Number(partySize) || 1,
-			rate: Number(rate) || room.guest?.rate || 0,
-		});
-		onClose();
 	};
-
 	const handleCheckOut = () => {
 		pms.checkOutRoom(room.id);
 		onClose();
@@ -133,14 +128,14 @@ export default function RoomPanel({ room, onClose }) {
 
 							<label className="block text-xs font-semibold mb-1" style={{ color: NAVY }}>Guest name *</label>
 							<input
-								value={name} onChange={(e) => setName(e.target.value)}
+								{...register('name')}
 								className="w-full px-3 py-2.5 rounded-lg mb-3 text-sm outline-none"
 								style={{ background: SURFACE2, border: `1.5px solid ${BORDER}`, color: NAVY }}
 							/>
 
 							<label className="block text-xs font-semibold mb-1" style={{ color: NAVY }}>Phone *</label>
 							<input
-								value={phone} onChange={(e) => setPhone(e.target.value)}
+								{...register('phone')}
 								className="w-full px-3 py-2.5 rounded-lg mb-3 text-sm outline-none"
 								style={{ background: SURFACE2, border: `1.5px solid ${BORDER}`, color: NAVY }}
 							/>
@@ -149,7 +144,7 @@ export default function RoomPanel({ room, onClose }) {
 								<div>
 									<label className="block text-xs font-semibold mb-1" style={{ color: NAVY }}>Check-in *</label>
 									<input
-										type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)}
+										type="date" {...register('checkIn')}
 										className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
 										style={{ background: SURFACE2, border: `1.5px solid ${BORDER}`, color: NAVY }}
 									/>
@@ -157,7 +152,7 @@ export default function RoomPanel({ room, onClose }) {
 								<div>
 									<label className="block text-xs font-semibold mb-1" style={{ color: NAVY }}>Check-out *</label>
 									<input
-										type="date" value={checkOut} onChange={(e) => setCheckOut(e.target.value)}
+										type="date" {...register('checkOut')}
 										className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
 										style={{ background: SURFACE2, border: `1.5px solid ${BORDER}`, color: NAVY }}
 									/>
@@ -168,7 +163,7 @@ export default function RoomPanel({ room, onClose }) {
 								<div>
 									<label className="block text-xs font-semibold mb-1" style={{ color: NAVY }}>Party size</label>
 									<input
-										type="number" min="1" value={partySize} onChange={(e) => setPartySize(e.target.value)}
+										type="number" min="1" {...register('partySize')}
 										className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
 										style={{ background: SURFACE2, border: `1.5px solid ${BORDER}`, color: NAVY }}
 									/>
@@ -176,7 +171,7 @@ export default function RoomPanel({ room, onClose }) {
 								<div>
 									<label className="block text-xs font-semibold mb-1" style={{ color: NAVY }}>Rate/night</label>
 									<input
-										type="number" min="0" value={rate} onChange={(e) => setRate(e.target.value)}
+										type="number" min="0" {...register('rate')}
 										placeholder="KES"
 										className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
 										style={{ background: SURFACE2, border: `1.5px solid ${BORDER}`, color: NAVY }}
@@ -184,10 +179,10 @@ export default function RoomPanel({ room, onClose }) {
 								</div>
 							</div>
 
-							{error && <div className="text-xs mb-3" style={{ color: DESTRUCTIVE }}>{error}</div>}
+							{(Object.keys(errors).length > 0) && <div className="text-xs mb-3" style={{ color: DESTRUCTIVE }} role="alert">{errors.root?.message || errors.name?.message || errors.phone?.message || errors.checkIn?.message || errors.checkOut?.message || errors.rate?.message}</div>}
 
 							<button
-								onClick={submitCheckIn}
+								onClick={handleSubmit(submitCheckIn)}
 								className="w-full py-3 rounded-xl text-sm font-bold"
 								style={{ background: TEAL, color: '#090C11' }}
 							>
