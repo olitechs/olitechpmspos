@@ -34,14 +34,6 @@ export default function RoomManagement({ onChanged }) {
   const [view, setView] = useState('types');
   const [error, setError] = useState('');
 
-  const load = async () => {
-    if (!propertyId) return;
-    await Promise.all([
-      typesQuery.refetch(),
-      roomsQuery.refetch(),
-      ratePlansQuery.refetch(),
-    ]);
-  };
   useEffect(() => {
     const firstError = typesQuery.error || roomsQuery.error || ratePlansQuery.error;
     setError(firstError?.message || '');
