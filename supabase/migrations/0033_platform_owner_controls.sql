@@ -135,4 +135,22 @@ revoke execute on function public.platform_create_property(
   public.property_status,public.property_package,uuid
 ) from anon, public;
 
+
+create or replace function public.platform_find_user_by_email(p_email text)
+returns table(id uuid, email text, full_name text)
+language sql
+security definer
+set search_path = public
+stable
+as $
+  select p.id, p.email, p.full_name
+  from public.profiles p
+  where public.is_platform_owner()
+    and lower(p.email) = lower(trim(p_email))
+  limit 1;
+$;
+
+grant execute on function public.platform_find_user_by_email(text) to authenticated;
+revoke execute on function public.platform_find_user_by_email(text) from anon, public;
+
 notify pgrst, 'reload schema';
