@@ -133,11 +133,11 @@ export default function POSApp({ initialModule = 'dashboard' }) {
 	return (
 		<StoreProvider>
 			<PmsProvider>
-				<div className="app-shell flex h-screen w-screen overflow-hidden">
+				<div className="app-shell flex min-h-screen w-full bg-[#F9F9FA]">
 					<Sidebar activeModule={activeModule} onModuleChange={setActiveModule} />
-					<div className="flex flex-col flex-1 min-w-0">
+					<div className="flex min-w-0 flex-1 flex-col">
 						{showTopBar && <TopBar moduleLabel={currentModule?.label || ''} />}
-						<div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+						<div className="min-h-0 flex-1 overflow-y-auto">
 							<ErrorBoundary label={currentModule?.label || 'This section'}>
 								<RouteGuard module={activeModule === 'pos' || activeModule === 'cashier' ? 'pos' : activeModule === 'store' || activeModule === 'inventory' || activeModule === 'purchasing' || activeModule === 'recipes' || activeModule === 'transfers' || activeModule === 'channels' ? 'store' : 'backoffice'}>
 									{activeModule === 'settings' ? content : <PaywallGuard module={activeModule}>{content}</PaywallGuard>}
