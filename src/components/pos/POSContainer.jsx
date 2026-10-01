@@ -182,6 +182,7 @@ export default function POSContainer() {
 				{activeTab === 'order' && activeTable && (
 					<OrderTaking
 						table={activeTable}
+						tableSessionId={activeSession?.id || null}
 						orderLines={orderLines}
 						setOrderLines={setOrderLines}
 						onSendToKitchen={handleSendToKitchen}
