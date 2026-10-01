@@ -1,6 +1,6 @@
 import React,{useEffect,useMemo,useState}from"react";
 import{useLocation,useNavigate}from"react-router-dom";
-import{UtensilsCrossed,Grid3X3,CalendarDays,ClipboardList,Sparkles,Users,Boxes,Package,ShoppingCart,ChefHat,Shirt,ArrowRightLeft,Globe2,PlugZap,BarChart3,Banknote,ClipboardCheck,ShieldCheck,Settings,LockKeyhole,ChevronLeft,ChevronRight,ChevronDown,Menu,X,LayoutDashboard,Receipt,UserCircle}from"lucide-react";
+import{UtensilsCrossed,Grid3X3,CalendarDays,ClipboardList,Sparkles,Users,Boxes,Package,ShoppingCart,ChefHat,Shirt,ArrowRightLeft,Globe2,PlugZap,BarChart3,Banknote,ClipboardCheck,ShieldCheck,Settings,LockKeyhole,ChevronLeft,ChevronRight,ChevronDown,Menu,X,LayoutDashboard,Building2,Receipt,UserCircle}from"lucide-react";
 import{useAuth}from"@/lib/AuthContext";
 import{getDefaultModulesForRole,getSessionStaff,normalizeStaffRole}from"@/services/authService";
 
