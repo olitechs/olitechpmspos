@@ -152,6 +152,18 @@ export const pmsService = {
 		return data || [];
 	},
 
+	async checkRoomAvailability({ propertyId, roomId, arrival, departure, excludeReservationId = null }) {
+		const { data, error } = await supabase.rpc('fn_check_room_availability', {
+			p_property_id: propertyId,
+			p_room_id: roomId,
+			p_arrival: arrival,
+			p_departure: departure,
+			p_exclude_reservation_id: excludeReservationId,
+		});
+		if (error) throw new Error(error.message);
+		return data?.[0] || { available: false, conflict_type: 'unknown', conflict_message: 'Unable to verify room availability.' };
+	},
+
 	async listAvailableRooms({ propertyId, arrival, departure, roomTypeId = null }) {
 		const { data, error } = await supabase.rpc('fn_get_available_rooms', {
 			p_property_id: propertyId,
