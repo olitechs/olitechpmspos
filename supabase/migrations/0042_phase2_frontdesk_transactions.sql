@@ -97,6 +97,8 @@ begin
 end;
 $$;
 
+drop function if exists public.fn_record_folio_payment(uuid, uuid, numeric, text);
+
 create or replace function public.fn_record_folio_payment(
   p_property_id uuid,
   p_reservation_id uuid,
