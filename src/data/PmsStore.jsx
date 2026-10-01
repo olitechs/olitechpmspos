@@ -143,6 +143,8 @@ export function PmsProvider({ children }) {
       queryClient.invalidateQueries({ queryKey: pmsQueryKeys.roomTypes(propertyId) }),
       queryClient.invalidateQueries({ queryKey: pmsQueryKeys.reservations(propertyId) }),
       queryClient.invalidateQueries({ queryKey: pmsQueryKeys.guests(propertyId) }),
+      queryClient.invalidateQueries({ queryKey: ['pms', 'available-rooms', propertyId] }),
+      queryClient.invalidateQueries({ queryKey: ['pms', 'room-availability', propertyId] }),
     ]);
   }, [propertyId, queryClient]);
 
