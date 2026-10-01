@@ -150,3 +150,6 @@ Strengthens `fn_update_planner_reservation` validation, keeps reservation room/d
 
 ### 0044 — Phase 2E running table checks
 Adds sent_order_lines to persistent POS table sessions and an RPC for recording which quantities have already been fired to the kitchen. This supports multi-round open checks without re-firing previous items. Execute after 0043 and reload the PostgREST schema.
+
+### 0045 — Phase 2F open-check settlement integrity
+Adds atomic table-session settlement, persisted payment allocations for Cash/Card/M-Pesa/Room Charge, split-payment support, room-folio validation, table-session receipt linkage and settlement audit events. Execute after 0044 and reload the PostgREST schema.
