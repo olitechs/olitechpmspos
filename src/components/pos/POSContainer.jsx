@@ -155,6 +155,11 @@ export default function POSContainer() {
 		setActiveTab('bill');
 	};
 
+	const handleBackToOrder = () => {
+		if (!activeTable) return;
+		setActiveTab('order');
+	};
+
 	const handleConfirmPayment = () => {
 		if (!activeTable) return;
 		store.closeTable(activeTable.id);
@@ -191,6 +196,7 @@ export default function POSContainer() {
 						table={activeTable}
 						orderLines={orderLines}
 						onConfirmPayment={handleConfirmPayment}
+						onBackToOrder={handleBackToOrder}
 					/>
 				)}
 			</div>
