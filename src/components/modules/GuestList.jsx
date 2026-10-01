@@ -1,29 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Search } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
-import { pmsService } from '@/services/pmsService';
+import { usePmsGuestsQuery } from '@/hooks/usePmsQuery';
 import { NAVY, TEAL_DARK, SAND, SURFACE, SURFACE2, BORDER, MUTED } from '@/data/themePalette';
 
 export default function GuestList() {
 	const { user } = useAuth();
 	const propertyId = user?.property?.id;
 	const [query, setQuery] = useState('');
-	const [guests, setGuests] = useState([]);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState('');
-
-	useEffect(() => {
-		if (!propertyId) return;
-		let cancelled = false;
-		pmsService
-			.listGuestSummaries(propertyId)
-			.then((rows) => !cancelled && setGuests(rows))
-			.catch((err) => !cancelled && setError(err.message))
-			.finally(() => !cancelled && setLoading(false));
-		return () => {
-			cancelled = true;
-		};
-	}, [propertyId]);
+	const guestsQuery = usePmsGuestsQuery(propertyId);
+	const guests = guestsQuery.data || [];
+	const loading = guestsQuery.isLoading;
+	const error = guestsQuery.error?.message || '';
 
 	const filtered = guests.filter((g) => {
 		const name = String(g?.name || '');
