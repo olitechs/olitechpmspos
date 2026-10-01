@@ -141,3 +141,238 @@ begin
   end if;
 
 
+
+
+-- Reconcile split-payment allocations in cashier shift controls.
+create or replace function public.fn_close_cashier_shift(
+  p_shift_id uuid,
+  p_closing_cash_count numeric,
+  p_notes text default null
+) returns public.cashier_shifts
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_shift public.cashier_shifts;
+  v_cash_sales numeric := 0;
+  v_cash_payments numeric := 0;
+  v_refunds numeric := 0;
+begin
+  if p_closing_cash_count < 0 then raise exception 'Closing cash count cannot be negative.'; end if;
+
+  select * into v_shift from public.cashier_shifts where id = p_shift_id for update;
+  if v_shift.id is null then raise exception 'Cashier shift not found.'; end if;
+  if not (
+    public.is_platform_owner()
+    or v_shift.opened_by = auth.uid()
+    or public.property_role(v_shift.property_id) in ('owner','admin','manager')
+    or public.current_staff_role(v_shift.property_id) in ('hotel_admin','super_admin','fb_manager')
+  ) then raise exception 'Not allowed.'; end if;
+  if v_shift.status <> 'open' then raise exception 'Cashier shift is already closed.'; end if;
+
+  select coalesce(sum(a.amount),0) into v_cash_sales
+  from public.pos_payment_allocations a
+  join public.pos_receipts r on r.id = a.pos_receipt_id
+  where r.shift_id = p_shift_id and r.status = 'posted' and a.method = 'cash';
+
+  select coalesce(sum(r.total),0) into v_cash_sales
+  from public.pos_receipts r
+  where r.shift_id = p_shift_id
+    and r.payment_method = 'cash'
+    and r.status = 'posted'
+    and not exists (select 1 from public.pos_payment_allocations a where a.pos_receipt_id = r.id);
+
+  select coalesce(sum(amount),0) into v_cash_payments
+  from public.payments
+  where shift_id = p_shift_id and method = 'cash' and status = 'posted';
+
+  select coalesce(sum(amount),0) into v_refunds
+  from public.cashier_adjustments
+  where shift_id = p_shift_id and adjustment_type = 'refund' and status = 'approved';
+
+  v_shift.expected_cash := v_shift.opening_float + v_cash_sales + v_cash_payments - v_refunds;
+  v_shift.closing_cash_count := p_closing_cash_count;
+  v_shift.variance := p_closing_cash_count - v_shift.expected_cash;
+  v_shift.status := 'closed';
+  v_shift.closed_at := now();
+  v_shift.closing_notes := p_notes;
+
+  update public.cashier_shifts set
+    expected_cash = v_shift.expected_cash,
+    closing_cash_count = v_shift.closing_cash_count,
+    variance = v_shift.variance,
+    status = 'closed',
+    closed_at = v_shift.closed_at,
+    closing_notes = v_shift.closing_notes
+  where id = p_shift_id
+  returning * into v_shift;
+
+  return v_shift;
+end;
+$$;
+grant execute on function public.fn_close_cashier_shift(uuid,numeric,text) to authenticated;
+
+create or replace function public.fn_cashier_shift_summary(p_shift_id uuid)
+returns jsonb
+language plpgsql security definer set search_path = public
+as $$
+declare
+  v_property uuid;
+  v_opening numeric := 0;
+  v_cash numeric := 0;
+  v_card numeric := 0;
+  v_mpesa numeric := 0;
+  v_room numeric := 0;
+  v_refunds numeric := 0;
+  v_voids numeric := 0;
+  v_discounts numeric := 0;
+  v_expected numeric := 0;
+begin
+  select property_id, opening_float into v_property, v_opening from public.cashier_shifts where id = p_shift_id;
+  if v_property is null then raise exception 'Cashier shift not found.'; end if;
+  if not (
+    public.is_platform_owner()
+    or public.property_role(v_property) in ('owner','admin','manager')
+    or public.current_staff_role(v_property) in ('hotel_admin','super_admin','cashier','fb_manager')
+  ) then raise exception 'Not allowed.'; end if;
+
+  select
+    coalesce(sum(case when a.method='cash' then a.amount else 0 end),0),
+    coalesce(sum(case when a.method='card' then a.amount else 0 end),0),
+    coalesce(sum(case when a.method='mpesa' then a.amount else 0 end),0),
+    coalesce(sum(case when a.method='room' then a.amount else 0 end),0)
+  into v_cash, v_card, v_mpesa, v_room
+  from public.pos_payment_allocations a
+  join public.pos_receipts r on r.id=a.pos_receipt_id
+  where r.shift_id=p_shift_id and r.status='posted';
+
+  select
+    v_cash + coalesce(sum(case when r.payment_method='cash' then r.total else 0 end),0),
+    v_card + coalesce(sum(case when r.payment_method='card' then r.total else 0 end),0),
+    v_mpesa + coalesce(sum(case when r.payment_method='mpesa' then r.total else 0 end),0),
+    v_room + coalesce(sum(case when r.payment_method='room' then r.total else 0 end),0)
+  into v_cash, v_card, v_mpesa, v_room
+  from public.pos_receipts r
+  where r.shift_id=p_shift_id and r.status='posted'
+    and not exists (select 1 from public.pos_payment_allocations a where a.pos_receipt_id=r.id);
+
+  select coalesce(sum(amount),0) into v_refunds from public.cashier_adjustments where shift_id=p_shift_id and adjustment_type='refund' and status='approved';
+  select coalesce(sum(amount),0) into v_voids from public.cashier_adjustments where shift_id=p_shift_id and adjustment_type='void' and status='approved';
+  select coalesce(sum(amount),0) into v_discounts from public.cashier_adjustments where shift_id=p_shift_id and adjustment_type='discount' and status='approved';
+
+  v_expected := v_opening + v_cash - v_refunds;
+
+  return jsonb_build_object(
+    'shift_id', p_shift_id,
+    'opening_float', v_opening,
+    'cash_sales', v_cash,
+    'card_sales', v_card,
+    'mpesa_sales', v_mpesa,
+    'room_charges', v_room,
+    'refunds', v_refunds,
+    'voids', v_voids,
+    'discounts', v_discounts,
+    'expected_cash', v_expected
+  );
+end;
+$$;
+grant execute on function public.fn_cashier_shift_summary(uuid) to authenticated;
+
+-- Reconcile split-payment allocations in daily POS payment reporting.
+create or replace function public.fn_daily_pos_summary(
+  p_property_id uuid,
+  p_business_date date default (now() at time zone 'Africa/Nairobi')::date
+) returns jsonb
+language plpgsql security definer
+set search_path = public
+as $$
+declare
+  v_total numeric(12,2) := 0;
+  v_transactions integer := 0;
+  v_items jsonb := '[]'::jsonb;
+  v_payments jsonb := '[]'::jsonb;
+  v_hourly jsonb := '[]'::jsonb;
+begin
+  if not (public.is_platform_owner() or public.is_member_of_property(p_property_id)) then
+    raise exception 'Not allowed.';
+  end if;
+
+  select coalesce(sum(total), 0), count(*)::integer
+  into v_total, v_transactions
+  from public.pos_receipts
+  where property_id = p_property_id
+    and status = 'posted'
+    and (created_at at time zone 'Africa/Nairobi')::date = p_business_date;
+
+  select coalesce(jsonb_agg(row_to_json(x) order by x.amount desc), '[]'::jsonb)
+  into v_payments
+  from (
+    with payment_rows as (
+      select a.pos_receipt_id, a.method, a.amount
+      from public.pos_payment_allocations a
+      join public.pos_receipts r on r.id=a.pos_receipt_id
+      where r.property_id=p_property_id and r.status='posted'
+        and (r.created_at at time zone 'Africa/Nairobi')::date=p_business_date
+      union all
+      select r.id, r.payment_method, r.total
+      from public.pos_receipts r
+      where r.property_id=p_property_id and r.status='posted'
+        and (r.payment_method <> 'split')
+        and (r.created_at at time zone 'Africa/Nairobi')::date=p_business_date
+        and not exists (select 1 from public.pos_payment_allocations a where a.pos_receipt_id=r.id)
+    )
+    select method, count(distinct pos_receipt_id)::integer as transactions, round(sum(amount),2) as amount
+    from payment_rows
+    group by method
+  ) x;
+
+  with expanded as (
+    select
+      coalesce(nullif(item->>'name', ''), 'Unnamed item') as name,
+      coalesce((item->>'qty')::numeric, 0) as qty,
+      coalesce((item->>'quantity')::numeric, 0) as quantity,
+      coalesce((item->>'price')::numeric, 0) as price,
+      coalesce((item->>'total')::numeric, 0) as item_total
+    from public.pos_receipts r
+    cross join lateral jsonb_array_elements(coalesce(r.items, '[]'::jsonb)) item
+    where r.property_id = p_property_id and r.status='posted'
+      and (r.created_at at time zone 'Africa/Nairobi')::date=p_business_date
+  ),
+  normalized as (
+    select name,
+      sum(case when qty > 0 then qty when quantity > 0 then quantity else 1 end) as qty,
+      sum(case when item_total > 0 then item_total when price > 0 then price * case when qty > 0 then qty when quantity > 0 then quantity else 1 end else 0 end) as revenue
+    from expanded group by name
+  )
+  select coalesce(jsonb_agg(row_to_json(x) order by x.revenue desc), '[]'::jsonb)
+  into v_items
+  from (
+    select name, round(qty,2) as qty, round(revenue,2) as revenue
+    from normalized order by revenue desc limit 10
+  ) x;
+
+  select coalesce(jsonb_agg(row_to_json(x) order by x.hour), '[]'::jsonb)
+  into v_hourly
+  from (
+    select extract(hour from (created_at at time zone 'Africa/Nairobi'))::integer as hour,
+      round(sum(total),2) as revenue, count(*)::integer as transactions
+    from public.pos_receipts
+    where property_id=p_property_id and status='posted'
+      and (created_at at time zone 'Africa/Nairobi')::date=p_business_date
+    group by extract(hour from (created_at at time zone 'Africa/Nairobi'))
+    order by hour
+  ) x;
+
+  return jsonb_build_object(
+    'business_date', p_business_date,
+    'total_revenue', v_total,
+    'transactions', v_transactions,
+    'average_check', case when v_transactions>0 then round(v_total/v_transactions,2) else 0 end,
+    'payment_breakdown', v_payments,
+    'top_items', v_items,
+    'hourly_revenue', v_hourly
+  );
+end;
+$$;
+grant execute on function public.fn_daily_pos_summary(uuid,date) to authenticated;
+
+notify pgrst, 'reload schema';
