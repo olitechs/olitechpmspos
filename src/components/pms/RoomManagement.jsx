@@ -26,7 +26,6 @@ export default function RoomManagement({ onChanged }) {
   const ratePlans = ratePlansQuery.data || [];
   const [typeForm, setTypeForm] = useState(blankType);
   const [roomForm, setRoomForm] = useState(blankRoom);
-  const [ratePlans, setRatePlans] = useState([]);
   const [rateForm, setRateForm] = useState(blankRate);
   const [editingRate, setEditingRate] = useState(null);
   const [editingType, setEditingType] = useState(null);
