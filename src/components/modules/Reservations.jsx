@@ -299,7 +299,7 @@ function NewReservationModal({ propertyId, rooms, onClose, onCreate, busy }) {
           <Field label="Meal plan">
             <select className={inputClass} {...register('mealPlan')}>
               <option value="bed_only">Bed only</option>
-              <option value="bed_breakfast">Bed &amp; breakfast</option>
+              <option value="bb">Bed &amp; breakfast</option>
               <option value="half_board">Half board</option>
               <option value="full_board">Full board</option>
             </select>
