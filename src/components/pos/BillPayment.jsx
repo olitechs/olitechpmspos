@@ -65,12 +65,12 @@ export default function BillPayment({ table, tableSessionId, orderLines, onConfi
   // list of currently checked-in stays so the cashier picks a real guest
   // to bill, rather than typing a free-text room number.
   useEffect(() => {
-    if (paymentMethod !== 'room' || !propertyId) return;
+    if (!(paymentMethod === 'room' || (splitBill && Number(paymentAmounts.room || 0) > 0)) || !propertyId) return;
     pmsService
       .listActiveStays(propertyId)
       .then(setActiveStays)
       .catch((err) => setChargeError(err.message));
-  }, [paymentMethod, propertyId]);
+  }, [paymentMethod, propertyId, splitBill, paymentAmounts.room]);
 
   const subtotal = orderLines.reduce((s, l) => s + l.price * l.qty, 0);
   const discountAmt = discountPct ? Math.round(subtotal * (parseFloat(discountPct) / 100)) : 0;
@@ -290,7 +290,7 @@ export default function BillPayment({ table, tableSessionId, orderLines, onConfi
               </button>
             ))}
           </div>
-          {paymentMethod === 'room' && (
+          {(paymentMethod === 'room' || (splitBill && Number(paymentAmounts.room || 0) > 0)) && (
             <div className="mt-3">
               <label className="block text-xs font-semibold mb-1" style={{ color: NAVY }}>Charge to guest / room *</label>
               <select
@@ -344,7 +344,7 @@ export default function BillPayment({ table, tableSessionId, orderLines, onConfi
           </div>
           {splitBill && (
             <div className="space-y-2">
-              {PAYMENT_METHODS.map((method) => (
+              {PAYMENT_METHODS.filter((method) => method.id !== 'room' || canRoomCharge).map((method) => (
                 <div key={method.id} className="flex items-center gap-2">
                   <span className="w-24 text-xs font-semibold" style={{ color: NAVY }}>{method.label}</span>
                   <input type="number" min="0" step="0.01" value={paymentAmounts[method.id] || ''} onChange={(e) => setSplitAmount(method.id, e.target.value)}
