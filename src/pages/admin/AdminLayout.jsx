@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Building2, ScrollText, ShieldCheck, LogOut, UsersRound } from 'lucide-react';
+import { LayoutDashboard, Building2, ScrollText, ShieldCheck, LogOut, UsersRound, Plus } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 
 const NAV = [
