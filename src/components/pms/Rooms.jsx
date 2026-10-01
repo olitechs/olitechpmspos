@@ -3,6 +3,7 @@ import { usePms } from '@/data/PmsStore';
 import RoomPanel from '@/components/pms/RoomPanel';
 import RoomManagement from '@/components/pms/RoomManagement';
 import RoomPlanner from '@/components/pms/RoomPlanner';
+import RoomRack from '@/components/pms/RoomRack';
 import { NAVY, TEAL, SAND, SURFACE, SURFACE2, BORDER, MUTED, DESTRUCTIVE } from '@/data/palette';
 
 
@@ -10,22 +11,24 @@ import { NAVY, TEAL, SAND, SURFACE, SURFACE2, BORDER, MUTED, DESTRUCTIVE } from 
 
 export default function Rooms() {
   const pms = usePms();
-  const [tab, setTab] = useState('planner');
+  const [tab, setTab] = useState('rack');
   const [openRoom, setOpenRoom] = useState(null);
 
   return (
     <div className="flex flex-col h-full overflow-hidden" style={{ background: '#F5F3EF' }}>
       {/* Tabs */}
       <div className="flex items-center gap-2 px-4 pt-3 pb-2 shrink-0">
-        {['planner', 'reservations', 'management'].map((t) => (
+        {['rack', 'planner', 'reservations', 'management'].map((t) => (
           <button key={t} onClick={() => setTab(t)}
             className="px-5 py-2 rounded-full text-sm font-semibold"
             style={{ background: tab === t ? '#090C11' : 'transparent', color: tab === t ? '#FFFFFF' : '#757B81', border: `1.5px solid ${tab === t ? NAVY : BORDER}` }}>
-            {t === 'planner' ? 'Room Planner' : t === 'reservations' ? 'Reservations' : 'Room Types & Setup'}
+            {t === 'rack' ? 'Room Rack' : t === 'planner' ? 'Room Planner' : t === 'reservations' ? 'Reservations' : 'Room Types & Setup'}
           </button>
         ))}
         <div className="ml-auto text-xs" style={{ color: MUTED }}>Room operations</div>
       </div>
+
+      {tab === 'rack' && <div className="flex-1 min-h-0"><RoomRack /></div>}
 
       {tab === 'management' && <RoomManagement onChanged={pms.reload} />}
 
