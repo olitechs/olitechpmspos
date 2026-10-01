@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { authService } from '@/services/authService';
+import { authService, subscribeToAuthChanges } from '@/services/authService';
 import { setReturnTo, getReturnTo, clearReturnTo } from '@/lib/authReturnTo';
 
 const AuthContext = createContext(null);
@@ -40,9 +40,31 @@ export function AuthProvider({ children }) {
 	}, []);
 
 	useEffect(() => {
-		checkUserAuth();
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, []);
+    let active = true;
+
+    checkUserAuth();
+
+    const { data } = subscribeToAuthChanges(({ event }) => {
+      if (!active) return;
+      if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setAuthError({ type: 'auth_required' });
+        setAuthChecked(true);
+        return;
+      }
+
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        // Supabase owns the session. Re-hydrate the application user so
+        // property membership/role changes are reflected without a reload.
+        checkUserAuth();
+      }
+    });
+
+    return () => {
+      active = false;
+      data?.subscription?.unsubscribe?.();
+    };
+  }, [checkUserAuth]);
 
 	const navigateToLogin = useCallback(() => {
 		setReturnTo(location.pathname + location.search);
@@ -52,7 +74,6 @@ export function AuthProvider({ children }) {
 	const login = useCallback(async (email, password) => {
 		const loggedInUser = await authService.login({ email, password });
 		setUser(loggedInUser);
-		localStorage.setItem('olitech_token', 'supabase_session');
 		setAuthError(null);
 		setAuthChecked(true);
 		const dest = getReturnTo('/');
@@ -83,7 +104,6 @@ export function AuthProvider({ children }) {
 	const logout = useCallback(async () => {
 		await authService.logout();
 		setUser(null);
-		localStorage.removeItem('olitech_token');
 		try { sessionStorage.removeItem('olitech_module_access_v2'); sessionStorage.removeItem('olitech_active_staff_v2'); } catch {}
 		setAuthError({ type: 'auth_required' });
 		navigate('/login', { replace: true });
