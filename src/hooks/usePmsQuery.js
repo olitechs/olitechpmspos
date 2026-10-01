@@ -11,6 +11,7 @@ export const pmsQueryKeys = {
   housekeepingDashboard: (propertyId) => ['pms', 'housekeeping-dashboard', propertyId],
   laundry: (propertyId) => ['pms', 'laundry', propertyId],
   availableRooms: (propertyId, arrival, departure, roomTypeId = null) => ['pms', 'available-rooms', propertyId, arrival, departure, roomTypeId],
+  roomAvailability: (propertyId, roomId, arrival, departure, excludeReservationId = null) => ['pms', 'room-availability', propertyId, roomId, arrival, departure, excludeReservationId],
   folio: (reservationId) => ['pms', 'folio', reservationId],
   payments: (reservationId) => ['pms', 'payments', reservationId],
 };
@@ -84,6 +85,15 @@ export function usePmsLaundryQuery(propertyId) {
     queryFn: () => pmsService.listLaundryOrders(propertyId),
     enabled: Boolean(propertyId),
     staleTime: 10_000,
+  });
+}
+
+export function usePmsRoomAvailabilityQuery({ propertyId, roomId, arrival, departure, excludeReservationId = null }) {
+  return useQuery({
+    queryKey: pmsQueryKeys.roomAvailability(propertyId, roomId, arrival, departure, excludeReservationId),
+    queryFn: () => pmsService.checkRoomAvailability({ propertyId, roomId, arrival, departure, excludeReservationId }),
+    enabled: Boolean(propertyId && roomId && arrival && departure && departure > arrival),
+    staleTime: 2_000,
   });
 }
 
