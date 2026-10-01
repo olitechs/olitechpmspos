@@ -109,6 +109,83 @@ export const platformService = {
 		return Array.isArray(data) ? data[0] || null : data || null;
 	},
 
+	async updateProperty(input) {
+		const { data, error } = await supabase.rpc('platform_update_property', {
+			p_property_id: input.id,
+			p_name: input.name,
+			p_business_name: input.business_name || null,
+			p_property_type: input.property_type || null,
+			p_address: input.address || null,
+			p_country: input.country || null,
+			p_city: input.city || null,
+			p_phone: input.phone || null,
+			p_email: input.email || null,
+			p_website: input.website || null,
+			p_currency: input.currency || 'USD',
+			p_timezone: input.timezone || 'UTC',
+			p_business_registration: input.business_registration || null,
+			p_contact_person: input.contact_person || null,
+		});
+		if (error) throw new Error(error.message);
+		return data;
+	},
+
+	async setStatusManaged(propertyId, status) {
+		const { data, error } = await supabase.rpc('platform_set_property_status', { p_property_id: propertyId, p_status: status });
+		if (error) throw new Error(error.message);
+		return data;
+	},
+
+	async setPackageManaged(propertyId, pkg) {
+		const { data, error } = await supabase.rpc('platform_set_property_package', { p_property_id: propertyId, p_package: pkg });
+		if (error) throw new Error(error.message);
+		return data;
+	},
+
+	async assignOwner(propertyId, userId) {
+		const { data, error } = await supabase.rpc('platform_assign_property_owner', { p_property_id: propertyId, p_owner_user_id: userId });
+		if (error) throw new Error(error.message);
+		return data;
+	},
+
+	async listPropertyMembers(propertyId) {
+		const { data, error } = await supabase.rpc('platform_list_property_members', { p_property_id: propertyId });
+		if (error) throw new Error(error.message);
+		return data || [];
+	},
+
+	async setPropertyMember(propertyId, userId, role) {
+		const { data, error } = await supabase.rpc('platform_set_property_member', { p_property_id: propertyId, p_user_id: userId, p_role: role });
+		if (error) throw new Error(error.message);
+		return data;
+	},
+
+	async removePropertyMember(propertyId, userId) {
+		const { data, error } = await supabase.rpc('platform_remove_property_member', { p_property_id: propertyId, p_user_id: userId });
+		if (error) throw new Error(error.message);
+		return data;
+	},
+
+	async updateSubscription(input) {
+		const { data, error } = await supabase.rpc('platform_update_subscription', {
+			p_property_id: input.propertyId,
+			p_plan_code: input.planCode,
+			p_status: input.status,
+			p_trial_ends_at: input.trialEndsAt || null,
+			p_current_period_ends_at: input.currentPeriodEndsAt || null,
+			p_grace_ends_at: input.graceEndsAt || null,
+			p_enabled_modules: input.enabledModules || [],
+		});
+		if (error) throw new Error(error.message);
+		return data;
+	},
+
+	async getSubscription(propertyId) {
+		const { data, error } = await supabase.rpc('fn_get_subscription', { p_property_id: propertyId });
+		if (error) throw new Error(error.message);
+		return data;
+	},
+
 	async createProperty(input) {
 		const { data, error } = await supabase.rpc('platform_create_property', {
 			p_name: input.name,
