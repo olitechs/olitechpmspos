@@ -186,11 +186,13 @@ export const pmsService = {
 	},
 
 	async recordPayment({ propertyId, reservationId, amount, method }) {
+		const shift = await this.getOpenCashierShift(propertyId);
 		const { data, error } = await supabase.rpc('fn_record_folio_payment', {
 			p_property_id: propertyId,
 			p_reservation_id: reservationId,
 			p_amount: Number(amount || 0),
 			p_method: method,
+			p_shift_id: shift?.id || null,
 		});
 		if (error) throw new Error(error.message);
 		return data;
