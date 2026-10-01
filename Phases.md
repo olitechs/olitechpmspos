@@ -323,3 +323,23 @@ Implemented an additive hardening pass across reservation creation and editing:
 - [ ] Supabase migration 0043 executed against the deployment database.
 - [ ] npm build/lint/typecheck pass locally.
 - [ ] Manual Front Desk regression completed.
+
+
+## Phase 2D — Guest profile history and PMS reconciliation
+
+Implemented additively:
+
+- Added a property-scoped guest stay-history query so reception can inspect persisted reservation history without reconstructing it from local store state.
+- Upgraded Guest List's existing View action into a profile drawer showing visit count, spend, contact/country data and reservation history.
+- Kept the existing guest summary/list query and property-scoped architecture intact.
+- Corrected the Front Desk meal-plan option so Bed & breakfast submits the database value bb.
+- No reservation, Room Planner, POS, KDS, printer, Cashier or Night Audit workflow was removed or rewritten.
+
+### Phase 2D Definition of Done
+
+- [x] Guest profile history is persisted and queryable by guest/property.
+- [x] Guest List can open an operational guest profile/history view.
+- [x] Reservation meal-plan UI value matches the server contract.
+- [ ] Supabase migrations 0041–0043 executed against the deployment database.
+- [ ] npm build/lint/typecheck pass locally.
+- [ ] Full Room Rack → Reservation → Check-in → Folio → Payment → Check-out regression completed.
