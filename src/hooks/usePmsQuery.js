@@ -10,6 +10,9 @@ export const pmsQueryKeys = {
   housekeeping: (propertyId) => ['pms', 'housekeeping', propertyId],
   housekeepingDashboard: (propertyId) => ['pms', 'housekeeping-dashboard', propertyId],
   laundry: (propertyId) => ['pms', 'laundry', propertyId],
+  availableRooms: (propertyId, arrival, departure, roomTypeId = null) => ['pms', 'available-rooms', propertyId, arrival, departure, roomTypeId],
+  folio: (reservationId) => ['pms', 'folio', reservationId],
+  payments: (reservationId) => ['pms', 'payments', reservationId],
 };
 
 export function usePmsRoomsQuery(propertyId) {
@@ -81,5 +84,32 @@ export function usePmsLaundryQuery(propertyId) {
     queryFn: () => pmsService.listLaundryOrders(propertyId),
     enabled: Boolean(propertyId),
     staleTime: 10_000,
+  });
+}
+
+export function usePmsAvailableRoomsQuery({ propertyId, arrival, departure, roomTypeId = null }) {
+  return useQuery({
+    queryKey: pmsQueryKeys.availableRooms(propertyId, arrival, departure, roomTypeId),
+    queryFn: () => pmsService.listAvailableRooms({ propertyId, arrival, departure, roomTypeId }),
+    enabled: Boolean(propertyId && arrival && departure && departure > arrival),
+    staleTime: 5_000,
+  });
+}
+
+export function usePmsFolioQuery(reservationId) {
+  return useQuery({
+    queryKey: pmsQueryKeys.folio(reservationId),
+    queryFn: () => pmsService.getFolio(reservationId),
+    enabled: Boolean(reservationId),
+    staleTime: 5_000,
+  });
+}
+
+export function usePmsPaymentsQuery(reservationId) {
+  return useQuery({
+    queryKey: pmsQueryKeys.payments(reservationId),
+    queryFn: () => pmsService.listPayments(reservationId),
+    enabled: Boolean(reservationId),
+    staleTime: 5_000,
   });
 }
