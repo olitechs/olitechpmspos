@@ -139,7 +139,7 @@ export default function POSApp({ initialModule = 'dashboard' }) {
 						{showTopBar && <TopBar moduleLabel={currentModule?.label || ''} />}
 						<div className="flex-1 min-h-0 flex flex-col overflow-hidden">
 							<ErrorBoundary label={currentModule?.label || 'This section'}>
-								<RouteGuard module={activeModule === 'pos' ? 'pos' : activeModule === 'store' || activeModule === 'inventory' || activeModule === 'purchasing' || activeModule === 'recipes' || activeModule === 'transfers' || activeModule === 'channels' ? 'store' : 'backoffice'}>
+								<RouteGuard module={activeModule === 'pos' || activeModule === 'cashier' ? 'pos' : activeModule === 'store' || activeModule === 'inventory' || activeModule === 'purchasing' || activeModule === 'recipes' || activeModule === 'transfers' || activeModule === 'channels' ? 'store' : 'backoffice'}>
 									{activeModule === 'settings' ? content : <PaywallGuard module={activeModule}>{content}</PaywallGuard>}
 								</RouteGuard>
 							</ErrorBoundary>
