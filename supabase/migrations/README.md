@@ -120,3 +120,18 @@ Adds server-side fired kitchen/bar orders and KDS status transitions (`new` → 
 
 ### 0037 — Persistent printer configuration
 Persists property-level printer definitions, routing purposes, centers, and connection settings. Live connection state is intentionally reset to `Not Configured` on reload because USB/Bluetooth/network connectivity is device-specific.
+
+
+### 0040 — Phase 1 security hardening
+Apply `0040_phase1_security_hardening.sql` after the existing migration set.
+
+This migration is additive and does not rename prior migration files. It:
+- prevents non-platform hotel admins from moving a membership to another property;
+- validates that reservation rooms/guests belong to the reservation property;
+- validates that folio charges/payments belong to the reservation property;
+- rejects invalid reservation date ranges;
+- adds a server-side reservation-overlap guard for direct authenticated writes.
+
+The existing transactional reservation RPCs remain the preferred mutation path. The trigger is a second server-side integrity boundary.
+
+After applying 0040, verify tenant isolation with two authenticated property users: each user must be unable to read or write another property's rooms, guests, reservations, folios, payments or membership rows.
