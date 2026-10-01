@@ -31,10 +31,6 @@ function nextDayIso(value) {
   return d.toISOString().slice(0, 10);
 }
 
-function overlaps(aStart, aEnd, bStart, bEnd) {
-  return aStart < bEnd && bStart < aEnd;
-}
-
 function Field({ label, children }) {
   return (
     <label className="block">
@@ -297,8 +293,7 @@ function NewReservationModal({ propertyId, rooms, onClose, onCreate, busy }) {
             <select className={inputClass} {...register('channel')}>
               <option value="direct">Direct</option>
               <option value="booking_com">Booking.com</option>
-              <option value="agent">Agent</option>
-              <option value="ota">OTA</option>
+              <option value="unknown">Agent / OTA / Other</option>
             </select>
           </Field>
           <Field label="Meal plan">
@@ -331,7 +326,6 @@ function ReservationDrawer({ reservation: r, rooms, pms, busy, onClose, onRun })
   const propertyId = user?.property?.id;
   const [moveRoomId, setMoveRoomId] = useState(r.roomId || '');
   const [newDeparture, setNewDeparture] = useState(r.checkOut || '');
-  const [amountPaid] = useState(String(r.amountPaid || 0));
   const roomAvailabilityQuery = usePmsRoomAvailabilityQuery({ propertyId, roomId: moveRoomId, arrival: r.checkIn, departure: newDeparture || r.checkOut, excludeReservationId: r.id });
 
   const save = async (patch) => {
@@ -347,7 +341,7 @@ function ReservationDrawer({ reservation: r, rooms, pms, busy, onClose, onRun })
       kidsCount: patch.kidsCount ?? r.kidsCount,
       kidsAges: patch.kidsAges ?? r.kidsAges,
       totalAmount: patch.totalAmount ?? r.totalAmount,
-      amountPaid: patch.amountPaid ?? Number(amountPaid || 0),
+      amountPaid: patch.amountPaid ?? Number(r.amountPaid || 0),
       notes: patch.notes ?? r.notes,
     }));
   };
@@ -401,7 +395,7 @@ function ReservationDrawer({ reservation: r, rooms, pms, busy, onClose, onRun })
               <Info label="Total" value={money(r.totalAmount)} />
               <Info label="Amount paid" value={money(r.amountPaid)} />
             </div>
-            <button disabled={busy} className={buttonClass + " mt-3 bg-slate-950 text-white"} onClick={() => save({ amountPaid: Number(amountPaid || 0), paymentStatus: Number(amountPaid || 0) >= Number(r.totalAmount || 0) && Number(r.totalAmount || 0) > 0 ? 'fully_paid' : Number(amountPaid || 0) > 0 ? 'partially_paid' : 'not_paid' })}>Update payment status</button>
+            <p className="mt-3 text-xs text-slate-500">Payments are recorded through Folio/Cashier so the reservation payment ledger stays synchronized.</p>
           </section>
 
           <div className="flex flex-wrap gap-2 border-t border-slate-200 pt-4">
