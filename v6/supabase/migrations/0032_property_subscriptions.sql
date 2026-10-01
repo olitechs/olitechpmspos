@@ -14,6 +14,17 @@ create table if not exists public.property_subscriptions (
   updated_by uuid references auth.users(id)
 );
 
+-- Repair missing columns before policies/functions on partially-created installations.
+alter table public.property_subscriptions
+  add column if not exists plan_code text default 'starter',
+  add column if not exists status text default 'trial',
+  add column if not exists trial_ends_at timestamptz,
+  add column if not exists current_period_ends_at timestamptz,
+  add column if not exists grace_ends_at timestamptz,
+  add column if not exists enabled_modules text[] default '{}',
+  add column if not exists updated_at timestamptz default now(),
+  add column if not exists updated_by uuid;
+
 alter table public.property_subscriptions enable row level security;
 
 drop policy if exists property_subscriptions_select on public.property_subscriptions;
@@ -156,6 +167,18 @@ create table if not exists public.subscription_events (
   processed_at timestamptz,
   unique(provider,external_event_id)
 );
+
+-- Repair missing columns before policies/functions on partially-created installations.
+alter table public.subscription_events
+  add column if not exists property_id uuid,
+  add column if not exists event_type text,
+  add column if not exists provider text,
+  add column if not exists external_event_id text,
+  add column if not exists status text default 'received',
+  add column if not exists payload jsonb default '{}'::jsonb,
+  add column if not exists error_message text,
+  add column if not exists created_at timestamptz default now(),
+  add column if not exists processed_at timestamptz;
 
 alter table public.subscription_events enable row level security;
 
