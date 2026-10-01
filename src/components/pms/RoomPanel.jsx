@@ -12,7 +12,7 @@ function fmtKes(n) {
 
 export default function RoomPanel({ room, onClose }) {
 	const pms = usePms();
-	const { register, handleSubmit, formState: { errors, isSubmitting }, setError } = useForm({
+	const { register, handleSubmit, formState: { errors }, setError } = useForm({
 		resolver: zodResolver(walkInCheckInSchema),
 		defaultValues: { name: '', phone: '', checkIn: '', checkOut: '', partySize: 1, rate: room?.guest?.rate || 0 },
 	});
