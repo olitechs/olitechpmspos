@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
+import { useQueryClient } from '@tanstack/react-query';
 import { pmsService } from '@/services/pmsService';
 import {
   usePmsRoomsQuery,
@@ -7,6 +8,7 @@ import {
   usePmsReservationsQuery,
   usePmsGuestsQuery,
 } from '@/hooks/usePmsQuery';
+
 
 const PmsContext = createContext(null);
 
@@ -89,6 +91,7 @@ function mapReservation(r, roomsById, roomTypesById = new Map()) {
 export function PmsProvider({ children }) {
   const { user } = useAuth();
   const propertyId = user?.property?.id;
+  const queryClient = useQueryClient();
 
   const roomsQuery = usePmsRoomsQuery(propertyId);
   const roomTypesQuery = usePmsRoomTypesQuery(propertyId);
@@ -135,12 +138,12 @@ export function PmsProvider({ children }) {
   const reload = useCallback(async () => {
     if (!propertyId) return;
     await Promise.all([
-      roomsQuery.refetch(),
-      roomTypesQuery.refetch(),
-      reservationsQuery.refetch(),
-      guestsQuery.refetch(),
+      queryClient.invalidateQueries({ queryKey: pmsQueryKeys.rooms(propertyId) }),
+      queryClient.invalidateQueries({ queryKey: pmsQueryKeys.roomTypes(propertyId) }),
+      queryClient.invalidateQueries({ queryKey: pmsQueryKeys.reservations(propertyId) }),
+      queryClient.invalidateQueries({ queryKey: pmsQueryKeys.guests(propertyId) }),
     ]);
-  }, [propertyId, roomsQuery, roomTypesQuery, reservationsQuery, guestsQuery]);
+  }, [propertyId, queryClient]);
 
   const runMutation = useCallback(async (operation, { rethrow = false } = {}) => {
     setMutationError('');
