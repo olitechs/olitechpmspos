@@ -229,4 +229,23 @@ PMS/POS/housekeeping/cashier workflows must pass before advanced reporting.
 
 Security, performance, accessibility, offline behavior, financial reconciliation and regression testing must pass.
 
+
+### Phase 1F — Authorization boundary hardening
+
+- Centralized route authorization predicates in `src/lib/authorization.js`.
+- `/admin/*` is now strictly reserved for the OliTechs platform owner; hotel administrator/staff roles cannot enter the platform-admin surface.
+- Protected hotel access now uses the centralized active-property predicate instead of duplicating status/package logic in `App.jsx`.
+- Preserved the existing hotel workspace routes and existing POS/KDS/printer/Cashier/Night Audit functionality.
+- Server enforcement remains authoritative through Supabase Auth, RLS and platform-owner RPC checks; these client guards are UX/routing boundaries, not security substitutes.
+
+### Phase 1F Definition of Done
+
+- [ ] Platform owner can reach `/admin/*`.
+- [ ] Hotel administrator/staff is redirected to `/backoffice` when attempting `/admin/*`.
+- [ ] Unauthenticated users are redirected to `/admin/login` for `/admin/*`.
+- [ ] Active hotel users retain `/backoffice`, `/pos`, `/store`, and `/rooms` access according to existing application rules.
+- [ ] No POS/KDS/printer/Cashier/Night Audit code path is rewritten.
+- [ ] Build/lint/typecheck pass locally.
+- [ ] Manual authorization regression is completed before Gate 1 approval.
+
 **Status: DRAFT - Awaiting Approval**
