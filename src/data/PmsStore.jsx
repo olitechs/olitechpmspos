@@ -187,7 +187,7 @@ export function PmsProvider({ children }) {
     totalAmount: Number(data.totalAmount ?? data.rate ?? 0),
     amountPaid: Number(data.amountPaid || 0),
     notes: data.notes || '',
-  })), [propertyId, runMutation]);
+  }), { rethrow: true }), [propertyId, runMutation]);
 
   const updatePlannerReservation = useCallback((id, patch) =>
     runMutation(() => pmsService.updatePlannerReservation(id, patch), { rethrow: true }), [runMutation]);
