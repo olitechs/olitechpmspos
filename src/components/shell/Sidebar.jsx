@@ -1,4 +1,4 @@
-import React,{useEffect,useMemo,useState}from"react";
+import React,{useMemo,useState}from"react";
 import{useLocation,useNavigate}from"react-router-dom";
 import{UtensilsCrossed,Grid3X3,CalendarDays,ClipboardList,Sparkles,Users,Boxes,Package,ShoppingCart,ChefHat,Shirt,ArrowRightLeft,Globe2,PlugZap,BarChart3,Banknote,ClipboardCheck,ShieldCheck,Settings,ChevronLeft,ChevronRight,ChevronDown,Menu,X,LayoutDashboard,Building2,Receipt}from"lucide-react";
 import{useAuth}from"@/lib/AuthContext";
@@ -9,16 +9,20 @@ const SECTIONS=[
  {key:"general",title:"General",module:"backoffice",items:[
   {id:"dashboard",label:"Dashboard",icon:LayoutDashboard,roles:["hotel_admin","super_admin","front_office_manager","receptionist","front_desk"],path:"/backoffice",active:["dashboard"]},
   {id:"pos",label:"Point of Sale",icon:UtensilsCrossed,roles:["hotel_admin","super_admin","pos_staff","waiter","cashier","fb_manager"],path:"/pos",active:["pos"]},
-  {id:"night-audit",label:"Night Audit",icon:ClipboardCheck,roles:["hotel_admin","super_admin","fb_manager"],path:"/backoffice?module=night-audit",active:["night-audit"]},\n  {id:"rooms",label:"Room Planner",icon:CalendarDays,roles:["hotel_admin","super_admin","front_office_manager","receptionist","front_desk","housekeeping_supervisor"],path:"/backoffice?module=rooms",active:["rooms"]},
+  {id:"night-audit",label:"Night Audit",icon:ClipboardCheck,roles:["hotel_admin","super_admin","fb_manager"],path:"/backoffice?module=night-audit",active:["night-audit"]},
+  {id:"rooms",label:"Room Planner",icon:CalendarDays,roles:["hotel_admin","super_admin","front_office_manager","receptionist","front_desk","housekeeping_supervisor"],path:"/backoffice?module=rooms",active:["rooms"]},
   {id:"reservations",label:"Reservations",icon:ClipboardList,roles:["hotel_admin","super_admin","front_office_manager","receptionist","front_desk"],path:"/backoffice?module=reservations",active:["reservations"]},
   {id:"guests",label:"Guests & Folio",icon:Users,roles:["hotel_admin","super_admin","front_office_manager","receptionist","front_desk"],path:"/backoffice?module=guests",active:["guests"]},
   {id:"receipts",label:"Receipts",icon:Receipt,roles:["hotel_admin","super_admin","front_office_manager","receptionist","front_desk"],path:"/backoffice?module=receipts",active:["receipts"]},
-  {id:"maintenance",label:"Maintenance",icon:Settings,roles:["hotel_admin","super_admin","front_office_manager","housekeeping_supervisor"],path:"/backoffice?module=maintenance",active:["maintenance"]},\n  {id:"housekeeping",label:"Housekeeping",icon:Sparkles,roles:["hotel_admin","super_admin","front_office_manager","housekeeping_supervisor"],path:"/backoffice?module=housekeeping",active:["housekeeping"]},
+  {id:"maintenance",label:"Maintenance",icon:Settings,roles:["hotel_admin","super_admin","front_office_manager","housekeeping_supervisor"],path:"/backoffice?module=maintenance",active:["maintenance"]},
+  {id:"housekeeping",label:"Housekeeping",icon:Sparkles,roles:["hotel_admin","super_admin","front_office_manager","housekeeping_supervisor"],path:"/backoffice?module=housekeeping",active:["housekeeping"]},
  ]},
  {key:"tools",title:"Tools",module:"store",items:[
-  {id:"dining-tables",label:"Dining Tables",icon:Grid3X3,roles:["hotel_admin","super_admin","pos_staff","waiter","cashier","fb_manager"],path:"/pos",active:["pos","dining-tables"]},\n  {id:"cashier",label:"Cashier Control",icon:Banknote,roles:["hotel_admin","super_admin","cashier","fb_manager"],path:"/backoffice?module=cashier",active:["cashier"]},
+  {id:"dining-tables",label:"Dining Tables",icon:Grid3X3,roles:["hotel_admin","super_admin","pos_staff","waiter","cashier","fb_manager"],path:"/pos",active:["pos","dining-tables"]},
+  {id:"cashier",label:"Cashier Control",icon:Banknote,roles:["hotel_admin","super_admin","cashier","fb_manager"],path:"/backoffice?module=cashier",active:["cashier"]},
   {id:"store",label:"Inventory & Stock",icon:Boxes,roles:["hotel_admin","super_admin","front_office_manager","store_manager","fb_manager","housekeeping_supervisor"],path:"/store",active:["store","inventory"]},
-  {id:"inventory",label:"Inventory",icon:Package,roles:["hotel_admin","super_admin","front_office_manager","store_manager","fb_manager"],path:"/store",active:["inventory"]},\n  {id:"products",label:"Products",icon:Package,roles:["hotel_admin","super_admin","front_office_manager","store_manager","fb_manager"],path:"/store",active:["products"]},
+  {id:"inventory",label:"Inventory",icon:Package,roles:["hotel_admin","super_admin","front_office_manager","store_manager","fb_manager"],path:"/store",active:["inventory"]},
+  {id:"products",label:"Products",icon:Package,roles:["hotel_admin","super_admin","front_office_manager","store_manager","fb_manager"],path:"/store",active:["products"]},
   {id:"recipes",label:"Recipes / BOM",icon:ChefHat,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/store?module=recipes",active:["recipes"]},
   {id:"purchasing",label:"Purchasing",icon:ShoppingCart,roles:["hotel_admin","super_admin","front_office_manager","store_manager","fb_manager"],path:"/store?module=purchasing",active:["purchasing"]},
   {id:"laundry",label:"Laundry",icon:Shirt,roles:["hotel_admin","super_admin","front_office_manager","housekeeping_supervisor"],path:"/backoffice?module=laundry",active:["laundry"]},
