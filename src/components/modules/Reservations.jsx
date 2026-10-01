@@ -7,6 +7,8 @@ import {
   Plus, RefreshCw, Search, Trash2, X
 } from 'lucide-react';
 import { usePms } from '@/data/PmsStore';
+import { useAuth } from '@/lib/AuthContext';
+import { usePmsAvailableRoomsQuery, usePmsRoomAvailabilityQuery } from '@/hooks/usePmsQuery';
 
 const STATUS = {
   booked: 'Booked',
@@ -21,6 +23,12 @@ function money(value) {
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function nextDayIso(value) {
+  const d = new Date(value + 'T00:00:00');
+  d.setDate(d.getDate() + 1);
+  return d.toISOString().slice(0, 10);
 }
 
 function overlaps(aStart, aEnd, bStart, bEnd) {
@@ -51,19 +59,11 @@ export default function Reservations() {
 
   const reservations = pms.reservations || [];
   const rooms = pms.rooms || [];
-
-  const occupiedRoomIds = useMemo(() => {
-    const ids = new Set();
-    reservations.forEach((r) => {
-      if (r.status === 'cancelled' || r.status === 'checked_out') return;
-      if (r.checkIn && r.checkOut && overlaps(selectedDate, selectedDate + 'T23:59:59', r.checkIn, r.checkOut)) {
-        ids.add(r.roomId);
-      }
-    });
-    return ids;
-  }, [reservations, selectedDate]);
-
-  const availableRooms = rooms.filter((room) => room.status !== 'maintenance' && room.status !== 'out_of_service' && !occupiedRoomIds.has(room.id));
+  const { user } = useAuth();
+  const propertyId = user?.property?.id;
+  const selectedDateDeparture = nextDayIso(selectedDate);
+  const availableTodayQuery = usePmsAvailableRoomsQuery({ propertyId, arrival: selectedDate, departure: selectedDateDeparture });
+  const availableRooms = availableTodayQuery.data || [];
 
   const rows = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -202,7 +202,7 @@ export default function Reservations() {
         </div>
       </div>
 
-      {showNew && <NewReservationModal rooms={availableRooms} onClose={() => setShowNew(false)} onCreate={createReservation} busy={busy} />}
+      {showNew && <NewReservationModal propertyId={propertyId} rooms={rooms} onClose={() => setShowNew(false)} onCreate={createReservation} busy={busy} />}
       {selected && <ReservationDrawer reservation={selected} rooms={rooms} pms={pms} busy={busy} onClose={() => setSelected(null)} onRun={run} />}
     </div>
   );
@@ -225,10 +225,11 @@ function QueueCard({ title, items, actionLabel, onAction }) {
   );
 }
 
-function NewReservationModal({ rooms, onClose, onCreate, busy }) {
+function NewReservationModal({ propertyId, rooms, onClose, onCreate, busy }) {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(reservationFormSchema),
@@ -237,7 +238,7 @@ function NewReservationModal({ rooms, onClose, onCreate, busy }) {
       phone: '',
       roomId: rooms[0]?.id || '',
       arrival: todayIso(),
-      departure: todayIso(),
+      departure: nextDayIso(todayIso()),
       partySize: 1,
       rate: 0,
       channel: 'direct',
@@ -249,6 +250,12 @@ function NewReservationModal({ rooms, onClose, onCreate, busy }) {
     await onCreate(data);
   };
 
+  const watchArrival = watch('arrival');
+  const watchDeparture = watch('departure');
+  const watchRoomId = watch('roomId');
+  const availableQuery = usePmsAvailableRoomsQuery({ propertyId, arrival: watchArrival, departure: watchDeparture });
+  const availableIds = new Set((availableQuery.data || []).map((room) => room.id));
+  const selectedRoomAvailable = Boolean(watchRoomId && availableIds.has(watchRoomId));
   const fieldError = (name) => errors[name]?.message;
 
   return (
@@ -266,7 +273,7 @@ function NewReservationModal({ rooms, onClose, onCreate, busy }) {
           <Field label="Room">
             <select className={inputClass} {...register('roomId')} aria-invalid={Boolean(errors.roomId)}>
               <option value="">Select room</option>
-              {rooms.map((r) => <option key={r.id} value={r.id}>Room {r.number} · {r.roomTypeName || r.roomType || 'Room'}</option>)}
+              {(availableQuery.data || []).map((r) => <option key={r.id} value={r.id}>Room {r.number} · {r.room_type_name || r.roomTypeName || r.roomType || 'Room'}</option>)}
             </select>
             {fieldError('roomId') && <p className="mt-1 text-xs text-red-600">{fieldError('roomId')}</p>}
           </Field>
@@ -289,7 +296,7 @@ function NewReservationModal({ rooms, onClose, onCreate, busy }) {
           <Field label="Channel">
             <select className={inputClass} {...register('channel')}>
               <option value="direct">Direct</option>
-              <option value="booking.com">Booking.com</option>
+              <option value="booking_com">Booking.com</option>
               <option value="agent">Agent</option>
               <option value="ota">OTA</option>
             </select>
@@ -303,6 +310,8 @@ function NewReservationModal({ rooms, onClose, onCreate, busy }) {
             </select>
           </Field>
         </div>
+        {availableQuery.isError && <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">Room availability could not be verified. Refresh and try again.</div>}
+        {watchRoomId && !availableQuery.isLoading && !selectedRoomAvailable && !availableQuery.isError && <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800" role="alert">The selected room is no longer available for these dates. Choose another room.</div>}
         {Object.keys(errors).length > 0 && (
           <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
             Please correct the highlighted fields before creating the reservation.
@@ -310,7 +319,7 @@ function NewReservationModal({ rooms, onClose, onCreate, busy }) {
         )}
         <div className="flex justify-end gap-2 border-t border-slate-200 pt-4">
           <button type="button" className={buttonClass + " border border-slate-200 bg-white"} onClick={onClose}>Cancel</button>
-          <button disabled={busy} className={buttonClass + " bg-[#FFD300] text-slate-950"} type="submit"><Plus size={15} /> Create reservation</button>
+          <button disabled={busy || availableQuery.isLoading || availableQuery.isError || !selectedRoomAvailable} className={buttonClass + " bg-[#FFD300] text-slate-950"} type="submit"><Plus size={15} /> Create reservation</button>
         </div>
       </form>
     </Modal>
@@ -318,9 +327,12 @@ function NewReservationModal({ rooms, onClose, onCreate, busy }) {
 }
 
 function ReservationDrawer({ reservation: r, rooms, pms, busy, onClose, onRun }) {
+  const { user } = useAuth();
+  const propertyId = user?.property?.id;
   const [moveRoomId, setMoveRoomId] = useState(r.roomId || '');
   const [newDeparture, setNewDeparture] = useState(r.checkOut || '');
-  const [amountPaid, setAmountPaid] = useState(String(r.amountPaid || 0));
+  const [amountPaid] = useState(String(r.amountPaid || 0));
+  const roomAvailabilityQuery = usePmsRoomAvailabilityQuery({ propertyId, roomId: moveRoomId, arrival: r.checkIn, departure: newDeparture || r.checkOut, excludeReservationId: r.id });
 
   const save = async (patch) => {
     await onRun(() => pms.updatePlannerReservation(r.id, {
@@ -377,9 +389,9 @@ function ReservationDrawer({ reservation: r, rooms, pms, busy, onClose, onRun })
             <div className="flex gap-2">
               <select className={inputClass} value={moveRoomId} onChange={(e) => setMoveRoomId(e.target.value)}>
                 <option value="">Select room</option>
-                {rooms.filter((room) => room.id === r.roomId || room.status !== 'maintenance' && room.status !== 'out_of_service').map((room) => <option key={room.id} value={room.id}>Room {room.number} · {room.roomTypeName || room.roomType || 'Room'}</option>)}
+                {rooms.filter((room) => room.id === r.roomId || (room.status !== 'maintenance' && room.status !== 'out_of_service')).map((room) => <option key={room.id} value={room.id}>{room.id === r.roomId ? 'Current · ' : ''}Room {room.number} · {room.roomTypeName || room.roomType || 'Room'}</option>)}
               </select>
-              <button disabled={busy || moveRoomId === r.roomId} className={buttonClass + " bg-slate-950 text-white"} onClick={move}><MoveRight size={15} /> Move</button>
+              <button disabled={busy || moveRoomId === r.roomId || roomAvailabilityQuery.isLoading || roomAvailabilityQuery.isError || !roomAvailabilityQuery.data?.available} className={buttonClass + " bg-slate-950 text-white"} onClick={move}><MoveRight size={15} /> Move</button>
             </div>
           </section>
 
@@ -387,7 +399,7 @@ function ReservationDrawer({ reservation: r, rooms, pms, busy, onClose, onRun })
             <h3 className="mb-3 text-sm font-bold text-slate-950">Payment status</h3>
             <div className="grid gap-3 sm:grid-cols-2">
               <Info label="Total" value={money(r.totalAmount)} />
-              <Field label="Amount paid"><input type="number" min="0" className={inputClass} value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} /></Field>
+              <Info label="Amount paid" value={money(r.amountPaid)} />
             </div>
             <button disabled={busy} className={buttonClass + " mt-3 bg-slate-950 text-white"} onClick={() => save({ amountPaid: Number(amountPaid || 0), paymentStatus: Number(amountPaid || 0) >= Number(r.totalAmount || 0) && Number(r.totalAmount || 0) > 0 ? 'fully_paid' : Number(amountPaid || 0) > 0 ? 'partially_paid' : 'not_paid' })}>Update payment status</button>
           </section>
