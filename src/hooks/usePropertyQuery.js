@@ -1,11 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { propertyService } from '@/services/propertyService';
 import { useProperty } from '@/context/PropertyContext';
-
-export const propertyQueryKeys = {
-  mine: () => ['properties', 'mine'],
-  detail: (propertyId) => ['property', propertyId],
-};
+import { propertyQueryKeys } from '@/hooks/propertyQueryKeys';
 
 export function useMyPropertiesQuery() {
   return useQuery({
