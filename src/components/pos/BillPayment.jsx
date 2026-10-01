@@ -22,7 +22,7 @@ function fmtKes(n) {
   return `KES ${Math.max(0, n).toLocaleString('en-KE', { minimumFractionDigits: 2 })}`;
 }
 
-function buildReceiptText({ orderNumber, table, orderLines, subtotal, discountAmt, discountPct, vat, total, methodLabel }) {
+function buildReceiptText({ orderNumber, table, orderLines, subtotal, discountAmt, discountPct, vat, total, methodLabel, allocations = [] }) {
   const lines = [
     'VISIWA BEACH RESORT',
     'Malindi Road, Kenya · VAT PIN: P051234567Z',
@@ -34,7 +34,11 @@ function buildReceiptText({ orderNumber, table, orderLines, subtotal, discountAm
     `Subtotal: ${subtotal.toLocaleString()}`,
   ];
   if (discountAmt > 0) lines.push(`Discount (${discountPct}%): -${discountAmt.toLocaleString()}`);
-  lines.push(`VAT 16%: ${vat.toLocaleString()}`, `TOTAL: KES ${total.toLocaleString()}`, `Paid via: ${methodLabel}`, '', 'Thank you!');
+  lines.push(`VAT 16%: ${vat.toLocaleString()}`, `TOTAL: KES ${total.toLocaleString()}`, `Paid via: ${methodLabel}`);
+  if (allocations.length > 1) {
+    lines.push('Payment breakdown:', ...allocations.map((a) => `  ${PAYMENT_METHODS.find((m) => m.id === a.method)?.label || a.method}: KES ${Number(a.amount || 0).toLocaleString()}`));
+  }
+  lines.push('', 'Thank you!');
   return lines.join('\n');
 }
 
@@ -113,7 +117,7 @@ export default function BillPayment({ table, tableSessionId, orderLines, onConfi
   const orderNumber = `RCP-${String(table.number).padStart(3, '0')}-${new Date().toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' }).replace(':', '')}`;
   const methodLabel = splitBill ? 'Split Payment' : PAYMENT_METHODS.find((m) => m.id === paymentMethod)?.label;
 
-  const receiptText = () => buildReceiptText({ orderNumber, table, orderLines, subtotal, discountAmt, discountPct, vat, total, methodLabel });
+  const receiptText = () => buildReceiptText({ orderNumber, table, orderLines, subtotal, discountAmt, discountPct, vat, total, methodLabel, allocations });
 
   const printUnsettledProforma = () => {
     const rows = orderLines.map((l) => `<tr><td>${String(l.name || '').replace(/[<>]/g, '')}</td><td>${l.qty}</td><td style=\"text-align:right\">KES ${(Number(l.price || 0) * Number(l.qty || 0)).toLocaleString('en-KE')}</td></tr>`).join('');
