@@ -1,6 +1,8 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
 import { propertyService } from '@/services/propertyService';
+import { propertyQueryKeys } from '@/hooks/usePropertyQuery';
 
 const PropertyContext = createContext(null);
 
@@ -17,27 +19,38 @@ const EMPTY_PROPERTY = {
 export function PropertyProvider({ children }) {
   const { user } = useAuth();
   const [propertyOverride, setPropertyOverride] = useState(null);
+  const queryClient = useQueryClient();
 
-  const property = propertyOverride || user?.property || null;
-  const propertyId = property?.id || null;
+  const propertyId = user?.property?.id || null;
+  const propertyQuery = useQuery({
+    queryKey: propertyQueryKeys.detail(propertyId),
+    queryFn: () => propertyService.getProperty(propertyId),
+    enabled: Boolean(propertyId),
+    staleTime: 60_000,
+  });
 
+  const property = propertyOverride || propertyQuery.data || user?.property || null;
   const refreshProperty = useCallback(async () => {
     if (!propertyId) {
       setPropertyOverride(null);
       return null;
     }
 
-    const next = await propertyService.getProperty(propertyId);
+    const next = await queryClient.fetchQuery({
+      queryKey: propertyQueryKeys.detail(propertyId),
+      queryFn: () => propertyService.getProperty(propertyId),
+    });
     setPropertyOverride(next);
+    queryClient.setQueryData(propertyQueryKeys.detail(propertyId), next);
     return next;
-  }, [propertyId]);
+  }, [propertyId, queryClient]);
 
   const updateProperty = useCallback(async (patch) => {
     if (!propertyId) throw new Error('No active property.');
     const next = await propertyService.updateProperty(propertyId, patch);
     setPropertyOverride(next);
     return next;
-  }, [propertyId]);
+  }, [propertyId, queryClient]);
 
   const value = useMemo(() => ({
     property: property || EMPTY_PROPERTY,
