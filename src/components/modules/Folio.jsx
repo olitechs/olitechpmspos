@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { pmsQueryKeys, usePmsFolioQuery, usePmsPaymentsQuery, usePmsReservationsQuery } from '@/hooks/usePmsQuery';
-import { Banknote, CreditCard, Plus, ReceiptText, RefreshCw, Search, X } from 'lucide-react';
+import { Banknote, CreditCard, Plus, RefreshCw, Search, X } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { pmsService } from '@/services/pmsService';
 
