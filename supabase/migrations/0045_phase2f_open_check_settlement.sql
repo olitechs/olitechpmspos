@@ -89,6 +89,7 @@ declare
   v_shift_id uuid;
   v_reservation public.reservations;
   v_folio_charge_id uuid;
+  v_room_number text;
   v_method text;
   v_allocation jsonb;
   v_amount numeric;
@@ -187,7 +188,7 @@ begin
     if not (
       public.is_platform_owner()
       or public.property_role(p_property_id) in ('owner','admin','manager','cashier')
-      or public.current_staff_role(p_property_id) in ('hotel_admin','super_admin','cashier','fb_manager')
+      or public.current_staff_role(p_property_id) in ('hotel_admin','super_admin','cashier','fb_manager','front_office_manager')
     ) then
       raise exception 'Only authorised cashier or manager staff can charge a restaurant bill to a room.';
     end if;
@@ -256,7 +257,7 @@ begin
     p_property_id,
     case when v_room_count = 1 then v_reservation.id else null end,
     case when v_room_count = 1 then v_reservation.room_id else null end,
-    null,
+    v_room_number,
     case when v_room_count = 1 then v_reservation.guest_name else null end,
     p_table_number,
     p_order_number,
