@@ -1,18 +1,23 @@
 import React from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Check, ClipboardCheck, Play, RefreshCw, Sparkles, X } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { pmsService } from '@/services/pmsService';
+import { usePmsHousekeepingDashboardQuery, usePmsHousekeepingQuery, pmsQueryKeys } from '@/hooks/usePmsQuery';
 
 const btn='inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold disabled:opacity-50';
 const input='w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200';
 
 export default function Housekeeping(){
  const {user}=useAuth(); const propertyId=user?.property?.id;
- const [tasks,setTasks]=React.useState([]),[dash,setDash]=React.useState({}),[busy,setBusy]=React.useState(false),[error,setError]=React.useState('');
+ const queryClient=useQueryClient();
+ const tasksQuery=usePmsHousekeepingQuery(propertyId);
+ const dashboardQuery=usePmsHousekeepingDashboardQuery(propertyId);
+ const tasks=tasksQuery.data||[],dash=dashboardQuery.data||{};
+ const [busy,setBusy]=React.useState(false),[error,setError]=React.useState('');
  const [selected,setSelected]=React.useState(null),[notes,setNotes]=React.useState('');
- const load=React.useCallback(async()=>{if(!propertyId)return;setError('');try{const [t,d]=await Promise.all([pmsService.listHousekeepingTasks(propertyId),pmsService.getHousekeepingDashboard(propertyId)]);setTasks(t);setDash(d)}catch(e){setError(e.message||'Unable to load housekeeping.')}},[propertyId]);
- React.useEffect(()=>{load()},[load]);
- const run=async(fn)=>{setBusy(true);setError('');try{await fn();setSelected(null);setNotes('');await load()}catch(e){setError(e.message||'Operation failed.')}finally{setBusy(false)}};
+ const load=React.useCallback(async()=>{setError('');await Promise.all([tasksQuery.refetch(),dashboardQuery.refetch()])},[tasksQuery.refetch,dashboardQuery.refetch]);
+ const run=async(fn)=>{setBusy(true);setError('');try{await fn();setSelected(null);setNotes('');await queryClient.invalidateQueries({queryKey:pmsQueryKeys.housekeeping(propertyId)});await queryClient.invalidateQueries({queryKey:pmsQueryKeys.housekeepingDashboard(propertyId)})}catch(e){setError(e.message||'Operation failed.')}finally{setBusy(false)}};
  const action=(task,status)=>run(()=>pmsService.updateHousekeepingTask({taskId:task.id,status,notes:notes.trim()||null}));
  const inspect=(task,pass)=>run(()=>pmsService.inspectHousekeepingTask({taskId:task.id,pass,notes:notes.trim()||null}));
  const createForRoom=(roomId,type='checkout_clean')=>run(()=>pmsService.createHousekeepingTask({propertyId,roomId,taskType:type,priority:type==='checkout_clean'?'high':'normal'}));
