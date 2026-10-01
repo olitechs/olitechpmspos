@@ -477,4 +477,68 @@ revoke execute on function public.platform_set_property_member(uuid,uuid,public.
 revoke execute on function public.platform_remove_property_member(uuid,uuid) from anon, public;
 revoke execute on function public.platform_update_subscription(uuid,text,text,timestamptz,timestamptz,timestamptz,text[]) from anon, public;
 
+
+create or replace function public.approve_property(
+  p_property_id uuid,
+  p_package public.property_package
+)
+returns public.properties
+language plpgsql
+security definer
+set search_path = public
+as $
+declare
+  v_property public.properties;
+  v_old_status public.property_status;
+  v_old_package public.property_package;
+begin
+  if not public.is_platform_owner() then
+    raise exception 'Only a platform owner can approve properties.' using errcode = '42501';
+  end if;
+
+  if p_package is null or p_package = 'none' then
+    raise exception 'An active property must have a package.' using errcode = '22023';
+  end if;
+
+  select * into v_property from public.properties where id = p_property_id for update;
+  if not found then raise exception 'Property not found.'; end if;
+
+  v_old_status := v_property.status;
+  v_old_package := v_property.package;
+
+  update public.properties
+  set status='active', package=p_package, updated_at=now()
+  where id=p_property_id
+  returning * into v_property;
+
+  insert into public.property_subscriptions(
+    property_id, plan_code, status, enabled_modules, updated_by
+  )
+  values(
+    p_property_id,
+    case p_package when 'professional' then 'professional' when 'premium' then 'premium' else 'standard' end,
+    'active',
+    '{}',
+    auth.uid()
+  )
+  on conflict(property_id) do update set
+    plan_code=excluded.plan_code,
+    status='active',
+    updated_at=now(),
+    updated_by=auth.uid();
+
+  insert into public.audit_logs(actor_id, action, property_id, old_value, new_value)
+  values(
+    auth.uid(),'property_approved',p_property_id,
+    jsonb_build_object('status',v_old_status,'package',v_old_package),
+    jsonb_build_object('status','active','package',p_package)
+  );
+
+  return v_property;
+end;
+$;
+
+grant execute on function public.approve_property(uuid,public.property_package) to authenticated;
+revoke execute on function public.approve_property(uuid,public.property_package) from anon, public;
+
 notify pgrst, 'reload schema';
