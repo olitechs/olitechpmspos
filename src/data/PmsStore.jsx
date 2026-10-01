@@ -164,11 +164,11 @@ export function PmsProvider({ children }) {
     checkOut: data.checkOut,
     partySize: data.partySize,
     rate: data.rate,
-  })), [propertyId, runMutation]);
+  }), { rethrow: true }), [propertyId, runMutation]);
 
-  const checkOutRoom = useCallback((roomId) => runMutation(() => pmsService.checkOutRoom(roomId)), [runMutation]);
+  const checkOutRoom = useCallback((roomId) => runMutation(() => pmsService.checkOutRoom(roomId), { rethrow: true }), [runMutation]);
 
-  const checkInReservation = useCallback((resId) => runMutation(() => pmsService.checkInReservation(resId)), [runMutation]);
+  const checkInReservation = useCallback((resId) => runMutation(() => pmsService.checkInReservation(resId), { rethrow: true }), [runMutation]);
 
   const addReservation = useCallback((data) => runMutation(() => pmsService.createReservationBundle({
     propertyId,
@@ -211,10 +211,10 @@ export function PmsProvider({ children }) {
     runMutation(() => pmsService.moveReservationGroup(payload), { rethrow: true }), [runMutation]);
 
   const removeReservation = useCallback((resId) =>
-    runMutation(() => pmsService.removeReservation(resId)), [runMutation]);
+    runMutation(() => pmsService.removeReservation(resId), { rethrow: true }), [runMutation]);
 
   const setRoomStatus = useCallback((roomId, status) =>
-    runMutation(() => pmsService.setRoomStatus(roomId, status)), [runMutation]);
+    runMutation(() => pmsService.setRoomStatus(roomId, status), { rethrow: true }), [runMutation]);
 
   const value = {
     rooms,
