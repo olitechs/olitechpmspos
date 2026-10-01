@@ -297,3 +297,29 @@ Implemented as an additive operational layer on top of the existing PMS:
 - [ ] Supabase migrations executed against the deployment database.
 - [ ] npm build/lint/typecheck pass locally.
 - [ ] Manual Rack → reservation → check-in → folio → payment → check-out regression completed.
+
+
+## Phase 2C — Front Desk reservation workflow hardening
+
+Implemented an additive hardening pass across reservation creation and editing:
+
+- New reservations now use database-authoritative room availability for the selected arrival/departure dates before submission.
+- The Front Desk availability KPI now uses the same server availability RPC instead of client-side overlap calculations.
+- Reservation edit room moves use `fn_check_room_availability` with the current reservation excluded, preventing false conflicts while still blocking real conflicts and closures.
+- Reservation form channel values now match the database contract (`booking_com`, not the display label `booking.com`).
+- Reservation defaults now use a valid one-night stay instead of identical arrival/departure dates.
+- Payment amounts are displayed in the reservation drawer but are no longer edited directly there; payment changes remain in the Folio/Cashier ledger workflow.
+- Added migration 0043 to harden server-side reservation edits and prevent `amount_paid` from drifting away from recorded payment ledger totals.
+- Existing Room Planner, joint/group reservation operations, check-in/out, Folio, POS/KDS, Cashier and Night Audit are preserved.
+
+### Phase 2C Definition of Done
+
+- [x] Create-reservation room selection is server-authoritative.
+- [x] Invalid room/date combinations are blocked before submission and still protected by the database.
+- [x] Reservation room moves are server-verified before execution.
+- [x] Booking.com channel value matches the database enum/validation contract.
+- [x] New reservation default stay is valid.
+- [x] Reservation payment ledger is protected from direct amount-paid drift during edits.
+- [ ] Supabase migration 0043 executed against the deployment database.
+- [ ] npm build/lint/typecheck pass locally.
+- [ ] Manual Front Desk regression completed.
