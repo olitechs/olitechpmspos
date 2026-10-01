@@ -7,7 +7,12 @@ create table if not exists public.property_subscriptions (
 );
 alter table public.property_subscriptions enable row level security;
 create policy if not exists property_subscriptions_select on public.property_subscriptions for select using(public.is_platform_owner() or public.is_member_of_property(property_id));
-create or replace function public.fn_get_subscription(p_property_id uuid) returns public.property_subscriptions language sql security definer set search_path=public as $$ select * from public.property_subscriptions where property_id=p_property_id; $$;
+create or replace function public.fn_get_subscription(p_property_id uuid) returns public.property_subscriptions language plpgsql security definer set search_path=public as $
+declare v public.property_subscriptions;
+begin
+ if not(public.is_platform_owner() or public.is_member_of_property(p_property_id)) then raise exception 'Not authorized'; end if;
+ select * into v from public.property_subscriptions where property_id=p_property_id; return v;
+end; $;
 create or replace function public.fn_upsert_subscription(p_property_id uuid,p_plan_code text,p_status text,p_trial_ends_at timestamptz,p_current_period_ends_at timestamptz,p_grace_ends_at timestamptz,p_enabled_modules text[]) returns public.property_subscriptions language plpgsql security definer set search_path=public as $$
 declare v public.property_subscriptions;
 begin
@@ -33,4 +38,24 @@ end; $$;
 grant execute on function public.fn_get_subscription(uuid) to authenticated;
 grant execute on function public.fn_upsert_subscription(uuid,text,text,timestamptz,timestamptz,timestamptz,text[]) to authenticated;
 grant execute on function public.fn_subscription_access(uuid,text) to authenticated;
+notify pgrst,'reload schema';
+create table if not exists public.subscription_events (
+ id uuid primary key default gen_random_uuid(), property_id uuid not null references public.properties(id) on delete cascade,
+ event_type text not null, provider text, external_event_id text, status text not null default 'received' check(status in ('received','processed','ignored','failed')),
+ payload jsonb not null default '{}'::jsonb, error_message text, created_at timestamptz not null default now(), processed_at timestamptz,
+ unique(provider,external_event_id)
+);
+alter table public.subscription_events enable row level security;
+create policy if not exists subscription_events_select on public.subscription_events for select using(public.is_platform_owner() or public.is_member_of_property(property_id));
+create or replace function public.fn_record_subscription_event(p_property_id uuid,p_event_type text,p_provider text,p_external_event_id text,p_payload jsonb)
+returns public.subscription_events language plpgsql security definer set search_path=public as $$
+declare v public.subscription_events;
+begin
+ if not public.is_platform_owner() then raise exception 'Subscription events are provider/system managed'; end if;
+ insert into public.subscription_events(property_id,event_type,provider,external_event_id,payload)
+ values(p_property_id,p_event_type,p_provider,p_external_event_id,coalesce(p_payload,'{}'::jsonb))
+ on conflict(provider,external_event_id) do update set payload=excluded.payload
+ returning * into v; return v;
+end; $$;
+grant execute on function public.fn_record_subscription_event(uuid,text,text,text,jsonb) to authenticated;
 notify pgrst,'reload schema';
