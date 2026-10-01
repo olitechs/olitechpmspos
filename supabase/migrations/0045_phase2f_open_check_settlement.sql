@@ -94,6 +94,8 @@ declare
   v_allocation jsonb;
   v_amount numeric;
   v_sum numeric := 0;
+  v_session_subtotal numeric := 0;
+  v_expected_vat numeric := 0;
   v_allocation_count integer := 0;
   v_room_count integer := 0;
 begin
@@ -103,6 +105,29 @@ begin
 
   if p_total <= 0 then
     raise exception 'Total must be greater than zero.';
+  end if;
+
+  select coalesce(sum(
+    coalesce((line->>'price')::numeric, 0) * coalesce((line->>'qty')::numeric, 0)
+  ), 0)
+    into v_session_subtotal
+  from jsonb_array_elements(coalesce(v_session.order_lines, '[]'::jsonb)) line;
+
+  if abs(round(coalesce(p_subtotal,0),2) - round(v_session_subtotal,2)) > 0.009 then
+    raise exception 'Settlement subtotal does not match the persisted open check.';
+  end if;
+
+  if coalesce(p_discount_amount,0) < 0 or coalesce(p_discount_amount,0) > v_session_subtotal then
+    raise exception 'Invalid discount amount.';
+  end if;
+
+  v_expected_vat := round((v_session_subtotal - coalesce(p_discount_amount,0)) * 0.16, 2);
+  if abs(round(coalesce(p_vat,0),2) - v_expected_vat) > 0.009 then
+    raise exception 'Settlement VAT does not match the current tax calculation.';
+  end if;
+
+  if abs(round(p_total,2) - round(v_session_subtotal - coalesce(p_discount_amount,0) + coalesce(p_vat,0),2)) > 0.009 then
+    raise exception 'Settlement total does not match the persisted open check.';
   end if;
 
   select * into v_session
