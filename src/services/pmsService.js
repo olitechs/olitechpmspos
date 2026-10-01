@@ -71,6 +71,7 @@ export const pmsService = {
 	async getSubscription(propertyId) { const {data,error}=await supabase.rpc('fn_get_subscription',{p_property_id:propertyId}); if(error) throw new Error(error.message); return data; },
 	async getSubscriptionAccess(propertyId,module) { const {data,error}=await supabase.rpc('fn_subscription_access',{p_property_id:propertyId,p_module:module}); if(error) throw new Error(error.message); return data||{allowed:false}; },
 	async upsertSubscription({propertyId,planCode,status,trialEndsAt=null,currentPeriodEndsAt=null,graceEndsAt=null,enabledModules=[]}) { const {data,error}=await supabase.rpc('fn_upsert_subscription',{p_property_id:propertyId,p_plan_code:planCode,p_status:status,p_trial_ends_at:trialEndsAt,p_current_period_ends_at:currentPeriodEndsAt,p_grace_ends_at:graceEndsAt,p_enabled_modules:enabledModules}); if(error) throw new Error(error.message); return data; },
+	async listSubscriptionEvents(propertyId) { const {data,error}=await supabase.from('subscription_events').select('*').eq('property_id',propertyId).order('created_at',{ascending:false}).limit(100); if(error) throw new Error(error.message); return data||[]; },
 	async listRoomTypes(propertyId) {
 		const { data, error } = await supabase.from('room_types').select('*').eq('property_id', propertyId).order('name');
 		if (error) throw new Error(error.message);
