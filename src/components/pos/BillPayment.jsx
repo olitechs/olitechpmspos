@@ -42,7 +42,7 @@ function buildReceiptText({ orderNumber, table, orderLines, subtotal, discountAm
 // separate, independently-tracked outcomes. A failed print never cancels,
 // duplicates, or re-triggers the payment — retrying only resends the print
 // job for the same already-recorded sale.
-export default function BillPayment({ table, orderLines, onConfirmPayment, onBackToOrder }) {
+export default function BillPayment({ table, tableSessionId, orderLines, onConfirmPayment, onBackToOrder }) {
   const store = useStore();
   const { user } = useAuth();
   const propertyId = user?.property?.id;
@@ -54,7 +54,7 @@ export default function BillPayment({ table, orderLines, onConfirmPayment, onBac
   useEffect(() => { if (!canRoomCharge && paymentMethod === 'room') setPaymentMethod('cash'); }, [canRoomCharge, paymentMethod]);
   const [discountPct, setDiscountPct] = useState('');
   const [splitBill, setSplitBill] = useState(false);
-  const [splitCount, setSplitCount] = useState(2);
+  const [paymentAmounts, setPaymentAmounts] = useState({ cash: 0, card: 0, mpesa: 0, room: 0 });
   const [sale, setSale] = useState(null); // { id, printStatus, printError, orderNumber, total, methodLabel }
   const [retrying, setRetrying] = useState(false);
   const [activeStays, setActiveStays] = useState([]);
@@ -77,10 +77,41 @@ export default function BillPayment({ table, orderLines, onConfirmPayment, onBac
   const discountedSub = subtotal - discountAmt;
   const vat = Math.round(discountedSub * VAT_RATE);
   const total = discountedSub + vat;
-  const perPerson = splitBill && splitCount > 1 ? total / splitCount : null;
+  const setSinglePaymentMethod = (method) => {
+    setPaymentMethod(method);
+    setSplitBill(false);
+    setPaymentAmounts({ cash: 0, card: 0, mpesa: 0, room: 0 });
+    setChargeError('');
+  };
+
+  const setSplitAmount = (method, value) => {
+    const numeric = Math.max(0, Number(value || 0));
+    setPaymentAmounts((prev) => ({ ...prev, [method]: numeric }));
+    if (method === 'room') setChargeError('');
+  };
+
+  const allocationTotal = splitBill
+    ? Object.values(paymentAmounts).reduce((sum, value) => sum + Number(value || 0), 0)
+    : total;
+
+  const allocations = splitBill
+    ? Object.entries(paymentAmounts)
+        .filter(([, amount]) => Number(amount || 0) > 0)
+        .map(([method, amount]) => ({
+          method,
+          amount: Math.round(Number(amount) * 100) / 100,
+          ...(method === 'room' ? { reservationId: chargeReservationId || null } : {}),
+        }))
+    : [{
+        method: paymentMethod,
+        amount: Math.round(total * 100) / 100,
+        ...(paymentMethod === 'room' ? { reservationId: chargeReservationId || null } : {}),
+      }];
+
+  const allocationBalanced = Math.abs(allocationTotal - total) < 0.01;
 
   const orderNumber = `RCP-${String(table.number).padStart(3, '0')}-${new Date().toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' }).replace(':', '')}`;
-  const methodLabel = PAYMENT_METHODS.find((m) => m.id === paymentMethod)?.label;
+  const methodLabel = splitBill ? 'Split Payment' : PAYMENT_METHODS.find((m) => m.id === paymentMethod)?.label;
 
   const receiptText = () => buildReceiptText({ orderNumber, table, orderLines, subtotal, discountAmt, discountPct, vat, total, methodLabel });
 
@@ -93,70 +124,51 @@ export default function BillPayment({ table, orderLines, onConfirmPayment, onBac
   };
 
   const handleConfirm = async () => {
-    if (paymentMethod === 'room' && !chargeReservationId) {
-      setChargeError('Select which guest/room to charge before confirming.');
+    if (!tableSessionId) {
+      setChargeError('This table does not have a persistent open-check session yet. Reopen the table and try again.');
+      return;
+    }
+    if (!allocationBalanced) {
+      setChargeError('Payment allocations must equal ' + fmtKes(total) + '. Current allocation: ' + fmtKes(allocationTotal) + '.');
+      return;
+    }
+    const roomAllocation = allocations.find((allocation) => allocation.method === 'room');
+    if (roomAllocation && !chargeReservationId) {
+      setChargeError('Select which checked-in guest/room receives the room-folio charge.');
       return;
     }
     if (!propertyId) {
       setChargeError('This POS session is not attached to a property.');
       return;
     }
-
-    // Supabase is the source of truth. Persist the sale before printing so a
-    // backend failure can never be presented as a completed payment.
     try {
-      await pmsService.recordPosSale({
-        propertyId,
-        tableNumber: tableLabel(table),
-        orderNumber,
+      await pmsService.settlePosTable({
+        propertyId, tableSessionId, tableNumber: tableLabel(table), orderNumber,
         items: orderLines.map((line) => ({ name: line.name, qty: line.qty, price: line.price })),
-        subtotal,
-        discountAmount: discountAmt,
-        vat,
-        total,
-        paymentMethod,
-        reservationId: paymentMethod === 'room' ? chargeReservationId : null,
+        subtotal, discountAmount: discountAmt, vat, total, allocations,
       });
     } catch (err) {
-      setChargeError(`Payment was not recorded: ${err.message}`);
+      setChargeError('Payment was not recorded: ' + err.message);
       toast.error('Payment was not recorded. No receipt was issued.');
       return;
     }
-
-    // The sale is now safely persisted. Printing is independent and can be
-    // retried without charging the guest again.
-    const result = await store.completeSale({
-      table,
-      orderLines,
-      total,
-      method: methodLabel,
-      receiptText: receiptText(),
-    });
+    const result = await store.completeSale({ table, orderLines, total, method: methodLabel, receiptText: receiptText() });
     setSale({ id: result.id, printStatus: result.printStatus, printError: result.printError, orderNumber, total, methodLabel });
-
-    // Inventory is downstream from the completed sale. A stock failure must
-    // never cancel or duplicate an already-recorded payment.
     if (propertyId) {
       try {
         const inventoryResult = await inventoryService.deductStockForOrder({
           propertyId,
           orderItems: orderLines.map((line) => ({ productId: line.productId || line.id, qty: line.qty, name: line.name })),
-          reference: `POS Sale - Table ${tableLabel(table)}`,
+          reference: 'POS Sale - Table ' + tableLabel(table),
         });
-        if (inventoryResult.skipped.length) {
-          console.warn('[inventory] POS deduction skipped', inventoryResult.skipped);
-        }
+        if (inventoryResult.skipped.length) console.warn('[inventory] POS deduction skipped', inventoryResult.skipped);
         const lowProducts = inventoryResult.deducted.filter(({ product, result: stockResult }) => Number(stockResult?.current_stock) <= Number(product.min_stock));
-        if (lowProducts.length) toast.warning(`Stock alert: ${lowProducts.map(({ product }) => product.name).join(', ')} is low or out of stock.`);
+        if (lowProducts.length) toast.warning('Stock alert: ' + lowProducts.map(({ product }) => product.name).join(', ') + ' is low or out of stock.');
       } catch (err) {
         console.warn('[inventory] POS deduction failed after sale', err);
       }
     }
-
-    if (result.printStatus === PrintJobStatus.PRINTED) {
-      setTimeout(() => onConfirmPayment(), 1500);
-    }
-    // On print failure we stay here so staff can retry printing.
+    if (result.printStatus === PrintJobStatus.PRINTED) setTimeout(() => onConfirmPayment(), 1500);
   };
   const handleRetryPrint = async () => {
     if (!sale) return;
@@ -245,12 +257,7 @@ export default function BillPayment({ table, orderLines, onConfirmPayment, onBac
                 <span className="text-sm font-bold text-white">TOTAL DUE</span>
                 <span className="text-sm font-bold font-mono text-white">{fmtKes(total)}</span>
               </div>
-              {perPerson && (
-                <div className="flex justify-between pt-1">
-                  <span className="text-xs" style={{ color: MUTED_DARK }}>Per person ({splitCount})</span>
-                  <span className="text-xs font-mono" style={{ color: TEAL_LIGHT }}>{fmtKes(perPerson)}</span>
-                </div>
-              )}
+
             </div>
           </div>
         </div>
@@ -271,7 +278,7 @@ export default function BillPayment({ table, orderLines, onConfirmPayment, onBac
           <div className="grid grid-cols-2 gap-2">
             {PAYMENT_METHODS.filter((m) => m.id !== 'room' || canRoomCharge).map((m) => (
               <button
-                key={m.id} onClick={() => setPaymentMethod(m.id)}
+                key={m.id} onClick={() => setSinglePaymentMethod(m.id)}
                 className="py-3 rounded-xl text-sm font-semibold transition-all active:scale-95"
                 style={{
                   background: paymentMethod === m.id ? TEAL : SURFACE,
@@ -321,17 +328,34 @@ export default function BillPayment({ table, orderLines, onConfirmPayment, onBac
 
         <div>
           <div className="flex items-center justify-between mb-2">
-            <div className="text-xs font-bold uppercase tracking-widest" style={{ color: MUTED }}>Split Bill</div>
-            <button onClick={() => setSplitBill((s) => !s)} className="w-11 h-6 rounded-full transition-all relative" style={{ background: splitBill ? TEAL : BORDER }}>
-              <span className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all" style={{ left: splitBill ? '22px' : '2px' }} />
+            <div className="text-xs font-bold uppercase tracking-widest" style={{ color: MUTED }}>Payment Allocation</div>
+            <button
+              onClick={() => {
+                const next = !splitBill;
+                setSplitBill(next);
+                setPaymentAmounts(next ? { cash: total, card: 0, mpesa: 0, room: 0 } : { cash: 0, card: 0, mpesa: 0, room: 0 });
+                setChargeError('');
+              }}
+              className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold"
+              style={{ background: splitBill ? TEAL : SURFACE, color: splitBill ? '#fff' : NAVY, border: `1px solid ${splitBill ? TEAL : BORDER}` }}
+            >
+              {splitBill ? 'Split ON' : 'Split payment'}
             </button>
           </div>
           {splitBill && (
-            <div className="flex items-center gap-3">
-              <button onClick={() => setSplitCount((c) => Math.max(2, c - 1))} className="w-9 h-9 rounded-lg text-lg font-bold flex items-center justify-center" style={{ background: TEAL, color: '#090C11' }}>−</button>
-              <span className="text-xl font-mono font-bold" style={{ color: NAVY, minWidth: '24px', textAlign: 'center' }}>{splitCount}</span>
-              <button onClick={() => setSplitCount((c) => Math.min(12, c + 1))} className="w-9 h-9 rounded-lg text-lg font-bold flex items-center justify-center" style={{ background: TEAL, color: '#090C11' }}>+</button>
-              <span className="text-xs" style={{ color: MUTED }}>ways</span>
+            <div className="space-y-2">
+              {PAYMENT_METHODS.map((method) => (
+                <div key={method.id} className="flex items-center gap-2">
+                  <span className="w-24 text-xs font-semibold" style={{ color: NAVY }}>{method.label}</span>
+                  <input type="number" min="0" step="0.01" value={paymentAmounts[method.id] || ''} onChange={(e) => setSplitAmount(method.id, e.target.value)}
+                    className="flex-1 px-2.5 py-2 rounded-lg text-sm font-mono outline-none"
+                    style={{ background: SURFACE2, border: `1px solid ${BORDER}`, color: NAVY }} />
+                </div>
+              ))}
+              <div className="flex justify-between text-xs font-bold pt-1">
+                <span style={{ color: MUTED }}>Allocated</span>
+                <span style={{ color: allocationBalanced ? TEAL_DARK : DESTRUCTIVE }}>{fmtKes(allocationTotal)} / {fmtKes(total)}</span>
+              </div>
             </div>
           )}
         </div>
@@ -355,7 +379,7 @@ export default function BillPayment({ table, orderLines, onConfirmPayment, onBac
         </button>
 
         <button
-          onClick={handleConfirm} disabled={orderLines.length === 0 || (paymentMethod === 'room' && !chargeReservationId)}
+          onClick={handleConfirm} disabled={orderLines.length === 0 || !tableSessionId || !allocationBalanced || (!!allocations.find((a) => a.method === 'room') && !chargeReservationId)}
           className="w-full py-4 rounded-xl text-base font-bold transition-all active:scale-95"
           style={{ background: (orderLines.length > 0 && !(paymentMethod === 'room' && !chargeReservationId)) ? TEAL : '#C2CCD3', color: '#fff', cursor: (orderLines.length > 0 && !(paymentMethod === 'room' && !chargeReservationId)) ? 'pointer' : 'not-allowed' }}
         >
