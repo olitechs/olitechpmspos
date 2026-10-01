@@ -113,6 +113,7 @@ export default function BillPayment({ table, tableSessionId, orderLines, onConfi
       }];
 
   const allocationBalanced = Math.abs(allocationTotal - total) < 0.01;
+  const canConfirmPayment = orderLines.length > 0 && !!tableSessionId && allocationBalanced && !(allocations.find((a) => a.method === 'room') && !chargeReservationId);
 
   const orderNumber = `RCP-${String(table.number).padStart(3, '0')}-${new Date().toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' }).replace(':', '')}`;
   const methodLabel = splitBill ? 'Split Payment' : PAYMENT_METHODS.find((m) => m.id === paymentMethod)?.label;
@@ -385,7 +386,7 @@ export default function BillPayment({ table, tableSessionId, orderLines, onConfi
         <button
           onClick={handleConfirm} disabled={orderLines.length === 0 || !tableSessionId || !allocationBalanced || (!!allocations.find((a) => a.method === 'room') && !chargeReservationId)}
           className="w-full py-4 rounded-xl text-base font-bold transition-all active:scale-95"
-          style={{ background: (orderLines.length > 0 && !(paymentMethod === 'room' && !chargeReservationId)) ? TEAL : '#C2CCD3', color: '#fff', cursor: (orderLines.length > 0 && !(paymentMethod === 'room' && !chargeReservationId)) ? 'pointer' : 'not-allowed' }}
+          style={{ background: canConfirmPayment ? TEAL : '#C2CCD3', color: '#fff', cursor: canConfirmPayment ? 'pointer' : 'not-allowed' }}
         >
           Confirm Payment
         </button>
