@@ -1,6 +1,6 @@
 import React,{useEffect,useMemo,useState}from"react";
 import{useLocation,useNavigate}from"react-router-dom";
-import{UtensilsCrossed,Grid3X3,CalendarDays,ClipboardList,Sparkles,Users,Boxes,Package,ShoppingCart,ChefHat,Shirt,ArrowRightLeft,Globe2,PlugZap,BarChart3,Banknote,ClipboardCheck,ShieldCheck,Settings,LockKeyhole,ChevronLeft,ChevronRight,ChevronDown,Menu,X,LayoutDashboard,Building2,Receipt,UserCircle}from"lucide-react";
+import{UtensilsCrossed,Grid3X3,CalendarDays,ClipboardList,Sparkles,Users,Boxes,Package,ShoppingCart,ChefHat,Shirt,ArrowRightLeft,Globe2,PlugZap,BarChart3,Banknote,ClipboardCheck,ShieldCheck,Settings,ChevronLeft,ChevronRight,ChevronDown,Menu,X,LayoutDashboard,Building2,Receipt}from"lucide-react";
 import{useAuth}from"@/lib/AuthContext";
 import{getDefaultModulesForRole,getSessionStaff,normalizeStaffRole}from"@/services/authService";
 
@@ -54,7 +54,7 @@ export default function Sidebar({activeModule,onModuleChange,collapsed:collapsed
  const active=item=>item.id==="roles"?location.pathname==="/admin/roles"||activeModule==="roles":item.id==="settings"?location.pathname==="/admin"||activeModule==="settings":item.active?.includes(activeModule);
  const roleLabel={hotel_admin:"General Manager",super_admin:"Super Admin",front_office_manager:"Front Office Manager",receptionist:"Receptionist",front_desk:"Front Desk",pos_staff:"POS Staff",waiter:"Waiter",cashier:"Cashier",store_manager:"Store Manager",fb_manager:"F&B Manager",housekeeping_supervisor:"Housekeeping Supervisor"}[role]||"Staff";
 
- const panel=<aside className={`fixed left-0 top-0 z-[70] flex h-screen flex-col border-r border-[#E5E7EB] bg-white transition-[width,transform] duration-300 ease-out ${collapsed?"w-20":"w-[260px]"} ${mobileOpen?"translate-x-0":"-translate-x-full md:translate-x-0"}`} aria-label="OliTechs navigation">
+ const panel=<aside className={`fixed left-0 top-0 z-[70] flex h-screen flex-col border-r border-[#E5E7EB] bg-white transition-[width,transform] duration-300 ease-out ${collapsed?"w-[260px] md:w-20":"w-[260px]"} ${mobileOpen?"translate-x-0":"-translate-x-full md:translate-x-0"}`} aria-label="OliTechs navigation">
   <div className={`flex h-[76px] shrink-0 items-center border-b border-[#F0F1F2] ${collapsed?"justify-center px-3":"gap-3 px-4"}`}>
    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#121418] text-sm font-black text-[#FFC400]">OT</div>
    {!collapsed&&<div className="min-w-0"><div className="truncate text-[14px] font-black text-[#121418]">OliTechs</div><div className="text-[9px] font-bold uppercase tracking-[.18em] text-[#9CA3AF]">PMS & POS</div></div>}
