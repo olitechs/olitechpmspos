@@ -38,26 +38,14 @@ export const platformService = {
 		return data || [];
 	},
 
-	async setStatus(propertyId, status, previousStatus) {
-		const { error } = await supabase.from('properties').update({ status }).eq('id', propertyId);
+	async setStatus(propertyId, status) {
+		const { error } = await supabase.rpc('platform_set_property_status', { p_property_id: propertyId, p_status: status });
 		if (error) throw new Error(error.message);
-		await logAudit({
-			action: `property_status_changed`,
-			propertyId,
-			oldValue: { status: previousStatus },
-			newValue: { status },
-		});
 	},
 
-	async setPackage(propertyId, pkg, previousPackage) {
-		const { error } = await supabase.from('properties').update({ package: pkg }).eq('id', propertyId);
+	async setPackage(propertyId, pkg) {
+		const { error } = await supabase.rpc('platform_set_property_package', { p_property_id: propertyId, p_package: pkg });
 		if (error) throw new Error(error.message);
-		await logAudit({
-			action: `property_package_changed`,
-			propertyId,
-			oldValue: { package: previousPackage },
-			newValue: { package: pkg },
-		});
 	},
 
 	async approve(propertyId, pkg) {
