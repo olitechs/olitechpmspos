@@ -32,6 +32,29 @@ create index if not exists pos_payment_allocations_property_idx
 create index if not exists pos_payment_allocations_receipt_idx
   on public.pos_payment_allocations(pos_receipt_id);
 
+create table if not exists public.pos_check_audit_events (
+  id uuid primary key default gen_random_uuid(),
+  property_id uuid not null references public.properties(id) on delete cascade,
+  table_session_id uuid references public.pos_table_sessions(id) on delete set null,
+  pos_receipt_id uuid references public.pos_receipts(id) on delete set null,
+  event_type text not null check (event_type in ('opened','items_added','round_fired','bill_printed','settled','reopened','voided')),
+  details jsonb not null default '{}'::jsonb,
+  actor_id uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists pos_check_audit_property_idx
+  on public.pos_check_audit_events(property_id, created_at desc);
+create index if not exists pos_check_audit_session_idx
+  on public.pos_check_audit_events(table_session_id, created_at desc);
+
+alter table public.pos_check_audit_events enable row level security;
+
+drop policy if exists pos_check_audit_select on public.pos_check_audit_events;
+create policy pos_check_audit_select
+  on public.pos_check_audit_events for select
+  using (public.is_platform_owner() or public.is_member_of_property(property_id));
+
 alter table public.pos_payment_allocations enable row level security;
 
 drop policy if exists pos_payment_allocations_select on public.pos_payment_allocations;
@@ -160,6 +183,14 @@ begin
     if v_reservation.id is null then
       raise exception 'The selected room is not attached to an active checked-in stay.';
     end if;
+
+    if not (
+      public.is_platform_owner()
+      or public.property_role(p_property_id) in ('owner','admin','manager','cashier')
+      or public.current_staff_role(p_property_id) in ('hotel_admin','super_admin','cashier','fb_manager')
+    ) then
+      raise exception 'Only authorised cashier or manager staff can charge a restaurant bill to a room.';
+    end if;
   end if;
 
   if exists (
@@ -186,6 +217,10 @@ begin
       where lower(trim(coalesce(value->>'method',''))) = 'room'
       limit 1
     );
+
+    select rm.number::text into v_room_number
+    from public.rooms rm
+    where rm.id = v_reservation.room_id;
 
     insert into public.folio_charges (
       property_id, reservation_id, source, description, amount
@@ -254,6 +289,17 @@ begin
       auth.uid()
     );
   end loop;
+
+  insert into public.pos_check_audit_events (
+    property_id, table_session_id, pos_receipt_id, event_type, details, actor_id
+  ) values (
+    p_property_id,
+    p_table_session_id,
+    v_receipt.id,
+    'settled',
+    jsonb_build_object('total', round(p_total,2), 'allocations', p_allocations),
+    auth.uid()
+  );
 
   update public.pos_table_sessions
   set status = 'closed',
