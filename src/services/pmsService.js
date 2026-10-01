@@ -419,10 +419,29 @@ export const pmsService = {
 		const { error } = await supabase.rpc('charge_restaurant_to_room', { p_property_id: propertyId, p_reservation_id: reservationId, p_description: description, p_amount: amount });
 		if (error) throw new Error(error.message);
 	},
-	async recordPosSale({ propertyId, tableNumber, orderNumber, items, subtotal, discountAmount, vat, total, paymentMethod, reservationId }) {
-		const { data, error } = await supabase.rpc('fn_record_pos_sale', { p_property_id: propertyId, p_table_number: tableNumber, p_order_number: orderNumber, p_items: items, p_subtotal: subtotal, p_discount_amount: discountAmount || 0, p_vat: vat, p_total: total, p_payment_method: paymentMethod, p_reservation_id: reservationId || null });
+	async settlePosTable({ propertyId, tableSessionId, tableNumber, orderNumber, items, subtotal, discountAmount, vat, total, allocations }) {
+		const { data, error } = await supabase.rpc('fn_settle_pos_table_session', {
+			p_property_id: propertyId,
+			p_table_session_id: tableSessionId,
+			p_table_number: tableNumber,
+			p_order_number: orderNumber,
+			p_items: items,
+			p_subtotal: subtotal,
+			p_discount_amount: discountAmount || 0,
+			p_vat: vat,
+			p_total: total,
+			p_allocations: Array.isArray(allocations) ? allocations : [],
+		});
 		if (error) throw new Error(error.message);
 		return data;
+	},
+	async listPosPaymentAllocations({ propertyId, receiptId }) {
+		const { data, error } = await supabase.rpc('fn_list_pos_payment_allocations', {
+			p_property_id: propertyId,
+			p_receipt_id: receiptId,
+		});
+		if (error) throw new Error(error.message);
+		return data || [];
 	},
 	async listReceiptsForReservation(reservationId) {
 		const { data, error } = await supabase.from('pos_receipts').select('*').eq('reservation_id', reservationId).order('created_at', { ascending: false });
