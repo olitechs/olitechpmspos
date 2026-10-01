@@ -146,3 +146,7 @@ Hardens atomic reservation check-in/check-out and links folio payments to the ac
 
 ### 0043 — Phase 2C reservation workflow hardening
 Strengthens `fn_update_planner_reservation` validation, keeps reservation room/date changes server-authoritative, validates channel/meal-plan/guest counts, and prevents `amount_paid` from diverging from the payment ledger once ledger payments exist. Run after 0042 and refresh the PostgREST schema.
+
+
+### 0044 — Phase 2E running table checks
+Adds sent_order_lines to persistent POS table sessions and an RPC for recording which quantities have already been fired to the kitchen. This supports multi-round open checks without re-firing previous items. Execute after 0043 and reload the PostgREST schema.
