@@ -135,23 +135,6 @@ export const pmsService = {
 		if (error) throw new Error(error.message);
 	},
 
-	async listHousekeepingTasks(propertyId) {
-		const { data, error } = await supabase.from('housekeeping_tasks').select('*, room:rooms(number), assignee:profiles(full_name,email)').eq('property_id', propertyId).order('created_at', { ascending: false });
-		if (error) throw new Error(error.message);
-		return data || [];
-	},
-
-	async createHousekeepingTask(payload) {
-		const { data, error } = await supabase.from('housekeeping_tasks').insert(payload).select().single();
-		if (error) throw new Error(error.message);
-		return data;
-	},
-
-	async updateHousekeepingTask(id, patch) {
-		const { data, error } = await supabase.from('housekeeping_tasks').update(patch).eq('id', id).select().single();
-		if (error) throw new Error(error.message);
-		return data;
-	},
 
 	async listRooms(propertyId) {
 		const { data, error } = await supabase.from('rooms').select('*').eq('property_id', propertyId).order('number');
