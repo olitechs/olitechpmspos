@@ -107,6 +107,19 @@ export const posService = {
     return data;
   },
 
+
+  async markKotSent({ propertyId, tableKey }) {
+    const { data, error } = await supabase
+      .from('pos_table_sessions')
+      .update({ kot_sent_at: new Date().toISOString() })
+      .eq('property_id', propertyId)
+      .eq('table_key', tableKey)
+      .neq('status', 'closed')
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return data;
+  },
   async closeSession({ propertyId, tableKey, orderLines = [] }) {
     return this.saveSession({
       propertyId,
