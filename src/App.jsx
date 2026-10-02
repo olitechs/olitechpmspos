@@ -21,7 +21,7 @@ import AdminCreateProperty from '@/pages/admin/AdminCreateProperty';
 import AdminEditProperty from '@/pages/admin/AdminEditProperty';
 import AdminPropertyDetail from '@/pages/admin/AdminPropertyDetail';
 import AdminAuditLog from '@/pages/admin/AdminAuditLog';
-import Roles from '@/pages/Admin/Roles';
+import Roles from '@/pages/admin/Roles';
 import SupabaseSetupNotice from '@/pages/SupabaseSetupNotice';
 import PublicHome from '@/pages/PublicHome';
 import PublicSignIn from '@/pages/PublicSignIn';
