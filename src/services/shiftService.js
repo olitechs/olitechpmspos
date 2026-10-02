@@ -18,8 +18,8 @@ export const shiftService = {
     if(data?.id) localStorage.setItem(`olitech_pos_shift_${propertyId}`,data.id);
     return data;
   },
-  async closeShift({shiftId,countedCash,notes=''}) {
-    const {data,error}=await supabase.rpc('fn_close_pos_shift',{p_shift_id:shiftId,p_counted_cash:Number(countedCash||0),p_notes:notes||null});
+  async closeShift({shiftId,countedCash,notes='',managerApproved=false}) {
+    const {data,error}=await supabase.rpc('fn_close_pos_shift',{p_shift_id:shiftId,p_counted_cash:Number(countedCash||0),p_notes:notes||null,p_manager_approved:Boolean(managerApproved)});
     if(error) throw new Error(error.message);
     return data;
   },
