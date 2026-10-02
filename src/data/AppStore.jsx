@@ -43,6 +43,7 @@ export function StoreProvider({ children }) {
       guests: Number(row.guests || 1),
       waiter: row.waiter || '',
       openedAt: row.opened_at ? new Date(row.opened_at).getTime() : Date.now(),
+      kotSentAt: row.kot_sent_at ? new Date(row.kot_sent_at).getTime() : null,
       total: 0,
       orderCount: Array.isArray(row.order_lines) ? row.order_lines.length : 0,
       tableNumber: row.table_number,
