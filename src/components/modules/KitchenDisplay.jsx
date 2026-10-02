@@ -22,6 +22,8 @@ export default function KitchenDisplay() {
   const { kitchenOrders, updateKitchenOrderStatus } = useStore();
   const { user } = useAuth();
   const propertyId = user?.property?.id;
+  const role = String(user?.staff?.role || user?.propertyRole || user?.role || '').toLowerCase().replace(/\s+/g, '_');
+  const canApproveVoid = ['hotel_admin','super_admin','cashier','fb_manager','front_office_manager','manager','admin','owner'].includes(role);
   const [tab, setTab] = useState('orders');
   const [voids, setVoids] = useState([]);
   const [voidFilter, setVoidFilter] = useState('');
@@ -101,11 +103,11 @@ export default function KitchenDisplay() {
             <thead className="border-b border-white/10 text-[10px] uppercase tracking-wider text-slate-500"><tr><th className="p-3">Time</th><th className="p-3">Table</th><th className="p-3">Item</th><th className="p-3">Removed</th><th className="p-3">Reason</th><th className="p-3">Removed By</th><th className="p-3">Status</th><th className="p-3">Control</th></tr></thead>
             <tbody>{visibleVoids.map(v=><tr key={v.id} className="border-b border-white/5 text-slate-300">
               <td className="p-3 font-mono">{formatTime(v.created_at)}</td><td className="p-3 font-black text-white">{v.table_number}</td><td className="p-3"><div className="font-bold text-white">{v.item_name}</div><div className="text-[10px] uppercase text-slate-500">{v.category}</div></td><td className="p-3 font-black text-red-300">{v.removed_qty}</td><td className="p-3">{v.reason}</td><td className="p-3">{v.removed_by_name||'—'}</td><td className="p-3"><span className="rounded-full bg-white/10 px-2 py-1 text-[10px] font-black uppercase">{v.status === 'printed' ? 'Void Printed' : v.status}</span></td>
-              <td className="p-3"><div className="flex flex-wrap gap-2"><button disabled={voidBusy} onClick={()=>reprintVoid(v)} className="rounded-lg bg-white/10 px-2.5 py-1.5 font-bold text-white">Re-print Void</button>{v.status!=='approved'&&<button onClick={()=>approveVoid(v)} className="rounded-lg bg-[#FFD100] px-2.5 py-1.5 font-black text-[#090C11]">Approve</button>}</div></td>
+              <td className="p-3"><div className="flex flex-wrap gap-2"><button disabled={voidBusy} onClick={()=>reprintVoid(v)} className="rounded-lg bg-white/10 px-2.5 py-1.5 font-bold text-white">Re-print Void</button>{canApproveVoid&&v.status!=='approved'&&<button onClick={()=>approveVoid(v)} className="rounded-lg bg-[#FFD100] px-2.5 py-1.5 font-black text-[#090C11]">Approve</button>}</div></td>
             </tr>)}</tbody>
           </table></div>
           {visibleVoids.length===0&&<div className="py-10 text-center text-xs text-slate-500">No voids found today.</div>}
-          <div className="mt-4 flex items-center gap-2 border-t border-white/10 pt-4"><input value={signature} onChange={e=>setSignature(e.target.value)} placeholder="Manager signature / name for approval" className="flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white outline-none"/><span className="text-[10px] text-slate-500">Signature required before Approve.</span></div>
+          {canApproveVoid && <div className="mt-4 flex items-center gap-2 border-t border-white/10 pt-4"><input value={signature} onChange={e=>setSignature(e.target.value)} placeholder="Manager signature / name for approval" className="flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white outline-none"/><span className="text-[10px] text-slate-500">Signature required before Approve.</span></div>}
         </div>
       ) : (
         <>
