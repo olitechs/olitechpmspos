@@ -546,7 +546,7 @@ export function StoreProvider({ children }) {
     addStaff, updateStaff, removeStaff,
     addPrinter, updatePrinter, removePrinter, togglePurpose,
     testPrinterConnection, connectPrinter, disconnectPrinter, testPrint,
-    orderPrinters, orderPrinterForCenter, billPrinter, billPrinterName, receiptPrinter, receiptPrinterName,
+    orderPrinters, orderPrinterForCenter, billPrinter, billPrinterName, printBill, receiptPrinter, receiptPrinterName,
     completeSale, retryReceiptPrint, fireKitchenOrder, retryKitchenPrint, updateKitchenOrderStatus,
   };
 
@@ -561,7 +561,7 @@ const FALLBACK = {
   addStaff: () => {}, updateStaff: () => {}, removeStaff: () => {},
   addPrinter: () => {}, updatePrinter: () => {}, removePrinter: () => {}, togglePurpose: () => {},
   testPrinterConnection: async () => null, connectPrinter: async () => null, disconnectPrinter: () => {}, testPrint: async () => ({ ok: false, friendlyError: 'No provider' }),
-  orderPrinters: () => [], orderPrinterForCenter: () => null, billPrinter: () => null, billPrinterName: () => null, receiptPrinter: () => null, receiptPrinterName: () => null,
+  orderPrinters: () => [], orderPrinterForCenter: () => null, billPrinter: () => null, billPrinterName: () => null, printBill: async () => ({ ok: false, friendlyError: 'No provider' }), receiptPrinter: () => null, receiptPrinterName: () => null,
   completeSale: async () => ({ id: null, printStatus: 'failed', printError: 'No provider' }),
   retryReceiptPrint: async () => ({ ok: false, friendlyError: 'No provider' }),
   fireKitchenOrder: async () => ({ id: null, failedCenters: [] }),
