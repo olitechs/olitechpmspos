@@ -5,7 +5,6 @@ import { BrowserRouter as Router, Route, Routes, Navigate, Outlet } from 'react-
 import PageNotFound from '@/lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import AdminRoute from '@/lib/AdminRoute';
-import UserNotRegisteredError from '@/components/ui/UserNotRegisteredError';
 import ScrollToTop from '@/components/ui/ScrollToTop';
 import POSApp from '@/pages/POSApp';
 import Login from '@/pages/Login';
@@ -22,13 +21,17 @@ import AdminEditProperty from '@/pages/admin/AdminEditProperty';
 import AdminPropertyDetail from '@/pages/admin/AdminPropertyDetail';
 import AdminAuditLog from '@/pages/admin/AdminAuditLog';
 import Roles from '@/pages/admin/Roles';
+import PropertyAdminSettings from '@/pages/admin/PropertyAdminSettings';
+import UnsettledReceiptSettings from '@/pages/admin/UnsettledReceiptSettings';
+import SettingsPrinters from '@/pages/SettingsPrinters';
+import ReceiptSettings from '@/components/settings/ReceiptSettings';
 import SupabaseSetupNotice from '@/pages/SupabaseSetupNotice';
 import PublicHome from '@/pages/PublicHome';
 import PublicSignIn from '@/pages/PublicSignIn';
 import PublicSignUp from '@/pages/PublicSignUp';
 import { isSupabaseConfigured } from '@/lib/supabaseClient';
 
-function AdminHome(){ const { user } = useAuth(); return user?.isPlatformOwner ? <AdminDashboard/> : <Roles/>; }
+function AdminHome(){ const { user } = useAuth(); return user?.isPlatformOwner ? <AdminDashboard/> : <PropertyAdminSettings/>; }
 
 function AuthLoading(){
   return <div className="fixed inset-0 flex items-center justify-center bg-[#F5F3EF]"><div className="w-8 h-8 border-4 border-[#D6D6D6] border-t-[#FFD300] rounded-full animate-spin"/></div>;
@@ -55,38 +58,24 @@ function ProtectedApp({initialModule='dashboard'}){
 function AppRoutes(){
   return <AuthProvider><Routes>
     <Route element={<PublicRoute/>}>
-      <Route path="/" element={<PublicHome/>}/>
-      <Route path="/home" element={<PublicHome/>}/>
-      <Route path="/signin" element={<PublicSignIn/>}/>
-      <Route path="/signup" element={<PublicSignUp/>}/>
-      <Route path="/login" element={<Login/>}/>
-      <Route path="/register" element={<Register/>}/>
+      <Route path="/" element={<PublicHome/>}/><Route path="/home" element={<PublicHome/>}/><Route path="/signin" element={<PublicSignIn/>}/><Route path="/signup" element={<PublicSignUp/>}/><Route path="/login" element={<Login/>}/><Route path="/register" element={<Register/>}/>
     </Route>
-    <Route path="/forgot-password" element={<ForgotPassword/>}/>
-    <Route path="/reset-password" element={<ResetPassword/>}/>
-    <Route path="/dashboard" element={<Navigate to="/backoffice" replace/>}/>
-    <Route path="/backoffice" element={<ProtectedApp initialModule="dashboard"/>}/>
-    <Route path="/pos" element={<ProtectedApp initialModule="pos"/>}/>
-    <Route path="/store" element={<ProtectedApp initialModule="store"/>}/>
-    <Route path="/settings/printers" element={<ProtectedApp initialModule="settings"/>}/>
-    <Route path="/settings/receipt" element={<ProtectedApp initialModule="settings"/>}/>
+    <Route path="/forgot-password" element={<ForgotPassword/>}/><Route path="/reset-password" element={<ResetPassword/>}/><Route path="/dashboard" element={<Navigate to="/backoffice" replace/>}/>
+    <Route path="/backoffice" element={<ProtectedApp initialModule="dashboard"/>}/><Route path="/pos" element={<ProtectedApp initialModule="pos"/>}/><Route path="/store" element={<ProtectedApp initialModule="store"/>}/>
+    <Route path="/settings/printers" element={<ProtectedApp initialModule="settings"/>}/><Route path="/settings/receipt" element={<ProtectedApp initialModule="settings"/>}/>
     <Route path="/rooms" element={<ProtectedApp initialModule="rooms"/>}/>
     <Route path="/admin/login" element={<AdminLogin/>}/>
     <Route element={<AdminRoute/>}><Route element={<AdminLayout/>}>
       <Route path="/admin" element={<AdminHome/>}/>
-      <Route path="/admin/properties" element={<AdminProperties/>}/>
-      <Route path="/admin/properties/new" element={<AdminCreateProperty/>}/>
-      <Route path="/admin/properties/:id" element={<AdminPropertyDetail/>}/>
-      <Route path="/admin/properties/:id/edit" element={<AdminEditProperty/>}/>
-      <Route path="/admin/audit-log" element={<AdminAuditLog/>}/>
-      <Route path="/admin/roles" element={<Roles/>}/>
+      <Route path="/admin/properties" element={<AdminProperties/>}/><Route path="/admin/properties/new" element={<AdminCreateProperty/>}/><Route path="/admin/properties/:id" element={<AdminPropertyDetail/>}/><Route path="/admin/properties/:id/edit" element={<AdminEditProperty/>}/>
+      <Route path="/admin/audit-log" element={<AdminAuditLog/>}/><Route path="/admin/roles" element={<Roles/>}/>
+      <Route path="/admin/settings/printers" element={<SettingsPrinters/>}/>
+      <Route path="/admin/settings/receipt" element={<ReceiptSettings/>}/>
+      <Route path="/admin/settings/unsettled-receipt" element={<UnsettledReceiptSettings/>}/>
     </Route></Route>
     <Route path="*" element={<PageNotFound/>}/>
   </Routes></AuthProvider>;
 }
 
-function App(){
-  if(!isSupabaseConfigured) return <SupabaseSetupNotice/>;
-  return <QueryClientProvider client={queryClientInstance}><Router><ScrollToTop/><AppRoutes/></Router><Toaster/></QueryClientProvider>;
-}
+function App(){ if(!isSupabaseConfigured) return <SupabaseSetupNotice/>; return <QueryClientProvider client={queryClientInstance}><Router><ScrollToTop/><Toaster/><AppRoutes/></Router></QueryClientProvider>; }
 export default App;
