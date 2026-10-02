@@ -78,9 +78,32 @@ begin
       raise exception 'Target table is already occupied. Use Join Tables to combine the bills.';
     end if;
 
+    -- Keep the source row closed and create a new target session. This makes
+    -- Supabase realtime emit a clean UPDATE(old table -> closed) + INSERT(new
+    -- table) sequence, so every POS terminal converges on the same floor state.
+    insert into public.pos_table_sessions(
+      property_id, table_key, table_number, zone_id, status, guests, waiter,
+      order_number, order_lines, opened_by, opened_at, updated_at, closed_at, kot_sent_at
+    ) values (
+      p_property_id,
+      p_target_table_key,
+      coalesce(nullif(trim(p_target_table_number),''), p_target_table_key),
+      v_source.zone_id,
+      v_source.status,
+      v_source.guests,
+      v_source.waiter,
+      v_source.order_number,
+      v_source.order_lines,
+      v_source.opened_by,
+      v_source.opened_at,
+      now(),
+      null,
+      v_source.kot_sent_at
+    );
+
     update public.pos_table_sessions
-       set table_key = p_target_table_key,
-           table_number = coalesce(nullif(trim(p_target_table_number),''), p_target_table_key),
+       set status = 'closed',
+           closed_at = now(),
            updated_at = now()
      where id = v_source.id;
 
