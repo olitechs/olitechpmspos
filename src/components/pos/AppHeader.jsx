@@ -7,7 +7,7 @@ const TABS = [
   { id: 'bill', label: 'Bill & Payment', icon: '🧾' },
 ];
 
-export default function AppHeader({ activeTab, onTabChange, activeTable, onCloseShift, shift }) {
+export default function AppHeader({ activeTab, onTabChange, activeTable, onCloseShift, shift, onManageMenu }) {
   const now = new Date();
   const timeStr = now.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' });
   const dateStr = now.toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'short' });
@@ -15,7 +15,7 @@ export default function AppHeader({ activeTab, onTabChange, activeTable, onClose
   return (
     <header className="flex items-center justify-between px-4 py-0 shrink-0" style={{ background: NAVY, height: '56px' }}>
       {/* Brand */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         <div className="flex flex-col leading-none">
           <span className="font-bold text-white tracking-wide text-base font-mono tracking-[0.05em]">
             OliTechs POS
@@ -53,6 +53,7 @@ export default function AppHeader({ activeTab, onTabChange, activeTable, onClose
       </nav>
 
       <div className="flex items-center gap-3">
+        {onManageMenu && <button onClick={onManageMenu} className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-xs font-black text-white hover:bg-white/15">Menu</button>}
         {shift?.status === 'open' && onCloseShift && (
           <button onClick={onCloseShift} className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-xs font-black text-white hover:bg-white/15">
             Close Shift
