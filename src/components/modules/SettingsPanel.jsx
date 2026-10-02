@@ -1,4 +1,5 @@
 import React from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Building2, Users, ReceiptText, Printer, Percent, Plug, ChevronLeft } from 'lucide-react';
 import { SAND, NAVY, MUTED, BORDER, SURFACE, TEAL, TEAL_DARK } from '@/data/themePalette';
 import StaffAdmin from '@/components/admin/StaffAdmin';
@@ -25,10 +26,13 @@ function Breadcrumb({label,onBack}) {
 }
 
 export default function SettingsPanel(){
- const [view,setView]=React.useState('list');
+ const location=useLocation(); const navigate=useNavigate();
+ const initialView=location.pathname==='/settings/printers'?'printers':location.pathname==='/settings/receipt'?'receipt':'list';
+ const [view,setView]=React.useState(initialView);
+ React.useEffect(()=>{if(location.pathname==='/settings/printers')setView('printers');else if(location.pathname==='/settings/receipt')setView('receipt');},[location.pathname]);
  const {user}=useAuth();
  const canSubscription=Boolean(user?.property?.id||user?.propertyRole||user?.staff?.role);
- if(view==='printers') return <div className="flex-1 overflow-y-auto" style={{background:SAND}}><Breadcrumb label="Printers" onBack={()=>setView('list')}/><ErrorBoundary label="Printer settings"><SettingsPrinters/></ErrorBoundary></div>;
+ if(view==='printers') return <div className="flex-1 overflow-y-auto" style={{background:SAND}}><Breadcrumb label="Printers" onBack={()=>{setView('list');navigate('/backoffice?module=settings')}}/><ErrorBoundary label="Printer settings"><SettingsPrinters/></ErrorBoundary></div>;
  if(view==='receipt') return <div className="flex-1 overflow-y-auto" style={{background:SAND}}><Breadcrumb label="Receipt Customization" onBack={()=>setView('list')}/><ErrorBoundary label="Receipt settings"><ReceiptSettings/></ErrorBoundary></div>;
  if(view==='users') return <div className="flex-1 overflow-y-auto" style={{background:SAND}}><Breadcrumb label="Users & Roles" onBack={()=>setView('list')}/><StaffAdmin/></div>;
  if(view==='subscription') return <div className="flex-1 overflow-y-auto" style={{background:SAND}}><Breadcrumb label="Subscription" onBack={()=>setView('list')}/><SubscriptionPanel/></div>;
