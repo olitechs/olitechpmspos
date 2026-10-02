@@ -11,6 +11,7 @@ import PinPad from '@/components/auth/PinPad';
 import { authService } from '@/services/authService';
 import { useAuth } from '@/lib/AuthContext';
 import { printOrderByCategory } from '@/services/printService';
+import { posService } from '@/services/posService';
 
 const THERMAL_COLUMNS = 42; // standard 80mm thermal ticket text width
 
@@ -159,13 +160,14 @@ export default function POSContainer() {
 				duration: 12000,
 				action: { label: 'Retry Tickets', onClick: async () => {
 					const retry = await printOrder();
-					if (retry.ok) toast.success(`Order ${orderNumber} tickets printed.`);
+					if (retry.ok) { await posService.markKotSent({ propertyId, tableKey: table.id }).catch(() => {}); toast.success(`Order ${orderNumber} tickets printed.`); }
 					else toast.error('Ticket retry failed. Check printer assignments.');
 				}},
 			});
 			return;
 		}
 
+		await posService.markKotSent({ propertyId, tableKey: table.id }).catch((error) => console.warn('[POS] failed to mark KOT sent', error));
 		toast.success(`Order ${orderNumber} sent to kitchen/bar printers.`);
 	};
 
