@@ -223,6 +223,7 @@ export default function POSContainer() {
 						onBackToFloor={() => { setActiveTable(null); setActiveTab('floor'); }}
 						orderNumber={orderNumbersRef.current[activeTable.id]}
 						waiter={store.getSession(activeTable.id)?.waiter || ''}
+						covers={store.getSession(activeTable.id)?.guests || activeTable.seats}
 					/>
 				)}
 			</div>
