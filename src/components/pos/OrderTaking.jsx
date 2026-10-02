@@ -1,7 +1,14 @@
 import React, { useState } from 'react';
+import { AlertTriangle, X, ShieldCheck } from 'lucide-react';
 import { CATEGORIES, MENU_ITEMS, VAT_RATE, tableLabel, CATEGORY_CENTER } from '@/data/mockData';
 import { useStore } from '@/data/AppStore';
 import PrintWarn from '@/components/pos/PrintWarn';
+import PinPad from '@/components/auth/PinPad';
+import { useAuth } from '@/lib/AuthContext';
+import { authService } from '@/services/authService';
+import { pmsService } from '@/services/pmsService';
+import { getPrinters, getAssignments, printVoidTicket } from '@/services/printService';
+import { getPropertySettings } from '@/services/settingsService';
 import { NAVY, NAVY2, TEAL, TEAL_DARK, TEAL_LIGHT, SAND, SURFACE, BORDER, BORDER_DARK, MUTED, MUTED_DARK } from '@/data/themePalette';
 
 function fmt(n) {
@@ -10,7 +17,17 @@ function fmt(n) {
 
 export default function OrderTaking({ table, orderLines, setOrderLines, onSendToKitchen, onBill, orderNumber: orderNumberProp }) {
   const store = useStore();
+  const { user } = useAuth();
+  const propertyId = user?.property?.id;
+  const activeStaff = (() => { try { return JSON.parse(sessionStorage.getItem('olitech_active_staff_v2') || 'null'); } catch { return null; } })();
+  const currentRole = String(activeStaff?.role || user?.staff?.role || user?.propertyRole || user?.role || '').toLowerCase();
   const [activeCategory, setActiveCategory] = useState(CATEGORIES[0]);
+  const [removeTarget, setRemoveTarget] = useState(null);
+  const [removeReason, setRemoveReason] = useState('');
+  const [removeError, setRemoveError] = useState('');
+  const [removeBusy, setRemoveBusy] = useState(false);
+  const [pinStaff, setPinStaff] = useState(null);
+  const [pinError, setPinError] = useState('');
 
   const addItem = (item) => {
     setOrderLines((prev) => {
@@ -21,11 +38,104 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
   };
 
   const changeQty = (id, delta) => {
+    if (delta < 0) {
+      const line = orderLines.find((l) => l.id === id);
+      const session = store.getSession(table.id);
+      const sent = Boolean(session?.kotSentAt || session?.status === 'unsettled');
+      if (line && sent) {
+        setRemoveTarget({ line, removeQty: 1, sent });
+        setRemoveReason('');
+        setRemoveError('');
+        return;
+      }
+    }
     setOrderLines((prev) =>
       prev
         .map((l) => (l.id === id ? { ...l, qty: l.qty + delta } : l))
         .filter((l) => l.qty > 0)
     );
+  };
+
+  const managerRoles = new Set(['hotel_admin','super_admin','cashier','fb_manager','front_office_manager','manager','admin','owner']);
+  const needsManagerPin = !managerRoles.has(currentRole);
+
+  const performRemoval = async () => {
+    if (!removeTarget || !propertyId) return;
+    if (!removeReason.trim()) { setRemoveError('Enter a reason for the item cancellation.'); return; }
+    setRemoveBusy(true); setRemoveError('');
+    try {
+      const staffName = activeStaff?.full_name || user?.name || 'POS Staff';
+      const result = await pmsService.removeOrderItem({
+        propertyId,
+        tableKey: table.id,
+        itemId: removeTarget.line.id,
+        removeQty: removeTarget.removeQty,
+        reason: removeReason.trim(),
+        removedByName: staffName,
+      });
+      setOrderLines(result?.order_lines || []);
+      const voidRow = result?.void;
+      const settings = await getPropertySettings(propertyId).catch(() => null);
+      if (removeTarget.sent && settings?.print_void_slips !== false && voidRow) {
+        const [printers, assignments] = await Promise.all([getPrinters(propertyId), getAssignments(propertyId)]);
+        const assignmentType = voidRow.category === 'drinks' ? 'void_drinks_orders' : 'void_food_orders';
+        const fallbackType = voidRow.category === 'drinks' ? 'drinks_orders' : 'food_orders';
+        const targets = assignments
+          .filter(a => a.assignment_type === assignmentType || a.assignment_type === fallbackType)
+          .map(a => printers.find(p => p.id === a.printer_id))
+          .filter(Boolean)
+          .filter((p,i,arr) => arr.findIndex(x => x.id === p.id) === i);
+        if (targets.length) {
+          const results = await Promise.all(targets.map(printer => printVoidTicket(printer, {
+            propertyId,
+            voidId: voidRow.id,
+            tableNo: tableLabel(table),
+            waiterName: store.getSession(table.id)?.waiter || '',
+            checkNo: orderNumber,
+            item: voidRow.item_name,
+            removedQty: voidRow.removed_qty,
+            originalQty: voidRow.original_qty,
+            newQty: voidRow.new_qty,
+            reason: voidRow.reason,
+            removedBy: voidRow.removed_by_name || staffName,
+            timestamp: voidRow.created_at,
+            category: voidRow.category,
+          })));
+          if (!results.some(r => r.ok)) setRemoveError('Item removed, but the void slip did not print. Check the assigned printer.');
+        } else {
+          setRemoveError('Item removed, but no Kitchen/Bar void printer is assigned.');
+        }
+      }
+      setRemoveTarget(null);
+    } catch (error) {
+      setRemoveError(error.message || 'Could not remove the item.');
+    } finally {
+      setRemoveBusy(false);
+    }
+  };
+
+  const requestRemoval = () => {
+    if (needsManagerPin) {
+      setPinError('');
+      setPinStaff({ name: 'Manager approval required' });
+      return;
+    }
+    performRemoval();
+  };
+
+  const handleManagerPin = async (pin) => {
+    try {
+      const result = await authService.verifyStaffPin({ propertyId, module: 'pos', pin });
+      const role = String(result?.staff?.role || '').toLowerCase();
+      if (!result?.ok || !managerRoles.has(role)) {
+        setPinError('Manager, cashier or administrator PIN required.');
+        return;
+      }
+      setPinStaff(null);
+      await performRemoval();
+    } catch (error) {
+      setPinError(error.message || 'PIN verification failed.');
+    }
   };
 
   const subtotal = orderLines.reduce((s, l) => s + l.price * l.qty, 0);
@@ -152,6 +262,27 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
           </button>
         </div>
       </div>
+      {removeTarget && (
+        <div className="fixed inset-0 z-[250] flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-md rounded-3xl bg-white p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <div><div className="flex items-center gap-2 text-base font-black text-slate-950"><AlertTriangle size={18} className="text-red-600"/>Cancel sent item</div><p className="mt-1 text-xs text-slate-500">This item was already sent to production or the bill was printed. A control void will be recorded.</p></div>
+              <button onClick={()=>setRemoveTarget(null)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"><X size={18}/></button>
+            </div>
+            <div className="mt-4 rounded-2xl border border-red-100 bg-red-50 p-4">
+              <div className="font-black text-slate-950">{removeTarget.line.name}</div>
+              <div className="mt-1 text-xs text-slate-600">Original quantity: {removeTarget.line.qty} · Removing: {removeTarget.removeQty} · Remaining: {Math.max(0, removeTarget.line.qty-removeTarget.removeQty)}</div>
+            </div>
+            <label className="mt-4 block text-xs font-black uppercase tracking-wider text-slate-500">Reason required
+              <textarea value={removeReason} onChange={e=>setRemoveReason(e.target.value)} rows={3} placeholder="Wrong order, guest cancellation, duplicate item…" className="mt-2 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm outline-none focus:border-red-400"/>
+            </label>
+            {removeError && <div className="mt-3 rounded-xl bg-red-50 p-3 text-xs font-bold text-red-700">{removeError}</div>}
+            <div className="mt-4 flex items-center gap-2 text-[11px] font-semibold text-slate-500"><ShieldCheck size={15}/>Kitchen/Bar control slip will be printed when enabled.</div>
+            <div className="mt-4 flex justify-end gap-2"><button onClick={()=>setRemoveTarget(null)} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold">Keep Item</button><button disabled={removeBusy} onClick={requestRemoval} className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-black text-white disabled:opacity-50">{removeBusy?'Removing…':needsManagerPin?'Request Manager PIN':'Confirm Void'}</button></div>
+          </div>
+        </div>
+      )}
+      {pinStaff && <PinPad title="Manager PIN Required" staffName={pinStaff.name} error={pinError} onSubmit={handleManagerPin} onClose={()=>setPinStaff(null)}/>}
     </div>
   );
 }
