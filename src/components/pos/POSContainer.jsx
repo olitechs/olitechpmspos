@@ -13,6 +13,8 @@ import { authService } from '@/services/authService';
 import { useAuth } from '@/lib/AuthContext';
 import { printOrderByCategory } from '@/services/printService';
 import { posService } from '@/services/posService';
+import { shiftService } from '@/services/shiftService';
+import CloseShiftModal, { OpenShiftModal } from '@/components/pos/CloseShiftModal';
 
 const THERMAL_COLUMNS = 42; // standard 80mm thermal ticket text width
 
@@ -59,7 +61,7 @@ export default function POSContainer() {
 	const [posStaff, setPosStaff] = useState([]);
 	const [switchStaff, setSwitchStaff] = useState(null);
 	const [switchError, setSwitchError] = useState('');
-	useEffect(() => { if (!propertyId) return; authService.listStaff(propertyId, 'pos').then(setPosStaff).catch(() => {}); }, [propertyId]);
+	useEffect(() => { if (!propertyId) return; authService.listStaff(propertyId, 'pos').then(setPosStaff).catch(() => {}); shiftService.getCurrentShift(propertyId).then(setCurrentShift).catch(()=>setCurrentShift(null)).finally(()=>setShiftLoading(false)); }, [propertyId]);
 	const verifySwitch = async (pin) => { try { const result = await authService.verifyStaffPin({ propertyId, module: 'pos', pin }); if (!result?.ok) { setSwitchError('Wrong PIN'); return; } sessionStorage.setItem('olitech_active_staff_v2', JSON.stringify(result.staff)); window.dispatchEvent(new CustomEvent('olitech:staff-changed', { detail: result.staff })); setSwitchStaff(null); setSwitchError(''); } catch (e) { setSwitchError(e.message); } };
 	const [activeTab, setActiveTab] = useState('floor');
 	const [activeTable, setActiveTable] = useState(null);
@@ -68,6 +70,9 @@ export default function POSContainer() {
 	const [tableTransferTarget, setTableTransferTarget] = useState(null);
 	const [tableTransferBusy, setTableTransferBusy] = useState(false);
 	const [tableTransferError, setTableTransferError] = useState('');
+	const [currentShift, setCurrentShift] = useState(null);
+	const [shiftLoading, setShiftLoading] = useState(true);
+	const [closeShiftOpen, setCloseShiftOpen] = useState(false);
 	// Order lines are kept per-table so switching tabs/tables doesn't lose an in-progress order.
 	const [orderLinesByTable, setOrderLinesByTable] = useState({});
 	useEffect(() => {
@@ -239,7 +244,7 @@ export default function POSContainer() {
 
 	return (
 		<div className="flex flex-col h-full overflow-hidden">
-			<AppHeader activeTab={activeTab} onTabChange={setActiveTab} activeTable={activeTable} />
+			<AppHeader activeTab={activeTab} onTabChange={setActiveTab} activeTable={activeTable} shift={currentShift} onCloseShift={()=>setCloseShiftOpen(true)} />
 
 			<div className="flex-1 min-h-0">
 				{activeTab === 'floor' && <div className="relative h-full"><FloorPlan onTableSelect={handleTableSelect} /><div className="absolute bottom-3 left-3 z-20 flex items-center gap-1 rounded-2xl border-2 border-[#090C11] bg-white p-2 shadow-lg"><span className="px-1 text-[9px] font-black uppercase tracking-wider text-[#6B7280]">Staff</span>{posStaff.slice(0,8).map(person => <button key={person.id} title={`Switch to ${person.full_name}`} onClick={()=>{setSwitchStaff(person);setSwitchError('');}} className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-[#090C11] bg-[#FFD300] text-[10px] font-black text-[#090C11] hover:scale-105">{person.avatar || person.full_name?.slice(0,2).toUpperCase()}</button>)}</div>{switchStaff&&<PinPad title="Switch POS Staff" staffName={switchStaff.full_name} error={switchError} onSubmit={verifySwitch} onClose={()=>setSwitchStaff(null)}/>}</div>}
@@ -314,6 +319,8 @@ export default function POSContainer() {
 				</div>
 			)}
 
+			{closeShiftOpen && currentShift && <CloseShiftModal shift={currentShift} onClose={()=>setCloseShiftOpen(false)} onClosed={()=>{setCurrentShift(null);setCloseShiftOpen(false);setActiveTable(null);setActiveTab('floor');}} />}
+			{!shiftLoading && !currentShift && propertyId && <OpenShiftModal propertyId={propertyId} onOpened={(s)=>setCurrentShift(s)} />}
 			<OpenTableDialog
 				open={!!pendingTable}
 				table={pendingTable}
