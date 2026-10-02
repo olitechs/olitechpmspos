@@ -17,7 +17,7 @@ function receiptText({orderNumber,table,waiter,lines,subtotal,discount,discountP
 function billText({orderNumber,table,waiter,lines,subtotal,discount,discountPct,vat,total}){
  return ['OLITECHS PMS + POS','UNSETTLED BILL / PROFORMA','',`TABLE: ${tableLabel(table)}`,`ORDER: ${orderNumber}`,`WAITER: ${waiter||'Unassigned'}`,new Date().toLocaleString('en-KE'),'-'.repeat(40),...lines.map(x=>`${x.qty}x ${x.name}  ${fmt(Number(x.price||0)*Number(x.qty||0))}`),'-'.repeat(40),`Subtotal: ${fmt(subtotal)}`,discount>0?`Discount (${discountPct}%): -${fmt(discount)}`:'',`VAT 16%: ${fmt(vat)}`,`TOTAL DUE: ${fmt(total)}`,'','NOT PAID — PAYMENT REQUIRED'].filter(Boolean).join('\n');
 }
-export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrder,onBackToFloor,orderNumber,waiter}){
+export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrder,onBackToFloor,orderNumber,waiter,covers}){
  const store=useStore();const{user}=useAuth();const propertyId=user?.property?.id;const sessionStaff=getSessionStaff();
  const role=String(sessionStaff?.role||user?.staff?.role||user?.propertyRole||'').toLowerCase().replace(/\s+/g,'_');
  const canRoomCharge=user?.isPlatformOwner||['hotel_admin','super_admin','cashier','front_office_manager','owner','admin','manager'].includes(role);
@@ -33,7 +33,7 @@ export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrde
  async function handlePrintBill(){
   setBusy(true);setError('');
   try{
-   const result=await printReceipt('UNSETTLED',{propertyId,orderNumber:stableOrderNumber,checkNo:stableOrderNumber,table:tableLabel(table),waiter,covers,items:orderLines,total,currency:'KES'});
+   const result=await printReceipt('UNSETTLED',{propertyId,orderNumber:stableOrderNumber,checkNo:stableOrderNumber,table:tableLabel(table),waiter,covers:covers ?? table.seats,items:orderLines,total,currency:'KES'});
    if(!result.ok){setError(result.friendlyError||'Bill printer failed.');toast.error('Bill was not printed.');return}
    store.setUnsettled(table.id);setBillPrinted(true);toast.success('Unsettled bill printed. The table remains open.');
   }catch(e){setError(e?.message||'Bill printer failed.');toast.error('Bill was not printed.');}
