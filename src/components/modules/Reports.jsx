@@ -2,7 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { CalendarDays, RefreshCw, TrendingUp } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
+import { shiftService, exportShiftToExcel } from '@/services/shiftService';
+import { getPrinters, getAssignments, printShiftReport } from '@/services/printService';
 import { pmsService } from '@/services/pmsService';
+import { supabase } from '@/lib/supabaseClient';
 import { NAVY, TEAL_DARK, BORDER, SAND, SURFACE, MUTED } from '@/data/themePalette';
 
 const money = (value) => `KES ${Number(value || 0).toLocaleString('en-KE', { maximumFractionDigits: 0 })}`;
@@ -28,6 +31,8 @@ export default function Reports() {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [shifts, setShifts] = useState([]);
+  const [shiftBusy, setShiftBusy] = useState('');
 
   const load = async () => {
     if (!propertyId) return;
@@ -43,6 +48,23 @@ export default function Reports() {
   };
 
   useEffect(() => { load(); }, [propertyId, date]);
+  useEffect(() => { if(propertyId) shiftService.listShifts(propertyId,date).then(setShifts).catch(()=>{}); }, [propertyId,date]);
+  const shiftAction = async (shift, action) => {
+    setShiftBusy(shift.id+action);
+    try {
+      const report = await shiftService.getShiftReport(shift.id);
+      report.propertyId=propertyId;
+      if(action==='excel'){ exportShiftToExcel(report); }
+      else {
+        const {data:settings}=await supabase.from('property_settings').select('*').eq('property_id',propertyId).maybeSingle();
+        report.settings=settings;
+        const [printers,assignments]=await Promise.all([getPrinters(propertyId),getAssignments(propertyId)]);
+        const printer=assignments.filter(a=>a.assignment_type==='shift_reports'||a.assignment_type==='reports').map(a=>printers.find(p=>p.id===a.printer_id)).find(Boolean);
+        if(!printer) throw new Error('No Shift Closing Reports printer is assigned.');
+        await printShiftReport(report,printer);
+      }
+    } catch(e){setError(e.message||'Shift report action failed.');} finally{setShiftBusy('');}
+  };
 
   const hourlyData = useMemo(() => {
     const rows = summary?.hourly_revenue || [];
@@ -128,6 +150,18 @@ export default function Reports() {
           </section>
         </div>
 
+        <section className="mb-4 rounded-2xl overflow-hidden" style={{ background: SURFACE, border: `1px solid ${BORDER}` }}>
+          <div className="flex items-center justify-between border-b px-4 py-4" style={{ borderColor:BORDER }}>
+            <div><h2 className="text-xs font-bold uppercase tracking-[0.14em]" style={{color:NAVY}}>POS Shift Reports</h2><p className="mt-1 text-[11px]" style={{color:MUTED}}>Reprint closing receipts or export detailed Excel sales breakdowns.</p></div>
+          </div>
+          <div className="divide-y" style={{borderColor:BORDER}}>
+            {shifts.map(s=><div key={s.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+              <div><div className="text-sm font-black" style={{color:NAVY}}>{s.shift_no}</div><div className="text-[11px]" style={{color:MUTED}}>{s.status.toUpperCase()} · Opened {new Date(s.opened_at).toLocaleString('en-KE')}</div></div>
+              <div className="flex gap-2"><button disabled={!!shiftBusy} onClick={()=>shiftAction(s,'print')} className="rounded-lg border px-3 py-2 text-xs font-bold" style={{borderColor:BORDER,color:NAVY}}>Re-print</button><button disabled={!!shiftBusy} onClick={()=>shiftAction(s,'excel')} className="rounded-lg bg-[#0E7482] px-3 py-2 text-xs font-bold text-white">Export Excel</button></div>
+            </div>)}
+            {!shifts.length&&<div className="px-4 py-8 text-center text-sm" style={{color:MUTED}}>No shifts recorded for {date}.</div>}
+          </div>
+        </section>
         <section className="rounded-2xl overflow-hidden" style={{ background: SURFACE, border: `1px solid ${BORDER}` }}>
           <div className="flex items-center justify-between border-b px-4 py-4" style={{ borderColor: BORDER }}>
             <h2 className="text-xs font-bold uppercase tracking-[0.14em]" style={{ color: NAVY }}>Top-selling items</h2>
