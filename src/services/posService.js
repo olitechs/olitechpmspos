@@ -108,6 +108,18 @@ export const posService = {
   },
 
 
+  async moveOrMergeTable({ propertyId, sourceTableKey, targetTableKey, targetTableNumber, mode }) {
+    const { data, error } = await supabase.rpc('fn_move_or_merge_pos_table', {
+      p_property_id: propertyId,
+      p_source_table_key: sourceTableKey,
+      p_target_table_key: targetTableKey,
+      p_target_table_number: String(targetTableNumber ?? targetTableKey ?? ''),
+      p_mode: mode,
+    });
+    if (error) throw new Error(error.message);
+    return data || null;
+  },
+
   async markKotSent({ propertyId, tableKey }) {
     const { data, error } = await supabase
       .from('pos_table_sessions')
