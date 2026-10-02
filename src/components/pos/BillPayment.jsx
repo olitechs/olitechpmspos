@@ -8,8 +8,9 @@ import{pmsService}from'@/services/pmsService';
 import{getSessionStaff}from'@/services/authService';
 import{inventoryService}from'@/services/inventoryService';
 import{printReceipt}from'@/services/printService';
+import{shiftService}from'@/services/shiftService';
 
-const PAYMENT_METHODS=[{id:'cash',label:'Cash'},{id:'card',label:'Card'},{id:'mpesa',label:'M-Pesa'},{id:'room',label:'Room Charge'}];
+const PAYMENT_METHODS=[{id:'cash',label:'Cash'},{id:'card',label:'Card'},{id:'mpesa',label:'M-Pesa'},{id:'bank',label:'Bank Transfer'},{id:'room',label:'Room Charge'}];
 const fmt=n=>'KES '+Number(n||0).toLocaleString('en-KE',{minimumFractionDigits:2,maximumFractionDigits:2});
 export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrder,onBackToFloor,onMoveTable,orderNumber,waiter,covers}){
  const store=useStore();const{user}=useAuth();const propertyId=user?.property?.id;const sessionStaff=getSessionStaff();
@@ -39,7 +40,9 @@ export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrde
   if(paymentMethod==='room'&&!chargeReservationId){setError('Select the guest/room to charge.');return}
   setBusy(true);setError('');
   try{
-   await pmsService.recordPosSale({propertyId,tableNumber:tableLabel(table),orderNumber:stableOrderNumber,items:orderLines.map(x=>({name:x.name,qty:x.qty,price:x.price})),subtotal,discountAmount:discount,vat,total,paymentMethod,reservationId:paymentMethod==='room'?chargeReservationId:null});
+   const currentShift=await shiftService.getCurrentShift(propertyId);
+   if(!currentShift?.id){setError('No open POS shift. Open a shift before taking payments.');return;}
+   await pmsService.recordPosSale({propertyId,tableNumber:tableLabel(table),orderNumber:stableOrderNumber,items:orderLines.map(x=>({name:x.name,qty:x.qty,price:x.price,category:x.category,center:x.center})),subtotal,discountAmount:discount,vat,total,paymentMethod,reservationId:paymentMethod==='room'?chargeReservationId:null,shiftId:currentShift.id});
    const methodLabel=PAYMENT_METHODS.find(x=>x.id===paymentMethod)?.label||paymentMethod;
    await store.completeSale({table,orderLines,total,method:methodLabel,receiptText:'',skipPrint:true});
    const voidRows=propertyId?await pmsService.listVoidedItems(propertyId).catch(()=>[]):[];
