@@ -44,7 +44,7 @@ export async function savePropertySettings(propertyId, values) {
 
 export async function uploadPropertyLogo(propertyId, file) {
   if (!propertyId || !file) throw new Error('Property and logo are required.');
-  if (!/^image\\/(png|jpeg|jpg|webp|svg\\+xml)$/i.test(file.type)) {
+  if (!/^image\/(png|jpeg|jpg|webp|svg\+xml)$/i.test(file.type)) {
     throw new Error('Logo must be PNG, JPG, WEBP or SVG.');
   }
   if (file.size > 2 * 1024 * 1024) throw new Error('Logo must be 2MB or smaller.');
