@@ -30,13 +30,15 @@ export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrde
  useEffect(()=>{if(paymentMethod!=='room'||!propertyId)return;pmsService.listActiveStays(propertyId).then(setActiveStays).catch(e=>setError(e.message));},[paymentMethod,propertyId]);
  useEffect(()=>{if(!canRoomCharge&&paymentMethod==='room')setPaymentMethod('cash')},[canRoomCharge,paymentMethod]);
 
- const printBill=async()=>{
+ async function handlePrintBill(){
   setBusy(true);setError('');
-  const result=await store.printBill({text:billText({orderNumber:stableOrderNumber,table,waiter,lines:orderLines,subtotal,discount,discountPct,vat,total}),tableNumber:table.number});
-  setBusy(false);
-  if(!result.ok){setError(result.friendlyError||'Bill printer failed.');toast.error('Bill was not printed.');return;}
-  store.setUnsettled(table.id);setBillPrinted(true);toast.success('Unsettled bill printed. The table remains open.');
- };
+  try{
+   const result=await store.printBill({text:billText({orderNumber:stableOrderNumber,table,waiter,lines:orderLines,subtotal,discount,discountPct,vat,total}),tableNumber:table.number});
+   if(!result.ok){setError(result.friendlyError||'Bill printer failed.');toast.error('Bill was not printed.');return}
+   store.setUnsettled(table.id);setBillPrinted(true);toast.success('Unsettled bill printed. The table remains open.');
+  }catch(e){setError(e?.message||'Bill printer failed.');toast.error('Bill was not printed.');}
+  finally{setBusy(false)}
+ }
  const confirmPayment=async()=>{
   if(!propertyId){setError('This table is not attached to a property.');return}
   if(!orderLines.length){setError('There are no items on this bill.');return}
@@ -72,7 +74,7 @@ export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrde
     <aside className="space-y-4">
      <section className="rounded-2xl border border-[#E1E1DE] bg-white p-5 shadow-sm"><h3 className="mb-4 flex items-center gap-2 font-black"><Receipt size={18}/>Bill total</h3><div className="space-y-2 text-sm"><div className="flex justify-between"><span>Subtotal</span><b>{fmt(subtotal)}</b></div>{discount>0&&<div className="flex justify-between text-green-700"><span>Discount</span><b>-{fmt(discount)}</b></div>}<div className="flex justify-between"><span>VAT 16%</span><b>{fmt(vat)}</b></div><div className="mt-3 flex justify-between border-t-2 border-[#090C11] pt-3 text-lg font-black"><span>TOTAL</span><span>{fmt(total)}</span></div></div><div className="mt-4"><label className="mb-1 block text-xs font-black uppercase text-[#777]">Discount %</label><input value={discountPct} onChange={e=>setDiscountPct(e.target.value)} type="number" min="0" max="100" className="w-full rounded-xl border border-[#D9D9D5] p-3"/></div></section>
      <section className="rounded-2xl border border-[#E1E1DE] bg-white p-5 shadow-sm"><h3 className="mb-3 flex items-center gap-2 font-black"><WalletCards size={18}/>Payment method</h3><div className="grid grid-cols-2 gap-2">{PAYMENT_METHODS.map(m=><button key={m.id} disabled={m.id==='room'&&!canRoomCharge} onClick={()=>setPaymentMethod(m.id)} className={`rounded-xl border-2 p-3 text-sm font-black ${paymentMethod===m.id?'border-[#FFD300] bg-[#FFF8CC]':'border-[#E1E1DE] bg-white'}`}>{m.label}</button>)}</div>{paymentMethod==='room'&&<div className="mt-3"><label className="mb-1 block text-xs font-black uppercase text-[#777]">Guest / room</label><select value={chargeReservationId} onChange={e=>setChargeReservationId(e.target.value)} className="w-full rounded-xl border border-[#D9D9D5] bg-white p-3 text-sm"><option value="">Select checked-in guest</option>{activeStays.map(s=><option key={s.id} value={s.id}>Room {s.room_number||'—'} · {s.guest_name||'Guest'}</option>)}</select></div>}</section>
-     <button onClick={printBill} disabled={busy||!orderLines.length} className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-[#090C11] bg-white p-3.5 text-sm font-black"><Printer size={17}/>{busy?'Working…':'Print Unsettled Bill'}</button>
+     <button onClick={handlePrintBill} disabled={busy||!orderLines.length} className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-[#090C11] bg-white p-3.5 text-sm font-black"><Printer size={17}/>{busy?'Working…':'Print Unsettled Bill'}</button>
      <button onClick={confirmPayment} disabled={busy||!orderLines.length} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#090C11] p-4 text-sm font-black text-[#FFD300]"><Receipt size={18}/>{busy?'Processing…':'Finalize & Print Receipt'}</button>
      <p className="text-center text-[11px] leading-5 text-[#777]">Printing an unsettled bill never closes the table. Staff can reopen the same table, view the complete bill, add orders, reprint the bill, or finalize payment later.</p>
     </aside>
