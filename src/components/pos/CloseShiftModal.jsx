@@ -13,7 +13,7 @@ export function OpenShiftModal({propertyId,onOpened}){const[cash,setCash]=useSta
 export default function CloseShiftModal({shift,onClosed,onClose}){
  const{user}=useAuth();const propertyId=user?.property?.id;const[report,setReport]=useState(null);const[counted,setCounted]=useState('');const[notes,setNotes]=useState('');const[busy,setBusy]=useState(false);const[error,setError]=useState('');const[pinOpen,setPinOpen]=useState(false);const[pinError,setPinError]=useState('');
  const staff=getSessionStaff();const role=String(staff?.role||user?.staff?.role||user?.propertyRole||'').toLowerCase().replace(/\s+/g,'_');
- const managerRoles=new Set(['hotel_admin','super_admin','cashier','fb_manager','owner','admin','manager','property_manager','general_manager']);
+ const managerRoles=new Set(['hotel_admin','super_admin','owner','admin','manager','property_manager','general_manager']);
  useEffect(()=>{if(!shift)return;shiftService.getShiftReport(shift.id).then(setReport).catch(e=>setError(e.message));},[shift]);
  const variance=useMemo(()=>report?Number(counted||0)-Number(report.expectedCash||0):0,[counted,report]);
  const doClose=async()=>{
