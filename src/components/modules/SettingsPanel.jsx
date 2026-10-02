@@ -81,7 +81,7 @@ export default function SettingsPanel() {
               onClick={() => ROUTED[s.id] && setView(s.id)}
               disabled={!ROUTED[s.id] && !(s.id === 'subscription' && canViewSubscription)}
               className="flex items-center gap-4 p-4 rounded-2xl text-left transition-all"
-              style={{ background: SURFACE, border: `1px solid ${BORDER}`, opacity: (ROUTED[s.id] || (s.id === 'subscription' && canViewSubscription)) ? 1 : 0.55, cursor: (ROUTED[s.id] || (s.id === 'subscription' && canManageBilling)) ? 'pointer' : 'default' }}
+              style={{ background: SURFACE, border: `1px solid ${BORDER}`, opacity: (ROUTED[s.id] || (s.id === 'subscription' && canViewSubscription)) ? 1 : 0.55, cursor: (ROUTED[s.id] || (s.id === 'subscription' && canViewSubscription)) ? 'pointer' : 'default' }}
             >
               <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${TEAL}14` }}>
                 <s.icon size={18} style={{ color: TEAL_DARK }} />
@@ -91,7 +91,7 @@ export default function SettingsPanel() {
                 <div className="text-xs mt-0.5" style={{ color: MUTED }}>{s.desc}</div>
               </div>
               <div className="text-xs px-2 py-1 rounded-lg" style={{ background: SURFACE, border: `1px solid ${BORDER}`, color: MUTED }}>
-                {ROUTED[s.id] || (s.id === 'subscription' && canManageBilling) ? 'Configure →' : 'Coming soon'}
+                {ROUTED[s.id] || (s.id === 'subscription' && canViewSubscription) ? 'Configure →' : 'Coming soon'}
               </div>
             </button>
           ))}
