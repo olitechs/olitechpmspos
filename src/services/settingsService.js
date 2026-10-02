@@ -12,6 +12,9 @@ export const DEFAULT_RECEIPT_SETTINGS = {
   extra_header_line: '',
   footer_line1: 'Thank you for dining with us.',
   footer_line2: 'Please keep your receipt.',
+  unsettled_receipt_title: 'UNSETTLED RECEIPT',
+  unsettled_receipt_copy_count: 2,
+  unsettled_receipt_front_office_copy: true,
 };
 
 export async function getPropertySettings(propertyId) {
@@ -31,6 +34,8 @@ export async function savePropertySettings(propertyId, values) {
     property_id: propertyId,
     ...DEFAULT_RECEIPT_SETTINGS,
     ...values,
+    unsettled_receipt_copy_count: Number(values?.unsettled_receipt_copy_count ?? DEFAULT_RECEIPT_SETTINGS.unsettled_receipt_copy_count) === 1 ? 1 : 2,
+    unsettled_receipt_front_office_copy: values?.unsettled_receipt_front_office_copy !== false,
     updated_at: new Date().toISOString(),
   };
   const { data, error } = await supabase
