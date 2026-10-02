@@ -40,6 +40,69 @@ export const inventoryService = {
     return (data || []).map((product) => canSeeCost ? product : { ...product, cost_price: null });
   },
 
+  async listPosCategories(propertyId) {
+    const { data, error } = await supabase.from('pos_menu_categories').select('*').eq('property_id', propertyId).eq('active', true).order('sort_order').order('name');
+    if (error) throw new Error(error.message);
+    return data || [];
+  },
+
+  async listPosMenu(propertyId) {
+    const { data, error } = await supabase.rpc('fn_list_pos_menu', { p_property_id: propertyId });
+    if (error) throw new Error(error.message);
+    return data || [];
+  },
+
+  async upsertPosCategory({ propertyId, name, productionCenter = 'Kitchen', sortOrder = 0 }) {
+    const clean = String(name || '').trim();
+    if (!clean) throw new Error('Category name is required.');
+    const { data, error } = await supabase.from('pos_menu_categories').upsert({
+      property_id: propertyId, name: clean, production_center: productionCenter || 'Kitchen', sort_order: Number(sortOrder) || 0, active: true,
+    }, { onConflict: 'property_id,name' }).select('*').single();
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  async upsertPosMenuItem(item) {
+    const { data, error } = await supabase.rpc('fn_upsert_pos_menu_item', {
+      p_property_id: item.propertyId,
+      p_id: item.id || null,
+      p_sku: item.sku || null,
+      p_name: item.name,
+      p_category: item.category || 'General',
+      p_unit: item.unit || 'pcs',
+      p_selling_price: Number(item.sellingPrice) || 0,
+      p_current_stock: Number(item.currentStock) || 0,
+      p_min_stock: Number(item.minStock) || 0,
+      p_max_stock: Number(item.maxStock) || 0,
+      p_production_center: item.productionCenter || 'Kitchen',
+      p_sort: Number(item.sortOrder) || 0,
+      p_active: item.active !== false,
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  async bulkUpsertPosMenu(propertyId, rows) {
+    const payload = (rows || []).filter(r => String(r.name || '').trim()).map(r => ({
+      id: r.id || null,
+      sku: r.sku || null,
+      name: r.name,
+      category: r.category || 'General',
+      unit: r.unit || 'pcs',
+      selling_price: Number(r.selling_price ?? r.sellingPrice ?? 0) || 0,
+      current_stock: Number(r.current_stock ?? r.currentStock ?? 0) || 0,
+      min_stock: Number(r.min_stock ?? r.minStock ?? 0) || 0,
+      max_stock: Number(r.max_stock ?? r.maxStock ?? 0) || 0,
+      production_center: r.production_center || r.productionCenter || 'Kitchen',
+      pos_sort: Number(r.pos_sort ?? r.sortOrder ?? 0) || 0,
+      pos_active: r.pos_active !== false,
+    }));
+    if (!payload.length) return 0;
+    const { data, error } = await supabase.rpc('fn_bulk_upsert_pos_menu', { p_property_id: propertyId, p_rows: payload });
+    if (error) throw new Error(error.message);
+    return Number(data) || payload.length;
+  },
+
   async createProduct(product) {
     const { data, error } = await supabase.from('products').insert(product).select('*, supplier:suppliers(id,name)').single();
     if (error) throw new Error(error.message);
@@ -176,6 +239,18 @@ export const inventoryService = {
     XLSX.writeFile(workbook, filename);
   },
 
+  async exportPosMenu(menu, filename = 'olitechs-pos-menu.xlsx') {
+    const rows = (menu || []).map(p => ({
+      SKU: p.sku || '', Name: p.name || '', Category: p.category || '', Unit: p.unit || 'pcs',
+      Selling_Price: p.selling_price || 0, Current_Stock: p.current_stock || 0, Min_Stock: p.min_stock || 0,
+      Max_Stock: p.max_stock || 0, Production_Center: p.production_center || 'Kitchen',
+      POS_Active: p.pos_active !== false,
+    }));
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(rows), 'POS Menu');
+    XLSX.writeFile(workbook, filename);
+  },
+
   async exportProducts(products, filename = 'olitechs-products.xlsx') {
     const rows = products.map((p) => ({ SKU: p.sku || '', Name: p.name, Category: p.category, Unit: p.unit, Current_Stock: p.current_stock, Min_Stock: p.min_stock, Max_Stock: p.max_stock, Cost_Price: p.cost_price, Selling_Price: p.selling_price, Supplier: p.supplier?.name || '', Location: p.location || '', Expiry_Date: p.expiry_date || '' }));
     const workbook = XLSX.utils.book_new();
@@ -240,6 +315,9 @@ function normalizeImportRows(rows) {
     supplier: row.supplier || '',
     location: row.location || 'Main Store',
     expiry_date: row.expiry_date || null,
+    production_center: row.production_center || row.center || 'Kitchen',
+    pos_sort: row.pos_sort ?? row.sort_order ?? 0,
+    pos_active: row.pos_active !== false,
   }));
 }
 
