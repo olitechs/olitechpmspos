@@ -1,11 +1,11 @@
 -- OliTechs PMS/POS v2 — atomic table bill move / table merge
 -- Moves an active table session to a free table, or joins it to another active table.
--- Existing order lines, check number, waiter, KOT state and unsettled state are preserved.
 
 create or replace function public.fn_move_or_merge_pos_table(
   p_property_id uuid,
   p_source_table_key text,
   p_target_table_key text,
+  p_target_table_number text,
   p_mode text
 ) returns jsonb
 language plpgsql
@@ -15,15 +15,15 @@ as $$
 declare
   v_source public.pos_table_sessions;
   v_target public.pos_table_sessions;
-  v_target_lines jsonb;
   v_source_lines jsonb;
+  v_target_lines jsonb;
   v_merged_lines jsonb;
   v_status text;
   v_guests integer;
   v_waiter text;
   v_order_number text;
   v_kot_sent_at timestamptz;
-  v_result jsonb;
+  v_session jsonb;
 begin
   if p_source_table_key is null or p_target_table_key is null
      or trim(p_source_table_key) = trim(p_target_table_key) then
@@ -45,33 +45,25 @@ begin
     raise exception 'Not allowed to move or join POS tables.';
   end if;
 
-  -- Lock in deterministic key order to prevent two terminals from deadlocking
-  -- while attempting reciprocal table moves/merges.
+  -- Lock both sessions in deterministic key order to avoid concurrent
+  -- move/merge operations racing each other.
   if p_source_table_key < p_target_table_key then
     select * into v_source
       from public.pos_table_sessions
-      where property_id = p_property_id
-        and table_key = p_source_table_key
-        and status <> 'closed'
+      where property_id = p_property_id and table_key = p_source_table_key and status <> 'closed'
       for update;
     select * into v_target
       from public.pos_table_sessions
-      where property_id = p_property_id
-        and table_key = p_target_table_key
-        and status <> 'closed'
+      where property_id = p_property_id and table_key = p_target_table_key and status <> 'closed'
       for update;
   else
     select * into v_target
       from public.pos_table_sessions
-      where property_id = p_property_id
-        and table_key = p_target_table_key
-        and status <> 'closed'
+      where property_id = p_property_id and table_key = p_target_table_key and status <> 'closed'
       for update;
     select * into v_source
       from public.pos_table_sessions
-      where property_id = p_property_id
-        and table_key = p_source_table_key
-        and status <> 'closed'
+      where property_id = p_property_id and table_key = p_source_table_key and status <> 'closed'
       for update;
   end if;
 
@@ -88,104 +80,71 @@ begin
 
     update public.pos_table_sessions
        set table_key = p_target_table_key,
-           table_number = (
-             select coalesce(t.table_number, p_target_table_key)
-             from public.pos_table_sessions t
-             where false
-           ),
-           updated_at = now()
-     where false;
-
-    -- Table master data is client-owned, so only the session identity is changed
-    -- here. The caller supplies the real target table number after the transaction.
-    -- We use the target key as a safe fallback when no separate table-number map
-    -- exists in the database.
-    update public.pos_table_sessions
-       set table_key = p_target_table_key,
-           table_number = p_target_table_key,
+           table_number = coalesce(nullif(trim(p_target_table_number),''), p_target_table_key),
            updated_at = now()
      where id = v_source.id;
 
     insert into public.pos_order_audit(
       property_id, table_key, table_number, order_number, item_name, action, details, actor_id
     ) values (
-      p_property_id, p_target_table_key, p_target_table_key, v_source.order_number,
-      null, 'TABLE_MOVED',
+      p_property_id, p_target_table_key,
+      coalesce(nullif(trim(p_target_table_number),''), p_target_table_key),
+      v_source.order_number, null, 'TABLE_MOVED',
       jsonb_build_object(
         'from_table_key', p_source_table_key,
+        'from_table_number', v_source.table_number,
         'to_table_key', p_target_table_key,
-        'order_number', v_source.order_number,
-        'guests', v_source.guests
+        'to_table_number', coalesce(nullif(trim(p_target_table_number),''), p_target_table_key),
+        'order_number', v_source.order_number
       ), auth.uid()
     );
 
-    v_result := jsonb_build_object(
+    select to_jsonb(s) into v_session
+      from public.pos_table_sessions s
+      where s.id = v_source.id;
+
+    return jsonb_build_object(
       'mode','move',
       'source_table_key',p_source_table_key,
       'target_table_key',p_target_table_key,
       'source_closed',false,
-      'session',to_jsonb(v_source)
+      'session',v_session
     );
-    -- Correct the returned session identity to the target.
-    v_result := jsonb_set(v_result, '{session,table_key}', to_jsonb(p_target_table_key));
-    v_result := jsonb_set(v_result, '{session,table_number}', to_jsonb(p_target_table_key));
-    return v_result;
   end if;
 
   if v_target.id is null then
-    raise exception 'Target table must be an ongoing table for Join Tables.';
+    raise exception 'Target table must already have an ongoing bill for Join Tables.';
   end if;
 
   v_target_lines := coalesce(v_target.order_lines, '[]'::jsonb);
-  v_merged_lines := (
-    select coalesce(jsonb_agg(x.line order by x.first_pos), '[]'::jsonb)
-    from (
-      select line, min(first_pos) as first_pos
-      from (
-        select value as line, ordinality::integer as first_pos,
-               coalesce(value->>'id','') as item_id
-        from jsonb_array_elements(v_target_lines) with ordinality
-        union all
-        select value as line, (100000 + ordinality::integer) as first_pos,
-               coalesce(value->>'id','') as item_id
-        from jsonb_array_elements(v_source_lines) with ordinality
-      ) raw
-      group by line, item_id
-    ) x
-  );
 
-  -- The JSON aggregation above preserves both rows. Normalize identical menu
-  -- item ids into one line and add quantities so the joined bill is clean.
-  v_merged_lines := (
-    select coalesce(jsonb_agg(
+  -- Combine matching menu lines by id/name and add quantities. Keep the
+  -- destination line metadata/order while retaining all unique source items.
+  select coalesce(
+    jsonb_agg(
       jsonb_set(
-        jsonb_set(
-          base.line,
-          '{qty}',
-          to_jsonb(base.qty)
-        ),
-        '{quantity}',
-        to_jsonb(base.qty)
-      ) order by base.first_pos
-    ), '[]'::jsonb)
-    from (
-      select
-        min(ord)::integer as first_pos,
-        max(line) filter (where ord = min(ord) over (partition by coalesce(line->>'id',''), coalesce(line->>'name',''))) as line,
-        sum(coalesce((line->>'qty')::numeric, (line->>'quantity')::numeric, 0)) as qty
-      from (
-        select value as line, ordinality::numeric as ord
-        from jsonb_array_elements(v_target_lines) with ordinality
-        union all
-        select value as line, (100000 + ordinality)::numeric as ord
-        from jsonb_array_elements(v_source_lines) with ordinality
-      ) q
-      group by coalesce(line->>'id',''), coalesce(line->>'name','')
-    ) base
-  );
+        (array_agg(q.line order by q.ord))[1],
+        '{qty}',
+        to_jsonb(sum(coalesce((q.line->>'qty')::numeric, (q.line->>'quantity')::numeric, 0)))
+      )
+      order by min(q.ord)
+    ),
+    '[]'::jsonb
+  )
+  into v_merged_lines
+  from (
+    select value as line, ordinality::numeric as ord
+      from jsonb_array_elements(v_target_lines) with ordinality
+    union all
+    select value as line, (100000 + ordinality)::numeric as ord
+      from jsonb_array_elements(v_source_lines) with ordinality
+  ) q
+  group by coalesce(q.line->>'id', q.line->>'name');
 
-  v_status := case when v_source.status = 'unsettled' or v_target.status = 'unsettled'
-                   then 'unsettled' else 'occupied' end;
+  v_status := case
+    when v_source.status = 'unsettled' or v_target.status = 'unsettled' then 'unsettled'
+    else 'occupied'
+  end;
   v_guests := greatest(coalesce(v_target.guests,1),1) + greatest(coalesce(v_source.guests,1),1);
   v_waiter := coalesce(nullif(trim(v_target.waiter),''), nullif(trim(v_source.waiter),''));
   v_order_number := coalesce(v_target.order_number, v_source.order_number);
@@ -229,20 +188,20 @@ begin
     ), auth.uid()
   );
 
-  select to_jsonb(s) into v_result
-  from public.pos_table_sessions s
-  where s.id = v_target.id;
+  select to_jsonb(s) into v_session
+    from public.pos_table_sessions s
+    where s.id = v_target.id;
 
   return jsonb_build_object(
     'mode','merge',
     'source_table_key',p_source_table_key,
     'target_table_key',p_target_table_key,
     'source_closed',true,
-    'session',v_result
+    'session',v_session
   );
 end;
 $$;
 
-grant execute on function public.fn_move_or_merge_pos_table(uuid,text,text,text) to authenticated;
+grant execute on function public.fn_move_or_merge_pos_table(uuid,text,text,text,text) to authenticated;
 
 notify pgrst, 'reload schema';
