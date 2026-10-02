@@ -12,14 +12,14 @@ export function OpenShiftModal({propertyId,onOpened}){const[cash,setCash]=useSta
 
 export default function CloseShiftModal({shift,onClosed,onClose}){
  const{user}=useAuth();const propertyId=user?.property?.id;const[report,setReport]=useState(null);const[counted,setCounted]=useState('');const[notes,setNotes]=useState('');const[busy,setBusy]=useState(false);const[error,setError]=useState('');const[pinOpen,setPinOpen]=useState(false);const[pinError,setPinError]=useState('');
- const staff=getSessionStaff();const role=String(staff?.role||user?.staff?.role||user?.propertyRole||'').toLowerCase().replace(/\s+/g,'_');
+ const staff=getSessionStaff();const[managerApproved,setManagerApproved]=useState(false);const role=String(staff?.role||user?.staff?.role||user?.propertyRole||'').toLowerCase().replace(/\s+/g,'_');
  const managerRoles=new Set(['hotel_admin','super_admin','owner','admin','manager','property_manager','general_manager']);
  useEffect(()=>{if(!shift)return;shiftService.getShiftReport(shift.id).then(setReport).catch(e=>setError(e.message));},[shift]);
  const variance=useMemo(()=>report?Number(counted||0)-Number(report.expectedCash||0):0,[counted,report]);
  const doClose=async()=>{
    setBusy(true);setError('');
    try{
-    const closed=await shiftService.closeShift({shiftId:shift.id,countedCash:Number(counted||0),notes});
+    const closed=await shiftService.closeShift({shiftId:shift.id,countedCash:Number(counted||0),notes,managerApproved});
     const fresh=await shiftService.getShiftReport(shift.id);
     fresh.countedCash=Number(counted||0);fresh.variance=Number(closed?.variance||0);fresh.propertyId=propertyId;fresh.openedBy=staff?.full_name||user?.name||'Staff';fresh.closedBy=staff?.full_name||user?.name||'Staff';
     const settingsRow=await (async()=>{const {data}=await import('@/lib/supabaseClient').then(m=>m.supabase.from('property_settings').select('*').eq('property_id',propertyId).maybeSingle());return data||null;})().catch(()=>null);
@@ -35,7 +35,7 @@ export default function CloseShiftModal({shift,onClosed,onClose}){
  };
  const submitPin=async(pin)=>{
    setPinError('');
-   try{const result=await authService.verifyStaffPin({propertyId,module:'pos',pin});const r=String(result?.staff?.role||'').toLowerCase().replace(/\s+/g,'_');if(!result?.ok||!managerRoles.has(r)){setPinError('Manager, cashier or administrator PIN required.');return;}setPinOpen(false);await doClose();}catch(e){setPinError(e.message||'PIN verification failed.');}
+   try{const result=await authService.verifyStaffPin({propertyId,module:'pos',pin});const r=String(result?.staff?.role||'').toLowerCase().replace(/\s+/g,'_');if(!result?.ok||!managerRoles.has(r)){setPinError('Manager, cashier or administrator PIN required.');return;}setPinOpen(false);setManagerApproved(true);await doClose();}catch(e){setPinError(e.message||'PIN verification failed.');}
  };
  if(pinOpen)return <PinPad title="Manager PIN Required" staffName="Manager approval" error={pinError} onSubmit={submitPin} onClose={()=>setPinOpen(false)}/>;
  return <div className="fixed inset-0 z-[260] flex items-center justify-center bg-black/65 p-4"><div className="w-full max-w-xl overflow-hidden rounded-3xl bg-white shadow-2xl">
