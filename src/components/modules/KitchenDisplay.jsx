@@ -108,6 +108,7 @@ export default function KitchenDisplay() {
           <div className="mt-4 flex items-center gap-2 border-t border-white/10 pt-4"><input value={signature} onChange={e=>setSignature(e.target.value)} placeholder="Manager signature / name for approval" className="flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white outline-none"/><span className="text-[10px] text-slate-500">Signature required before Approve.</span></div>
         </div>
       ) : (
+        <>
       {orders.length === 0 && (
         <div className="rounded-2xl border p-8 text-center" style={{ borderColor: BORDER_DARK, background: NAVY2 }}>
           <div className="text-sm font-bold text-white">No active kitchen orders</div>
@@ -165,6 +166,7 @@ export default function KitchenDisplay() {
           );
         })}
       </div>
+        </>
       )}
     </div>
   );
