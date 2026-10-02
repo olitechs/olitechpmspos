@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Bluetooth, Wifi, Usb, Monitor, Printer as PrinterIcon, Check, RefreshCw, AlertTriangle, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Bluetooth, Wifi, Usb, Cable, Monitor, Printer as PrinterIcon, Check, RefreshCw, AlertTriangle, Loader2 } from 'lucide-react';
 import { useStore } from '@/data/AppStore';
 import { CENTERS } from '@/data/mockData';
 import { PrinterStatus, validatePrinterConfig } from '@/services/printerService';
 import { NAVY, TEAL, TEAL_DARK, SURFACE, SURFACE2, BORDER, MUTED, DESTRUCTIVE, ERR } from '@/data/themePalette';
 
 const CONNECTION_TYPES = [
-  { id: 'network', label: 'Network / LAN', icon: Wifi, hint: 'ESC/POS-over-TCP printer by IP + port, via a local print agent.' },
-  { id: 'usb', label: 'USB', icon: Usb, hint: 'Printer wired directly to this device (WebUSB).' },
-  { id: 'bluetooth', label: 'Bluetooth', icon: Bluetooth, hint: 'Pair a nearby printer from this device (Web Bluetooth).' },
+  { id: 'network', label: 'LAN / Printer API', icon: Wifi, hint: 'Network thermal printer through a local Print API / agent (ESC/POS).' },
+  { id: 'usb', label: 'USB Cable', icon: Usb, hint: 'Printer wired directly to this device (WebUSB).' },
+  { id: 'bluetooth', label: 'Bluetooth BLE', icon: Bluetooth, hint: 'Pair a BLE thermal printer from this device (Web Bluetooth).' },
+  { id: 'serial', label: 'Serial / BT SPP', icon: Cable, hint: 'USB-serial or Bluetooth Classic SPP printer exposed as a serial port (Web Serial).' },
   { id: 'system', label: 'Browser / System', icon: Monitor, hint: 'Printing handled by the OS print dialog.' },
 ];
 
@@ -46,12 +47,12 @@ function lastCheckedLabel(ts) {
   return `Last checked: ${new Date(ts).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })}`;
 }
 
-const CONNECT_LABEL = { network: 'Test Connection', usb: 'Connect', bluetooth: 'Pair', system: 'Test Connection' };
+const CONNECT_LABEL = { network: 'Test Connection', usb: 'Connect', bluetooth: 'Pair', serial: 'Connect', system: 'Test Connection' };
 
 export default function Printers() {
   const store = useStore();
   const [adding, setAdding] = useState(false);
-  const [form, setForm] = useState({ name: '', connectionType: 'network', host: '', port: '9100', agentUrl: '', purposes: ['receipt'], center: 'All' });
+  const [form, setForm] = useState({ name: '', connectionType: 'network', host: '', port: '9100', agentUrl: '', baudRate: 9600, purposes: ['receipt'], center: 'All' });
   const [formErrors, setFormErrors] = useState({});
   const [busyId, setBusyId] = useState(null); // prevents firing multiple concurrent tests for the same printer
   const [printMsg, setPrintMsg] = useState({}); // { [id]: { ok, text } } — transient "Test Print" result per printer
@@ -68,7 +69,7 @@ export default function Printers() {
     setFormErrors(errors);
     if (!valid) return;
     store.addPrinter(form);
-    setForm({ name: '', connectionType: 'network', host: '', port: '9100', agentUrl: '', purposes: ['receipt'], center: 'All' });
+    setForm({ name: '', connectionType: 'network', host: '', port: '9100', agentUrl: '', baudRate: 9600, purposes: ['receipt'], center: 'All' });
     setFormErrors({});
     setAdding(false);
   };
@@ -77,7 +78,7 @@ export default function Printers() {
     if (busyId) return; // ignore rapid repeat clicks while a test is in flight
     setBusyId(printer.id);
     try {
-      if (printer.connectionType === 'usb' || printer.connectionType === 'bluetooth') {
+      if (printer.connectionType === 'usb' || printer.connectionType === 'bluetooth' || printer.connectionType === 'serial') {
         await store.connectPrinter(printer.id);
       } else {
         await store.testPrinterConnection(printer.id);
@@ -158,6 +159,16 @@ export default function Printers() {
           {form.connectionType === 'bluetooth' && (
             <div className="text-xs mb-3" style={{ color: MUTED }}>Use <b>Pair</b> after saving to select a nearby Bluetooth printer via your browser's permission prompt.</div>
           )}
+          {form.connectionType === 'serial' && (
+            <div className="mb-3">
+              <div className="text-xs mb-2" style={{ color: MUTED }}>Use this for USB-serial printers or Bluetooth Classic/SPP thermal printers that appear as a serial port.</div>
+              <label className="block text-xs font-semibold mb-1" style={{ color: NAVY }}>Baud rate</label>
+              <select value={form.baudRate} onChange={(e) => setForm({ ...form, baudRate: Number(e.target.value) })}
+                className="px-3 py-2 rounded-lg text-sm outline-none" style={{ background: SURFACE2, border: '1px solid ' + BORDER, color: NAVY }}>
+                {[9600, 19200, 38400, 57600, 115200].map((rate) => <option key={rate} value={rate}>{rate} baud</option>)}
+              </select>
+            </div>
+          )}
           {form.connectionType === 'usb' && (
             <div className="text-xs mb-3" style={{ color: MUTED }}>Plug in the printer, then use <b>Connect</b> after saving to grant USB access.</div>
           )}
@@ -218,6 +229,7 @@ export default function Printers() {
                     <div className="flex items-center gap-1.5 text-xs" style={{ color: MUTED }}>
                       <Icon size={12} /> {ct.label}
                       {p.connectionType === 'network' && p.host && <span>· {p.host}:{p.port}</span>}
+                      {p.connectionType === 'serial' && <span>· {p.baudRate || 9600} baud</span>}
                     </div>
                     <div className="flex flex-wrap gap-1 mt-1.5">
                       {p.purposes.map((pu) => (
