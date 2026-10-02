@@ -414,7 +414,7 @@ export function StoreProvider({ children }) {
   const saleReceiptsRef = useRef(saleReceipts);
   saleReceiptsRef.current = saleReceipts;
 
-  const completeSale = useCallback(async ({ table, orderLines, total, method, receiptText }) => {
+  const completeSale = useCallback(async ({ table, orderLines, total, method, receiptText, skipPrint = false }) => {
     const id = newId('sale');
     const printer = receiptPrinter();
     const record = {
@@ -425,6 +425,10 @@ export function StoreProvider({ children }) {
       printError: printer ? null : 'No receipt printer is connected.',
     };
     setSaleReceipts((prev) => [record, ...prev]);
+    if (skipPrint) {
+      setSaleReceipts((prev) => prev.map((r) => (r.id === id ? { ...r, printStatus: 'skipped', printError: null } : r)));
+      return { id, printStatus: 'skipped', printError: null };
+    }
     if (printer) {
       try {
         const result = await sendPrintJob(printer, receiptText, { title: `Receipt — Table ${table.number}` });
@@ -478,7 +482,7 @@ export function StoreProvider({ children }) {
     }).catch((error) => console.error('[KDS] failed to persist kitchen order update', error));
   }, [propertyId]);
 
-  const fireKitchenOrder = useCallback(async ({ table, orderLines, orderNumber, buildTicketText }) => {
+  const fireKitchenOrder = useCallback(async ({ table, orderLines, orderNumber, buildTicketText, printTickets = true }) => {
     const centers = [...new Set(orderLines.map((l) => l.center).filter(Boolean))];
     const printJobs = {};
     for (const center of centers) printJobs[center] = { status: PrintJobStatus.PENDING, printerId: null, printerName: null, error: null };
@@ -526,6 +530,8 @@ export function StoreProvider({ children }) {
         return next;
       });
     };
+
+    if (!printTickets) return { id: record.id, failedCenters: [] };
 
     for (const center of centers) {
       const printer = orderPrinterForCenter(center);
