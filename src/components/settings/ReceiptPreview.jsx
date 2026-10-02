@@ -19,6 +19,7 @@ export default function ReceiptPreview({ settings, data = {}, type = 'RECEIPT' }
     {type==='RECEIPT'&&<div className="border-t border-dashed pt-2">Payment Method: <b>{data.paymentMethod||'Cash'}</b></div>}
     <div className="mt-3 text-center">{settings.footer_line1||'Thank you.'}<br/>{settings.footer_line2||''}</div>
     <div className="mt-2 text-right font-black">Check No: {data.checkNo||data.orderNumber||'—'}</div>
+    {(data.voidedCount || data.voidedItems?.length) ? <div className="mt-2 border-t border-dashed border-black pt-2 text-center text-[9px] font-black">{Number(data.voidedCount || data.voidedItems?.length || 0)} item{Number(data.voidedCount || data.voidedItems?.length || 0) === 1 ? '' : 's'} voided - See void slip #{data.voidSlipNumber || '—'}</div> : null}
   </div>;
 }
 function Row({i}){ return <div className="flex gap-1"><span className="w-7">{i.qty}x</span><span className="flex-1">{i.name}</span><span>{(Number(i.qty||0)*Number(i.price||0)).toFixed(2)}</span></div>; }
