@@ -98,6 +98,59 @@ export async function printOrderByCategory(order) {
   return { ok: results.every((r) => r.ok), results };
 }
 
+
+function voidTicketHtml(data) {
+  const area = String(data.category || '').toLowerCase() === 'drinks' ? 'BAR' : 'KITCHEN';
+  const stamp = data.timestamp ? new Date(data.timestamp).toLocaleString('en-KE', { dateStyle: 'medium', timeStyle: 'short' }) : new Date().toLocaleString('en-KE', { dateStyle: 'medium', timeStyle: 'short' });
+  return `<div class="receipt">
+    <div style="background:#DC2626;color:#fff;padding:10px 4px;text-align:center;font-size:18px;font-weight:900;line-height:1.15">!!! VOID / CANCELLATION !!!<br><span style="font-size:13px">${esc(area)}</span></div>
+    <div class="divider"></div>
+    <div class="bold">Table: ${esc(data.tableNo || '—')} &nbsp;&nbsp; Waiter: ${esc(data.waiterName || '—')}</div>
+    <div>Date: ${esc(stamp)}</div>
+    <div>Check No: ${esc(data.checkNo || '—')}</div>
+    <div class="divider"></div>
+    <div class="bold" style="font-size:14px">VOID ITEM:</div>
+    <div style="margin-top:6px;font-size:13px;font-weight:800">- ${esc(data.item || 'Item')} x ${esc(data.removedQty)}</div>
+    <div style="margin-top:3px">Qty Removed: <b>${esc(data.removedQty)}</b></div>
+    <div>Reason: <b>${esc(data.reason || 'Not specified')}</b></div>
+    <div>Removed by: <b>${esc(data.removedBy || '—')}</b></div>
+    <div>Original: <b>${esc(data.originalQty)}</b> -&gt; Removed: <b>${esc(data.removedQty)}</b> -&gt; Remaining: <b>${esc(data.newQty)}</b></div>
+    <div class="divider"></div>
+    <div class="center bold" style="font-size:10px">CUSTOMER COPY? NO - ${esc(area)} CONTROL ONLY</div>
+    <div class="center bold" style="font-size:10px;margin-top:4px">Cashier Copy - Keep for Audit</div>
+    <div class="divider"></div>
+    <div class="footer bold">Requires Manager Signature __________________</div>
+  </div>`;
+}
+
+export async function printVoidTicket(printer, data = {}) {
+  if (!printer) return { ok:false, friendlyError:'Void printer not configured.' };
+  const propertyId = data.propertyId;
+  const result = await printToPrinter(
+    printer,
+    voidTicketHtml(data),
+    { propertyId, jobType:'void', copyType:'control', title:`VOID / CANCELLATION - ${String(data.category || 'food').toUpperCase()}` }
+  );
+
+  if (data.voidId && propertyId) {
+    const patch = {
+      status: result.ok ? 'printed' : 'failed',
+      printer_id: printer.id || null,
+    };
+    await supabase.from('pos_void_items').update(patch).eq('id', data.voidId).eq('property_id', propertyId);
+    if (result.ok) {
+      const { data: audits } = await supabase.from('pos_order_audit').select('id,details').eq('property_id', propertyId).contains('details', { void_id: data.voidId }).order('created_at', { ascending:false }).limit(1);
+      const audit = audits?.[0];
+      if (audit) {
+        await supabase.from('pos_order_audit').update({
+          details: { ...(audit.details || {}), printer_id: printer.id || null, void_printed: true }
+        }).eq('id', audit.id);
+      }
+    }
+  }
+  return result;
+}
+
 function receiptHtml(settings, type, data, copyType) {
   const items = data.items || [];
   const food = items.filter((i) => !itemIsDrink(i));
