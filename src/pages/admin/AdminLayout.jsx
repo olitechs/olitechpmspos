@@ -8,12 +8,17 @@ const NAV = [
   { to: '/admin/audit-log', label: 'Audit Log', icon: ScrollText },
   { to: '/admin/roles', label: 'Staff & Roles', icon: UsersRound },
   { to: '/admin/settings', label: 'Property Settings', icon: Settings },
+  { to: '/admin/settings/printers', label: 'Printer Settings', icon: Settings },
+  { to: '/admin/settings/receipt', label: 'Receipt Settings', icon: Settings },
+  { to: '/admin/settings/unsettled-receipt', label: 'Unsettled Receipt', icon: Settings },
 ];
 
 export default function AdminLayout() {
   const { user, logout } = useAuth();
   const propertyAdmin = !user?.isPlatformOwner;
-  const navItems = propertyAdmin ? NAV.filter((item) => ['/admin/roles', '/admin/settings'].includes(item.to)) : NAV;
+  const navItems = propertyAdmin
+    ? NAV.filter((item) => ['/admin/roles', '/admin/settings', '/admin/settings/printers', '/admin/settings/receipt', '/admin/settings/unsettled-receipt'].includes(item.to))
+    : NAV;
 
   return (
     <div className="min-h-screen flex bg-background">
