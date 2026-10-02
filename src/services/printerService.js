@@ -194,6 +194,24 @@ async function testUsb(printer) {
 	}
 }
 
+async function testSerial(printer) {
+  if (!navigator.serial) {
+    return { status: PrinterStatus.UNSUPPORTED, friendlyError: 'This browser does not support serial printer access (Web Serial).' };
+  }
+  try {
+    const handle = deviceHandles.get(printer.id);
+    if (!handle) {
+      return { status: PrinterStatus.DISCONNECTED, friendlyError: 'No serial device paired yet. Click "Connect" to select the printer.' };
+    }
+    if (!handle.readable && !handle.writable) {
+      return { status: PrinterStatus.DISCONNECTED, friendlyError: 'The serial printer is not open. Reconnect the printer.' };
+    }
+    return { status: PrinterStatus.CONNECTED };
+  } catch (err) {
+    return { status: PrinterStatus.ERROR, friendlyError: toFriendlyError(err), rawError: String(err?.message || err) };
+  }
+}
+
 async function testBluetooth(printer) {
 	if (!navigator.bluetooth) {
 		return { status: PrinterStatus.UNSUPPORTED, friendlyError: 'This browser does not support Bluetooth printer access (Web Bluetooth).' };
@@ -264,6 +282,26 @@ export async function pairUsbDevice(printer) {
 	}
 }
 
+export async function pairSerialDevice(printer) {
+  if (!navigator.serial) {
+    return { ok: false, friendlyError: 'This browser does not support serial printer access (Web Serial).' };
+  }
+  try {
+    const port = await navigator.serial.requestPort();
+    await port.open({
+      baudRate: Number(printer.baudRate) || 9600,
+      dataBits: 8,
+      stopBits: 1,
+      parity: 'none',
+      flowControl: 'none',
+    });
+    deviceHandles.set(printer.id, port);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, friendlyError: toFriendlyError(err), rawError: String(err?.message || err) };
+  }
+}
+
 export async function pairBluetoothDevice(printer) {
 	if (!navigator.bluetooth) {
 		return { ok: false, friendlyError: 'This browser does not support Bluetooth printer access (Web Bluetooth).' };
@@ -323,6 +361,32 @@ async function sendToUsb(printer, text) {
 	} catch (err) {
 		return { ok: false, friendlyError: toFriendlyError(err), rawError: String(err?.message || err) };
 	}
+}
+
+async function sendToSerial(printer, text) {
+  const handle = deviceHandles.get(printer.id);
+  if (!handle) return { ok: false, friendlyError: 'No serial device paired. Connect the printer first.' };
+  try {
+    if (!handle.writable) {
+      await handle.open({
+        baudRate: Number(printer.baudRate) || 9600,
+        dataBits: 8,
+        stopBits: 1,
+        parity: 'none',
+        flowControl: 'none',
+      });
+    }
+    const writer = handle.writable.getWriter();
+    try {
+      const data = new TextEncoder().encode(text);
+      await writer.write(data);
+    } finally {
+      writer.releaseLock();
+    }
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, friendlyError: toFriendlyError(err), rawError: String(err?.message || err) };
+  }
 }
 
 async function sendToBluetooth(printer, text) {
