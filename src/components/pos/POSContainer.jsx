@@ -28,7 +28,7 @@ function wrapTicketLine(text, width = THERMAL_COLUMNS) {
 	return rows;
 }
 
-function buildKitchenTicketText(center, lines, { orderNumber, table, propertyName }) {
+function buildKitchenTicketText(center, lines, { orderNumber, table, propertyName, waiter }) {
 	const divider = '-'.repeat(THERMAL_COLUMNS);
 	const itemRows = lines.flatMap((line) => wrapTicketLine(`${line.qty}x ${line.name}`));
 	return [
@@ -37,6 +37,7 @@ function buildKitchenTicketText(center, lines, { orderNumber, table, propertyNam
 		`${center.toUpperCase()} ORDER TICKET`,
 		`ORDER: ${orderNumber}`,
 		`TABLE: ${tableLabel(table)}`,
+		`WAITER: ${String(waiter || 'Unassigned').toUpperCase()}`,
 		`TIME: ${new Date().toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })}`,
 		divider,
 		...itemRows,
@@ -131,7 +132,7 @@ export default function POSContainer() {
 
 		const { id: kitchenOrderId, failedCenters } = await store.fireKitchenOrder({
 			table, orderLines: linesSnapshot, orderNumber,
-			buildTicketText: (center, lines) => buildKitchenTicketText(center, lines, { orderNumber, table, propertyName }),
+			buildTicketText: (center, lines) => buildKitchenTicketText(center, lines, { orderNumber, table, propertyName, waiter: store.getSession(table.id)?.waiter }),
 		});
 
 		if (failedCenters.length === 0) {
@@ -146,7 +147,7 @@ export default function POSContainer() {
 				label: 'Retry Ticket',
 				onClick: async () => {
 					for (const center of failedCenters) {
-						const result = await store.retryKitchenPrint(kitchenOrderId, center, (c, lines) => buildKitchenTicketText(c, lines, { orderNumber, table, propertyName }));
+						const result = await store.retryKitchenPrint(kitchenOrderId, center, (c, lines) => buildKitchenTicketText(c, lines, { orderNumber, table, propertyName, waiter: store.getSession(table.id)?.waiter }));
 						if (result.ok) toast.success(`${center} ticket printed.`);
 						else toast.error(`${center} ticket still failed: ${result.friendlyError}`);
 					}
