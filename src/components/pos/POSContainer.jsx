@@ -146,7 +146,7 @@ export default function POSContainer() {
 				label: 'Retry Ticket',
 				onClick: async () => {
 					for (const center of failedCenters) {
-						const result = await store.retryKitchenPrint(kitchenOrderId, center, (c, lines) => buildKitchenTicketText(c, lines, { orderNumber, table }));
+						const result = await store.retryKitchenPrint(kitchenOrderId, center, (c, lines) => buildKitchenTicketText(c, lines, { orderNumber, table, propertyName }));
 						if (result.ok) toast.success(`${center} ticket printed.`);
 						else toast.error(`${center} ticket still failed: ${result.friendlyError}`);
 					}
