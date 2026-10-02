@@ -67,6 +67,7 @@ function AppRoutes(){
     <Route path="/admin/login" element={<AdminLogin/>}/>
     <Route element={<AdminRoute/>}><Route element={<AdminLayout/>}>
       <Route path="/admin" element={<AdminHome/>}/>
+      <Route path="/admin/settings" element={<PropertyAdminSettings/>}/>
       <Route path="/admin/properties" element={<AdminProperties/>}/><Route path="/admin/properties/new" element={<AdminCreateProperty/>}/><Route path="/admin/properties/:id" element={<AdminPropertyDetail/>}/><Route path="/admin/properties/:id/edit" element={<AdminEditProperty/>}/>
       <Route path="/admin/audit-log" element={<AdminAuditLog/>}/><Route path="/admin/roles" element={<Roles/>}/>
       <Route path="/admin/settings/printers" element={<SettingsPrinters/>}/>
