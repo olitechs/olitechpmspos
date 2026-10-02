@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { ArrowRightLeft, GitMerge, X, MoveRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStore } from '@/data/AppStore';
 import { tableLabel } from '@/data/mockData';
@@ -63,6 +64,10 @@ export default function POSContainer() {
 	const [activeTab, setActiveTab] = useState('floor');
 	const [activeTable, setActiveTable] = useState(null);
 	const [pendingTable, setPendingTable] = useState(null); // table awaiting "open" dialog
+	const [tableTransferOpen, setTableTransferOpen] = useState(false);
+	const [tableTransferTarget, setTableTransferTarget] = useState(null);
+	const [tableTransferBusy, setTableTransferBusy] = useState(false);
+	const [tableTransferError, setTableTransferError] = useState('');
 	// Order lines are kept per-table so switching tabs/tables doesn't lose an in-progress order.
 	const [orderLinesByTable, setOrderLinesByTable] = useState({});
 	useEffect(() => {
@@ -171,6 +176,49 @@ export default function POSContainer() {
 		toast.success(`Order ${orderNumber} sent to kitchen/bar printers.`);
 	};
 
+	const openTableTransfer = () => {
+		if (!activeTable) return;
+		setTableTransferTarget(null);
+		setTableTransferError('');
+		setTableTransferOpen(true);
+	};
+
+	const handleTableTransfer = async () => {
+		if (!activeTable || !tableTransferTarget || !propertyId) return;
+		setTableTransferBusy(true);
+		setTableTransferError('');
+		try {
+			const sourceSession = store.getSession(activeTable.id);
+			const mode = tableTransferTarget.occupied ? 'merge' : 'move';
+			const result = await posService.moveOrMergeTable({
+				propertyId,
+				sourceTableKey: activeTable.id,
+				targetTableKey: tableTransferTarget.table.id,
+				targetTableNumber: tableTransferTarget.table.number,
+				mode,
+			});
+			const session = result?.session;
+			if (!session) throw new Error('The table transfer completed without returning the new table session.');
+			const nextLines = Array.isArray(session.order_lines) ? session.order_lines : (Array.isArray(session.orderLines) ? session.orderLines : []);
+			const target = tableTransferTarget.table;
+			orderNumbersRef.current[target.id] = session.order_number || sourceSession?.orderNumber || null;
+			setOrderLinesByTable((prev) => {
+				const next = { ...prev, [target.id]: nextLines };
+				delete next[activeTable.id];
+				return next;
+			});
+			setActiveTable(target);
+			setActiveTab(session.status === 'unsettled' ? 'bill' : 'order');
+			setTableTransferOpen(false);
+			setTableTransferTarget(null);
+			toast.success(mode === 'merge' ? `Tables ${tableLabel(activeTable)} and ${tableLabel(target)} joined.` : `Bill moved to ${tableLabel(target)}.`);
+		} catch (error) {
+			setTableTransferError(error?.message || 'Could not move or join the table.');
+		} finally {
+			setTableTransferBusy(false);
+		}
+	};
+
 	const handleBillRequest = () => {
 		if (!activeTable) return;
 		store.setUnsettled(activeTable.id);
@@ -203,6 +251,7 @@ export default function POSContainer() {
 						setOrderLines={setOrderLines}
 						onSendToKitchen={handleSendToKitchen}
 						onBill={handleBillRequest}
+						onMoveTable={openTableTransfer}
 						orderNumber={orderNumbersRef.current[activeTable.id]}
 					/>
 				)}
@@ -220,6 +269,49 @@ export default function POSContainer() {
 					/>
 				)}
 			</div>
+
+
+			{tableTransferOpen && activeTable && (
+				<div className="fixed inset-0 z-[220] flex items-center justify-center bg-black/65 p-4">
+					<div className="w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl">
+						<div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+							<div>
+								<div className="flex items-center gap-2 text-base font-black text-slate-950"><ArrowRightLeft size={18}/> Move / Join Table</div>
+								<div className="mt-1 text-xs text-slate-500">Current bill: <b>{tableLabel(activeTable)}</b>. Select a free table to move it, or an ongoing table to join the bills.</div>
+							</div>
+							<button onClick={() => setTableTransferOpen(false)} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100"><X size={18}/></button>
+						</div>
+						<div className="max-h-[55vh] overflow-y-auto p-5">
+							<div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+								{store.zones.flatMap(z => z.tables.map(t => ({ table: t, zone: z }))).filter(({table:t}) => t.id !== activeTable.id).map(({table:t, zone}) => {
+									const session = store.getSession(t.id);
+									const occupied = Boolean(session);
+									const selected = tableTransferTarget?.table.id === t.id;
+									return (
+										<button key={t.id} onClick={() => { setTableTransferTarget({ table:t, zone, occupied, session }); setTableTransferError(''); }} className="rounded-2xl border-2 p-4 text-left transition hover:-translate-y-0.5" style={{ borderColor: selected ? '#0E7482' : occupied ? '#F59E0B' : '#E2E8F0', background: selected ? '#ECFEFF' : '#fff' }}>
+											<div className="flex items-center justify-between"><span className="text-lg font-black text-slate-950">T{t.number}</span>{occupied ? <GitMerge size={17} className="text-amber-600"/> : <MoveRight size={17} className="text-teal-700"/>}</div>
+											<div className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">{zone.name}</div>
+											<div className="mt-2 text-xs font-semibold text-slate-600">{occupied ? \`Ongoing · \${session?.orderNumber || 'Open bill'}\` : 'Free · Move bill here'}</div>
+										</button>
+									);
+								})}
+							</div>
+							{tableTransferTarget && (
+								<div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+									<div className="text-xs font-black uppercase tracking-wider text-slate-500">{tableTransferTarget.occupied ? 'Join ongoing table' : 'Move bill to free table'}</div>
+									<div className="mt-1 text-sm font-bold text-slate-900">T{activeTable.number} → T{tableTransferTarget.table.number}</div>
+									<div className="mt-1 text-xs text-slate-500">{tableTransferTarget.occupied ? 'All items and covers will be combined. The destination check remains the active check and the source table is closed.' : 'The complete open bill, waiter, check number and production status move to the new table. No duplicate kitchen ticket is printed.'}</div>
+								</div>
+							)}
+							{tableTransferError && <div className="mt-3 rounded-xl bg-red-50 p-3 text-xs font-bold text-red-700">{tableTransferError}</div>}
+						</div>
+						<div className="flex items-center justify-between gap-3 border-t border-slate-200 px-5 py-4">
+							<div className="text-[11px] font-semibold text-slate-500">{tableTransferTarget ? (tableTransferTarget.occupied ? 'Join keeps the destination table open.' : 'Move preserves the current check.') : 'Choose a destination table.'}</div>
+							<div className="flex gap-2"><button onClick={() => setTableTransferOpen(false)} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold">Cancel</button><button disabled={!tableTransferTarget || tableTransferBusy} onClick={handleTableTransfer} className="rounded-xl bg-[#0E7482] px-5 py-2.5 text-sm font-black text-white disabled:opacity-40">{tableTransferBusy ? 'Processing…' : tableTransferTarget?.occupied ? 'Join Tables' : 'Move Bill'}</button></div>
+						</div>
+					</div>
+				</div>
+			)}
 
 			<OpenTableDialog
 				open={!!pendingTable}
