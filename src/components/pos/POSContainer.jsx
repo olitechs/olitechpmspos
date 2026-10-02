@@ -136,13 +136,13 @@ export default function POSContainer() {
 		setActiveTab('floor');
 		setActiveTable(null);
 
-		const { id: kitchenOrderId, failedCenters } = await store.fireKitchenOrder({
+		await store.fireKitchenOrder({
 			table, orderLines: linesSnapshot, orderNumber,
 			buildTicketText: (center, lines) => buildKitchenTicketText(center, lines, { orderNumber, table, propertyName, waiter: store.getSession(table.id)?.waiter }),
 			printTickets: false,
 		});
 
-		const printResult = await printOrderByCategory({
+		const printOrder = () => printOrderByCategory({
 			propertyId,
 			orderNumber,
 			checkNo: orderNumber,
@@ -151,32 +151,22 @@ export default function POSContainer() {
 			createdAt: Date.now(),
 			items: linesSnapshot,
 		});
+		const printResult = await printOrder();
 		if (!printResult.ok) {
 			const failures = (printResult.results || []).filter((r) => !r.ok).map((r) => r.friendlyError).filter(Boolean);
-			toast.error(`Order ${orderNumber} was saved, but one or more tickets did not print.`, { description: failures.join(' ') || 'Check printer assignments.' , duration: 12000 });
+			toast.error(`Order ${orderNumber} was saved, but one or more tickets did not print.`, {
+				description: failures.join(' ') || 'Check printer assignments.',
+				duration: 12000,
+				action: { label: 'Retry Tickets', onClick: async () => {
+					const retry = await printOrder();
+					if (retry.ok) toast.success(`Order ${orderNumber} tickets printed.`);
+					else toast.error('Ticket retry failed. Check printer assignments.');
+				}},
+			});
 			return;
 		}
 
-		if (failedCenters.length === 0) {
-			toast.success(`Order ${orderNumber} sent to kitchen.`);
-			return;
-		}
-
-		toast.error(`Order ${orderNumber} was saved, but the ${failedCenters.join(', ')} ticket didn't print.`, {
-			description: 'The order is safe — only the ticket failed to print.',
-			duration: 12000,
-			action: {
-				label: 'Retry Ticket',
-				onClick: async () => {
-					for (const center of failedCenters) {
-						const result = await store.retryKitchenPrint(kitchenOrderId, center, (c, lines) => buildKitchenTicketText(c, lines, { orderNumber, table, propertyName, waiter: store.getSession(table.id)?.waiter }));
-						if (result.ok) toast.success(`${center} ticket printed.`);
-						else toast.error(`${center} ticket still failed: ${result.friendlyError}`);
-					}
-				},
-			},
-		});
-	};
+		toast.success(`Order ${orderNumber} sent to kitchen/bar printers.`);
 
 	const handleBillRequest = () => {
 		if (!activeTable) return;
