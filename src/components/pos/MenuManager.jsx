@@ -41,7 +41,7 @@ export default function MenuManager({ open, onClose }) {
         sortOrder:editing.pos_sort,active:true
       });
       toast.success(editing.id?'Menu item updated.':'Menu item added to POS.');
-      setEditing(null); await reload();
+      setEditing(null); await reload(); window.dispatchEvent(new Event('olitech:menu-updated'));
     }catch(e){toast.error(e.message);}
   };
 
@@ -56,6 +56,7 @@ export default function MenuManager({ open, onClose }) {
     try{
       const rows=await inventoryService.parseImportFile(f);
       const count=await inventoryService.bulkUpsertPosMenu(propertyId,rows);
+      window.dispatchEvent(new Event('olitech:menu-updated'));
       toast.success(`${count} menu products imported and assigned to POS.`);
       await reload();
     }catch(err){toast.error(err.message);}
