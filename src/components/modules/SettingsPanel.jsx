@@ -29,7 +29,7 @@ export default function SettingsPanel(){
  const location=useLocation(); const navigate=useNavigate();
  const initialView=location.pathname==='/settings/printers'?'printers':location.pathname==='/settings/receipt'?'receipt':'list';
  const [view,setView]=React.useState(initialView);
- React.useEffect(()=>{if(location.pathname==='/settings/printers')setView('printers');else if(location.pathname==='/settings/receipt')setView('receipt');},[location.pathname]);
+ React.useEffect(()=>{if(location.pathname==='/settings/printers')setView('printers');else if(location.pathname==='/settings/receipt')setView('receipt');else setView('list');},[location.pathname]);
  const {user}=useAuth();
  const canSubscription=Boolean(user?.property?.id||user?.propertyRole||user?.staff?.role);
  if(view==='printers') return <div className="flex-1 overflow-y-auto" style={{background:SAND}}><Breadcrumb label="Printers" onBack={()=>{setView('list');navigate('/backoffice?module=settings')}}/><ErrorBoundary label="Printer settings"><SettingsPrinters/></ErrorBoundary></div>;
