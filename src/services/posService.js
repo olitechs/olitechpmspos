@@ -19,6 +19,7 @@ export const posService = {
     agentUrl = '',
     purposes = ['receipt'],
     center = '',
+    baudRate = 9600,
   }) {
     const { data, error } = await supabase.rpc('fn_upsert_pos_printer', {
       p_property_id: propertyId,
@@ -30,6 +31,7 @@ export const posService = {
       p_agent_url: agentUrl || null,
       p_purposes: Array.isArray(purposes) ? purposes : ['receipt'],
       p_center: center || null,
+      p_baud_rate: Number(baudRate) || 9600,
     });
     if (error) throw new Error(error.message);
     return data;
