@@ -33,7 +33,7 @@ export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrde
  async function handlePrintBill(){
   setBusy(true);setError('');
   try{
-   const result=await store.printBill({text:billText({orderNumber:stableOrderNumber,table,waiter,lines:orderLines,subtotal,discount,discountPct,vat,total}),tableNumber:table.number});
+   const result=await printReceipt('UNSETTLED',{propertyId,orderNumber:stableOrderNumber,checkNo:stableOrderNumber,table:tableLabel(table),waiter,covers,items:orderLines,total,currency:'KES'});
    if(!result.ok){setError(result.friendlyError||'Bill printer failed.');toast.error('Bill was not printed.');return}
    store.setUnsettled(table.id);setBillPrinted(true);toast.success('Unsettled bill printed. The table remains open.');
   }catch(e){setError(e?.message||'Bill printer failed.');toast.error('Bill was not printed.');}
@@ -47,12 +47,13 @@ export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrde
   try{
    await pmsService.recordPosSale({propertyId,tableNumber:tableLabel(table),orderNumber:stableOrderNumber,items:orderLines.map(x=>({name:x.name,qty:x.qty,price:x.price})),subtotal,discountAmount:discount,vat,total,paymentMethod,reservationId:paymentMethod==='room'?chargeReservationId:null});
    const methodLabel=PAYMENT_METHODS.find(x=>x.id===paymentMethod)?.label||paymentMethod;
-   const result=await store.completeSale({table,orderLines,total,method:methodLabel,receiptText:receiptText({orderNumber:stableOrderNumber,table,waiter,lines:orderLines,subtotal,discount,discountPct,vat,total,method:methodLabel,room:room?.room_number})});
+   const saleResult=await store.completeSale({table,orderLines,total,method:methodLabel,receiptText:'',skipPrint:true});
+   const result=await printReceipt('RECEIPT',{propertyId,orderNumber:stableOrderNumber,checkNo:stableOrderNumber,table:tableLabel(table),waiter,covers,items:orderLines,total,currency:'KES',paymentMethod:methodLabel,room:room?.room_number});
    if(propertyId){try{await inventoryService.deductStockForOrder({propertyId,orderItems:orderLines.map(x=>({productId:x.productId||x.id,qty:x.qty,name:x.name})),reference:'POS Sale - Table '+tableLabel(table)})}catch(e){console.warn('[inventory]',e)}}
    // Payment is already recorded in PMS at this point. A printer failure must
    // never leave the table occupied or prevent the next guest/waiter using it.
    onConfirmPayment();
-   if(result.printStatus==='printed'){
+   if(result.ok){
     toast.success(`Payment completed and receipt printed via ${methodLabel}.`);
    }else{
     toast.warning('Payment completed and table reopened. Receipt printing failed; print it later from Receipts.');
@@ -61,7 +62,7 @@ export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrde
   finally{setBusy(false)}
  };
  const reprintBill=async()=>{
-  setBusy(true);const result=await store.printBill({text:billText({orderNumber:stableOrderNumber,table,waiter,lines:orderLines,subtotal,discount,discountPct,vat,total}),tableNumber:table.number});setBusy(false);
+  setBusy(true);const result=await printReceipt('UNSETTLED',{propertyId,orderNumber:stableOrderNumber,checkNo:stableOrderNumber,table:tableLabel(table),waiter,covers,items:orderLines,total,currency:'KES'});setBusy(false);
   if(result.ok){setBillPrinted(true);toast.success('Bill reprinted.')}else setError(result.friendlyError||'Bill printer failed.');
  };
  return <div className="h-full overflow-auto bg-[#F7F7F5] p-4 md:p-6">
