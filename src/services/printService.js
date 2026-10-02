@@ -1,8 +1,6 @@
 import { supabase } from '@/lib/supabaseClient';
 
-const WIDTH = 80;
 const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
-const stripHtml = (html) => String(html || '').replace(/<br\\s*\\/?/gi, '\\n').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
 
 export async function getPrinters(propertyId) {
   if (!propertyId) return [];
@@ -102,12 +100,15 @@ function receiptHtml(settings, type, data, copyType) {
   const items = data.items || [];
   const food = items.filter((i) => !itemIsDrink(i));
   const drinks = items.filter(itemIsDrink);
-  const section = (label, rows) => rows.length ? `<div class="section">--- ${label} ---</div><table class="items">${rows.map((i) => `<tr><td class="qty">${esc(i.qty)}x</td><td>${esc(i.name)}</td><td class="amount">${esc(data.currency || '')} ${Number(i.qty||0)*Number(i.price||0).toFixed ? (Number(i.qty||0)*Number(i.price||0)).toFixed(2) : '0.00'}</td></tr>`).join('')}</table>` : '';
+  const rows = (list) => list.map((i) => `<tr><td class="qty">${esc(i.qty)}x</td><td>${esc(i.name)}</td><td class="amount">${esc(data.currency || '')} ${(Number(i.qty || 0) * Number(i.price || 0)).toFixed(2)}</td></tr>`).join('');
+  const itemMarkup = food.length && drinks.length
+    ? `<div class="section">--- FOOD ---</div><table class="items">${rows(food)}</table><div class="section">--- DRINKS ---</div><table class="items">${rows(drinks)}</table>`
+    : `<table class="items">${rows(food.length ? food : drinks)}</table>`;
   const logo = settings.logo_url ? `<img class="logo" src="${esc(settings.logo_url)}" alt="">` : '';
   const title = type === 'UNSETTLED' ? 'UNSETTLED RECEIPT' : 'FINAL RECEIPT';
   const payment = type === 'RECEIPT' ? `<div class="divider"></div><div>Payment Method: <b>${esc(data.paymentMethod || '—')}</b></div>` : '';
   const total = Number(data.total || 0).toFixed(2);
-  return `<div class="receipt"><div class="copy">${esc(copyType)}</div>${logo}<div class="center bold">${esc(settings.property_name)}</div><div class="center">${esc(settings.address_line1)}<br>${esc(settings.address_line2)}<br>${esc(settings.phone)}<br>${esc(settings.email)}<br>${esc(settings.website)}<br>KRA PIN: ${esc(settings.kra_pin)}${settings.extra_header_line ? `<br>${esc(settings.extra_header_line)}` : ''}</div><div class="divider"></div><div class="center bold">${title}</div><div>Waiter: ${esc(data.waiter || 'Unassigned')} &nbsp; Table: ${esc(data.table || '')}</div><div>Covers: ${esc(data.covers ?? '—')} &nbsp; Date: ${esc(new Date(data.createdAt || Date.now()).toLocaleString('en-KE'))}</div>${food.length && drinks.length ? `<div class="section">--- FOOD ---</div><table class="items">${food.map((i)=>`<tr><td class="qty">${esc(i.qty)}x</td><td>${esc(i.name)}</td><td class="amount">${(Number(i.qty||0)*Number(i.price||0)).toFixed(2)}</td></tr>`).join('')}</table><div class="section">--- DRINKS ---</div><table class="items">${drinks.map((i)=>`<tr><td class="qty">${esc(i.qty)}x</td><td>${esc(i.name)}</td><td class="amount">${(Number(i.qty||0)*Number(i.price||0)).toFixed(2)}</td></tr>`).join('')}</table>` : section(food.length ? 'FOOD' : 'DRINKS', food.length ? food : drinks)}<div class="total">TOTAL ${esc(data.currency || '')} ${total}</div>${payment}<div class="footer">${esc(settings.footer_line1)}<br>${esc(settings.footer_line2)}</div><div class="right bold">Check No: ${esc(data.checkNo || data.orderNumber || '')}</div></div>`;
+  return `<div class="receipt"><div class="copy">${esc(copyType)}</div>${logo}<div class="center bold">${esc(settings.property_name)}</div><div class="center">${esc(settings.address_line1)}<br>${esc(settings.address_line2)}<br>${esc(settings.phone)}<br>${esc(settings.email)}<br>${esc(settings.website)}<br>KRA PIN: ${esc(settings.kra_pin)}${settings.extra_header_line ? `<br>${esc(settings.extra_header_line)}` : ''}</div><div class="divider"></div><div class="center bold">${title}</div><div>Waiter: ${esc(data.waiter || 'Unassigned')} &nbsp; Table: ${esc(data.table || '')}</div><div>Covers: ${esc(data.covers ?? '—')} &nbsp; Date: ${esc(new Date(data.createdAt || Date.now()).toLocaleString('en-KE'))}</div>${itemMarkup}<div class="total">TOTAL ${esc(data.currency || '')} ${total}</div>${payment}<div class="footer">${esc(settings.footer_line1)}<br>${esc(settings.footer_line2)}</div><div class="right bold">Check No: ${esc(data.checkNo || data.orderNumber || '')}</div></div>`;
 }
 
 export async function printReceipt(type, data) {
