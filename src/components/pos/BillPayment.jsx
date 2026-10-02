@@ -7,6 +7,7 @@ import{useAuth}from'@/lib/AuthContext';
 import{pmsService}from'@/services/pmsService';
 import{getSessionStaff}from'@/services/authService';
 import{inventoryService}from'@/services/inventoryService';
+import{printReceipt}from'@/services/printService';
 
 const PAYMENT_METHODS=[{id:'cash',label:'Cash'},{id:'card',label:'Card'},{id:'mpesa',label:'M-Pesa'},{id:'room',label:'Room Charge'}];
 const fmt=n=>'KES '+Number(n||0).toLocaleString('en-KE',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -47,7 +48,7 @@ export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrde
   try{
    await pmsService.recordPosSale({propertyId,tableNumber:tableLabel(table),orderNumber:stableOrderNumber,items:orderLines.map(x=>({name:x.name,qty:x.qty,price:x.price})),subtotal,discountAmount:discount,vat,total,paymentMethod,reservationId:paymentMethod==='room'?chargeReservationId:null});
    const methodLabel=PAYMENT_METHODS.find(x=>x.id===paymentMethod)?.label||paymentMethod;
-   const saleResult=await store.completeSale({table,orderLines,total,method:methodLabel,receiptText:'',skipPrint:true});
+   await store.completeSale({table,orderLines,total,method:methodLabel,receiptText:'',skipPrint:true});
    const result=await printReceipt('RECEIPT',{propertyId,orderNumber:stableOrderNumber,checkNo:stableOrderNumber,table:tableLabel(table),waiter,covers,items:orderLines,total,currency:'KES',paymentMethod:methodLabel,room:room?.room_number});
    if(propertyId){try{await inventoryService.deductStockForOrder({propertyId,orderItems:orderLines.map(x=>({productId:x.productId||x.id,qty:x.qty,name:x.name})),reference:'POS Sale - Table '+tableLabel(table)})}catch(e){console.warn('[inventory]',e)}}
    // Payment is already recorded in PMS at this point. A printer failure must
