@@ -375,6 +375,11 @@ export function StoreProvider({ children }) {
   const receiptPrinterName = useCallback(() => (receiptPrinter() || {}).name || null, [receiptPrinter]);
   const billPrinter = useCallback(() => printers.find((p) => p.purposes.includes('bill') && isPrinterReady(p)) || null, [printers]);
   const billPrinterName = useCallback(() => (billPrinter() || {}).name || null, [billPrinter]);
+  const printBill = useCallback(async ({ text, tableNumber } = {}) => {
+    const printer = billPrinter();
+    if (!printer) return { ok: false, friendlyError: 'No bill printer is connected.' };
+    return sendPrintJob(printer, text || '', { title: `Bill — Table ${tableNumber ?? ''}` });
+  }, [billPrinter]);
   const orderPrinters = useCallback(() => printers.filter((p) => p.purposes.includes('order') && isPrinterReady(p)), [printers]);
   const orderPrinterForCenter = useCallback(
     (center) => printers.find((p) => p.purposes.includes('order') && isPrinterReady(p) && (!p.center || p.center === 'All' || p.center === center)) || null,
