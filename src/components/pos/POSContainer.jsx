@@ -11,15 +11,37 @@ import PinPad from '@/components/auth/PinPad';
 import { authService } from '@/services/authService';
 import { useAuth } from '@/lib/AuthContext';
 
-function buildKitchenTicketText(center, lines, { orderNumber, table }) {
+const THERMAL_COLUMNS = 42; // standard 80mm thermal ticket text width
+
+function wrapTicketLine(text, width = THERMAL_COLUMNS) {
+	const value = String(text || '');
+	if (value.length <= width) return [value];
+	const words = value.split(/\s+/);
+	const rows = [];
+	let row = '';
+	for (const word of words) {
+		if (!row) row = word;
+		else if ((row + ' ' + word).length <= width) row += ' ' + word;
+		else { rows.push(row); row = word; }
+	}
+	if (row) rows.push(row);
+	return rows;
+}
+
+function buildKitchenTicketText(center, lines, { orderNumber, table, propertyName }) {
+	const divider = '-'.repeat(THERMAL_COLUMNS);
+	const itemRows = lines.flatMap((line) => wrapTicketLine(`${line.qty}x ${line.name}`));
 	return [
-		'VISIWA BEACH RESORT',
-		`${center.toUpperCase()} TICKET`,
-		`${orderNumber} · Table ${tableLabel(table)}`,
-		new Date().toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' }),
-		'--------------------------------',
-		...lines.map((l) => `${l.qty}x ${l.name}`),
-		'--------------------------------',
+		String(propertyName || 'OLITECHS PMS & POS').toUpperCase(),
+		divider,
+		`${center.toUpperCase()} ORDER TICKET`,
+		`ORDER: ${orderNumber}`,
+		`TABLE: ${tableLabel(table)}`,
+		`TIME: ${new Date().toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })}`,
+		divider,
+		...itemRows,
+		divider,
+		'',
 	].join('\n');
 }
 
@@ -29,6 +51,7 @@ export default function POSContainer() {
 	const store = useStore();
 	const { user } = useAuth();
 	const propertyId = user?.property?.id;
+	const propertyName = user?.property?.name || user?.property?.business_name || 'OliTechs PMS & POS';
 	const [posStaff, setPosStaff] = useState([]);
 	const [switchStaff, setSwitchStaff] = useState(null);
 	const [switchError, setSwitchError] = useState('');
@@ -108,7 +131,7 @@ export default function POSContainer() {
 
 		const { id: kitchenOrderId, failedCenters } = await store.fireKitchenOrder({
 			table, orderLines: linesSnapshot, orderNumber,
-			buildTicketText: (center, lines) => buildKitchenTicketText(center, lines, { orderNumber, table }),
+			buildTicketText: (center, lines) => buildKitchenTicketText(center, lines, { orderNumber, table, propertyName }),
 		});
 
 		if (failedCenters.length === 0) {
