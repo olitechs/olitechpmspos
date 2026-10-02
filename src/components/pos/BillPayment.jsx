@@ -42,7 +42,7 @@ export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrde
   try{
    const currentShift=await shiftService.getCurrentShift(propertyId);
    if(!currentShift?.id){setError('No open POS shift. Open a shift before taking payments.');return;}
-   await pmsService.recordPosSale({propertyId,tableNumber:tableLabel(table),orderNumber:stableOrderNumber,items:orderLines.map(x=>({name:x.name,qty:x.qty,price:x.price,category:x.category,center:x.center})),subtotal,discountAmount:discount,vat,total,paymentMethod,reservationId:paymentMethod==='room'?chargeReservationId:null,shiftId:currentShift.id,waiter});
+   await pmsService.recordPosSale({propertyId,tableNumber:tableLabel(table),orderNumber:stableOrderNumber,items:orderLines.map(x=>({product_id:x.productId || x.product_id || null,name:x.name,qty:x.qty,price:x.price,category:x.category,center:x.center})),subtotal,discountAmount:discount,vat,total,paymentMethod,reservationId:paymentMethod==='room'?chargeReservationId:null,shiftId:currentShift.id,waiter});
    const methodLabel=PAYMENT_METHODS.find(x=>x.id===paymentMethod)?.label||paymentMethod;
    await store.completeSale({table,orderLines,total,method:methodLabel,receiptText:'',skipPrint:true});
    const voidRows=propertyId?await pmsService.listVoidedItems(propertyId).catch(()=>[]):[];
