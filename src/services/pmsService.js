@@ -2,6 +2,36 @@ import { supabase } from '@/lib/supabaseClient';
 
 export const pmsService = {
 
+	async removeOrderItem({ propertyId, tableKey, itemId, removeQty, reason, removedByName }) {
+		const { data, error } = await supabase.rpc('fn_remove_pos_item', {
+			p_property_id: propertyId,
+			p_table_key: tableKey,
+			p_item_id: String(itemId),
+			p_remove_qty: Number(removeQty || 1),
+			p_reason: reason || 'Item removed',
+			p_removed_by_name: removedByName || null,
+		});
+		if (error) throw new Error(error.message);
+		return data || null;
+	},
+	async listVoidedItems(propertyId, { date = null } = {}) {
+		let q = supabase.from('pos_void_items').select('*').eq('property_id', propertyId).order('created_at', { ascending: false });
+		if (date) q = q.gte('created_at', `${date}T00:00:00+03:00`).lt('created_at', `${date}T23:59:59+03:00`);
+		const { data, error } = await q;
+		if (error) throw new Error(error.message);
+		return data || [];
+	},
+	async approveVoid({ propertyId, voidId, signature }) {
+		const { data, error } = await supabase.from('pos_void_items').update({
+			status: 'approved',
+			approved_at: new Date().toISOString(),
+			approved_by: (await supabase.auth.getUser()).data.user?.id || null,
+			manager_signature: signature || null,
+		}).eq('id', voidId).eq('property_id', propertyId).select().single();
+		if (error) throw new Error(error.message);
+		return data;
+	},
+
 	async listProducts(propertyId) {
 		const { data, error } = await supabase.from('products').select('*').eq('property_id', propertyId).order('name');
 		if (error) throw new Error(error.message);
