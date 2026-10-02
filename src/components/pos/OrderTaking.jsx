@@ -57,7 +57,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
   };
 
   const managerRoles = new Set(['hotel_admin','super_admin','cashier','fb_manager','front_office_manager','manager','admin','owner']);
-  const needsManagerPin = !managerRoles.has(currentRole);
+  const needsManagerPin = !(user?.isPlatformOwner || managerRoles.has(currentRole));
 
   const performRemoval = async () => {
     if (!removeTarget || !propertyId) return;
