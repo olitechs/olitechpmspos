@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Building2, Users, ReceiptText, Printer, Percent, Plug, ChevronLeft } from 'lucide-react';
+import { Building2, Users, ReceiptText, Printer, Percent, Plug, ChevronLeft, ChevronRight } from 'lucide-react';
 import { SAND, NAVY, MUTED, BORDER, SURFACE, TEAL, TEAL_DARK } from '@/data/themePalette';
 import StaffAdmin from '@/components/admin/StaffAdmin';
 import SubscriptionPanel from '@/components/admin/SubscriptionPanel';
@@ -42,9 +42,9 @@ export default function SettingsPanel(){
     {SECTIONS.map(s=>{const Icon=s.icon;return <button key={s.id} disabled={s.disabled} onClick={()=>!s.disabled&&setView(s.id)} className="flex items-center gap-4 rounded-2xl p-4 text-left transition" style={{background:SURFACE,border:`1px solid ${BORDER}`,opacity:s.disabled?.58:1,cursor:s.disabled?'default':'pointer'}}>
       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl" style={{background:`${TEAL}14`}}><Icon size={19} style={{color:TEAL_DARK}}/></span>
       <span className="min-w-0 flex-1"><span className="block text-sm font-bold" style={{color:NAVY}}>{s.label}</span><span className="mt-1 block text-xs" style={{color:MUTED}}>{s.desc}</span></span>
-      <span className="rounded-lg border px-2 py-1 text-[10px] font-bold" style={{borderColor:BORDER,color:s.disabled?MUTED:TEAL_DARK}}>{s.disabled?'Coming soon':'Configure →'}</span>
+      <span className="flex items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-bold" style={{borderColor:BORDER,color:s.disabled?MUTED:TEAL_DARK}}>{s.disabled?'Coming soon':<>Configure <ChevronRight size={12}/></>}</span>
     </button>})}
    </div>
-   {canSubscription&&<button onClick={()=>setView('subscription')} className="mt-4 rounded-xl border px-4 py-3 text-xs font-bold" style={{borderColor:BORDER,color:MUTED,background:SURFACE}}>Subscription & Paywall →</button>}
+   {canSubscription&&<button onClick={()=>setView('subscription')} className="mt-4 rounded-xl border px-4 py-3 text-xs font-bold" style={{borderColor:BORDER,color:MUTED,background:SURFACE}}>Subscription & Paywall</button>}
  </div>;
 }
