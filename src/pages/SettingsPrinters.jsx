@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabaseClient';
 
 const TYPES=[['receipt_80mm','Receipt 80mm'],['kitchen','Kitchen'],['bar','Bar'],['label','Label']];
 const CONNECTIONS=[['system_dialog','System Dialog'],['network_ip','Network IP'],['usb','USB'],['bluetooth','Bluetooth']];
-const ASSIGNMENTS=[['food_orders','Food Orders'],['drinks_orders','Drinks Orders'],['void_food_orders','Food Void Slips'],['void_drinks_orders','Drinks Void Slips'],['unsettled_bills','Unsettled Bills'],['final_receipts','Final Receipts'],['reports','Reports']];
+const ASSIGNMENTS=[['food_orders','Food Orders'],['drinks_orders','Drinks Orders'],['void_food_orders','Food Void Slips'],['void_drinks_orders','Drinks Void Slips'],['shift_reports','Shift Closing Reports'],['void_drinks_orders','Drinks Void Slips'],['unsettled_bills','Unsettled Bills'],['final_receipts','Final Receipts'],['reports','Reports']];
 
 const iconFor=(c)=>c==='network_ip'?Wifi:c==='usb'?Usb:c==='bluetooth'?Bluetooth:Monitor;
 
