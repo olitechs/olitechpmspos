@@ -11,6 +11,10 @@ const STATUS_STYLES = {
 	suspended: 'bg-red-100 text-red-800',
 	rejected: 'bg-slate-200 text-slate-700',
 	inactive: 'bg-slate-200 text-slate-700',
+	trial: 'bg-blue-100 text-blue-800',
+	past_due: 'bg-orange-100 text-orange-800',
+	cancelled: 'bg-slate-200 text-slate-700',
+	'not configured': 'bg-slate-100 text-slate-600',
 };
 
 function StatusBadge({ status }) {
