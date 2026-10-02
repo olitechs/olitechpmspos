@@ -48,9 +48,15 @@ export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrde
    await pmsService.recordPosSale({propertyId,tableNumber:tableLabel(table),orderNumber:stableOrderNumber,items:orderLines.map(x=>({name:x.name,qty:x.qty,price:x.price})),subtotal,discountAmount:discount,vat,total,paymentMethod,reservationId:paymentMethod==='room'?chargeReservationId:null});
    const methodLabel=PAYMENT_METHODS.find(x=>x.id===paymentMethod)?.label||paymentMethod;
    const result=await store.completeSale({table,orderLines,total,method:methodLabel,receiptText:receiptText({orderNumber:stableOrderNumber,table,waiter,lines:orderLines,subtotal,discount,discountPct,vat,total,method:methodLabel,room:room?.room_number})});
-   if(result.printStatus!=='printed'){setError(result.printError||'Payment recorded, but receipt printing failed.');toast.error('Payment recorded. Retry receipt printing.');return}
    if(propertyId){try{await inventoryService.deductStockForOrder({propertyId,orderItems:orderLines.map(x=>({productId:x.productId||x.id,qty:x.qty,name:x.name})),reference:'POS Sale - Table '+tableLabel(table)})}catch(e){console.warn('[inventory]',e)}}
-   toast.success('Payment completed and receipt printed.');onConfirmPayment();
+   // Payment is already recorded in PMS at this point. A printer failure must
+   // never leave the table occupied or prevent the next guest/waiter using it.
+   onConfirmPayment();
+   if(result.printStatus==='printed'){
+    toast.success(`Payment completed and receipt printed via ${methodLabel}.`);
+   }else{
+    toast.warning('Payment completed and table reopened. Receipt printing failed; print it later from Receipts.');
+   }
   }catch(e){setError('Payment was not recorded: '+e.message);toast.error('Payment was not recorded.');}
   finally{setBusy(false)}
  };
