@@ -124,13 +124,15 @@ begin
 
     select to_jsonb(s) into v_session
       from public.pos_table_sessions s
-      where s.id = v_source.id;
+      where s.property_id = p_property_id
+        and s.table_key = p_target_table_key
+        and s.status <> 'closed';
 
     return jsonb_build_object(
       'mode','move',
       'source_table_key',p_source_table_key,
       'target_table_key',p_target_table_key,
-      'source_closed',false,
+      'source_closed',true,
       'session',v_session
     );
   end if;
