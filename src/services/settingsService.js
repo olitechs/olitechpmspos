@@ -15,6 +15,7 @@ export const DEFAULT_RECEIPT_SETTINGS = {
   unsettled_receipt_title: 'UNSETTLED RECEIPT',
   unsettled_receipt_copy_count: 2,
   unsettled_receipt_front_office_copy: true,
+  print_void_slips: true,
 };
 
 export async function getPropertySettings(propertyId) {
