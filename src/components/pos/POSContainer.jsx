@@ -302,7 +302,7 @@ export default function POSContainer() {
 										<button key={t.id} onClick={() => { setTableTransferTarget({ table:t, zone, occupied, session }); setTableTransferError(''); }} className="rounded-2xl border-2 p-4 text-left transition hover:-translate-y-0.5" style={{ borderColor: selected ? '#0E7482' : occupied ? '#F59E0B' : '#E2E8F0', background: selected ? '#ECFEFF' : '#fff' }}>
 											<div className="flex items-center justify-between"><span className="text-lg font-black text-slate-950">T{t.number}</span>{occupied ? <GitMerge size={17} className="text-amber-600"/> : <MoveRight size={17} className="text-teal-700"/>}</div>
 											<div className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">{zone.name}</div>
-											<div className="mt-2 text-xs font-semibold text-slate-600">{occupied ? \`Ongoing · \${session?.orderNumber || 'Open bill'}\` : 'Free · Move bill here'}</div>
+											<div className="mt-2 text-xs font-semibold text-slate-600">{occupied ? `Ongoing · ${session?.orderNumber || 'Open bill'}` : 'Free · Move bill here'}</div>
 										</button>
 									);
 								})}
