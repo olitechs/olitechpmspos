@@ -262,6 +262,7 @@ export default function POSContainer() {
 						orderLines={orderLines}
 						onConfirmPayment={handleConfirmPayment}
 						onAddOrder={() => setActiveTab('order')}
+						onMoveTable={openTableTransfer}
 						onBackToFloor={() => { setActiveTable(null); setActiveTab('floor'); }}
 						orderNumber={orderNumbersRef.current[activeTable.id]}
 						waiter={store.getSession(activeTable.id)?.waiter || ''}
