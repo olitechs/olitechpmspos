@@ -97,8 +97,13 @@ export default function POSContainer() {
 		}
 		if (!orderNumbersRef.current[table.id]) {
 			orderNumbersRef.current[table.id] = session.orderNumber || `ORD-${String(table.number).padStart(3, '0')}-${Date.now().toString(36).slice(-7).toUpperCase()}`;
-			store.setSessionOrderLines(table.id, session.orderLines || [], orderNumbersRef.current[table.id]);
 		}
+		// Hydrate the bill screen from the persisted table session. Without this,
+		// a printed/unsettled table reopened after navigation/reload had its
+		// session in AppStore but POSContainer's local orderLinesByTable was
+		// empty, producing a bill with 0 items / 0 total.
+		setOrderLinesByTable((prev) => ({ ...prev, [table.id]: Array.isArray(session.orderLines) ? session.orderLines : [] }));
+		store.setSessionOrderLines(table.id, session.orderLines || [], orderNumbersRef.current[table.id]);
 		setActiveTable(table);
 		setActiveTab(session.status === 'unsettled' ? 'bill' : 'order');
 	};
