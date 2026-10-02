@@ -34,7 +34,7 @@ const SECTIONS=[
  ]},
  {key:"profile",title:"Profile",items:[
   {id:"roles",label:"Roles & Staff",icon:ShieldCheck,roles:["hotel_admin","super_admin"],path:"/admin/roles",active:["roles"]},
-  {id:"settings",label:"Hotel Settings",icon:Settings,roles:["hotel_admin","super_admin"],path:"/admin",active:["settings"]}
+  {id:"settings",label:"Hotel Settings",icon:Settings,roles:["hotel_admin","super_admin","front_office_manager"],path:"/admin",active:["settings"]}
  ]}
 ];
 
