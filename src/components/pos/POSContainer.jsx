@@ -57,6 +57,9 @@ export default function POSContainer() {
 	const store = useStore();
 	const { user } = useAuth();
 	const propertyId = user?.property?.id;
+	const sessionStaff = (() => { try { return JSON.parse(sessionStorage.getItem('olitech_active_staff_v2') || 'null'); } catch { return null; } })();
+	const posRole = String(sessionStaff?.role || user?.staff?.role || user?.propertyRole || '').toLowerCase().replace(/\s+/g,'_');
+	const canCloseShift = Boolean(user?.isPlatformOwner || ['hotel_admin','super_admin','cashier','fb_manager','owner','admin','manager','property_manager','general_manager'].includes(posRole));
 	const propertyName = user?.property?.name || user?.property?.business_name || 'OliTechs PMS & POS';
 	const [posStaff, setPosStaff] = useState([]);
 	const [switchStaff, setSwitchStaff] = useState(null);
@@ -244,7 +247,7 @@ export default function POSContainer() {
 
 	return (
 		<div className="flex flex-col h-full overflow-hidden">
-			<AppHeader activeTab={activeTab} onTabChange={setActiveTab} activeTable={activeTable} shift={currentShift} onCloseShift={()=>setCloseShiftOpen(true)} />
+			<AppHeader activeTab={activeTab} onTabChange={setActiveTab} activeTable={activeTable} shift={currentShift} onCloseShift={canCloseShift ? ()=>setCloseShiftOpen(true) : null} />
 
 			<div className="flex-1 min-h-0">
 				{activeTab === 'floor' && <div className="relative h-full"><FloorPlan onTableSelect={handleTableSelect} /><div className="absolute bottom-3 left-3 z-20 flex items-center gap-1 rounded-2xl border-2 border-[#090C11] bg-white p-2 shadow-lg"><span className="px-1 text-[9px] font-black uppercase tracking-wider text-[#6B7280]">Staff</span>{posStaff.slice(0,8).map(person => <button key={person.id} title={`Switch to ${person.full_name}`} onClick={()=>{setSwitchStaff(person);setSwitchError('');}} className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-[#090C11] bg-[#FFD300] text-[10px] font-black text-[#090C11] hover:scale-105">{person.avatar || person.full_name?.slice(0,2).toUpperCase()}</button>)}</div>{switchStaff&&<PinPad title="Switch POS Staff" staffName={switchStaff.full_name} error={switchError} onSubmit={verifySwitch} onClose={()=>setSwitchStaff(null)}/>}</div>}
