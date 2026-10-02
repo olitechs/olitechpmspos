@@ -62,8 +62,8 @@ begin
  if v_shift.id is null then raise exception 'Shift not found.'; end if;
  if not (public.is_platform_owner() or public.property_role(v_shift.property_id) in ('owner','admin','manager','cashier') or public.current_staff_role(v_shift.property_id) in ('hotel_admin','super_admin','cashier','fb_manager')) then raise exception 'Only cashier, manager or admin can close a shift.'; end if;
  if v_shift.status<>'open' then raise exception 'Shift is already closed.'; end if;
- select coalesce(sum(case when payment_method='cash' then total else 0 end),0),coalesce(sum(case when payment_method='mpesa' then total else 0 end),0),coalesce(sum(case when payment_method='card' then total else 0 end),0),coalesce(sum(case when payment_method='room' then total else 0 end),0),coalesce(sum(total),0),count(*) into v_cash,v_mpesa,v_card,v_room,v_total,v_count from public.pos_receipts where shift_id=p_shift_id and status='posted';
- v_bank:=0; v_other:=0;
+ select coalesce(sum(case when payment_method='cash' then total else 0 end),0),coalesce(sum(case when payment_method='mpesa' then total else 0 end),0),coalesce(sum(case when payment_method='card' then total else 0 end),0),coalesce(sum(case when payment_method='room' then total else 0 end),0),coalesce(sum(case when payment_method='bank' then total else 0 end),0),coalesce(sum(total),0),count(*) into v_cash,v_mpesa,v_card,v_room,v_total,v_count from public.pos_receipts where shift_id=p_shift_id and status='posted';
+ v_other:=0;
  update public.pos_shifts set closed_by=auth.uid(),closed_at=now(),status='closed',notes=coalesce(p_notes,notes) where id=p_shift_id returning * into v_shift;
  delete from public.pos_shift_payments where shift_id=p_shift_id;
  insert into public.pos_shift_payments(shift_id,payment_method,amount,transaction_count) values
