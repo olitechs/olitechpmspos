@@ -37,26 +37,48 @@ export function StoreProvider({ children }) {
   useEffect(() => {
     let active = true;
     if (!propertyId) { setSessions({}); return undefined; }
+
+    const hydrateSession = (row) => ({
+      status: row.status,
+      guests: Number(row.guests || 1),
+      waiter: row.waiter || '',
+      openedAt: row.opened_at ? new Date(row.opened_at).getTime() : Date.now(),
+      total: 0,
+      orderCount: Array.isArray(row.order_lines) ? row.order_lines.length : 0,
+      tableNumber: row.table_number,
+      zoneId: row.zone_id || null,
+      orderNumber: row.order_number || null,
+      orderLines: Array.isArray(row.order_lines) ? row.order_lines : [],
+    });
+
     posService.listActiveSessions(propertyId).then((rows) => {
       if (!active) return;
       const next = {};
       for (const row of rows || []) {
-        next[row.table_key] = {
-          status: row.status,
-          guests: Number(row.guests || 1),
-          waiter: row.waiter || '',
-          openedAt: row.opened_at ? new Date(row.opened_at).getTime() : Date.now(),
-          total: 0,
-          orderCount: Array.isArray(row.order_lines) ? row.order_lines.length : 0,
-          tableNumber: row.table_number,
-          zoneId: row.zone_id || null,
-          orderNumber: row.order_number || null,
-          orderLines: Array.isArray(row.order_lines) ? row.order_lines : [],
-        };
+        next[row.table_key] = hydrateSession(row);
       }
       setSessions(next);
     }).catch((error) => console.error('[POS] failed to load persisted sessions', error));
-    return () => { active = false; };
+
+    const channel = posService.subscribeToTableSessions?.(propertyId, {
+      onChange: ({ eventType, row }) => {
+        if (!active || !row?.table_key) return;
+        setSessions((prev) => {
+          const next = { ...prev };
+          if (eventType === 'DELETE' || row.status === 'closed') {
+            delete next[row.table_key];
+          } else {
+            next[row.table_key] = hydrateSession(row);
+          }
+          return next;
+        });
+      },
+    });
+
+    return () => {
+      active = false;
+      if (channel) channel.unsubscribe?.();
+    };
   }, [propertyId]);
   const [kitchenOrders, setKitchenOrders] = useState([]);
   const kitchenOrdersRef = useRef(kitchenOrders);
