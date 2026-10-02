@@ -404,11 +404,23 @@ export function StoreProvider({ children }) {
     };
     setSaleReceipts((prev) => [record, ...prev]);
     if (printer) {
-      const result = await sendPrintJob(printer, receiptText, { title: `Receipt — Table ${table.number}` });
-      setSaleReceipts((prev) => prev.map((r) => (r.id === id ? {
-        ...r, printStatus: result.ok ? PrintJobStatus.PRINTED : PrintJobStatus.FAILED, printError: result.ok ? null : result.friendlyError,
-      } : r)));
-      return { id, printStatus: result.ok ? PrintJobStatus.PRINTED : PrintJobStatus.FAILED, printError: result.ok ? null : result.friendlyError };
+      try {
+        const result = await sendPrintJob(printer, receiptText, { title: `Receipt — Table ${table.number}` });
+        setSaleReceipts((prev) => prev.map((r) => (r.id === id ? {
+          ...r, printStatus: result.ok ? PrintJobStatus.PRINTED : PrintJobStatus.FAILED, printError: result.ok ? null : result.friendlyError,
+        } : r)));
+        return { id, printStatus: result.ok ? PrintJobStatus.PRINTED : PrintJobStatus.FAILED, printError: result.ok ? null : result.friendlyError };
+      } catch (error) {
+        // Printing is a secondary side effect. The PMS sale has already been
+        // recorded by BillPayment before completeSale is called, so a printer
+        // adapter exception must be reported as a print failure rather than
+        // bubbling up and making the UI treat the paid sale as unsuccessful.
+        const printError = error?.friendlyError || error?.message || 'Receipt printer failed.';
+        setSaleReceipts((prev) => prev.map((r) => (r.id === id ? {
+          ...r, printStatus: PrintJobStatus.FAILED, printError,
+        } : r)));
+        return { id, printStatus: PrintJobStatus.FAILED, printError };
+      }
     }
     return { id, printStatus: record.printStatus, printError: record.printError };
   }, [receiptPrinter]);
