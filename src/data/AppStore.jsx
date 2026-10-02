@@ -490,7 +490,7 @@ export function StoreProvider({ children }) {
       record = { ...record, printJobs: printingJobs };
       updateLocal({ printJobs: printingJobs });
       const text = buildTicketText(center, orderLines.filter((l) => l.center === center));
-      const result = await sendPrintJob(printer, text, { title: `Kitchen Ticket — ${center}` });
+      const result = await sendPrintJob(printer, text, { title: `Kitchen Ticket — ${center}`, thermal: true });
       const finalJobs = { ...record.printJobs, [center]: { status: result.ok ? PrintJobStatus.PRINTED : PrintJobStatus.FAILED, printerId: printer.id, printerName: printer.name, error: result.ok ? null : result.friendlyError } };
       record = { ...record, printJobs: finalJobs };
       updateLocal({ printJobs: finalJobs });
@@ -531,7 +531,7 @@ export function StoreProvider({ children }) {
       return { ok: false, friendlyError: error };
     }
     const text = buildTicketText(center, order.orderLines.filter((l) => l.center === center));
-    const result = await sendPrintJob(printer, text, { title: `Kitchen Ticket — ${center}` });
+    const result = await sendPrintJob(printer, text, { title: `Kitchen Ticket — ${center}`, thermal: true });
     const finalJobs = { ...order.printJobs, [center]: { status: result.ok ? PrintJobStatus.PRINTED : PrintJobStatus.FAILED, printerId: printer.id, printerName: printer.name, error: result.ok ? null : result.friendlyError } };
     const nextOrder = { ...order, printJobs: finalJobs };
     setKitchenOrders((prev) => prev.map((o) => (o.id === orderId ? nextOrder : o)));
