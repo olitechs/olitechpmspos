@@ -68,6 +68,8 @@ function AppRoutes(){
     <Route path="/backoffice" element={<ProtectedApp initialModule="dashboard"/>}/>
     <Route path="/pos" element={<ProtectedApp initialModule="pos"/>}/>
     <Route path="/store" element={<ProtectedApp initialModule="store"/>}/>
+    <Route path="/settings/printers" element={<ProtectedApp initialModule="settings"/>}/>
+    <Route path="/settings/receipt" element={<ProtectedApp initialModule="settings"/>}/>
     <Route path="/rooms" element={<ProtectedApp initialModule="rooms"/>}/>
     <Route path="/admin/login" element={<AdminLogin/>}/>
     <Route element={<AdminRoute/>}><Route element={<AdminLayout/>}>
