@@ -76,7 +76,7 @@ export async function printToPrinter(printer, contentHtml, { propertyId, jobType
 
 export async function testPrint(printer, propertyId) {
   const now = new Date();
-  const html = `<div class="receipt center"><div class="bold">TEST PRINT</div><div>Printer: ${esc(printer.name)}</div><div>OK</div><div>${esc(now.toLocaleString('en-KE'))}</div></div>`;
+  const html = `<div class="receipt center"><div class="bold">Test Print - ${esc(printer.name)} - OK - ${esc(now.toLocaleString('en-KE'))}</div></div>`;
   return printToPrinter(printer, html, { propertyId, jobType: 'test', title: `Test Print - ${printer.name}` });
 }
 
