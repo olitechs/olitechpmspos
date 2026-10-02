@@ -1,5 +1,5 @@
 import React,{useEffect,useMemo,useState}from'react';
-import{ArrowLeft,Plus,Printer,Receipt,RotateCcw,WalletCards}from'lucide-react';
+import{ArrowLeft,Plus,Printer,Receipt,RotateCcw,WalletCards,ArrowRightLeft}from'lucide-react';
 import{toast}from'sonner';
 import{VAT_RATE,tableLabel}from'@/data/mockData';
 import{useStore}from'@/data/AppStore';
@@ -11,7 +11,7 @@ import{printReceipt}from'@/services/printService';
 
 const PAYMENT_METHODS=[{id:'cash',label:'Cash'},{id:'card',label:'Card'},{id:'mpesa',label:'M-Pesa'},{id:'room',label:'Room Charge'}];
 const fmt=n=>'KES '+Number(n||0).toLocaleString('en-KE',{minimumFractionDigits:2,maximumFractionDigits:2});
-export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrder,onBackToFloor,orderNumber,waiter,covers}){
+export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrder,onBackToFloor,onMoveTable,orderNumber,waiter,covers}){
  const store=useStore();const{user}=useAuth();const propertyId=user?.property?.id;const sessionStaff=getSessionStaff();
  const role=String(sessionStaff?.role||user?.staff?.role||user?.propertyRole||'').toLowerCase().replace(/\s+/g,'_');
  const canRoomCharge=user?.isPlatformOwner||['hotel_admin','super_admin','cashier','front_office_manager','owner','admin','manager'].includes(role);
@@ -65,7 +65,7 @@ export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrde
   <div className="mx-auto max-w-6xl">
    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
     <div><button onClick={onBackToFloor} className="mb-2 inline-flex items-center gap-2 text-xs font-bold text-[#5F6368] hover:text-[#090C11]"><ArrowLeft size={15}/>Back to floor</button><h2 className="text-2xl font-black text-[#090C11]">Table {tableLabel(table)} · Bill</h2><p className="text-sm text-[#6B7280]">{stableOrderNumber} · Waiter: {waiter||'Unassigned'}</p></div>
-    <div className="flex gap-2"><button onClick={onAddOrder} className="inline-flex items-center gap-2 rounded-xl bg-[#FFD300] px-4 py-2.5 text-sm font-black text-[#090C11]"><Plus size={17}/>Add Order</button>{billPrinted&&<button onClick={reprintBill} disabled={busy} className="inline-flex items-center gap-2 rounded-xl border-2 border-[#090C11] bg-white px-4 py-2.5 text-sm font-black text-[#090C11]"><RotateCcw size={16}/>Reprint Bill</button>}</div>
+    <div className="flex flex-wrap justify-end gap-2"><button onClick={onAddOrder} className="inline-flex items-center gap-2 rounded-xl bg-[#FFD300] px-4 py-2.5 text-sm font-black text-[#090C11]"><Plus size={17}/>Add Order</button><button onClick={onMoveTable} disabled={!onMoveTable} className="inline-flex items-center gap-2 rounded-xl border-2 border-[#0E7482] bg-white px-4 py-2.5 text-sm font-black text-[#0E7482]"><ArrowRightLeft size={16}/>Move / Join</button>{billPrinted&&<button onClick={reprintBill} disabled={busy} className="inline-flex items-center gap-2 rounded-xl border-2 border-[#090C11] bg-white px-4 py-2.5 text-sm font-black text-[#090C11]"><RotateCcw size={16}/>Reprint Bill</button>}</div>
    </div>
    {error&&<div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">{error}</div>}
    <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
