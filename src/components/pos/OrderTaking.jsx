@@ -141,7 +141,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
             className="w-full py-3 rounded-xl text-sm font-bold transition-all active:scale-95"
             style={{ background: orderLines.length > 0 ? TEAL : NAVY2, color: orderLines.length > 0 ? '#fff' : MUTED_DARK, cursor: orderLines.length > 0 ? 'pointer' : 'not-allowed' }}
           >
-            Send to Kitchen
+            Send & Print Ticket
           </button>
           <button
             onClick={onBill} disabled={orderLines.length === 0}
