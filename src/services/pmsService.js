@@ -15,8 +15,9 @@ export const pmsService = {
 		return data || null;
 	},
 	async listVoidedItems(propertyId, { date = null } = {}) {
+		const effectiveDate = date || new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Nairobi' }).format(new Date());
 		let q = supabase.from('pos_void_items').select('*').eq('property_id', propertyId).order('created_at', { ascending: false });
-		if (date) q = q.gte('created_at', `${date}T00:00:00+03:00`).lt('created_at', `${date}T23:59:59+03:00`);
+		if (effectiveDate) q = q.gte('created_at', `${effectiveDate}T00:00:00+03:00`).lt('created_at', `${effectiveDate}T23:59:59+03:00`);
 		const { data, error } = await q;
 		if (error) throw new Error(error.message);
 		return data || [];
