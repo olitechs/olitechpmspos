@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AlertTriangle, X, ShieldCheck } from 'lucide-react';
 import { CATEGORIES, MENU_ITEMS, VAT_RATE, tableLabel, CATEGORY_CENTER } from '@/data/mockData';
 import { useStore } from '@/data/AppStore';
@@ -9,6 +9,7 @@ import { authService } from '@/services/authService';
 import { pmsService } from '@/services/pmsService';
 import { getPrinters, getAssignments, printVoidTicket } from '@/services/printService';
 import { getPropertySettings } from '@/services/settingsService';
+import { inventoryService } from '@/services/inventoryService';
 import { NAVY, NAVY2, TEAL, TEAL_DARK, TEAL_LIGHT, SAND, SURFACE, BORDER, BORDER_DARK, MUTED, MUTED_DARK } from '@/data/themePalette';
 
 function fmt(n) {
@@ -28,12 +29,36 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
   const [removeBusy, setRemoveBusy] = useState(false);
   const [pinStaff, setPinStaff] = useState(null);
   const [pinError, setPinError] = useState('');
+  const [menuItems, setMenuItems] = useState([]);
+  const [menuCategories, setMenuCategories] = useState(CATEGORIES);
+
+  const loadPosMenu = async () => {
+    if (!propertyId) return;
+    try {
+      const rows = await inventoryService.listPosMenu(propertyId);
+      if (rows.length) {
+        setMenuItems(rows.map((p) => ({ ...p, id: p.id, productId: p.id, name: p.name, price: Number(p.selling_price || 0), category: p.category || 'General', center: p.production_center || 'Kitchen', stock: Number(p.current_stock ?? 0), unit: p.unit || 'pcs' })));
+        setMenuCategories([...new Set(rows.map((p) => p.category || 'General'))]);
+      } else {
+        setMenuItems([]); setMenuCategories(CATEGORIES);
+      }
+    } catch (error) {
+      console.warn('[POS] menu catalogue unavailable; using built-in menu', error);
+      setMenuItems([]); setMenuCategories(CATEGORIES);
+    }
+  };
+  useEffect(() => {
+    loadPosMenu();
+    const refresh = () => loadPosMenu();
+    window.addEventListener('olitech:menu-updated', refresh);
+    return () => window.removeEventListener('olitech:menu-updated', refresh);
+  }, [propertyId]);
 
   const addItem = (item) => {
     setOrderLines((prev) => {
       const existing = prev.find((l) => l.id === item.id);
       if (existing) return prev.map((l) => (l.id === item.id ? { ...l, qty: l.qty + 1 } : l));
-      return [...prev, { ...item, qty: 1, category: activeCategory, center: CATEGORY_CENTER[activeCategory] || 'Kitchen' }];
+      return [...prev, { ...item, qty: 1, productId: item.productId || item.id, category: item.category || activeCategory, center: item.center || CATEGORY_CENTER[activeCategory] || 'Kitchen' }];
     });
   };
 
@@ -151,7 +176,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
     <div className="flex h-full overflow-hidden" style={{ background: SAND }}>
       {/* Category sidebar */}
       <div className="shrink-0 flex flex-col gap-1 py-3 px-2 overflow-y-auto" style={{ width: '130px', background: NAVY, borderRight: `1px solid ${BORDER_DARK}` }}>
-        {CATEGORIES.map((cat) => (
+        {menuCategories.map((cat) => (
           <button
             key={cat} onClick={() => setActiveCategory(cat)}
             className="w-full py-3 px-2 rounded-lg text-sm font-semibold text-center"
@@ -174,16 +199,17 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
           </div>
         )}
         <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))' }}>
-          {(MENU_ITEMS[activeCategory] || []).map((item) => {
+          {(menuItems.length ? menuItems.filter((item) => item.category === activeCategory) : (MENU_ITEMS[activeCategory] || []).map((item) => ({ ...item, category: activeCategory, center: CATEGORY_CENTER[activeCategory] || 'Kitchen', stock: null }))).map((item) => {
             const inOrder = orderLines.find((l) => l.id === item.id);
             return (
               <button
-                key={item.id} onClick={() => addItem(item)}
+                key={item.id} onClick={() => addItem(item)} disabled={menuItems.length > 0 && Number(item.stock) <= 0}
                 className="rounded-xl p-3 text-left transition-all active:scale-95 relative"
                 style={{
                   background: inOrder ? NAVY : SURFACE,
                   border: `2px solid ${inOrder ? TEAL_DARK : BORDER}`,
                   minHeight: '80px',
+                  opacity: menuItems.length > 0 && Number(item.stock) <= 0 ? 0.5 : 1,
                 }}
               >
                 {inOrder && (
@@ -192,7 +218,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
                   </span>
                 )}
                 <div className="text-sm font-semibold leading-tight" style={{ color: inOrder ? MUTED_DARK : NAVY }}>{item.name}</div>
-                <div className="mt-1 text-sm font-mono font-bold" style={{ color: inOrder ? TEAL_LIGHT : MUTED }}>{fmt(item.price)}</div>
+                <div className="mt-1 text-sm font-mono font-bold" style={{ color: inOrder ? TEAL_LIGHT : MUTED }}>{fmt(item.price)}</div>{menuItems.length > 0 && <div className="mt-1 text-[10px] font-bold" style={{ color: Number(item.stock) <= 0 ? '#EF4444' : MUTED }}>{Number(item.stock) <= 0 ? 'OUT OF STOCK' : `Stock ${item.stock} ${item.unit}`}</div>}
               </button>
             );
           })}
