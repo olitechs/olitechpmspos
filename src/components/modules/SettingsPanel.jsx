@@ -33,9 +33,9 @@ export default function SettingsPanel(){
  const {user}=useAuth();
  const canSubscription=Boolean(user?.property?.id||user?.propertyRole||user?.staff?.role);
  if(view==='printers') return <div className="flex-1 overflow-y-auto" style={{background:SAND}}><Breadcrumb label="Printers" onBack={()=>{setView('list');navigate('/backoffice?module=settings')}}/><ErrorBoundary label="Printer settings"><SettingsPrinters/></ErrorBoundary></div>;
- if(view==='receipt') return <div className="flex-1 overflow-y-auto" style={{background:SAND}}><Breadcrumb label="Receipt Customization" onBack={()=>setView('list')}/><ErrorBoundary label="Receipt settings"><ReceiptSettings/></ErrorBoundary></div>;
- if(view==='users') return <div className="flex-1 overflow-y-auto" style={{background:SAND}}><Breadcrumb label="Users & Roles" onBack={()=>setView('list')}/><StaffAdmin/></div>;
- if(view==='subscription') return <div className="flex-1 overflow-y-auto" style={{background:SAND}}><Breadcrumb label="Subscription" onBack={()=>setView('list')}/><SubscriptionPanel/></div>;
+ if(view==='receipt') return <div className="flex-1 overflow-y-auto" style={{background:SAND}}><Breadcrumb label="Receipt Customization" onBack={()=>{setView('list');navigate('/backoffice?module=settings')}}/><ErrorBoundary label="Receipt settings"><ReceiptSettings/></ErrorBoundary></div>;
+ if(view==='users') return <div className="flex-1 overflow-y-auto" style={{background:SAND}}><Breadcrumb label="Users & Roles" onBack={()=>{setView('list');navigate('/backoffice?module=settings')}}/><StaffAdmin/></div>;
+ if(view==='subscription') return <div className="flex-1 overflow-y-auto" style={{background:SAND}}><Breadcrumb label="Subscription" onBack={()=>{setView('list');navigate('/backoffice?module=settings')}}/><SubscriptionPanel/></div>;
  return <div className="flex-1 overflow-y-auto p-4" style={{background:SAND}}>
    <div className="mb-5"><h2 className="text-xl font-black" style={{color:NAVY}}>Settings</h2><p className="mt-1 text-sm" style={{color:MUTED}}>Configure your property, team, receipts and printing workflow.</p></div>
    <div className="grid max-w-4xl gap-3 md:grid-cols-2">
