@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useStore } from '@/data/AppStore';
+import { useAuth } from '@/lib/AuthContext';
+import { pmsService } from '@/services/pmsService';
+import { getPrinters, getAssignments, printVoidTicket } from '@/services/printService';
 import { NAVY, NAVY2, BORDER_DARK, SAND, MUTED_DARK } from '@/data/themePalette';
 
 const STATUS_CONFIG = {
@@ -17,6 +20,14 @@ function formatTime(ts) {
 
 export default function KitchenDisplay() {
   const { kitchenOrders, updateKitchenOrderStatus } = useStore();
+  const { user } = useAuth();
+  const propertyId = user?.property?.id;
+  const [tab, setTab] = useState('orders');
+  const [voids, setVoids] = useState([]);
+  const [voidFilter, setVoidFilter] = useState('');
+  const [signature, setSignature] = useState('');
+  const [voidError, setVoidError] = useState('');
+  const [voidBusy, setVoidBusy] = useState(false);
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -24,11 +35,43 @@ export default function KitchenDisplay() {
     return () => window.clearInterval(timer);
   }, []);
 
+
+  useEffect(() => {
+    if (!propertyId || tab !== 'voids') return;
+    let active = true;
+    pmsService.listVoidedItems(propertyId).then(rows => { if (active) setVoids(rows); }).catch(e => { if (active) setVoidError(e.message); });
+    return () => { active = false; };
+  }, [propertyId, tab]);
+
   const orders = Array.isArray(kitchenOrders) ? kitchenOrders : [];
+  const visibleVoids = voids.filter(v => !voidFilter || [v.table_number,v.item_name,v.reason,v.removed_by_name,v.void_number].some(x => String(x||'').toLowerCase().includes(voidFilter.toLowerCase())));
+  const reprintVoid = async (v) => {
+    if (!propertyId) return;
+    setVoidBusy(true); setVoidError('');
+    try {
+      const [printers, assignments] = await Promise.all([getPrinters(propertyId), getAssignments(propertyId)]);
+      const type = v.category === 'drinks' ? 'void_drinks_orders' : 'void_food_orders';
+      const fallback = v.category === 'drinks' ? 'drinks_orders' : 'food_orders';
+      const targets = assignments.filter(a => a.assignment_type === type || a.assignment_type === fallback).map(a => printers.find(p => p.id === a.printer_id)).filter(Boolean).filter((p,i,a)=>a.findIndex(x=>x.id===p.id)===i);
+      if (!targets.length) throw new Error('No Kitchen/Bar printer is assigned for void slips.');
+      const results = await Promise.all(targets.map(printer => printVoidTicket(printer,{propertyId,voidId:v.id,tableNo:v.table_number,waiterName:v.waiter,checkNo:v.check_no||v.order_number,item:v.item_name,removedQty:v.removed_qty,originalQty:v.original_qty,newQty:v.new_qty,reason:v.reason,removedBy:v.removed_by_name,timestamp:v.created_at,category:v.category})));
+      if (!results.some(r=>r.ok)) throw new Error('Void reprint failed.');
+      setVoids(await pmsService.listVoidedItems(propertyId));
+    } catch(e) { setVoidError(e.message||'Void reprint failed.'); } finally { setVoidBusy(false); }
+  };
+  const approveVoid = async (v) => {
+    if (!propertyId || !signature.trim()) { setVoidError('Manager signature is required.'); return; }
+    try { await pmsService.approveVoid({propertyId,voidId:v.id,signature:signature.trim()}); setSignature(''); setVoids(await pmsService.listVoidedItems(propertyId)); } catch(e) { setVoidError(e.message); }
+  };
 
   return (
     <div className="flex-1 overflow-y-auto p-4" style={{ background: NAVY }}>
       <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <button onClick={()=>setTab('orders')} className="rounded-xl px-4 py-2 text-xs font-black" style={{background:tab==='orders'?'#FFD100':NAVY2,color:tab==='orders'?NAVY:MUTED_DARK}}>KDS Orders</button>
+          <button onClick={()=>setTab('voids')} className="rounded-xl px-4 py-2 text-xs font-black" style={{background:tab==='voids'?'#DC2626':NAVY2,color:tab==='voids'?'#fff':MUTED_DARK}}>Void Controls</button>
+          {tab==='voids' && <span className="rounded-full bg-white/10 px-2 py-1 text-[10px] font-black text-white">{voids.length}</span>}
+        </div>
         <div className="flex gap-4">
           {['new', 'preparing', 'ready'].map((s) => {
             const st = STATUS_CONFIG[s];
@@ -47,6 +90,24 @@ export default function KitchenDisplay() {
         </div>
       </div>
 
+      {tab === 'voids' ? (
+        <div className="rounded-2xl border border-white/10 bg-[#11161C] p-4">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div><div className="text-sm font-black text-white">Today's Void / Cancellation Controls</div><div className="mt-1 text-xs text-slate-400">Every controlled removal is retained for manager review and printer reprint.</div></div>
+            <input value={voidFilter} onChange={e=>setVoidFilter(e.target.value)} placeholder="Filter table, item, reason…" className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white outline-none"/>
+          </div>
+          {voidError && <div className="mb-3 rounded-xl bg-red-500/10 p-3 text-xs font-bold text-red-300">{voidError}</div>}
+          <div className="overflow-x-auto"><table className="w-full min-w-[850px] text-left text-xs">
+            <thead className="border-b border-white/10 text-[10px] uppercase tracking-wider text-slate-500"><tr><th className="p-3">Time</th><th className="p-3">Table</th><th className="p-3">Item</th><th className="p-3">Removed</th><th className="p-3">Reason</th><th className="p-3">Removed By</th><th className="p-3">Status</th><th className="p-3">Control</th></tr></thead>
+            <tbody>{visibleVoids.map(v=><tr key={v.id} className="border-b border-white/5 text-slate-300">
+              <td className="p-3 font-mono">{formatTime(v.created_at)}</td><td className="p-3 font-black text-white">{v.table_number}</td><td className="p-3"><div className="font-bold text-white">{v.item_name}</div><div className="text-[10px] uppercase text-slate-500">{v.category}</div></td><td className="p-3 font-black text-red-300">{v.removed_qty}</td><td className="p-3">{v.reason}</td><td className="p-3">{v.removed_by_name||'—'}</td><td className="p-3"><span className="rounded-full bg-white/10 px-2 py-1 text-[10px] font-black uppercase">{v.status === 'printed' ? 'Void Printed' : v.status}</span></td>
+              <td className="p-3"><div className="flex flex-wrap gap-2"><button disabled={voidBusy} onClick={()=>reprintVoid(v)} className="rounded-lg bg-white/10 px-2.5 py-1.5 font-bold text-white">Re-print Void</button>{v.status!=='approved'&&<button onClick={()=>approveVoid(v)} className="rounded-lg bg-[#FFD100] px-2.5 py-1.5 font-black text-[#090C11]">Approve</button>}</div></td>
+            </tr>)}</tbody>
+          </table></div>
+          {visibleVoids.length===0&&<div className="py-10 text-center text-xs text-slate-500">No voids found today.</div>}
+          <div className="mt-4 flex items-center gap-2 border-t border-white/10 pt-4"><input value={signature} onChange={e=>setSignature(e.target.value)} placeholder="Manager signature / name for approval" className="flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white outline-none"/><span className="text-[10px] text-slate-500">Signature required before Approve.</span></div>
+        </div>
+      ) : (
       {orders.length === 0 && (
         <div className="rounded-2xl border p-8 text-center" style={{ borderColor: BORDER_DARK, background: NAVY2 }}>
           <div className="text-sm font-bold text-white">No active kitchen orders</div>
@@ -104,6 +165,7 @@ export default function KitchenDisplay() {
           );
         })}
       </div>
+      )}
     </div>
   );
 }
