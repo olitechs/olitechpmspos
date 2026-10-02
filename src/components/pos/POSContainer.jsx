@@ -167,6 +167,7 @@ export default function POSContainer() {
 		}
 
 		toast.success(`Order ${orderNumber} sent to kitchen/bar printers.`);
+	};
 
 	const handleBillRequest = () => {
 		if (!activeTable) return;
