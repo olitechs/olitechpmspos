@@ -54,6 +54,33 @@ export const posService = {
     return data || [];
   },
 
+  subscribeToTableSessions(propertyId, { onChange } = {}) {
+    if (!propertyId || typeof onChange !== 'function') return null;
+    const channel = supabase
+      .channel(`pos-table-sessions:${propertyId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'pos_table_sessions',
+          filter: `property_id=eq.${propertyId}`,
+        },
+        (payload) => {
+          onChange({
+            eventType: payload.eventType,
+            row: payload.new || payload.old || null,
+          });
+        }
+      )
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR') {
+          console.error('[POS] table session realtime channel failed');
+        }
+      });
+    return channel;
+  },
+
   async saveSession({
     propertyId,
     tableKey,
