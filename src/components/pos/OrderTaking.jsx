@@ -15,7 +15,7 @@ function fmt(n) {
   return `KES ${n.toLocaleString('en-KE', { minimumFractionDigits: 0 })}`;
 }
 
-export default function OrderTaking({ table, orderLines, setOrderLines, onSendToKitchen, onBill, orderNumber: orderNumberProp }) {
+export default function OrderTaking({ table, orderLines, setOrderLines, onSendToKitchen, onBill, onMoveTable, orderNumber: orderNumberProp }) {
   const store = useStore();
   const { user } = useAuth();
   const propertyId = user?.property?.id;
@@ -259,6 +259,14 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
             style={{ background: 'transparent', color: orderLines.length > 0 ? TEAL_LIGHT : MUTED_DARK, border: `1.5px solid ${orderLines.length > 0 ? TEAL_DARK : BORDER_DARK}`, cursor: orderLines.length > 0 ? 'pointer' : 'not-allowed' }}
           >
             Request Bill →
+          </button>
+          <button
+            onClick={onMoveTable}
+            disabled={!onMoveTable || orderLines.length === 0}
+            className="w-full py-2.5 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-2"
+            style={{ background: 'transparent', color: orderLines.length > 0 ? TEAL_LIGHT : MUTED_DARK, border: `1.5px solid ${orderLines.length > 0 ? TEAL_DARK : BORDER_DARK}`, cursor: orderLines.length > 0 ? 'pointer' : 'not-allowed' }}
+          >
+            Move / Join Table
           </button>
         </div>
       </div>
