@@ -23,7 +23,7 @@ export default function KitchenDisplay() {
   const { user } = useAuth();
   const propertyId = user?.property?.id;
   const role = String(user?.staff?.role || user?.propertyRole || user?.role || '').toLowerCase().replace(/\s+/g, '_');
-  const canApproveVoid = ['hotel_admin','super_admin','cashier','fb_manager','front_office_manager','manager','admin','owner'].includes(role);
+  const canApproveVoid = user?.isPlatformOwner || ['hotel_admin','super_admin','cashier','fb_manager','front_office_manager','property_manager','general_manager','manager','admin','owner'].includes(role);
   const [tab, setTab] = useState('orders');
   const [voids, setVoids] = useState([]);
   const [voidFilter, setVoidFilter] = useState('');
