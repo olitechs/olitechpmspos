@@ -30,12 +30,24 @@ export async function getPropertySettings(propertyId) {
 
 export async function savePropertySettings(propertyId, values) {
   if (!propertyId) throw new Error('Property is required.');
+
+  // Settings pages may save only their own section (for example, the
+  // Property Admin unsettled-receipt page). Merge with the stored row so a
+  // partial update never wipes company/receipt fields back to defaults.
+  const { data: existing, error: existingError } = await supabase
+    .from('property_settings')
+    .select('*')
+    .eq('property_id', propertyId)
+    .maybeSingle();
+  if (existingError) throw existingError;
+
   const payload = {
-    property_id: propertyId,
     ...DEFAULT_RECEIPT_SETTINGS,
-    ...values,
-    unsettled_receipt_copy_count: Number(values?.unsettled_receipt_copy_count ?? DEFAULT_RECEIPT_SETTINGS.unsettled_receipt_copy_count) === 1 ? 1 : 2,
-    unsettled_receipt_front_office_copy: values?.unsettled_receipt_front_office_copy !== false,
+    ...(existing || {}),
+    ...(values || {}),
+    property_id: propertyId,
+    unsettled_receipt_copy_count: Number(values?.unsettled_receipt_copy_count ?? existing?.unsettled_receipt_copy_count ?? DEFAULT_RECEIPT_SETTINGS.unsettled_receipt_copy_count) === 1 ? 1 : 2,
+    unsettled_receipt_front_office_copy: values?.unsettled_receipt_front_office_copy ?? existing?.unsettled_receipt_front_office_copy ?? DEFAULT_RECEIPT_SETTINGS.unsettled_receipt_front_office_copy,
     updated_at: new Date().toISOString(),
   };
   const { data, error } = await supabase
