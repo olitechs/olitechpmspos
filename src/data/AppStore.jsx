@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { posService } from '@/services/posService';
 import {
   PrinterStatus, PrintJobStatus, testConnection as psTestConnection,
-  pairUsbDevice, pairBluetoothDevice, forgetDevice,
+  pairUsbDevice, pairBluetoothDevice, pairSerialDevice, forgetDevice,
   sendPrintJob, buildTestPageText,
 } from '@/services/printerService';
 
@@ -111,6 +111,7 @@ export function StoreProvider({ children }) {
         host: row.host || '',
         port: row.port || '',
         agentUrl: row.agent_url || '',
+        baudRate: Number(row.baud_rate) || 9600,
         status: PrinterStatus.NOT_CONFIGURED,
         lastChecked: null,
         lastError: null,
@@ -260,6 +261,7 @@ export function StoreProvider({ children }) {
       agentUrl: printer.agentUrl,
       purposes: printer.purposes,
       center: printer.center,
+      baudRate: Number(printer.baudRate) || 9600,
     }).catch((error) => console.error('[POS] failed to persist printer configuration', error));
   }, [propertyId]);
 
@@ -272,6 +274,7 @@ export function StoreProvider({ children }) {
       host: partial.host || '',
       port: partial.port || '',
       agentUrl: partial.agentUrl || '',
+      baudRate: Number(partial.baudRate) || 9600,
       status: PrinterStatus.NOT_CONFIGURED,
       lastChecked: null,
       lastError: null,
@@ -289,7 +292,7 @@ export function StoreProvider({ children }) {
         ...p, ...patch,
         // Editing connection settings invalidates any prior verified status —
         // saving a config must never be conflated with "connected".
-        status: ('host' in patch || 'port' in patch || 'connectionType' in patch || 'agentUrl' in patch) ? PrinterStatus.NOT_CONFIGURED : p.status,
+        status: ('host' in patch || 'port' in patch || 'connectionType' in patch || 'agentUrl' in patch || 'baudRate' in patch) ? PrinterStatus.NOT_CONFIGURED : p.status,
       } : p));
       const changed = next.find((p) => p.id === id);
       if (changed) persistPrinter(changed);
@@ -338,7 +341,13 @@ export function StoreProvider({ children }) {
     const printer = printersRef.current.find((p) => p.id === id);
     if (!printer) return null;
     setPrinters((prev) => prev.map((p) => (p.id === id ? { ...p, status: PrinterStatus.CONNECTING, lastError: null } : p)));
-    const pair = printer.connectionType === 'usb' ? pairUsbDevice : printer.connectionType === 'bluetooth' ? pairBluetoothDevice : null;
+    const pair = printer.connectionType === 'usb'
+      ? pairUsbDevice
+      : printer.connectionType === 'bluetooth'
+        ? pairBluetoothDevice
+        : printer.connectionType === 'serial'
+          ? pairSerialDevice
+          : null;
     if (pair) {
       const result = await pair(printer);
       if (!result.ok) {
