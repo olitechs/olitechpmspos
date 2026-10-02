@@ -32,7 +32,7 @@ async function logPrint(propertyId, printerId, jobType, copyType, status, errorM
   }
 }
 
-function printWindow(contentHtml, title = 'OliTechs Print') {
+async function printWindow(contentHtml, title = 'OliTechs Print') {
   if (typeof document === 'undefined') return { ok: false, friendlyError: 'Printing is not available in this environment.' };
   const css = `@page { size: 80mm auto; margin: 0; } * { box-sizing: border-box; } body { width: 80mm; margin: 0; padding: 4mm; background:#fff; color:#000; font-family: Arial, Helvetica, sans-serif; font-size:11px; line-height:1.35; } .receipt { width:100%; } .center{text-align:center}.right{text-align:right}.bold{font-weight:800}.muted{color:#444}.divider{border-top:1px dashed #000;margin:8px 0}.cut{border-top:1px dashed #000;margin:16px 0 12px;text-align:center;font-size:9px}.logo{max-width:42mm;max-height:18mm;object-fit:contain;margin:0 auto 4px;display:block}.items{width:100%;border-collapse:collapse}.items td{padding:2px 0;vertical-align:top}.qty{width:10mm}.amount{text-align:right;white-space:nowrap}.section{font-weight:800;text-align:center;margin:7px 0 4px}.total{font-size:16px;font-weight:900;border-top:1px solid #000;padding-top:6px;margin-top:8px}.footer{margin-top:10px;text-align:center;font-size:10px}.copy{font-size:10px;font-weight:800;text-align:center;border:1px solid #000;padding:3px;margin-bottom:7px}`;
   const frame = document.createElement('iframe');
@@ -53,8 +53,10 @@ function printWindow(contentHtml, title = 'OliTechs Print') {
   const cleanup = () => setTimeout(() => frame.remove(), 300);
   try {
     win.onafterprint = cleanup;
-    setTimeout(() => { win.focus(); win.print(); }, 50);
-    setTimeout(cleanup, 15000);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    win.focus();
+    win.print();
+    cleanup();
     return { ok: true };
   } catch (error) {
     frame.remove();
@@ -67,7 +69,7 @@ export async function printToPrinter(printer, contentHtml, { propertyId, jobType
   // MVP: every configured connection uses the system dialog. IP/USB/Bluetooth
   // details are persisted now so a print-agent / ESC-POS transport can be added
   // without changing assignment data.
-  const result = printWindow(contentHtml, title);
+  const result = await printWindow(contentHtml, title);
   await logPrint(propertyId, printer.id, jobType, copyType, result.ok ? 'printed' : 'failed', result.friendlyError || null);
   return result;
 }
