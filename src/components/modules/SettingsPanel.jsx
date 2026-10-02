@@ -37,7 +37,7 @@ function Breadcrumb({ label, onBack }) {
 export default function SettingsPanel() {
   const [view, setView] = React.useState('list');
   const { user } = useAuth();
-  const canManageBilling = user?.isPlatformOwner || ['owner','admin'].includes(String(user?.propertyRole || '').toLowerCase()) || ['super_admin','hotel_admin'].includes(String(user?.staff?.role || '').toLowerCase());
+  const canViewSubscription = Boolean(user?.property?.id || user?.propertyRole || user?.staff?.role);
 
   if (view === 'printers') {
     return (
@@ -79,7 +79,7 @@ export default function SettingsPanel() {
             <button
               key={s.id}
               onClick={() => ROUTED[s.id] && setView(s.id)}
-              disabled={!ROUTED[s.id] && !(s.id === 'subscription' && canManageBilling)}
+              disabled={!ROUTED[s.id] && !(s.id === 'subscription' && canViewSubscription)}
               className="flex items-center gap-4 p-4 rounded-2xl text-left transition-all"
               style={{ background: SURFACE, border: `1px solid ${BORDER}`, opacity: (ROUTED[s.id] || (s.id === 'subscription' && canManageBilling)) ? 1 : 0.55, cursor: (ROUTED[s.id] || (s.id === 'subscription' && canManageBilling)) ? 'pointer' : 'default' }}
             >
