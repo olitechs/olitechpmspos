@@ -11,6 +11,15 @@ module.exports = {
         sm: 'calc(var(--radius) - 4px)',
       },
       colors: {
+        hotel: {
+          slate: '#0F172A',
+          blue: '#2563EB',
+          background: '#F8FAFC',
+          border: '#E2E8F0',
+          success: '#059669',
+          warning: '#D97706',
+          danger: '#DC2626',
+        },
         primaryHex: '#FFD300',
         champagne: '#FFD300',
         sunflower: '#FFD100',
@@ -48,7 +57,10 @@ module.exports = {
         },
       },
       fontFamily: {
-        heading: ['var(--font-heading)'], body: ['var(--font-body)'], display: ['var(--font-display)'], mono: ['var(--font-mono)'],
+        heading: ['Plus Jakarta Sans', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        body: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        display: ['Plus Jakarta Sans', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
       },
       keyframes: {
         'accordion-down': { from: { height: '0' }, to: { height: 'var(--radix-accordion-content-height)' } },

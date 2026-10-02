@@ -47,6 +47,8 @@ export default function POSContainer() {
 	// Stable per-table order numbers (regenerated each time a table is opened).
 	const orderNumbersRef = useRef({});
 	const orderLines = activeTable ? orderLinesByTable[activeTable.id] || [] : [];
+	const activeSession = activeTable ? store.getSession(activeTable.id) : null;
+	const sentOrderLines = activeSession?.sentOrderLines || [];
 	useEffect(() => {
 		if (!activeTable) return;
 		const lines = orderLinesByTable[activeTable.id] || [];
@@ -102,17 +104,32 @@ export default function POSContainer() {
 		const table = activeTable;
 		const orderNumber = orderNumbersRef.current[table.id];
 		const linesSnapshot = orderLinesByTable[table.id] || [];
+		const sentLines = store.getSession(table.id)?.sentOrderLines || [];
+		const sentById = new Map(sentLines.map((line) => [line.id, Number(line.qty || 0)]));
+		const pendingLines = linesSnapshot.map((line) => {
+			const alreadySent = sentById.get(line.id) || 0;
+			return { ...line, qty: Math.max(0, Number(line.qty || 0) - alreadySent) };
+		}).filter((line) => line.qty > 0);
+
+		if (!pendingLines.length) {
+			toast.info('There are no new items to send. Add another round first.');
+			return;
+		}
 
 		setActiveTab('floor');
 		setActiveTable(null);
 
-		const { id: kitchenOrderId, failedCenters } = await store.fireKitchenOrder({
-			table, orderLines: linesSnapshot, orderNumber,
+		const { id: kitchenOrderId, failedCenters, persisted } = await store.fireKitchenOrder({
+			table, orderLines: pendingLines, orderNumber,
 			buildTicketText: (center, lines) => buildKitchenTicketText(center, lines, { orderNumber, table }),
 		});
 
+		if (persisted) {
+			store.markSessionSentLines(table.id, linesSnapshot);
+		}
+
 		if (failedCenters.length === 0) {
-			toast.success(`Order ${orderNumber} sent to kitchen.`);
+			toast.success(`Round sent for ${tableLabel(table)}.`);
 			return;
 		}
 
@@ -138,6 +155,11 @@ export default function POSContainer() {
 		setActiveTab('bill');
 	};
 
+	const handleBackToOrder = () => {
+		if (!activeTable) return;
+		setActiveTab('order');
+	};
+
 	const handleConfirmPayment = () => {
 		if (!activeTable) return;
 		store.closeTable(activeTable.id);
@@ -160,11 +182,13 @@ export default function POSContainer() {
 				{activeTab === 'order' && activeTable && (
 					<OrderTaking
 						table={activeTable}
+						tableSessionId={activeSession?.id || null}
 						orderLines={orderLines}
 						setOrderLines={setOrderLines}
 						onSendToKitchen={handleSendToKitchen}
 						onBill={handleBillRequest}
 						orderNumber={orderNumbersRef.current[activeTable.id]}
+						sentOrderLines={sentOrderLines}
 					/>
 				)}
 
@@ -173,6 +197,7 @@ export default function POSContainer() {
 						table={activeTable}
 						orderLines={orderLines}
 						onConfirmPayment={handleConfirmPayment}
+						onBackToOrder={handleBackToOrder}
 					/>
 				)}
 			</div>

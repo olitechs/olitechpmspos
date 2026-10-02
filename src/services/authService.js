@@ -131,6 +131,12 @@ async function loadCurrentUserDetails() {
 	});
 }
 
+export function subscribeToAuthChanges(callback) {
+  return supabase.auth.onAuthStateChange((event, session) => {
+    callback({ event, session });
+  });
+}
+
 export const authService = {
 	async getCurrentUser() {
 		try {

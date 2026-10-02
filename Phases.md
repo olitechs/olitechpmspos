@@ -229,4 +229,172 @@ PMS/POS/housekeeping/cashier workflows must pass before advanced reporting.
 
 Security, performance, accessibility, offline behavior, financial reconciliation and regression testing must pass.
 
+
+### Phase 1F — Authorization boundary hardening
+
+- Centralized route authorization predicates in `src/lib/authorization.js`.
+- `/admin/*` is now strictly reserved for the OliTechs platform owner; hotel administrator/staff roles cannot enter the platform-admin surface.
+- Protected hotel access now uses the centralized active-property predicate instead of duplicating status/package logic in `App.jsx`.
+- Preserved the existing hotel workspace routes and existing POS/KDS/printer/Cashier/Night Audit functionality.
+- Server enforcement remains authoritative through Supabase Auth, RLS and platform-owner RPC checks; these client guards are UX/routing boundaries, not security substitutes.
+
+### Phase 1F Definition of Done
+
+- [ ] Platform owner can reach `/admin/*`.
+- [ ] Hotel administrator/staff is redirected to `/backoffice` when attempting `/admin/*`.
+- [ ] Unauthenticated users are redirected to `/admin/login` for `/admin/*`.
+- [ ] Active hotel users retain `/backoffice`, `/pos`, `/store`, and `/rooms` access according to existing application rules.
+- [ ] No POS/KDS/printer/Cashier/Night Audit code path is rewritten.
+- [ ] Build/lint/typecheck pass locally.
+- [ ] Manual authorization regression is completed before Gate 1 approval.
+
 **Status: DRAFT - Awaiting Approval**
+
+
+## Phase 2A — Core PMS transaction foundation
+
+Implemented incrementally without replacing the operational Room Planner:
+
+- Database-authoritative reservation overlap protection with per-property/room transaction locks.
+- Server-side date-range available-room query for Room Rack/Planner consumers.
+- Folio charge/payment writes moved behind server-side RPC validation.
+- Initial reservation deposits are reconciled into the payment ledger.
+- Check-in and check-out are atomic and property-scoped; check-out leaves the room dirty for housekeeping.
+- Folio payments can be linked to the active cashier shift and update reservation payment status.
+- Folio reads and PMS reservation reads use the TanStack Query cache instead of component-owned server collections.
+- Existing joint reservations, Room Planner drag/move/group behavior, POS/KDS/printers, Cashier and Night Audit are preserved.
+
+### Phase 2A Definition of Done
+
+- [x] Reservation writes have database-level concurrency protection.
+- [x] Room availability is date-range based using `[arrival, departure)` semantics.
+- [x] Folio charge/payment mutations are property-scoped and server-validated.
+- [x] Check-in/out mutations are server-authoritative.
+- [x] Folio UI consumes property-scoped query state.
+- [ ] Supabase migrations executed against the deployment database.
+- [ ] npm build/lint/typecheck pass locally.
+- [ ] Manual Room Rack → Reservation → Check-in → Folio → Payment → Check-out regression completed.
+
+
+## Phase 2B — Front Desk + Room Rack
+
+Implemented as an additive operational layer on top of the existing PMS:
+
+- Added `src/components/pms/RoomRack.jsx` with date-based room availability, room-type filtering, search, operational status and active guest/reservation context.
+- Room Rack availability is sourced from the server-authoritative `fn_get_available_rooms` RPC; the UI does not use client-side overlap checks to declare a room bookable.
+- Added direct Front Desk check-in from the Room Rack while continuing to use the existing server-authoritative check-in RPC.
+- Added refresh/re-fetch behavior after check-in so room state and date availability reconcile immediately.
+- Preserved Room Planner, joint reservations, Reservations, Room Management, RoomPanel, POS/KDS/printers, Cashier and Night Audit.
+- No component-level Supabase calls were introduced.
+
+### Phase 2B Definition of Done
+
+- [x] Dedicated Front Desk Room Rack view exists.
+- [x] Date-based availability comes from the database RPC.
+- [x] Room operational status and active reservation context are shown together.
+- [x] Check-in can be initiated from the Rack.
+- [x] Existing Room Planner and reservation workflows remain available.
+- [ ] Supabase migrations executed against the deployment database.
+- [ ] npm build/lint/typecheck pass locally.
+- [ ] Manual Rack → reservation → check-in → folio → payment → check-out regression completed.
+
+
+## Phase 2C — Front Desk reservation workflow hardening
+
+Implemented an additive hardening pass across reservation creation and editing:
+
+- New reservations now use database-authoritative room availability for the selected arrival/departure dates before submission.
+- The Front Desk availability KPI now uses the same server availability RPC instead of client-side overlap calculations.
+- Reservation edit room moves use `fn_check_room_availability` with the current reservation excluded, preventing false conflicts while still blocking real conflicts and closures.
+- Reservation form channel values now match the database contract (`booking_com`, not the display label `booking.com`).
+- Reservation defaults now use a valid one-night stay instead of identical arrival/departure dates.
+- Payment amounts are displayed in the reservation drawer but are no longer edited directly there; payment changes remain in the Folio/Cashier ledger workflow.
+- Added migration 0043 to harden server-side reservation edits and prevent `amount_paid` from drifting away from recorded payment ledger totals.
+- Existing Room Planner, joint/group reservation operations, check-in/out, Folio, POS/KDS, Cashier and Night Audit are preserved.
+
+### Phase 2C Definition of Done
+
+- [x] Create-reservation room selection is server-authoritative.
+- [x] Invalid room/date combinations are blocked before submission and still protected by the database.
+- [x] Reservation room moves are server-verified before execution.
+- [x] Booking.com channel value matches the database enum/validation contract.
+- [x] New reservation default stay is valid.
+- [x] Reservation payment ledger is protected from direct amount-paid drift during edits.
+- [ ] Supabase migration 0043 executed against the deployment database.
+- [ ] npm build/lint/typecheck pass locally.
+- [ ] Manual Front Desk regression completed.
+
+
+## Phase 2D — Guest profile history and PMS reconciliation
+
+Implemented additively:
+
+- Added a property-scoped guest stay-history query so reception can inspect persisted reservation history without reconstructing it from local store state.
+- Upgraded Guest List's existing View action into a profile drawer showing visit count, spend, contact/country data and reservation history.
+- Kept the existing guest summary/list query and property-scoped architecture intact.
+- Corrected the Front Desk meal-plan option so Bed & breakfast submits the database value bb.
+- No reservation, Room Planner, POS, KDS, printer, Cashier or Night Audit workflow was removed or rewritten.
+
+### Phase 2D Definition of Done
+
+- [x] Guest profile history is persisted and queryable by guest/property.
+- [x] Guest List can open an operational guest profile/history view.
+- [x] Reservation meal-plan UI value matches the server contract.
+- [ ] Supabase migrations 0041–0043 executed against the deployment database.
+- [ ] npm build/lint/typecheck pass locally.
+- [ ] Full Room Rack → Reservation → Check-in → Folio → Payment → Check-out regression completed.
+
+
+## Phase 2E — Running table checks / open-order lifecycle
+
+Research-backed POS behavior applied from Loyverse, Toast, Lightspeed and hotel POS patterns:
+
+- A table remains an **open check** across multiple ordering rounds until settlement.
+- Previously fired items remain visible as historical/locked lines; later additions become a new round rather than re-firing the entire check.
+- Opening a table shows recent kitchen rounds plus the complete running bill.
+- The running total is calculated from the complete table order, while kitchen firing sends only newly added quantities.
+- Fired quantities cannot be accidentally reduced from the active check; additional quantities can still be added.
+- The existing kitchen printer/KDS workflow remains the operational source for each fired round.
+- Existing settlement flow remains available for Cash, Card, M-Pesa and Room Charge; room charge continues through PMS folio validation.
+- Existing persistent POS table sessions are extended with sent-line state so refreshes do not lose which items have already been fired.
+
+Research references: Loyverse open tickets, bill printing and synchronization; Toast open/paid/closed checks; Lightspeed additional-item firing; hotel POS room-charge patterns. citeturn1search1turn1search2turn1search0turn2search11turn1search13
+
+### Phase 2E Definition of Done
+
+- [x] Existing table session survives reopening and displays persisted order lines.
+- [x] Fired quantities are tracked separately from the live running check.
+- [x] Additional rounds fire only newly added quantities.
+- [x] Previously fired quantities are protected from accidental reduction.
+- [x] Recent KOT rounds are visible when the table is opened.
+- [x] Running bill remains visible with the complete order total.
+- [x] Existing payment and room-folio settlement path preserved.
+- [ ] Migration 0044 executed against deployment Supabase.
+- [ ] npm build/lint/typecheck pass locally.
+- [ ] Manual multi-round table regression completed.
+
+
+## Phase 2F — Open-check settlement integrity
+
+Implemented additively on top of Phase 2E:
+
+- Settlement is now an atomic database transaction against the persistent table session; the same open check cannot be successfully settled twice.
+- POS receipts are linked to the exact table-session record, giving Cashier/Night Audit a durable check-to-receipt relationship.
+- Payment allocations are persisted independently for Cash, Card, M-Pesa and Room Charge, allowing one check to be settled with multiple methods.
+- Allocation totals must equal the final amount due; overpayment, underpayment and zero-value allocations are rejected server-side.
+- Room Charge allocations require an authorised cashier/manager and a real active checked-in reservation in the same property; the room folio receives only the room allocation amount.
+- Bill/proforma printing remains non-final; the final receipt is created only after successful settlement.
+- Settlement audit events record the table session, receipt, total, allocation methods/amounts and actor.
+- Existing KDS/printer, inventory deduction, Cashier shift and receipt-print retry behavior remain downstream of the authoritative settlement write.
+
+### Phase 2F Definition of Done
+
+- [x] Atomic open-check settlement RPC added.
+- [x] Duplicate settlement protection added through table-session locking and unique receipt linkage.
+- [x] Persisted multi-method payment allocations added.
+- [x] Room-folio settlement remains property-scoped and checked-in-stay validated.
+- [x] Split Cash/Card/M-Pesa/Room Charge allocation UI added.
+- [x] Settlement audit event persisted.
+- [ ] Migration 0045 executed against deployment Supabase.
+- [ ] npm build/lint/typecheck pass locally.
+- [ ] Manual settlement regression completed across single payment, split payment, room charge, failed print and refresh/reopen cases.

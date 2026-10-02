@@ -34,6 +34,7 @@ import POSContainer from '@/components/pos/POSContainer';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import RouteGuard from '@/components/auth/RouteGuard';
 import PaywallGuard from '@/components/auth/PaywallGuard';
+import { PropertyProvider } from '@/context/PropertyContext';
 
 const COMING_SOON_IDS = new Set(MODULES.filter((m) => m.comingSoon).map((m) => m.id));
 
@@ -131,6 +132,7 @@ export default function POSApp({ initialModule = 'dashboard' }) {
 	const showTopBar = activeModule !== 'pos';
 
 	return (
+    <PropertyProvider>
 		<StoreProvider>
 			<PmsProvider>
 				<div className="app-shell flex min-h-screen w-full bg-[#F9F9FA]">
@@ -149,5 +151,6 @@ export default function POSApp({ initialModule = 'dashboard' }) {
 				</div>
 			</PmsProvider>
 		</StoreProvider>
+    </PropertyProvider>
 	);
 }

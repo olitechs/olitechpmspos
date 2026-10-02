@@ -1,9 +1,14 @@
 import React, { useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { reservationFormSchema } from '@/validation/pmsSchemas';
 import {
   CalendarDays, CheckCircle2, ChevronRight, DoorOpen, LogOut, MoveRight,
   Plus, RefreshCw, Search, Trash2, X
 } from 'lucide-react';
 import { usePms } from '@/data/PmsStore';
+import { useAuth } from '@/lib/AuthContext';
+import { usePmsAvailableRoomsQuery, usePmsRoomAvailabilityQuery } from '@/hooks/usePmsQuery';
 
 const STATUS = {
   booked: 'Booked',
@@ -20,8 +25,10 @@ function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function overlaps(aStart, aEnd, bStart, bEnd) {
-  return aStart < bEnd && bStart < aEnd;
+function nextDayIso(value) {
+  const d = new Date(value + 'T00:00:00');
+  d.setDate(d.getDate() + 1);
+  return d.toISOString().slice(0, 10);
 }
 
 function Field({ label, children }) {
@@ -48,19 +55,11 @@ export default function Reservations() {
 
   const reservations = pms.reservations || [];
   const rooms = pms.rooms || [];
-
-  const occupiedRoomIds = useMemo(() => {
-    const ids = new Set();
-    reservations.forEach((r) => {
-      if (r.status === 'cancelled' || r.status === 'checked_out') return;
-      if (r.checkIn && r.checkOut && overlaps(selectedDate, selectedDate + 'T23:59:59', r.checkIn, r.checkOut)) {
-        ids.add(r.roomId);
-      }
-    });
-    return ids;
-  }, [reservations, selectedDate]);
-
-  const availableRooms = rooms.filter((room) => room.status !== 'maintenance' && room.status !== 'out_of_service' && !occupiedRoomIds.has(room.id));
+  const { user } = useAuth();
+  const propertyId = user?.property?.id;
+  const selectedDateDeparture = nextDayIso(selectedDate);
+  const availableTodayQuery = usePmsAvailableRoomsQuery({ propertyId, arrival: selectedDate, departure: selectedDateDeparture });
+  const availableRooms = availableTodayQuery.data || [];
 
   const rows = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -199,7 +198,7 @@ export default function Reservations() {
         </div>
       </div>
 
-      {showNew && <NewReservationModal rooms={availableRooms} onClose={() => setShowNew(false)} onCreate={createReservation} busy={busy} />}
+      {showNew && <NewReservationModal propertyId={propertyId} rooms={rooms} onClose={() => setShowNew(false)} onCreate={createReservation} busy={busy} />}
       {selected && <ReservationDrawer reservation={selected} rooms={rooms} pms={pms} busy={busy} onClose={() => setSelected(null)} onRun={run} />}
     </div>
   );
@@ -222,47 +221,112 @@ function QueueCard({ title, items, actionLabel, onAction }) {
   );
 }
 
-function NewReservationModal({ rooms, onClose, onCreate, busy }) {
-  const [data, setData] = useState({ guest: '', phone: '', roomId: rooms[0]?.id || '', arrival: todayIso(), departure: todayIso(), partySize: 1, rate: '', channel: 'direct', mealPlan: 'bed_only' });
-  const [error, setError] = useState('');
+function NewReservationModal({ propertyId, rooms, onClose, onCreate, busy }) {
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors },
+  } = useForm({
+    resolver: zodResolver(reservationFormSchema),
+    defaultValues: {
+      guest: '',
+      phone: '',
+      roomId: rooms[0]?.id || '',
+      arrival: todayIso(),
+      departure: nextDayIso(todayIso()),
+      partySize: 1,
+      rate: 0,
+      channel: 'direct',
+      mealPlan: 'bed_only',
+    },
+  });
 
-  const submit = async (e) => {
-    e.preventDefault();
-    if (!data.guest || !data.roomId || !data.arrival || !data.departure || data.arrival >= data.departure) {
-      setError('Guest, room and a valid arrival/departure range are required.');
-      return;
-    }
-    try {
-      await onCreate({ ...data, rate: Number(data.rate) || 0, partySize: Number(data.partySize) || 1 });
-    } catch (err) {
-      setError(err.message || 'Could not create reservation.');
-    }
+  const submit = async (data) => {
+    await onCreate(data);
   };
+
+  const watchArrival = watch('arrival');
+  const watchDeparture = watch('departure');
+  const watchRoomId = watch('roomId');
+  const availableQuery = usePmsAvailableRoomsQuery({ propertyId, arrival: watchArrival, departure: watchDeparture });
+  const availableIds = new Set((availableQuery.data || []).map((room) => room.id));
+  const selectedRoomAvailable = Boolean(watchRoomId && availableIds.has(watchRoomId));
+  const fieldError = (name) => errors[name]?.message;
 
   return (
     <Modal title="New reservation" onClose={onClose}>
-      <form onSubmit={submit} className="space-y-4">
+      <form onSubmit={handleSubmit(submit)} className="space-y-4" noValidate>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Guest name"><input className={inputClass} value={data.guest} onChange={(e) => setData({ ...data, guest: e.target.value })} /></Field>
-          <Field label="Phone"><input className={inputClass} value={data.phone} onChange={(e) => setData({ ...data, phone: e.target.value })} /></Field>
-          <Field label="Room"><select className={inputClass} value={data.roomId} onChange={(e) => setData({ ...data, roomId: e.target.value })}><option value="">Select room</option>{rooms.map((r) => <option key={r.id} value={r.id}>Room {r.number} · {r.roomTypeName || r.roomType || 'Room'}</option>)}</select></Field>
-          <Field label="Rate / night"><input type="number" min="0" className={inputClass} value={data.rate} onChange={(e) => setData({ ...data, rate: e.target.value })} /></Field>
-          <Field label="Arrival"><input type="date" className={inputClass} value={data.arrival} onChange={(e) => setData({ ...data, arrival: e.target.value })} /></Field>
-          <Field label="Departure"><input type="date" className={inputClass} value={data.departure} onChange={(e) => setData({ ...data, departure: e.target.value })} /></Field>
-          <Field label="Guests"><input type="number" min="1" className={inputClass} value={data.partySize} onChange={(e) => setData({ ...data, partySize: e.target.value })} /></Field>
-          <Field label="Channel"><select className={inputClass} value={data.channel} onChange={(e) => setData({ ...data, channel: e.target.value })}><option value="direct">Direct</option><option value="booking.com">Booking.com</option><option value="agent">Agent</option><option value="ota">OTA</option></select></Field>
+          <Field label="Guest name">
+            <input className={inputClass} {...register('guest')} aria-invalid={Boolean(errors.guest)} />
+            {fieldError('guest') && <p className="mt-1 text-xs text-red-600">{fieldError('guest')}</p>}
+          </Field>
+          <Field label="Phone">
+            <input className={inputClass} {...register('phone')} aria-invalid={Boolean(errors.phone)} />
+            {fieldError('phone') && <p className="mt-1 text-xs text-red-600">{fieldError('phone')}</p>}
+          </Field>
+          <Field label="Room">
+            <select className={inputClass} {...register('roomId')} aria-invalid={Boolean(errors.roomId)}>
+              <option value="">Select room</option>
+              {(availableQuery.data || []).map((r) => <option key={r.id} value={r.id}>Room {r.number} · {r.room_type_name || r.roomTypeName || r.roomType || 'Room'}</option>)}
+            </select>
+            {fieldError('roomId') && <p className="mt-1 text-xs text-red-600">{fieldError('roomId')}</p>}
+          </Field>
+          <Field label="Rate / night">
+            <input type="number" min="0" className={inputClass} {...register('rate')} />
+            {fieldError('rate') && <p className="mt-1 text-xs text-red-600">{fieldError('rate')}</p>}
+          </Field>
+          <Field label="Arrival">
+            <input type="date" className={inputClass} {...register('arrival')} />
+            {fieldError('arrival') && <p className="mt-1 text-xs text-red-600">{fieldError('arrival')}</p>}
+          </Field>
+          <Field label="Departure">
+            <input type="date" className={inputClass} {...register('departure')} />
+            {fieldError('departure') && <p className="mt-1 text-xs text-red-600">{fieldError('departure')}</p>}
+          </Field>
+          <Field label="Guests">
+            <input type="number" min="1" className={inputClass} {...register('partySize')} />
+            {fieldError('partySize') && <p className="mt-1 text-xs text-red-600">{fieldError('partySize')}</p>}
+          </Field>
+          <Field label="Channel">
+            <select className={inputClass} {...register('channel')}>
+              <option value="direct">Direct</option>
+              <option value="booking_com">Booking.com</option>
+              <option value="unknown">Agent / OTA / Other</option>
+            </select>
+          </Field>
+          <Field label="Meal plan">
+            <select className={inputClass} {...register('mealPlan')}>
+              <option value="bed_only">Bed only</option>
+              <option value="bb">Bed &amp; breakfast</option>
+              <option value="half_board">Half board</option>
+              <option value="full_board">Full board</option>
+            </select>
+          </Field>
         </div>
-        {error && <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
-        <div className="flex justify-end gap-2 border-t border-slate-200 pt-4"><button type="button" className={buttonClass + " border border-slate-200 bg-white"} onClick={onClose}>Cancel</button><button disabled={busy} className={buttonClass + " bg-[#FFD300] text-slate-950"} type="submit"><Plus size={15} /> Create reservation</button></div>
+        {availableQuery.isError && <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">Room availability could not be verified. Refresh and try again.</div>}
+        {watchRoomId && !availableQuery.isLoading && !selectedRoomAvailable && !availableQuery.isError && <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800" role="alert">The selected room is no longer available for these dates. Choose another room.</div>}
+        {Object.keys(errors).length > 0 && (
+          <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+            Please correct the highlighted fields before creating the reservation.
+          </div>
+        )}
+        <div className="flex justify-end gap-2 border-t border-slate-200 pt-4">
+          <button type="button" className={buttonClass + " border border-slate-200 bg-white"} onClick={onClose}>Cancel</button>
+          <button disabled={busy || availableQuery.isLoading || availableQuery.isError || !selectedRoomAvailable} className={buttonClass + " bg-[#FFD300] text-slate-950"} type="submit"><Plus size={15} /> Create reservation</button>
+        </div>
       </form>
     </Modal>
   );
 }
 
 function ReservationDrawer({ reservation: r, rooms, pms, busy, onClose, onRun }) {
+  const { user } = useAuth();
+  const propertyId = user?.property?.id;
   const [moveRoomId, setMoveRoomId] = useState(r.roomId || '');
   const [newDeparture, setNewDeparture] = useState(r.checkOut || '');
-  const [amountPaid, setAmountPaid] = useState(String(r.amountPaid || 0));
+  const roomAvailabilityQuery = usePmsRoomAvailabilityQuery({ propertyId, roomId: moveRoomId, arrival: r.checkIn, departure: newDeparture || r.checkOut, excludeReservationId: r.id });
 
   const save = async (patch) => {
     await onRun(() => pms.updatePlannerReservation(r.id, {
@@ -277,7 +341,7 @@ function ReservationDrawer({ reservation: r, rooms, pms, busy, onClose, onRun })
       kidsCount: patch.kidsCount ?? r.kidsCount,
       kidsAges: patch.kidsAges ?? r.kidsAges,
       totalAmount: patch.totalAmount ?? r.totalAmount,
-      amountPaid: patch.amountPaid ?? Number(amountPaid || 0),
+      amountPaid: patch.amountPaid ?? Number(r.amountPaid || 0),
       notes: patch.notes ?? r.notes,
     }));
   };
@@ -319,9 +383,9 @@ function ReservationDrawer({ reservation: r, rooms, pms, busy, onClose, onRun })
             <div className="flex gap-2">
               <select className={inputClass} value={moveRoomId} onChange={(e) => setMoveRoomId(e.target.value)}>
                 <option value="">Select room</option>
-                {rooms.filter((room) => room.id === r.roomId || room.status !== 'maintenance' && room.status !== 'out_of_service').map((room) => <option key={room.id} value={room.id}>Room {room.number} · {room.roomTypeName || room.roomType || 'Room'}</option>)}
+                {rooms.filter((room) => room.id === r.roomId || (room.status !== 'maintenance' && room.status !== 'out_of_service')).map((room) => <option key={room.id} value={room.id}>{room.id === r.roomId ? 'Current · ' : ''}Room {room.number} · {room.roomTypeName || room.roomType || 'Room'}</option>)}
               </select>
-              <button disabled={busy || moveRoomId === r.roomId} className={buttonClass + " bg-slate-950 text-white"} onClick={move}><MoveRight size={15} /> Move</button>
+              <button disabled={busy || moveRoomId === r.roomId || roomAvailabilityQuery.isLoading || roomAvailabilityQuery.isError || !roomAvailabilityQuery.data?.available} className={buttonClass + " bg-slate-950 text-white"} onClick={move}><MoveRight size={15} /> Move</button>
             </div>
           </section>
 
@@ -329,9 +393,9 @@ function ReservationDrawer({ reservation: r, rooms, pms, busy, onClose, onRun })
             <h3 className="mb-3 text-sm font-bold text-slate-950">Payment status</h3>
             <div className="grid gap-3 sm:grid-cols-2">
               <Info label="Total" value={money(r.totalAmount)} />
-              <Field label="Amount paid"><input type="number" min="0" className={inputClass} value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} /></Field>
+              <Info label="Amount paid" value={money(r.amountPaid)} />
             </div>
-            <button disabled={busy} className={buttonClass + " mt-3 bg-slate-950 text-white"} onClick={() => save({ amountPaid: Number(amountPaid || 0), paymentStatus: Number(amountPaid || 0) >= Number(r.totalAmount || 0) && Number(r.totalAmount || 0) > 0 ? 'fully_paid' : Number(amountPaid || 0) > 0 ? 'partially_paid' : 'not_paid' })}>Update payment status</button>
+            <p className="mt-3 text-xs text-slate-500">Payments are recorded through Folio/Cashier so the reservation payment ledger stays synchronized.</p>
           </section>
 
           <div className="flex flex-wrap gap-2 border-t border-slate-200 pt-4">

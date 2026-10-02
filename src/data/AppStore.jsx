@@ -42,6 +42,7 @@ export function StoreProvider({ children }) {
       const next = {};
       for (const row of rows || []) {
         next[row.table_key] = {
+          id: row.id,
           status: row.status,
           guests: Number(row.guests || 1),
           waiter: row.waiter || '',
@@ -52,6 +53,7 @@ export function StoreProvider({ children }) {
           zoneId: row.zone_id || null,
           orderNumber: row.order_number || null,
           orderLines: Array.isArray(row.order_lines) ? row.order_lines : [],
+          sentOrderLines: Array.isArray(row.sent_order_lines) ? row.sent_order_lines : [],
         };
       }
       setSessions(next);
@@ -146,10 +148,24 @@ export function StoreProvider({ children }) {
   }, [propertyId]);
 
   const openTable = useCallback((id, { guests, waiter, tableNumber, zoneId, orderNumber = null }) => {
-    const next = { status: 'occupied', guests: Number(guests) || 1, waiter: waiter || '', openedAt: Date.now(), total: 0, orderCount: 0, tableNumber: String(tableNumber ?? ''), zoneId: zoneId || null, orderNumber, orderLines: [] };
+    const next = { id: null, status: 'occupied', guests: Number(guests) || 1, waiter: waiter || '', openedAt: Date.now(), total: 0, orderCount: 0, tableNumber: String(tableNumber ?? ''), zoneId: zoneId || null, orderNumber, orderLines: [], sentOrderLines: [] };
     setSessions((prev) => ({ ...prev, [id]: next }));
-    persistSession(id, next);
-  }, [persistSession]);
+    if (!propertyId) return;
+    posService.saveSession({
+      propertyId,
+      tableKey: id,
+      tableNumber: next.tableNumber,
+      zoneId: next.zoneId,
+      status: next.status,
+      guests: next.guests,
+      waiter: next.waiter,
+      orderNumber: next.orderNumber,
+      orderLines: [],
+    }).then((saved) => {
+      if (!saved?.id) return;
+      setSessions((prev) => prev[id] ? { ...prev, [id]: { ...prev[id], id: saved.id } } : prev);
+    }).catch((error) => console.error('[POS] failed to open table session', error));
+  }, [persistSession, propertyId]);
 
   const updateSessionTotals = useCallback((id, { total = 0, orderCount = 0 } = {}) => {
     setSessions((prev) => {
@@ -158,6 +174,18 @@ export function StoreProvider({ children }) {
       return next;
     });
   }, [persistSession]);
+
+  const markSessionSentLines = useCallback((id, sentOrderLines) => {
+    setSessions((prev) => {
+      if (!prev[id]) return prev;
+      const next = { ...prev, [id]: { ...prev[id], sentOrderLines: Array.isArray(sentOrderLines) ? sentOrderLines : [] } };
+      if (propertyId) {
+        posService.markSessionSentLines({ propertyId, tableKey: id, sentOrderLines: next[id].sentOrderLines })
+          .catch((error) => console.error('[POS] failed to persist fired-line state', error));
+      }
+      return next;
+    });
+  }, [propertyId]);
 
   const setSessionOrderLines = useCallback((id, orderLines, orderNumber = null) => {
     setSessions((prev) => {
@@ -448,6 +476,7 @@ export function StoreProvider({ children }) {
     };
 
     let record = draft;
+    let persisted = false;
     if (propertyId) {
       try {
         const saved = await posService.createKitchenOrder({
@@ -459,7 +488,10 @@ export function StoreProvider({ children }) {
           orderLines,
           printJobs,
         });
-        if (saved?.id) record = { ...draft, id: saved.id, firedAt: saved.fired_at ? new Date(saved.fired_at).getTime() : draft.firedAt };
+        if (saved?.id) {
+          record = { ...draft, id: saved.id, firedAt: saved.fired_at ? new Date(saved.fired_at).getTime() : draft.firedAt };
+          persisted = true;
+        }
       } catch (error) {
         // Keep the POS usable if the new KDS migration has not reached the
         // connected Supabase project yet. Once 0036 is applied, the server row
@@ -498,7 +530,7 @@ export function StoreProvider({ children }) {
 
     const finalOrder = kitchenOrdersRef.current.find((o) => o.id === record.id) || record;
     const failedCenters = Object.entries(finalOrder.printJobs || {}).filter(([, j]) => j.status === PrintJobStatus.FAILED).map(([c]) => c);
-    return { id: record.id, failedCenters };
+    return { id: record.id, failedCenters, persisted };
   }, [orderPrinterForCenter, persistKitchenOrder, propertyId]);
 
   const storeStaffName = (table) => {
@@ -541,7 +573,7 @@ export function StoreProvider({ children }) {
 
   const value = {
     zones, staff, sessions, printers, saleReceipts, kitchenOrders,
-    getSession, openTable, updateSessionTotals, setSessionOrderLines, setUnsettled, closeTable,
+    getSession, openTable, updateSessionTotals, setSessionOrderLines, markSessionSentLines, setUnsettled, closeTable,
     addZone, renameZone, removeZone, addTable, removeTable, updateTable, moveTable,
     addStaff, updateStaff, removeStaff,
     addPrinter, updatePrinter, removePrinter, togglePurpose,
@@ -556,7 +588,7 @@ export function StoreProvider({ children }) {
 // Null-safe hook: degrades to an inert fallback if ever called without a provider.
 const FALLBACK = {
   zones: [], staff: [], sessions: {}, printers: [], saleReceipts: [], kitchenOrders: [],
-  getSession: () => null, openTable: () => {}, updateSessionTotals: () => {}, setSessionOrderLines: () => {}, setUnsettled: () => {}, closeTable: () => {},
+  getSession: () => null, openTable: () => {}, updateSessionTotals: () => {}, setSessionOrderLines: () => {}, markSessionSentLines: () => {}, setUnsettled: () => {}, closeTable: () => {},
   addZone: () => {}, renameZone: () => {}, removeZone: () => {}, addTable: () => {}, removeTable: () => {}, updateTable: () => {}, moveTable: () => {},
   addStaff: () => {}, updateStaff: () => {}, removeStaff: () => {},
   addPrinter: () => {}, updatePrinter: () => {}, removePrinter: () => {}, togglePurpose: () => {},

@@ -1,5 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Banknote, CreditCard, Plus, ReceiptText, RefreshCw, Search, X } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { pmsQueryKeys, usePmsFolioQuery, usePmsPaymentsQuery, usePmsReservationsQuery } from '@/hooks/usePmsQuery';
+import { Banknote, CreditCard, Plus, RefreshCw, Search, X } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { pmsService } from '@/services/pmsService';
 
@@ -10,53 +12,51 @@ const btn = "inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 
 export default function Folio() {
   const { user } = useAuth();
   const propertyId = user?.property?.id;
-  const [reservations, setReservations] = useState([]);
+  const queryClient = useQueryClient();
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState(null);
-  const [folio, setFolio] = useState(null);
-  const [payments, setPayments] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
   const [chargeOpen, setChargeOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
 
-  const loadReservations = async () => {
-    if (!propertyId) return;
-    setLoading(true); setError('');
-    try {
-      const rows = await pmsService.listReservations(propertyId);
-      setReservations((rows || []).filter((r) => !['cancelled', 'checked-out'].includes(r.status)));
-    } catch (e) { setError(e.message); }
-    finally { setLoading(false); }
+  const reservationsQuery = usePmsReservationsQuery(propertyId);
+  const folioQuery = usePmsFolioQuery(selected?.id);
+  const paymentsQuery = usePmsPaymentsQuery(selected?.id);
+  const reservations = useMemo(
+    () => (reservationsQuery.data || []).filter((r) => !['cancelled', 'checked-out'].includes(r.status)),
+    [reservationsQuery.data]
+  );
+  const folio = folioQuery.data || null;
+  const payments = paymentsQuery.data || [];
+  const loading = reservationsQuery.isLoading;
+  const error = reservationsQuery.error?.message || folioQuery.error?.message || paymentsQuery.error?.message || '';
+
+  const loadFolio = (reservation) => setSelected(reservation);
+
+  const refresh = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: pmsQueryKeys.reservations(propertyId) }),
+      selected?.id ? queryClient.invalidateQueries({ queryKey: pmsQueryKeys.folio(selected.id) }) : Promise.resolve(),
+      selected?.id ? queryClient.invalidateQueries({ queryKey: pmsQueryKeys.payments(selected.id) }) : Promise.resolve(),
+    ]);
   };
 
-  const loadFolio = async (reservation) => {
-    setSelected(reservation); setError('');
+  const run = async (fn) => {
+    setBusy(true);
     try {
-      const [f, p] = await Promise.all([pmsService.getFolio(reservation.id), pmsService.listPayments(reservation.id)]);
-      setFolio(f); setPayments(p);
-    } catch (e) { setError(e.message); }
+      await fn();
+      await Promise.all([
+        selected?.id ? queryClient.invalidateQueries({ queryKey: pmsQueryKeys.folio(selected.id) }) : Promise.resolve(),
+        selected?.id ? queryClient.invalidateQueries({ queryKey: pmsQueryKeys.payments(selected.id) }) : Promise.resolve(),
+        queryClient.invalidateQueries({ queryKey: pmsQueryKeys.reservations(propertyId) }),
+      ]);
+    } finally { setBusy(false); }
   };
-
-  useEffect(() => { loadReservations(); }, [propertyId]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return reservations.filter((r) => !q || [r.guest_name, r.phone, r.room_id].some((v) => String(v || '').toLowerCase().includes(q)));
   }, [reservations, query]);
-
-  const refresh = async () => {
-    await loadReservations();
-    if (selected) await loadFolio(selected);
-  };
-
-  const run = async (fn) => {
-    setBusy(true); setError('');
-    try { await fn(); await loadFolio(selected); }
-    catch (e) { setError(e.message || 'Operation failed.'); }
-    finally { setBusy(false); }
-  };
 
   const total = Number(folio?.totals?.subtotal || 0);
   const paid = Number(folio?.totals?.paid || 0);

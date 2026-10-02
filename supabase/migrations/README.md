@@ -120,3 +120,36 @@ Adds server-side fired kitchen/bar orders and KDS status transitions (`new` → 
 
 ### 0037 — Persistent printer configuration
 Persists property-level printer definitions, routing purposes, centers, and connection settings. Live connection state is intentionally reset to `Not Configured` on reload because USB/Bluetooth/network connectivity is device-specific.
+
+
+### 0040 — Phase 1 security hardening
+Apply `0040_phase1_security_hardening.sql` after the existing migration set.
+
+This migration is additive and does not rename prior migration files. It:
+- prevents non-platform hotel admins from moving a membership to another property;
+- validates that reservation rooms/guests belong to the reservation property;
+- validates that folio charges/payments belong to the reservation property;
+- rejects invalid reservation date ranges;
+- adds a server-side reservation-overlap guard for direct authenticated writes.
+
+The existing transactional reservation RPCs remain the preferred mutation path. The trigger is a second server-side integrity boundary.
+
+After applying 0040, verify tenant isolation with two authenticated property users: each user must be unable to read or write another property's rooms, guests, reservations, folios, payments or membership rows.
+
+
+## 0041 — Phase 2 Core PMS integrity
+Adds database-authoritative reservation race protection, a server-side available-room endpoint, reservation-deposit reconciliation into the folio payment ledger, and RPC-only folio charge/payment writes.
+
+## 0042 — Phase 2 Front Desk transactions
+Hardens atomic reservation check-in/check-out and links folio payments to the active cashier shift when one exists. Payment totals also update the reservation payment status.
+
+
+### 0043 — Phase 2C reservation workflow hardening
+Strengthens `fn_update_planner_reservation` validation, keeps reservation room/date changes server-authoritative, validates channel/meal-plan/guest counts, and prevents `amount_paid` from diverging from the payment ledger once ledger payments exist. Run after 0042 and refresh the PostgREST schema.
+
+
+### 0044 — Phase 2E running table checks
+Adds sent_order_lines to persistent POS table sessions and an RPC for recording which quantities have already been fired to the kitchen. This supports multi-round open checks without re-firing previous items. Execute after 0043 and reload the PostgREST schema.
+
+### 0045 — Phase 2F open-check settlement integrity
+Adds atomic table-session settlement, persisted payment allocations for Cash/Card/M-Pesa/Room Charge, split-payment support, room-folio validation, table-session receipt linkage and settlement audit events. Execute after 0044 and reload the PostgREST schema.

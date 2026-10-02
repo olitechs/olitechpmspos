@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Plus, Pencil, Trash2, BedDouble, Layers3 } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { pmsService } from '@/services/pmsService';
+import { useQueryClient } from '@tanstack/react-query';
+import { pmsQueryKeys, usePmsRoomsQuery, usePmsRoomTypesQuery, usePmsRatePlansQuery } from '@/hooks/usePmsQuery';
 import { NAVY, TEAL, TEAL_DARK, SAND, SURFACE, SURFACE2, BORDER, MUTED, DESTRUCTIVE } from '@/data/themePalette';
 
 const blankType = { code: '', name: '', description: '', view_type: '', bed_configuration: '', max_occupancy: 2, size_sqm: '', base_rate: 0, amenities: '' };
@@ -15,11 +17,15 @@ function Select(props) { return <select {...props} className="w-full px-3 py-2.5
 export default function RoomManagement({ onChanged }) {
   const { user } = useAuth();
   const propertyId = user?.property?.id;
-  const [types, setTypes] = useState([]);
-  const [rooms, setRooms] = useState([]);
+  const queryClient = useQueryClient();
+  const typesQuery = usePmsRoomTypesQuery(propertyId);
+  const roomsQuery = usePmsRoomsQuery(propertyId);
+  const ratePlansQuery = usePmsRatePlansQuery(propertyId);
+  const types = typesQuery.data || [];
+  const rooms = roomsQuery.data || [];
+  const ratePlans = ratePlansQuery.data || [];
   const [typeForm, setTypeForm] = useState(blankType);
   const [roomForm, setRoomForm] = useState(blankRoom);
-  const [ratePlans, setRatePlans] = useState([]);
   const [rateForm, setRateForm] = useState(blankRate);
   const [editingRate, setEditingRate] = useState(null);
   const [editingType, setEditingType] = useState(null);
@@ -27,25 +33,17 @@ export default function RoomManagement({ onChanged }) {
   const [view, setView] = useState('types');
   const [error, setError] = useState('');
 
-  const load = async () => {
-    if (!propertyId) return;
-    try {
-      const results = await Promise.allSettled([pmsService.listRoomTypes(propertyId), pmsService.listRooms(propertyId), pmsService.listRatePlans(propertyId)]);
-      if (results[1].status === 'rejected') throw results[1].reason;
-      setTypes(results[0].status === 'fulfilled' ? (results[0].value || []) : []);
-      setRooms(results[1].value || []);
-      setRatePlans(results[2].status === 'fulfilled' ? (results[2].value || []) : []);
-      setError(results[0].status === 'rejected' ? 'Room Types are not available yet. Run the latest Supabase room setup migration.' : results[2].status === 'rejected' ? 'Rate Plans are not available yet. Run the latest Supabase room setup migration.' : '');
-    } catch (e) { setError(e.message); }
-  };
-  useEffect(() => { load(); }, [propertyId]);
+  useEffect(() => {
+    const firstError = typesQuery.error || roomsQuery.error || ratePlansQuery.error;
+    setError(firstError?.message || '');
+  }, [typesQuery.error, roomsQuery.error, ratePlansQuery.error]);
 
   const submitType = async (e) => {
     e.preventDefault(); setError('');
     try {
       const payload = { ...typeForm, property_id: propertyId, max_occupancy: Number(typeForm.max_occupancy), size_sqm: typeForm.size_sqm === '' ? null : Number(typeForm.size_sqm), base_rate: Number(typeForm.base_rate || 0), amenities: typeForm.amenities.split(',').map(s => s.trim()).filter(Boolean) };
       if (editingType) await pmsService.updateRoomType(editingType, payload); else await pmsService.createRoomType(payload);
-      setTypeForm(blankType); setEditingType(null); await load(); onChanged?.();
+      setTypeForm(blankType); setEditingType(null); await queryClient.invalidateQueries({ queryKey: pmsQueryKeys.roomTypes(propertyId) }); onChanged?.();
     } catch (e2) { setError(e2.message); }
   };
 
@@ -54,7 +52,7 @@ export default function RoomManagement({ onChanged }) {
     try {
       const payload = { ...roomForm, property_id: propertyId, number: Number(roomForm.number), floor: Number(roomForm.floor), capacity: Number(roomForm.capacity), base_rate: Number(roomForm.base_rate || 0), room_type_id: roomForm.room_type_id || null };
       if (editingRoom) await pmsService.updateRoom(editingRoom, payload); else await pmsService.createRoom(payload);
-      setRoomForm(blankRoom); setEditingRoom(null); await load(); onChanged?.();
+      setRoomForm(blankRoom); setEditingRoom(null); await queryClient.invalidateQueries({ queryKey: pmsQueryKeys.rooms(propertyId) }); onChanged?.();
     } catch (e2) { setError(e2.message); }
   };
 
@@ -63,17 +61,17 @@ export default function RoomManagement({ onChanged }) {
     try {
       const payload = { ...rateForm, property_id: propertyId, default_rate: Number(rateForm.default_rate || 0) };
       if (editingRate) await pmsService.updateRatePlan(editingRate, payload); else await pmsService.createRatePlan(payload);
-      setRateForm(blankRate); setEditingRate(null); await load();
+      setRateForm(blankRate); setEditingRate(null); await queryClient.invalidateQueries({ queryKey: pmsQueryKeys.ratePlans(propertyId) });
     } catch (e2) { setError(e2.message); }
   };
 
   const startRateEdit = (r) => setEditingRate(r.id) || setRateForm({ ...r });
-  const removeRate = async (id) => { if (!confirm('Delete this rate plan?')) return; try { await pmsService.deleteRatePlan(id); await load(); } catch(e){ setError(e.message); } };
+  const removeRate = async (id) => { if (!confirm('Delete this rate plan?')) return; try { await pmsService.deleteRatePlan(id); await queryClient.invalidateQueries({ queryKey: pmsQueryKeys.ratePlans(propertyId) }); } catch(e){ setError(e.message); } };
 
   const startTypeEdit = (t) => { setEditingType(t.id); setTypeForm({ ...t, amenities: Array.isArray(t.amenities) ? t.amenities.join(', ') : '' }); };
   const startRoomEdit = (r) => { setEditingRoom(r.id); setRoomForm({ ...blankRoom, ...r }); };
-  const removeType = async (id) => { if (!confirm('Delete this room type? Rooms using it will keep their room but lose the type.')) return; try { await pmsService.deleteRoomType(id); await load(); } catch(e){ setError(e.message); } };
-  const removeRoom = async (id) => { if (!confirm('Delete this room?')) return; try { await pmsService.deleteRoom(id); await load(); onChanged?.(); } catch(e){ setError(e.message); } };
+  const removeType = async (id) => { if (!confirm('Delete this room type? Rooms using it will keep their room but lose the type.')) return; try { await pmsService.deleteRoomType(id); await queryClient.invalidateQueries({ queryKey: pmsQueryKeys.roomTypes(propertyId) }); } catch(e){ setError(e.message); } };
+  const removeRoom = async (id) => { if (!confirm('Delete this room?')) return; try { await pmsService.deleteRoom(id); await queryClient.invalidateQueries({ queryKey: pmsQueryKeys.rooms(propertyId) }); onChanged?.(); } catch(e){ setError(e.message); } };
   const typeMap = useMemo(() => new Map(types.map(t => [t.id, t])), [types]);
 
   return <div className="flex-1 overflow-y-auto p-4" style={{ background: SAND }}>

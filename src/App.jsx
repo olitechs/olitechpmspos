@@ -27,6 +27,7 @@ import PublicHome from '@/pages/PublicHome';
 import PublicSignIn from '@/pages/PublicSignIn';
 import PublicSignUp from '@/pages/PublicSignUp';
 import { isSupabaseConfigured } from '@/lib/supabaseClient';
+import { hasActivePropertyAccess } from '@/lib/authorization';
 
 function AdminHome(){ const { user } = useAuth(); return user?.isPlatformOwner ? <AdminDashboard/> : <Roles/>; }
 
@@ -46,9 +47,7 @@ function ProtectedApp({initialModule='dashboard'}){
   if(isLoadingAuth||isLoadingPublicSettings) return <AuthLoading/>;
   if(!user) return <Navigate to="/signin" replace/>;
   if(user?.isPlatformOwner) return <Navigate to="/admin" replace/>;
-  const property=user?.property;
-  const hasFullAccess=property?.status==='active' && property?.package && property.package!=='none';
-  if(!hasFullAccess) return <PendingApproval/>;
+  if(!hasActivePropertyAccess(user)) return <PendingApproval/>;
   return <POSApp initialModule={initialModule}/>;
 }
 

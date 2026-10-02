@@ -135,23 +135,6 @@ export const pmsService = {
 		if (error) throw new Error(error.message);
 	},
 
-	async listHousekeepingTasks(propertyId) {
-		const { data, error } = await supabase.from('housekeeping_tasks').select('*, room:rooms(number), assignee:profiles(full_name,email)').eq('property_id', propertyId).order('created_at', { ascending: false });
-		if (error) throw new Error(error.message);
-		return data || [];
-	},
-
-	async createHousekeepingTask(payload) {
-		const { data, error } = await supabase.from('housekeeping_tasks').insert(payload).select().single();
-		if (error) throw new Error(error.message);
-		return data;
-	},
-
-	async updateHousekeepingTask(id, patch) {
-		const { data, error } = await supabase.from('housekeeping_tasks').update(patch).eq('id', id).select().single();
-		if (error) throw new Error(error.message);
-		return data;
-	},
 
 	async listRooms(propertyId) {
 		const { data, error } = await supabase.from('rooms').select('*').eq('property_id', propertyId).order('number');
@@ -166,13 +149,47 @@ export const pmsService = {
 			.eq('property_id', propertyId)
 			.order('arrival');
 		if (error) throw new Error(error.message);
-		return data;
+		return data || [];
+	},
+
+	async checkRoomAvailability({ propertyId, roomId, arrival, departure, excludeReservationId = null }) {
+		const { data, error } = await supabase.rpc('fn_check_room_availability', {
+			p_property_id: propertyId,
+			p_room_id: roomId,
+			p_arrival: arrival,
+			p_departure: departure,
+			p_exclude_reservation_id: excludeReservationId,
+		});
+		if (error) throw new Error(error.message);
+		return data?.[0] || { available: false, conflict_type: 'unknown', conflict_message: 'Unable to verify room availability.' };
+	},
+
+	async listAvailableRooms({ propertyId, arrival, departure, roomTypeId = null }) {
+		const { data, error } = await supabase.rpc('fn_get_available_rooms', {
+			p_property_id: propertyId,
+			p_arrival: arrival,
+			p_departure: departure,
+			p_room_type_id: roomTypeId,
+		});
+		if (error) throw new Error(error.message);
+		return data || [];
 	},
 
 	async listGuests(propertyId) {
 		const { data, error } = await supabase.from('guests').select('*').eq('property_id', propertyId).order('name');
 		if (error) throw new Error(error.message);
 		return data;
+	},
+
+	async listGuestHistory({ propertyId, guestId }) {
+		const { data, error } = await supabase
+			.from('reservations')
+			.select('id, room_id, guest_name, arrival, departure, status, rate, total_amount, amount_paid, payment_status, channel, meal_plan, created_at')
+			.eq('property_id', propertyId)
+			.eq('guest_id', guestId)
+			.order('arrival', { ascending: false });
+		if (error) throw new Error(error.message);
+		return data || [];
 	},
 
 	async listGuestSummaries(propertyId) {
@@ -193,8 +210,15 @@ export const pmsService = {
 
 	async recordPayment({ propertyId, reservationId, amount, method }) {
 		const shift = await this.getOpenCashierShift(propertyId);
-		const { error } = await supabase.from('payments').insert({ property_id: propertyId, reservation_id: reservationId, amount, method, shift_id: shift?.id || null });
+		const { data, error } = await supabase.rpc('fn_record_folio_payment', {
+			p_property_id: propertyId,
+			p_reservation_id: reservationId,
+			p_amount: Number(amount || 0),
+			p_method: method,
+			p_shift_id: shift?.id || null,
+		});
 		if (error) throw new Error(error.message);
+		return data;
 	},
 
 	async createReservationBundle({ propertyId, roomIds, groupId, guestName, phone, checkIn, checkOut, paymentStatus, channel, mealPlan, adults, kidsCount, kidsAges, totalAmount, amountPaid, notes }) {
@@ -395,10 +419,29 @@ export const pmsService = {
 		const { error } = await supabase.rpc('charge_restaurant_to_room', { p_property_id: propertyId, p_reservation_id: reservationId, p_description: description, p_amount: amount });
 		if (error) throw new Error(error.message);
 	},
-	async recordPosSale({ propertyId, tableNumber, orderNumber, items, subtotal, discountAmount, vat, total, paymentMethod, reservationId }) {
-		const { data, error } = await supabase.rpc('fn_record_pos_sale', { p_property_id: propertyId, p_table_number: tableNumber, p_order_number: orderNumber, p_items: items, p_subtotal: subtotal, p_discount_amount: discountAmount || 0, p_vat: vat, p_total: total, p_payment_method: paymentMethod, p_reservation_id: reservationId || null });
+	async settlePosTable({ propertyId, tableSessionId, tableNumber, orderNumber, items, subtotal, discountAmount, vat, total, allocations }) {
+		const { data, error } = await supabase.rpc('fn_settle_pos_table_session', {
+			p_property_id: propertyId,
+			p_table_session_id: tableSessionId,
+			p_table_number: tableNumber,
+			p_order_number: orderNumber,
+			p_items: items,
+			p_subtotal: subtotal,
+			p_discount_amount: discountAmount || 0,
+			p_vat: vat,
+			p_total: total,
+			p_allocations: Array.isArray(allocations) ? allocations : [],
+		});
 		if (error) throw new Error(error.message);
 		return data;
+	},
+	async listPosPaymentAllocations({ propertyId, receiptId }) {
+		const { data, error } = await supabase.rpc('fn_list_pos_payment_allocations', {
+			p_property_id: propertyId,
+			p_receipt_id: receiptId,
+		});
+		if (error) throw new Error(error.message);
+		return data || [];
 	},
 	async listReceiptsForReservation(reservationId) {
 		const { data, error } = await supabase.from('pos_receipts').select('*').eq('reservation_id', reservationId).order('created_at', { ascending: false });
@@ -450,9 +493,13 @@ export const pmsService = {
 	},
 
 	async addFolioCharge({ propertyId, reservationId, source = 'other', description, amount }) {
-		const { data, error } = await supabase.from('folio_charges').insert({
-			property_id: propertyId, reservation_id: reservationId, source, description, amount: Number(amount || 0),
-		}).select().single();
+		const { data, error } = await supabase.rpc('fn_add_folio_charge', {
+			p_property_id: propertyId,
+			p_reservation_id: reservationId,
+			p_source: source,
+			p_description: description,
+			p_amount: Number(amount || 0),
+		});
 		if (error) throw new Error(error.message);
 		return data;
 	},
