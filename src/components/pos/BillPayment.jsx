@@ -1,5 +1,5 @@
 import React,{useEffect,useMemo,useState}from'react';
-import{ArrowLeft,Plus,Printer,RefreshCw,Receipt,RotateCcw,WalletCards}from'lucide-react';
+import{ArrowLeft,Plus,Printer,Receipt,RotateCcw,WalletCards}from'lucide-react';
 import{toast}from'sonner';
 import{VAT_RATE,tableLabel}from'@/data/mockData';
 import{useStore}from'@/data/AppStore';
@@ -11,13 +11,6 @@ import{printReceipt}from'@/services/printService';
 
 const PAYMENT_METHODS=[{id:'cash',label:'Cash'},{id:'card',label:'Card'},{id:'mpesa',label:'M-Pesa'},{id:'room',label:'Room Charge'}];
 const fmt=n=>'KES '+Number(n||0).toLocaleString('en-KE',{minimumFractionDigits:2,maximumFractionDigits:2});
-const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-function receiptText({orderNumber,table,waiter,lines,subtotal,discount,discountPct,vat,total,method,room}){
- return ['OLITECHS PMS + POS','',`TABLE: ${tableLabel(table)}`,`ORDER: ${orderNumber}`,`WAITER: ${waiter||'Unassigned'}`,room?`ROOM: ${room}`:'',new Date().toLocaleString('en-KE'),'-'.repeat(40),...lines.map(x=>`${x.qty}x ${x.name}  ${fmt(Number(x.price||0)*Number(x.qty||0))}`),'-'.repeat(40),`Subtotal: ${fmt(subtotal)}`,discount>0?`Discount (${discountPct}%): -${fmt(discount)}`:'',`VAT 16%: ${fmt(vat)}`,`TOTAL: ${fmt(total)}`,`PAYMENT: ${method}`,'','Thank you!'].filter(Boolean).join('\n');
-}
-function billText({orderNumber,table,waiter,lines,subtotal,discount,discountPct,vat,total}){
- return ['OLITECHS PMS + POS','UNSETTLED BILL / PROFORMA','',`TABLE: ${tableLabel(table)}`,`ORDER: ${orderNumber}`,`WAITER: ${waiter||'Unassigned'}`,new Date().toLocaleString('en-KE'),'-'.repeat(40),...lines.map(x=>`${x.qty}x ${x.name}  ${fmt(Number(x.price||0)*Number(x.qty||0))}`),'-'.repeat(40),`Subtotal: ${fmt(subtotal)}`,discount>0?`Discount (${discountPct}%): -${fmt(discount)}`:'',`VAT 16%: ${fmt(vat)}`,`TOTAL DUE: ${fmt(total)}`,'','NOT PAID — PAYMENT REQUIRED'].filter(Boolean).join('\n');
-}
 export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrder,onBackToFloor,orderNumber,waiter,covers}){
  const store=useStore();const{user}=useAuth();const propertyId=user?.property?.id;const sessionStaff=getSessionStaff();
  const role=String(sessionStaff?.role||user?.staff?.role||user?.propertyRole||'').toLowerCase().replace(/\s+/g,'_');
