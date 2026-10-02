@@ -81,7 +81,7 @@ export default function SettingsPanel() {
               onClick={() => ROUTED[s.id] && setView(s.id)}
               disabled={!ROUTED[s.id] && !(s.id === 'subscription' && canViewSubscription)}
               className="flex items-center gap-4 p-4 rounded-2xl text-left transition-all"
-              style={{ background: SURFACE, border: `1px solid ${BORDER}`, opacity: (ROUTED[s.id] || (s.id === 'subscription' && canManageBilling)) ? 1 : 0.55, cursor: (ROUTED[s.id] || (s.id === 'subscription' && canManageBilling)) ? 'pointer' : 'default' }}
+              style={{ background: SURFACE, border: `1px solid ${BORDER}`, opacity: (ROUTED[s.id] || (s.id === 'subscription' && canViewSubscription)) ? 1 : 0.55, cursor: (ROUTED[s.id] || (s.id === 'subscription' && canManageBilling)) ? 'pointer' : 'default' }}
             >
               <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${TEAL}14` }}>
                 <s.icon size={18} style={{ color: TEAL_DARK }} />
