@@ -10,6 +10,7 @@ import OpenTableDialog from '@/components/pos/OpenTableDialog';
 import PinPad from '@/components/auth/PinPad';
 import { authService } from '@/services/authService';
 import { useAuth } from '@/lib/AuthContext';
+import { printOrderByCategory } from '@/services/printService';
 
 const THERMAL_COLUMNS = 42; // standard 80mm thermal ticket text width
 
@@ -138,7 +139,23 @@ export default function POSContainer() {
 		const { id: kitchenOrderId, failedCenters } = await store.fireKitchenOrder({
 			table, orderLines: linesSnapshot, orderNumber,
 			buildTicketText: (center, lines) => buildKitchenTicketText(center, lines, { orderNumber, table, propertyName, waiter: store.getSession(table.id)?.waiter }),
+			printTickets: false,
 		});
+
+		const printResult = await printOrderByCategory({
+			propertyId,
+			orderNumber,
+			checkNo: orderNumber,
+			table: tableLabel(table),
+			waiter: store.getSession(table.id)?.waiter,
+			createdAt: Date.now(),
+			items: linesSnapshot,
+		});
+		if (!printResult.ok) {
+			const failures = (printResult.results || []).filter((r) => !r.ok).map((r) => r.friendlyError).filter(Boolean);
+			toast.error(`Order ${orderNumber} was saved, but one or more tickets did not print.`, { description: failures.join(' ') || 'Check printer assignments.' , duration: 12000 });
+			return;
+		}
 
 		if (failedCenters.length === 0) {
 			toast.success(`Order ${orderNumber} sent to kitchen.`);
