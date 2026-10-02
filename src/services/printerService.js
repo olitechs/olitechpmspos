@@ -445,6 +445,7 @@ export async function sendPrintJob(printer, text, { title, thermal = false } = {
 			case 'network': return await sendToAgent(printer, text);
 			case 'usb': return await sendToUsb(printer, text);
 			case 'bluetooth': return await sendToBluetooth(printer, text);
+			case 'serial': return await sendToSerial(printer, text);
 			default: return { ok: false, friendlyError: 'Unknown connection type.' };
 		}
 	} catch (err) {
