@@ -33,15 +33,33 @@ async function logPrint(propertyId, printerId, jobType, copyType, status, errorM
 }
 
 function printWindow(contentHtml, title = 'OliTechs Print') {
-  const win = window.open('', '_blank', 'width=420,height=760');
-  if (!win) return { ok: false, friendlyError: 'Print window was blocked. Allow pop-ups for this site.' };
+  if (typeof document === 'undefined') return { ok: false, friendlyError: 'Printing is not available in this environment.' };
   const css = `@page { size: 80mm auto; margin: 0; } * { box-sizing: border-box; } body { width: 80mm; margin: 0; padding: 4mm; background:#fff; color:#000; font-family: Arial, Helvetica, sans-serif; font-size:11px; line-height:1.35; } .receipt { width:100%; } .center{text-align:center}.right{text-align:right}.bold{font-weight:800}.muted{color:#444}.divider{border-top:1px dashed #000;margin:8px 0}.cut{border-top:1px dashed #000;margin:16px 0 12px;text-align:center;font-size:9px}.logo{max-width:42mm;max-height:18mm;object-fit:contain;margin:0 auto 4px;display:block}.items{width:100%;border-collapse:collapse}.items td{padding:2px 0;vertical-align:top}.qty{width:10mm}.amount{text-align:right;white-space:nowrap}.section{font-weight:800;text-align:center;margin:7px 0 4px}.total{font-size:16px;font-weight:900;border-top:1px solid #000;padding-top:6px;margin-top:8px}.footer{margin-top:10px;text-align:center;font-size:10px}.copy{font-size:10px;font-weight:800;text-align:center;border:1px solid #000;padding:3px;margin-bottom:7px}`;
+  const frame = document.createElement('iframe');
+  frame.setAttribute('title', title);
+  frame.style.position = 'fixed';
+  frame.style.right = '0';
+  frame.style.bottom = '0';
+  frame.style.width = '1px';
+  frame.style.height = '1px';
+  frame.style.border = '0';
+  frame.style.opacity = '0';
+  document.body.appendChild(frame);
+  const win = frame.contentWindow;
+  if (!win) { frame.remove(); return { ok: false, friendlyError: 'The print document could not be created.' }; }
+  win.document.open();
   win.document.write(`<!doctype html><html><head><title>${esc(title)}</title><style>${css}</style></head><body>${contentHtml}</body></html>`);
   win.document.close();
-  win.focus();
-  win.print();
-  setTimeout(() => win.close(), 250);
-  return { ok: true };
+  const cleanup = () => setTimeout(() => frame.remove(), 300);
+  try {
+    win.onafterprint = cleanup;
+    setTimeout(() => { win.focus(); win.print(); }, 50);
+    setTimeout(cleanup, 15000);
+    return { ok: true };
+  } catch (error) {
+    frame.remove();
+    return { ok: false, friendlyError: 'The system print dialog could not be opened.', rawError: String(error?.message || error) };
+  }
 }
 
 export async function printToPrinter(printer, contentHtml, { propertyId, jobType = 'document', copyType = null, title = 'OliTechs Print' } = {}) {
