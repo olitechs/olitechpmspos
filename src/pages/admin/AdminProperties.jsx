@@ -91,6 +91,7 @@ export default function AdminProperties() {
 							<th className="px-4 py-3 font-medium">Property</th>
 							<th className="px-4 py-3 font-medium">Status</th>
 							<th className="px-4 py-3 font-medium">Package</th>
+							<th className="px-4 py-3 font-medium">Subscription</th>
 							<th className="px-4 py-3 font-medium">Created</th>
 							<th className="px-4 py-3 font-medium text-right">Actions</th>
 						</tr>
@@ -98,7 +99,7 @@ export default function AdminProperties() {
 					<tbody>
 						{loading && (
 							<tr>
-								<td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">
+								<td colSpan={6} className="px-4 py-6 text-center text-muted-foreground">
 									Loading properties...
 								</td>
 							</tr>
@@ -122,7 +123,19 @@ export default function AdminProperties() {
 								<td className="px-4 py-3">
 									<StatusBadge status={p.status} />
 								</td>
-								<td className="px-4 py-3">{PACKAGE_LABELS[p.package]}</td>
+								<td className="px-4 py-3">
+									<div>{PACKAGE_LABELS[p.package] || 'No Package'}</div>
+									{p.subscription_plan_code && p.subscription_plan_code !== p.package && (
+										<div className="text-xs text-muted-foreground mt-0.5">Plan: {p.subscription_plan_code}</div>
+									)}
+								</td>
+								<td className="px-4 py-3">
+									<div className="flex items-center gap-2">
+										<StatusBadge status={p.subscription_status || 'not configured'} />
+										<Link to={`/admin/properties/${p.id}`} className="text-xs font-medium text-primary hover:underline">View subscription</Link>
+									</div>
+									{p.current_period_ends_at && <div className="text-xs text-muted-foreground mt-1">Ends {new Date(p.current_period_ends_at).toLocaleDateString()}</div>}
+								</td>
 								<td className="px-4 py-3 text-muted-foreground">{new Date(p.created_at).toLocaleDateString()}</td>
 								<td className="px-4 py-3">
 									<div className="flex justify-end gap-2">
