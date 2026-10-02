@@ -197,6 +197,10 @@ export default function POSContainer() {
 						table={activeTable}
 						orderLines={orderLines}
 						onConfirmPayment={handleConfirmPayment}
+						onAddOrder={() => setActiveTab('order')}
+						onBackToFloor={() => { setActiveTable(null); setActiveTab('floor'); }}
+						orderNumber={orderNumbersRef.current[activeTable.id]}
+						waiter={store.getSession(activeTable.id)?.waiter || ''}
 					/>
 				)}
 			</div>
