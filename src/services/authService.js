@@ -110,12 +110,21 @@ async function loadCurrentUserDetails() {
 	// A regular user's primary property — a person can technically belong
 	// to more than one property later, but the login/onboarding flow only
 	// needs "their" property today.
-	const { data: membership } = await supabase
+	const { data: memberships, error: membershipError } = await supabase
 		.from('property_users')
 		.select('role, property:properties(*)')
 		.eq('user_id', authUser.id)
-		.limit(1)
-		.maybeSingle();
+		.limit(10);
+
+	// A user can be assigned to more than one property. The previous
+	// maybeSingle() call returned no membership when that happened, which made
+	// the entire hotel/backoffice side appear unavailable. Always resolve one
+	// valid property from the returned membership rows.
+	if (membershipError) {
+		console.error('[authService] property membership lookup failed:', membershipError.message);
+	}
+	const membershipRows = Array.isArray(memberships) ? memberships : [];
+	const membership = membershipRows.find((row) => row?.property?.id) || null;
 	const propertyId = membership?.property?.id;
 	let staff = null;
 	if (propertyId) {
