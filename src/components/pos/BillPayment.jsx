@@ -57,7 +57,7 @@ export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrde
    if(result.ok){
     toast.success(`Payment completed and receipt printed via ${methodLabel}.`);
    }else{
-    toast.warning('Payment completed and table reopened. Receipt printing failed; print it later from Receipts.');
+    toast.warning('Payment completed, but the receipt did not print. Reprint it later from Receipts.');
    }
   }catch(e){setError('Payment was not recorded: '+e.message);toast.error('Payment was not recorded.');}
   finally{setBusy(false)}
