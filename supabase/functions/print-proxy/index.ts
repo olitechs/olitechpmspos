@@ -102,12 +102,26 @@ async function writeTcp(host: string, port: number, payload: Uint8Array, timeout
 }
 
 export default {
-  fetch: withSupabase({ auth: 'user' }, async (req) => {
+  fetch: withSupabase({ auth: 'user' }, async (req, ctx) => {
     try {
       const body = await req.json();
       const host = String(body?.host || '').trim();
       const port = Number(body?.port || 9100);
       const action = body?.action === 'test' ? 'test' : 'print';
+      const printerId = String(body?.printerId || '');
+      const propertyId = body?.propertyId ? String(body.propertyId) : '';
+
+      const query = ctx.supabase
+        .from('property_printers')
+        .select('id,property_id,connection_type,ip_address,port');
+      const lookup = printerId
+        ? await query.eq('id', printerId).maybeSingle()
+        : propertyId
+          ? await query.eq('property_id', propertyId).eq('ip_address', host).eq('port', port).maybeSingle()
+          : { data: null, error: null };
+      if (lookup.error) return json({ ok:false, code:'PRINTER_LOOKUP_FAILED', message:'The printer configuration could not be verified.' }, 500);
+      if (!lookup.data || lookup.data.connection_type !== 'network_ip') return json({ ok:false, code:'PRINTER_NOT_CONFIGURED', message:'This printer is not configured for direct network printing.' }, 400);
+      if (lookup.data.ip_address !== host || Number(lookup.data.port || 9100) !== port) return json({ ok:false, code:'PRINTER_ENDPOINT_MISMATCH', message:'The requested endpoint does not match the saved printer configuration.' }, 409);
 
       if (!validEndpoint(host, port)) {
         return json({
