@@ -32,42 +32,94 @@ async function logPrint(propertyId, printerId, jobType, copyType, status, errorM
   }
 }
 
-async function printWindow(contentHtml, title = 'OliTechs Print') {
-  if (typeof document === 'undefined') return { ok: false, friendlyError: 'Printing is not available in this environment.' };
-  const css = `@page { size: 80mm auto; margin: 0; } * { box-sizing: border-box; } body { width: 80mm; margin: 0; padding: 4mm; background:#fff; color:#000; font-family: Arial, Helvetica, sans-serif; font-size:11px; line-height:1.35; } .receipt { width:100%; } .center{text-align:center}.right{text-align:right}.bold{font-weight:800}.muted{color:#444}.divider{border-top:1px dashed #000;margin:8px 0}.cut{border-top:1px dashed #000;margin:16px 0 12px;text-align:center;font-size:9px}.logo{max-width:42mm;max-height:18mm;object-fit:contain;margin:0 auto 4px;display:block}.items{width:100%;border-collapse:collapse}.items td{padding:2px 0;vertical-align:top}.qty{width:10mm}.amount{text-align:right;white-space:nowrap}.section{font-weight:800;text-align:center;margin:7px 0 4px}.total{font-size:16px;font-weight:900;border-top:1px solid #000;padding-top:6px;margin-top:8px}.footer{margin-top:10px;text-align:center;font-size:10px}.copy{font-size:10px;font-weight:800;text-align:center;border:1px solid #000;padding:3px;margin-bottom:7px}`;
-  const frame = document.createElement('iframe');
-  frame.setAttribute('title', title);
-  frame.style.position = 'fixed'; frame.style.right = '0'; frame.style.bottom = '0';
-  frame.style.width = '1px'; frame.style.height = '1px'; frame.style.border = '0'; frame.style.opacity = '0';
-  document.body.appendChild(frame);
-  const win = frame.contentWindow;
-  if (!win) { frame.remove(); return { ok: false, friendlyError: 'The print document could not be created.' }; }
-  win.document.open();
-  win.document.write(`<!doctype html><html><head><title>${esc(title)}</title><style>${css}</style></head><body>${contentHtml}</body></html>`);
-  win.document.close();
-  const cleanup = () => setTimeout(() => frame.remove(), 300);
-  try {
-    win.onafterprint = cleanup;
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    win.focus(); win.print(); cleanup();
-    return { ok: true };
-  } catch (error) {
-    frame.remove();
-    return { ok: false, friendlyError: 'The system print dialog could not be opened.', rawError: String(error?.message || error) };
+function htmlToThermalText(contentHtml) {
+  if (typeof DOMParser === 'undefined') {
+    return String(contentHtml || '').replace(/<[^>]*>/g, ' ').replace(/\\s+/g, ' ').trim();
   }
+  const doc = new DOMParser().parseFromString(String(contentHtml || ''), 'text/html');
+  return String(doc?.body?.innerText || '').replace(/\\n{3,}/g, '\\n\\n').trim();
+}
+
+async function updatePrinterTransportStatus(printer, propertyId, status, errorMessage = null) {
+  if (!printer?.id || !propertyId) return;
+  try {
+    const patch = {
+      is_online: status === 'connected',
+      last_status: status,
+      last_error: errorMessage,
+      last_tested_at: new Date().toISOString(),
+    };
+    if (status === 'connected') patch.last_connected_at = new Date().toISOString();
+    await supabase.from('property_printers').update(patch).eq('id', printer.id).eq('property_id', propertyId);
+  } catch (error) {
+    console.warn('[printService] failed to update printer transport status', error);
+  }
+}
+
+async function directTcpPrint(printer, propertyId, text, action = 'print') {
+  if (!printer?.ip_address) {
+    return { ok: false, friendlyError: 'Printer IP address is not configured.' };
+  }
+  const port = Number(printer.port || 9100);
+  if (!Number.isInteger(port) || ![9100, 9101, 9102].includes(port)) {
+    return { ok: false, friendlyError: 'Unsupported thermal printer port. Use TCP 9100, 9101 or 9102.' };
+  }
+
+  const { data, error } = await supabase.functions.invoke('print-proxy', {
+    body: {
+      action,
+      host: printer.ip_address,
+      port,
+      printerId: printer.id,
+      propertyId,
+      text,
+    },
+  });
+
+  if (error) {
+    const message = error.message || 'The platform could not reach the printer.';
+    await updatePrinterTransportStatus(printer, propertyId, 'failed', message);
+    return { ok: false, friendlyError: message };
+  }
+  if (!data?.ok) {
+    const message = data?.message || 'The printer is offline or unreachable.';
+    await updatePrinterTransportStatus(printer, propertyId, 'offline', message);
+    return { ok: false, friendlyError: message };
+  }
+
+  await updatePrinterTransportStatus(printer, propertyId, 'connected', null);
+  return { ok: true, status: 'connected', direct: true };
+}
+
+export async function testPrinterConnection(printer, propertyId) {
+  if (!printer) return { ok: false, friendlyError: 'Printer not configured.' };
+  if (printer.connection_type !== 'network_ip') {
+    return { ok: false, friendlyError: 'Only direct Network IP thermal printers are enabled for platform printing.' };
+  }
+  const result = await directTcpPrint(printer, propertyId, '', 'test');
+  if (result.ok) {
+    await logPrint(propertyId, printer.id, 'test', 'connection', 'printed', null);
+  } else {
+    await logPrint(propertyId, printer.id, 'test', 'connection', 'failed', result.friendlyError || null);
+  }
+  return result;
 }
 
 export async function printToPrinter(printer, contentHtml, { propertyId, jobType = 'document', copyType = null, title = 'OliTechs Print' } = {}) {
   if (!printer) return { ok: false, friendlyError: 'Printer not configured.' };
-  const result = await printWindow(contentHtml, title);
+  if (printer.connection_type !== 'network_ip') {
+    const message = 'Direct platform printing requires a Network IP thermal printer. Windows/system printing is disabled.';
+    await logPrint(propertyId, printer.id, jobType, copyType, 'failed', message);
+    return { ok: false, friendlyError: message };
+  }
+  const text = htmlToThermalText(contentHtml);
+  const result = await directTcpPrint(printer, propertyId, text, 'print');
   await logPrint(propertyId, printer.id, jobType, copyType, result.ok ? 'printed' : 'failed', result.friendlyError || null);
   return result;
 }
 
 export async function testPrint(printer, propertyId) {
-  const now = new Date();
-  const html = `<div class="receipt center"><div class="bold">Test Print - ${esc(printer.name)} - OK - ${esc(now.toLocaleString('en-KE'))}</div></div>`;
-  return printToPrinter(printer, html, { propertyId, jobType: 'test', title: `Test Print - ${printer.name}` });
+  return testPrinterConnection(printer, propertyId);
 }
 
 const itemIsDrink = (item) => {
