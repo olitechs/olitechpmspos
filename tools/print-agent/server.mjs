@@ -11,6 +11,27 @@ const IPV4 = /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]
 
 const enc = new TextEncoder();
 
+function normalizeEndpoint(host, port) {
+  let rawHost = String(host || '').trim();
+  let rawPort = Number(port || 9100);
+
+  // Accept common operator input such as 192.168.2.117:9100 or http://192.168.2.117:9100.
+  // The wire transport remains strict IPv4 + raw ESC/POS TCP port.
+  try {
+    if (/^https?:\\/\\//i.test(rawHost)) {
+      const parsed = new URL(rawHost);
+      rawHost = parsed.hostname;
+      if (parsed.port) rawPort = Number(parsed.port);
+    } else if (/^[0-9.]+:\\d+$/.test(rawHost)) {
+      const parts = rawHost.split(':');
+      rawHost = parts[0];
+      rawPort = Number(parts[1]);
+    }
+  } catch (_) {}
+
+  return { host: rawHost, port: rawPort };
+}
+
 function validEndpoint(host, port) {
   return typeof host === 'string' && IPV4.test(host.trim()) &&
     Number.isInteger(port) && ALLOWED_PORTS.has(port);
@@ -256,8 +277,9 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { ok:true, status:'connected', printed:true, transport:'windows_spooler', printerName });
     }
 
-    const host = String(body.host || '').trim();
-    const port = Number(body.port || 9100);
+    const endpoint = normalizeEndpoint(body.host, body.port);
+    const host = endpoint.host;
+    const port = endpoint.port;
 
     if (!validEndpoint(host, port)) {
       return json(res, 400, {
