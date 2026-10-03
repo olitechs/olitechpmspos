@@ -130,12 +130,35 @@ export default function SettingsPrinters() {
   const verify = async (id, printerOverride=null) => {
     const printer=printerOverride || printers.find(p=>p.id===id);
     if (!printer) return;
-    setError(''); setNotice(''); setTestingId(id);
-    const result=await testPrint(printer,propertyId);
-    setTestingId(null);
-    await load(true);
-    if (result.ok) setNotice(`Connection verified. Test ticket sent directly to ${printer.name}.`);
-    else setError(result.friendlyError || 'The printer is offline or unreachable.');
+
+    setError('');
+    setNotice('');
+    setTestingId(id);
+
+    // Never leave the card/button stuck in "Testing…" if a transport,
+    // Supabase request, browser fetch, or unexpected exception fails.
+    const timeout = new Promise((_, reject) => {
+      window.setTimeout(() => reject(new Error('Printer verification timed out. Check the local OliTechs Print Agent and printer network connection.')), 12000);
+    });
+
+    try {
+      const result = await Promise.race([
+        testPrint(printer, propertyId),
+        timeout,
+      ]);
+
+      if (result?.ok) {
+        setNotice(`Connection verified. Test ticket sent directly to ${printer.name}.`);
+      } else {
+        setError(result?.friendlyError || 'The printer is offline or unreachable.');
+      }
+    } catch (e) {
+      setError(e?.message || 'Printer verification failed.');
+    } finally {
+      setTestingId(null);
+      // Always refresh the persisted status after the test, including failures.
+      await load(true).catch(() => {});
+    }
   };
 
   const remove = async id => {
