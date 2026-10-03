@@ -1,3 +1,5 @@
+import { supabase } from '@/lib/supabaseClient';
+
 // Printer connectivity + printing service.
 //
 // This is intentionally isolated from React components (per the project's
@@ -322,23 +324,22 @@ export function forgetDevice(printerId) {
 // --- Printing ---------------------------------------------------------------
 
 async function sendToAgent(printer, text) {
-	const controller = new AbortController();
-	try {
-		const res = await withTimeout(
-			fetch(`${printer.agentUrl.replace(/\/$/, '')}/print`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ host: printer.host, port: Number(printer.port), text }),
-				signal: controller.signal,
-			}),
-			DEFAULT_TIMEOUT_MS,
-			controller
-		);
-		if (!res.ok) return { ok: false, friendlyError: `Print agent reported an error (HTTP ${res.status}).` };
-		return { ok: true };
-	} catch (err) {
-		return { ok: false, friendlyError: toFriendlyError(err, { agent: true }), rawError: String(err?.message || err) };
-	}
+  try {
+    const { data, error } = await supabase.functions.invoke('print-proxy', {
+      body: {
+        action: 'print',
+        printerId: printer.id || null,
+        propertyId: printer.propertyId || null,
+        host: printer.host,
+        port: Number(printer.port || 9100),
+        text,
+      },
+    });
+    if (error) return { ok:false, friendlyError:error.message || 'The platform could not reach the printer.' };
+    return data?.ok ? { ok:true, direct:true } : { ok:false, friendlyError:data?.message || 'The printer is offline or unreachable.' };
+  } catch (err) {
+    return { ok:false, friendlyError:toFriendlyError(err), rawError:String(err?.message || err) };
+  }
 }
 
 async function sendToUsb(printer, text) {
