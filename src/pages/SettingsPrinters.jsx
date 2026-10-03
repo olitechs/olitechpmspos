@@ -62,6 +62,10 @@ export default function SettingsPrinters() {
   const [notice,setNotice] = useState('');
   const [testingId,setTestingId] = useState(null);
   const [loading,setLoading] = useState(true);
+  const [discovering,setDiscovering] = useState(false);
+  const [discovered,setDiscovered] = useState([]);
+  const [agentError,setAgentError] = useState('');
+  const [windowsPrinters,setWindowsPrinters] = useState([]);
 
   const load = async (silent=false) => {
     if (!propertyId) return;
@@ -267,7 +271,9 @@ export default function SettingsPrinters() {
       </div>
 
       <div className="mx-auto max-w-7xl space-y-6 px-5 py-6 lg:px-7">
-        {error && <Alert type="error" text={error}/>}\n        {agentError && <Alert type="error" text={agentError}/>}\n        {!!discovered.length && <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4"><div className="text-xs font-black uppercase tracking-wide text-blue-700">Network printers discovered</div><div className="mt-2 flex flex-wrap gap-2">{discovered.map(d=><button key={`${d.host}:${d.port}`} onClick={()=>{setEditing({...blank,connection_type:'network_ip',ip_address:d.host,port:d.port,assignmentTypes:[]});setDiscovered([]);}} className="rounded-xl border border-blue-200 bg-white px-3 py-2 text-xs font-bold text-blue-800 hover:bg-blue-50">{d.label}</button>)}</div></div>}
+        {error && <Alert type="error" text={error}/>}
+{agentError && <Alert type="error" text={agentError}/>}
+{!!discovered.length && <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4"><div className="text-xs font-black uppercase tracking-wide text-blue-700">Network printers discovered</div><div className="mt-2 flex flex-wrap gap-2">{discovered.map(d=><button key={`${d.host}:${d.port}`} onClick={()=>{setEditing({...blank,connection_type:'network_ip',ip_address:d.host,port:d.port,assignmentTypes:[]});setDiscovered([]);}} className="rounded-xl border border-blue-200 bg-white px-3 py-2 text-xs font-bold text-blue-800 hover:bg-blue-50">{d.label}</button>)}</div></div>}
         {notice && <Alert type="success" text={notice}/>}
         {loading ? <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-500">Loading printer configuration…</div> :
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(420px,0.9fr)]">
