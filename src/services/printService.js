@@ -56,7 +56,7 @@ async function updatePrinterTransportStatus(printer, propertyId, status, errorMe
   }
 }
 
-async function localAgentRequest(printer, path, text = '') {
+async function localAgentRequest(printer, propertyId, path, text = '') {
   const base = String(printer.agent_url || printer.agentUrl || 'http://127.0.0.1:8631').replace(/\\/+$/, '');
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 6000);
@@ -104,7 +104,7 @@ async function directTcpPrint(printer, propertyId, text, action = 'print') {
     return { ok: false, friendlyError: 'Unsupported thermal printer port. Use TCP 9100, 9101 or 9102.' };
   }
 
-  const result = await localAgentRequest(printer, action === 'test' ? '/test' : '/print', text);
+  const result = await localAgentRequest(printer, propertyId, action === 'test' ? '/test' : '/print', text);
   if (!result.ok) {
     const code = result.code || 'LOCAL_AGENT_ERROR';
     const friendly = `[${code}] ${result.message}`;
