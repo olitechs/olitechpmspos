@@ -10,7 +10,10 @@
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
     "preview": "vite preview",
-    "print-agent": "node tools/print-agent/server.mjs"
+    "print-agent": "node tools/print-agent/server.mjs",
+    "print-agent:install": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/print-agent/install-windows.ps1",
+    "print-agent:uninstall": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/print-agent/uninstall-windows.ps1",
+    "print-agent:run": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/print-agent/run-windows.ps1"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^17.0.0",
