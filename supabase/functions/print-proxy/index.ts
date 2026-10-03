@@ -150,10 +150,6 @@ Deno.serve(async (req) => {
     if (!propertyId || !printerId) {
       return corsJson({ ok:false, code:'MISSING_PRINTER_REFERENCE', message:'A saved property printer is required.' }, 400);
     }
-    if (!validEndpoint(host, port)) {
-      return corsJson({ ok:false, code:'INVALID_ENDPOINT', message:'Printer IP or port is invalid. Use an IPv4 address and TCP port 9100, 9101 or 9102.' }, 400);
-    }
-
     const { data: printer, error: lookupError } = await client
       .from('property_printers')
       .select('id,property_id,connection_type,ip_address,port')
@@ -167,19 +163,30 @@ Deno.serve(async (req) => {
     if (!printer || printer.connection_type !== 'network_ip') {
       return corsJson({ ok:false, code:'PRINTER_NOT_CONFIGURED', message:'This printer is not configured for direct network printing.' }, 400);
     }
-    if (printer.ip_address !== host || Number(printer.port || 9100) !== port) {
-      return corsJson({ ok:false, code:'PRINTER_ENDPOINT_MISMATCH', message:'The requested endpoint does not match the saved printer configuration.' }, 409);
+
+    // The saved printer configuration is authoritative. The caller cannot
+    // redirect a printer ID to another LAN endpoint, and stale client
+    // host/port formatting cannot cause a false endpoint-mismatch failure.
+    const savedHost = String(printer.ip_address || '').trim();
+    const savedPort = Number(printer.port || 9100);
+
+    if (!validEndpoint(savedHost, savedPort)) {
+      return corsJson({
+        ok:false,
+        code:'INVALID_SAVED_ENDPOINT',
+        message:'The saved printer IP or TCP port is invalid. Reconfigure the printer before printing.',
+      }, 400);
     }
 
     const payload = buildPayload({ text: body?.text, test: action === 'test' });
-    await writeTcp(host, port, payload);
+    await writeTcp(savedHost, savedPort, payload);
 
     return corsJson({
       ok: true,
       status: 'connected',
       printed: action === 'print',
       tested: action === 'test',
-      endpoint: `${host}:${port}`,
+      endpoint: `${savedHost}:${savedPort}`,
     });
   } catch (error) {
     const message = String(error?.message || error || '');
