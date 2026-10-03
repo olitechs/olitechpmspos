@@ -4,6 +4,23 @@ import { useAuth } from '@/lib/AuthContext';
 import { getPrinters, getAssignments, testPrint, connectPrinter } from '@/services/printService';
 import { supabase } from '@/lib/supabaseClient';
 
+const normalizeNetworkEndpoint = (value, fallbackPort = 9100) => {
+  let host = String(value || '').trim();
+  let port = Number(fallbackPort || 9100);
+  try {
+    if (/^https?:\\/\\//i.test(host)) {
+      const parsed = new URL(host);
+      host = parsed.hostname;
+      if (parsed.port) port = Number(parsed.port);
+    } else if (/^[0-9.]+:\\d+$/.test(host)) {
+      const parts = host.split(':');
+      host = parts[0];
+      port = Number(parts[1]);
+    }
+  } catch (_) {}
+  return { host, port };
+};
+
 const normalizeAgentUrl = (value = 'http://127.0.0.1:8631') => {
   let base = String(value || '').trim().replace(/\/+$/, '');
   if (!base) base = 'http://127.0.0.1:8631';
@@ -143,7 +160,7 @@ export default function SettingsPrinters() {
     const type = editing.connection_type || 'network_ip';
     const port = Number(editing.port || 9100);
     if (type === 'network_ip') {
-      if (!editing.ip_address?.trim()) return setError('Enter the printer IP address.');
+      if (!editing.ip_address?.trim()) return setError('Enter the printer IPv4 address.');
       if (!Number.isInteger(port) || ![9100,9101,9102].includes(port)) return setError('Use TCP port 9100, 9101 or 9102.');
     }
     if (type === 'windows_printer' && !editing.windows_printer_name?.trim()) return setError('Enter the Windows installed printer name.');
@@ -151,11 +168,16 @@ export default function SettingsPrinters() {
 
     setError(''); setNotice('');
     const {assignmentTypes=[],...printerFields} = editing;
+    const endpoint = type === 'network_ip'
+      ? normalizeNetworkEndpoint(printerFields.ip_address, port)
+      : { host: printerFields.ip_address || '', port };
+    if (type === 'network_ip' && !endpoint.host) return setError('Enter the printer IPv4 address.');
     const payload = {
       ...printerFields,
+      ip_address: endpoint.host,
       property_id:propertyId,
       connection_type:type,
-      port,
+      port:endpoint.port,
       is_online:false,
       last_status:'testing',
       last_error:null,
