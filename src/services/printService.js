@@ -83,41 +83,57 @@ async function updatePrinterTransportStatus(printer, propertyId, status, errorMe
 
 async function localAgentRequest(printer, propertyId, path, text = '') {
   const base = normalizeAgentUrl(printer.agent_url || printer.agentUrl);
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 6000);
-  try {
-    const response = await fetch(`${base}${path}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...normalizeNetworkEndpoint(printer.ip_address || printer.host, printer.port || 9100),
-        printerId: printer.id || null,
-        propertyId: propertyId || null,
-        windowsPrinterName: printer.windows_printer_name || null,
-        text,
-      }),
-      signal: controller.signal,
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok || !data?.ok) {
-      return {
+  const endpoint = normalizeNetworkEndpoint(printer.ip_address || printer.host, printer.port || 9100);
+  const payload = {
+    ...endpoint,
+    printerId: printer.id || null,
+    propertyId: propertyId || null,
+    windowsPrinterName: printer.windows_printer_name || null,
+    text,
+  };
+
+  const paths = [path, '/api' + path, '/print-agent' + path];
+  let last = null;
+
+  for (const candidate of paths) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 6000);
+    try {
+      const response = await fetch(base + candidate, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.ok && data?.ok) return { ok: true, data };
+
+      last = {
         ok: false,
         code: data?.code || `HTTP_${response.status}`,
         message: data?.message || 'The local print agent could not print to the configured printer.',
       };
+
+      if (![404, 405].includes(response.status) && data?.code !== 'NOT_FOUND') break;
+    } catch (error) {
+      last = {
+        ok: false,
+        code: error?.name === 'AbortError' ? 'LOCAL_AGENT_TIMEOUT' : 'LOCAL_AGENT_UNAVAILABLE',
+        message: error?.name === 'AbortError'
+          ? 'The local print agent timed out while connecting to the printer.'
+          : 'The local print agent could not be reached. Start the OliTechs Print Agent on this workstation.',
+      };
+      break;
+    } finally {
+      clearTimeout(timer);
     }
-    return { ok: true, data };
-  } catch (error) {
-    return {
-      ok: false,
-      code: error?.name === 'AbortError' ? 'LOCAL_AGENT_TIMEOUT' : 'LOCAL_AGENT_UNAVAILABLE',
-      message: error?.name === 'AbortError'
-        ? 'The local print agent timed out while connecting to the printer.'
-        : 'The local print agent could not be reached. Start the OliTechs Print Agent on this workstation.',
-    };
-  } finally {
-    clearTimeout(timer);
   }
+
+  return last || {
+    ok: false,
+    code: 'LOCAL_AGENT_UNAVAILABLE',
+    message: 'The local print agent could not be reached. Start the OliTechs Print Agent on this workstation.',
+  };
 }
 
 async function directAgentPrint(printer, propertyId, text, path) {
