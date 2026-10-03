@@ -126,13 +126,31 @@ export async function testPrinterConnection(printer, propertyId) {
   if (printer.connection_type !== 'network_ip') {
     return { ok: false, friendlyError: 'Only direct Network IP thermal printers are enabled for platform printing.' };
   }
-  const result = await directTcpPrint(printer, propertyId, '', 'test');
-  if (result.ok) {
-    await logPrint(propertyId, printer.id, 'test', 'connection', 'printed', null);
-  } else {
-    await logPrint(propertyId, printer.id, 'test', 'connection', 'failed', result.friendlyError || null);
+
+  try {
+    const result = await directTcpPrint(printer, propertyId, '', 'test');
+    if (result.ok) {
+      await logPrint(propertyId, printer.id, 'test', 'connection', 'printed', null);
+    } else {
+      await logPrint(propertyId, printer.id, 'test', 'connection', 'failed', result.friendlyError || null);
+    }
+    return result;
+  } catch (error) {
+    // A logging/database/transport exception must never strand the printer UI
+    // in its "Testing…" state.
+    const friendlyError = error?.message || 'Printer verification failed unexpectedly.';
+    try {
+      await updatePrinterTransportStatus(printer, propertyId, 'offline', friendlyError);
+      await logPrint(propertyId, printer.id, 'test', 'connection', 'failed', friendlyError);
+    } catch (_) {
+      // Keep the original failure; status persistence is best effort.
+    }
+    return {
+      ok: false,
+      friendlyError,
+      code: 'PRINTER_TEST_FAILED',
+    };
   }
-  return result;
 }
 
 export async function printToPrinter(printer, contentHtml, { propertyId, jobType = 'document', copyType = null, title = 'OliTechs Print' } = {}) {
