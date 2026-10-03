@@ -1,0 +1,4 @@
+project_id = "mszogmazldxjsiytrlxr"
+
+[functions.print-proxy]
+verify_jwt = true
