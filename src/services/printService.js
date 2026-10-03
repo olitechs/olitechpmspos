@@ -1,4 +1,4 @@
-import { testConnection as testBrowserPrinterConnection, pairUsbDevice, pairBluetoothDevice, pairSerialDevice, sendPrintJob as sendBrowserPrintJob, PrinterStatus } from '@/services/printerService';
+import { testConnection as testBrowserPrinterConnection, pairUsbDevice, pairBluetoothDevice, pairSerialDevice, sendPrintJob as sendBrowserPrintJob, buildTestPageText, PrinterStatus } from '@/services/printerService';
 import { supabase } from '@/lib/supabaseClient';
 
 const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -150,13 +150,24 @@ export async function testPrinterConnection(printer, propertyId) {
     } else if (printer.connection_type === 'windows_printer') {
       result = await directWindowsPrint(printer, propertyId, '', 'test');
     } else if (['usb','bluetooth','serial'].includes(printer.connection_type)) {
-      const browser = await testBrowserPrinterConnection(browserPrinterShape(printer));
-      result = {
-        ok: browser.status === PrinterStatus.CONNECTED,
-        status: browser.status,
-        friendlyError: browser.friendlyError,
-        transport: printer.connection_type,
-      };
+      const browser = browserPrinterShape(printer);
+      const connection = await testBrowserPrinterConnection(browser);
+      if (connection.status === PrinterStatus.CONNECTED) {
+        const printed = await sendBrowserPrintJob(browser, buildTestPageText(browser), { thermal:true, title:'OliTechs Printer Test' });
+        result = {
+          ok: !!printed?.ok,
+          status: printed?.ok ? PrinterStatus.CONNECTED : PrinterStatus.FAILED,
+          friendlyError: printed?.friendlyError,
+          transport: printer.connection_type,
+        };
+      } else {
+        result = {
+          ok:false,
+          status:connection.status,
+          friendlyError:connection.friendlyError,
+          transport: printer.connection_type,
+        };
+      }
       await updatePrinterTransportStatus(printer, propertyId, result.ok ? 'connected' : 'offline', result.friendlyError || null);
     } else {
       result = { ok:false, friendlyError:'Unsupported printer connection type.' };
