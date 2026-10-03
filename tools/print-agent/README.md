@@ -1,43 +1,70 @@
 # OliTechs Local Print Agent
 
-The browser cannot open raw TCP connections to LAN thermal printers. This small Node.js service runs on the POS workstation and owns the TCP connection to ESC/POS printers on the hotel LAN.
+The OliTechs Local Print Agent runs on each Windows POS workstation and bridges the web application to physical thermal printers.
+
+## Supported transports
+
+### 1. LAN / Network IP
+- Raw ESC/POS over TCP.
+- Default port: 9100.
+- Uses /test and /print.
+- Suitable for Ethernet/Wi-Fi thermal printers.
+
+### 2. Windows installed printer / printer driver
+- Works with printers installed in Windows Printers & scanners.
+- Covers USB printers using a Windows driver and Bluetooth printers paired/installed as a Windows printer.
+- OliTechs enumerates installed printers through the Windows spooler.
+- Raw ESC/POS is submitted to the selected Windows printer driver using the Windows print spooler.
+- Uses /windows-printers, /windows-test and /windows-print.
+
+### 3. USB direct
+- Uses browser WebUSB.
+- Requires a browser/device that supports WebUSB and a compatible ESC/POS printer.
+- The user grants the device permission from OliTechs.
+
+### 4. Bluetooth direct
+- Uses browser Web Bluetooth for compatible BLE thermal printers.
+- The user pairs the printer from OliTechs.
+- The printer must expose a compatible thermal-printer GATT service/characteristic.
+
+### 5. USB / Bluetooth Serial
+- Uses Web Serial for printers exposed as a COM/serial device.
+- Configurable baud rate: 9600, 19200, 38400, 57600 or 115200.
 
 ## Run
 
-From the repository root:
-
     npm run print-agent
 
-The default listener is:
+Default listener: http://127.0.0.1:8631
 
-    http://127.0.0.1:8631
+Health check: http://127.0.0.1:8631/health
 
-Health check:
+Keep the agent running on every Windows POS workstation that uses LAN or Windows-driver printing.
 
-    http://127.0.0.1:8631/health
+## Windows printer workflow
 
-Keep the agent running on every workstation that needs to print to a LAN thermal printer.
+1. Install the thermal printer normally in Windows.
+2. Confirm it appears under Windows Printers & scanners.
+3. Start the OliTechs Print Agent.
+4. In Settings → Printers, choose Windows installed printer (USB / Bluetooth driver).
+5. Select/enter the Windows printer name.
+6. Click Test & Print.
+7. OliTechs marks the printer Connected only after the Windows spooler accepts the real ESC/POS test job.
 
-## Optional environment variables
+This means a USB or Bluetooth printer does not need to expose a raw TCP port when its Windows driver is installed.
 
-Windows PowerShell:
+## LAN workflow
 
-    $env:PRINT_AGENT_PORT=8631
-    $env:PRINT_AGENT_TIMEOUT_MS=6000
-    npm run print-agent
+1. Select LAN / Network IP.
+2. Enter the printer IP, e.g. 192.168.2.117.
+3. Use TCP port 9100.
+4. Keep agent URL at http://127.0.0.1:8631.
+5. Click Test & Print.
 
-The agent only accepts thermal TCP ports 9100, 9101 and 9102 and binds to loopback by default.
+The test sends a real ESC/POS page. A configured printer is not shown as Connected merely because its settings were saved.
 
-## Printer setup
+## Important
 
-In OliTechs PMS/POS → Settings → Printers:
+The local agent binds to loopback by default. Do not expose it publicly.
 
-- Connection type: LAN / Printer API
-- IP address: the printer's LAN address, for example 192.168.2.117
-- Port: normally 9100
-- Print agent URL: http://127.0.0.1:8631
-- Assign the purpose: Order, Bill or Receipt
-
-Click Test Connection. The test sends a real ESC/POS test page to the configured printer. Only a successful response from the local agent after the TCP write is treated as Connected.
-
-The Supabase print-proxy Edge Function remains available for platform-side transport, but LAN/private RFC1918 printers should use this local agent because the Supabase cloud cannot normally route into the hotel's private LAN.
+The Supabase print-proxy Edge Function may remain available for supported public transports, but private hotel LAN addresses such as 192.168.x.x should use the local agent.
