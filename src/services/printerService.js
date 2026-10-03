@@ -17,9 +17,9 @@ import { supabase } from '@/lib/supabaseClient';
 // "print agent" (a tiny local HTTP service, e.g. on localhost, that the
 // browser can reach and that itself owns the raw socket to the printer).
 //
-//   - Network printers: genuinely tested/printed to ONLY if the printer is
-//     configured with a Print Agent URL. Without one, we report
-//     `UNSUPPORTED` honestly instead of faking a socket check.
+//   - Network printers: genuinely tested/printed through the local Print
+//     Agent. The agent owns the raw TCP socket to the hotel's LAN printer.
+
 //   - USB printers: real WebUSB (`navigator.usb`) — genuine device
 //     permission/open/transfer calls.
 //   - Bluetooth printers: real Web Bluetooth (`navigator.bluetooth`) —
@@ -142,25 +142,54 @@ function withTimeout(promise, ms, controller) {
 
 // --- Connection testing -----------------------------------------------------
 
+async function postToLocalAgent(printer, path, text = '') {
+  const base = String(printer.agentUrl || 'http://127.0.0.1:8631').replace(/\\/+$/, '');
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+  try {
+    const response = await fetch(`${base}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        host: printer.host,
+        port: Number(printer.port || 9100),
+        printerId: printer.id || null,
+        propertyId: printer.propertyId || null,
+        text,
+      }),
+      signal: controller.signal,
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data?.ok) {
+      return {
+        ok: false,
+        friendlyError: data?.message || `Unable to reach ${printer.host}:${printer.port || 9100}.`,
+        code: data?.code || `HTTP_${response.status}`,
+      };
+    }
+    return { ok: true, data };
+  } catch (err) {
+    return {
+      ok: false,
+      friendlyError: toFriendlyError(err, { agent: true }),
+      rawError: String(err?.message || err),
+      code: err?.name === 'AbortError' ? 'TIMEOUT' : 'LOCAL_AGENT_UNAVAILABLE',
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function testNetwork(printer) {
   if (!printer.host) return { status:PrinterStatus.ERROR, friendlyError:'Printer IP address is required.' };
-  try {
-    const { data, error } = await supabase.functions.invoke('print-proxy', {
-      body: {
-        action:'test',
-        printerId:printer.id || null,
-        propertyId:printer.propertyId || null,
-        host:printer.host,
-        port:Number(printer.port || 9100),
-      },
-    });
-    if (error) return { status:PrinterStatus.FAILED, friendlyError:error.message || 'The platform could not reach the printer.' };
-    return data?.ok
-      ? { status:PrinterStatus.CONNECTED }
-      : { status:PrinterStatus.OFFLINE, friendlyError:data?.message || `Unable to reach ${printer.host}:${printer.port || 9100}.` };
-  } catch (err) {
-    return { status:PrinterStatus.FAILED, friendlyError:toFriendlyError(err), rawError:String(err?.message || err) };
-  }
+  const result = await postToLocalAgent(printer, '/test');
+  if (result.ok) return { status:PrinterStatus.CONNECTED, transport:'local_agent' };
+  return {
+    status: result.code === 'LOCAL_AGENT_UNAVAILABLE' ? PrinterStatus.FAILED : PrinterStatus.OFFLINE,
+    friendlyError: result.friendlyError,
+    rawError: result.rawError,
+    transport:'local_agent',
+  };
 }
 
 async function testUsb(printer) {
@@ -313,22 +342,15 @@ export function forgetDevice(printerId) {
 // --- Printing ---------------------------------------------------------------
 
 async function sendToAgent(printer, text) {
-  try {
-    const { data, error } = await supabase.functions.invoke('print-proxy', {
-      body: {
-        action: 'print',
-        printerId: printer.id || null,
-        propertyId: printer.propertyId || null,
-        host: printer.host,
-        port: Number(printer.port || 9100),
-        text,
-      },
-    });
-    if (error) return { ok:false, friendlyError:error.message || 'The platform could not reach the printer.' };
-    return data?.ok ? { ok:true, direct:true } : { ok:false, friendlyError:data?.message || 'The printer is offline or unreachable.' };
-  } catch (err) {
-    return { ok:false, friendlyError:toFriendlyError(err), rawError:String(err?.message || err) };
-  }
+  const result = await postToLocalAgent(printer, '/print', text);
+  if (result.ok) return { ok:true, direct:true, transport:'local_agent' };
+  return {
+    ok:false,
+    friendlyError:result.friendlyError,
+    rawError:result.rawError,
+    code:result.code,
+    transport:'local_agent',
+  };
 }
 
 async function sendToUsb(printer, text) {
