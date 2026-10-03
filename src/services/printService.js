@@ -77,9 +77,27 @@ async function directTcpPrint(printer, propertyId, text, action = 'print') {
   });
 
   if (error) {
-    const message = error.message || 'The platform could not reach the printer.';
-    await updatePrinterTransportStatus(printer, propertyId, 'failed', message);
-    return { ok: false, friendlyError: message };
+    let message = error.message || 'The platform could not reach the printer.';
+    let code = '';
+    try {
+      const response = error?.context;
+      if (response && typeof response.clone === 'function') {
+        const clone = response.clone();
+        const payload = await clone.json().catch(() => null);
+        if (payload?.message) message = payload.message;
+        if (payload?.code) code = payload.code;
+      }
+    } catch {}
+
+    if (/Failed to send a request to the Edge Function/i.test(message)) {
+      message = 'The OliTechs print service could not be reached. The printer has not been marked Connected. Deploy/enable the print-proxy Edge Function, then test again.';
+      code = code || 'EDGE_FUNCTION_UNAVAILABLE';
+    }
+
+    const prefix = code ? `[${code}] ` : '';
+    const friendly = `${prefix}${message}`;
+    await updatePrinterTransportStatus(printer, propertyId, /EDGE_FUNCTION|UNAVAILABLE/i.test(code) ? 'offline' : 'failed', friendly);
+    return { ok: false, friendlyError: friendly };
   }
   if (!data?.ok) {
     const message = data?.message || 'The printer is offline or unreachable.';
