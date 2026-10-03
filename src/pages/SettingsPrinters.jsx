@@ -80,9 +80,36 @@ export default function SettingsPrinters() {
 
   useEffect(()=>{ load(); },[propertyId]);
 
+  const refreshLocalDevices = async (agentUrl='http://127.0.0.1:8631') => {
+    setAgentError('');
+    try {
+      const base=String(agentUrl).replace(/\/+$/,'');
+      const response=await fetch(`${base}/windows-printers`);
+      const data=await response.json().catch(()=>({}));
+      if (response.ok && data.ok) setWindowsPrinters(data.printers || []);
+      else setWindowsPrinters([]);
+    } catch (_) { setWindowsPrinters([]); }
+  };
+
+  const discoverNetwork = async () => {
+    setDiscovering(true); setAgentError(''); setError('');
+    try {
+      const base='http://127.0.0.1:8631';
+      const response=await fetch(`${base}/discover`);
+      const data=await response.json().catch(()=>({}));
+      if (!response.ok || !data.ok) throw new Error(data.message || 'Network discovery failed.');
+      setDiscovered(data.printers || []);
+      if (!(data.printers || []).length) setNotice('No raw ESC/POS printer ports were found on this workstation LAN. You can still add the printer manually.');
+    } catch (e) {
+      setAgentError(e?.message || 'Start the OliTechs Print Agent to discover local printers.');
+    } finally { setDiscovering(false); }
+  };
+
   const openNew = () => {
     setError(''); setNotice('');
     setEditing({...blank,assignmentTypes:[]});
+    setDiscovered([]);
+    refreshLocalDevices();
   };
 
   const openEdit = printer => {
@@ -222,9 +249,10 @@ export default function SettingsPrinters() {
                 <Network size={14}/> Property Operations / Printing
               </div>
               <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Printer Management</h1>
-              <p className="mt-1 max-w-2xl text-sm text-slate-500">Manage physical thermal printers from OliTechs. Jobs are sent through the platform over TCP — no Windows print dialog or tablet printer is used.</p>
+              <p className="mt-1 max-w-2xl text-sm text-slate-500">Manage physical thermal printers from OliTechs. Use automatic LAN discovery, Windows-installed drivers, USB, Bluetooth, or serial/COM devices. Every connection must pass a real hardware test before it is marked Connected.</p>
             </div>
             <div className="flex gap-2">
+              <button onClick={discoverNetwork} disabled={discovering} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"><Network size={15}/>{discovering?'Scanning LAN…':'Find network printers'}</button>
               <button onClick={()=>load()} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50"><RefreshCw size={15}/>Refresh</button>
               <button onClick={openNew} className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-black text-amber-300 shadow-sm hover:bg-slate-800"><Plus size={16}/>Add Printer</button>
             </div>
@@ -239,7 +267,7 @@ export default function SettingsPrinters() {
       </div>
 
       <div className="mx-auto max-w-7xl space-y-6 px-5 py-6 lg:px-7">
-        {error && <Alert type="error" text={error}/>}
+        {error && <Alert type="error" text={error}/>}\n        {agentError && <Alert type="error" text={agentError}/>}\n        {!!discovered.length && <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4"><div className="text-xs font-black uppercase tracking-wide text-blue-700">Network printers discovered</div><div className="mt-2 flex flex-wrap gap-2">{discovered.map(d=><button key={`${d.host}:${d.port}`} onClick={()=>{setEditing({...blank,connection_type:'network_ip',ip_address:d.host,port:d.port,assignmentTypes:[]});setDiscovered([]);}} className="rounded-xl border border-blue-200 bg-white px-3 py-2 text-xs font-bold text-blue-800 hover:bg-blue-50">{d.label}</button>)}</div></div>}
         {notice && <Alert type="success" text={notice}/>}
         {loading ? <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-500">Loading printer configuration…</div> :
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(420px,0.9fr)]">
@@ -371,7 +399,7 @@ function PrinterModal({form,setForm,onClose,onSave}) {
             <label className="block text-xs font-black uppercase tracking-wide text-slate-500">Printer IP address<input value={form.ip_address||''} onChange={e=>setForm({...form,ip_address:e.target.value})} placeholder="192.168.1.50" className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-mono text-sm outline-none focus:border-slate-900"/></label>
             <label className="block text-xs font-black uppercase tracking-wide text-slate-500">TCP port<input type="number" value={form.port||9100} onChange={e=>setForm({...form,port:e.target.value})} className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-mono text-sm"/><span className="mt-1 block text-[11px] font-normal normal-case tracking-normal text-slate-400">9100 is the standard raw ESC/POS port for many network thermal printers.</span></label>
           </>}
-          {form.connection_type === 'windows_printer' && <label className="block text-xs font-black uppercase tracking-wide text-slate-500">Windows printer name<input value={form.windows_printer_name||''} onChange={e=>setForm({...form,windows_printer_name:e.target.value})} placeholder="EPSON TM-T20III" className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"/></label>}
+          {form.connection_type === 'windows_printer' && <div className="space-y-2"><label className="block text-xs font-black uppercase tracking-wide text-slate-500">Windows installed printer<select value={form.windows_printer_name||''} onChange={e=>setForm({...form,windows_printer_name:e.target.value})} onFocus={()=>refreshLocalDevices(form.agent_url)} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="">Select installed printer</option>{windowsPrinters.map(p=><option key={p.Name} value={p.Name}>{p.Name}{p.DriverName ? ` — ${p.DriverName}` : ''}</option>)}</select></label><p className="text-[11px] text-slate-400">The printer must first be installed and visible in Windows Printers & scanners. OliTechs sends the thermal data through the local print agent.</p></div>}
           {form.connection_type === 'serial' && <label className="block text-xs font-black uppercase tracking-wide text-slate-500">Baud rate<select value={form.baud_rate||9600} onChange={e=>setForm({...form,baud_rate:Number(e.target.value)})} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm">{[9600,19200,38400,57600,115200].map(rate=><option key={rate} value={rate}>{rate} baud</option>)}</select></label>}
           <label className="block text-xs font-black uppercase tracking-wide text-slate-500">Paper width<select value={form.paper_width||'80mm'} onChange={e=>setForm({...form,paper_width:e.target.value})} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"><option>80mm</option><option>58mm</option></select></label>
         </div>
