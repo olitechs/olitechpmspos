@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Plus, Pencil, Trash2, Printer, Wifi, Play, X, RefreshCw, CheckCircle2, AlertCircle, CircleOff, Network, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
-import { getPrinters, getAssignments, testPrint } from '@/services/printService';
+import { getPrinters, getAssignments, testPrint, connectPrinter } from '@/services/printService';
 import { supabase } from '@/lib/supabaseClient';
 
 const TYPES = [
@@ -28,6 +28,11 @@ const blank = {
   connection_type:'network_ip',
   ip_address:'',
   port:9100,
+  windows_printer_name:'',
+  agent_url:'http://127.0.0.1:8631',
+  baud_rate:9600,
+  device_name:'',
+  device_address:'',
   paper_width:'80mm',
   is_online:false,
   is_default:false,
@@ -84,25 +89,35 @@ export default function SettingsPrinters() {
     setError(''); setNotice('');
     setEditing({
       ...printer,
-      connection_type:'network_ip',
+      connection_type:printer.connection_type || 'network_ip',
       port:printer.port || 9100,
+      windows_printer_name:printer.windows_printer_name || '',
+      agent_url:printer.agent_url || 'http://127.0.0.1:8631',
+      baud_rate:printer.baud_rate || 9600,
+      device_name:printer.device_name || '',
+      device_address:printer.device_address || '',
       assignmentTypes:assignments.filter(a=>a.printer_id===printer.id).map(a=>a.assignment_type),
     });
   };
 
   const save = async () => {
     if (!editing?.name?.trim()) return setError('Printer name is required.');
-    if (!editing.ip_address?.trim()) return setError('Enter the printer IP address.');
+    const type = editing.connection_type || 'network_ip';
     const port = Number(editing.port || 9100);
-    if (!Number.isInteger(port) || ![9100,9101,9102].includes(port)) return setError('Use TCP port 9100, 9101 or 9102.');
+    if (type === 'network_ip') {
+      if (!editing.ip_address?.trim()) return setError('Enter the printer IP address.');
+      if (!Number.isInteger(port) || ![9100,9101,9102].includes(port)) return setError('Use TCP port 9100, 9101 or 9102.');
+    }
+    if (type === 'windows_printer' && !editing.windows_printer_name?.trim()) return setError('Enter the Windows installed printer name.');
+    if (type === 'serial' && ![9600,19200,38400,57600,115200].includes(Number(editing.baud_rate || 9600))) return setError('Select a supported serial baud rate.');
 
     setError(''); setNotice('');
     const {assignmentTypes=[],...printerFields} = editing;
     const payload = {
       ...printerFields,
       property_id:propertyId,
-      connection_type:'network_ip',
-      port,
+      connection_type:type,
+      port:type === 'network_ip' ? port : null,
       is_online:false,
       last_status:'testing',
       last_error:null,
@@ -142,10 +157,13 @@ export default function SettingsPrinters() {
     });
 
     try {
-      const result = await Promise.race([
-        testPrint(printer, propertyId),
-        timeout,
-      ]);
+      let result;
+      if (['usb','bluetooth','serial','windows_printer'].includes(printer.connection_type)) {
+        result = await connectPrinter(printer, propertyId);
+        if (result?.ok) result = await testPrint(printer, propertyId);
+      } else {
+        result = await Promise.race([testPrint(printer, propertyId), timeout]);
+      }
 
       if (result?.ok) {
         setNotice(`Connection verified. Test ticket sent directly to ${printer.name}.`);
@@ -324,16 +342,29 @@ function PrinterModal({form,setForm,onClose,onSave}) {
   return <div className="fixed inset-0 z-[80] overflow-y-auto bg-slate-950/55 p-4 backdrop-blur-sm">
     <div className="mx-auto my-6 w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl">
       <div className="flex items-start justify-between border-b border-slate-200 p-5">
-        <div><div className="flex items-center gap-2"><div className="rounded-lg bg-slate-950 p-2 text-amber-300"><Printer size={16}/></div><h3 className="text-lg font-black text-slate-950">{form.id?'Edit printer':'Add printer'}</h3></div><p className="mt-2 text-xs leading-5 text-slate-500">The platform connects directly to the printer over TCP. The cashier computer does not become the printer server.</p></div>
+        <div><div className="flex items-center gap-2"><div className="rounded-lg bg-slate-950 p-2 text-amber-300"><Printer size={16}/></div><h3 className="text-lg font-black text-slate-950">{form.id?'Edit printer':'Add printer'}</h3></div><p className="mt-2 text-xs leading-5 text-slate-500">LAN and Windows-driver printers use the OliTechs Local Print Agent. USB, Bluetooth and serial printers use browser device APIs. Every connection is tested before it is marked Connected.</p></div>
         <button onClick={onClose} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"><X size={18}/></button>
       </div>
       <div className="grid gap-5 p-5 md:grid-cols-2">
         <div className="space-y-3">
           <label className="block text-xs font-black uppercase tracking-wide text-slate-500">Printer name<input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Kitchen Epson 01" className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-slate-900"/></label>
           <label className="block text-xs font-black uppercase tracking-wide text-slate-500">Printer type<select value={form.type} onChange={e=>setForm({...form,type:e.target.value})} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm">{TYPES.map(x=><option key={x[0]} value={x[0]}>{x[1]}</option>)}</select></label>
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3"><div className="text-[10px] font-black uppercase tracking-wide text-slate-400">Connection</div><div className="mt-1 flex items-center gap-2 text-sm font-black text-slate-800"><Network size={15}/>Direct Network IP (TCP)</div><p className="mt-1 text-[11px] leading-4 text-slate-500">This is intentionally not a Windows, USB or Bluetooth printer.</p></div>
-          <label className="block text-xs font-black uppercase tracking-wide text-slate-500">Printer IP address<input value={form.ip_address||''} onChange={e=>setForm({...form,ip_address:e.target.value})} placeholder="192.168.1.50" className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-mono text-sm outline-none focus:border-slate-900"/></label>
-          <label className="block text-xs font-black uppercase tracking-wide text-slate-500">TCP port<input type="number" value={form.port||9100} onChange={e=>setForm({...form,port:e.target.value})} className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-mono text-sm"/><span className="mt-1 block text-[11px] font-normal normal-case tracking-normal text-slate-400">9100 is the standard raw ESC/POS port for many network thermal printers.</span></label>
+          <label className="block text-xs font-black uppercase tracking-wide text-slate-500">Connection type
+            <select value={form.connection_type || 'network_ip'} onChange={e=>setForm({...form,connection_type:e.target.value})} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm">
+              <option value="network_ip">LAN / Network IP</option>
+              <option value="windows_printer">Windows installed printer (USB / Bluetooth driver)</option>
+              <option value="usb">USB direct (WebUSB)</option>
+              <option value="bluetooth">Bluetooth direct (Web Bluetooth)</option>
+              <option value="serial">USB / Bluetooth Serial (COM)</option>
+            </select>
+          </label>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3"><div className="text-[10px] font-black uppercase tracking-wide text-slate-400">Transport</div><p className="mt-1 text-[11px] leading-5 text-slate-500">LAN and Windows-driver printers use the OliTechs Print Agent. USB, Bluetooth and serial printers use the browser's native device connection.</p></div>
+          {form.connection_type === 'network_ip' && <>
+            <label className="block text-xs font-black uppercase tracking-wide text-slate-500">Printer IP address<input value={form.ip_address||''} onChange={e=>setForm({...form,ip_address:e.target.value})} placeholder="192.168.1.50" className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-mono text-sm outline-none focus:border-slate-900"/></label>
+            <label className="block text-xs font-black uppercase tracking-wide text-slate-500">TCP port<input type="number" value={form.port||9100} onChange={e=>setForm({...form,port:e.target.value})} className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-mono text-sm"/><span className="mt-1 block text-[11px] font-normal normal-case tracking-normal text-slate-400">9100 is the standard raw ESC/POS port for many network thermal printers.</span></label>
+          </>}
+          {form.connection_type === 'windows_printer' && <label className="block text-xs font-black uppercase tracking-wide text-slate-500">Windows printer name<input value={form.windows_printer_name||''} onChange={e=>setForm({...form,windows_printer_name:e.target.value})} placeholder="EPSON TM-T20III" className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"/></label>}
+          {form.connection_type === 'serial' && <label className="block text-xs font-black uppercase tracking-wide text-slate-500">Baud rate<select value={form.baud_rate||9600} onChange={e=>setForm({...form,baud_rate:Number(e.target.value)})} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm">{[9600,19200,38400,57600,115200].map(rate=><option key={rate} value={rate}>{rate} baud</option>)}</select></label>}
           <label className="block text-xs font-black uppercase tracking-wide text-slate-500">Paper width<select value={form.paper_width||'80mm'} onChange={e=>setForm({...form,paper_width:e.target.value})} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"><option>80mm</option><option>58mm</option></select></label>
         </div>
         <div>
