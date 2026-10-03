@@ -70,6 +70,7 @@ async function localAgentRequest(printer, propertyId, path, text = '') {
         port: Number(printer.port || 9100),
         printerId: printer.id || null,
         propertyId: propertyId || null,
+        windowsPrinterName: printer.windows_printer_name || null,
         text,
       }),
       signal: controller.signal,
