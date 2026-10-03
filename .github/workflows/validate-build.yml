@@ -39,7 +39,7 @@ jobs:
             $tokens = $null
             $errors = $null
             [System.Management.Automation.Language.Parser]::ParseFile($file, [ref]$tokens, [ref]$errors) | Out-Null
-            if ($errors.Count -gt 0) { throw "PowerShell syntax errors in $file: $($errors | Out-String)" }
+            if ($errors.Count -gt 0) { throw "PowerShell syntax errors in ${file}: $($errors | Out-String)" }
           }
 
       - name: Build application
