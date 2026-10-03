@@ -1,6 +1,23 @@
 import { testConnection as testBrowserPrinterConnection, pairUsbDevice, pairBluetoothDevice, pairSerialDevice, sendPrintJob as sendBrowserPrintJob, buildTestPageText, PrinterStatus } from '@/services/printerService';
 import { supabase } from '@/lib/supabaseClient';
 
+const normalizeNetworkEndpoint = (value, fallbackPort = 9100) => {
+  let host = String(value || '').trim();
+  let port = Number(fallbackPort || 9100);
+  try {
+    if (/^https?:\\/\\//i.test(host)) {
+      const parsed = new URL(host);
+      host = parsed.hostname;
+      if (parsed.port) port = Number(parsed.port);
+    } else if (/^[0-9.]+:\\d+$/.test(host)) {
+      const parts = host.split(':');
+      host = parts[0];
+      port = Number(parts[1]);
+    }
+  } catch (_) {}
+  return { host, port };
+};
+
 const normalizeAgentUrl = (value = 'http://127.0.0.1:8631') => {
   let base = String(value || '').trim().replace(/\/+$/, '');
   if (!base) base = 'http://127.0.0.1:8631';
@@ -73,8 +90,7 @@ async function localAgentRequest(printer, propertyId, path, text = '') {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        host: printer.ip_address || printer.host,
-        port: Number(printer.port || 9100),
+        ...normalizeNetworkEndpoint(printer.ip_address || printer.host, printer.port || 9100),
         printerId: printer.id || null,
         propertyId: propertyId || null,
         windowsPrinterName: printer.windows_printer_name || null,
@@ -117,9 +133,10 @@ async function directAgentPrint(printer, propertyId, text, path) {
 }
 
 async function directTcpPrint(printer, propertyId, text, action = 'print') {
-  const host = String(printer?.ip_address || printer?.host || '').trim();
+  const endpoint = normalizeNetworkEndpoint(printer?.ip_address || printer?.host, printer?.port || 9100);
+  const host = endpoint.host;
   if (!host) return { ok:false, friendlyError:'Printer IP address is not configured.' };
-  const port = Number(printer.port || 9100);
+  const port = endpoint.port;
   if (!Number.isInteger(port) || ![9100,9101,9102].includes(port)) {
     return { ok:false, friendlyError:'Unsupported thermal printer port. Use TCP 9100, 9101 or 9102.' };
   }
