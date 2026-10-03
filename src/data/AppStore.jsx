@@ -129,6 +129,7 @@ export function StoreProvider({ children }) {
       if (!active) return;
       setPrinters((rows || []).map((row) => ({
         id: row.client_key,
+        propertyId,
         name: row.name,
         connectionType: row.connection_type,
         host: row.host || '',
