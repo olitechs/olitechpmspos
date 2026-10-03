@@ -58,7 +58,7 @@ async function updatePrinterTransportStatus(printer, propertyId, status, errorMe
 }
 
 async function localAgentRequest(printer, propertyId, path, text = '') {
-  const base = String(printer.agent_url || printer.agentUrl || 'http://127.0.0.1:8631').replace(/\\/+$/, '');
+  const base = String(printer.agent_url || printer.agentUrl || 'http://127.0.0.1:8631').replace(/\/+$/, '');
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 6000);
   try {
