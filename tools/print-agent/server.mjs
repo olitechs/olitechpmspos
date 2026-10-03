@@ -230,7 +230,15 @@ const server = http.createServer(async (req, res) => {
     });
   }
 
-  if (req.method === 'GET' && url.pathname === '/discover') {\n    try { return json(res, 200, { ok:true, printers:await discoverNetworkPrinters(), transport:'network_ip' }); }\n    catch(error) { return json(res, 500, { ok:false, code:error?.code||'NETWORK_DISCOVERY_FAILED', message:error?.message||'Unable to scan the local network.' }); }\n  }\n\n  if (req.method === 'GET' && url.pathname === '/windows-printers') {
+  if (req.method === 'GET' && url.pathname === '/discover') {
+    try {
+      return json(res, 200, { ok:true, printers:await discoverNetworkPrinters(), transport:'network_ip' });
+    } catch(error) {
+      return json(res, 500, { ok:false, code:error?.code||'NETWORK_DISCOVERY_FAILED', message:error?.message||'Unable to scan the local network.' });
+    }
+  }
+
+  if (req.method === 'GET' && url.pathname === '/windows-printers') {
     try { return json(res, 200, { ok:true, printers:await listWindowsPrinters(), transport:'windows_spooler' }); }
     catch(error) { return json(res, 500, { ok:false, code:error?.code||'WINDOWS_PRINTERS_UNAVAILABLE', message:error?.message||'Unable to enumerate Windows printers.' }); }
   }
