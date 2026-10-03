@@ -88,6 +88,58 @@ function runPowerShell(script, args = []) {
   });
 }
 
+
+function isPrivateIPv4(host) {
+  const parts = String(host || '').trim().split('.').map(Number);
+  if (parts.length !== 4 || parts.some((n) => !Number.isInteger(n) || n < 0 || n > 255)) return false;
+  return parts[0] === 10 || (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) || (parts[0] === 192 && parts[1] === 168);
+}
+
+function localIPv4Networks() {
+  const os = await import('node:os');
+}
+
+async function discoverNetworkPrinters() {
+  const os = await import('node:os');
+  const interfaces = os.networkInterfaces();
+  const candidates = new Set();
+  for (const entries of Object.values(interfaces)) {
+    for (const entry of entries || []) {
+      if (entry.family !== 'IPv4' || entry.internal || !isPrivateIPv4(entry.address)) continue;
+      const octets = entry.address.split('.').map(Number);
+      if (octets.length !== 4) continue;
+      // Discovery intentionally stays inside the workstation's /24 private LAN.
+      for (let i = 1; i <= 254; i++) candidates.add(`${octets[0]}.${octets[1]}.${octets[2]}.${i}`);
+    }
+  }
+  const hosts = [...candidates];
+  const found = [];
+  let cursor = 0;
+  const worker = async () => {
+    while (cursor < hosts.length) {
+      const host = hosts[cursor++];
+      for (const port of ALLOWED_PORTS) {
+        try {
+          await new Promise((resolve, reject) => {
+            const socket = new net.Socket();
+            let done = false;
+            const finish = (err) => { if (done) return; done = true; socket.destroy(); err ? reject(err) : resolve(); };
+            socket.setTimeout(350);
+            socket.once('connect', () => finish());
+            socket.once('timeout', () => finish(new Error('timeout')));
+            socket.once('error', finish);
+            socket.connect(port, host);
+          });
+          found.push({ host, port, transport: 'network_ip', label: `${host}:${port}` });
+          break;
+        } catch (_) {}
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(24, Math.max(1, hosts.length)) }, worker));
+  return found.sort((a, b) => a.host.localeCompare(b.host, undefined, { numeric: true }));
+}
+
 async function listWindowsPrinters() {
   const script = '$ErrorActionPreference="Stop"; Get-Printer | Select-Object Name,DriverName,PortName,PrinterStatus,WorkOffline | ConvertTo-Json -Compress';
   const raw = await runPowerShell(script);
@@ -181,7 +233,7 @@ const server = http.createServer(async (req, res) => {
     });
   }
 
-  if (req.method === 'GET' && url.pathname === '/windows-printers') {
+  if (req.method === 'GET' && url.pathname === '/discover') {\n    try { return json(res, 200, { ok:true, printers:await discoverNetworkPrinters(), transport:'network_ip' }); }\n    catch(error) { return json(res, 500, { ok:false, code:error?.code||'NETWORK_DISCOVERY_FAILED', message:error?.message||'Unable to scan the local network.' }); }\n  }\n\n  if (req.method === 'GET' && url.pathname === '/windows-printers') {
     try { return json(res, 200, { ok:true, printers:await listWindowsPrinters(), transport:'windows_spooler' }); }
     catch(error) { return json(res, 500, { ok:false, code:error?.code||'WINDOWS_PRINTERS_UNAVAILABLE', message:error?.message||'Unable to enumerate Windows printers.' }); }
   }
