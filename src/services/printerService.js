@@ -142,36 +142,25 @@ function withTimeout(promise, ms, controller) {
 
 // --- Connection testing -----------------------------------------------------
 
-async function testNetwork(printer, { timeoutMs }) {
-	if (!printer.agentUrl) {
-		return {
-			status: PrinterStatus.UNSUPPORTED,
-			friendlyError: 'Direct browser-to-network-printer testing isn\'t possible (browsers cannot open raw sockets). Add a Print Agent URL, or use a USB/Bluetooth/System printer instead.',
-		};
-	}
-	const controller = new AbortController();
-	try {
-		const res = await withTimeout(
-			fetch(`${printer.agentUrl.replace(/\/$/, '')}/test-connection`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ host: printer.host, port: Number(printer.port) }),
-				signal: controller.signal,
-			}),
-			timeoutMs,
-			controller
-		);
-		if (!res.ok) {
-			return { status: PrinterStatus.FAILED, friendlyError: `Print agent reported an error (HTTP ${res.status}).`, rawError: `HTTP ${res.status}` };
-		}
-		const data = await res.json().catch(() => ({}));
-		if (data.reachable) {
-			return { status: PrinterStatus.CONNECTED };
-		}
-		return { status: PrinterStatus.OFFLINE, friendlyError: `Unable to reach ${printer.host}:${printer.port}. Check that the printer is powered on and connected to the network.` };
-	} catch (err) {
-		return { status: PrinterStatus.FAILED, friendlyError: toFriendlyError(err, { agent: true }), rawError: String(err?.message || err) };
-	}
+async function testNetwork(printer) {
+  if (!printer.host) return { status:PrinterStatus.ERROR, friendlyError:'Printer IP address is required.' };
+  try {
+    const { data, error } = await supabase.functions.invoke('print-proxy', {
+      body: {
+        action:'test',
+        printerId:printer.id || null,
+        propertyId:printer.propertyId || null,
+        host:printer.host,
+        port:Number(printer.port || 9100),
+      },
+    });
+    if (error) return { status:PrinterStatus.FAILED, friendlyError:error.message || 'The platform could not reach the printer.' };
+    return data?.ok
+      ? { status:PrinterStatus.CONNECTED }
+      : { status:PrinterStatus.OFFLINE, friendlyError:data?.message || `Unable to reach ${printer.host}:${printer.port || 9100}.` };
+  } catch (err) {
+    return { status:PrinterStatus.FAILED, friendlyError:toFriendlyError(err), rawError:String(err?.message || err) };
+  }
 }
 
 async function testUsb(printer) {
