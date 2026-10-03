@@ -241,7 +241,27 @@ const server = http.createServer(async (req, res) => {
 
   const url = new URL(req.url || '/', `http://${HOST}:${PORT}`);
 
-  if (req.method === 'GET' && url.pathname === '/health') {
+  // Backward-compatible aliases allow older desktop configurations that stored
+  // /api or /print-agent as the agent base URL to keep working during upgrades.
+  const routeAliases = {
+    '/api/health': '/health',
+    '/print-agent/health': '/health',
+    '/api/discover': '/discover',
+    '/print-agent/discover': '/discover',
+    '/api/windows-printers': '/windows-printers',
+    '/print-agent/windows-printers': '/windows-printers',
+    '/api/print': '/print',
+    '/print-agent/print': '/print',
+    '/api/test': '/test',
+    '/print-agent/test': '/test',
+    '/api/windows-print': '/windows-print',
+    '/print-agent/windows-print': '/windows-print',
+    '/api/windows-test': '/windows-test',
+    '/print-agent/windows-test': '/windows-test',
+  };
+  const route = routeAliases[url.pathname] || url.pathname;
+
+  if (req.method === 'GET' && route === '/health') {
     return json(res, 200, {
       ok: true,
       service: 'OliTechs Local Print Agent',
@@ -251,7 +271,7 @@ const server = http.createServer(async (req, res) => {
     });
   }
 
-  if (req.method === 'GET' && url.pathname === '/discover') {
+  if (req.method === 'GET' && route === '/discover') {
     try {
       return json(res, 200, { ok:true, printers:await discoverNetworkPrinters(), transport:'network_ip' });
     } catch(error) {
@@ -259,18 +279,18 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
-  if (req.method === 'GET' && url.pathname === '/windows-printers') {
+  if (req.method === 'GET' && route === '/windows-printers') {
     try { return json(res, 200, { ok:true, printers:await listWindowsPrinters(), transport:'windows_spooler' }); }
     catch(error) { return json(res, 500, { ok:false, code:error?.code||'WINDOWS_PRINTERS_UNAVAILABLE', message:error?.message||'Unable to enumerate Windows printers.' }); }
   }
 
-  if (req.method !== 'POST' || !['/print','/test','/windows-print','/windows-test'].includes(url.pathname)) {
+  if (req.method !== 'POST' || !['/print','/test','/windows-print','/windows-test'].includes(route)) {
     return json(res, 404, { ok: false, code: 'NOT_FOUND', message: 'OliTechs print agent endpoint not found.' });
   }
 
   try {
     const body = await readBody(req);
-    if (['/windows-print','/windows-test'].includes(url.pathname)) {
+    if (['/windows-print','/windows-test'].includes(route)) {
       const printerName = String(body.windowsPrinterName || '').trim();
       const payload = escPosPayload(body.text, url.pathname === '/windows-test');
       await printWindowsRaw(printerName, payload);
@@ -289,7 +309,7 @@ const server = http.createServer(async (req, res) => {
       });
     }
 
-    const payload = escPosPayload(body.text, url.pathname === '/test');
+    const payload = escPosPayload(body.text, route === '/test');
     await writeTcp(host, port, payload);
 
     return json(res, 200, {
