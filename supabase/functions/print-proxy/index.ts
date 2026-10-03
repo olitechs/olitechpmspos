@@ -1,4 +1,20 @@
-import { withSupabase } from 'npm:@supabase/server@^1';
+import { createClient } from 'npm:@supabase/supabase-js@2';
+
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
+
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
+function corsJson(data: unknown, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...CORS, 'Content-Type': 'application/json' },
+  });
+}
 
 const IPV4 = /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/;
 const ALLOWED_PORTS = new Set([9100, 9101, 9102]);
@@ -101,98 +117,79 @@ async function writeTcp(host: string, port: number, payload: Uint8Array, timeout
   }
 }
 
-export default {
-  fetch: withSupabase({ auth: 'user' }, async (req, ctx) => {
-    try {
-      const body = await req.json();
-      const host = String(body?.host || '').trim();
-      const port = Number(body?.port || 9100);
-      const action = body?.action === 'test' ? 'test' : 'print';
-      const printerId = String(body?.printerId || '');
-      const propertyId = body?.propertyId ? String(body.propertyId) : '';
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
+  if (req.method !== 'POST') return corsJson({ ok:false, code:'METHOD_NOT_ALLOWED', message:'POST required.' }, 405);
 
-      let printer = null;
-      let lookupError = null;
-
-      if (printerId) {
-        const modern = await ctx.supabase
-          .from('property_printers')
-          .select('id,property_id,connection_type,ip_address,port')
-          .eq('id', printerId)
-          .maybeSingle();
-        printer = modern.data;
-        lookupError = modern.error;
-      }
-
-      if (!printer && propertyId) {
-        const legacy = await ctx.supabase
-          .from('pos_printers')
-          .select('id,property_id,connection_type,host,port')
-          .eq('property_id', propertyId)
-          .eq('client_key', printerId)
-          .maybeSingle();
-        if (legacy.data) {
-          printer = {
-            id: legacy.data.id,
-            property_id: legacy.data.property_id,
-            connection_type: legacy.data.connection_type === 'network' ? 'network_ip' : legacy.data.connection_type,
-            ip_address: legacy.data.host,
-            port: Number(legacy.data.port || 9100),
-          };
-        }
-        lookupError = legacy.error;
-      }
-
-      if (!printer && propertyId) {
-        const byEndpoint = await ctx.supabase
-          .from('property_printers')
-          .select('id,property_id,connection_type,ip_address,port')
-          .eq('property_id', propertyId)
-          .eq('ip_address', host)
-          .eq('port', port)
-          .maybeSingle();
-        printer = byEndpoint.data;
-        lookupError = byEndpoint.error;
-      }
-
-      if (lookupError) {
-        return json({ ok:false, code:'PRINTER_LOOKUP_FAILED', message:'The printer configuration could not be verified.' }, 500);
-      }
-      if (!printer || printer.connection_type !== 'network_ip') {
-        return json({ ok:false, code:'PRINTER_NOT_CONFIGURED', message:'This printer is not configured for direct network printing.' }, 400);
-      }
-      if (printer.ip_address !== host || Number(printer.port || 9100) !== port) {
-        return json({ ok:false, code:'PRINTER_ENDPOINT_MISMATCH', message:'The requested endpoint does not match the saved printer configuration.' }, 409);
-      }
-
-      if (!validEndpoint(host, port)) {
-        return json({
-          ok: false,
-          code: 'INVALID_ENDPOINT',
-          message: 'Printer IP or port is invalid. Use an IPv4 address and TCP port 9100, 9101 or 9102.',
-        }, 400);
-      }
-
-      const payload = buildPayload({ text: body?.text, test: action === 'test' });
-      await writeTcp(host, port, payload);
-
-      return json({
-        ok: true,
-        status: 'connected',
-        printed: action === 'print',
-        tested: action === 'test',
-        endpoint: `${host}:${port}`,
-      });
-    } catch (error) {
-      const message = String(error?.message || error || '');
-      const code = /timed out|abort/i.test(message) ? 'TIMEOUT' : 'PRINTER_UNREACHABLE';
-      return json({
-        ok: false,
-        code,
-        message: code === 'TIMEOUT'
-          ? 'Printer connection timed out. The printer is offline or the network route is unavailable.'
-          : 'The platform could not connect to the printer. Check power, IP address, TCP port and network routing.',
-      }, 502);
+  try {
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      return corsJson({ ok:false, code:'FUNCTION_CONFIG_ERROR', message:'Print service is not configured on the platform.' }, 500);
     }
-  }),
-};
+
+    const authHeader = req.headers.get('Authorization') || '';
+    const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+    if (!token) return corsJson({ ok:false, code:'UNAUTHORIZED', message:'Authentication is required for printer operations.' }, 401);
+
+    const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+
+    const { data: authData, error: authError } = await client.auth.getUser(token);
+    if (authError || !authData?.user) {
+      return corsJson({ ok:false, code:'UNAUTHORIZED', message:'Your session is not authorized for printer operations.' }, 401);
+    }
+
+    const body = await req.json();
+    const host = String(body?.host || '').trim();
+    const port = Number(body?.port || 9100);
+    const action = body?.action === 'test' ? 'test' : 'print';
+    const printerId = String(body?.printerId || '');
+    const propertyId = body?.propertyId ? String(body.propertyId) : '';
+
+    if (!propertyId || !printerId) {
+      return corsJson({ ok:false, code:'MISSING_PRINTER_REFERENCE', message:'A saved property printer is required.' }, 400);
+    }
+    if (!validEndpoint(host, port)) {
+      return corsJson({ ok:false, code:'INVALID_ENDPOINT', message:'Printer IP or port is invalid. Use an IPv4 address and TCP port 9100, 9101 or 9102.' }, 400);
+    }
+
+    const { data: printer, error: lookupError } = await client
+      .from('property_printers')
+      .select('id,property_id,connection_type,ip_address,port')
+      .eq('id', printerId)
+      .eq('property_id', propertyId)
+      .maybeSingle();
+
+    if (lookupError) {
+      return corsJson({ ok:false, code:'PRINTER_LOOKUP_FAILED', message: lookupError.message || 'The printer configuration could not be verified.' }, 500);
+    }
+    if (!printer || printer.connection_type !== 'network_ip') {
+      return corsJson({ ok:false, code:'PRINTER_NOT_CONFIGURED', message:'This printer is not configured for direct network printing.' }, 400);
+    }
+    if (printer.ip_address !== host || Number(printer.port || 9100) !== port) {
+      return corsJson({ ok:false, code:'PRINTER_ENDPOINT_MISMATCH', message:'The requested endpoint does not match the saved printer configuration.' }, 409);
+    }
+
+    const payload = buildPayload({ text: body?.text, test: action === 'test' });
+    await writeTcp(host, port, payload);
+
+    return corsJson({
+      ok: true,
+      status: 'connected',
+      printed: action === 'print',
+      tested: action === 'test',
+      endpoint: `${host}:${port}`,
+    });
+  } catch (error) {
+    const message = String(error?.message || error || '');
+    const code = /timed out|abort/i.test(message) ? 'TIMEOUT' : 'PRINTER_UNREACHABLE';
+    return corsJson({
+      ok: false,
+      code,
+      message: code === 'TIMEOUT'
+        ? 'Printer connection timed out. The printer is offline or the network route is unavailable.'
+        : 'The platform could not connect to the printer. Check power, IP address, TCP port and network routing.',
+    }, 502);
+  }
+});
