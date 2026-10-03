@@ -313,8 +313,16 @@ function PrinterCard({printer,assignments,testing,onTest,onEdit,onDelete,onRemov
     </div>
 
     <div className="mt-4 grid grid-cols-2 gap-2">
-      <div className="rounded-xl bg-slate-50 p-3"><div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Network</div><div className="mt-1 font-mono text-xs font-bold text-slate-700">{printer.ip_address || 'IP not set'}</div></div>
-      <div className="rounded-xl bg-slate-50 p-3"><div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">TCP Port</div><div className="mt-1 font-mono text-xs font-bold text-slate-700">{printer.port || 9100}</div></div>
+      {printer.connection_type === 'network_ip' && <>
+        <div className="rounded-xl bg-slate-50 p-3"><div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Network</div><div className="mt-1 font-mono text-xs font-bold text-slate-700">{printer.ip_address || 'IP not set'}</div></div>
+        <div className="rounded-xl bg-slate-50 p-3"><div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">TCP Port</div><div className="mt-1 font-mono text-xs font-bold text-slate-700">{printer.port || 9100}</div></div>
+      </>}
+      {printer.connection_type === 'windows_printer' && <>
+        <div className="col-span-2 rounded-xl bg-slate-50 p-3"><div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Windows printer</div><div className="mt-1 text-xs font-bold text-slate-700">{printer.windows_printer_name || 'Printer not selected'}</div></div>
+      </>}
+      {printer.connection_type === 'usb' && <div className="col-span-2 rounded-xl bg-slate-50 p-3"><div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Transport</div><div className="mt-1 text-xs font-bold text-slate-700">Direct USB / WebUSB</div></div>}
+      {printer.connection_type === 'bluetooth' && <div className="col-span-2 rounded-xl bg-slate-50 p-3"><div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Transport</div><div className="mt-1 text-xs font-bold text-slate-700">Bluetooth / Web Bluetooth</div></div>}
+      {printer.connection_type === 'serial' && <div className="col-span-2 rounded-xl bg-slate-50 p-3"><div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Serial</div><div className="mt-1 text-xs font-bold text-slate-700">{printer.baud_rate || 9600} baud</div></div>}
     </div>
 
     {printer.last_error && <div className="mt-3 rounded-xl border border-red-100 bg-red-50 p-3 text-xs font-semibold leading-5 text-red-700">{printer.last_error}</div>}
