@@ -111,17 +111,59 @@ export default {
       const printerId = String(body?.printerId || '');
       const propertyId = body?.propertyId ? String(body.propertyId) : '';
 
-      const query = ctx.supabase
-        .from('property_printers')
-        .select('id,property_id,connection_type,ip_address,port');
-      const lookup = printerId
-        ? await query.eq('id', printerId).maybeSingle()
-        : propertyId
-          ? await query.eq('property_id', propertyId).eq('ip_address', host).eq('port', port).maybeSingle()
-          : { data: null, error: null };
-      if (lookup.error) return json({ ok:false, code:'PRINTER_LOOKUP_FAILED', message:'The printer configuration could not be verified.' }, 500);
-      if (!lookup.data || lookup.data.connection_type !== 'network_ip') return json({ ok:false, code:'PRINTER_NOT_CONFIGURED', message:'This printer is not configured for direct network printing.' }, 400);
-      if (lookup.data.ip_address !== host || Number(lookup.data.port || 9100) !== port) return json({ ok:false, code:'PRINTER_ENDPOINT_MISMATCH', message:'The requested endpoint does not match the saved printer configuration.' }, 409);
+      let printer = null;
+      let lookupError = null;
+
+      if (printerId) {
+        const modern = await ctx.supabase
+          .from('property_printers')
+          .select('id,property_id,connection_type,ip_address,port')
+          .eq('id', printerId)
+          .maybeSingle();
+        printer = modern.data;
+        lookupError = modern.error;
+      }
+
+      if (!printer && propertyId) {
+        const legacy = await ctx.supabase
+          .from('pos_printers')
+          .select('id,property_id,connection_type,host,port')
+          .eq('property_id', propertyId)
+          .eq('client_key', printerId)
+          .maybeSingle();
+        if (legacy.data) {
+          printer = {
+            id: legacy.data.id,
+            property_id: legacy.data.property_id,
+            connection_type: legacy.data.connection_type === 'network' ? 'network_ip' : legacy.data.connection_type,
+            ip_address: legacy.data.host,
+            port: Number(legacy.data.port || 9100),
+          };
+        }
+        lookupError = legacy.error;
+      }
+
+      if (!printer && propertyId) {
+        const byEndpoint = await ctx.supabase
+          .from('property_printers')
+          .select('id,property_id,connection_type,ip_address,port')
+          .eq('property_id', propertyId)
+          .eq('ip_address', host)
+          .eq('port', port)
+          .maybeSingle();
+        printer = byEndpoint.data;
+        lookupError = byEndpoint.error;
+      }
+
+      if (lookupError) {
+        return json({ ok:false, code:'PRINTER_LOOKUP_FAILED', message:'The printer configuration could not be verified.' }, 500);
+      }
+      if (!printer || printer.connection_type !== 'network_ip') {
+        return json({ ok:false, code:'PRINTER_NOT_CONFIGURED', message:'This printer is not configured for direct network printing.' }, 400);
+      }
+      if (printer.ip_address !== host || Number(printer.port || 9100) !== port) {
+        return json({ ok:false, code:'PRINTER_ENDPOINT_MISMATCH', message:'The requested endpoint does not match the saved printer configuration.' }, 409);
+      }
 
       if (!validEndpoint(host, port)) {
         return json({
