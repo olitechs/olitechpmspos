@@ -7,7 +7,7 @@ const HOST = process.env.PRINT_AGENT_HOST || '127.0.0.1';
 const PORT = Number(process.env.PRINT_AGENT_PORT || 8631);
 const CONNECT_TIMEOUT_MS = Number(process.env.PRINT_AGENT_TIMEOUT_MS || 6000);
 const ALLOWED_PORTS = new Set([9100, 9101, 9102]);
-const IPV4 = /^(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)(\\.(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)){3}$/;
+const IPV4 = /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/;
 
 const enc = new TextEncoder();
 
@@ -18,8 +18,8 @@ function validEndpoint(host, port) {
 
 function escPosPayload(text, test = false) {
   const clean = String(text ?? '')
-    .replace(/\\r/g, '')
-    .replace(/\\n{3,}/g, '\\n\\n')
+    .replace(/\r/g, '')
+    .replace(/\n{3,}/g, '\n\n')
     .trim();
 
   const body = test
@@ -33,13 +33,13 @@ function escPosPayload(text, test = false) {
         '',
         'Printer connection verified.',
         '',
-      ].join('\\n')
+      ].join('\n')
     : clean;
 
   return Buffer.concat([
     Buffer.from([0x1b, 0x40]),
     Buffer.from([0x1b, 0x61, 0x00]),
-    enc.encode(body + '\\n\\n\\n'),
+    enc.encode(body + '\n\n\n'),
     Buffer.from([0x1d, 0x56, 0x00]),
   ]);
 }
