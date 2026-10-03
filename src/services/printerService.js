@@ -324,6 +324,12 @@ export function forgetDevice(printerId) {
 
 // --- Printing ---------------------------------------------------------------
 
+function escPosBytes(text) {
+	const body = String(text ?? '').replace(/\r/g, '').replace(/\n{3,}/g, '\n\n').trim();
+	return new Uint8Array([0x1b, 0x40, ...new TextEncoder().encode(body + '\n\n'), 0x1d, 0x56, 0x00]);
+}
+
+
 async function sendToAgent(printer, text) {
   const result = await postToLocalAgent(printer, '/print', text);
   if (result.ok) return { ok:true, direct:true, transport:'local_agent' };
@@ -347,7 +353,7 @@ async function sendToUsb(printer, text) {
 			return { ok: false, friendlyError: 'This USB device does not expose a printable interface.' };
 		}
 		await handle.claimInterface(iface.interfaceNumber).catch(() => {});
-		const data = new TextEncoder().encode(text);
+		const data = escPosBytes(text);
 		await handle.transferOut(outEndpoint.endpointNumber, data);
 		return { ok: true };
 	} catch (err) {
@@ -370,7 +376,7 @@ async function sendToSerial(printer, text) {
     }
     const writer = handle.writable.getWriter();
     try {
-      const data = new TextEncoder().encode(text);
+      const data = escPosBytes(text);
       await writer.write(data);
     } finally {
       writer.releaseLock();
@@ -388,7 +394,7 @@ async function sendToBluetooth(printer, text) {
 		if (!handle.gatt.connected) await handle.gatt.connect();
 		const service = await handle.gatt.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb');
 		const characteristic = await service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb');
-		const data = new TextEncoder().encode(text);
+		const data = escPosBytes(text);
 		// Thermal printers over BLE typically need chunked writes.
 		const CHUNK = 180;
 		for (let i = 0; i < data.length; i += CHUNK) {
