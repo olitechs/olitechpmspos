@@ -112,11 +112,28 @@ export default function SettingsPrinters() {
     setAgentError('');
     try {
       const base=normalizeAgentUrl(agentUrl);
-      const response=await fetch(`${base}/windows-printers`);
+      const paths=['/health','/api/health','/print-agent/health'];
+      let healthy=false;
+      for (const path of paths) {
+        try {
+          const response=await fetch(base+path,{cache:'no-store'});
+          const data=await response.json().catch(()=>({}));
+          if(response.ok && data.ok){ healthy=true; break; }
+        } catch (_) {}
+      }
+      if(!healthy){
+        setWindowsPrinters([]);
+        setAgentError('OliTechs Print Agent is not running on this POS computer. Start it with npm run print-agent, then refresh.');
+        return;
+      }
+      const response=await fetch(base+'/windows-printers');
       const data=await response.json().catch(()=>({}));
       if (response.ok && data.ok) setWindowsPrinters(data.printers || []);
       else setWindowsPrinters([]);
-    } catch (_) { setWindowsPrinters([]); }
+    } catch (_) {
+      setWindowsPrinters([]);
+      setAgentError('OliTechs Print Agent is not reachable on this POS computer.');
+    }
   };
 
   const discoverNetwork = async () => {
