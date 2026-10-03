@@ -117,7 +117,7 @@ export default function SettingsPrinters() {
       ...printerFields,
       property_id:propertyId,
       connection_type:type,
-      port:type === 'network_ip' ? port : null,
+      port,
       is_online:false,
       last_status:'testing',
       last_error:null,
