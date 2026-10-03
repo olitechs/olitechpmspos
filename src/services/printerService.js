@@ -236,10 +236,7 @@ async function testBluetooth(printer) {
 }
 
 async function testSystem() {
-	if (typeof window === 'undefined' || typeof window.print !== 'function') {
-		return { status: PrinterStatus.UNSUPPORTED, friendlyError: 'System printing is not available in this environment.' };
-	}
-	return { status: PrinterStatus.CONNECTED };
+	return { status: PrinterStatus.UNSUPPORTED, friendlyError: 'Windows/browser printing is disabled. Configure a real Network IP thermal printer.' };
 }
 
 // Runs a real connectivity test for the printer's configured connection
@@ -408,24 +405,8 @@ async function sendToBluetooth(printer, text) {
 	}
 }
 
-function sendToSystem(text, title, { thermal = false } = {}) {
-	try {
-		const win = window.open('', '_blank', 'width=380,height=700');
-		if (!win) {
-			return { ok: false, friendlyError: 'The print window was blocked by the browser. Allow pop-ups for this site and try again.' };
-		}
-		const pageCss = thermal
-			? `@page { size: 80mm auto; margin: 0; } body { width: 80mm; margin: 0; padding: 4mm; box-sizing: border-box; color: #000; background: #fff; font-family: "Courier New", monospace; font-size: 11px; line-height: 1.35; } pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }`
-			: `@page { margin: 10mm; } body { margin: 0; color: #000; background: #fff; } pre { font-family: "Courier New", monospace; font-size: 12px; white-space: pre-wrap; }`;
-		win.document.write(`<!doctype html><html><head><title>${escapeHtml(title || 'Print')}</title><style>${pageCss}</style></head><body><pre>${escapeHtml(text)}</pre></body></html>`);
-		win.document.close();
-		win.focus();
-		win.print();
-		win.close();
-		return { ok: true };
-	} catch (err) {
-		return { ok: false, friendlyError: 'The system print dialog could not be opened.', rawError: String(err?.message || err) };
-	}
+function sendToSystem() {
+	return { ok: false, friendlyError: 'Windows/browser printing is disabled. Configure a real Network IP thermal printer.' };
 }
 
 function escapeHtml(str) {
