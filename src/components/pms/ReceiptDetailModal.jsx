@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, Printer } from 'lucide-react';
 import { NAVY, TEAL, SURFACE, SURFACE2, BORDER, MUTED } from '@/data/themePalette';
+import { printReceipt as printDirectReceipt } from '@/services/printService';
 
 function fmtKes(n) {
 	return `KES ${Math.max(0, Number(n) || 0).toLocaleString('en-KE', { minimumFractionDigits: 2 })}`;
@@ -12,12 +13,23 @@ export default function ReceiptDetailModal({ receipt, onClose }) {
 	if (!receipt) return null;
 	const items = Array.isArray(receipt.items) ? receipt.items : [];
 
-	const printReceipt = () => {
-		const rows = items.map((l) => `<tr><td>${String(l.name || '').replace(/[<>]/g, '')}</td><td>${l.qty}</td><td style="text-align:right">KES ${(Number(l.price || 0) * Number(l.qty || 0)).toLocaleString('en-KE')}</td></tr>`).join('');
-		const w = window.open('', '_blank', 'width=420,height=760');
-		if (!w) return;
-		w.document.write(`<!doctype html><html><head><title>Receipt ${receipt.order_number || ''}</title><style>@page{size:80mm auto;margin:4mm}body{width:72mm;font-family:Arial,sans-serif;color:#090C11;font-size:11px;margin:0}h2{text-align:center;font-size:15px;margin:0 0 4px}p{margin:2px 0;text-align:center;font-size:10px}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{padding:4px 0;border-bottom:1px dashed #ccc}th{text-align:left}.totals{margin-top:8px}.row{display:flex;justify-content:space-between;padding:2px 0}.total{font-size:14px;font-weight:900;border-top:2px solid #090C11;margin-top:4px;padding-top:5px}</style></head><body><h2>VISIWA BEACH RESORT</h2><p>${receipt.order_number || ''} · Table ${receipt.table_number || '—'}</p><p>${new Date(receipt.created_at).toLocaleString('en-KE')}</p>${receipt.room_number ? `<p>Room ${receipt.room_number} — ${receipt.guest_name || ''}</p>` : ''}<table><thead><tr><th>Item</th><th>Qty</th><th style="text-align:right">Amount</th></tr></thead><tbody>${rows}</tbody></table><div class="totals"><div class="row"><span>Subtotal</span><b>KES ${Number(receipt.subtotal || 0).toLocaleString('en-KE')}</b></div>${Number(receipt.discount_amount) > 0 ? `<div class="row"><span>Discount</span><b>- KES ${Number(receipt.discount_amount).toLocaleString('en-KE')}</b></div>` : ''}<div class="row"><span>VAT</span><b>KES ${Number(receipt.vat || 0).toLocaleString('en-KE')}</b></div><div class="row total"><span>TOTAL</span><b>KES ${Number(receipt.total || 0).toLocaleString('en-KE')}</b></div></div><p style="margin-top:12px">Paid via: ${PAYMENT_LABEL[receipt.payment_method] || receipt.payment_method}</p><p>Receipt ID: ${receipt.id}</p><script>window.onload=()=>{window.print();setTimeout(()=>window.close(),300)}</script></body></html>`);
-		w.document.close();
+	const printReceipt = async () => {
+		const result = await printDirectReceipt('RECEIPT', {
+			propertyId: receipt.property_id || receipt.propertyId,
+			orderNumber: receipt.order_number,
+			checkNo: receipt.order_number,
+			table: receipt.table_number ? `Table ${receipt.table_number}` : '—',
+			waiter: receipt.waiter || receipt.waiter_name || 'Unassigned',
+			covers: receipt.covers,
+			items,
+			total: receipt.total,
+			currency: 'KES',
+			paymentMethod: PAYMENT_LABEL[receipt.payment_method] || receipt.payment_method,
+			createdAt: receipt.created_at,
+		});
+		if (!result.ok) {
+			window.alert(result.friendlyError || 'The receipt printer is offline or not configured.');
+		}
 	};
 
 	return (
