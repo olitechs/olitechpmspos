@@ -1,6 +1,7 @@
 import http from 'node:http';
 import net from 'node:net';
 import { URL } from 'node:url';
+import { spawn } from 'node:child_process';
 
 const HOST = process.env.PRINT_AGENT_HOST || '127.0.0.1';
 const PORT = Number(process.env.PRINT_AGENT_PORT || 8631);
@@ -69,6 +70,73 @@ function writeTcp(host, port, payload) {
   });
 }
 
+function runPowerShell(script, args = []) {
+  return new Promise((resolve, reject) => {
+    if (process.platform !== 'win32') {
+      const err = new Error('Windows printer transport is only available on Windows.');
+      err.code = 'WINDOWS_ONLY'; reject(err); return;
+    }
+    const child = spawn('powershell.exe', ['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-Command',script,...args], { windowsHide: true });
+    let stdout = '', stderr = '';
+    child.stdout.on('data', d => { stdout += d; });
+    child.stderr.on('data', d => { stderr += d; });
+    child.on('error', reject);
+    child.on('close', code => {
+      if (code === 0) resolve(stdout.trim());
+      else { const err = new Error(stderr.trim() || stdout.trim() || 'Windows printer command failed.'); err.code = 'WINDOWS_PRINTER_ERROR'; reject(err); }
+    });
+  });
+}
+
+async function listWindowsPrinters() {
+  const script = '$ErrorActionPreference="Stop"; Get-Printer | Select-Object Name,DriverName,PortName,PrinterStatus,WorkOffline | ConvertTo-Json -Compress';
+  const raw = await runPowerShell(script);
+  if (!raw) return [];
+  const parsed = JSON.parse(raw);
+  return Array.isArray(parsed) ? parsed : [parsed];
+}
+
+async function windowsPrinterExists(name) {
+  const target = String(name || '').trim();
+  if (!target) return false;
+  try {
+    await runPowerShell('$ErrorActionPreference="Stop"; $p=Get-Printer -Name $args[0] -ErrorAction SilentlyContinue; if($null -eq $p){exit 2}; Write-Output "OK"', [target]);
+    return true;
+  } catch (_) { return false; }
+}
+
+async function printWindowsRaw(printerName, payload) {
+  const name = String(printerName || '').trim();
+  if (!name) { const e = new Error('Select the Windows-installed printer used by this POS computer.'); e.code='WINDOWS_PRINTER_NOT_CONFIGURED'; throw e; }
+  if (!(await windowsPrinterExists(name))) { const e = new Error('The selected Windows printer is not installed or is currently unavailable.'); e.code='WINDOWS_PRINTER_NOT_FOUND'; throw e; }
+
+  const base64 = Buffer.from(payload).toString('base64');
+  const script = [
+    '$ErrorActionPreference="Stop"',
+    'Add-Type @\"
+using System;
+using System.Runtime.InteropServices;
+public static class RawPrinter {
+  [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Unicode)]
+  public class DOCINFO { [MarshalAs(UnmanagedType.LPWStr)] public string pDocName; [MarshalAs(UnmanagedType.LPWStr)] public string pOutputFile; [MarshalAs(UnmanagedType.LPWStr)] public string pDataType; }
+  [DllImport("winspool.drv", SetLastError=true, CharSet=CharSet.Unicode)] public static extern bool OpenPrinter(string pPrinterName, out IntPtr hPrinter, IntPtr pDefault);
+  [DllImport("winspool.drv", SetLastError=true)] public static extern bool ClosePrinter(IntPtr hPrinter);
+  [DllImport("winspool.drv", SetLastError=true, CharSet=CharSet.Unicode)] public static extern int StartDocPrinter(IntPtr hPrinter, int level, [In] DOCINFO di);
+  [DllImport("winspool.drv", SetLastError=true)] public static extern bool EndDocPrinter(IntPtr hPrinter);
+  [DllImport("winspool.drv", SetLastError=true)] public static extern int StartPagePrinter(IntPtr hPrinter);
+  [DllImport("winspool.drv", SetLastError=true)] public static extern bool EndPagePrinter(IntPtr hPrinter);
+  [DllImport("winspool.drv", SetLastError=true)] public static extern bool WritePrinter(IntPtr hPrinter, IntPtr pBytes, int dwCount, out int dwWritten);
+}
+\"@',
+    '$printer=$args[0]; $data=[Convert]::FromBase64String($args[1]); $h=[IntPtr]::Zero',
+    'if(-not [RawPrinter]::OpenPrinter($printer,[ref]$h,[IntPtr]::Zero)){throw "OpenPrinter failed"}',
+    '$doc=New-Object RawPrinter+DOCINFO; $doc.pDocName="OliTechs PMS POS"; $doc.pDataType="RAW"',
+    'try { if([RawPrinter]::StartDocPrinter($h,1,$doc)-eq 0){throw "StartDocPrinter failed"}; try { if([RawPrinter]::StartPagePrinter($h)-eq 0){throw "StartPagePrinter failed"}; try { $ptr=[Runtime.InteropServices.Marshal]::AllocHGlobal($data.Length); try { [Runtime.InteropServices.Marshal]::Copy($data,0,$ptr,$data.Length); $written=0; if(-not [RawPrinter]::WritePrinter($h,$ptr,$data.Length,[ref]$written)){throw "WritePrinter failed"}; if($written-ne $data.Length){throw "Spooler wrote $written of $($data.Length) bytes"} } finally {[Runtime.InteropServices.Marshal]::FreeHGlobal($ptr)} } finally {[RawPrinter]::EndPagePrinter($h)|Out-Null} } finally {[RawPrinter]::EndDocPrinter($h)|Out-Null} } finally {[RawPrinter]::ClosePrinter($h)|Out-Null}',
+    'Write-Output "OK"'
+  ].join(';');
+  await runPowerShell(script, [name, base64]);
+}
+
 function json(res, status, body) {
   res.writeHead(status, {
     'Access-Control-Allow-Origin': '*',
@@ -113,12 +181,24 @@ const server = http.createServer(async (req, res) => {
     });
   }
 
-  if (req.method !== 'POST' || !['/print', '/test'].includes(url.pathname)) {
+  if (req.method === 'GET' && url.pathname === '/windows-printers') {
+    try { return json(res, 200, { ok:true, printers:await listWindowsPrinters(), transport:'windows_spooler' }); }
+    catch(error) { return json(res, 500, { ok:false, code:error?.code||'WINDOWS_PRINTERS_UNAVAILABLE', message:error?.message||'Unable to enumerate Windows printers.' }); }
+  }
+
+  if (req.method !== 'POST' || !['/print','/test','/windows-print','/windows-test'].includes(url.pathname)) {
     return json(res, 404, { ok: false, code: 'NOT_FOUND', message: 'OliTechs print agent endpoint not found.' });
   }
 
   try {
     const body = await readBody(req);
+    if (['/windows-print','/windows-test'].includes(url.pathname)) {
+      const printerName = String(body.windowsPrinterName || '').trim();
+      const payload = escPosPayload(body.text, url.pathname === '/windows-test');
+      await printWindowsRaw(printerName, payload);
+      return json(res, 200, { ok:true, status:'connected', printed:true, transport:'windows_spooler', printerName });
+    }
+
     const host = String(body.host || '').trim();
     const port = Number(body.port || 9100);
 
