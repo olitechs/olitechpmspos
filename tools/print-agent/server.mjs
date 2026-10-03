@@ -95,9 +95,6 @@ function isPrivateIPv4(host) {
   return parts[0] === 10 || (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) || (parts[0] === 192 && parts[1] === 168);
 }
 
-function localIPv4Networks() {
-  const os = await import('node:os');
-}
 
 async function discoverNetworkPrinters() {
   const os = await import('node:os');
