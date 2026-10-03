@@ -27,5 +27,20 @@ jobs:
       - name: Validate local print agent syntax
         run: node --check tools/print-agent/server.mjs
 
+      - name: Validate Windows print agent scripts
+        shell: pwsh
+        run: |
+          $files = @(
+            'tools/print-agent/run-windows.ps1',
+            'tools/print-agent/install-windows.ps1',
+            'tools/print-agent/uninstall-windows.ps1'
+          )
+          foreach ($file in $files) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($file, [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) { throw "PowerShell syntax errors in $file: $($errors | Out-String)" }
+          }
+
       - name: Build application
         run: npm run build
