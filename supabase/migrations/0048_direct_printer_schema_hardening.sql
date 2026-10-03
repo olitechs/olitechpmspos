@@ -17,6 +17,10 @@ alter table public.property_printers
   add constraint property_printers_port_check
   check (port between 1 and 65535);
 
+update public.property_printers
+set connection_type = 'network_ip', is_online = false, last_status = 'disconnected'
+where connection_type <> 'network_ip';
+
 alter table public.property_printers
   drop constraint if exists property_printers_direct_connection_check;
 alter table public.property_printers
