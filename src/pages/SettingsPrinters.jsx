@@ -4,6 +4,13 @@ import { useAuth } from '@/lib/AuthContext';
 import { getPrinters, getAssignments, testPrint, connectPrinter } from '@/services/printService';
 import { supabase } from '@/lib/supabaseClient';
 
+const normalizeAgentUrl = (value = 'http://127.0.0.1:8631') => {
+  let base = String(value || '').trim().replace(/\/+$/, '');
+  if (!base) base = 'http://127.0.0.1:8631';
+  base = base.replace(/\/(?:api|print-agent)$/i, '');
+  return base.replace(/\/+$/, '');
+};
+
 const TYPES = [
   ['receipt_80mm','Receipt Printer'],
   ['kitchen','Kitchen Printer'],
@@ -87,7 +94,7 @@ export default function SettingsPrinters() {
   const refreshLocalDevices = async (agentUrl='http://127.0.0.1:8631') => {
     setAgentError('');
     try {
-      const base=String(agentUrl).replace(/\/+$/,'');
+      const base=normalizeAgentUrl(agentUrl);
       const response=await fetch(`${base}/windows-printers`);
       const data=await response.json().catch(()=>({}));
       if (response.ok && data.ok) setWindowsPrinters(data.printers || []);
@@ -98,7 +105,7 @@ export default function SettingsPrinters() {
   const discoverNetwork = async () => {
     setDiscovering(true); setAgentError(''); setError('');
     try {
-      const base=String(editing?.agent_url || 'http://127.0.0.1:8631').replace(/\/+$/,'');
+      const base=normalizeAgentUrl(editing?.agent_url);
       const response=await fetch(`${base}/discover`);
       const data=await response.json().catch(()=>({}));
       if (!response.ok || !data.ok) throw new Error(data.message || 'Network discovery failed.');
