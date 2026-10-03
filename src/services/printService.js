@@ -194,8 +194,15 @@ export async function printToPrinter(printer, contentHtml, { propertyId, jobType
   } else if (printer.connection_type === 'windows_printer') {
     result = await directWindowsPrint(printer, propertyId, text, 'print');
   } else if (['usb','bluetooth','serial'].includes(printer.connection_type)) {
-    result = await sendBrowserPrintJob(browserPrinterShape(printer), text, { thermal:true, title });
-    await updatePrinterTransportStatus(printer, propertyId, result.ok ? 'connected' : 'offline', result.friendlyError || null);
+    const transport = browserPrinterShape(printer);
+    const verified = await testBrowserPrinterConnection(transport);
+    if (verified.status !== PrinterStatus.CONNECTED) {
+      result = { ok:false, friendlyError:verified.friendlyError || 'The physical printer is no longer connected to this browser session.' };
+      await updatePrinterTransportStatus(printer, propertyId, 'offline', result.friendlyError);
+    } else {
+      result = await sendBrowserPrintJob(transport, text, { thermal:true, title });
+      await updatePrinterTransportStatus(printer, propertyId, result.ok ? 'connected' : 'offline', result.friendlyError || null);
+    }
   } else {
     result = { ok:false, friendlyError:'Unsupported printer connection type.' };
   }
