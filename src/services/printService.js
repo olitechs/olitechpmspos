@@ -56,57 +56,69 @@ async function updatePrinterTransportStatus(printer, propertyId, status, errorMe
   }
 }
 
-async function directTcpPrint(printer, propertyId, text, action = 'print') {
-  if (!printer?.ip_address) {
-    return { ok: false, friendlyError: 'Printer IP address is not configured.' };
+async function localAgentRequest(printer, path, text = '') {
+  const base = String(printer.agent_url || printer.agentUrl || 'http://127.0.0.1:8631').replace(/\\/+$/, '');
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 6000);
+  try {
+    const response = await fetch(`${base}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        host: printer.ip_address || printer.host,
+        port: Number(printer.port || 9100),
+        printerId: printer.id || null,
+        propertyId: propertyId || null,
+        text,
+      }),
+      signal: controller.signal,
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data?.ok) {
+      return {
+        ok: false,
+        code: data?.code || `HTTP_${response.status}`,
+        message: data?.message || 'The local print agent could not print to the configured printer.',
+      };
+    }
+    return { ok: true, data };
+  } catch (error) {
+    return {
+      ok: false,
+      code: error?.name === 'AbortError' ? 'LOCAL_AGENT_TIMEOUT' : 'LOCAL_AGENT_UNAVAILABLE',
+      message: error?.name === 'AbortError'
+        ? 'The local print agent timed out while connecting to the printer.'
+        : 'The local print agent could not be reached. Start the OliTechs Print Agent on this workstation.',
+    };
+  } finally {
+    clearTimeout(timer);
   }
+}
+
+async function directTcpPrint(printer, propertyId, text, action = 'print') {
+  const host = String(printer?.ip_address || printer?.host || '').trim();
+  if (!host) return { ok: false, friendlyError: 'Printer IP address is not configured.' };
+
   const port = Number(printer.port || 9100);
   if (!Number.isInteger(port) || ![9100, 9101, 9102].includes(port)) {
     return { ok: false, friendlyError: 'Unsupported thermal printer port. Use TCP 9100, 9101 or 9102.' };
   }
 
-  const { data, error } = await supabase.functions.invoke('print-proxy', {
-    body: {
-      action,
-      host: printer.ip_address,
-      port,
-      printerId: printer.id,
+  const result = await localAgentRequest(printer, action === 'test' ? '/test' : '/print', text);
+  if (!result.ok) {
+    const code = result.code || 'LOCAL_AGENT_ERROR';
+    const friendly = `[${code}] ${result.message}`;
+    await updatePrinterTransportStatus(
+      printer,
       propertyId,
-      text,
-    },
-  });
-
-  if (error) {
-    let message = error.message || 'The platform could not reach the printer.';
-    let code = '';
-    try {
-      const response = error?.context;
-      if (response && typeof response.clone === 'function') {
-        const clone = response.clone();
-        const payload = await clone.json().catch(() => null);
-        if (payload?.message) message = payload.message;
-        if (payload?.code) code = payload.code;
-      }
-    } catch {}
-
-    if (/Failed to send a request to the Edge Function/i.test(message)) {
-      message = 'The OliTechs print service could not be reached. The printer has not been marked Connected. Deploy/enable the print-proxy Edge Function, then test again.';
-      code = code || 'EDGE_FUNCTION_UNAVAILABLE';
-    }
-
-    const prefix = code ? `[${code}] ` : '';
-    const friendly = `${prefix}${message}`;
-    await updatePrinterTransportStatus(printer, propertyId, /EDGE_FUNCTION|UNAVAILABLE/i.test(code) ? 'offline' : 'failed', friendly);
-    return { ok: false, friendlyError: friendly };
-  }
-  if (!data?.ok) {
-    const message = data?.message || 'The printer is offline or unreachable.';
-    await updatePrinterTransportStatus(printer, propertyId, 'offline', message);
-    return { ok: false, friendlyError: message };
+      'offline',
+      friendly
+    );
+    return { ok: false, friendlyError: friendly, code, transport: 'local_agent' };
   }
 
   await updatePrinterTransportStatus(printer, propertyId, 'connected', null);
-  return { ok: true, status: 'connected', direct: true };
+  return { ok: true, status: 'connected', direct: true, transport: 'local_agent' };
 }
 
 export async function testPrinterConnection(printer, propertyId) {
