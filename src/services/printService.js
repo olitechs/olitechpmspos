@@ -35,10 +35,10 @@ async function logPrint(propertyId, printerId, jobType, copyType, status, errorM
 
 function htmlToThermalText(contentHtml) {
   if (typeof DOMParser === 'undefined') {
-    return String(contentHtml || '').replace(/<[^>]*>/g, ' ').replace(/\\s+/g, ' ').trim();
+    return String(contentHtml || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
   }
   const doc = new DOMParser().parseFromString(String(contentHtml || ''), 'text/html');
-  return String(doc?.body?.innerText || '').replace(/\\n{3,}/g, '\\n\\n').trim();
+  return String(doc?.body?.innerText || '').replace(/\n{3,}/g, '\n\n').trim();
 }
 
 async function updatePrinterTransportStatus(printer, propertyId, status, errorMessage = null) {
