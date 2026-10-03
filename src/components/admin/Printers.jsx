@@ -52,7 +52,7 @@ const CONNECT_LABEL = { network: 'Test Connection', usb: 'Connect', bluetooth: '
 export default function Printers() {
   const store = useStore();
   const [adding, setAdding] = useState(false);
-  const [form, setForm] = useState({ name: '', connectionType: 'network', host: '', port: '9100', agentUrl: '', baudRate: 9600, purposes: ['receipt'], center: 'All' });
+  const [form, setForm] = useState({ name: '', connectionType: 'network', host: '', port: '9100', agentUrl: 'http://127.0.0.1:8631', baudRate: 9600, purposes: ['receipt'], center: 'All' });
   const [formErrors, setFormErrors] = useState({});
   const [busyId, setBusyId] = useState(null); // prevents firing multiple concurrent tests for the same printer
   const [printMsg, setPrintMsg] = useState({}); // { [id]: { ok, text } } — transient "Test Print" result per printer
@@ -147,12 +147,12 @@ export default function Printers() {
                 </div>
               </div>
               <label className="block text-xs font-semibold mb-1 mt-2" style={{ color: NAVY }}>Print agent URL (optional)</label>
-              <input value={form.agentUrl} onChange={(e) => setForm({ ...form, agentUrl: e.target.value })} placeholder="http://localhost:8631"
+              <input value={form.agentUrl} onChange={(e) => setForm({ ...form, agentUrl: e.target.value })} placeholder="http://127.0.0.1:8631"
                 className="w-full px-3 py-2 rounded-lg text-sm font-mono outline-none mb-1" style={{ background: SURFACE2, border: `1px solid ${formErrors.agentUrl ? DESTRUCTIVE : BORDER}`, color: NAVY }} />
               {formErrors.agentUrl && <div className="text-xs mb-2" style={{ color: DESTRUCTIVE }}>{formErrors.agentUrl}</div>}
               <div className="flex items-start gap-1.5 text-xs mb-3" style={{ color: MUTED }}>
                 <AlertTriangle size={12} className="shrink-0 mt-0.5" />
-                <span>Browsers can't open raw network sockets. Without a local print agent running at this URL, connection testing for this printer will report "Not Supported" rather than a fake success.</span>
+                <span>LAN printers use the OliTechs Local Print Agent on this workstation. Start it on the POS computer, then use Test Connection. A printer is marked Connected only after a real TCP test page is sent successfully.</span>
               </div>
             </>
           )}
