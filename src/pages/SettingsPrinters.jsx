@@ -98,7 +98,7 @@ export default function SettingsPrinters() {
   const discoverNetwork = async () => {
     setDiscovering(true); setAgentError(''); setError('');
     try {
-      const base='http://127.0.0.1:8631';
+      const base=String(editing?.agent_url || 'http://127.0.0.1:8631').replace(/\/+$/,'');
       const response=await fetch(`${base}/discover`);
       const data=await response.json().catch(()=>({}));
       if (!response.ok || !data.ok) throw new Error(data.message || 'Network discovery failed.');
