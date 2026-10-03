@@ -1,3 +1,4 @@
+import { testConnection as testBrowserPrinterConnection, pairUsbDevice, pairBluetoothDevice, pairSerialDevice, sendPrintJob as sendBrowserPrintJob, PrinterStatus } from '@/services/printerService';
 import { supabase } from '@/lib/supabaseClient';
 
 const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -95,40 +96,70 @@ async function localAgentRequest(printer, propertyId, path, text = '') {
   }
 }
 
-async function directTcpPrint(printer, propertyId, text, action = 'print') {
-  const host = String(printer?.ip_address || printer?.host || '').trim();
-  if (!host) return { ok: false, friendlyError: 'Printer IP address is not configured.' };
-
-  const port = Number(printer.port || 9100);
-  if (!Number.isInteger(port) || ![9100, 9101, 9102].includes(port)) {
-    return { ok: false, friendlyError: 'Unsupported thermal printer port. Use TCP 9100, 9101 or 9102.' };
-  }
-
-  const result = await localAgentRequest(printer, propertyId, action === 'test' ? '/test' : '/print', text);
+async function directAgentPrint(printer, propertyId, text, path) {
+  const result = await localAgentRequest(printer, propertyId, path, text);
   if (!result.ok) {
     const code = result.code || 'LOCAL_AGENT_ERROR';
     const friendly = `[${code}] ${result.message}`;
-    await updatePrinterTransportStatus(
-      printer,
-      propertyId,
-      'offline',
-      friendly
-    );
-    return { ok: false, friendlyError: friendly, code, transport: 'local_agent' };
+    await updatePrinterTransportStatus(printer, propertyId, 'offline', friendly);
+    return { ok:false, friendlyError:friendly, code, transport:'local_agent' };
   }
-
   await updatePrinterTransportStatus(printer, propertyId, 'connected', null);
-  return { ok: true, status: 'connected', direct: true, transport: 'local_agent' };
+  return { ok:true, status:'connected', direct:true, transport:'local_agent' };
+}
+
+async function directTcpPrint(printer, propertyId, text, action = 'print') {
+  const host = String(printer?.ip_address || printer?.host || '').trim();
+  if (!host) return { ok:false, friendlyError:'Printer IP address is not configured.' };
+  const port = Number(printer.port || 9100);
+  if (!Number.isInteger(port) || ![9100,9101,9102].includes(port)) {
+    return { ok:false, friendlyError:'Unsupported thermal printer port. Use TCP 9100, 9101 or 9102.' };
+  }
+  return directAgentPrint(printer, propertyId, text, action === 'test' ? '/test' : '/print');
+}
+
+async function directWindowsPrint(printer, propertyId, text, action = 'print') {
+  if (!printer.windows_printer_name) {
+    return { ok:false, friendlyError:'Select a Windows-installed printer first.' };
+  }
+  return directAgentPrint(printer, propertyId, text, action === 'test' ? '/windows-test' : '/windows-print');
+}
+
+function browserPrinterShape(printer) {
+  return {
+    ...printer,
+    connectionType:
+      printer.connection_type === 'usb' ? 'usb' :
+      printer.connection_type === 'bluetooth' ? 'bluetooth' :
+      printer.connection_type === 'serial' ? 'serial' :
+      'network',
+    host: printer.ip_address || '',
+    agentUrl: printer.agent_url || 'http://127.0.0.1:8631',
+    baudRate: Number(printer.baud_rate || 9600),
+    status: PrinterStatus.CONNECTED,
+  };
 }
 
 export async function testPrinterConnection(printer, propertyId) {
   if (!printer) return { ok: false, friendlyError: 'Printer not configured.' };
-  if (printer.connection_type !== 'network_ip') {
-    return { ok: false, friendlyError: 'Only direct Network IP thermal printers are enabled for platform printing.' };
-  }
-
   try {
-    const result = await directTcpPrint(printer, propertyId, '', 'test');
+    let result;
+    if (printer.connection_type === 'network_ip') {
+      result = await directTcpPrint(printer, propertyId, '', 'test');
+    } else if (printer.connection_type === 'windows_printer') {
+      result = await directWindowsPrint(printer, propertyId, '', 'test');
+    } else if (['usb','bluetooth','serial'].includes(printer.connection_type)) {
+      const browser = await testBrowserPrinterConnection(browserPrinterShape(printer));
+      result = {
+        ok: browser.status === PrinterStatus.CONNECTED,
+        status: browser.status,
+        friendlyError: browser.friendlyError,
+        transport: printer.connection_type,
+      };
+      await updatePrinterTransportStatus(printer, propertyId, result.ok ? 'connected' : 'offline', result.friendlyError || null);
+    } else {
+      result = { ok:false, friendlyError:'Unsupported printer connection type.' };
+    }
     if (result.ok) {
       await logPrint(propertyId, printer.id, 'test', 'connection', 'printed', null);
     } else {
@@ -155,15 +186,47 @@ export async function testPrinterConnection(printer, propertyId) {
 
 export async function printToPrinter(printer, contentHtml, { propertyId, jobType = 'document', copyType = null, title = 'OliTechs Print' } = {}) {
   if (!printer) return { ok: false, friendlyError: 'Printer not configured.' };
-  if (printer.connection_type !== 'network_ip') {
-    const message = 'Direct platform printing requires a Network IP thermal printer. Windows/system printing is disabled.';
-    await logPrint(propertyId, printer.id, jobType, copyType, 'failed', message);
-    return { ok: false, friendlyError: message };
-  }
   const text = htmlToThermalText(contentHtml);
-  const result = await directTcpPrint(printer, propertyId, text, 'print');
+  let result;
+  if (printer.connection_type === 'network_ip') {
+    result = await directTcpPrint(printer, propertyId, text, 'print');
+  } else if (printer.connection_type === 'windows_printer') {
+    result = await directWindowsPrint(printer, propertyId, text, 'print');
+  } else if (['usb','bluetooth','serial'].includes(printer.connection_type)) {
+    result = await sendBrowserPrintJob(browserPrinterShape(printer), text, { thermal:true, title });
+    await updatePrinterTransportStatus(printer, propertyId, result.ok ? 'connected' : 'offline', result.friendlyError || null);
+  } else {
+    result = { ok:false, friendlyError:'Unsupported printer connection type.' };
+  }
   await logPrint(propertyId, printer.id, jobType, copyType, result.ok ? 'printed' : 'failed', result.friendlyError || null);
   return result;
+}
+
+export async function connectPrinter(printer, propertyId) {
+  if (!printer) return { ok:false, friendlyError:'Printer not configured.' };
+  try {
+    let result;
+    if (printer.connection_type === 'usb') result = await pairUsbDevice(browserPrinterShape(printer));
+    else if (printer.connection_type === 'bluetooth') result = await pairBluetoothDevice(browserPrinterShape(printer));
+    else if (printer.connection_type === 'serial') result = await pairSerialDevice(browserPrinterShape(printer));
+    else if (printer.connection_type === 'windows_printer') {
+      const base = String(printer.agent_url || 'http://127.0.0.1:8631').replace(/\/+$/, '');
+      const response = await fetch(`${base}/windows-printers`);
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.ok) throw new Error(data.message || 'Unable to read Windows installed printers.');
+      const exists = (data.printers || []).some(p => p.Name === printer.windows_printer_name);
+      result = exists ? {ok:true} : {ok:false, friendlyError:'The selected Windows printer is not installed on this POS computer.'};
+    } else {
+      return testPrinterConnection(printer, propertyId);
+    }
+    if (result?.ok) await updatePrinterTransportStatus(printer, propertyId, 'connected', null);
+    else await updatePrinterTransportStatus(printer, propertyId, 'offline', result?.friendlyError || null);
+    return result;
+  } catch (error) {
+    const friendlyError = error?.message || 'Unable to connect to the printer.';
+    await updatePrinterTransportStatus(printer, propertyId, 'offline', friendlyError);
+    return {ok:false, friendlyError};
+  }
 }
 
 export async function testPrint(printer, propertyId) {
