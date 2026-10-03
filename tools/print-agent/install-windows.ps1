@@ -6,7 +6,7 @@ $Runner = Join-Path $AgentRoot 'run-windows.ps1'
 if (-not (Test-Path $Runner)) { throw "Print agent runner not found: $Runner" }
 $nodeCommand = Get-Command node.exe -ErrorAction SilentlyContinue
 if (-not $nodeCommand) { throw 'Node.js was not found. Install Node.js 20+ before installing the OliTechs Print Agent.' }
-$principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" -LogonType InteractiveToken -RunLevel Highest
+$principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" -LogonType InteractiveToken -RunLevel Limited
 $arguments = '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + $Runner + '"'
 $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $arguments
 $trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
