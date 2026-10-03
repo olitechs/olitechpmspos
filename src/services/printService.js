@@ -1,6 +1,13 @@
 import { testConnection as testBrowserPrinterConnection, pairUsbDevice, pairBluetoothDevice, pairSerialDevice, sendPrintJob as sendBrowserPrintJob, buildTestPageText, PrinterStatus } from '@/services/printerService';
 import { supabase } from '@/lib/supabaseClient';
 
+const normalizeAgentUrl = (value = 'http://127.0.0.1:8631') => {
+  let base = String(value || '').trim().replace(/\/+$/, '');
+  if (!base) base = 'http://127.0.0.1:8631';
+  base = base.replace(/\/(?:api|print-agent)$/i, '');
+  return base.replace(/\/+$/, '');
+};
+
 const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 
 export async function getPrinters(propertyId) {
@@ -58,7 +65,7 @@ async function updatePrinterTransportStatus(printer, propertyId, status, errorMe
 }
 
 async function localAgentRequest(printer, propertyId, path, text = '') {
-  const base = String(printer.agent_url || printer.agentUrl || 'http://127.0.0.1:8631').replace(/\/+$/, '');
+  const base = normalizeAgentUrl(printer.agent_url || printer.agentUrl);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 6000);
   try {
@@ -229,7 +236,7 @@ export async function connectPrinter(printer, propertyId) {
     else if (printer.connection_type === 'bluetooth') result = await pairBluetoothDevice(browserPrinterShape(printer));
     else if (printer.connection_type === 'serial') result = await pairSerialDevice(browserPrinterShape(printer));
     else if (printer.connection_type === 'windows_printer') {
-      const base = String(printer.agent_url || 'http://127.0.0.1:8631').replace(/\/+$/, '');
+      const base = normalizeAgentUrl(printer.agent_url);
       const response = await fetch(`${base}/windows-printers`);
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.ok) throw new Error(data.message || 'Unable to read Windows installed printers.');
