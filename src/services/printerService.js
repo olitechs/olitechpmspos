@@ -1,5 +1,3 @@
-import { supabase } from '@/lib/supabaseClient';
-
 // Printer connectivity + printing service.
 //
 // This is intentionally isolated from React components (per the project's
@@ -123,21 +121,6 @@ function toFriendlyError(rawError, context = {}) {
 		return 'The printer is no longer connected.';
 	}
 	return 'Printer connection failed. Please check the printer and try again.';
-}
-
-function withTimeout(promise, ms, controller) {
-	return new Promise((resolve, reject) => {
-		const timer = setTimeout(() => {
-			controller?.abort();
-			const err = new Error('Connection timed out');
-			err.name = 'AbortError';
-			reject(err);
-		}, ms);
-		promise.then(
-			(v) => { clearTimeout(timer); resolve(v); },
-			(e) => { clearTimeout(timer); reject(e); }
-		);
-	});
 }
 
 // --- Connection testing -----------------------------------------------------
