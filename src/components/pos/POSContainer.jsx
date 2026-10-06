@@ -11,7 +11,10 @@ import OpenTableDialog from '@/components/pos/OpenTableDialog';
 import PinPad from '@/components/auth/PinPad';
 import { authService } from '@/services/authService';
 import { useAuth } from '@/lib/AuthContext';
+import { isFeatureEnabled } from '@/lib/featureFlags';
 import { printOrderByCategory } from '@/services/printService';
+import { printOrder as printRoutedOrder, isPrinterGroupRoutingEnabled } from '@/services/printRoutingService';
+import { usePrinterStore as usePrinterStoreV2 } from '@/data/modules/printerStoreV2';
 import { posService } from '@/services/posService';
 import { shiftService } from '@/services/shiftService';
 import CloseShiftModal, { OpenShiftModal } from '@/components/pos/CloseShiftModal';
@@ -62,6 +65,8 @@ export default function POSContainer() {
 	const posRole = String(sessionStaff?.role || user?.staff?.role || user?.propertyRole || '').toLowerCase().replace(/\s+/g,'_');
 	const canCloseShift = Boolean(user?.isPlatformOwner || ['hotel_admin','super_admin','cashier','fb_manager','owner','admin','manager','property_manager','general_manager'].includes(posRole));
 	const propertyName = user?.property?.name || user?.property?.business_name || 'OliTechs PMS & POS';
+	useEffect(() => { if (!propertyId || !isPrinterGroupRoutingEnabled()) return; supabaseStoreHydrate(propertyId); }, [propertyId]);
+	const supabaseStoreHydrate = async (propertyId) => { try { const { data } = await (await import('@/lib/supabaseClient')).supabase.from('stores').select('*').eq('property_id', propertyId).order('is_default',{ascending:false}).limit(1).maybeSingle(); if (data?.id) await usePrinterStoreV2.getState().hydrate(data.id); } catch (e) { console.warn('[POS] printer routing store unavailable; keeping legacy printer flow.', e?.message); } };
 	const [posStaff, setPosStaff] = useState([]);
 	const [switchStaff, setSwitchStaff] = useState(null);
 	const [switchError, setSwitchError] = useState('');
@@ -167,7 +172,7 @@ export default function POSContainer() {
 			createdAt: Date.now(),
 			items: linesSnapshot,
 		});
-		const printResult = await printOrder();
+		const printResult = isFeatureEnabled('printerGroupRouting') ? await printRoutedOrder({ id: orderNumber, items: linesSnapshot }).then(jobs => ({ ok: jobs.length > 0, jobs })).catch(() => printOrder()) : await printOrder();
 		if (!printResult.ok) {
 			const failures = (printResult.results || []).filter((r) => !r.ok).map((r) => r.friendlyError).filter(Boolean);
 			toast.error(`Order ${orderNumber} was saved, but one or more tickets did not print.`, {
