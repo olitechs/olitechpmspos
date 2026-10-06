@@ -21,7 +21,7 @@ export default function KitchenPrintersPage(){
   const runDelete=async()=>{const ids=[...selected];setConfirmDelete(false);try{await deleteGroups(ids);setSelected(new Set());toast.success(ids.length===1?'Printer group deleted':`${ids.length} printer groups deleted`);}catch(e){toast.error(e.message||'Unable to delete printer groups.');}};
   return <div className="bg-white shadow-[0_1px_3px_rgba(0,0,0,0.2)]">
     <div className="flex flex-wrap items-center gap-3 px-6 pb-2 pt-6">
-      <button type="button" onClick={()=>setModal({open:true,group:null})} className="h-[45px] rounded-[2px] bg-[#8BC34A] px-5 text-[16px] font-medium uppercase text-white shadow-[0_2px_4px_rgba(0,0,0,0.25)] hover:bg-[#7CB342]">+ Add printer group</button>
+      <button type="button" onClick={()=>setModal({open:true,group:null})} className="h-[45px] rounded-[2px] bg-[#4CAF50] px-5 text-[16px] font-medium uppercase text-white shadow-[0_2px_4px_rgba(0,0,0,0.25)] hover:bg-[#43A047]">+ Add printer group</button>
       {selected.size>0&&<button type="button" onClick={()=>setConfirmDelete(true)} className="h-[45px] rounded-[2px] px-4 text-[16px] font-medium uppercase text-[#D32F2F] hover:bg-[#FDECEA]">Delete ({selected.size})</button>}
       {(offline||pending>0)&&<span className="ml-auto flex items-center gap-1.5 text-[13px] text-[#8D6E00]" role="status"><CloudOff size={15}/>{pending>0?`${pending} change${pending===1?'':'s'} waiting to sync`:'Offline — showing saved data'}</span>}
     </div>
