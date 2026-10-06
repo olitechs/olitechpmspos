@@ -210,9 +210,11 @@ async function discoverBonjourPrinters() {
 async function registerAgent(printers=[]) {
   if (!supabaseV2 || !WORKSPACE_ID || !AGENT_ID) return;
   await supabaseV2.from('print_agents').upsert({id:AGENT_ID,workspace_id:WORKSPACE_ID,status:'online',last_seen:new Date().toISOString(),discovered_printers:printers.length},{onConflict:'id'});
+  const {data:defaultStore}=await supabaseV2.from('stores').select('id').eq('workspace_id',WORKSPACE_ID).order('is_default',{ascending:false}).limit(1).maybeSingle();
   for (const p of printers) {
     const {data:existing}=await supabaseV2.from('printers').select('id').eq('workspace_id',WORKSPACE_ID).eq('ip_address',p.host).eq('port',p.port).maybeSingle();
     if(existing) await supabaseV2.from('printers').update({agent_id:AGENT_ID,status:'online',last_seen:new Date().toISOString()}).eq('id',existing.id);
+    else if(defaultStore?.id) await supabaseV2.from('printers').insert({workspace_id:WORKSPACE_ID,store_id:defaultStore.id,name:p.label||`Network Printer ${p.host}`,connection_type:'print_agent',ip_address:p.host,port:p.port,agent_id:AGENT_ID,is_kitchen:true,status:'online',last_seen:new Date().toISOString()});
   }
 }
 async function discoverAndRegister() { try { const network=await discoverNetworkPrinters(); const mdns=await discoverBonjourPrinters(); const found=[...new Map([...network,...mdns].map(p=>[p.host+':'+p.port,p])).values()]; await registerAgent(found); return found; } catch(e){ console.error('[Print Agent v2] discovery failed:',e.message); return []; } }
