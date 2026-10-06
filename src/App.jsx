@@ -30,6 +30,7 @@ import PublicHome from '@/pages/PublicHome';
 import PublicSignIn from '@/pages/PublicSignIn';
 import PublicSignUp from '@/pages/PublicSignUp';
 import { isSupabaseConfigured } from '@/lib/supabaseClient';
+import { isFeatureEnabled } from '@/lib/featureFlags';
 
 function AdminHome(){ const { user } = useAuth(); return user?.isPlatformOwner ? <AdminDashboard/> : <PropertyAdminSettings/>; }
 
@@ -43,6 +44,8 @@ function PublicRoute(){
   if(user) return <Navigate to={user.isPlatformOwner?'/admin':'/backoffice'} replace/>;
   return <Outlet/>;
 }
+
+function BackOfficeSettingsRoute(){ return isFeatureEnabled('backoffice') ? <ProtectedApp initialModule="settings"/> : <PageNotFound/>; }
 
 function ProtectedApp({initialModule='dashboard'}){
   const {user,isLoadingAuth,isLoadingPublicSettings}=useAuth();
@@ -64,6 +67,7 @@ function AppRoutes(){
     <Route path="/backoffice" element={<ProtectedApp initialModule="dashboard"/>}/><Route path="/pos" element={<ProtectedApp initialModule="pos"/>}/><Route path="/store" element={<ProtectedApp initialModule="store"/>}/>
     <Route path="/settings/printers" element={<ProtectedApp initialModule="settings"/>}/><Route path="/settings/receipt" element={<ProtectedApp initialModule="settings"/>}/>
     <Route path="/rooms" element={<ProtectedApp initialModule="rooms"/>}/>
+    <Route path="/settings/kitchen-printers" element={<BackOfficeSettingsRoute/>}/><Route path="/settings/system" element={<BackOfficeSettingsRoute/>}/><Route path="/settings/system/:slug" element={<BackOfficeSettingsRoute/>}/>
     <Route path="/admin/login" element={<AdminLogin/>}/>
     <Route element={<AdminRoute/>}><Route element={<AdminLayout/>}>
       <Route path="/admin" element={<AdminHome/>}/>

@@ -5,11 +5,11 @@ const normalizeNetworkEndpoint = (value, fallbackPort = 9100) => {
   let host = String(value || '').trim();
   let port = Number(fallbackPort || 9100);
   try {
-    if (/^https?:\\/\\//i.test(host)) {
+    if (/^https?:\/\//i.test(host)) {
       const parsed = new URL(host);
       host = parsed.hostname;
       if (parsed.port) port = Number(parsed.port);
-    } else if (/^[0-9.]+:\\d+$/.test(host)) {
+    } else if (/^[0-9.]+:\d+$/.test(host)) {
       const parts = host.split(':');
       host = parts[0];
       port = Number(parts[1]);
