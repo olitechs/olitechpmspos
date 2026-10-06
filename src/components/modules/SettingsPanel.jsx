@@ -6,6 +6,9 @@ import StaffAdmin from '@/components/admin/StaffAdmin';
 import SubscriptionPanel from '@/components/admin/SubscriptionPanel';
 import SettingsPrinters from '@/pages/SettingsPrinters';
 import ReceiptSettings from '@/components/settings/ReceiptSettings';
+import SystemSettingsPage from '@/components/settings/SystemSettingsPage';
+import { isFeatureEnabled } from '@/lib/featureFlags';
+import { isSystemSettingsPath } from '@/components/settings/systemSettingsNav';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { useAuth } from '@/lib/AuthContext';
 
@@ -26,7 +29,9 @@ function Breadcrumb({label,onBack}) {
 }
 
 export default function SettingsPanel(){
+ const backoffice=isFeatureEnabled('backoffice');
  const location=useLocation(); const navigate=useNavigate();
+ if(backoffice&&isSystemSettingsPath(location.pathname)) return <div className="flex-1 overflow-y-auto"><SystemSettingsPage/></div>;
  const initialView=location.pathname==='/settings/printers'?'printers':location.pathname==='/settings/receipt'?'receipt':'list';
  const [view,setView]=React.useState(initialView);
  React.useEffect(()=>{if(location.pathname==='/settings/printers')setView('printers');else if(location.pathname==='/settings/receipt')setView('receipt');else setView('list');},[location.pathname]);
