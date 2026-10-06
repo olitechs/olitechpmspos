@@ -14,7 +14,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { isFeatureEnabled } from '@/lib/featureFlags';
 import { printOrderByCategory } from '@/services/printService';
 import { printOrder as printRoutedOrder, isPrinterGroupRoutingEnabled } from '@/services/printRoutingService';
-import { usePrinterStore as usePrinterStoreV2 } from '@/data/modules/printerStoreV2';
+import { usePrinterStore as usePrinterStoreV2 } from '@/data/modules/printerStore';
 import { posService } from '@/services/posService';
 import { shiftService } from '@/services/shiftService';
 import CloseShiftModal, { OpenShiftModal } from '@/components/pos/CloseShiftModal';
