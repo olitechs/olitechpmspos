@@ -31,12 +31,12 @@ function Breadcrumb({label,onBack}) {
 export default function SettingsPanel(){
  const backoffice=isFeatureEnabled('backoffice');
  const location=useLocation(); const navigate=useNavigate();
- if(backoffice&&isSystemSettingsPath(location.pathname)) return <div className="flex-1 overflow-y-auto"><SystemSettingsPage/></div>;
  const initialView=location.pathname==='/settings/printers'?'printers':location.pathname==='/settings/receipt'?'receipt':'list';
  const [view,setView]=React.useState(initialView);
  React.useEffect(()=>{if(location.pathname==='/settings/printers')setView('printers');else if(location.pathname==='/settings/receipt')setView('receipt');else setView('list');},[location.pathname]);
  const {user}=useAuth();
  const canSubscription=Boolean(user?.property?.id||user?.propertyRole||user?.staff?.role);
+ if(backoffice&&isSystemSettingsPath(location.pathname)) return <div className="flex-1 overflow-y-auto"><SystemSettingsPage/></div>;
  if(view==='printers') return <div className="flex-1 overflow-y-auto" style={{background:SAND}}><Breadcrumb label="Printers" onBack={()=>{setView('list');navigate('/backoffice?module=settings')}}/><ErrorBoundary label="Printer settings"><SettingsPrinters/></ErrorBoundary></div>;
  if(view==='receipt') return <div className="flex-1 overflow-y-auto" style={{background:SAND}}><Breadcrumb label="Receipt Customization" onBack={()=>{setView('list');navigate('/backoffice?module=settings')}}/><ErrorBoundary label="Receipt settings"><ReceiptSettings/></ErrorBoundary></div>;
  if(view==='users') return <div className="flex-1 overflow-y-auto" style={{background:SAND}}><Breadcrumb label="Users & Roles" onBack={()=>{setView('list');navigate('/backoffice?module=settings')}}/><StaffAdmin/></div>;
@@ -50,6 +50,7 @@ export default function SettingsPanel(){
       <span className="flex items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-bold" style={{borderColor:BORDER,color:s.disabled?MUTED:TEAL_DARK}}>{s.disabled?'Coming soon':<>Configure <ChevronRight size={12}/></>}</span>
     </button>})}
    </div>
+   {backoffice&&<button onClick={()=>navigate('/settings/kitchen-printers')} className="mr-3 mt-4 rounded-xl border px-4 py-3 text-xs font-bold" style={{borderColor:BORDER,color:TEAL_DARK,background:SURFACE}}>Back Office settings</button>}
    {canSubscription&&<button onClick={()=>setView('subscription')} className="mt-4 rounded-xl border px-4 py-3 text-xs font-bold" style={{borderColor:BORDER,color:MUTED,background:SURFACE}}>Subscription & Paywall</button>}
  </div>;
 }
