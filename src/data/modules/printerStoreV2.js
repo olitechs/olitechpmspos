@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabaseClient';
 
 const id=()=>globalThis.crypto?.randomUUID?.()||String(Date.now());
 export const usePrinterStore=create(persist((set,get)=>({
- stores:[],storeId:null,workspaceId:null,printers:[],printAgents:[],printerGroups:[],loading:false,error:null,
+ stores:[],storeId:null,propertyId:null,workspaceId:null,printers:[],printAgents:[],printerGroups:[],loading:false,error:null,
  async hydrate(storeId){
   if(!storeId)return;
   set({storeId,loading:true,error:null});
@@ -22,12 +22,12 @@ export const usePrinterStore=create(persist((set,get)=>({
     const a=await supabase.from('printer_group_categories').select('printer_group_id,category_id').in('printer_group_id',ids); if(a.error)throw a.error; cats=a.data||[];
     const b=await supabase.from('printer_group_printers').select('printer_group_id,printer_id').in('printer_group_id',ids); if(b.error)throw b.error; links=b.data||[];
    }
-   set({stores:stores||[],workspaceId:store?.workspace_id||null,printers:printers||[],printAgents:agents||[],printerGroups:(groups||[]).map(g=>({...g,categoryIds:cats.filter(x=>x.printer_group_id===g.id).map(x=>x.category_id),categoryCount:cats.filter(x=>x.printer_group_id===g.id).length,printerIds:links.filter(x=>x.printer_group_id===g.id).map(x=>x.printer_id)})),loading:false});
+   set({stores:stores||[],propertyId:store?.property_id||null,workspaceId:store?.workspace_id||null,printers:printers||[],printAgents:agents||[],printerGroups:(groups||[]).map(g=>({...g,categoryIds:cats.filter(x=>x.printer_group_id===g.id).map(x=>x.category_id),categoryCount:cats.filter(x=>x.printer_group_id===g.id).length,printerIds:links.filter(x=>x.printer_group_id===g.id).map(x=>x.printer_id)})),loading:false});
   }catch(e){set({loading:false,error:e.message})}
  },
  async addPrinterGroup(input){
   const {storeId,workspaceId}=get(); if(!storeId||!workspaceId)throw new Error('Select a store first.');
-  const {data,error}=await supabase.from('printer_groups').insert({workspace_id:workspaceId,store_id:storeId,name:String(input.name||'').trim()}).select().single(); if(error)throw new Error(error.message);
+  const {data,error}=await supabase.from('printer_groups').insert({workspace_id:workspaceId,store_id:storeId,property_id:get().propertyId,name:String(input.name||'').trim()}).select().single(); if(error)throw new Error(error.message);
   await get().saveLinks(data.id,input.categoryIds||[],input.printerIds||[]); await get().hydrate(storeId); return data;
  },
  async updatePrinterGroup(input){
@@ -37,7 +37,7 @@ export const usePrinterStore=create(persist((set,get)=>({
  async saveLinks(groupId,categoryIds,printerIds){
   await supabase.from('printer_group_categories').delete().eq('printer_group_id',groupId);
   await supabase.from('printer_group_printers').delete().eq('printer_group_id',groupId);
-  if(categoryIds.length){const {error}=await supabase.from('printer_group_categories').insert(categoryIds.map(category_id=>({printer_group_id:groupId,category_id})));if(error)throw new Error(error.message)}
+  if(categoryIds.length){const {error}=await supabase.from('printer_group_categories').insert(categoryIds.map(category_id=>({printer_group_id:groupId,category_id,property_id:get().propertyId})));if(error)throw new Error(error.message)}
   if(printerIds.length){const {error}=await supabase.from('printer_group_printers').insert(printerIds.map(printer_id=>({printer_group_id:groupId,printer_id})));if(error)throw new Error(error.message)}
  },
  async deletePrinterGroup(groupId){const {error}=await supabase.from('printer_groups').delete().eq('id',groupId);if(error)throw new Error(error.message);await get().hydrate(get().storeId)},
