@@ -1,86 +1,59 @@
 import { Toaster } from "@/components/ui/toaster";
-import { QueryClientProvider } from '@tanstack/react-query';
-import { queryClientInstance } from '@/lib/query-client';
-import { BrowserRouter as Router, Route, Routes, Navigate, Outlet } from 'react-router-dom';
-import PageNotFound from '@/lib/PageNotFound';
-import { AuthProvider, useAuth } from '@/lib/AuthContext';
-import AdminRoute from '@/lib/AdminRoute';
-import ScrollToTop from '@/components/ui/ScrollToTop';
-import POSApp from '@/pages/POSApp';
-import Login from '@/pages/Login';
-import Register from '@/pages/Register';
-import ForgotPassword from '@/pages/ForgotPassword';
-import ResetPassword from '@/pages/ResetPassword';
-import PendingApproval from '@/pages/PendingApproval';
-import AdminLogin from '@/pages/admin/AdminLogin';
-import AdminLayout from '@/pages/admin/AdminLayout';
-import AdminDashboard from '@/pages/admin/AdminDashboard';
-import AdminProperties from '@/pages/admin/AdminProperties';
-import AdminCreateProperty from '@/pages/admin/AdminCreateProperty';
-import AdminEditProperty from '@/pages/admin/AdminEditProperty';
-import AdminPropertyDetail from '@/pages/admin/AdminPropertyDetail';
-import AdminAuditLog from '@/pages/admin/AdminAuditLog';
-import Roles from '@/pages/admin/Roles';
-import PropertyAdminSettings from '@/pages/admin/PropertyAdminSettings';
-import UnsettledReceiptSettings from '@/pages/admin/UnsettledReceiptSettings';
-import SettingsPrinters from '@/pages/SettingsPrinters';
-import ReceiptSettings from '@/components/settings/ReceiptSettings';
-import SupabaseSetupNotice from '@/pages/SupabaseSetupNotice';
-import PublicHome from '@/pages/PublicHome';
-import PublicSignIn from '@/pages/PublicSignIn';
-import PublicSignUp from '@/pages/PublicSignUp';
-import { isSupabaseConfigured } from '@/lib/supabaseClient';
-import { isFeatureEnabled } from '@/lib/featureFlags';
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClientInstance } from "@/lib/query-client";
+import { BrowserRouter as Router, Route, Routes, Navigate, Outlet } from "react-router-dom";
+import PageNotFound from "@/lib/PageNotFound";
+import { AuthProvider, useAuth } from "@/lib/AuthContext";
+import AdminRoute from "@/lib/AdminRoute";
+import ScrollToTop from "@/components/ui/ScrollToTop";
+import POSApp from "@/pages/POSApp";
+import Login from "@/pages/Login";
+import Register from "@/pages/Register";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
+import PendingApproval from "@/pages/PendingApproval";
+import AdminLogin from "@/pages/admin/AdminLogin";
+import AdminLayout from "@/pages/admin/AdminLayout";
+import AdminDashboard from "@/pages/admin/AdminDashboard";
+import AdminProperties from "@/pages/admin/AdminProperties";
+import AdminCreateProperty from "@/pages/admin/AdminCreateProperty";
+import AdminEditProperty from "@/pages/admin/AdminEditProperty";
+import AdminPropertyDetail from "@/pages/admin/AdminPropertyDetail";
+import AdminAuditLog from "@/pages/admin/AdminAuditLog";
+import Roles from "@/pages/admin/Roles";
+import PropertyAdminSettings from "@/pages/admin/PropertyAdminSettings";
+import UnsettledReceiptSettings from "@/pages/admin/UnsettledReceiptSettings";
+import SettingsPrinters from "@/pages/SettingsPrinters";
+import ReceiptSettings from "@/components/settings/ReceiptSettings";
+import SupabaseSetupNotice from "@/pages/SupabaseSetupNotice";
+import PublicHome from "@/pages/PublicHome";
+import PublicSignIn from "@/pages/PublicSignIn";
+import PublicSignUp from "@/pages/PublicSignUp";
+import { isSupabaseConfigured } from "@/lib/supabaseClient";
+import { canAccessApp, getDefaultApp, normalizeAppRole } from "@/data/modules/navArchitecture";
+import { getSessionStaff, normalizeStaffRole } from "@/services/authService";
+import BackOfficeLayout from "@/components/layout/BackOfficeLayout";
+import FrontOfficeLayout from "@/components/layout/FrontOfficeLayout";
+import StoresLayout from "@/components/layout/StoresLayout";
+import KitchenPrintersPage from "@/components/settings/KitchenPrintersPage";
+import Phase2CataloguePage from "@/components/settings/Phase2CataloguePage";
+import StoresPage from "@/components/stores/StoresPage";
 
-function AdminHome(){ const { user } = useAuth(); return user?.isPlatformOwner ? <AdminDashboard/> : <PropertyAdminSettings/>; }
-
-function AuthLoading(){
-  return <div className="fixed inset-0 flex items-center justify-center bg-[#F5F3EF]"><div className="w-8 h-8 border-4 border-[#D6D6D6] border-t-[#FFD300] rounded-full animate-spin"/></div>;
-}
-
-function PublicRoute(){
-  const {user,isLoadingAuth,isLoadingPublicSettings}=useAuth();
-  if(isLoadingAuth||isLoadingPublicSettings) return <AuthLoading/>;
-  if(user) return <Navigate to={user.isPlatformOwner?'/admin':'/backoffice'} replace/>;
-  return <Outlet/>;
-}
-
-function BackOfficeSettingsRoute(){ return isFeatureEnabled('backoffice') ? <ProtectedApp initialModule="settings"/> : <PageNotFound/>; }
-
-function ProtectedApp({initialModule='dashboard'}){
-  const {user,isLoadingAuth,isLoadingPublicSettings}=useAuth();
-  if(isLoadingAuth||isLoadingPublicSettings) return <AuthLoading/>;
-  if(!user) return <Navigate to="/signin" replace/>;
-  if(user?.isPlatformOwner) return <Navigate to="/admin" replace/>;
-  const property=user?.property;
-  const hasFullAccess=property?.status==='active' && property?.package && property.package!=='none';
-  if(!hasFullAccess) return <PendingApproval/>;
-  return <POSApp initialModule={initialModule}/>;
-}
-
-function AppRoutes(){
-  return <AuthProvider><Routes>
-    <Route element={<PublicRoute/>}>
-      <Route path="/" element={<PublicHome/>}/><Route path="/home" element={<PublicHome/>}/><Route path="/signin" element={<PublicSignIn/>}/><Route path="/signup" element={<PublicSignUp/>}/><Route path="/login" element={<Login/>}/><Route path="/register" element={<Register/>}/>
-    </Route>
-    <Route path="/forgot-password" element={<ForgotPassword/>}/><Route path="/reset-password" element={<ResetPassword/>}/><Route path="/dashboard" element={<Navigate to="/backoffice" replace/>}/>
-    <Route path="/backoffice" element={<ProtectedApp initialModule="dashboard"/>}/><Route path="/pos" element={<ProtectedApp initialModule="pos"/>}/><Route path="/store" element={<ProtectedApp initialModule="store"/>}/>
-    <Route path="/settings/printers" element={<ProtectedApp initialModule="settings"/>}/><Route path="/settings/receipt" element={<ProtectedApp initialModule="settings"/>}/>
-    <Route path="/rooms" element={<ProtectedApp initialModule="rooms"/>}/>
-    <Route path="/settings/kitchen-printers" element={<BackOfficeSettingsRoute/>}/><Route path="/settings/system" element={<BackOfficeSettingsRoute/>}/><Route path="/settings/system/:slug" element={<BackOfficeSettingsRoute/>}/><Route path="/settings/stores" element={<BackOfficeSettingsRoute/>}/>
-    <Route path="/admin/login" element={<AdminLogin/>}/>
-    <Route element={<AdminRoute/>}><Route element={<AdminLayout/>}>
-      <Route path="/admin" element={<AdminHome/>}/>
-      <Route path="/admin/settings" element={<PropertyAdminSettings/>}/>
-      <Route path="/admin/properties" element={<AdminProperties/>}/><Route path="/admin/properties/new" element={<AdminCreateProperty/>}/><Route path="/admin/properties/:id" element={<AdminPropertyDetail/>}/><Route path="/admin/properties/:id/edit" element={<AdminEditProperty/>}/>
-      <Route path="/admin/audit-log" element={<AdminAuditLog/>}/><Route path="/admin/roles" element={<Roles/>}/>
-      <Route path="/admin/settings/printers" element={<SettingsPrinters/>}/>
-      <Route path="/admin/settings/receipt" element={<ReceiptSettings/>}/>
-      <Route path="/admin/settings/unsettled-receipt" element={<UnsettledReceiptSettings/>}/>
-    </Route></Route>
-    <Route path="*" element={<PageNotFound/>}/>
-  </Routes></AuthProvider>;
-}
-
-function App(){ if(!isSupabaseConfigured) return <SupabaseSetupNotice/>; return <QueryClientProvider client={queryClientInstance}><Router><ScrollToTop/><Toaster/><AppRoutes/></Router></QueryClientProvider>; }
+function AuthLoading(){return <div className="fixed inset-0 flex items-center justify-center bg-[#F5F3EF]"><div className="h-8 w-8 animate-spin rounded-full border-4 border-[#D6D6D6] border-t-[#FFD300]"/></div>;}
+function appRole(user){const s=getSessionStaff();const raw=s?.role||user?.staff?.role||user?.propertyRole||user?.role;return normalizeAppRole(normalizeStaffRole(raw));}
+function PublicRoute(){const {user,isLoadingAuth,isLoadingPublicSettings}=useAuth();if(isLoadingAuth||isLoadingPublicSettings)return <AuthLoading/>;if(user)return <Navigate to={'/'+getDefaultApp(appRole(user))} replace/>;return <Outlet/>;}
+function ProtectedRoute({app,children}){const {user,isLoadingAuth,isLoadingPublicSettings}=useAuth();if(isLoadingAuth||isLoadingPublicSettings)return <AuthLoading/>;if(!user)return <Navigate to="/signin" replace/>;if(user?.isPlatformOwner)return <Navigate to="/admin" replace/>;if(!canAccessApp(appRole(user),app))return <Navigate to={'/'+getDefaultApp(appRole(user))} replace/>;const property=user?.property;const full=property?.status==='active'&&property?.package&&property.package!=='none';if(!full)return <PendingApproval/>;return children||<Outlet/>;}
+function LegacyPOS(){return <ProtectedRoute app="backoffice"><POSApp initialModule="pos"/></ProtectedRoute>;}
+function Stub({title}){return <div className="min-h-full bg-[#F5F5F5] p-8"><div className="rounded border border-[#E0E0E0] bg-white p-8 shadow-sm"><h1 className="text-xl font-medium text-[#212121]">{title}</h1><p className="mt-2 text-sm text-[#757575]">This module is ready for the new application shell and will be connected in the next phase.</p></div></div>;}
+function BackOfficeSettingsPage({slug}){if(slug==='kitchen-printers')return <KitchenPrintersPage/>;if(['modifiers','discounts','suppliers'].includes(slug))return <Phase2CataloguePage section={slug}/>;return <Stub title={slug.replace(/-/g,' ')}/>;}
+function AppRoutes(){return <AuthProvider><Routes>
+<Route element={<PublicRoute/>}><Route path="/" element={<PublicHome/>}/><Route path="/home" element={<PublicHome/>}/><Route path="/signin" element={<PublicSignIn/>}/><Route path="/signup" element={<PublicSignUp/>}/><Route path="/login" element={<Login/>}/><Route path="/register" element={<Register/>}/></Route>
+<Route path="/forgot-password" element={<ForgotPassword/>}/><Route path="/reset-password" element={<ResetPassword/>}/>
+<Route element={<ProtectedRoute app="backoffice"/>}><Route path="/backoffice" element={<BackOfficeLayout/>}><Route index element={<POSApp initialModule="dashboard"/>}/><Route path="items/list" element={<Stub title="Item list"/>}/><Route path="items/categories" element={<Stub title="Categories"/>}/><Route path="items/modifiers" element={<Phase2CataloguePage section="modifiers"/>}/><Route path="items/discounts" element={<Phase2CataloguePage section="discounts"/>}/><Route path="reports/sales" element={<Stub title="Sales report"/>}/><Route path="reports/inventory" element={<Stub title="Inventory report"/>}/><Route path="reports/employees" element={<Stub title="Employee report"/>}/><Route path="inventory/*" element={<Stub title="Inventory management"/>}/><Route path="employees/*" element={<Stub title="Employees"/>}/><Route path="customers" element={<Stub title="Customers"/>}/><Route path="integrations" element={<Stub title="Integrations"/>}/><Route path="settings/:slug" element={<BackOfficeSettingsPage/>}/><Route path="help" element={<Stub title="Help"/>}/></Route></Route>
+<Route element={<ProtectedRoute app="frontoffice"/>}><Route path="/frontoffice" element={<FrontOfficeLayout/>}><Route index element={<POSApp initialModule="dashboard"/>}/><Route path="rooms" element={<POSApp initialModule="rooms"/>}/><Route path="reservations" element={<Stub title="Reservations"/>}/><Route path="folio" element={<Stub title="Folio"/>}/><Route path="housekeeping" element={<Stub title="Housekeeping"/>}/><Route path="night-audit" element={<Stub title="Night Audit"/>}/></Route></Route>
+<Route element={<ProtectedRoute app="stores"/>}><Route path="/stores" element={<StoresLayout/>}><Route index element={<StoresPage/>}/><Route path="settings" element={<StoresPage/>}/><Route path="pos-devices" element={<Stub title="POS Devices"/>}/><Route path="printers" element={<KitchenPrintersPage/>}/><Route path="kds" element={<Stub title="KDS Screens"/>}/></Route></Route>
+<Route path="/dashboard" element={<Navigate to="/backoffice" replace/>}/><Route path="/pos" element={<LegacyPOS/>}/><Route path="/pms" element={<Navigate to="/frontoffice" replace/>}/><Route path="/store" element={<Navigate to="/stores" replace/>}/><Route path="/rooms" element={<Navigate to="/frontoffice/rooms" replace/>}/><Route path="/settings/kitchen-printers" element={<Navigate to="/backoffice/settings/kitchen-printers" replace/>}/><Route path="/settings/system/*" element={<Navigate to="/backoffice/settings/features" replace/>}/>
+<Route path="/admin/login" element={<AdminLogin/>}/><Route element={<AdminRoute/>}><Route element={<AdminLayout/>}><Route path="/admin" element={<AdminDashboard/>}/><Route path="/admin/settings" element={<PropertyAdminSettings/>}/><Route path="/admin/properties" element={<AdminProperties/>}/><Route path="/admin/properties/new" element={<AdminCreateProperty/>}/><Route path="/admin/properties/:id" element={<AdminPropertyDetail/>}/><Route path="/admin/properties/:id/edit" element={<AdminEditProperty/>}/><Route path="/admin/audit-log" element={<AdminAuditLog/>}/><Route path="/admin/roles" element={<Roles/>}/><Route path="/admin/settings/printers" element={<SettingsPrinters/>}/><Route path="/admin/settings/receipt" element={<ReceiptSettings/>}/><Route path="/admin/settings/unsettled-receipt" element={<UnsettledReceiptSettings/>}/></Route></Route>
+<Route path="*" element={<PageNotFound/>}/></Routes></AuthProvider>;}
+function App(){if(!isSupabaseConfigured)return <SupabaseSetupNotice/>;return <QueryClientProvider client={queryClientInstance}><Router><ScrollToTop/><Toaster/><AppRoutes/></Router></QueryClientProvider>;}
 export default App;
