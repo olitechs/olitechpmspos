@@ -3,6 +3,7 @@
 create table if not exists public.workspaces (
   id uuid primary key default gen_random_uuid(),
   name text not null,
+  property_id uuid references public.properties(id) on delete set null,
   owner_id uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -18,6 +19,7 @@ create table if not exists public.workspace_members (
 create table if not exists public.stores (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
+  property_id uuid references public.properties(id) on delete set null,
   name text not null,
   address text,
   is_default boolean not null default false,
@@ -36,29 +38,27 @@ create table if not exists public.store_members (
 
 -- One workspace/store is provisioned for each existing property. Existing
 -- printer groups are upgraded in-place rather than replacing them.
-insert into public.workspaces(name,owner_id)
-select coalesce(p.business_name,p.name,'OliTechs Workspace'),p.created_by
+insert into public.workspaces(name,property_id,owner_id)
+select coalesce(p.business_name,p.name,'OliTechs Workspace'),p.id,p.created_by
 from public.properties p
-where not exists (
-  select 1 from public.workspaces w where w.owner_id is not distinct from p.created_by
-);
+where not exists(select 1 from public.workspaces w where w.property_id=p.id);
 insert into public.workspace_members(workspace_id,user_id,role)
 select w.id,pu.user_id,case when pu.role in ('owner','admin') then pu.role else 'staff' end
 from public.property_users pu
 join public.properties p on p.id=pu.property_id
-join public.workspaces w on w.owner_id is not distinct from p.created_by
+join public.workspaces w on w.property_id=p.id
 on conflict(workspace_id,user_id) do nothing;
-insert into public.stores(workspace_id,name,address,is_default)
-select w.id,p.name,p.address,true
+insert into public.stores(workspace_id,property_id,name,address,is_default)
+select w.id,p.id,p.name,p.address,true
 from public.properties p
-join public.workspaces w on w.owner_id is not distinct from p.created_by
-where not exists(select 1 from public.stores s where s.workspace_id=w.id);
+join public.workspaces w on w.property_id=p.id
+where not exists(select 1 from public.stores s where s.property_id=p.id);
 insert into public.store_members(store_id,user_id,role)
 select s.id,pu.user_id,case when pu.role in ('owner','admin') then pu.role else 'staff' end
 from public.property_users pu
 join public.properties p on p.id=pu.property_id
 join public.workspaces w on w.owner_id is not distinct from p.created_by
-join public.stores s on s.workspace_id=w.id and s.name=p.name
+join public.stores s on s.property_id=p.id
 on conflict(store_id,user_id) do nothing;
 
 alter table public.printer_groups add column if not exists workspace_id uuid references public.workspaces(id) on delete cascade;
@@ -66,8 +66,8 @@ alter table public.printer_groups add column if not exists store_id uuid referen
 update public.printer_groups g
 set workspace_id=w.id,store_id=s.id
 from public.properties p
-join public.workspaces w on w.owner_id is not distinct from p.created_by
-join public.stores s on s.workspace_id=w.id and s.name=p.name
+join public.workspaces w on w.property_id=p.id
+join public.stores s on s.property_id=p.id
 where g.property_id=p.id and (g.workspace_id is null or g.store_id is null);
 create index if not exists printer_groups_workspace_idx on public.printer_groups(workspace_id);
 create index if not exists printer_groups_store_idx on public.printer_groups(store_id);
