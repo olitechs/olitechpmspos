@@ -10,6 +10,7 @@ import { pmsService } from '@/services/pmsService';
 import { getPrinters, getAssignments, printVoidTicket } from '@/services/printService';
 import { getPropertySettings } from '@/services/settingsService';
 import { inventoryService } from '@/services/inventoryService';
+import { posPhase3Service } from '@/services/posPhase3Service';
 import { NAVY, NAVY2, TEAL, TEAL_DARK, TEAL_LIGHT, SAND, SURFACE, BORDER, BORDER_DARK, MUTED, MUTED_DARK } from '@/data/themePalette';
 
 function fmt(n) {
@@ -31,6 +32,10 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
   const [pinError, setPinError] = useState('');
   const [menuItems, setMenuItems] = useState([]);
   const [menuCategories, setMenuCategories] = useState(CATEGORIES);
+  const [modifierTarget, setModifierTarget] = useState(null);
+  const [modifierGroups, setModifierGroups] = useState([]);
+  const [modifierSelections, setModifierSelections] = useState({});
+  const [modifierLoading, setModifierLoading] = useState(false);
 
   const loadPosMenu = async () => {
     if (!propertyId) return;
@@ -54,12 +59,62 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
     return () => window.removeEventListener('olitech:menu-updated', refresh);
   }, [propertyId]);
 
-  const addItem = (item) => {
+  const commitItem = (item, selected = []) => {
+    const modifierTotal = selected.reduce((sum, option) => sum + Number(option.price_delta_minor || 0) / 100, 0);
+    const selectedIds = selected.map((option) => option.id).sort();
+    const lineId = selectedIds.length ? item.id + '::mods::' + selectedIds.join('-') : item.id;
+    const unitPrice = Number(item.price || 0) + modifierTotal;
     setOrderLines((prev) => {
-      const existing = prev.find((l) => l.id === item.id);
-      if (existing) return prev.map((l) => (l.id === item.id ? { ...l, qty: l.qty + 1 } : l));
-      return [...prev, { ...item, qty: 1, productId: item.productId || item.id, category: item.category || activeCategory, center: item.center || CATEGORY_CENTER[activeCategory] || 'Kitchen' }];
+      const existing = prev.find((l) => l.id === lineId);
+      if (existing) return prev.map((l) => (l.id === lineId ? { ...l, qty: l.qty + 1 } : l));
+      return [...prev, {
+        ...item, id: lineId, baseProductId: item.productId || item.id, productId: item.productId || item.id,
+        qty: 1, price: unitPrice, basePrice: Number(item.price || 0),
+        modifiers: selected.map((option) => ({ id: option.id, name: option.name, price_delta_minor: option.price_delta_minor })),
+        modifierTotal, category: item.category || activeCategory,
+        center: item.center || CATEGORY_CENTER[activeCategory] || 'Kitchen'
+      }];
     });
+  };
+
+  const addItem = async (item) => {
+    if (!propertyId || !(item.productId || item.id)) return commitItem(item);
+    setModifierLoading(true);
+    try {
+      const groups = await posPhase3Service.getItemModifiers(propertyId, item.productId || item.id);
+      if (!groups.length) return commitItem(item);
+      setModifierTarget(item);
+      setModifierGroups(groups);
+      setModifierSelections(Object.fromEntries(groups.map((g) => [g.id, []])));
+    } catch (error) {
+      console.warn('[POS] modifiers unavailable; adding base item', error);
+      commitItem(item);
+    } finally {
+      setModifierLoading(false);
+    }
+  };
+
+  const toggleModifier = (group, option) => {
+    setModifierSelections((prev) => {
+      const current = prev[group.id] || [];
+      if (group.selection_type === 'single') return { ...prev, [group.id]: [option.id] };
+      const exists = current.includes(option.id);
+      if (exists) return { ...prev, [group.id]: current.filter((id) => id !== option.id) };
+      if (current.length >= Number(group.max_selections || 1)) return prev;
+      return { ...prev, [group.id]: [...current, option.id] };
+    });
+  };
+
+  const confirmModifiers = () => {
+    const selected = modifierGroups.flatMap((group) =>
+      (modifierSelections[group.id] || []).map((id) => group.options.find((option) => option.id === id)).filter(Boolean)
+    );
+    const invalid = modifierGroups.find((group) => group.required && (modifierSelections[group.id] || []).length < Number(group.min_selections || 1));
+    if (invalid) return;
+    commitItem(modifierTarget, selected);
+    setModifierTarget(null);
+    setModifierGroups([]);
+    setModifierSelections({});
   };
 
   const changeQty = (id, delta) => {
@@ -296,6 +351,26 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
           </button>
         </div>
       </div>
+      {modifierTarget && (
+        <div className="fixed inset-0 z-[240] flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-lg rounded-3xl bg-white p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <div><div className="text-lg font-black text-slate-950">Customize {modifierTarget.name}</div><p className="mt-1 text-xs text-slate-500">Choose the available options before adding it to the order.</p></div>
+              <button onClick={() => setModifierTarget(null)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"><X size={18}/></button>
+            </div>
+            <div className="mt-4 space-y-4">
+              {modifierGroups.map((group) => {
+                const selected = modifierSelections[group.id] || [];
+                return <div key={group.id} className="rounded-2xl border border-slate-200 p-4">
+                  <div className="mb-3 flex items-center justify-between"><div><div className="font-black text-slate-900">{group.name}</div><div className="text-[11px] text-slate-500">{group.selection_type === 'multiple' ? 'Choose up to ' + group.max_selections : 'Choose one'}{group.required ? ' · Required' : ' · Optional'}</div></div><span className="text-xs font-bold text-slate-400">{selected.length} selected</span></div>
+                  <div className="grid gap-2 sm:grid-cols-2">{group.options.map((option) => <button key={option.id} onClick={() => toggleModifier(group, option)} className="flex items-center justify-between rounded-xl border-2 p-3 text-left" style={{borderColor:selected.includes(option.id)?TEAL:'#E2E8F0',background:selected.includes(option.id)?'#F0FDFA':'#fff'}}><span className="text-sm font-bold text-slate-800">{option.name}</span><span className="text-xs font-black">{Number(option.price_delta_minor||0)>0?'+KES '+Number(Number(option.price_delta_minor)/100).toLocaleString('en-KE',{minimumFractionDigits:2}):'Included'}</span></button>)}</div>
+                </div>
+              })}
+            </div>
+            <div className="mt-5 flex justify-end gap-2"><button onClick={() => setModifierTarget(null)} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold">Cancel</button><button disabled={modifierLoading} onClick={confirmModifiers} className="rounded-xl px-5 py-2.5 text-sm font-black text-white" style={{background:TEAL}}>Add to Order</button></div>
+          </div>
+        </div>
+      )}
       {removeTarget && (
         <div className="fixed inset-0 z-[250] flex items-center justify-center bg-black/60 p-4">
           <div className="w-full max-w-md rounded-3xl bg-white p-5 shadow-2xl">
