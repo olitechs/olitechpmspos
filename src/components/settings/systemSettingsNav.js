@@ -11,7 +11,6 @@ export const SYSTEM_SETTINGS_NAV=[
   {slug:'discounts',label:'Discounts'},
   {slug:'suppliers',label:'Suppliers'},
   {slug:'dining-options',label:'Dining options'},
-  {slug:'stores',label:'Stores'},
 ];
 export const navPath=item=>item.path||'/settings/system/'+item.slug;
 export function isSystemSettingsPath(pathname=''){
