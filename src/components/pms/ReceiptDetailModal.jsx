@@ -48,14 +48,14 @@ export default function ReceiptDetailModal({ receipt, onClose }) {
 					<div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${BORDER}` }}>
 						{items.length ? items.map((l, i) => (
 							<div key={i} className="flex justify-between px-3 py-2 text-sm" style={{ borderBottom: `1px solid ${BORDER}`, background: i % 2 ? SURFACE2 : SURFACE }}>
-								<span>{l.qty}x {l.name}</span>
+								<span><div>{l.qty}x {l.name}</div>{l.modifiers?.length > 0 && <div className="text-[10px]" style={{ color: MUTED }}>{l.modifiers.map((m) => m.name).join(' · ')}</div>}</span>
 								<b>{fmtKes(Number(l.price || 0) * Number(l.qty || 0))}</b>
 							</div>
 						)) : <div className="p-4 text-sm text-center" style={{ color: MUTED }}>No line items recorded.</div>}
 					</div>
 					<div className="space-y-1 text-sm" style={{ color: NAVY }}>
 						<div className="flex justify-between"><span style={{ color: MUTED }}>Subtotal</span><span>{fmtKes(receipt.subtotal)}</span></div>
-						{Number(receipt.discount_amount) > 0 && <div className="flex justify-between"><span style={{ color: MUTED }}>Discount</span><span>- {fmtKes(receipt.discount_amount)}</span></div>}
+						{Number(receipt.discount_amount) > 0 && <div className="flex justify-between"><span style={{ color: MUTED }}>Discount{receipt.discount_name ? ` · ${receipt.discount_name}` : ''}</span><span>- {fmtKes(receipt.discount_amount)}</span></div>}
 						<div className="flex justify-between"><span style={{ color: MUTED }}>VAT</span><span>{fmtKes(receipt.vat)}</span></div>
 						<div className="flex justify-between pt-1 font-bold" style={{ borderTop: `1px solid ${BORDER}` }}><span>Total</span><span>{fmtKes(receipt.total)}</span></div>
 					</div>
