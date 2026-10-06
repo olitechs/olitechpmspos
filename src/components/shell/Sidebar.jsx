@@ -47,7 +47,7 @@ function getAssigned(user,role){const s=getSessionStaff();const a=s?.assigned_mo
 export default function Sidebar({activeModule,onModuleChange,staffRole}){
  const{user,logout}=useAuth();const navigate=useNavigate();const location=useLocation();
  const[collapsed,setCollapsedState]=useState(()=>{try{return localStorage.getItem("olitech_sidebar_collapsed")==="true"}catch{return false}});
- const[mobileOpen,setMobileOpen]=useState(false);const[query,setQuery]=useState("");
+ const[mobileOpen,setMobileOpen]=useState(false);const[query,setQuery]=useState("");const[ownerOpen,setOwnerOpen]=useState(false);
  const setCollapsed=v=>{setCollapsedState(v);try{localStorage.setItem("olitech_sidebar_collapsed",String(v))}catch{}};
  const role=normalizeStaffRole(staffRole||getRole(user));const assigned=useMemo(()=>getAssigned(user,role),[user,role]);const master=!!user?.isPlatformOwner||MASTER_ROLES.has(role);
  const canAccess=item=>master||(item.roles.includes(role)&&(itemModule(item)==="admin"||assigned.includes(itemModule(item))));
@@ -80,7 +80,7 @@ export default function Sidebar({activeModule,onModuleChange,staffRole}){
    <button type="button" onClick={logout} title={collapsed?"Log out":undefined} className={`flex h-10 w-full items-center rounded-[10px] text-[#6B7280] hover:bg-[#FFF7ED] hover:text-[#111827] ${collapsed?"justify-center":"gap-3 px-3"}`}><LogOut size={19}/>{!collapsed&&<span className="text-[13px] font-medium">Log out</span>}</button>
   </div>
   <div className={`shrink-0 border-t border-[#E5E7EB] ${collapsed?"p-2":"p-3"}`}>
-   <div className={`flex items-center rounded-xl bg-[#FAFAF8] ${collapsed?"justify-center p-2":"gap-3 p-2"}`}><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#FFC400] text-[11px] font-black text-[#121418]">{initials}</div>{!collapsed&&<div className="min-w-0 flex-1"><div className="truncate text-[12px] font-bold text-[#121418]">{displayName}</div><div className="truncate text-[10px] text-[#6B7280]">{roleLabel}</div></div>}{!collapsed&&<ChevronDown size={15} className="text-[#9CA3AF]"/>}</div>
+   <button type="button" onClick={()=>setOwnerOpen(v=>!v)} className={`flex w-full items-center rounded-xl bg-[#FAFAF8] ${collapsed?"justify-center p-2":"gap-3 p-2"}`}><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#FFC400] text-[11px] font-black text-[#121418]">{initials}</div>{!collapsed&&<div className="min-w-0 flex-1 text-left"><div className="truncate text-[12px] font-bold text-[#121418]">{displayName}</div><div className="truncate text-[10px] text-[#6B7280]">{roleLabel}</div></div>}{!collapsed&&<ChevronDown size={15} className="text-[#9CA3AF]"/>}</button>{ownerOpen&&!collapsed&&<div className="mt-2 overflow-hidden rounded-xl border border-[#E5E7EB] bg-white shadow-lg"><button onClick={()=>navigate("/admin")} className="block w-full px-3 py-2 text-left text-xs hover:bg-[#F9FAFB]">Account</button><button onClick={logout} className="block w-full px-3 py-2 text-left text-xs text-[#D32F2F] hover:bg-[#FFF7ED]">Sign out</button></div>
   </div>
   <button type="button" onClick={()=>setMobileOpen(false)} className="absolute right-2 top-3 rounded-lg p-2 text-[#6B7280] hover:bg-[#F3F4F6] md:hidden" aria-label="Close navigation"><X size={18}/></button>
  </aside>;
