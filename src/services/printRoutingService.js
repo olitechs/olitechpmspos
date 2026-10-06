@@ -1,5 +1,5 @@
 import {usePrinterStore} from '@/data/modules/printerStore';
-import {usePrinterStore as usePrinterStoreV2} from '@/data/modules/printerStoreV2';
+import {usePrinterStore as usePrinterStoreV2} from '@/data/modules/printerStore';
 import {isFeatureEnabled} from '@/lib/featureFlags';
 import {supabase} from '@/lib/supabaseClient';
 import {groupsForCategory,planPrinterJobs as planJobs,splitLinesByPrinterGroup as splitLines,pickOrderPrinter,groupCenter,resolveCategoryId} from '@/services/printRoutingCore';
