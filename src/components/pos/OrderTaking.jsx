@@ -109,7 +109,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
     const selected = modifierGroups.flatMap((group) =>
       (modifierSelections[group.id] || []).map((id) => group.options.find((option) => option.id === id)).filter(Boolean)
     );
-    const invalid = modifierGroups.find((group) => group.required && (modifierSelections[group.id] || []).length < Number(group.min_selections || 1));
+    const invalid = modifierGroups.find((group) => group.required && (modifierSelections[group.id] || []).length < Math.max(1, Number(group.min_selections || 0)));
     if (invalid) return;
     commitItem(modifierTarget, selected);
     setModifierTarget(null);
