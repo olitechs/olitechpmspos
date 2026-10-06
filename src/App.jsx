@@ -67,7 +67,7 @@ function AppRoutes(){
     <Route path="/backoffice" element={<ProtectedApp initialModule="dashboard"/>}/><Route path="/pos" element={<ProtectedApp initialModule="pos"/>}/><Route path="/store" element={<ProtectedApp initialModule="store"/>}/>
     <Route path="/settings/printers" element={<ProtectedApp initialModule="settings"/>}/><Route path="/settings/receipt" element={<ProtectedApp initialModule="settings"/>}/>
     <Route path="/rooms" element={<ProtectedApp initialModule="rooms"/>}/>
-    <Route path="/settings/kitchen-printers" element={<BackOfficeSettingsRoute/>}/><Route path="/settings/system" element={<BackOfficeSettingsRoute/>}/><Route path="/settings/system/:slug" element={<BackOfficeSettingsRoute/>}/>
+    <Route path="/settings/kitchen-printers" element={<BackOfficeSettingsRoute/>}/><Route path="/settings/system" element={<BackOfficeSettingsRoute/>}/><Route path="/settings/system/:slug" element={<BackOfficeSettingsRoute/>}/><Route path="/settings/stores" element={<BackOfficeSettingsRoute/>}/>
     <Route path="/admin/login" element={<AdminLogin/>}/>
     <Route element={<AdminRoute/>}><Route element={<AdminLayout/>}>
       <Route path="/admin" element={<AdminHome/>}/>
