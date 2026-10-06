@@ -2,10 +2,12 @@
 const DEFAULTS = {
   backoffice: false,
   printerGroupRouting: false,
+  backofficePhase2: false,
 };
 const ENV_KEYS = {
   backoffice: import.meta.env?.VITE_FF_BACKOFFICE,
   printerGroupRouting: import.meta.env?.VITE_FF_PRINTER_GROUP_ROUTING,
+  backofficePhase2: import.meta.env?.VITE_FF_BACKOFFICE_PHASE2,
 };
 function parse(value) {
   if (value === true || value === 'true' || value === '1') return true;
@@ -14,7 +16,7 @@ function parse(value) {
 }
 export function isFeatureEnabled(name) {
   try {
-    const local = parse(globalThis.localStorage?.getItem(`olitech_ff_${name}`));
+    const local = parse(globalThis.localStorage?.getItem('olitech_ff_' + name));
     if (local !== null) return local;
   } catch {}
   const env = parse(ENV_KEYS[name]);
