@@ -11,5 +11,6 @@ export default function SystemSettingsPage(){
  let content=<ComingSoon label={label}/>;
  if(slug==='kitchen-printers')content=<KitchenPrintersPage/>;
  if(slug==='modifiers'||slug==='discounts'||slug==='suppliers')content=<Phase2CataloguePage section={slug}/>;
+ if(slug==='stores')content=<StoresPage/>;
  return <SystemSettingsLayout>{content}</SystemSettingsLayout>;
 }
