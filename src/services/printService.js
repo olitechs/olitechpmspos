@@ -377,7 +377,7 @@ function receiptHtml(settings, type, data, copyType) {
   const items = data.items || [];
   const food = items.filter((i) => !itemIsDrink(i));
   const drinks = items.filter(itemIsDrink);
-  const rows = (list) => list.map((i) => `<tr><td class="qty">${esc(i.qty)}x</td><td>${esc(i.name)}</td><td class="amount">${esc(data.currency || '')} ${(Number(i.qty || 0) * Number(i.price || 0)).toFixed(2)}</td></tr>`).join('');
+  const rows = (list) => list.map((i) => { const modifiers = Array.isArray(i.modifiers) ? i.modifiers : []; const modifierText = modifiers.length ? `<div style="font-size:9px;margin-left:4px">+ ${esc(modifiers.map((m) => m.name).join(' · '))}</div>` : ''; return `<tr><td class="qty">${esc(i.qty)}x</td><td>${esc(i.name)}${modifierText}</td><td class="amount">${esc(data.currency || '')} ${(Number(i.qty || 0) * Number(i.price || 0)).toFixed(2)}</td></tr>`; }).join('');
   const itemMarkup = food.length && drinks.length
     ? `<div class="section">--- FOOD ---</div><table class="items">${rows(food)}</table><div class="section">--- DRINKS ---</div><table class="items">${rows(drinks)}</table>`
     : `<table class="items">${rows(food.length ? food : drinks)}</table>`;
