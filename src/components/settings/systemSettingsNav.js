@@ -18,6 +18,7 @@ export function isSystemSettingsPath(pathname=''){
 }
 export function slugFromPath(pathname=''){
   if(pathname==='/settings/kitchen-printers')return'kitchen-printers';
+  if(pathname==='/settings/stores')return'stores';
   const m=pathname.match(/^\/settings\/system\/([^/]+)/);
   return m?m[1]:'';
 }
