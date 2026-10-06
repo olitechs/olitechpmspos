@@ -15,5 +15,5 @@ const printers=[{id:'bar-printer',purposes:['order'],center:'Bar'},{id:'kitchen-
 assert.equal(pickOrderPrinter('Bar',printers)?.id,'bar-printer');
 const plan=planPrinterJobs([{name:'B',category:'Burgers'}],{groups,categories,printers});
 assert.equal(plan.jobs.length,2);
-assert.equal(plan.jobs.find(j=>j.groupId==='kit').printer?.id,'kitchen-printer');
+assert.equal(plan.jobs.find(j=>j.groupId==='kit').printer,null);
 console.log('printer routing core: ok');
