@@ -2,6 +2,7 @@ import http from 'node:http';
 import net from 'node:net';
 import { URL } from 'node:url';
 import { spawn } from 'node:child_process';
+import { createClient } from '@supabase/supabase-js';
 
 const HOST = process.env.PRINT_AGENT_HOST || '127.0.0.1';
 const PORT = Number(process.env.PRINT_AGENT_PORT || 8631);
@@ -193,6 +194,51 @@ async function printWindowsRaw(printerName, payload) {
   await runPowerShell(script, [name, base64]);
 }
 
+const AGENT_ID = process.env.PRINT_AGENT_ID || '';
+const WORKSPACE_ID = process.env.WORKSPACE_ID || '';
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseV2 = SUPABASE_URL && SUPABASE_KEY ? createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false,autoRefreshToken:false}}) : null;
+
+async function registerAgent(printers=[]) {
+  if (!supabaseV2 || !WORKSPACE_ID || !AGENT_ID) return;
+  await supabaseV2.from('print_agents').upsert({id:AGENT_ID,workspace_id:WORKSPACE_ID,status:'online',last_seen:new Date().toISOString(),discovered_printers:printers.length},{onConflict:'id'});
+  for (const p of printers) {
+    const {data:existing}=await supabaseV2.from('printers').select('id').eq('workspace_id',WORKSPACE_ID).eq('ip_address',p.host).eq('port',p.port).maybeSingle();
+    if(existing) await supabaseV2.from('printers').update({agent_id:AGENT_ID,status:'online',last_seen:new Date().toISOString()}).eq('id',existing.id);
+  }
+}
+async function discoverAndRegister() { try { const found=await discoverNetworkPrinters(); await registerAgent(found); return found; } catch(e){ console.error('[Print Agent v2] discovery failed:',e.message); return []; } }
+async function processCloudJob(job) {
+  if(!supabaseV2) throw new Error('Supabase is not configured for cloud print jobs.');
+  const {data:printer,error}=await supabaseV2.from('printers').select('*').eq('id',job.printer_id).single();
+  if(error) throw error;
+  const raw=Buffer.from(job.content_escpos_base64||'','base64');
+  const endpoint=normalizeEndpoint(printer.ip_address,printer.port);
+  if(printer.connection_type==='network'||printer.connection_type==='print_agent') {
+    if(!validEndpoint(endpoint.host,endpoint.port)) throw new Error('Invalid printer network endpoint.');
+    await writeTcp(endpoint.host,endpoint.port,raw);
+  } else throw new Error('This agent currently supports network ESC/POS printers.');
+  await supabaseV2.from('print_jobs').update({status:'printed',printed_at:new Date().toISOString(),error_message:null}).eq('id',job.id);
+  await supabaseV2.from('printers').update({status:'online',last_seen:new Date().toISOString()}).eq('id',printer.id);
+}
+function startCloudSubscription() {
+  if(!supabaseV2 || !WORKSPACE_ID) return;
+  const channel=supabaseV2.channel('print_jobs:'+WORKSPACE_ID)
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'print_jobs',filter:'workspace_id=eq.'+WORKSPACE_ID},payload=>{
+      processCloudJob(payload.new).catch(async e=>{
+        console.error('[Print Agent v2] job failed:',e.message);
+        await supabaseV2.from('print_jobs').update({status:'failed',error_message:e.message}).eq('id',payload.new.id);
+        if(payload.new.printer_id) await supabaseV2.from('printers').update({status:'error',last_seen:new Date().toISOString()}).eq('id',payload.new.printer_id);
+      });
+    }).subscribe(status=>console.log('[Print Agent v2] realtime:',status));
+  return channel;
+}
+function startHeartbeat() {
+  if(!supabaseV2 || !WORKSPACE_ID || !AGENT_ID) return;
+  setInterval(()=>supabaseV2.from('print_agents').update({status:'online',last_seen:new Date().toISOString()}).eq('id',AGENT_ID).then(({error})=>error&&console.error('[Print Agent v2] heartbeat:',error.message)),30000);
+}
+
 function json(res, status, body) {
   res.writeHead(status, {
     'Access-Control-Allow-Origin': '*',
@@ -317,6 +363,10 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, HOST, () => {
-  console.log(`[OliTechs Print Agent] listening on http://${HOST}:${PORT}`);
+server.listen(PORT, HOST, async () => {
+  console.log(`[OliTechs Print Agent v2] listening on http://${HOST}:${PORT}`);
+  const found=await discoverAndRegister();
+  startCloudSubscription();
+  startHeartbeat();
+  console.log(`[OliTechs Print Agent v2] discovered ${found.length} network printer(s)`);
 });
