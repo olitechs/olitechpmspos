@@ -65,8 +65,8 @@ export default function POSContainer() {
 	const posRole = String(sessionStaff?.role || user?.staff?.role || user?.propertyRole || '').toLowerCase().replace(/\s+/g,'_');
 	const canCloseShift = Boolean(user?.isPlatformOwner || ['hotel_admin','super_admin','cashier','fb_manager','owner','admin','manager','property_manager','general_manager'].includes(posRole));
 	const propertyName = user?.property?.name || user?.property?.business_name || 'OliTechs PMS & POS';
-	useEffect(() => { if (!propertyId || !isPrinterGroupRoutingEnabled()) return; supabaseStoreHydrate(propertyId); }, [propertyId]);
 	const supabaseStoreHydrate = async (propertyId) => { try { const { data } = await (await import('@/lib/supabaseClient')).supabase.from('stores').select('*').eq('property_id', propertyId).order('is_default',{ascending:false}).limit(1).maybeSingle(); if (data?.id) await usePrinterStoreV2.getState().hydrate(data.id); } catch (e) { console.warn('[POS] printer routing store unavailable; keeping legacy printer flow.', e?.message); } };
+	useEffect(() => { if (!propertyId || !isPrinterGroupRoutingEnabled()) return; supabaseStoreHydrate(propertyId); }, [propertyId]);
 	const [posStaff, setPosStaff] = useState([]);
 	const [switchStaff, setSwitchStaff] = useState(null);
 	const [switchError, setSwitchError] = useState('');
