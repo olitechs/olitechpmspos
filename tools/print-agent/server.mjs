@@ -200,6 +200,13 @@ const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL |
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
 const supabaseV2 = SUPABASE_URL && SUPABASE_KEY ? createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false,autoRefreshToken:false}}) : null;
 
+async function discoverBonjourPrinters() {
+  try {
+    const mod=await import('bonjour-service');
+    const bonjour=new mod.Bonjour();
+    return await new Promise(resolve=>{ const found=[]; const browser=bonjour.find({type:'printer'},service=>{const host=service.addresses?.find(a=>IPV4.test(a));if(host)found.push({host,port:Number(service.port||9100),transport:'mdns',label:service.name||host});}); setTimeout(()=>{browser.stop?.();bonjour.destroy?.();resolve(found);},2500); });
+  } catch (_) { return []; }
+}
 async function registerAgent(printers=[]) {
   if (!supabaseV2 || !WORKSPACE_ID || !AGENT_ID) return;
   await supabaseV2.from('print_agents').upsert({id:AGENT_ID,workspace_id:WORKSPACE_ID,status:'online',last_seen:new Date().toISOString(),discovered_printers:printers.length},{onConflict:'id'});
@@ -208,7 +215,7 @@ async function registerAgent(printers=[]) {
     if(existing) await supabaseV2.from('printers').update({agent_id:AGENT_ID,status:'online',last_seen:new Date().toISOString()}).eq('id',existing.id);
   }
 }
-async function discoverAndRegister() { try { const found=await discoverNetworkPrinters(); await registerAgent(found); return found; } catch(e){ console.error('[Print Agent v2] discovery failed:',e.message); return []; } }
+async function discoverAndRegister() { try { const network=await discoverNetworkPrinters(); const mdns=await discoverBonjourPrinters(); const found=[...new Map([...network,...mdns].map(p=>[p.host+':'+p.port,p])).values()]; await registerAgent(found); return found; } catch(e){ console.error('[Print Agent v2] discovery failed:',e.message); return []; } }
 async function processCloudJob(job) {
   if(!supabaseV2) throw new Error('Supabase is not configured for cloud print jobs.');
   const {data:printer,error}=await supabaseV2.from('printers').select('*').eq('id',job.printer_id).single();
@@ -297,7 +304,7 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, {
       ok: true,
       service: 'OliTechs Local Print Agent',
-      version: '1.0.0',
+      version: '2.0.0',
       host: HOST,
       port: PORT,
     });
