@@ -1,7 +1,7 @@
 import React,{useEffect,useState} from 'react';
 import {Building2,Plus,Trash2} from 'lucide-react';
 import {supabase} from '@/lib/supabaseClient';
-import {usePrinterStore} from '@/data/modules/printerStoreV2';
+import {usePrinterStore} from '@/data/modules/printerStore';
 
 export default function StoresPage(){
  const {stores}=usePrinterStore(); const [editing,setEditing]=useState(null); const [name,setName]=useState(''); const [address,setAddress]=useState('');
