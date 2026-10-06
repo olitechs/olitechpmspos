@@ -53,7 +53,7 @@ function ComingSoon({ label }) {
 // Main authenticated app shell: sidebar/bottom-nav + top bar + the active
 // module. Wraps everything the POS and PMS modules need (table sessions,
 // printers, rooms, reservations) in their local-state providers.
-export default function POSApp({ initialModule = 'dashboard' }) {
+export default function POSApp({ initialModule = 'dashboard', embedded = false }) {
 	const location = useLocation();
 	const queryModule = new URLSearchParams(location.search).get('module');
 	const [activeModule, setActiveModule] = useState(queryModule || initialModule);
@@ -133,10 +133,10 @@ export default function POSApp({ initialModule = 'dashboard' }) {
 	return (
 		<StoreProvider>
 			<PmsProvider>
-				<div className="app-shell flex min-h-screen w-full bg-[#F9F9FA]">
-					<Sidebar activeModule={activeModule} onModuleChange={setActiveModule} />
-					<div className="flex min-w-0 flex-1 flex-col">
-						{showTopBar && <TopBar moduleLabel={currentModule?.label || ''} />}
+				<div className={embedded ? "min-h-full w-full bg-[#F9F9FA]" : "app-shell flex min-h-screen w-full bg-[#F9F9FA]"}>
+					{!embedded && <Sidebar activeModule={activeModule} onModuleChange={setActiveModule} />}
+					<div className={embedded ? "min-w-0" : "flex min-w-0 flex-1 flex-col"}>
+						{showTopBar && !embedded && <TopBar moduleLabel={currentModule?.label || ''} />}
 						<div className="min-h-0 flex-1 overflow-y-auto">
 							<ErrorBoundary label={currentModule?.label || 'This section'}>
 								<RouteGuard module={activeModule === 'pos' || activeModule === 'cashier' ? 'pos' : activeModule === 'store' || activeModule === 'inventory' || activeModule === 'purchasing' || activeModule === 'recipes' || activeModule === 'transfers' || activeModule === 'channels' ? 'store' : 'backoffice'}>
@@ -144,7 +144,7 @@ export default function POSApp({ initialModule = 'dashboard' }) {
 								</RouteGuard>
 							</ErrorBoundary>
 						</div>
-						{isMobile && <POSTabs activeModule={activeModule} onModuleChange={setActiveModule} />}
+						{isMobile && !embedded && <POSTabs activeModule={activeModule} onModuleChange={setActiveModule} />}
 					</div>
 				</div>
 			</PmsProvider>
