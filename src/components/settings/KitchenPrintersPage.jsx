@@ -3,7 +3,7 @@ import {CloudOff,Plus,Search,Printer,Wifi,RefreshCw} from 'lucide-react';
 import {toast} from 'sonner';
 import {Dialog,DialogContent,DialogFooter,DialogHeader,DialogTitle} from '@/components/ui/dialog';
 import {Checkbox} from '@/components/ui/checkbox';
-import {usePrinterStore} from '@/data/modules/printerStoreV2';
+import {usePrinterStore} from '@/data/modules/printerStore';
 import {supabase} from '@/lib/supabaseClient';
 import {inventoryService} from '@/services/inventoryService';
 import {useAuth} from '@/lib/AuthContext';
