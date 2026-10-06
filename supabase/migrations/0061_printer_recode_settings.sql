@@ -159,7 +159,7 @@ create policy workspace_select on public.workspaces for select using(public.is_w
 drop policy if exists workspace_member_select on public.workspace_members;
 create policy workspace_member_select on public.workspace_members for select using(user_id=auth.uid() or public.is_workspace_admin(workspace_id));
 drop policy if exists stores_select on public.stores;
-create policy stores_select on public.stores for select using(public.is_workspace_member(workspace_id));
+create policy stores_select on public.stores for select using(public.is_store_member(id));
 drop policy if exists stores_write on public.stores;
 create policy stores_write on public.stores for all using(public.is_workspace_admin(workspace_id)) with check(public.is_workspace_admin(workspace_id));
 drop policy if exists store_members_select on public.store_members;
