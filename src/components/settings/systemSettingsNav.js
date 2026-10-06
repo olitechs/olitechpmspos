@@ -7,10 +7,13 @@ export const SYSTEM_SETTINGS_NAV=[
   {slug:'receipt',label:'Receipt',path:'/settings/receipt'},
   {slug:'open-tickets',label:'Open tickets'},
   {slug:'kitchen-printers',label:'Kitchen printers',path:'/settings/kitchen-printers'},
+  {slug:'modifiers',label:'Modifiers'},
+  {slug:'discounts',label:'Discounts'},
+  {slug:'suppliers',label:'Suppliers'},
   {slug:'dining-options',label:'Dining options'},
   {slug:'stores',label:'Stores'},
 ];
-export const navPath=item=>item.path||`/settings/system/${item.slug}`;
+export const navPath=item=>item.path||'/settings/system/'+item.slug;
 export function isSystemSettingsPath(pathname=''){
   return pathname==='/settings/kitchen-printers'||pathname==='/settings/system'||pathname.startsWith('/settings/system/');
 }
