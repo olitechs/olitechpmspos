@@ -1,6 +1,6 @@
 import React,{useMemo,useState}from"react";
 import{useLocation,useNavigate}from"react-router-dom";
-import{UtensilsCrossed,Grid3X3,CalendarDays,ClipboardList,Sparkles,Users,Boxes,Package,ShoppingCart,ChefHat,Shirt,ArrowRightLeft,Globe2,PlugZap,BarChart3,Banknote,ClipboardCheck,ShieldCheck,Settings,ChevronLeft,ChevronRight,ChevronDown,Menu,X,LayoutDashboard,Building2,Receipt,Search,LogOut}from"lucide-react";
+import{UtensilsCrossed,Grid3X3,CalendarDays,ClipboardList,Sparkles,Users,Boxes,Package,ShoppingCart,ChefHat,Shirt,ArrowRightLeft,Globe2,PlugZap,BarChart3,Percent,Banknote,ClipboardCheck,ShieldCheck,Settings,ChevronLeft,ChevronRight,ChevronDown,Menu,X,LayoutDashboard,Building2,Receipt,Search,LogOut}from"lucide-react";
 import{useAuth}from"@/lib/AuthContext";
 import{getDefaultModulesForRole,getSessionStaff,normalizeStaffRole}from"@/services/authService";
 
@@ -57,7 +57,7 @@ export default function Sidebar({activeModule,onModuleChange,staffRole}){
  const initials=displayName.split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join("").toUpperCase()||"OT";
  const roleLabel={hotel_admin:"General Manager",super_admin:"Super Admin",front_office_manager:"Front Office Manager",receptionist:"Receptionist",front_desk:"Front Desk",pos_staff:"POS Staff",waiter:"Waiter",cashier:"Cashier",store_manager:"Store Manager",fb_manager:"F&B Manager",housekeeping_supervisor:"Housekeeping Supervisor"}[role]||"Staff";
  const go=item=>{onModuleChange?.(item.id==="dining-tables"?"pos":item.id);navigate(item.path);setMobileOpen(false)};
- const active=item=>item.id==="roles"?location.pathname==="/admin/roles"||activeModule==="roles":item.id==="settings"?location.pathname==="/admin"||activeModule==="settings":item.active?.includes(activeModule);
+ const active=item=>item.id==="roles"?location.pathname==="/admin/roles"||activeModule==="roles":item.id==="settings"?location.pathname.startsWith("/settings/")||location.pathname==="/admin"||activeModule==="settings":item.active?.includes(activeModule);
 
  const sidebar=<aside className={`z-50 flex h-[calc(100vh-16px)] flex-none flex-col overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white shadow-sm transition-all duration-300 ease-in-out m-2 md:relative md:translate-x-0 fixed top-0 left-0 ${collapsed?"w-[88px]":"w-[280px]"} ${mobileOpen?"translate-x-0":"-translate-x-[calc(100%+16px)] md:translate-x-0"}`} aria-label="OliTechs dashboard navigation">
   <div className={`flex h-[72px] shrink-0 items-center border-b border-[#F0F1F2] ${collapsed?"justify-center px-3":"gap-3 px-4"}`}>
