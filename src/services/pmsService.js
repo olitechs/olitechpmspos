@@ -489,9 +489,13 @@ export const pmsService = {
 	},
 
 	async addFolioCharge({ propertyId, reservationId, source = 'other', description, amount }) {
-		const { data, error } = await supabase.from('folio_charges').insert({
-			property_id: propertyId, reservation_id: reservationId, source, description, amount: Number(amount || 0),
-		}).select().single();
+		const { data, error } = await supabase.rpc('fn_add_folio_charge', {
+			p_property_id: propertyId,
+			p_reservation_id: reservationId,
+			p_source: source,
+			p_description: description,
+			p_amount: Number(amount || 0),
+		});
 		if (error) throw new Error(error.message);
 		return data;
 	},
