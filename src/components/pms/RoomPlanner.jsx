@@ -21,6 +21,7 @@ export const BOOKING_STATUSES = ['booked', 'checked_in', 'checked_out'];
 const DAY_WIDTH = 110;
 const ROOM_COL_WIDTH = 210;
 const PRINT_MAX_DAYS = 30;
+const DEFAULT_PLANNER_DAYS = 15;
 
 // CALENDAR THEME: Green/Yellow/Orange - Rectangle bars, English
 export const getReservationBarStyle = (status = 'occupied') => ({
@@ -98,22 +99,16 @@ const emptyForm = (room, date) => ({
 });
 
 
-export const MOCK_ROOM_PLANNER_ROOMS = Array.from({length:15},(_,i)=>({id:`mock-room-${i+1}`,number:String(101+i),name:`Room ${101+i}`,room_type_id:`type-${1+(i%3)}`,roomTypeName:['Standard','Deluxe','Suite'][i%3]}));
-export const MOCK_ROOM_PLANNER_STAYS = Array.from({length:20},(_,i)=>{
- const base=new Date(); base.setHours(0,0,0,0); const start=new Date(base); start.setDate(base.getDate()-4+(i%16)); const end=new Date(start); end.setDate(start.getDate()+Math.max(1,2+(i%4)));
- const states=['optioned','confirmed','occupied','checkout','checked_out','closed']; const payments=['not_paid','partially_paid','fully_paid'];
- return {id:`mock-stay-${i+1}`,roomId:`mock-room-${(i%15)+1}`,roomNumber:String(101+(i%15)),guestName:['Amina','Brian','Clara','Daniel','Elena'][i%5],checkIn:format(start,'yyyy-MM-dd'),checkOut:format(end,'yyyy-MM-dd'),bookingStatus:states[i%6]==='checked_out'?'checked_out':states[i%6]==='occupied'?'checked_in':'booked',plannerStatus:states[i%6],paymentStatus:payments[i%3],adults:1+(i%3),kidsCount:0,totalAmount:10000+i*750,amountPaid:i%3===0?0:i%3===1?5000:10000};
-});
-
 export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }) {
-  const plannerRooms = rooms.length ? rooms : MOCK_ROOM_PLANNER_ROOMS;
-  const plannerReservations = reservations.length ? reservations : MOCK_ROOM_PLANNER_STAYS;
+  const plannerRooms = rooms;
+  const plannerReservations = reservations;
   const { user } = useAuth();
   const propertyId = user?.property?.id;
   const todayDate = useMemo(() => new Date(), []);
   const today = dateKey(todayDate);
   const [month, setMonth] = useState(startOfMonth(todayDate));
   const [range, setRange] = useState(null);
+  const [windowStart, setWindowStart] = useState(todayDate);
   const [fromInput, setFromInput] = useState('');
   const [toInput, setToInput] = useState('');
   const [rangeError, setRangeError] = useState('');
@@ -149,12 +144,8 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
 
   const columns = useMemo(() => {
     if (range) return eachDayOfInterval({ start: parseDate(range.from), end: parseDate(range.to) });
-    const monthDays = eachDayOfInterval({ start: startOfMonth(month), end: endOfMonth(month) });
-    if (focusToday && month.getTime() === startOfMonth(todayDate).getTime() && todayDate.getDate() <= 2) {
-      return [subDays(startOfMonth(month), 2), subDays(startOfMonth(month), 1), ...monthDays];
-    }
-    return monthDays;
-  }, [range, month, focusToday, todayDate]);
+    return Array.from({ length: DEFAULT_PLANNER_DAYS }, (_, index) => addDays(windowStart, index));
+  }, [range, windowStart]);
 
   useEffect(() => {
     if (modal?.reservationId) setLinked(normalizedReservations.filter(r => r.groupId && r.groupId === modal.groupId));
@@ -249,7 +240,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     setRange({ from: fromInput, to: toInput }); setFocusToday(false);
   };
   const addClosure = () => { const room=plannerRooms[0]; if(!room) return; const start=addDays(todayDate,2); const end=addDays(start,2); setClosures(prev=>[...prev,{id:`closure-${Date.now()}`,roomId:room.id,start:dateKey(start),end:dateKey(end),label:'Out of order'}]); toast.success(`Closure added to Room ${room.number}`); };
-  const clearRange = () => { setRange(null); setRangeError(''); setFromInput(''); setToInput(''); setMonth(startOfMonth(todayDate)); setFocusToday(true); };
+  const clearRange = () => { setRange(null); setRangeError(''); setFromInput(''); setToInput(''); setMonth(startOfMonth(todayDate)); setWindowStart(todayDate); setRange(null); setFocusToday(true); };
   const goToday = () => { setRange(null); setFromInput(''); setToInput(''); setMonth(startOfMonth(todayDate)); setFocusToday(true); };
   const shiftMonth = (delta) => { setRange(null); setFocusToday(false); setMonth(new Date(month.getFullYear(), month.getMonth() + delta, 1)); };
 
