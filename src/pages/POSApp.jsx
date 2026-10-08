@@ -53,7 +53,7 @@ function ComingSoon({ label }) {
 // Main authenticated app shell: sidebar/bottom-nav + top bar + the active
 // module. Wraps everything the POS and PMS modules need (table sessions,
 // printers, rooms, reservations) in their local-state providers.
-export default function POSApp({ initialModule = 'dashboard', embedded = false, workspaceModule = null }) {
+export default function POSApp({ initialModule = 'dashboard', embedded = false, workspaceModule = null, storeTab = null }) {
 	const location = useLocation();
 	const queryModule = new URLSearchParams(location.search).get('module');
 	const [activeModule, setActiveModule] = useState(queryModule || initialModule);
@@ -113,7 +113,7 @@ export default function POSApp({ initialModule = 'dashboard', embedded = false, 
 				content = <Inventory />;
 				break;
 			case 'store':
-				content = <Store />;
+				content = <Store initialTab={storeTab || 'overview'} />;
 				break;
 			case 'reports':
 				content = <Reports />;
