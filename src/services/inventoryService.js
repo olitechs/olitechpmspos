@@ -146,12 +146,18 @@ export const inventoryService = {
   async recordUsage({ propertyId, date, department, productId, qty, reference, notes }) {
     const amount = Number(qty) || 0;
     if (!productId || amount <= 0) throw new Error('Select a product and enter a quantity greater than zero.');
-    const { data, error } = await supabase.from('stock_usage').insert({ property_id: propertyId, usage_date: date, department, product_id: productId, qty: amount, reference: reference || null, notes: notes || null }).select('*').single();
+    const { data, error } = await supabase.rpc('fn_record_stock_usage', {
+      p_property_id: propertyId,
+      p_usage_date: date || null,
+      p_department: department || 'General',
+      p_product_id: productId,
+      p_qty: amount,
+      p_reference: reference || null,
+      p_notes: notes || null,
+    });
     if (error) throw new Error(error.message);
-    await this.deductStock(productId, amount, `${department} Usage${reference ? ` - ${reference}` : ''}`);
     return data;
   },
-
   async listPurchases(propertyId) {
     const { data, error } = await supabase.from('purchase_orders').select('*, supplier:suppliers(id,name)').eq('property_id', propertyId).order('purchase_date', { ascending: false });
     if (error) throw new Error(error.message);
@@ -159,15 +165,26 @@ export const inventoryService = {
   },
 
   async createPurchase({ propertyId, supplierId, invoiceNo, purchaseDate, lines }) {
-    const cleanLines = (lines || []).filter((l) => l.productId && Number(l.qty) > 0).map((l) => ({ product_id: l.productId, qty: Number(l.qty), cost_price: Number(l.costPrice) || 0 }));
+    const cleanLines = (lines || []).filter((l) => l.productId && Number(l.qty) > 0).map((l) => ({
+      product_id: l.productId,
+      qty: Number(l.qty),
+      cost_price: Number(l.costPrice) || 0,
+    }));
     if (!cleanLines.length) throw new Error('Add at least one purchase line.');
-    const total = cleanLines.reduce((sum, l) => sum + l.qty * l.cost_price, 0);
-    const { data, error } = await supabase.from('purchase_orders').insert({ property_id: propertyId, supplier_id: supplierId || null, invoice_no: invoiceNo || null, purchase_date: purchaseDate, lines: cleanLines, total }).select('*').single();
+    const { data, error } = await supabase.rpc('fn_create_and_receive_purchase', {
+      p_property_id: propertyId,
+      p_supplier_id: supplierId || null,
+      p_invoice_no: invoiceNo || null,
+      p_purchase_date: purchaseDate || null,
+      p_lines: cleanLines.map((line) => ({
+        product_id: line.product_id,
+        qty: line.qty,
+        unit_cost: line.cost_price,
+      })),
+    });
     if (error) throw new Error(error.message);
-    for (const line of cleanLines) await this.adjustProductStock(line.product_id, line.qty, `Stock In${invoiceNo ? ` - Invoice ${invoiceNo}` : ''}`);
     return data;
   },
-
   async adjustProductStock(productId, change, reason) {
     const { data, error } = await supabase.rpc('fn_adjust_product_stock', { p_product_id: productId, p_change: Number(change), p_reason: reason || 'Stock adjustment' });
     if (error) throw new Error(error.message);
