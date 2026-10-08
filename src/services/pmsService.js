@@ -88,7 +88,7 @@ export const pmsService = {
 		if (error) throw new Error(error.message); return data || [];
 	},
 	async createStockTransfer({ propertyId, fromLocationId, toLocationId, lines, reference }) {
-		const { data, error } = await supabase.from('stock_transfers').insert({ property_id: propertyId, from_location_id: fromLocationId, to_location_id: toLocationId, lines, reference: reference || null, created_by: (await supabase.auth.getUser()).data.user?.id }).select().single();
+		const { data, error } = await supabase.rpc('fn_create_stock_transfer', { p_property_id: propertyId, p_from: fromLocationId, p_to: toLocationId, p_lines: lines || [], p_reference: reference || null });
 		if (error) throw new Error(error.message); return data;
 	},
 	async completeStockTransfer(transferId) {
