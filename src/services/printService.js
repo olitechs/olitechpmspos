@@ -345,6 +345,28 @@ function voidTicketHtml(data) {
   </div>`;
 }
 
+function refundTicketHtml(data = {}) {
+  const money = Number(data.amount || 0).toFixed(2);
+  return `<div class="receipt"><div class="copy">REFUND CONTROL COPY</div>
+  <div class="center bold">REFUND / REVERSAL</div>
+  <div>Check No: ${esc(data.checkNo || data.orderNumber || '—')}</div>
+  <div>Original Receipt: ${esc(data.receiptId || '—')}</div>
+  <div>Payment Method: ${esc(data.method || '—')}</div>
+  <div>Guest / Room: ${esc(data.guest || data.room || 'Walk-in')}</div>
+  <div>Amount Refunded: <b>KES ${money}</b></div>
+  <div>Reason: ${esc(data.reason || '—')}</div>
+  <div>Approved By: ${esc(data.approvedBy || 'Manager')}</div>
+  <div>Date: ${esc(new Date(data.createdAt || Date.now()).toLocaleString('en-KE'))}</div>
+  <div class="divider"></div><div class="center bold">FINANCIAL REVERSAL — RETAIN WITH CASHIER RECORDS</div></div>`;
+}
+
+export async function printRefundSlip(printer, data = {}) {
+  if (!printer) return { ok:false, friendlyError:'Refund printer not configured.' };
+  return printToPrinter(printer, refundTicketHtml(data), {
+    propertyId:data.propertyId, jobType:'refund', copyType:'control', title:'Refund / Reversal'
+  });
+}
+
 export async function printVoidTicket(printer, data = {}) {
   if (!printer) return { ok:false, friendlyError:'Void printer not configured.' };
   const propertyId = data.propertyId;
