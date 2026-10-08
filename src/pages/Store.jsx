@@ -18,7 +18,7 @@ const TABS = [
 const ROLES = ['store_manager','fb_manager','general_manager','admin','owner','administrator','manager','front_office_manager','hotel_admin','super_admin'];
 const normalizeRole = (r) => String(r || '').toLowerCase().replace(/\s+/g,'_');
 
-export default function Store() {
+export default function Store({ initialTab = 'overview' }) {
   const { user } = useAuth();
   const propertyId = user?.property?.id;
   const sessionStaff = getSessionStaff();
@@ -28,7 +28,8 @@ export default function Store() {
   const showCost = ['store_manager','fb_manager','hotel_admin','super_admin','owner','admin','administrator','manager'].includes(role) || user?.isPlatformOwner;
   const readOnly = role === 'front_office_manager';
   const canWrite = !readOnly && ['store_manager','fb_manager','hotel_admin','super_admin','owner','admin','administrator','manager'].includes(role);
-  const [tab,setTab]=useState('overview');
+  const [tab,setTab]=useState(initialTab);
+  useEffect(()=>{ if(initialTab) setTab(initialTab); },[initialTab]);
   const [products,setProducts]=useState([]), [suppliers,setSuppliers]=useState([]), [movements,setMovements]=useState([]), [alerts,setAlerts]=useState([]), [purchases,setPurchases]=useState([]);
   const [loading,setLoading]=useState(true), [error,setError]=useState('');
   const [search,setSearch]=useState(''), [category,setCategory]=useState('all'), [location,setLocation]=useState('all');
