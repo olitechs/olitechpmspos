@@ -337,7 +337,18 @@ export async function printOrderByCategory(order) {
   for (const group of groups) {
     if (!group.items.length) continue;
     const targets = assignments.filter((a) => a.assignment_type === group.type).map((a) => printers.find((p) => p.id === a.printer_id)).filter(Boolean);
-    if (!targets.length) { results.push({ ok:false, assignmentType:group.type, friendlyError:`No printer assigned to ${group.type}.` }); continue; }
+    if (!targets.length) {
+      const queued = await createFnbPrintJob({
+        propertyId, printerId:null, assignmentType:group.type,
+        jobType:group.kind === 'food' ? 'KOT' : 'BOT',
+        title:group.kind === 'food' ? 'Kitchen Order' : 'Bar Order',
+        contentHtml:orderTicketHtml(order,group.kind,group.items),
+        payload:{orderNumber:order.orderNumber||order.checkNo||null,table:order.table||order.tableNumber||null}
+      });
+      await updateFnbPrintJob(queued.id,propertyId,'failed',`No printer assigned to ${group.type}.`,null);
+      results.push({ ok:false, assignmentType:group.type, jobId:queued.id, printerId:null, printerName:null, friendlyError:`No printer assigned to ${group.type}.` });
+      continue;
+    }
     for (const printer of targets) results.push(await printToPrinter(printer, orderTicketHtml(order, group.kind, group.items), { propertyId, jobType: group.kind === 'food' ? 'KOT' : 'BOT', assignmentType: group.type, payload: {orderNumber:order.orderNumber||order.checkNo||null,table:order.table||order.tableNumber||null}, title: group.kind === 'food' ? 'Kitchen Order' : 'Bar Order' }));
   }
   return { ok: results.every((r) => r.ok), results };
