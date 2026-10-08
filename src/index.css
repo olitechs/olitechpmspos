@@ -6,7 +6,7 @@
   :root {
     --bg:#F7F7F5; --surface:#FFFFFF; --text:#121418; --muted:#6B7280; --border:#E5E7EB;
     --action:#FFC400; --action-text:#121418; --info:#2563EB; --warning:#D97706; --danger:#DC2626; --room-charge:#4F46E5;
-    --brand-dark:#121418; --brand-primary:#FFC400; --brand-soft:#FFF7D6; --brand-surface:#FAFAF8;
+    --brand-dark:#121418; --brand-primary:#FFC400; --brand-soft:#FFF7D6; --brand-surface:#FAFAF8; --on-dark:#FFFFFF;
     --table-free:#D1D5DB; --table-occupied:#2563EB; --table-bill:#D97706; --table-reserved:#7C3AED; --table-paid:#16A34A;
     --room-clean:#16A34A; --room-dirty:#D97706; --stay-occupied:#2563EB; --stay-checkout:#4338CA; --stay-optioned:#0D9488; --stay-closed:#6B7280;
     --pay-none:#C2410C; --pay-partial:#A16207; --pay-total:#3F6212;
@@ -23,7 +23,7 @@
   [data-theme="dark"]{
     --bg:#0F1115; --surface:#171A1F; --text:#F5F5F4; --muted:#A1A1AA; --border:#2D3138;
     --action:#FFC400; --action-text:#121418; --info:#60A5FA; --warning:#FBBF24; --danger:#F87171; --room-charge:#818CF8;
-    --brand-dark:#F5F5F4; --brand-primary:#FFC400; --brand-soft:#332B00; --brand-surface:#1D2026;
+    --brand-dark:#F5F5F4; --brand-primary:#FFC400; --brand-soft:#332B00; --brand-surface:#1D2026; --on-dark:#FFFFFF;
     --table-free:#71717A; --table-occupied:#60A5FA; --table-bill:#FBBF24; --table-reserved:#A78BFA; --table-paid:#4ADE80;
     --room-clean:#34D399; --room-dirty:#FBBF24; --stay-occupied:#38BDF8; --stay-checkout:#818CF8; --stay-optioned:#2DD4BF; --stay-closed:#94A3B8;
     --pay-none:#FB923C; --pay-partial:#FACC15; --pay-total:#84CC16;
