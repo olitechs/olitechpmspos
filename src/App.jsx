@@ -56,7 +56,7 @@ import CategoriesPage from "@/components/settings/CategoriesPage";
 import TimecardsPage from "@/components/settings/TimecardsPage";
 import EmployeeListPage from "@/components/settings/EmployeeListPage";
 
-function AuthLoading(){return <div className="fixed inset-0 flex items-center justify-center bg-[#F5F3EF]"><div className="h-8 w-8 animate-spin rounded-full border-4 border-[#D6D6D6] border-t-[#FFD300]"/></div>;}
+function AuthLoading(){return <div className="fixed inset-0 flex items-center justify-center bg-[var(--bg)]"><div className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--border)] border-t-[var(--brand-primary)]"/></div>;}
 function appRole(user){const s=getSessionStaff();const raw=s?.role||user?.staff?.role||user?.propertyRole||user?.role;return normalizeAppRole(normalizeStaffRole(raw));}
 function PublicRoute(){const {user,isLoadingAuth,isLoadingPublicSettings}=useAuth();if(isLoadingAuth||isLoadingPublicSettings)return <AuthLoading/>;if(user)return <Navigate to={'/'+getDefaultApp(appRole(user), user?.property?.package)} replace/>;return <Outlet/>;}
 function ProtectedRoute({app,children}){const {user,isLoadingAuth,isLoadingPublicSettings}=useAuth();if(isLoadingAuth||isLoadingPublicSettings)return <AuthLoading/>;if(!user)return <Navigate to="/signin" replace/>;if(user?.isPlatformOwner)return <Navigate to="/admin" replace/>;if(!canAccessApp(appRole(user),app,user?.property?.package))return <Navigate to={'/'+getDefaultApp(appRole(user),user?.property?.package)} replace/>;const property=user?.property;const full=property?.status==='active'&&property?.package&&property.package!=='none';if(!full)return <PendingApproval/>;return children||<Outlet/>;}
