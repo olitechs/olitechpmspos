@@ -73,7 +73,7 @@ begin
  return jsonb_build_object('id',s.id,'full_name',s.full_name,'email',s.email,'phone',s.phone,'role',s.role,'assigned_modules',s.assigned_modules,'is_active',s.is_active,'property_id',s.property_id,'avatar',s.avatar,'last_login',s.last_login);
 end $$;
 
+revoke all on function public.fn_staff_module_access(uuid,text) from public,anon,authenticated;
+revoke all on function public.fn_subscription_module_allowed(uuid,text) from public,anon,authenticated;
 grant execute on function public.fn_staff_module_access(uuid,text) to authenticated;
 grant execute on function public.fn_subscription_module_allowed(uuid,text) to authenticated;
-revoke execute on function public.fn_staff_module_access(uuid,text) from anon;
-revoke execute on function public.fn_subscription_module_allowed(uuid,text) from anon;
