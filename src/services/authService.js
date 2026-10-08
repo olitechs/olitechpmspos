@@ -32,7 +32,7 @@ export function getDefaultModulesForRole(role) {
   switch (normalizeStaffRole(role)) {
     case 'super_admin': case 'hotel_admin': return [...MODULE_NAMES];
     case 'front_office_manager': return ['frontoffice'];
-    case 'receptionist': case 'front_desk': return ['frontoffice'];
+    case 'receptionist': case 'front_desk': return ['frontoffice','pos'];
     case 'pos_staff': case 'waiter': case 'cashier': return ['pos'];
     case 'store_manager': return ['store'];
     case 'fb_manager': return ['pos','store'];
