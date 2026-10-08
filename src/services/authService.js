@@ -17,7 +17,7 @@ export const STAFF_ROLES = [
   'super_admin','hotel_admin','front_office_manager','receptionist','front_desk',
   'pos_staff','waiter','cashier','store_manager','fb_manager','housekeeping_supervisor',
 ];
-export const MODULE_NAMES = ['pos','backoffice','store'];
+export const MODULE_NAMES = ['backoffice','frontoffice','pos','store'];
 export const ROLE_LABELS = {
   super_admin: 'Super Admin / Owner', hotel_admin: 'Hotel Admin', front_office_manager: 'Front Office Manager',
   receptionist: 'Receptionist', front_desk: 'Front Desk', pos_staff: 'POS Staff', waiter: 'Waiter', cashier: 'Cashier',
@@ -31,12 +31,12 @@ export function normalizeStaffRole(role) {
 export function getDefaultModulesForRole(role) {
   switch (normalizeStaffRole(role)) {
     case 'super_admin': case 'hotel_admin': return [...MODULE_NAMES];
-    case 'front_office_manager': return ['backoffice','store'];
-    case 'receptionist': case 'front_desk': return ['backoffice'];
+    case 'front_office_manager': return ['frontoffice'];
+    case 'receptionist': case 'front_desk': return ['frontoffice'];
     case 'pos_staff': case 'waiter': case 'cashier': return ['pos'];
     case 'store_manager': return ['store'];
     case 'fb_manager': return ['pos','store'];
-    case 'housekeeping_supervisor': return ['backoffice','store'];
+    case 'housekeeping_supervisor': return ['frontoffice'];
     default: return [];
   }
 }
