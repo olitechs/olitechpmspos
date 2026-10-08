@@ -96,6 +96,10 @@ export default function Purchasing() {
           {o.status!=='received'&&o.status!=='cancelled'?<button onClick={()=>receive(o.id)} className="px-3 py-2 rounded-lg text-xs font-black flex items-center gap-1" style={{background:YELLOW,color:TEXT}}><CheckCircle2 size={14}/> Receive</button>:<span className="text-xs font-bold" style={{color:MUTED}}>{o.status}</span>}
         </div>)}
       </section>
+      <section className="xl:col-span-3 rounded-2xl overflow-hidden mt-4" style={{background:SURFACE,border:`1px solid ${BORDER}`}}>
+        <div className="px-4 py-3 flex items-center justify-between" style={{borderBottom:`1px solid ${BORDER}`}}><div><h2 className="text-sm font-black uppercase tracking-widest">Goods Receipts / GRN History</h2><p className="text-xs mt-1" style={{color:MUTED}}>Every receipt is tied to a purchase order and stock-ledger movement.</p></div><CheckCircle2 size={18}/></div>
+        {grns.length===0?<div className="p-5 text-xs" style={{color:MUTED}}>No goods receipts recorded.</div>:grns.map(g=><div key={g.id} className="p-4 border-b"><div className="flex justify-between gap-3"><div><div className="text-sm font-black">{g.grn_no}</div><div className="text-xs mt-1" style={{color:MUTED}}>PO: {g.purchase_order?.invoice_no||g.purchase_order_id} · {new Date(g.received_at).toLocaleString()}</div></div><span className="text-xs font-bold">{g.goods_receipt_lines?.reduce((s,l)=>s+Number(l.qty||0),0)} units</span></div></div>)}
+      </section>
     </div>
   </div>;
 }
