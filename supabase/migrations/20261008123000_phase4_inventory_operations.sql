@@ -1,0 +1,1 @@
+-- Phase 4 inventory operations: locations, transfers, counts, adjustments, production, wastage and expiry.
