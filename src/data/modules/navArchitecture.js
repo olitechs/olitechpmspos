@@ -3,7 +3,7 @@ import { BarChart3, ShoppingBag, ShoppingCart, Users, PlugZap, Settings, HelpCir
 export const MAIN_NAV = [
   { id:'backoffice', label:'Back Office', path:'/backoffice', roles:['admin','owner'], color:'#2C3E50', icon:LayoutDashboard },
   { id:'frontoffice', label:'Front Office', path:'/frontoffice', roles:['admin','owner','front_office_manager','front_desk','housekeeping'], color:'#2C3E50', icon:Building2 },
-  { id:'pos', label:'POS & F&B', path:'/pos', roles:['admin','owner','pos_staff'], color:'#2C3E50', icon:ShoppingCart },
+  { id:'pos', label:'POS & F&B', path:'/pos', roles:['admin','owner','pos_staff','front_desk'], color:'#2C3E50', icon:ShoppingCart },
   { id:'stores', label:'Stores', path:'/stores', roles:['admin','owner','store_manager'], color:'#2C3E50', icon:Store },
 ];
 
