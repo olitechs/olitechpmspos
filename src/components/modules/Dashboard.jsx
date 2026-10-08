@@ -179,7 +179,7 @@ export default function Dashboard({ onNavigateToPOS, onNavigateToRooms, onNaviga
           </section>
         </div>
 
-        <div className="mt-4 flex flex-col gap-3 rounded-2xl p-4 sm:flex-row sm:items-center sm:justify-between" style={{ background: NAVY, color: '#FFFFFF' }}>
+        <div className="mt-4 flex flex-col gap-3 rounded-2xl p-4 sm:flex-row sm:items-center sm:justify-between" style={{ background: NAVY, color: 'var(--on-dark)' }}>
           <div>
             <div className="text-sm font-bold">Need to work the dining floor?</div>
             <div className="mt-1 text-xs text-white/60">Open the POS workspace to manage tables, orders, bills, and payments.</div>
