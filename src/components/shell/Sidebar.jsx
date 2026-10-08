@@ -1,6 +1,6 @@
 import React,{useMemo,useState}from"react";
 import{useLocation,useNavigate}from"react-router-dom";
-import{UtensilsCrossed,Grid3X3,CalendarDays,ClipboardList,Sparkles,Users,Boxes,Package,ShoppingCart,ChefHat,Shirt,ArrowRightLeft,Globe2,PlugZap,BarChart3,Percent,Banknote,ClipboardCheck,ShieldCheck,Settings,ChevronLeft,ChevronRight,ChevronDown,Menu,X,LayoutDashboard,Building2,Receipt,Search,LogOut}from"lucide-react";
+import{UtensilsCrossed,Grid3X3,CalendarDays,ClipboardList,Sparkles,Users,Boxes,Package,ShoppingCart,ChefHat,Shirt,ArrowRightLeft,Globe2,PlugZap,BarChart3,Percent,Banknote,ClipboardCheck,ShieldCheck,Settings,ChevronLeft,ChevronRight,ChevronDown,Menu,X,LayoutDashboard,Building2,Receipt,Search,LogOut,BedDouble}from"lucide-react";
 import{useAuth}from"@/lib/AuthContext";
 import{getDefaultModulesForRole,getSessionStaff,normalizeStaffRole,canUseModule}from"@/services/authService";
 
@@ -10,6 +10,13 @@ const SECTIONS=[
   {id:"dashboard",label:"Dashboard",icon:LayoutDashboard,roles:["hotel_admin","super_admin","front_office_manager","receptionist","front_desk"],path:"/backoffice",active:["dashboard"]},
   {id:"pos",label:"Point of Sale",icon:UtensilsCrossed,roles:["hotel_admin","super_admin","pos_staff","waiter","cashier","fb_manager"],path:"/pos",active:["pos"]},
   {id:"reports",label:"Reports",icon:BarChart3,roles:["hotel_admin","super_admin","front_office_manager","store_manager","fb_manager"],path:"/backoffice/reports/sales",active:["reports"],group:"dropdown"}
+ ]},
+ {key:"front-office",title:"Front Office",items:[
+  {id:"room-planner",label:"Room Planner",icon:BedDouble,roles:["hotel_admin","super_admin","front_office_manager","receptionist","front_desk","housekeeping_supervisor"],path:"/frontoffice/room-planner",active:["rooms","room-planner"]},
+  {id:"reservations",label:"Reservations",icon:CalendarDays,roles:["hotel_admin","super_admin","front_office_manager","receptionist","front_desk"],path:"/frontoffice/reservations",active:["reservations"]},
+  {id:"folio",label:"Guest Folio",icon:Receipt,roles:["hotel_admin","super_admin","front_office_manager","receptionist","front_desk"],path:"/frontoffice/folio",active:["folio"]},
+  {id:"housekeeping",label:"Housekeeping",icon:Sparkles,roles:["hotel_admin","super_admin","front_office_manager","receptionist","front_desk","housekeeping_supervisor"],path:"/frontoffice/housekeeping",active:["housekeeping"]},
+  {id:"night-audit",label:"Night Audit",icon:ClipboardCheck,roles:["hotel_admin","super_admin","front_office_manager"],path:"/frontoffice/night-audit",active:["night-audit"]}
  ]},
  {key:"items",title:"Items",items:[
   {id:"item-list",label:"Item list",icon:ClipboardList,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/backoffice/items/list",active:["products"],sub:true},
@@ -41,7 +48,7 @@ const SECTIONS=[
 ];
 
 function getRole(user){const s=getSessionStaff();return normalizeStaffRole(s?.role||user?.staff?.role||user?.propertyRole||user?.role||"")}
-function itemModule(item){if(["roles","settings"].includes(item.id))return"admin";if(["pos","cashier","dining-tables"].includes(item.id))return"pos";if(["store","products","recipes","purchasing","laundry","transfers","booking-engine","channels","reports","inventory"].includes(item.id))return"store";return"backoffice"}
+function itemModule(item){if(["roles","settings"].includes(item.id))return"admin";if(["room-planner","reservations","folio","housekeeping","night-audit"].includes(item.id))return"frontoffice";if(["pos","cashier","dining-tables"].includes(item.id))return"pos";if(["store","products","recipes","purchasing","laundry","transfers","booking-engine","channels","reports","inventory"].includes(item.id))return"store";return"backoffice"}
 function getAssigned(user,role){const s=getSessionStaff();const a=s?.assigned_modules??user?.staff?.assigned_modules;return Array.isArray(a)&&a.length?a:getDefaultModulesForRole(role)}
 
 export default function Sidebar({activeModule,onModuleChange,staffRole}){
