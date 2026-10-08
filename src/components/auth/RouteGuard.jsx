@@ -22,7 +22,7 @@ export function clearModuleAccess(module) { const all = getModuleAccess(); delet
 export function clearAllModuleAccess() { sessionStorage.removeItem(ACCESS_KEY); sessionStorage.removeItem(ACTIVE_STAFF_KEY); }
 export function getActiveStaff() { try { return JSON.parse(sessionStorage.getItem(ACTIVE_STAFF_KEY) || 'null'); } catch { return null; } }
 
-const moduleLabel = { pos: 'Front Office · POS', backoffice: 'Back Office · PMS', store: 'Store / Controls', admin: 'Admin' };
+const moduleLabel = { pos: 'POS & F&B', frontoffice: 'Front Office · PMS', backoffice: 'Back Office · Property Admin', store: 'Stores', admin: 'Admin' };
 const masterRoles = new Set(['super_admin','hotel_admin']);
 
 export default function RouteGuard({ module, children }) {
