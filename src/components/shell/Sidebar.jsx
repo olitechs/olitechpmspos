@@ -9,34 +9,34 @@ const SECTIONS=[
  {key:"main",title:"Main",items:[
   {id:"dashboard",label:"Dashboard",icon:LayoutDashboard,roles:["hotel_admin","super_admin","front_office_manager","receptionist","front_desk"],path:"/backoffice",active:["dashboard"]},
   {id:"pos",label:"Point of Sale",icon:UtensilsCrossed,roles:["hotel_admin","super_admin","pos_staff","waiter","cashier","fb_manager"],path:"/pos",active:["pos"]},
-  {id:"reports",label:"Reports",icon:BarChart3,roles:["hotel_admin","super_admin","front_office_manager","store_manager","fb_manager"],path:"/store",active:["reports"],group:"dropdown"}
+  {id:"reports",label:"Reports",icon:BarChart3,roles:["hotel_admin","super_admin","front_office_manager","store_manager","fb_manager"],path:"/backoffice/reports/sales",active:["reports"],group:"dropdown"}
  ]},
  {key:"items",title:"Items",items:[
-  {id:"item-list",label:"Item list",icon:ClipboardList,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/store?module=products",active:["products"],sub:true},
-  {id:"categories",label:"Categories",icon:Grid3X3,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/store?module=categories",active:["categories"],sub:true},
-  {id:"modifiers",label:"Modifiers",icon:Sparkles,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/settings/system/modifiers",active:["modifiers"],sub:true},
-  {id:"discounts",label:"Discounts",icon:Percent,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/settings/system/discounts",active:["discounts"],sub:true}
+  {id:"item-list",label:"Item list",icon:ClipboardList,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/backoffice/items/list",active:["products"],sub:true},
+  {id:"categories",label:"Categories",icon:Grid3X3,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/backoffice/items/categories",active:["categories"],sub:true},
+  {id:"modifiers",label:"Modifiers",icon:Sparkles,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/backoffice/items/modifiers",active:["modifiers"],sub:true},
+  {id:"discounts",label:"Discounts",icon:Percent,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/backoffice/items/discounts",active:["discounts"],sub:true}
  ]},
  {key:"inventory-management",title:"Inventory management",items:[
-  {id:"purchasing",label:"Purchase orders",icon:ShoppingCart,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/store?module=purchasing",active:["purchasing"],sub:true},
-  {id:"transfers",label:"Transfer orders",icon:ArrowRightLeft,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/store?module=transfers",active:["transfers"],sub:true},
-  {id:"adjustments",label:"Stock adjustments",icon:ClipboardCheck,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/store?module=inventory",active:["inventory"],sub:true},
-  {id:"counts",label:"Inventory counts",icon:Boxes,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/store?module=inventory",active:["inventory"],sub:true},
-  {id:"productions",label:"Productions",icon:ChefHat,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/store?module=recipes",active:["recipes"],sub:true},
-  {id:"suppliers",label:"Suppliers",icon:Package,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/settings/system/suppliers",active:["suppliers"],sub:true},
-  {id:"inventory-history",label:"Inventory history",icon:Receipt,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/store?module=inventory",active:["inventory"],sub:true},
-  {id:"inventory-valuation",label:"Inventory valuation",icon:Banknote,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/store?module=inventory",active:["inventory"],sub:true}
+  {id:"purchasing",label:"Purchase orders",icon:ShoppingCart,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/backoffice/inventory/purchase-orders",active:["purchasing"],sub:true},
+  {id:"transfers",label:"Transfer orders",icon:ArrowRightLeft,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/backoffice/inventory/transfer-orders",active:["transfers"],sub:true},
+  {id:"adjustments",label:"Stock adjustments",icon:ClipboardCheck,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/backoffice/inventory/stock-adjustments",active:["inventory"],sub:true},
+  {id:"counts",label:"Inventory counts",icon:Boxes,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/backoffice/inventory/stock-adjustments",active:["inventory"],sub:true},
+  {id:"productions",label:"Productions",icon:ChefHat,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/backoffice/inventory/productions",active:["recipes"],sub:true},
+  {id:"suppliers",label:"Suppliers",icon:Package,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/backoffice/inventory/suppliers",active:["suppliers"],sub:true},
+  {id:"inventory-history",label:"Inventory history",icon:Receipt,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/backoffice/inventory/stock-adjustments",active:["inventory"],sub:true},
+  {id:"inventory-valuation",label:"Inventory valuation",icon:Banknote,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/backoffice/inventory/stock-adjustments",active:["inventory"],sub:true}
  ]},
  {key:"employees",title:"Employees",items:[
-  {id:"employee-list",label:"Employee list",icon:Users,roles:["hotel_admin","super_admin"],path:"/admin/roles",active:["roles"],sub:true},
-  {id:"access-rights",label:"Access rights",icon:ShieldCheck,roles:["hotel_admin","super_admin"],path:"/admin/roles",active:["roles"],sub:true},
-  {id:"timecards",label:"Timecards",icon:CalendarDays,roles:["hotel_admin","super_admin"],path:"/admin/roles",active:["roles"],sub:true},
-  {id:"total-hours",label:"Total hours worked",icon:ClipboardCheck,roles:["hotel_admin","super_admin"],path:"/admin/roles",active:["roles"],sub:true}
+  {id:"employee-list",label:"Employee list",icon:Users,roles:["hotel_admin","super_admin"],path:"/backoffice/employees/list",active:["roles"],sub:true},
+  {id:"access-rights",label:"Access rights",icon:ShieldCheck,roles:["hotel_admin","super_admin"],path:"/backoffice/employees/list",active:["roles"],sub:true},
+  {id:"timecards",label:"Timecards",icon:CalendarDays,roles:["hotel_admin","super_admin"],path:"/backoffice/employees/list",active:["roles"],sub:true},
+  {id:"total-hours",label:"Total hours worked",icon:ClipboardCheck,roles:["hotel_admin","super_admin"],path:"/backoffice/employees/list",active:["roles"],sub:true}
  ]},
  {key:"operations",title:"Operations",items:[
-  {id:"customers",label:"Customers",icon:Users,roles:["hotel_admin","super_admin","front_office_manager","receptionist","front_desk"],path:"/backoffice?module=guests",active:["guests"]},
-  {id:"integrations",label:"Integrations",icon:PlugZap,roles:["hotel_admin","super_admin","front_office_manager"],path:"/backoffice?module=booking-engine",active:["booking-engine"],group:"dropdown"},
-  {id:"settings",label:"Settings",icon:Settings,roles:["hotel_admin","super_admin","front_office_manager"],path:"/settings/system/features",active:["settings"]}
+  {id:"customers",label:"Customers",icon:Users,roles:["hotel_admin","super_admin","front_office_manager","receptionist","front_desk"],path:"/backoffice/customers",active:["guests"]},
+  {id:"integrations",label:"Integrations",icon:PlugZap,roles:["hotel_admin","super_admin","front_office_manager"],path:"/backoffice/integrations",active:["booking-engine"],group:"dropdown"},
+  {id:"settings",label:"Settings",icon:Settings,roles:["hotel_admin","super_admin","front_office_manager"],path:"/backoffice/settings/features",active:["settings"]}
  ]}
 ];
 
@@ -57,7 +57,7 @@ export default function Sidebar({activeModule,onModuleChange,staffRole}){
  const initials=displayName.split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join("").toUpperCase()||"OT";
  const roleLabel={hotel_admin:"General Manager",super_admin:"Super Admin",front_office_manager:"Front Office Manager",receptionist:"Receptionist",front_desk:"Front Desk",pos_staff:"POS Staff",waiter:"Waiter",cashier:"Cashier",store_manager:"Store Manager",fb_manager:"F&B Manager",housekeeping_supervisor:"Housekeeping Supervisor"}[role]||"Staff";
  const go=item=>{onModuleChange?.(item.id==="dining-tables"?"pos":item.id);navigate(item.path);setMobileOpen(false)};
- const active=item=>item.id==="roles"?location.pathname==="/admin/roles"||activeModule==="roles":item.id==="settings"?location.pathname.startsWith("/settings/")||location.pathname==="/admin"||activeModule==="settings":item.active?.includes(activeModule);
+ const active=item=>item.id==="roles"?location.pathname.startsWith("/backoffice/employees/")||location.pathname==="/admin/roles"||activeModule==="roles":item.id==="settings"?location.pathname.startsWith("/backoffice/settings/")||location.pathname.startsWith("/settings/")||activeModule==="settings":item.active?.includes(activeModule);
 
  const sidebar=<aside className={`z-50 flex h-[calc(100vh-16px)] flex-none flex-col overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white shadow-sm transition-all duration-300 ease-in-out m-2 md:relative md:translate-x-0 fixed top-0 left-0 ${collapsed?"w-[88px]":"w-[280px]"} ${mobileOpen?"translate-x-0":"-translate-x-[calc(100%+16px)] md:translate-x-0"}`} aria-label="OliTechs dashboard navigation">
   <div className={`flex h-[72px] shrink-0 items-center border-b border-[#F0F1F2] ${collapsed?"justify-center px-3":"gap-3 px-4"}`}>
