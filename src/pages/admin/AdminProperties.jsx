@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { platformService } from '@/services/platformService';
+import { supabase } from '@/lib/supabaseClient';
 import { PACKAGE_LABELS } from '@/lib/entitlements';
 import { Button } from '@/components/ui/button';
 import PackageAssignmentModal from './PackageAssignmentModal';
@@ -41,6 +42,12 @@ export default function AdminProperties() {
 
 	useEffect(() => {
 		load();
+		const channel = supabase
+			.channel('platform-properties-live')
+			.on('postgres_changes', { event: '*', schema: 'public', table: 'properties' }, () => load())
+			.on('postgres_changes', { event: '*', schema: 'public', table: 'property_subscriptions' }, () => load())
+			.subscribe();
+		return () => { supabase.removeChannel(channel); };
 	}, [load]);
 
 	const withBusy = async (id, fn) => {
@@ -81,7 +88,7 @@ export default function AdminProperties() {
 			<div className="flex items-start justify-between gap-4">
 				<div>
 					<h1 className="text-2xl font-bold text-foreground">Properties</h1>
-					<p className="text-sm text-muted-foreground mt-1">Review applications, approve, and manage package assignments.</p>
+					<p className="text-sm text-muted-foreground mt-1">Review applications, approve, manage packages, subscriptions and live property access.</p>
 				</div>
 				<Link to="/admin/properties/new" className="inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium">+ Add Property</Link>
 			</div>
@@ -95,7 +102,7 @@ export default function AdminProperties() {
 							<th className="px-4 py-3 font-medium">Property</th>
 							<th className="px-4 py-3 font-medium">Status</th>
 							<th className="px-4 py-3 font-medium">Package</th>
-							<th className="px-4 py-3 font-medium">Subscription</th>
+							<th className="px-4 py-3 font-medium">Subscription / Entitlements</th>
 							<th className="px-4 py-3 font-medium">Created</th>
 							<th className="px-4 py-3 font-medium text-right">Actions</th>
 						</tr>

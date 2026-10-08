@@ -60,7 +60,7 @@ export async function hashPin(pin) {
   return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2,'0')).join('');
 }
 
-function toAppUser({ profile, property, propertyRole, staff = null }) {
+function toAppUser({ profile, property, propertyRole, staff = null, subscription = null }) {
 	if (!profile) return null;
 	return {
 		id: profile.id,
@@ -74,6 +74,8 @@ function toAppUser({ profile, property, propertyRole, staff = null }) {
 		property: property || null,
 		propertyRole: propertyRole || null,
 		staff,
+		subscription,
+		package: property?.package || 'none',
 	};
 }
 
@@ -127,9 +129,13 @@ async function loadCurrentUserDetails() {
 	const membership = membershipRows.find((row) => row?.property?.id) || null;
 	const propertyId = membership?.property?.id;
 	let staff = null;
+	let subscription = null;
 	if (propertyId) {
 		const { data: staffRow } = await supabase.from('staff').select('id,full_name,email,phone,role,assigned_modules,is_active,property_id,avatar,last_login,user_id').eq('property_id', propertyId).ilike('email', authUser.email || '').maybeSingle();
 		staff = staffRow || null;
+		const { data: subscriptionRow, error: subscriptionError } = await supabase.rpc('fn_get_subscription', { p_property_id: propertyId });
+		if (subscriptionError) console.error('[authService] subscription lookup failed:', subscriptionError.message);
+		subscription = subscriptionRow || null;
 	}
 
 	return toAppUser({
@@ -137,6 +143,7 @@ async function loadCurrentUserDetails() {
 		property: membership?.property || null,
 		propertyRole: membership?.role || null,
 		staff,
+		subscription,
 	});
 }
 

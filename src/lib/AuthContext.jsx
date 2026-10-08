@@ -50,6 +50,21 @@ export function AuthProvider({ children }) {
     return () => subscription?.subscription?.unsubscribe();
   }, [checkUserAuth]);
 
+  // Platform Admin changes (package/status/subscription/member assignment) are
+  // authoritative in Postgres. Listen to the current property's records so
+  // access changes become effective without requiring logout/login or a hard refresh.
+  useEffect(() => {
+    const propertyId = user?.property?.id;
+    if (!propertyId || user?.isPlatformOwner) return undefined;
+    const channel = supabase
+      .channel(`property-access-${propertyId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'properties', filter: `id=eq.${propertyId}` }, () => checkUserAuth())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'property_subscriptions', filter: `property_id=eq.${propertyId}` }, () => checkUserAuth())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'property_users', filter: `property_id=eq.${propertyId}` }, () => checkUserAuth())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user?.property?.id, user?.isPlatformOwner, checkUserAuth]);
+
   const navigateToLogin = useCallback(() => {
     setReturnTo(location.pathname + location.search);
     navigate('/login', { replace: true });

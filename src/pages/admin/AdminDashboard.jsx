@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Building2, Clock, CheckCircle2, ShieldAlert, Users, Package, ArrowRight, RefreshCw, Plus, ClipboardList, Activity, Ban, CreditCard } from 'lucide-react';
 import { platformService } from '@/services/platformService';
+import { supabase } from '@/lib/supabaseClient';
 import { PACKAGE_LABELS } from '@/lib/entitlements';
 
 function StatCard({ icon: Icon, label, value, hint }) {
@@ -55,6 +56,16 @@ export default function AdminDashboard() {
 
   useEffect(() => { load(true); }, []);
 
+  useEffect(() => {
+    const channel = supabase
+      .channel('platform-admin-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'properties' }, () => load(false))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'property_subscriptions' }, () => load(false))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'audit_logs' }, () => load(false))
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
   if (loading) return <div className="text-muted-foreground text-sm">Loading platform dashboard...</div>;
   if (error) return <div className="p-4 rounded-xl bg-destructive/10 text-destructive text-sm">{error}</div>;
 
@@ -67,6 +78,9 @@ export default function AdminDashboard() {
     count: stats.activePackages[pkg] || 0,
     percent: stats.activeProperties ? Math.round(((stats.activePackages[pkg] || 0) / stats.activeProperties) * 100) : 0,
   }));
+
+  const subscriptionMismatches = properties.filter((p) => p.status === 'active' && p.package !== 'none' && p.subscription_plan_code !== p.package).length;
+  const expiringSoon = properties.filter((p) => p.current_period_ends_at && new Date(p.current_period_ends_at).getTime() - Date.now() < 7 * 86400000).length;
 
   return (
     <div className="space-y-8">
@@ -103,6 +117,12 @@ export default function AdminDashboard() {
           <QuickAction to="/admin/properties" icon={ClipboardList} title="Manage Properties" description="Approve, suspend, reactivate and assign packages." />
           <QuickAction to="/admin/audit-log" icon={Activity} title="Platform Audit Log" description="Review platform-wide administrative activity." />
         </div>
+      </section>
+
+      <section className="grid md:grid-cols-3 gap-4">
+        <div className="rounded-2xl border border-border bg-card p-5"><div className="text-sm text-muted-foreground">Live entitlement health</div><div className="mt-2 text-2xl font-bold">{subscriptionMismatches === 0 ? 'Healthy' : subscriptionMismatches + ' mismatch'}</div><div className="mt-1 text-xs text-muted-foreground">Package and subscription plan alignment</div></div>
+        <div className="rounded-2xl border border-border bg-card p-5"><div className="text-sm text-muted-foreground">Renewals due soon</div><div className="mt-2 text-2xl font-bold">{expiringSoon}</div><div className="mt-1 text-xs text-muted-foreground">Within the next 7 days</div></div>
+        <div className="rounded-2xl border border-border bg-card p-5"><div className="text-sm text-muted-foreground">Live control</div><div className="mt-2 text-2xl font-bold">Connected</div><div className="mt-1 text-xs text-muted-foreground">Property and subscription changes sync automatically</div></div>
       </section>
 
       <section className="grid lg:grid-cols-2 gap-4">
