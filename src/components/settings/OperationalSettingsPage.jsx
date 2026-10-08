@@ -31,12 +31,18 @@ export default function OperationalSettingsPage({module='features'}){
  const remove=async(row,type)=>{try{await (type==='payment-types'?backOfficeService.deletePaymentType(row.id,propertyId):type==='taxes'?backOfficeService.deleteTax(row.id,propertyId):backOfficeService.deleteDiningOption(row.id,propertyId));await load();toast.success('Removed.')}catch(e){toast.error(e.message)}};
  return <div className="min-h-full bg-slate-50 p-4 md:p-6"><div className="mx-auto max-w-6xl">
   <div className="mb-5 flex items-center justify-between gap-3"><div><div className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Back Office</div><h1 className="mt-1 text-2xl font-black text-slate-950">{title}</h1><p className="mt-1 text-sm text-slate-500">Property-scoped operational configuration backed by Supabase.</p></div><button onClick={load} className="rounded-xl border bg-white p-2.5"><RefreshCw size={17}/></button></div>
-  {module==='features'&&<Features pkg={pkg}/>}
-  {module==='payment-types'&&<ConfigList rows={rows} fields={[['code','Code'],['name','Name']]} draft={draft} setDraft={setDraft} onAdd={add} onSeed={seed} onDelete={r=>remove(r,module)} busy={busy}/>}
-  {module==='taxes'&&<ConfigList rows={rows} fields={[['name','Tax name'],['rate','Rate %'],['inclusive','Inclusive']]} draft={draft} setDraft={setDraft} onAdd={add} onDelete={r=>remove(r,module)} busy={busy}/>}
-  {module==='dining-options'&&<ConfigList rows={rows} fields={[['code','Code'],['name','Name']]} draft={draft} setDraft={setDraft} onAdd={add} onSeed={seed} onDelete={r=>remove(r,module)} busy={busy}/>}
-  {module==='open-tickets'&&<OpenTickets rows={rows}/>}
-  {module==='loyalty'&&<Loyalty rows={rows} draft={draft} setDraft={setDraft} onAdd={add} busy={busy}/>}
+  {loading&&module!=='features'?<div className="rounded-2xl border bg-white p-10 text-center text-sm text-slate-500">Loading operational data…</div>:null}
+  {!loading&&module==='features'&&<Features pkg={pkg}/>}
+  {!loading&&module==='payment-types'&&<ConfigList rows={rows} fields={[[`code`,`Code`],[`name`,`Name`]]} draft={draft} setDraft={setDraft} onAdd={add} onSeed={seed} onDelete={r=>remove(r,module)} busy={busy}/>}
+  {!loading&&module==='taxes'&&<ConfigList rows={rows} fields={[[`name`,`Tax name`],[`rate`,`Rate %`],[`inclusive`,`Inclusive`]]} draft={draft} setDraft={setDraft} onAdd={add} onDelete={r=>remove(r,module)} busy={busy}/>}
+  {!loading&&module==='dining-options'&&<ConfigList rows={rows} fields={[[`code`,`Code`],[`name`,`Name`]]} draft={draft} setDraft={setDraft} onAdd={add} onSeed={seed} onDelete={r=>remove(r,module)} busy={busy}/>}
+  {!loading&&module==='open-tickets'&&<OpenTickets rows={rows}/>}
+  {!loading&&module==='loyalty'&&<Loyalty rows={rows} draft={draft} setDraft={setDraft} onAdd={add} busy={busy}/>}
+
+
+
+
+
  </div></div>;
 }
 
