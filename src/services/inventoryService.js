@@ -376,6 +376,15 @@ export const inventoryService = {
 };
 
 function normalizeImportRows(rows) {
+  const numberValue = (value, fallback = 0) => {
+    if (value === null || value === undefined || value === '') return fallback;
+    if (typeof value === 'number') return Number.isFinite(value) ? value : fallback;
+    const cleaned = String(value).replace(/[,\s]|KES|KSh/gi, '').trim();
+    const parsed = Number(cleaned);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  };
+  const textValue = (value, fallback = '') => String(value ?? fallback).trim();
+
   return rows.map((raw) => {
     const normalized = {};
     Object.entries(raw || {}).forEach(([key, value]) => {
@@ -383,22 +392,22 @@ function normalizeImportRows(rows) {
     });
     return normalized;
   }).map((row) => ({
-    name: row.name,
-    sku: row.sku,
-    category: row.category || 'General',
-    unit: row.unit || 'pcs',
-    current_stock: row.current_stock ?? row.quantity ?? 0,
-    min_stock: row.min_stock ?? row.low_stock_threshold ?? 5,
-    max_stock: row.max_stock ?? 0,
-    cost_price: row.cost_price ?? 0,
-    selling_price: row.selling_price ?? 0,
-    supplier: row.supplier || '',
-    location: row.location || 'Main Store',
+    name: textValue(row.name),
+    sku: textValue(row.sku) || null,
+    category: textValue(row.category, 'General') || 'General',
+    unit: textValue(row.unit, 'pcs') || 'pcs',
+    current_stock: numberValue(row.current_stock ?? row.quantity, 0),
+    min_stock: numberValue(row.min_stock ?? row.low_stock_threshold, 5),
+    max_stock: numberValue(row.max_stock, 0),
+    cost_price: numberValue(row.cost_price, 0),
+    selling_price: numberValue(row.selling_price, 0),
+    supplier: textValue(row.supplier),
+    location: textValue(row.location, 'Main Store') || 'Main Store',
     expiry_date: row.expiry_date || null,
-    pos_enabled: row.pos_enabled === true || ['true','1','yes','y'].includes(String(row.pos_enabled || '').toLowerCase()),
-    pos_category: row.pos_category || row.poscategory || '',
-    production_center: row.production_center || row.center || 'Kitchen',
-    pos_sort: row.pos_sort ?? row.sort_order ?? 0,
+    pos_enabled: row.pos_enabled === true || ['true','1','yes','y'].includes(String(row.pos_enabled || '').trim().toLowerCase()),
+    pos_category: textValue(row.pos_category || row.poscategory),
+    production_center: textValue(row.production_center || row.center, 'Kitchen') || 'Kitchen',
+    pos_sort: numberValue(row.pos_sort ?? row.sort_order, 0),
     pos_active: row.pos_active !== false,
   }));
 }
