@@ -29,6 +29,7 @@ export default function Reports() {
   const propertyId = user?.property?.id;
   const [date, setDate] = useState(todayKenya);
   const [summary, setSummary] = useState(null);
+  const [hotelMetrics, setHotelMetrics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [shifts, setShifts] = useState([]);
@@ -39,7 +40,9 @@ export default function Reports() {
     setLoading(true);
     setError('');
     try {
-      setSummary(await pmsService.getDailyPosSummary(propertyId, date));
+      const [posSummary, metrics] = await Promise.all([pmsService.getDailyPosSummary(propertyId, date), pmsService.getDailyHotelMetrics(propertyId, date)]);
+      setSummary(posSummary);
+      setHotelMetrics(metrics);
     } catch (err) {
       setError(err.message || 'Unable to load live report.');
     } finally {
@@ -103,7 +106,13 @@ export default function Reports() {
         {error && <div role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
         <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Stat label="Total revenue" value={loading ? '—' : money(summary?.total_revenue)} sub="Completed receipts" />
+          <Stat label="Occupancy" value={loading ? '—' : `${Number(hotelMetrics?.occupancy_percent || 0).toLocaleString()}%`} sub={`${hotelMetrics?.occupied_rooms || 0} / ${hotelMetrics?.available_rooms || 0} rooms`} />
+          <Stat label="ADR" value={loading ? '—' : money(hotelMetrics?.adr)} sub="Room revenue / occupied room nights" />
+          <Stat label="RevPAR" value={loading ? '—' : money(hotelMetrics?.revpar)} sub="Room revenue / available rooms" />
+          <Stat label="Room revenue" value={loading ? '—' : money(hotelMetrics?.room_revenue)} sub={`${hotelMetrics?.arrivals || 0} arrivals · ${hotelMetrics?.departures || 0} departures`} />
+        </div>
+        <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+          <Stat label="Total POS revenue" value={loading ? '—' : money(summary?.total_revenue)} sub="Completed receipts" />
           <Stat label="Transactions" value={loading ? '—' : Number(summary?.transactions || 0).toLocaleString()} sub="Completed receipts" />
           <Stat label="Average check" value={loading ? '—' : money(summary?.average_check)} sub="Revenue ÷ transactions" />
           <Stat label="Payment methods" value={loading ? '—' : payments.length} sub="Methods used" />
