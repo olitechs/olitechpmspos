@@ -24,7 +24,7 @@ export default function Rooms() {
             {t === 'planner' ? 'Room Planner' : t === 'reservations' ? 'Reservations' : 'Room Types & Setup'}
           </button>
         ))}
-        <div className="ml-auto text-xs" className="ml-auto hidden shrink-0 text-xs font-semibold lg:block" style={{ color: 'var(--muted)' }}>Room operations</div>
+        <div className="ml-auto hidden shrink-0 text-xs font-semibold lg:block" style={{ color: 'var(--muted)' }}>Room operations</div>
       </div>
 
       {tab === 'management' && <RoomManagement onChanged={pms.reload} />}
