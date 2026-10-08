@@ -2,6 +2,7 @@ import React from 'react';
 import { Banknote, CheckCircle2, RefreshCw, ShieldAlert, XCircle } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { pmsService } from '@/services/pmsService';
+import { printReceipt } from '@/services/printService';
 
 const money = (v) => `KES ${Number(v || 0).toLocaleString('en-KE', { maximumFractionDigits: 2 })}`;
 const dateTime = (v) => new Date(v).toLocaleString('en-KE', { dateStyle: 'short', timeStyle: 'short' });
@@ -26,6 +27,7 @@ export default function Cashier() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState('');
   const [approvalNote, setApprovalNote] = React.useState('');
+  const [reprintBusy, setReprintBusy] = React.useState(null);
 
   const load = React.useCallback(async () => {
     if (!propertyId) return;
@@ -87,6 +89,27 @@ export default function Cashier() {
     setSelected(null); setAdjustmentAmount(''); setReason('');
   });
 
+  const reprint = async (receipt) => {
+    setReprintBusy(receipt.id); setError('');
+    try {
+      const result = await printReceipt('RECEIPT', {
+        propertyId,
+        items: Array.isArray(receipt.items) ? receipt.items : [],
+        total: receipt.total,
+        paymentMethod: receipt.payment_method,
+        waiter: receipt.waiter,
+        table: receipt.table_number,
+        checkNo: receipt.order_number,
+        orderNumber: receipt.order_number,
+        createdAt: receipt.created_at,
+        currency: 'KES',
+        voidedCount: receipt.status === 'voided' ? 1 : 0,
+      });
+      if (!result.ok) throw new Error(result.friendlyError || 'Receipt printer did not complete the reprint.');
+    } catch (e) { setError(e.message || 'Receipt reprint failed.'); }
+    finally { setReprintBusy(null); }
+  };
+
   const decideAdjustment = (adjustmentId, approve) => run(async () => {
     await pmsService.approveCashierAdjustment({ adjustmentId, approve, reason: approvalNote.trim() || null });
     setApprovalNote('');
@@ -139,7 +162,10 @@ export default function Cashier() {
                     <td className="px-3 py-3 capitalize">{r.payment_method}</td>
                     <td className="px-3 py-3 text-right font-mono font-semibold">{money(r.total)}</td>
                     <td className="px-3 py-3"><Status status={r.status}/></td>
-                    <td className="px-3 py-3 text-right">{r.status === 'posted' && <button className="font-semibold text-red-700 hover:underline" onClick={() => selectReceipt(r)}>Adjust</button>}</td>
+                    <td className="px-3 py-3 text-right"><div className="flex justify-end gap-3">
+  <button className="font-semibold text-slate-700 hover:underline" disabled={reprintBusy===r.id} onClick={() => reprint(r)}>{reprintBusy===r.id ? 'Printing…' : 'Reprint'}</button>
+  {r.status === 'posted' && <button className="font-semibold text-red-700 hover:underline" onClick={() => selectReceipt(r)}>Adjust</button>}
+</div></td>
                   </tr>)}
                   {!receipts.length && <tr><td colSpan="7" className="px-3 py-12 text-center text-sm text-slate-500">No POS receipts have been posted in this shift.</td></tr>}
                 </tbody>
