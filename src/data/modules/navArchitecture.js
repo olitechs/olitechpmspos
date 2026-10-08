@@ -1,10 +1,10 @@
 import { BarChart3, ShoppingBag, ShoppingCart, Users, PlugZap, Settings, HelpCircle, Building2, Store, LayoutDashboard } from 'lucide-react';
 
 export const MAIN_NAV = [
-  { id:'backoffice', label:'Back Office', path:'/backoffice', roles:['admin','owner'], color:'#2C3E50', icon:LayoutDashboard },
-  { id:'frontoffice', label:'Front Office', path:'/frontoffice', roles:['admin','owner','front_office_manager','front_desk','housekeeping'], color:'#2C3E50', icon:Building2 },
-  { id:'pos', label:'POS & F&B', path:'/pos', roles:['admin','owner','pos_staff','front_desk'], color:'#2C3E50', icon:ShoppingCart },
-  { id:'stores', label:'Stores', path:'/stores', roles:['admin','owner','store_manager'], color:'#2C3E50', icon:Store },
+  { id:'backoffice', label:'Back Office', path:'/backoffice', roles:['admin','owner'], color:'var(--brand-dark)', icon:LayoutDashboard },
+  { id:'frontoffice', label:'Front Office', path:'/frontoffice', roles:['admin','owner','front_office_manager','front_desk','housekeeping'], color:'var(--brand-dark)', icon:Building2 },
+  { id:'pos', label:'POS & F&B', path:'/pos', roles:['admin','owner','pos_staff','front_desk'], color:'var(--brand-dark)', icon:ShoppingCart },
+  { id:'stores', label:'Stores', path:'/stores', roles:['admin','owner','store_manager'], color:'var(--brand-dark)', icon:Store },
 ];
 export const BACK_OFFICE_NAV = [
   { id:'reports', label:'Reports', icon:BarChart3, children:[['Sales report','/backoffice/reports/sales'],['Inventory report','/backoffice/reports/inventory'],['Employee report','/backoffice/reports/employees']] },
