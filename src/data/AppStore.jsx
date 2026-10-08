@@ -89,7 +89,7 @@ export function StoreProvider({ children }) {
     let active = true;
     if (!propertyId) { setKitchenOrders([]); return undefined; }
 
-    const hydrateKitchenOrders = async () => {
+    const hydrate = async () => {
       try {
         const rows = await posService.listActiveKitchenOrders(propertyId);
         if (!active) return;
@@ -105,21 +105,45 @@ export function StoreProvider({ children }) {
           printJobs: row.print_jobs || {},
         })));
       } catch (error) {
-        // The app remains usable during migration rollout; the KDS simply
-        // has no persisted orders until 0036 is applied.
         console.error('[KDS] failed to load persisted kitchen orders', error);
         if (active) setKitchenOrders([]);
       }
     };
 
-    hydrateKitchenOrders();
-    const timer = window.setInterval(hydrateKitchenOrders, 10000);
+    hydrate();
+    const channel = posService.subscribeToKitchenOrders?.(propertyId, {
+      onChange: ({ eventType, row }) => {
+        if (!active || !row?.id) return;
+        setKitchenOrders((prev) => {
+          const next = [...prev];
+          const mapped = {
+            id: row.id,
+            tableId: row.table_key || row.table_number,
+            tableNumber: row.table_number,
+            orderNumber: row.order_number,
+            waiter: row.waiter || '',
+            orderLines: Array.isArray(row.order_lines) ? row.order_lines : [],
+            firedAt: row.fired_at ? new Date(row.fired_at).getTime() : Date.now(),
+            status: row.status || 'new',
+            printJobs: row.print_jobs || {},
+          };
+          const index = next.findIndex((item) => item.id === row.id);
+          if (eventType === 'DELETE' || row.status === 'served') {
+            if (index >= 0) next.splice(index, 1);
+          } else if (index >= 0) {
+            next[index] = mapped;
+          } else {
+            next.push(mapped);
+          }
+          return next.sort((a, b) => Number(a.firedAt || 0) - Number(b.firedAt || 0));
+        });
+      },
+    });
     return () => {
       active = false;
-      window.clearInterval(timer);
+      channel?.unsubscribe?.();
     };
   }, [propertyId]);
-
   const [printers, setPrinters] = useState([]);
 
   useEffect(() => {
