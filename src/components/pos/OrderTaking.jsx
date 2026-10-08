@@ -305,7 +305,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
                 <div className="flex-1 min-w-0">
                   <div className="text-xs leading-tight truncate" style={{ color: '#D8E2EC' }}>{line.name}</div>
                   {line.modifiers?.length > 0 && <div className="text-[10px] leading-tight" style={{ color: TEAL_LIGHT }}>{line.modifiers.map((m) => m.name).join(' · ')}</div>}
-                  {line.center && <div className="text-xs" style={{ color: MUTED_DARK, fontSize: '10px' }}>{line.center}</div>
+                  {line.center && <div className="text-xs" style={{ color: MUTED_DARK, fontSize: '10px' }}>{line.center}</div>}
                 </div>
                 <div className="text-xs font-mono shrink-0" style={{ color: TEAL_LIGHT }}>{(line.price * line.qty).toLocaleString()}</div>
               </div>
