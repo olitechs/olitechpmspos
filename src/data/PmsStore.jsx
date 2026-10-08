@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { pmsService } from '@/services/pmsService';
+import { supabase } from '@/lib/supabaseClient';
 
 // PMS data model — now backed by Supabase (see supabase/migrations/0002_pms_core.sql)
 // and scoped to the signed-in user's property via RLS. The shapes returned
@@ -124,6 +125,17 @@ export function PmsProvider({ children }) {
 	useEffect(() => {
 		reload();
 	}, [reload]);
+
+	useEffect(() => {
+		if (!propertyId) return undefined;
+		const channel = supabase
+			.channel('pms-property-' + propertyId)
+			.on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: 'property_id=eq.' + propertyId }, () => reload())
+			.on('postgres_changes', { event: '*', schema: 'public', table: 'reservations', filter: 'property_id=eq.' + propertyId }, () => reload())
+			.on('postgres_changes', { event: '*', schema: 'public', table: 'guests', filter: 'property_id=eq.' + propertyId }, () => reload())
+			.subscribe();
+		return () => { supabase.removeChannel(channel); };
+	}, [propertyId, reload]);
 
 	const roomsById = useMemo(() => new Map(rawRooms.map((r) => [r.id, r])), [rawRooms]);
 	const rooms = useMemo(() => {
