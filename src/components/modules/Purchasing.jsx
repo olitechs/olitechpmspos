@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { PackagePlus, Plus, Truck, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
-import { pmsService } from '@/services/pmsService';
+import { pmsService } from '@/services/pmsService';\nimport { inventoryService } from '@/services/inventoryService';
 
 const BORDER='#E5E5E5', SURFACE='#FFFFFF', SURFACE2='#F2F2F2', TEXT='#090C11', MUTED='#757B81', YELLOW='#FFD300';
 
@@ -10,7 +10,7 @@ export default function Purchasing() {
   const propertyId = user?.property?.id;
   const [suppliers,setSuppliers]=useState([]);
   const [products,setProducts]=useState([]);
-  const [orders,setOrders]=useState([]);
+  const [orders,setOrders]=useState([]);\n  const [grns,setGrns]=useState([]);
   const [supplierId,setSupplierId]=useState('');
   const [productId,setProductId]=useState('');
   const [qty,setQty]=useState('1');
@@ -27,9 +27,9 @@ export default function Purchasing() {
       const [s,p,o]=await Promise.all([
         pmsService.listSuppliers(propertyId),
         pmsService.listProducts(propertyId),
-        pmsService.listPurchaseOrders(propertyId),
+        pmsService.listPurchaseOrders(propertyId),\n        inventoryService.listGoodsReceipts(propertyId),
       ]);
-      setSuppliers(s); setProducts(p); setOrders(o); setError('');
+      setSuppliers(s); setProducts(p); setOrders(o); setGrns(arguments[0]?.[3] || []); setError('');
     }catch(e){setError(e.message||'Could not load purchasing data.');}
     finally{setLoading(false);}
   },[propertyId]);
