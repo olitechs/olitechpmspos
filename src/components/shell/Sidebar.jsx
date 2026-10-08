@@ -63,7 +63,7 @@ export default function Sidebar({activeModule,onModuleChange,staffRole}){
   <div className={`flex h-[72px] shrink-0 items-center border-b border-[var(--border)] ${collapsed?"justify-center px-3":"gap-3 px-4"}`}>
    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--brand-dark)] text-sm font-black text-[var(--brand-primary)]">OT</div>
    {!collapsed&&<div className="min-w-0"><div className="text-[14px] font-black tracking-tight text-[var(--text)]">OliTechs</div><div className="text-[9px] font-bold uppercase tracking-[.2em] text-[var(--muted)]">PMS & POS</div></div>}
-   <button type="button" onClick={()=>setCollapsed(!collapsed)} className={`rounded-lg border border-[var(--border)] bg-[var(--bg)] p-2 text-[var(--muted)] hover:bg-[#E5E7EB] hover:text-[var(--text)] ${collapsed?"absolute right-2 top-4":"ml-auto"}`} title={collapsed?"Expand sidebar":"Collapse sidebar"}>{collapsed?<ChevronRight size={16}/>:<ChevronLeft size={16}/>}</button>
+   <button type="button" onClick={()=>setCollapsed(!collapsed)} className={`rounded-lg border border-[var(--border)] bg-[var(--bg)] p-2 text-[var(--muted)] hover:bg-[var(--border)] hover:text-[var(--text)] ${collapsed?"absolute right-2 top-4":"ml-auto"}`} title={collapsed?"Expand sidebar":"Collapse sidebar"}>{collapsed?<ChevronRight size={16}/>:<ChevronLeft size={16}/>}</button>
   </div>
   <div className="shrink-0 px-3 pt-4">
    {!collapsed&&<div className="mb-2 px-1 text-[11px] font-bold uppercase tracking-[.13em] text-[var(--muted)]">Property</div>}
