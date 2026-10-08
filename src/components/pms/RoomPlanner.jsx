@@ -303,12 +303,12 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
       </div>
       {rangeError && <div className="mt-2 flex items-center gap-2 text-xs font-semibold" style={{color:DESTRUCTIVE}}><AlertTriangle size={14}/>{rangeError}</div>}
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-bold" style={{color:'var(--text)'}}>
-        <span>{plannerRooms.length} plannerRooms · {normalizedReservations.length} active plannerReservations</span><span className="opacity-60">click empty cell to book · drag plannerReservations to move</span>
+        <span>{plannerRooms.length} rooms · {normalizedReservations.length} active stays</span><span className="opacity-60">Guest names appear on each stay bar · click to open reservation · drag to move</span>
       </div>
     </div>
 
     <div ref={scrollRef} className="flex-1 min-h-0 overflow-auto px-4 pb-4 print-hidden">
-      <div className="rounded-xl overflow-hidden shadow-sm" style={{background:'var(--surface)',border:`2px solid var(--text)`, minWidth: `${ROOM_COL_WIDTH + columns.length * DAY_WIDTH}px`}}>
+      <div className="rounded-xl overflow-hidden shadow-sm" style={{background:'var(--surface)',border:`1px solid var(--border)`, minWidth: `${ROOM_COL_WIDTH + columns.length * DAY_WIDTH}px`}}>
         <div className="grid sticky top-0 z-40" style={{gridTemplateColumns:`${ROOM_COL_WIDTH}px repeat(${columns.length}, ${DAY_WIDTH}px)`}}>
           <div className="sticky left-0 z-50 px-3 py-2 text-xs font-black uppercase tracking-wide flex items-center" style={{background:'var(--text)',color:'var(--action)',borderRight:`2px solid var(--text)`,borderBottom:`2px solid var(--text)`}}>Rooms</div>
           {columns.map((d,i)=>{const weekend=d.getDay()===0||d.getDay()===6;const isT=dateKey(d)===today;return <div key={dateKey(d)} ref={isT?todayRef:null} className="text-center py-1 relative" style={{background:isT?'var(--action)':weekend?'var(--grid-weekend)':'var(--surface)',color:'var(--text)',borderRight:`1px solid var(--border)`,borderBottom:`2px solid var(--text)`,height:52, fontWeight: isT?900:600}}><div className="text-[10px] uppercase font-black">{format(d,'EEE')}</div><div className="text-sm font-black">{d.getDate()}</div><div className="text-[9px]">{format(d,'MMM')}</div>{isT&&<span className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 text-[8px] px-2 py-0.5 rounded-full font-black" style={{background:'var(--text)',color:'var(--action)',border:'1px solid var(--action)'}}>TODAY</span>}</div>})}
@@ -316,17 +316,17 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
 
         {groupedRooms.map(([typeName, group])=><React.Fragment key={typeName}>
           {group.map(room=>{const roomReservations=normalizedReservations.filter(r=>r.roomId===room.id); return <div key={room.id} className="grid relative" style={{gridTemplateColumns:`${ROOM_COL_WIDTH}px repeat(${columns.length}, ${DAY_WIDTH}px)`, minHeight: 44}}>
-            <div className="sticky left-0 z-20 px-3 py-2 flex items-center gap-2" style={{background:'var(--surface)',borderRight:`2px solid var(--text)`,borderBottom:`1px solid var(--border)`}}><div><div className="font-black text-[13px]" style={{color:'var(--text)'}}>{room.number}</div><div className="text-[10px] font-semibold truncate max-w-[160px]" style={{color:MUTED}}>{room.name || typeName}</div></div></div>
+            <div className="sticky left-0 z-20 px-3 py-2 flex items-center gap-2" style={{background:'var(--surface)',borderRight:`2px solid var(--text)`,borderBottom:`1px solid var(--border)`}}><div><div className="flex items-center gap-2"><div className="font-black text-[13px]" style={{color:'var(--text)'}}>{room.number}</div><span className="rounded-full px-1.5 py-0.5 text-[9px] font-black" style={{background:'var(--bg)',color:'var(--muted)'}}>{roomReservations.length} stay{roomReservations.length===1?'':'s'}</span></div><div className="text-[10px] font-semibold truncate max-w-[160px]" style={{color:'var(--muted)'}}>{room.name || typeName}</div></div></div>
             {columns.map(d=>{const weekend=d.getDay()===0||d.getDay()===6;const key=dateKey(d);const target=dragTarget?.roomId===room.id&&dragTarget?.date===key;return <div key={key} onClick={()=>{if(!drag&&!suppressCellClick.current)openCreate(room,d)}} onDragOver={e=>handleCellDragOver(e,room,d)} onDrop={e=>handleCellDrop(e,room,d)} className="cursor-pointer" style={{background:target?'rgba(255,211,0,.25)':weekend?'var(--grid-weekend)':key===today?'rgba(255,211,0,.12)':'var(--surface)',borderRight:`1px solid var(--border)`,borderBottom:`1px solid var(--border)`, minHeight:44}}/>})}
             {roomReservations.map(rv=>{
               const l=visibleReservation(rv);if(!l)return null;
               const stayStatus=rv.plannerStatus || (rv.bookingStatus==='checked_out'?'checked_out':rv.bookingStatus==='checked_in'?'occupied':'confirmed');
-              const ps=getReservationBarStyle(stayStatus);
+              const ps=getReservationBarStyle(stayStatus); const pay=getPaymentStyle(rv.paymentStatus);
               const checked=rv.bookingStatus==='checked_out';
               const left=ROOM_COL_WIDTH+l.start*DAY_WIDTH+4;
               const width=Math.max(DAY_WIDTH*l.span-8,100);
               return <div key={rv.id} draggable onDragStart={e=>beginDrag(e,rv)} onDragEnd={()=>{setDrag(null);setDragTarget(null)}} onClick={e=>{e.stopPropagation();openEdit(rv)}} className="reservation-bar absolute top-[6px] h-[32px] cursor-grab active:cursor-grabbing group print-color-exact" style={{left,width,background:ps.background,color:ps.color,border:`1.5px ${stayStatus==='optioned'?'dashed':'solid'} ${ps.border}`,borderLeft:`4px solid ${pay.border}`,opacity:getBarOpacity(rv.bookingStatus),zIndex:10}} title={`${rv.guestName} · ${ps.label} · ${rv.checkIn} → ${rv.checkOut}`}>
-              <span className="truncate font-black text-[11px]">{rv.guestName}</span><span className="ml-1.5 text-[10px] opacity-90 font-bold">{rv.adults}A</span>
+              <span className="truncate font-black text-[11px]" title={`${rv.guestName} · ${rv.checkIn} → ${rv.checkOut}`}>{rv.guestName || 'Guest'}</span><span className="ml-1.5 shrink-0 text-[10px] opacity-90 font-bold">{formatGuests(rv)}</span>
               <span className="ml-auto hidden group-hover:flex items-center gap-1 print:hidden"><button onClick={e=>{e.stopPropagation();openFolio(rv)}} className="w-5 h-5 rounded flex items-center justify-center" style={{background:'rgba(0,0,0,0.2)'}}><BedDouble size={10}/></button></span>
             </div>})}
           </div>})}
