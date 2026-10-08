@@ -171,6 +171,24 @@ export const posService = {
     return data;
   },
 
+  subscribeToKitchenOrders(propertyId, { onChange } = {}) {
+    if (!propertyId || typeof onChange !== 'function') return null;
+    return supabase
+      .channel(`pos-kitchen-orders:${propertyId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'pos_kitchen_orders',
+        filter: `property_id=eq.${propertyId}`,
+      }, (payload) => onChange({
+        eventType: payload.eventType,
+        row: payload.new || payload.old || null,
+      }))
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR') console.error('[KDS] realtime channel failed');
+      });
+  },
+
   async updateKitchenOrder({ propertyId, orderId, status, printJobs = {} }) {
     const { data, error } = await supabase.rpc('fn_update_kitchen_order', {
       p_property_id: propertyId,
