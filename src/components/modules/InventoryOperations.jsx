@@ -4,7 +4,7 @@ import {toast} from 'sonner';
 import {useAuth} from '@/lib/AuthContext';
 import {inventoryService} from '@/services/inventoryService';
 import {pmsService} from '@/services/pmsService';
-import {supabase} from '@/lib/supabase';
+import {supabase} from '@/lib/supabaseClient';
 
 const tabs=[['locations','Locations',MapPin],['adjustments','Adjustments',ClipboardCheck],['counts','Counts',Scale],['production','Production',Factory],['wastage','Wastage / Expiry',PackageX],['history','Inventory History',History],['valuation','Valuation',Warehouse]];
 const input='border rounded-lg px-3 py-2 text-sm w-full';
