@@ -40,6 +40,23 @@ export function getDefaultModulesForRole(role) {
     default: return [];
   }
 }
+
+export function hasSubscriptionModule(user, module) {
+  if (user?.isPlatformOwner) return true;
+  const modules = user?.subscription?.enabled_modules || [];
+  const normalized = module === 'stores' ? 'store' : module;
+  return modules.includes(normalized);
+}
+export function canRoleUseModule(user, module) {
+  if (user?.isPlatformOwner) return true;
+  const role = normalizeStaffRole(getSessionStaff()?.role || user?.staff?.role || user?.propertyRole || user?.role);
+  if (role === 'super_admin' || role === 'hotel_admin') return true;
+  const assigned = getSessionStaff()?.assigned_modules || user?.staff?.assigned_modules || [];
+  if (assigned.length) return assigned.includes(module === 'stores' ? 'store' : module);
+  return getDefaultModulesForRole(role).includes(module === 'stores' ? 'store' : module);
+}
+export function canUseModule(user, module) { return hasSubscriptionModule(user, module) && canRoleUseModule(user, module); }
+
 export function generatePin(length = 4) {
   const digits = [];
   const bytes = new Uint32Array(length);
