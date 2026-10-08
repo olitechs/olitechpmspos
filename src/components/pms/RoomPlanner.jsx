@@ -22,13 +22,16 @@ const ROOM_COL_WIDTH = 210;
 const PRINT_MAX_DAYS = 30;
 
 // CALENDAR THEME: Green/Yellow/Orange - Rectangle bars, English
-export const getReservationBarStyle = (paymentStatus) => ({
-  fully_paid: { background: '#16A34A', color: '#FFFFFF', border: '#15803D', label: 'Fully Paid' },
-  partially_paid: { background: '#EAB308', color: '#090C11', border: '#CA8A04', label: 'Partially Paid' },
-  not_paid: { background: '#F97316', color: '#FFFFFF', border: '#EA580C', label: 'Not Paid' },
-}[paymentStatus] || { background: '#F97316', color: '#FFFFFF', border: '#EA580C', label: 'Not Paid' });
+export const getReservationBarStyle = (status = 'occupied') => ({
+  optioned:{background:'var(--stay-optioned)',color:'var(--action-text)',border:'var(--stay-optioned)',label:'Optioned'},
+  confirmed:{background:'transparent',color:'var(--text)',border:'var(--stay-occupied)',label:'Confirmed / arriving'},
+  occupied:{background:'var(--stay-occupied)',color:'var(--action-text)',border:'var(--stay-occupied)',label:'In-house'},
+  checkout:{background:'var(--stay-checkout)',color:'var(--action-text)',border:'var(--stay-checkout)',label:'Checking out today'},
+  checked_out:{background:'var(--stay-occupied)',color:'var(--action-text)',border:'var(--stay-occupied)',label:'Checked out'},
+  closed:{background:'var(--stay-closed)',color:'var(--text)',border:'var(--stay-closed)',label:'Out of order / closure'},
+}[status] || {background:'var(--stay-occupied)',color:'var(--action-text)',border:'var(--stay-occupied)',label:'In-house'});
 
-export function getBarOpacity(bookingStatus) { return bookingStatus === 'checked_out' ? 0.48 : 1; }
+export function getBarOpacity(bookingStatus) { return bookingStatus === 'checked_out' ? 0.5 : 1; }
 export function isOverlapping(r1, r2) { return r1.roomId === r2.roomId && r1.checkIn < r2.checkOut && r2.checkIn < r1.checkOut; }
 export function checkOverlap(reservationList, newRoomId, newCheckIn, newCheckOut, excludeReservationId) {
   return reservationList.find((r) => {
@@ -91,7 +94,15 @@ const emptyForm = (room, date) => ({
   adults: 1, kidsCount: 0, kidsAges: [], totalAmount: Number(room?.base_rate || 0), amountPaid: 0, roomTypeId: room?.room_type_id || '', roomId: room?.id || '', joint: false, selectedRoomIds: room?.id ? [room.id] : [], notes: '',
 });
 
-export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }) {
+
+export const MOCK_ROOM_PLANNER_ROOMS = Array.from({length:15},(_,i)=>({id:`mock-room-${i+1}`,number:String(101+i),name:`Room ${101+i}`,room_type_id:`type-${1+(i%3)}`,room_type_name:['Standard','Deluxe','Suite'][i%3]}));
+export const MOCK_ROOM_PLANNER_STAYS = Array.from({length:20},(_,i)=>{
+ const base=new Date(); base.setHours(0,0,0,0); const start=new Date(base); start.setDate(base.getDate()-4+(i%16)); const end=new Date(start); end.setDate(start.getDate()+Math.max(1,2+(i%4)));
+ const states=['optioned','confirmed','occupied','checkout','checked_out','closed']; const payments=['not_paid','partially_paid','fully_paid'];
+ return {id:`mock-stay-${i+1}`,roomId:`mock-room-${(i%15)+1}`,roomNumber:String(101+(i%15)),guestName:['Amina','Brian','Clara','Daniel','Elena'][i%5],checkIn:format(start,'yyyy-MM-dd'),checkOut:format(end,'yyyy-MM-dd'),bookingStatus:states[i%6]==='checked_out'?'checked_out':states[i%6]==='occupied'?'checked_in':'booked',plannerStatus:states[i%6],paymentStatus:payments[i%3],adults:1+(i%3),kidsCount:0,totalAmount:10000+i*750,amountPaid:i%3===0?0:i%3===1?5000:10000};
+});
+
+export default function RoomPlanner({ plannerRooms = [], plannerReservations = [], onRefresh }) {\n  const plannerRooms = plannerRooms.length ? plannerRooms : MOCK_ROOM_PLANNER_ROOMS;\n  const plannerReservations = plannerReservations.length ? plannerReservations : MOCK_ROOM_PLANNER_STAYS;
   const { user } = useAuth();
   const propertyId = user?.property?.id;
   const todayDate = useMemo(() => new Date(), []);
@@ -103,7 +114,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   const [rangeError, setRangeError] = useState('');
   const [focusToday, setFocusToday] = useState(true);
   const [modal, setModal] = useState(null);
-  const [form, setForm] = useState(emptyForm(rooms[0], todayDate));
+  const [form, setForm] = useState(emptyForm(plannerRooms[0], todayDate));
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
   const [drag, setDrag] = useState(null);
@@ -122,13 +133,13 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   const todayRef = useRef(null);
   const suppressCellClick = useRef(false);
 
-  const normalizedReservations = useMemo(() => reservations.filter(r => r.status !== 'cancelled').map(normalizeReservation), [reservations]);
-  const roomTypeMap = useMemo(() => new Map(rooms.map(r => [r.room_type_id, r.roomTypeName || r.room_type || 'Unassigned rooms'])), [rooms]);
+  const normalizedReservations = useMemo(() => plannerReservations.filter(r => r.status !== 'cancelled').map(normalizeReservation), [plannerReservations]);
+  const roomTypeMap = useMemo(() => new Map(plannerRooms.map(r => [r.room_type_id, r.roomTypeName || r.room_type || 'Unassigned plannerRooms'])), [plannerRooms]);
   const groupedRooms = useMemo(() => {
     const groups = new Map();
-    [...rooms].sort((a,b) => Number(a.number) - Number(b.number)).forEach(r => { const key = roomTypeMap.get(r.room_type_id) || r.roomTypeName || r.room_type || 'Unassigned rooms'; if (!groups.has(key)) groups.set(key, []); groups.get(key).push(r); });
+    [...plannerRooms].sort((a,b) => Number(a.number) - Number(b.number)).forEach(r => { const key = roomTypeMap.get(r.room_type_id) || r.roomTypeName || r.room_type || 'Unassigned plannerRooms'; if (!groups.has(key)) groups.set(key, []); groups.get(key).push(r); });
     return [...groups.entries()];
-  }, [rooms, roomTypeMap]);
+  }, [plannerRooms, roomTypeMap]);
 
   const columns = useMemo(() => {
     if (range) return eachDayOfInterval({ start: parseDate(range.from), end: parseDate(range.to) });
@@ -162,7 +173,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
 
   const openCreate = (room, date) => { const next = emptyForm(room, date); setForm(next); setFormError(''); setLinked([]); setAddGroupRoomId(''); setModal({ mode: 'create' }); };
   const openEdit = (r) => {
-    setForm({ guestName: r.guestName, checkIn: r.checkIn, checkOut: r.checkOut, paymentStatus: r.paymentStatus, channel: r.channel, mealPlan: r.mealPlan, adults: r.adults || 1, kidsCount: r.kidsCount || 0, kidsAges: r.kidsAges || [], totalAmount: r.totalAmount, amountPaid: r.amountPaid, roomTypeId: r.roomTypeId || rooms.find(x => x.id === r.roomId)?.room_type_id || '', roomId: r.roomId, joint: !!r.groupId, selectedRoomIds: [r.roomId], notes: r.notes || '' });
+    setForm({ guestName: r.guestName, checkIn: r.checkIn, checkOut: r.checkOut, paymentStatus: r.paymentStatus, channel: r.channel, mealPlan: r.mealPlan, adults: r.adults || 1, kidsCount: r.kidsCount || 0, kidsAges: r.kidsAges || [], totalAmount: r.totalAmount, amountPaid: r.amountPaid, roomTypeId: r.roomTypeId || plannerRooms.find(x => x.id === r.roomId)?.room_type_id || '', roomId: r.roomId, joint: !!r.groupId, selectedRoomIds: [r.roomId], notes: r.notes || '' });
     setFormError(''); setAddGroupRoomId(''); setModal({ mode: 'edit', reservationId: r.id, groupId: r.groupId });
   };
 
@@ -172,14 +183,14 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     if (!form.adults || form.adults < 1 || form.adults > 10) return 'Adults must be between 1 and 10.';
     if (form.kidsCount < 0 || form.kidsCount > 6) return 'Kids must be between 0 and 6.';
     if (form.kidsAges.length !== Number(form.kidsCount) || form.kidsAges.some(a => Number(a) < 0 || Number(a) > 17)) return 'Each child age must be between 0 and 17.';
-    if (form.paymentStatus === 'fully_paid' && Number(form.amountPaid) !== Number(form.totalAmount)) return 'Fully paid reservations must have Amount Paid equal to Total Amount.';
+    if (form.paymentStatus === 'fully_paid' && Number(form.amountPaid) !== Number(form.totalAmount)) return 'Fully paid plannerReservations must have Amount Paid equal to Total Amount.';
     if (Number(form.amountPaid) < 0 || Number(form.amountPaid) > Number(form.totalAmount)) return 'Amount Paid must be between 0 and Total Amount.';
     if (form.paymentStatus === 'partially_paid' && Number(form.amountPaid) >= Number(form.totalAmount)) return 'Partially paid must be less than Total Amount.';
     const ids = form.joint ? form.selectedRoomIds : [form.roomId];
     if (!ids.length || ids.some(Boolean) === false) return 'Select at least one room.';
     for (const roomId of ids) {
       const hit = checkOverlap(normalizedReservations, roomId, form.checkIn, form.checkOut, modal?.mode === 'edit' ? modal.reservationId : undefined);
-      if (hit) { const room = rooms.find(x => x.id === roomId); return `Room ${room?.number || roomId} is already booked from ${hit.checkIn} to ${hit.checkOut} by ${hit.guestName}.`; }
+      if (hit) { const room = plannerRooms.find(x => x.id === roomId); return `Room ${room?.number || roomId} is already booked from ${hit.checkIn} to ${hit.checkOut} by ${hit.guestName}.`; }
     }
     return '';
   };
@@ -202,7 +213,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
 
   const addLinkedRoom = async () => { if (!modal?.reservationId || !addGroupRoomId) return; try { await pmsService.addRoomToReservationGroup({ reservationId: modal.reservationId, roomId: addGroupRoomId }); toast.success('Room added to joint reservation'); setAddGroupRoomId(''); onRefresh?.(); } catch (e) { toast.error(e.message); } };
   const removeLinkedRoom = async (id) => { if (!confirm('Remove this room from the joint reservation? This deletes only this linked reservation.')) return; try { await pmsService.removeRoomFromReservationGroup(id); toast.success('Room removed'); if (id === modal.reservationId) setModal(null); onRefresh?.(); } catch (e) { toast.error(e.message); } };
-  const splitGroup = async () => { if (!modal?.groupId || !confirm('Split this joint reservation into independent reservations?')) return; try { await pmsService.splitReservationGroup(modal.groupId); toast.success('Joint reservation split'); setModal(null); onRefresh?.(); } catch (e) { toast.error(e.message); } };
+  const splitGroup = async () => { if (!modal?.groupId || !confirm('Split this joint reservation into independent plannerReservations?')) return; try { await pmsService.splitReservationGroup(modal.groupId); toast.success('Joint reservation split'); setModal(null); onRefresh?.(); } catch (e) { toast.error(e.message); } };
   const handleDelete = async () => { if (!modal?.reservationId || !confirm('Delete this reservation?')) return; try { await pmsService.deletePlannerReservation(modal.reservationId); toast.success('Reservation deleted'); setModal(null); onRefresh?.(); } catch (e) { toast.error(e.message); } };
 
   const beginDrag = (e, r) => { e.stopPropagation(); setDrag({ reservation: r, originalRoomId: r.roomId, originalCheckIn: r.checkIn, originalCheckOut: r.checkOut }); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', r.id); };
@@ -212,7 +223,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     const r = drag.reservation; const nights = differenceInCalendarDays(parseDate(r.checkOut), parseDate(r.checkIn)); const newCheckIn = dateKey(day); const newCheckOut = dateKey(addDays(day, Math.max(1, nights)));
     if (range && (newCheckIn < range.from || newCheckOut > dateKey(addDays(parseDate(range.to), 1)))) { toast.error('Cannot move reservation outside the selected date range.'); setDrag(null); setDragTarget(null); return; }
     const overlap = checkOverlap(normalizedReservations, room.id, newCheckIn, newCheckOut, r.id);
-    if (overlap) { const targetRoom = rooms.find(x => x.id === room.id); toast.error(`Cannot move: Room ${targetRoom?.number || room.id} already booked from ${overlap.checkIn}–${overlap.checkOut} by ${overlap.guestName}`); setDrag(null); setDragTarget(null); return; }
+    if (overlap) { const targetRoom = plannerRooms.find(x => x.id === room.id); toast.error(`Cannot move: Room ${targetRoom?.number || room.id} already booked from ${overlap.checkIn}–${overlap.checkOut} by ${overlap.guestName}`); setDrag(null); setDragTarget(null); return; }
     suppressCellClick.current = true; setMoveConfirmation({ reservation: r, target: { roomId: room.id, checkIn: newCheckIn, checkOut: newCheckOut }, nights }); setDrag(null); setDragTarget(null); setTimeout(() => { suppressCellClick.current = false; }, 0);
   };
   const confirmMove = async (moveGroup = false) => {
@@ -252,7 +263,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     if (entireGroup && rv.groupId) { setActionModal(null); setFolio({ reservation: rv, group: normalizedReservations.filter(x => x.groupId === rv.groupId) }); setActionModal({ type: 'groupFolio', reservation: rv }); return; }
     try { const data = await pmsService.getFolio(rv.id); setFolio({ reservation: rv, ...data }); setActionModal({ type: 'folio', reservation: rv }); } catch (e) { toast.error(e.message); }
   };
-  const submitCharge = async () => { const rv = actionModal.reservation; const amount = Number(chargeAmount); if (!(amount > 0)) { toast.error('Enter a charge amount greater than 0.'); return; } try { await pmsService.chargeToRoom({ propertyId, reservationId: rv.id, description: chargeDescription || 'Room charge', amount }); toast.success(`KES ${amount.toLocaleString()} posted to Room ${rv.roomNumber || rooms.find(x => x.id === rv.roomId)?.number}`); setActionModal(null); } catch (e) { toast.error(e.message); } };
+  const submitCharge = async () => { const rv = actionModal.reservation; const amount = Number(chargeAmount); if (!(amount > 0)) { toast.error('Enter a charge amount greater than 0.'); return; } try { await pmsService.chargeToRoom({ propertyId, reservationId: rv.id, description: chargeDescription || 'Room charge', amount }); toast.success(`KES ${amount.toLocaleString()} posted to Room ${rv.roomNumber || plannerRooms.find(x => x.id === rv.roomId)?.number}`); setActionModal(null); } catch (e) { toast.error(e.message); } };
 
   const printRange = range ? columns : columns.slice(0, PRINT_MAX_DAYS);
   const printTitle = `${user?.property?.name || 'OliTechs Grand Hotel'} - Room Planner - ${format(printRange[0], 'd MMM')} - ${format(printRange[printRange.length - 1], 'd MMM yyyy')}`;
@@ -280,12 +291,12 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
           <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-xl" style={{background:'#FFFFFF',border:`2px solid #090C11`}}><span className="text-xs font-black" style={{color:'#090C11'}}>From</span><InputField type="date" value={fromInput} onChange={e=>setFromInput(e.target.value)} className="w-[135px] h-8"/><span className="text-xs font-black" style={{color:'#090C11'}}>To</span><InputField type="date" value={toInput} onChange={e=>setToInput(e.target.value)} className="w-[135px] h-8"/><button onClick={applyRange} className="px-4 h-8 rounded-lg text-xs font-black" style={{background:'#FFD300',color:'#090C11',border:'1px solid #090C11'}}>Apply</button><button onClick={clearRange} className="px-3 h-8 rounded-lg text-xs font-bold" style={{background:'#FFFFFF',border:`1px solid #090C11`,color:'#090C11'}}>Clear</button></div>
           {onRefresh && <button title="Refresh" onClick={onRefresh} className="p-2 rounded-xl" style={{background:'#FFFFFF',border:`1px solid #090C11`,color:'#090C11'}}><RefreshCw size={16}/></button>}
           <button title="Print Calendar" onClick={()=>setPrintPreview(true)} className="p-2 rounded-xl" style={{background:'#FFFFFF',border:`1px solid #090C11`,color:'#090C11'}}><Printer size={16}/></button>
-          <button onClick={() => openCreate(rooms[0], range ? parseDate(range.from) : todayDate)} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black" style={{background:'#FFD300',color:'#090C11',border:'2px solid #090C11'}}><Plus size={15}/> Add Booking</button>
+          <button onClick={() => openCreate(plannerRooms[0], range ? parseDate(range.from) : todayDate)} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black" style={{background:'#FFD300',color:'#090C11',border:'2px solid #090C11'}}><Plus size={15}/> Add Booking</button>
         </div>
       </div>
       {rangeError && <div className="mt-2 flex items-center gap-2 text-xs font-semibold" style={{color:DESTRUCTIVE}}><AlertTriangle size={14}/>{rangeError}</div>}
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-bold" style={{color:'#090C11'}}>
-        <span>{rooms.length} rooms · {normalizedReservations.length} active reservations</span><span className="opacity-60">click empty cell to book · drag reservations to move</span>
+        <span>{plannerRooms.length} plannerRooms · {normalizedReservations.length} active plannerReservations</span><span className="opacity-60">click empty cell to book · drag plannerReservations to move</span>
       </div>
     </div>
 
@@ -302,11 +313,11 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
             {columns.map(d=>{const weekend=d.getDay()===0||d.getDay()===6;const key=dateKey(d);const target=dragTarget?.roomId===room.id&&dragTarget?.date===key;return <div key={key} onClick={()=>{if(!drag&&!suppressCellClick.current)openCreate(room,d)}} onDragOver={e=>handleCellDragOver(e,room,d)} onDrop={e=>handleCellDrop(e,room,d)} className="cursor-pointer" style={{background:target?'rgba(255,211,0,.25)':weekend?'#EBF5FB':key===today?'rgba(255,211,0,.12)':'#FFFFFF',borderRight:`1px solid #E5E7EB`,borderBottom:`1px solid #E5E7EB`, minHeight:44}}/>})}
             {roomReservations.map(rv=>{
               const l=visibleReservation(rv);if(!l)return null;
-              const ps=getReservationBarStyle(rv.paymentStatus);
+              const stayStatus=rv.plannerStatus || (rv.bookingStatus==='checked_out'?'checked_out':rv.bookingStatus==='checked_in'?'occupied':'confirmed');\n              const ps=getReservationBarStyle(stayStatus);
               const checked=rv.bookingStatus==='checked_out';
               const left=ROOM_COL_WIDTH+l.start*DAY_WIDTH+4;
               const width=Math.max(DAY_WIDTH*l.span-8,100);
-              return <div key={rv.id} draggable onDragStart={e=>beginDrag(e,rv)} onDragEnd={()=>{setDrag(null);setDragTarget(null)}} onClick={e=>{e.stopPropagation();openEdit(rv)}} className="reservation-bar absolute top-[6px] h-[32px] cursor-grab active:cursor-grabbing group print-color-exact" style={{left,width,background:ps.background,color:ps.color,border:`1.5px solid ${ps.border}`,opacity:getBarOpacity(rv.bookingStatus),zIndex:10, filter: checked ? 'blur(0.3px)' : 'none'}} title={`${rv.guestName} · ${rv.checkIn} → ${rv.checkOut} · ${paymentLabel[rv.paymentStatus]}`}>
+              return <div key={rv.id} draggable onDragStart={e=>beginDrag(e,rv)} onDragEnd={()=>{setDrag(null);setDragTarget(null)}} onClick={e=>{e.stopPropagation();openEdit(rv)}} className="reservation-bar absolute top-[6px] h-[32px] cursor-grab active:cursor-grabbing group print-color-exact" style={{left,width,background:ps.background,color:ps.color,border:`1.5px ${stayStatus==='optioned'?'dashed':'solid'} ${ps.border}`,opacity:getBarOpacity(rv.bookingStatus),zIndex:10}} title={`${rv.guestName} · ${ps.label} · ${rv.checkIn} → ${rv.checkOut}`}>
               <span className="truncate font-black text-[11px]">{rv.guestName}</span><span className="ml-1.5 text-[10px] opacity-90 font-bold">{rv.adults}A</span>
               <span className="ml-auto hidden group-hover:flex items-center gap-1 print:hidden"><button onClick={e=>{e.stopPropagation();openFolio(rv)}} className="w-5 h-5 rounded flex items-center justify-center" style={{background:'rgba(0,0,0,0.2)'}}><BedDouble size={10}/></button></span>
             </div>})}
@@ -320,7 +331,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     </div>
 
     {modal && <Modal wide title={modal.mode==='create'?'New Reservation':'Edit Reservation'} onClose={()=>setModal(null)}><div className="p-5 space-y-4">
-      {modal.mode==='edit'&&form.joint&&<div className="rounded-xl p-3" style={{background:'rgba(255,211,0,.12)',border:`1px solid ${TEAL}`,color:NAVY}}><div className="flex items-start gap-2"><Link2 size={17}/><div className="flex-1"><div className="font-bold text-sm">Joint Reservation - Group #{String(modal.groupId).slice(0,6).toUpperCase()} - {linked.length} rooms linked</div></div><button onClick={splitGroup} className="text-xs font-bold px-2 py-1 rounded-lg" style={{border:`1px solid ${BORDER}`}}>Split Group</button></div></div>}
+      {modal.mode==='edit'&&form.joint&&<div className="rounded-xl p-3" style={{background:'rgba(255,211,0,.12)',border:`1px solid ${TEAL}`,color:NAVY}}><div className="flex items-start gap-2"><Link2 size={17}/><div className="flex-1"><div className="font-bold text-sm">Joint Reservation - Group #{String(modal.groupId).slice(0,6).toUpperCase()} - {linked.length} plannerRooms linked</div></div><button onClick={splitGroup} className="text-xs font-bold px-2 py-1 rounded-lg" style={{border:`1px solid ${BORDER}`}}>Split Group</button></div></div>}
       <Field label="Guest Name"><InputField value={form.guestName} onChange={e=>setForm({...form,guestName:e.target.value})} autoFocus placeholder="Guest full name"/></Field>
       <div className="grid md:grid-cols-2 gap-3"><Field label="Check-in"><InputField type="date" value={form.checkIn} onChange={e=>setForm({...form,checkIn:e.target.value})}/></Field><Field label="Check-out (exclusive)"><InputField type="date" value={form.checkOut} min={form.checkIn} onChange={e=>setForm({...form,checkOut:e.target.value})}/></Field></div>
       {formError&&<div className="text-xs p-3 rounded-lg" style={{background:'#FDECEC',color:DESTRUCTIVE}}>{formError}</div>}
@@ -330,21 +341,21 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
       <div className="flex items-center justify-between pt-2"><div>{modal.mode==='edit'&&<button onClick={handleDelete} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold" style={{color:DESTRUCTIVE,border:`1px solid ${DESTRUCTIVE}`}}><Trash2 size={14}/> Delete</button>}</div><div className="flex gap-2"><button onClick={()=>setModal(null)} className="px-4 py-2.5 rounded-xl text-sm" style={{border:`1px solid ${BORDER}`,color:MUTED}}>Cancel</button><button disabled={saving} onClick={saveReservation} className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-bold disabled:opacity-60" style={{background:'#FFD300',color:'#090C11',border:'1px solid #090C11'}}><Save size={15}/>{saving?'Saving…':'Save'}</button></div></div>
     </div></Modal>}
 
-    {moveConfirmation&&<Modal title="Confirm Move Reservation?" onClose={()=>setMoveConfirmation(null)}><div className="p-5"><p className="text-sm leading-6" style={{color:NAVY}}>Move reservation <strong>“{moveConfirmation.reservation.guestName}”</strong> from Room {rooms.find(r=>r.id===moveConfirmation.reservation.roomId)?.number} ({moveConfirmation.reservation.checkIn}–{moveConfirmation.reservation.checkOut}) to Room {rooms.find(r=>r.id===moveConfirmation.target.roomId)?.number} ({moveConfirmation.target.checkIn}–{moveConfirmation.target.checkOut})?</p><div className="flex justify-end gap-2 mt-5"><button onClick={()=>setMoveConfirmation(null)} className="px-4 py-2 rounded-lg" style={{border:`1px solid ${BORDER}`}}>Cancel</button><button onClick={()=>confirmMove(!!moveConfirmation.reservation.groupId)} className="px-4 py-2 rounded-lg font-bold" style={{background:TEAL,color:'#090C11'}}>Confirm Move</button></div></div></Modal>}
-    {groupMoveConfirmation&&<Modal title="Joint Reservation" onClose={()=>setGroupMoveConfirmation(null)}><div className="p-5"><p className="text-sm" style={{color:NAVY}}>This is part of a joint reservation. Move only this room or all rooms in the group?</p><div className="flex justify-end gap-2 mt-5"><button onClick={()=>performGroupMove(false)} className="px-4 py-2 rounded-lg" style={{border:`1px solid ${BORDER}`}}>Move only this room</button><button onClick={()=>performGroupMove(true)} className="px-4 py-2 rounded-lg font-bold" style={{background:TEAL,color:'#090C11'}}>Move entire group</button></div></div></Modal>}
+    {moveConfirmation&&<Modal title="Confirm Move Reservation?" onClose={()=>setMoveConfirmation(null)}><div className="p-5"><p className="text-sm leading-6" style={{color:NAVY}}>Move reservation <strong>“{moveConfirmation.reservation.guestName}”</strong> from Room {plannerRooms.find(r=>r.id===moveConfirmation.reservation.roomId)?.number} ({moveConfirmation.reservation.checkIn}–{moveConfirmation.reservation.checkOut}) to Room {plannerRooms.find(r=>r.id===moveConfirmation.target.roomId)?.number} ({moveConfirmation.target.checkIn}–{moveConfirmation.target.checkOut})?</p><div className="flex justify-end gap-2 mt-5"><button onClick={()=>setMoveConfirmation(null)} className="px-4 py-2 rounded-lg" style={{border:`1px solid ${BORDER}`}}>Cancel</button><button onClick={()=>confirmMove(!!moveConfirmation.reservation.groupId)} className="px-4 py-2 rounded-lg font-bold" style={{background:TEAL,color:'#090C11'}}>Confirm Move</button></div></div></Modal>}
+    {groupMoveConfirmation&&<Modal title="Joint Reservation" onClose={()=>setGroupMoveConfirmation(null)}><div className="p-5"><p className="text-sm" style={{color:NAVY}}>This is part of a joint reservation. Move only this room or all plannerRooms in the group?</p><div className="flex justify-end gap-2 mt-5"><button onClick={()=>performGroupMove(false)} className="px-4 py-2 rounded-lg" style={{border:`1px solid ${BORDER}`}}>Move only this room</button><button onClick={()=>performGroupMove(true)} className="px-4 py-2 rounded-lg font-bold" style={{background:TEAL,color:'#090C11'}}>Move entire group</button></div></div></Modal>}
 
     {actionModal?.type==='groupFolioChoice'&&<Modal title="Joint Reservation Folio" onClose={()=>setActionModal(null)}><div className="p-5"><p className="text-sm" style={{color:NAVY}}>This reservation is part of a joint reservation. Open the folio for this room only or the entire group?</p><div className="flex justify-end gap-2 mt-5"><button onClick={()=>openRoomFolio(actionModal.reservation,false)} className="px-4 py-2 rounded-lg" style={{border:`1px solid ${BORDER}`}}>This room only</button><button onClick={()=>openRoomFolio(actionModal.reservation,true)} className="px-4 py-2 rounded-lg font-bold" style={{background:TEAL,color:'#090C11'}}>Entire group</button></div></div></Modal>}
-    {actionModal?.type==='folio'&&folio&&<Modal title={`PMS Folio · Room ${folio.reservation.roomNumber || rooms.find(x=>x.id===folio.reservation.roomId)?.number || ''}`} onClose={()=>setActionModal(null)}><div className="p-5"><div className="flex items-center gap-3 mb-4"><BedDouble size={20} style={{color:TEAL}}/><div><div className="font-bold" style={{color:NAVY}}>{folio.reservation.guestName}</div><div className="text-xs" style={{color:MUTED}}>Meal plan: {mealLabel[folio.reservation.mealPlan]}</div></div></div><div className="rounded-xl overflow-hidden" style={{border:`1px solid ${BORDER}`}}>{(folio.charges||[]).map(c=><div key={c.id} className="flex justify-between px-3 py-2 text-sm" style={{borderBottom:`1px solid ${BORDER}`}}><span>{c.description}</span><b>KES {Number(c.amount).toLocaleString()}</b></div>)}{!folio.charges?.length&&<div className="p-5 text-sm text-center" style={{color:MUTED}}>No folio charges yet.</div>}</div><div className="flex justify-end mt-4"><button onClick={()=>setActionModal(null)} className="px-4 py-2 rounded-lg font-bold" style={{background:TEAL,color:'#090C11'}}>Close</button></div></div></Modal>}
-    {actionModal?.type==='groupFolio'&&<Modal title="Joint Reservation Folio" onClose={()=>setActionModal(null)}><div className="p-5"><p className="text-sm mb-3" style={{color:NAVY}}>Group #{String(actionModal.reservation.groupId).slice(0,6).toUpperCase()}</p><div className="space-y-2">{folio?.group?.map(r=><div key={r.id} className="flex justify-between p-3 rounded-lg" style={{background:SURFACE2}}><span className="text-sm">Room {r.roomNumber || rooms.find(x=>x.id===r.roomId)?.number} · {r.guestName}</span><span className="text-xs" style={{color:MUTED}}>{mealLabel[r.mealPlan]}</span></div>)}</div></div></Modal>}
-    {actionModal?.type==='charge'&&<Modal title={`Post Room Charge · Room ${actionModal.reservation.roomNumber || rooms.find(x=>x.id===actionModal.reservation.roomId)?.number || ''}`} onClose={()=>setActionModal(null)}><div className="p-5 space-y-4"><div className="rounded-xl p-3" style={{background:SURFACE2}}><div className="font-bold text-sm" style={{color:NAVY}}>{actionModal.reservation.guestName}</div><div className="text-xs mt-1" style={{color:MUTED}}>Meal Plan: {mealLabel[actionModal.reservation.mealPlan] || 'Bed Only'}</div></div><Field label="Description"><InputField value={chargeDescription} onChange={e=>setChargeDescription(e.target.value)}/></Field><Field label="Amount (KES)"><InputField type="number" min="0.01" step="0.01" value={chargeAmount} onChange={e=>setChargeAmount(e.target.value)} autoFocus/></Field><div className="flex justify-end gap-2"><button onClick={()=>setActionModal(null)} className="px-4 py-2 rounded-lg" style={{border:`1px solid ${BORDER}`}}>Cancel</button><button onClick={submitCharge} className="px-4 py-2 rounded-lg font-bold" style={{background:TEAL,color:'#090C11'}}>Post Charge</button></div></div></Modal>}
+    {actionModal?.type==='folio'&&folio&&<Modal title={`PMS Folio · Room ${folio.reservation.roomNumber || plannerRooms.find(x=>x.id===folio.reservation.roomId)?.number || ''}`} onClose={()=>setActionModal(null)}><div className="p-5"><div className="flex items-center gap-3 mb-4"><BedDouble size={20} style={{color:TEAL}}/><div><div className="font-bold" style={{color:NAVY}}>{folio.reservation.guestName}</div><div className="text-xs" style={{color:MUTED}}>Meal plan: {mealLabel[folio.reservation.mealPlan]}</div></div></div><div className="rounded-xl overflow-hidden" style={{border:`1px solid ${BORDER}`}}>{(folio.charges||[]).map(c=><div key={c.id} className="flex justify-between px-3 py-2 text-sm" style={{borderBottom:`1px solid ${BORDER}`}}><span>{c.description}</span><b>KES {Number(c.amount).toLocaleString()}</b></div>)}{!folio.charges?.length&&<div className="p-5 text-sm text-center" style={{color:MUTED}}>No folio charges yet.</div>}</div><div className="flex justify-end mt-4"><button onClick={()=>setActionModal(null)} className="px-4 py-2 rounded-lg font-bold" style={{background:TEAL,color:'#090C11'}}>Close</button></div></div></Modal>}
+    {actionModal?.type==='groupFolio'&&<Modal title="Joint Reservation Folio" onClose={()=>setActionModal(null)}><div className="p-5"><p className="text-sm mb-3" style={{color:NAVY}}>Group #{String(actionModal.reservation.groupId).slice(0,6).toUpperCase()}</p><div className="space-y-2">{folio?.group?.map(r=><div key={r.id} className="flex justify-between p-3 rounded-lg" style={{background:SURFACE2}}><span className="text-sm">Room {r.roomNumber || plannerRooms.find(x=>x.id===r.roomId)?.number} · {r.guestName}</span><span className="text-xs" style={{color:MUTED}}>{mealLabel[r.mealPlan]}</span></div>)}</div></div></Modal>}
+    {actionModal?.type==='charge'&&<Modal title={`Post Room Charge · Room ${actionModal.reservation.roomNumber || plannerRooms.find(x=>x.id===actionModal.reservation.roomId)?.number || ''}`} onClose={()=>setActionModal(null)}><div className="p-5 space-y-4"><div className="rounded-xl p-3" style={{background:SURFACE2}}><div className="font-bold text-sm" style={{color:NAVY}}>{actionModal.reservation.guestName}</div><div className="text-xs mt-1" style={{color:MUTED}}>Meal Plan: {mealLabel[actionModal.reservation.mealPlan] || 'Bed Only'}</div></div><Field label="Description"><InputField value={chargeDescription} onChange={e=>setChargeDescription(e.target.value)}/></Field><Field label="Amount (KES)"><InputField type="number" min="0.01" step="0.01" value={chargeAmount} onChange={e=>setChargeAmount(e.target.value)} autoFocus/></Field><div className="flex justify-end gap-2"><button onClick={()=>setActionModal(null)} className="px-4 py-2 rounded-lg" style={{border:`1px solid ${BORDER}`}}>Cancel</button><button onClick={submitCharge} className="px-4 py-2 rounded-lg font-bold" style={{background:TEAL,color:'#090C11'}}>Post Charge</button></div></div></Modal>}
 
-    {printPreview&&<Modal wide title="Print Calendar Preview" onClose={()=>setPrintPreview(false)} print><div className="p-5"><div className="mb-4"><h1 className="text-lg font-bold" style={{color:NAVY}}>{printTitle}</h1><p className="text-xs mt-1" style={{color:MUTED}}>{printSubtitle}</p>{!range&&columns.length>PRINT_MAX_DAYS&&<p className="text-xs mt-1" style={{color:'#9A6616'}}>Print preview is limited to the first 30 days of the current month.</p>}</div><PrintGrid rooms={rooms} groupedRooms={groupedRooms} reservations={normalizedReservations} columns={printRange}/><div className="flex justify-end gap-2 mt-4 print:hidden"><button onClick={()=>setPrintPreview(false)} className="px-4 py-2 rounded-lg" style={{border:`1px solid ${BORDER}`}}>Close</button><button onClick={downloadPdf} className="flex items-center gap-2 px-4 py-2 rounded-lg" style={{border:`1px solid ${BORDER}`,color:NAVY}}><Download size={15}/> Download PDF</button><button onClick={()=>setPrintNow(true)} className="flex items-center gap-2 px-4 py-2 rounded-lg font-bold" style={{background:TEAL,color:'#090C11'}}><Printer size={15}/> Print</button></div></div></Modal>}
+    {printPreview&&<Modal wide title="Print Calendar Preview" onClose={()=>setPrintPreview(false)} print><div className="p-5"><div className="mb-4"><h1 className="text-lg font-bold" style={{color:NAVY}}>{printTitle}</h1><p className="text-xs mt-1" style={{color:MUTED}}>{printSubtitle}</p>{!range&&columns.length>PRINT_MAX_DAYS&&<p className="text-xs mt-1" style={{color:'#9A6616'}}>Print preview is limited to the first 30 days of the current month.</p>}</div><PrintGrid plannerRooms={plannerRooms} groupedRooms={groupedRooms} plannerReservations={normalizedReservations} columns={printRange}/><div className="flex justify-end gap-2 mt-4 print:hidden"><button onClick={()=>setPrintPreview(false)} className="px-4 py-2 rounded-lg" style={{border:`1px solid ${BORDER}`}}>Close</button><button onClick={downloadPdf} className="flex items-center gap-2 px-4 py-2 rounded-lg" style={{border:`1px solid ${BORDER}`,color:NAVY}}><Download size={15}/> Download PDF</button><button onClick={()=>setPrintNow(true)} className="flex items-center gap-2 px-4 py-2 rounded-lg font-bold" style={{background:TEAL,color:'#090C11'}}><Printer size={15}/> Print</button></div></div></Modal>}
 
     <div className="px-4 py-3 flex items-center gap-3 text-xs font-black border-t-2 print-hidden" style={{background:'#FFFFFF',borderColor:'#090C11'}}>
       <span className="flex items-center gap-1.5"><i className="w-4 h-4 rounded" style={{background:'#F97316'}}/> Not Paid</span>
       <span className="flex items-center gap-1.5"><i className="w-4 h-4 rounded" style={{background:'#EAB308'}}/> Partially Paid</span>
       <span className="flex items-center gap-1.5"><i className="w-4 h-4 rounded" style={{background:'#16A34A'}}/> Fully Paid</span>
-      <span className="ml-auto text-[11px] font-bold" style={{color:MUTED}}>{rooms.length} rooms · {normalizedReservations.length} reservations</span>
+      <span className="ml-auto text-[11px] font-bold" style={{color:MUTED}}>{plannerRooms.length} plannerRooms · {normalizedReservations.length} plannerReservations</span>
     </div>
   </div>;
 }
