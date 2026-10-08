@@ -130,15 +130,16 @@ export default function RoomPlanner({ plannerRooms = [], plannerReservations = [
   const [chargeDescription, setChargeDescription] = useState('Room charge');
   const [printPreview, setPrintPreview] = useState(false);
   const [printNow, setPrintNow] = useState(false);
+  const [closures, setClosures] = useState([]);
   const scrollRef = useRef(null);
   const todayRef = useRef(null);
   const suppressCellClick = useRef(false);
 
   const normalizedReservations = useMemo(() => plannerReservations.filter(r => r.status !== 'cancelled').map(normalizeReservation), [plannerReservations]);
-  const roomTypeMap = useMemo(() => new Map(plannerRooms.map(r => [r.room_type_id, r.roomTypeName || r.room_type || 'Unassigned plannerRooms'])), [plannerRooms]);
+  const roomTypeMap = useMemo(() => new Map(plannerRooms.map(r => [r.room_type_id, r.roomTypeName || r.room_type || 'Unassigned'])), [plannerRooms]);
   const groupedRooms = useMemo(() => {
     const groups = new Map();
-    [...plannerRooms].sort((a,b) => Number(a.number) - Number(b.number)).forEach(r => { const key = roomTypeMap.get(r.room_type_id) || r.roomTypeName || r.room_type || 'Unassigned plannerRooms'; if (!groups.has(key)) groups.set(key, []); groups.get(key).push(r); });
+    [...plannerRooms].sort((a,b) => Number(a.number) - Number(b.number)).forEach(r => { const key = roomTypeMap.get(r.room_type_id) || r.roomTypeName || r.room_type || 'Unassigned'; if (!groups.has(key)) groups.set(key, []); groups.get(key).push(r); });
     return [...groups.entries()];
   }, [plannerRooms, roomTypeMap]);
 
@@ -243,7 +244,7 @@ export default function RoomPlanner({ plannerRooms = [], plannerReservations = [
     if (days < 1) { setRangeError('Minimum range is 1 day.'); return; }
     setRange({ from: fromInput, to: toInput }); setFocusToday(false);
   };
-  const clearRange = () => { setRange(null); setRangeError(''); setFromInput(''); setToInput(''); setMonth(startOfMonth(todayDate)); setFocusToday(true); };
+  const addClosure = () => { const room=plannerRooms[0]; if(!room) return; const start=addDays(todayDate,2); const end=addDays(start,2); setClosures(prev=>[...prev,{id:`closure-${Date.now()}`,roomId:room.id,start:dateKey(start),end:dateKey(end),label:'Out of order'}]); toast.success(`Closure added to Room ${room.number}`); };\n  const clearRange = () => { setRange(null); setRangeError(''); setFromInput(''); setToInput(''); setMonth(startOfMonth(todayDate)); setFocusToday(true); };
   const goToday = () => { setRange(null); setFromInput(''); setToInput(''); setMonth(startOfMonth(todayDate)); setFocusToday(true); };
   const shiftMonth = (delta) => { setRange(null); setFocusToday(false); setMonth(new Date(month.getFullYear(), month.getMonth() + delta, 1)); };
 
