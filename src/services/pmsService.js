@@ -557,10 +557,10 @@ export const pmsService = {
 		return data || [];
 	},
 
-	async recordCashierAdjustment({ propertyId, shiftId, adjustmentType, targetType, targetId, amount, reason }) {
+	async recordCashierAdjustment({ propertyId, shiftId, adjustmentType, targetType, targetId, amount, reason, refundMethod = null }) {
 		const { data, error } = await supabase.rpc('fn_record_cashier_adjustment', {
 			p_property_id: propertyId, p_shift_id: shiftId || null, p_adjustment_type: adjustmentType,
-			p_target_type: targetType, p_target_id: targetId, p_amount: Number(amount || 0), p_reason: reason,
+			p_target_type: targetType, p_target_id: targetId, p_amount: Number(amount || 0), p_reason: reason, p_refund_method: refundMethod || null,
 		});
 		if (error) throw new Error(error.message);
 		return data;
