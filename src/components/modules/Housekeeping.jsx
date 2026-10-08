@@ -11,7 +11,11 @@ export default function Housekeeping(){
  const [tasks,setTasks]=React.useState([]),[dash,setDash]=React.useState({}),[busy,setBusy]=React.useState(false),[error,setError]=React.useState('');
  const [selected,setSelected]=React.useState(null),[notes,setNotes]=React.useState('');
  const load=React.useCallback(async()=>{if(!propertyId)return;setError('');try{const [t,d]=await Promise.all([pmsService.listHousekeepingTasks(propertyId),pmsService.getHousekeepingDashboard(propertyId)]);setTasks(t);setDash(d)}catch(e){setError(e.message||'Unable to load housekeeping.')}},[propertyId]);
- React.useEffect(()=>{load()},[load]);
+ React.useEffect(()=>{
+  load();
+  const channel=pmsService.subscribeToHousekeeping?.(propertyId,{onChange:()=>load()});
+  return()=>channel?.unsubscribe?.();
+ },[load,propertyId]);
  const run=async(fn)=>{setBusy(true);setError('');try{await fn();setSelected(null);setNotes('');await load()}catch(e){setError(e.message||'Operation failed.')}finally{setBusy(false)}};
  const action=(task,status)=>run(()=>pmsService.updateHousekeepingTask({taskId:task.id,status,notes:notes.trim()||null}));
  const inspect=(task,pass)=>run(()=>pmsService.inspectHousekeepingTask({taskId:task.id,pass,notes:notes.trim()||null}));
