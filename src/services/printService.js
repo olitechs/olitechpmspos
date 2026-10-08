@@ -281,7 +281,7 @@ export async function printToPrinter(printer, contentHtml, { propertyId, jobType
   }
   await logPrint(propertyId, printer.id, jobType, copyType, result.ok ? 'printed' : 'failed', result.friendlyError || null);
   if (job) { try { await updateFnbPrintJob(job.id,propertyId,result.ok?'printed':'failed',result.friendlyError||null,printer.id); } catch (e) { console.warn('[printService] failed to update durable print job',e); } }
-  return {...result,jobId:job?.id||null};
+  return {...result,jobId:job?.id||null,printerId:printer.id||null,printerName:printer.name||null,assignmentType};
 }
 
 export async function connectPrinter(printer, propertyId) {
