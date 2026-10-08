@@ -123,9 +123,9 @@ revoke insert,update,delete on public.stock_usage from public,anon,authenticated
 grant select on public.stock_movements to authenticated;
 grant select on public.stock_usage to authenticated;
 grant execute on function public.fn_adjust_product_stock(uuid,numeric,text) to authenticated;
-grant execute on function public.fn_consume_recipe_stock(uuid,jsonb,text) to authenticated;
-grant execute on function public.fn_create_and_receive_purchase(uuid,uuid,text,date,jsonb) to authenticated;
-grant execute on function public.fn_record_stock_usage(uuid,date,text,uuid,numeric,text,text) to authenticated;
+revoke all on function public.fn_consume_recipe_stock(uuid,jsonb,text) from public,anon;\ngrant execute on function public.fn_consume_recipe_stock(uuid,jsonb,text) to authenticated;
+revoke all on function public.fn_create_and_receive_purchase(uuid,uuid,text,date,jsonb) from public,anon;\ngrant execute on function public.fn_create_and_receive_purchase(uuid,uuid,text,date,jsonb) to authenticated;
+revoke all on function public.fn_record_stock_usage(uuid,date,text,uuid,numeric,text,text) from public,anon;\ngrant execute on function public.fn_record_stock_usage(uuid,date,text,uuid,numeric,text,text) to authenticated;
 
 create or replace view public.inventory_stock_history as
 select sm.id,sm.property_id,sm.product_id,p.name product_name,p.sku,p.category,p.unit,sm.type,sm.qty,
