@@ -150,69 +150,6 @@ return s;
 end $function$
 
 
-CREATE OR REPLACE FUNCTION public.fn_record_cashier_adjustment(p_property_id uuid, p_shift_id uuid, p_adjustment_type text, p_target_type text, p_target_id uuid, p_amount numeric, p_reason text)
- RETURNS cashier_adjustments
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO 'public'
-AS $function$
-declare
-  v_adjustment public.cashier_adjustments;
-  v_role text;
-  v_property uuid;
-  v_total numeric;
-  v_is_manager boolean := false;
-  v_target_status text;
-begin
-  if not (public.is_platform_owner() or public.is_member_of_property(p_property_id)) then raise exception 'Not allowed.'; end if;
-  if p_amount <= 0 or nullif(trim(p_reason),'') is null then raise exception 'Amount and reason are required.'; end if;
-  if p_adjustment_type not in ('refund','void','discount') then raise exception 'Invalid adjustment type.'; end if;
-  if p_target_type not in ('pos_receipt','payment') then raise exception 'Invalid target type.'; end if;
-
-  v_role := public.current_staff_role(p_property_id);
-  v_is_manager := public.is_platform_owner()
-    or public.property_role(p_property_id) in ('owner','admin','manager')
-    or v_role in ('hotel_admin','super_admin','fb_manager');
-
-  if v_role is not null and v_role not in ('hotel_admin','super_admin','cashier','fb_manager') then
-    raise exception 'Only authorised cashier staff can request transaction adjustments.';
-  elsif v_role is null and not (public.is_platform_owner() or public.property_role(p_property_id) in ('owner','admin','manager','cashier')) then
-    raise exception 'Only authorised cashier staff can request transaction adjustments.';
-  end if;
-
-  if p_target_type = 'pos_receipt' then
-    select property_id, total, status into v_property, v_total, v_target_status
-    from public.pos_receipts where id = p_target_id;
-  else
-    select property_id, amount, status into v_property, v_total, v_target_status
-    from public.payments where id = p_target_id;
-  end if;
-
-  if v_property is null or v_property <> p_property_id then raise exception 'Transaction not found.'; end if;
-  if v_target_status <> 'posted' then raise exception 'Only posted transactions can be adjusted.'; end if;
-  if p_amount > v_total then raise exception 'Adjustment exceeds transaction amount.'; end if;
-
-  insert into public.cashier_adjustments(
-    property_id,shift_id,adjustment_type,target_type,target_id,amount,reason,created_by,approved_by,status
-  ) values(
-    p_property_id,p_shift_id,p_adjustment_type,p_target_type,p_target_id,p_amount,p_reason,auth.uid(),
-    case when v_is_manager then auth.uid() else null end,
-    case when v_is_manager then 'approved' else 'pending' end
-  ) returning * into v_adjustment;
-
-  if v_is_manager and p_adjustment_type = 'void' then
-    if p_target_type = 'pos_receipt' then
-      update public.pos_receipts set status='voided',voided_at=now(),voided_by=auth.uid(),void_reason=p_reason where id=p_target_id and status='posted';
-    else
-      update public.payments set status='voided',voided_at=now(),voided_by=auth.uid(),void_reason=p_reason where id=p_target_id and status='posted';
-    end if;
-  end if;
-
-  return v_adjustment;
-end;
-$function$
-
-
 CREATE OR REPLACE FUNCTION public.fn_record_cashier_adjustment(p_property_id uuid, p_shift_id uuid, p_adjustment_type text, p_target_type text, p_target_id uuid, p_amount numeric, p_reason text, p_refund_method text DEFAULT NULL::text)
  RETURNS cashier_adjustments
  LANGUAGE plpgsql
