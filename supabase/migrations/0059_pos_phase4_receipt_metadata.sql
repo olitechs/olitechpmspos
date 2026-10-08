@@ -133,3 +133,13 @@ grant execute on function public.fn_record_pos_sale(
 ) to authenticated;
 
 notify pgrst,'reload schema';
+
+-- POS transaction RPCs are authenticated application endpoints, never anonymous APIs.
+revoke execute on function public.fn_record_pos_sale(uuid,text,text,jsonb,numeric,numeric,numeric,numeric,text,uuid,uuid,text,uuid,text) from anon;
+revoke execute on function public.fn_remove_pos_item(uuid,text,text,numeric,text,text) from anon;
+revoke execute on function public.fn_open_pos_shift(uuid,numeric,text) from anon;
+revoke execute on function public.fn_current_pos_shift(uuid) from anon;
+revoke execute on function public.fn_close_pos_shift(uuid,numeric,text,boolean) from anon;
+revoke execute on function public.fn_move_or_merge_pos_table(uuid,text,text,text,text) from anon;
+revoke execute on function public.fn_create_kitchen_order(uuid,text,text,text,text,jsonb,jsonb) from anon;
+revoke execute on function public.fn_update_kitchen_order(uuid,uuid,text,jsonb) from anon;
