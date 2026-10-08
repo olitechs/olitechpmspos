@@ -280,18 +280,28 @@ export const inventoryService = {
 
   async bulkUpsertProducts(propertyId, rows) {
     const suppliers = await this.listSuppliers(propertyId);
-    const payload = rows.map((row) => {
+    const payload = (rows || []).map((row) => {
       let supplierId = row.supplier_id || null;
       if (!supplierId && row.supplier) {
         const found = suppliers.find((s) => s.name.toLowerCase() === String(row.supplier).toLowerCase());
         supplierId = found?.id || null;
       }
-      return cleanProduct(row, propertyId, supplierId);
+      return {
+        ...cleanProduct(row, propertyId, supplierId),
+        pos_enabled: row.pos_enabled === true || ['true','1','yes','y'].includes(String(row.pos_enabled || '').toLowerCase()),
+        pos_category: String(row.pos_category || row.category || 'General').trim() || 'General',
+        production_center: String(row.production_center || row.center || 'Kitchen').trim() || 'Kitchen',
+        pos_sort: Number(row.pos_sort ?? row.sort_order ?? 0) || 0,
+        pos_active: row.pos_active !== false,
+      };
     }).filter((p) => p.name);
-    if (!payload.length) return [];
-    const { data, error } = await supabase.from('products').upsert(payload, { onConflict: 'property_id,sku', ignoreDuplicates: false }).select('*');
+    if (!payload.length) return { processed: 0, created: 0, updated: 0, stock_adjusted: 0, errors: [] };
+    const { data, error } = await supabase.rpc('fn_bulk_upsert_store_products', {
+      p_property_id: propertyId,
+      p_rows: payload.map(({ property_id, ...row }) => row),
+    });
     if (error) throw new Error(error.message);
-    return data || [];
+    return data || { processed: payload.length, created: 0, updated: 0, stock_adjusted: 0, errors: [] };
   },
 };
 
@@ -315,6 +325,8 @@ function normalizeImportRows(rows) {
     supplier: row.supplier || '',
     location: row.location || 'Main Store',
     expiry_date: row.expiry_date || null,
+    pos_enabled: row.pos_enabled === true || ['true','1','yes','y'].includes(String(row.pos_enabled || '').toLowerCase()),
+    pos_category: row.pos_category || row.poscategory || '',
     production_center: row.production_center || row.center || 'Kitchen',
     pos_sort: row.pos_sort ?? row.sort_order ?? 0,
     pos_active: row.pos_active !== false,
@@ -322,7 +334,7 @@ function normalizeImportRows(rows) {
 }
 
 export function downloadImportTemplate() {
-  const rows = [{ name: 'Tusker Lager', sku: 'B4', category: 'F&B', unit: 'bottle', current_stock: 100, min_stock: 20, max_stock: 300, cost_price: 180, selling_price: 450, supplier: 'Sample Supplier', location: 'Bar Store', expiry_date: '' }];
+  const rows = [{ name: 'Tusker Lager', sku: 'B4', category: 'F&B', pos_enabled: true, pos_category: 'Beers', unit: 'bottle', current_stock: 100, min_stock: 20, max_stock: 300, cost_price: 180, selling_price: 450, supplier: 'Sample Supplier', location: 'Bar Store', production_center: 'Bar', pos_sort: 10, pos_active: true, expiry_date: '' }];
   const csv = Papa.unparse(rows);
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
