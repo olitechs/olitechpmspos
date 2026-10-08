@@ -1,4 +1,5 @@
 import React from 'react';
+import ThemeToggle from '@/components/ui/ThemeToggle';
 import { NAVY, NAVY2, TEAL, TEAL_LIGHT, MUTED_DARK } from '@/data/themePalette';
 
 const TABS = [
@@ -64,6 +65,7 @@ export default function AppHeader({ activeTab, onTabChange, activeTable, onClose
           <div className="text-xs" style={{ color: TEAL_LIGHT }}>{dateStr}</div>
         </div>
       </div>
+    <ThemeToggle compact />
     </header>
   );
 }
