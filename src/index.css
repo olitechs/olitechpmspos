@@ -4,12 +4,13 @@
 
 @layer base {
   :root {
-    --bg:#F1F5F9; --surface:#FFFFFF; --text:#1E293B; --muted:#64748B; --border:#CBD5E1;
-    --action:#047857; --action-text:#FFFFFF; --info:#007AFC; --warning:#B45309; --danger:#DC2626; --room-charge:#4F46E5;
-    --table-free:#CBD5E1; --table-occupied:#007AFC; --table-bill:#B45309; --table-reserved:#7C3AED; --table-paid:#047857;
-    --room-clean:#047857; --room-dirty:#B45309; --stay-occupied:#007AFC; --stay-checkout:#4338CA; --stay-optioned:#0D9488; --stay-closed:#475569;
+    --bg:#F7F7F5; --surface:#FFFFFF; --text:#121418; --muted:#6B7280; --border:#E5E7EB;
+    --action:#FFC400; --action-text:#121418; --info:#2563EB; --warning:#D97706; --danger:#DC2626; --room-charge:#4F46E5;
+    --brand-dark:#121418; --brand-primary:#FFC400; --brand-soft:#FFF7D6; --brand-surface:#FAFAF8;
+    --table-free:#D1D5DB; --table-occupied:#2563EB; --table-bill:#D97706; --table-reserved:#7C3AED; --table-paid:#16A34A;
+    --room-clean:#16A34A; --room-dirty:#D97706; --stay-occupied:#2563EB; --stay-checkout:#4338CA; --stay-optioned:#0D9488; --stay-closed:#6B7280;
     --pay-none:#C2410C; --pay-partial:#A16207; --pay-total:#3F6212;
-    --grid-weekend:#E2E8F0; --grid-today:#DBEAFE;
+    --grid-weekend:#F1F1EE; --grid-today:#FFF7D6;
     --focus:#007AFC; --shadow:0 1px 2px rgb(15 23 42 / .08);
     --background:var(--bg); --foreground:var(--text); --card:var(--surface); --card-foreground:var(--text);
     --popover:var(--surface); --popover-foreground:var(--text); --primary:var(--action); --primary-foreground:var(--action-text);
@@ -20,9 +21,10 @@
     --font-mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Liberation Mono','Courier New',monospace;
   }
   [data-theme="dark"]{
-    --bg:#0F172A; --surface:#1E293B; --text:#F1F5F9; --muted:#CBD5E1; --border:#475569;
-    --action:#34D399; --action-text:#0F172A; --info:#38BDF8; --warning:#FBBF24; --danger:#F87171; --room-charge:#818CF8;
-    --table-free:#64748B; --table-occupied:#38BDF8; --table-bill:#FBBF24; --table-reserved:#A78BFA; --table-paid:#34D399;
+    --bg:#0F1115; --surface:#171A1F; --text:#F5F5F4; --muted:#A1A1AA; --border:#2D3138;
+    --action:#FFC400; --action-text:#121418; --info:#60A5FA; --warning:#FBBF24; --danger:#F87171; --room-charge:#818CF8;
+    --brand-dark:#F5F5F4; --brand-primary:#FFC400; --brand-soft:#332B00; --brand-surface:#1D2026;
+    --table-free:#71717A; --table-occupied:#60A5FA; --table-bill:#FBBF24; --table-reserved:#A78BFA; --table-paid:#4ADE80;
     --room-clean:#34D399; --room-dirty:#FBBF24; --stay-occupied:#38BDF8; --stay-checkout:#818CF8; --stay-optioned:#2DD4BF; --stay-closed:#94A3B8;
     --pay-none:#FB923C; --pay-partial:#FACC15; --pay-total:#84CC16;
     --grid-weekend:#1E293B; --grid-today:#1E3A5F; --focus:#38BDF8; --shadow:0 1px 2px rgb(0 0 0 / .3);
