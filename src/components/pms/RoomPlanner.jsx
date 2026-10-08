@@ -248,7 +248,8 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     if (days < 1) { setRangeError('Minimum range is 1 day.'); return; }
     setRange({ from: fromInput, to: toInput }); setFocusToday(false);
   };
-  const addClosure = () => { const room=plannerRooms[0]; if(!room) return; const start=addDays(todayDate,2); const end=addDays(start,2); setClosures(prev=>[...prev,{id:`closure-${Date.now()}`,roomId:room.id,start:dateKey(start),end:dateKey(end),label:'Out of order'}]); toast.success(`Closure added to Room ${room.number}`); };\n  const clearRange = () => { setRange(null); setRangeError(''); setFromInput(''); setToInput(''); setMonth(startOfMonth(todayDate)); setFocusToday(true); };
+  const addClosure = () => { const room=plannerRooms[0]; if(!room) return; const start=addDays(todayDate,2); const end=addDays(start,2); setClosures(prev=>[...prev,{id:`closure-${Date.now()}`,roomId:room.id,start:dateKey(start),end:dateKey(end),label:'Out of order'}]); toast.success(`Closure added to Room ${room.number}`); };
+  const clearRange = () => { setRange(null); setRangeError(''); setFromInput(''); setToInput(''); setMonth(startOfMonth(todayDate)); setFocusToday(true); };
   const goToday = () => { setRange(null); setFromInput(''); setToInput(''); setMonth(startOfMonth(todayDate)); setFocusToday(true); };
   const shiftMonth = (delta) => { setRange(null); setFocusToday(false); setMonth(new Date(month.getFullYear(), month.getMonth() + delta, 1)); };
 
@@ -319,7 +320,8 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
             {columns.map(d=>{const weekend=d.getDay()===0||d.getDay()===6;const key=dateKey(d);const target=dragTarget?.roomId===room.id&&dragTarget?.date===key;return <div key={key} onClick={()=>{if(!drag&&!suppressCellClick.current)openCreate(room,d)}} onDragOver={e=>handleCellDragOver(e,room,d)} onDrop={e=>handleCellDrop(e,room,d)} className="cursor-pointer" style={{background:target?'rgba(255,211,0,.25)':weekend?'var(--grid-weekend)':key===today?'rgba(255,211,0,.12)':'var(--surface)',borderRight:`1px solid var(--border)`,borderBottom:`1px solid var(--border)`, minHeight:44}}/>})}
             {roomReservations.map(rv=>{
               const l=visibleReservation(rv);if(!l)return null;
-              const stayStatus=rv.plannerStatus || (rv.bookingStatus==='checked_out'?'checked_out':rv.bookingStatus==='checked_in'?'occupied':'confirmed');\n              const ps=getReservationBarStyle(stayStatus);
+              const stayStatus=rv.plannerStatus || (rv.bookingStatus==='checked_out'?'checked_out':rv.bookingStatus==='checked_in'?'occupied':'confirmed');
+              const ps=getReservationBarStyle(stayStatus);
               const checked=rv.bookingStatus==='checked_out';
               const left=ROOM_COL_WIDTH+l.start*DAY_WIDTH+4;
               const width=Math.max(DAY_WIDTH*l.span-8,100);
