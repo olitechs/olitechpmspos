@@ -41,6 +41,26 @@ export async function getAssignments(propertyId) {
   return data || [];
 }
 
+async function createFnbPrintJob({propertyId,printerId,assignmentType,jobType,copyType=null,title='',contentHtml='',payload={},retryOf=null}) {
+  if (!propertyId) return null;
+  const {data,error}=await supabase.from('fnb_print_jobs').insert({
+    property_id:propertyId, printer_id:printerId||null, assignment_type:assignmentType||'document',
+    job_type:jobType||'document', copy_type:copyType, title:title||'OliTechs Print',
+    content_html:String(contentHtml||''), payload:payload||{}, retry_of:retryOf||null,
+    created_by:(await supabase.auth.getUser()).data?.user?.id||null, status:'queued'
+  }).select().single();
+  if(error) throw error;
+  return data;
+}
+async function updateFnbPrintJob(jobId,propertyId,status,errorMessage=null,printerId=null){
+  if(!jobId||!propertyId) return null;
+  const {data,error}=await supabase.rpc('fn_update_fnb_print_job',{
+    p_property_id:propertyId,p_job_id:jobId,p_status:status,p_error_message:errorMessage,p_printer_id:printerId
+  });
+  if(error) throw error;
+  return data;
+}
+
 async function logPrint(propertyId, printerId, jobType, copyType, status, errorMessage = null) {
   if (!propertyId) return;
   try {
@@ -236,9 +256,11 @@ export async function testPrinterConnection(printer, propertyId) {
   }
 }
 
-export async function printToPrinter(printer, contentHtml, { propertyId, jobType = 'document', copyType = null, title = 'OliTechs Print' } = {}) {
+export async function printToPrinter(printer, contentHtml, { propertyId, jobType = 'document', copyType = null, title = 'OliTechs Print', assignmentType = 'document', payload = {}, retryOf = null, persistJob = true } = {}) {
   if (!printer) return { ok: false, friendlyError: 'Printer not configured.' };
   const text = htmlToThermalText(contentHtml);
+  let job = null;
+  if (persistJob && propertyId) { job = await createFnbPrintJob({propertyId,printerId:printer.id,assignmentType,jobType,copyType,title,contentHtml,payload,retryOf}); await updateFnbPrintJob(job.id,propertyId,'printing',null,printer.id); }
   let result;
   if (printer.connection_type === 'network_ip') {
     result = await directTcpPrint(printer, propertyId, text, 'print');
@@ -258,7 +280,8 @@ export async function printToPrinter(printer, contentHtml, { propertyId, jobType
     result = { ok:false, friendlyError:'Unsupported printer connection type.' };
   }
   await logPrint(propertyId, printer.id, jobType, copyType, result.ok ? 'printed' : 'failed', result.friendlyError || null);
-  return result;
+  if (job) { try { await updateFnbPrintJob(job.id,propertyId,result.ok?'printed':'failed',result.friendlyError||null,printer.id); } catch (e) { console.warn('[printService] failed to update durable print job',e); } }
+  return {...result,jobId:job?.id||null};
 }
 
 export async function connectPrinter(printer, propertyId) {
@@ -315,7 +338,7 @@ export async function printOrderByCategory(order) {
     if (!group.items.length) continue;
     const targets = assignments.filter((a) => a.assignment_type === group.type).map((a) => printers.find((p) => p.id === a.printer_id)).filter(Boolean);
     if (!targets.length) { results.push({ ok:false, assignmentType:group.type, friendlyError:`No printer assigned to ${group.type}.` }); continue; }
-    for (const printer of targets) results.push(await printToPrinter(printer, orderTicketHtml(order, group.kind, group.items), { propertyId, jobType: group.kind === 'food' ? 'KOT' : 'BOT', title: group.kind === 'food' ? 'Kitchen Order' : 'Bar Order' }));
+    for (const printer of targets) results.push(await printToPrinter(printer, orderTicketHtml(order, group.kind, group.items), { propertyId, jobType: group.kind === 'food' ? 'KOT' : 'BOT', assignmentType: group.type, payload: {orderNumber:order.orderNumber||order.checkNo||null,table:order.table||order.tableNumber||null}, title: group.kind === 'food' ? 'Kitchen Order' : 'Bar Order' }));
   }
   return { ok: results.every((r) => r.ok), results };
 }
@@ -363,7 +386,7 @@ function refundTicketHtml(data = {}) {
 export async function printRefundSlip(printer, data = {}) {
   if (!printer) return { ok:false, friendlyError:'Refund printer not configured.' };
   return printToPrinter(printer, refundTicketHtml(data), {
-    propertyId:data.propertyId, jobType:'refund', copyType:'control', title:'Refund / Reversal'
+    propertyId:data.propertyId, jobType:'refund', copyType:'control', assignmentType:'refund_slips', payload:{receiptId:data.receiptId||null,amount:data.amount||0}, title:'Refund / Reversal'
   });
 }
 
@@ -373,7 +396,7 @@ export async function printVoidTicket(printer, data = {}) {
   const result = await printToPrinter(
     printer,
     voidTicketHtml(data),
-    { propertyId, jobType:'void', copyType:'control', title:`VOID / CANCELLATION - ${String(data.category || 'food').toUpperCase()}` }
+    { propertyId, jobType:'void', copyType:'control', assignmentType:data.category === 'drinks' ? 'void_drinks_orders' : 'void_food_orders', payload:{voidId:data.voidId||null,voidNumber:data.voidNumber||null}, title:`VOID / CANCELLATION - ${String(data.category || 'food').toUpperCase()}` }
   );
 
   if (data.voidId && propertyId) {
@@ -426,7 +449,7 @@ export async function printReceipt(type, data) {
   const receiptCopies = copies.map((copy) => receiptHtml(settings, type, data, copy));
   const content = `<div class="receipt">${receiptCopies.join('<div class="cut">✂ CUT HERE</div>')}</div>`;
   const results = [];
-  for (const printer of targets) results.push(await printToPrinter(printer, content, { propertyId, jobType: type, copyType:'duplicate', title:type === 'UNSETTLED' ? 'Unsettled Bill' : 'Final Receipt' }));
+  for (const printer of targets) results.push(await printToPrinter(printer, content, { propertyId, jobType: type, copyType:'duplicate', assignmentType, payload:{orderNumber:data.orderNumber||data.checkNo||null,total:data.total||0}, title:type === 'UNSETTLED' ? 'Unsettled Bill' : 'Final Receipt' }));
   return { ok: results.every((r) => r.ok), results };
 }
 
@@ -441,7 +464,9 @@ function shiftReportHtml(data, copyLabel) {
 export async function printShiftReport(shiftData, printer) {
   if (!printer) return {ok:false,friendlyError:'Shift report printer not configured.'};
   const propertyId=shiftData.propertyId;
-  const first=await printToPrinter(printer,shiftReportHtml(shiftData,'CASHIER COPY'),{propertyId,jobType:'shift_report',copyType:'cashier',title:'Shift Closing Report'});
-  const second=await printToPrinter(printer,shiftReportHtml(shiftData,'MANAGER / ACCOUNTANT COPY'),{propertyId,jobType:'shift_report',copyType:'manager',title:'Shift Closing Report'});
+  const first=await printToPrinter(printer,shiftReportHtml(shiftData,'CASHIER COPY'),{propertyId,jobType:'shift_report',copyType:'cashier',assignmentType:'shift_reports',payload:{shiftId:shiftData.shift?.id||null},title:'Shift Closing Report'});
+  const second=await printToPrinter(printer,shiftReportHtml(shiftData,'MANAGER / ACCOUNTANT COPY'),{propertyId,jobType:'shift_report',copyType:'manager',assignmentType:'shift_reports',payload:{shiftId:shiftData.shift?.id||null},title:'Shift Closing Report'});
   return {ok:first.ok&&second.ok,results:[first,second]};
 }
+export async function listFnbPrintJobs(propertyId,{status=null,limit=50}={}) { if (!propertyId) return []; let q=supabase.from('fnb_print_jobs').select('*').eq('property_id',propertyId).order('created_at',{ascending:false}).limit(Math.min(100,Math.max(1,limit))); if(status) q=q.eq('status',status); const {data,error}=await q; if(error) throw error; return data||[]; }
+export async function retryFnbPrintJob(jobId,propertyId) { const {data:job,error}=await supabase.from('fnb_print_jobs').select('*').eq('id',jobId).eq('property_id',propertyId).single(); if(error) throw error; if(!job.printer_id) throw new Error('Original printer is no longer configured.'); const {data:printer,error:printerError}=await supabase.from('property_printers').select('*').eq('id',job.printer_id).eq('property_id',propertyId).single(); if(printerError) throw printerError; return printToPrinter(printer,job.content_html,{propertyId,jobType:job.job_type,copyType:job.copy_type,assignmentType:job.assignment_type,payload:job.payload||{},title:job.title||'OliTechs Print',retryOf:job.id}); }
