@@ -51,6 +51,7 @@ import Transfers from "@/components/modules/Transfers";
 import Recipes from "@/components/modules/Recipes";
 import StoresPage from "@/components/stores/StoresPage";
 import ModuleStatusPage from "@/components/shared/ModuleStatusPage";
+import OperationalSettingsPage from "@/components/settings/OperationalSettingsPage";
 
 function AuthLoading(){return <div className="fixed inset-0 flex items-center justify-center bg-[#F5F3EF]"><div className="h-8 w-8 animate-spin rounded-full border-4 border-[#D6D6D6] border-t-[#FFD300]"/></div>;}
 function appRole(user){const s=getSessionStaff();const raw=s?.role||user?.staff?.role||user?.propertyRole||user?.role;return normalizeAppRole(normalizeStaffRole(raw));}
@@ -65,6 +66,7 @@ function BackOfficeSettingsPage(){
   if(slug==='billing') return <SubscriptionPanel/>;
   if(slug==='kitchen-printers') return <KitchenPrintersPage/>;
   if(['modifiers','discounts','suppliers'].includes(slug)) return <Phase2CataloguePage section={slug}/>;
+  if(['features','payment-types','taxes','loyalty','open-tickets','dining-options'].includes(slug)) return <OperationalSettingsPage module={slug}/>;
   return <ModuleStatusPage module={slug || 'features'} back='/backoffice/settings/features'/>;
 }
 function AppRoutes(){return <AuthProvider><Routes>
