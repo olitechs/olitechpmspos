@@ -203,7 +203,7 @@ export default function KitchenDisplay() {
                     </button>
                   )}
                   <button
-                    onClick={() => updateKitchenOrderStatus(order.id, NEXT_STATUS[order.status])}
+                    onClick={() => updateKitchenOrderStatus(order.id, NEXT_STATUS[order.status]).catch((error) => setVoidError(error?.message || 'Unable to update production status.'))}
                     className="w-full py-2.5 rounded-xl text-xs font-bold"
                     style={{ background: st.color, color: NAVY }}
                   >
