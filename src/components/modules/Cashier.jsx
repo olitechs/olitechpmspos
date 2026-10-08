@@ -22,6 +22,7 @@ export default function Cashier() {
   const [selected, setSelected] = React.useState(null);
   const [adjustmentType, setAdjustmentType] = React.useState('void');
   const [adjustmentAmount, setAdjustmentAmount] = React.useState('');
+  const [refundMethod, setRefundMethod] = React.useState('');
   const [reason, setReason] = React.useState('');
   const [busy, setBusy] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
@@ -72,6 +73,7 @@ export default function Cashier() {
     setSelected(receipt);
     setAdjustmentType(receipt.status === 'voided' ? 'refund' : 'void');
     setAdjustmentAmount(String(receipt.total || ''));
+    setRefundMethod(receipt.payment_method === 'split' ? '' : (receipt.payment_method || ''));
     setReason('');
   };
 
@@ -82,9 +84,10 @@ export default function Cashier() {
     if (!Number.isFinite(amount) || amount <= 0) throw new Error('Enter a valid adjustment amount.');
     if (amount > Number(selected.total || 0)) throw new Error('Adjustment exceeds the receipt total.');
     if (!reason.trim()) throw new Error('A reason is required.');
+    if (adjustmentType === 'refund' && selected.payment_method === 'split' && !refundMethod) throw new Error('Select the payment method to refund.');
     await pmsService.recordCashierAdjustment({
       propertyId, shiftId: shift.id, adjustmentType, targetType: 'pos_receipt',
-      targetId: selected.id, amount, reason: reason.trim(),
+      targetId: selected.id, amount, reason: reason.trim(), refundMethod: adjustmentType === 'refund' ? (refundMethod || null) : null,
     });
     setSelected(null); setAdjustmentAmount(''); setReason('');
   });
@@ -182,6 +185,10 @@ export default function Cashier() {
                 <label className="block text-xs font-semibold text-slate-600">Action<select className={input + ' mt-1'} value={adjustmentType} onChange={(e) => setAdjustmentType(e.target.value)}>
                   <option value="void">Void</option><option value="refund">Refund</option><option value="discount">Discount</option>
                 </select></label>
+                {adjustmentType === 'refund' && <label className="block text-xs font-semibold text-slate-600">Refund payment method<select className={input + ' mt-1'} value={refundMethod} onChange={(e) => setRefundMethod(e.target.value)}>
+                  {selected.payment_method !== 'split' && <option value={selected.payment_method}>{selected.payment_method}</option>}
+                  {selected.payment_method === 'split' && <><option value="">Select method</option><option value="cash">Cash</option><option value="card">Card</option><option value="mpesa">M-Pesa</option><option value="bank">Bank</option><option value="room">Room charge</option></>}
+                </select></label>}
                 <label className="block text-xs font-semibold text-slate-600">Amount<input className={input + ' mt-1'} type="number" min="0.01" max={selected.total} step="0.01" value={adjustmentAmount} onChange={(e) => setAdjustmentAmount(e.target.value)}/></label>
                 <label className="block text-xs font-semibold text-slate-600">Reason<textarea className={input + ' mt-1'} rows="3" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Explain the correction"/></label>
                 <button className={btn + ' w-full bg-red-600 text-white'} disabled={busy} onClick={postAdjustment}>Post {adjustmentType}</button>
