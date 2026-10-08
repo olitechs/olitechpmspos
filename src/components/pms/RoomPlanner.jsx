@@ -105,7 +105,9 @@ export const MOCK_ROOM_PLANNER_STAYS = Array.from({length:20},(_,i)=>{
  return {id:`mock-stay-${i+1}`,roomId:`mock-room-${(i%15)+1}`,roomNumber:String(101+(i%15)),guestName:['Amina','Brian','Clara','Daniel','Elena'][i%5],checkIn:format(start,'yyyy-MM-dd'),checkOut:format(end,'yyyy-MM-dd'),bookingStatus:states[i%6]==='checked_out'?'checked_out':states[i%6]==='occupied'?'checked_in':'booked',plannerStatus:states[i%6],paymentStatus:payments[i%3],adults:1+(i%3),kidsCount:0,totalAmount:10000+i*750,amountPaid:i%3===0?0:i%3===1?5000:10000};
 });
 
-export default function RoomPlanner({ plannerRooms = [], plannerReservations = [], onRefresh }) {\n  const plannerRooms = plannerRooms.length ? plannerRooms : MOCK_ROOM_PLANNER_ROOMS;\n  const plannerReservations = plannerReservations.length ? plannerReservations : MOCK_ROOM_PLANNER_STAYS;
+export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }) {
+  const plannerRooms = rooms.length ? rooms : MOCK_ROOM_PLANNER_ROOMS;
+  const plannerReservations = reservations.length ? reservations : MOCK_ROOM_PLANNER_STAYS;
   const { user } = useAuth();
   const propertyId = user?.property?.id;
   const todayDate = useMemo(() => new Date(), []);
