@@ -21,11 +21,11 @@ const SECTIONS=[
   {id:"purchasing",label:"Purchase orders",icon:ShoppingCart,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/backoffice/inventory/purchase-orders",active:["purchasing"],sub:true},
   {id:"transfers",label:"Transfer orders",icon:ArrowRightLeft,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/backoffice/inventory/transfer-orders",active:["transfers"],sub:true},
   {id:"adjustments",label:"Stock adjustments",icon:ClipboardCheck,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/backoffice/inventory/stock-adjustments",active:["inventory"],sub:true},
-  {id:"counts",label:"Inventory counts",icon:Boxes,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/backoffice/inventory/stock-adjustments",active:["inventory"],sub:true},
+  {id:"counts",label:"Inventory counts",icon:Boxes,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/backoffice/inventory/counts",active:["inventory"],sub:true},
   {id:"productions",label:"Productions",icon:ChefHat,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/backoffice/inventory/productions",active:["recipes"],sub:true},
   {id:"suppliers",label:"Suppliers",icon:Package,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/backoffice/inventory/suppliers",active:["suppliers"],sub:true},
-  {id:"inventory-history",label:"Inventory history",icon:Receipt,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/backoffice/inventory/stock-adjustments",active:["inventory"],sub:true},
-  {id:"inventory-valuation",label:"Inventory valuation",icon:Banknote,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/backoffice/inventory/stock-adjustments",active:["inventory"],sub:true}
+  {id:"inventory-history",label:"Inventory history",icon:Receipt,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/backoffice/inventory/history",active:["inventory"],sub:true},
+  {id:"inventory-valuation",label:"Inventory valuation",icon:Banknote,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/backoffice/inventory/valuation",active:["inventory"],sub:true}
  ]},
  {key:"employees",title:"Employees",items:[
   {id:"employee-list",label:"Employee list",icon:Users,roles:["hotel_admin","super_admin"],path:"/backoffice/employees/list",active:["roles"],sub:true},
