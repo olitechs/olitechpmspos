@@ -85,6 +85,7 @@ export default function Cashier() {
     if (amount > Number(selected.total || 0)) throw new Error('Adjustment exceeds the receipt total.');
     if (!reason.trim()) throw new Error('A reason is required.');
     if (adjustmentType === 'refund' && selected.payment_method === 'split' && !refundMethod) throw new Error('Select the payment method to refund.');
+    if (adjustmentType === 'void' && selected.payment_method === 'split') throw new Error('Split-payment transactions must be refunded by payment method rather than voided.');
     await pmsService.recordCashierAdjustment({
       propertyId, shiftId: shift.id, adjustmentType, targetType: 'pos_receipt',
       targetId: selected.id, amount, reason: reason.trim(), refundMethod: adjustmentType === 'refund' ? (refundMethod || null) : null,
@@ -202,7 +203,7 @@ export default function Cashier() {
               {!selected ? <div className="mt-4 rounded-lg bg-slate-50 p-4 text-xs text-slate-600"><ShieldAlert size={17} className="mb-2"/><p>Select <strong>Adjust</strong> on a posted receipt to begin.</p></div> : <div className="mt-4 space-y-3">
                 <div className="rounded-lg bg-slate-50 p-3 text-xs"><div className="font-bold">{selected.order_number || 'POS transaction'}</div><div className="mt-1">{selected.guest_name || 'Walk-in'} · {money(selected.total)} · {selected.payment_method}</div></div>
                 <label className="block text-xs font-semibold text-slate-600">Action<select className={input + ' mt-1'} value={adjustmentType} onChange={(e) => setAdjustmentType(e.target.value)}>
-                  <option value="void">Void</option><option value="refund">Refund</option><option value="discount">Discount</option>
+                  <option value="void">Void</option><option value="refund">Refund</option>
                 </select></label>
                 {adjustmentType === 'refund' && <label className="block text-xs font-semibold text-slate-600">Refund payment method<select className={input + ' mt-1'} value={refundMethod} onChange={(e) => setRefundMethod(e.target.value)}>
                   {selected.payment_method !== 'split' && <option value={selected.payment_method}>{selected.payment_method}</option>}
