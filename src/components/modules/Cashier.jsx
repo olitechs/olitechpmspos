@@ -2,7 +2,7 @@ import React from 'react';
 import { Banknote, CheckCircle2, RefreshCw, ShieldAlert, XCircle } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { pmsService } from '@/services/pmsService';
-import { printReceipt } from '@/services/printService';
+import { printReceipt, getPrinters, getAssignments, printRefundSlip } from '@/services/printService';
 
 const money = (v) => `KES ${Number(v || 0).toLocaleString('en-KE', { maximumFractionDigits: 2 })}`;
 const dateTime = (v) => new Date(v).toLocaleString('en-KE', { dateStyle: 'short', timeStyle: 'short' });
@@ -89,6 +89,25 @@ export default function Cashier() {
       propertyId, shiftId: shift.id, adjustmentType, targetType: 'pos_receipt',
       targetId: selected.id, amount, reason: reason.trim(), refundMethod: adjustmentType === 'refund' ? (refundMethod || null) : null,
     });
+    if (adjustmentType === 'refund') {
+      try {
+        const [printers, assignments] = await Promise.all([getPrinters(propertyId), getAssignments(propertyId)]);
+        const targets = assignments.filter(a => a.assignment_type === 'refund_slips')
+          .map(a => printers.find(p => p.id === a.printer_id)).filter(Boolean)
+          .filter((p,i,a) => a.findIndex(x => x.id === p.id) === i);
+        if (targets.length) {
+          const results = await Promise.all(targets.map(printer => printRefundSlip(printer, {
+            propertyId, receiptId: selected.id, orderNumber: selected.order_number,
+            checkNo: selected.order_number, method: refundMethod || selected.payment_method,
+            guest: selected.guest_name, room: selected.room_number,
+            amount, reason: reason.trim(), createdAt: new Date().toISOString()
+          })));
+          if (!results.some(r => r.ok)) setError('Refund was posted, but the configured refund printer could not print the control slip.');
+        }
+      } catch (printError) {
+        setError(`Refund was posted, but the control slip could not be printed: ${printError.message || 'printer error'}`);
+      }
+    }
     setSelected(null); setAdjustmentAmount(''); setReason('');
   });
 
