@@ -53,7 +53,7 @@ export default function Reservations() {
     const ids = new Set();
     reservations.forEach((r) => {
       if (r.status === 'cancelled' || r.status === 'checked_out') return;
-      if (r.checkIn && r.checkOut && overlaps(selectedDate, selectedDate + 'T23:59:59', r.checkIn, r.checkOut)) {
+      if (r.checkIn && r.checkOut && r.checkIn <= selectedDate && selectedDate < r.checkOut) {
         ids.add(r.roomId);
       }
     });
@@ -246,11 +246,11 @@ function NewReservationModal({ rooms, onClose, onCreate, busy }) {
           <Field label="Guest name"><input className={inputClass} value={data.guest} onChange={(e) => setData({ ...data, guest: e.target.value })} /></Field>
           <Field label="Phone"><input className={inputClass} value={data.phone} onChange={(e) => setData({ ...data, phone: e.target.value })} /></Field>
           <Field label="Room"><select className={inputClass} value={data.roomId} onChange={(e) => setData({ ...data, roomId: e.target.value })}><option value="">Select room</option>{rooms.map((r) => <option key={r.id} value={r.id}>Room {r.number} · {r.roomTypeName || r.roomType || 'Room'}</option>)}</select></Field>
-          <Field label="Rate / night"><input type="number" min="0" className={inputClass} value={data.rate} onChange={(e) => setData({ ...data, rate: e.target.value })} /></Field>
+          <Field label="Rate / night"><input type="number" min="0" step="0.01" className={inputClass} value={data.rate} onChange={(e) => setData({ ...data, rate: e.target.value })} /><span className="mt-1 block text-[11px] text-slate-400">Total is calculated from the number of nights.</span></Field>
           <Field label="Arrival"><input type="date" className={inputClass} value={data.arrival} onChange={(e) => setData({ ...data, arrival: e.target.value })} /></Field>
           <Field label="Departure"><input type="date" className={inputClass} value={data.departure} onChange={(e) => setData({ ...data, departure: e.target.value })} /></Field>
           <Field label="Guests"><input type="number" min="1" className={inputClass} value={data.partySize} onChange={(e) => setData({ ...data, partySize: e.target.value })} /></Field>
-          <Field label="Channel"><select className={inputClass} value={data.channel} onChange={(e) => setData({ ...data, channel: e.target.value })}><option value="direct">Direct</option><option value="booking.com">Booking.com</option><option value="agent">Agent</option><option value="ota">OTA</option></select></Field>
+          <Field label="Channel"><select className={inputClass} value={data.channel} onChange={(e) => setData({ ...data, channel: e.target.value })}><option value="direct">Direct</option><option value="booking_com">Booking.com</option><option value="unknown">Other / OTA</option></select></Field>
         </div>
         {error && <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
         <div className="flex justify-end gap-2 border-t border-slate-200 pt-4"><button type="button" className={buttonClass + " border border-slate-200 bg-white"} onClick={onClose}>Cancel</button><button disabled={busy} className={buttonClass + " bg-[#FFD300] text-slate-950"} type="submit"><Plus size={15} /> Create reservation</button></div>
