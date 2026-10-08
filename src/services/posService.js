@@ -189,6 +189,16 @@ export const posService = {
       });
   },
 
+  async refireKitchenOrder({ propertyId, orderId, reason }) {
+    const { data, error } = await supabase.rpc('fn_refire_kitchen_order', {
+      p_property_id: propertyId,
+      p_order_id: orderId,
+      p_reason: reason,
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
   async updateKitchenOrder({ propertyId, orderId, status, printJobs = {} }) {
     const { data, error } = await supabase.rpc('fn_update_kitchen_order', {
       p_property_id: propertyId,
