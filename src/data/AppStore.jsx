@@ -592,14 +592,48 @@ export function StoreProvider({ children }) {
     return session?.waiter || '';
   };
 
-  const updateKitchenOrderStatus = useCallback((orderId, status) => {
-    setKitchenOrders((prev) => {
-      const next = prev.map((o) => (o.id === orderId ? { ...o, status } : o));
-      const changed = next.find((o) => o.id === orderId);
-      if (changed) persistKitchenOrder(changed);
-      return next;
-    });
-  }, [persistKitchenOrder]);
+  const updateKitchenOrderStatus = useCallback(async (orderId, status) => {
+    const current = kitchenOrdersRef.current.find((o) => o.id === orderId);
+    if (!current) return null;
+    const previousStatus = current.status;
+
+    setKitchenOrders((prev) => prev.map((o) => (
+      o.id === orderId ? { ...o, status } : o
+    )));
+
+    if (propertyId && !String(orderId).startsWith('korder-')) {
+      try {
+        const saved = await posService.updateKitchenOrder({
+          propertyId,
+          orderId,
+          status,
+          printJobs: current.printJobs || {},
+        });
+
+        if (saved) {
+          setKitchenOrders((prev) => prev.map((o) => (
+            o.id === orderId
+              ? {
+                  ...o,
+                  status: saved.status || status,
+                  servedAt: saved.served_at
+                    ? new Date(saved.served_at).getTime()
+                    : o.servedAt,
+                }
+              : o
+          )));
+        }
+        return saved;
+      } catch (error) {
+        setKitchenOrders((prev) => prev.map((o) => (
+          o.id === orderId ? { ...o, status: previousStatus } : o
+        )));
+        throw error;
+      }
+    }
+
+    return { ...current, status };
+  }, [propertyId]);
 
   // Retries ONLY the kitchen ticket for one center — never re-fires the order.
   const retryKitchenPrint = useCallback(async (orderId, center, buildTicketText) => {
