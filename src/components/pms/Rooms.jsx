@@ -16,15 +16,15 @@ export default function Rooms() {
   return (
     <div className="flex flex-col h-full overflow-hidden" style={{ background: 'var(--bg)' }}>
       {/* Tabs */}
-      <div className="flex items-center gap-2 px-4 pt-3 pb-2 shrink-0">
+      <div className="flex items-center gap-2 overflow-x-auto border-b border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 shrink-0">
         {['planner', 'reservations', 'management'].map((t) => (
           <button key={t} onClick={() => setTab(t)}
-            className="px-5 py-2 rounded-full text-sm font-semibold"
-            style={{ background: tab === t ? '#090C11' : 'transparent', color: tab === t ? '#FFFFFF' : '#757B81', border: `1.5px solid ${tab === t ? NAVY : BORDER}` }}>
+            className="min-h-11 shrink-0 rounded-xl px-4 text-xs font-black"
+            style={{ background: tab === t ? 'var(--action)' : 'transparent', color: tab === t ? 'var(--action-text)' : 'var(--muted)', border: `1px solid ${tab === t ? 'var(--action)' : 'var(--border)'}` }}>
             {t === 'planner' ? 'Room Planner' : t === 'reservations' ? 'Reservations' : 'Room Types & Setup'}
           </button>
         ))}
-        <div className="ml-auto text-xs" style={{ color: MUTED }}>Room operations</div>
+        <div className="ml-auto text-xs" className="ml-auto hidden shrink-0 text-xs font-semibold lg:block" style={{ color: 'var(--muted)' }}>Room operations</div>
       </div>
 
       {tab === 'management' && <RoomManagement onChanged={pms.reload} />}
