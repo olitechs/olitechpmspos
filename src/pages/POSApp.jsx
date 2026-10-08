@@ -133,7 +133,7 @@ export default function POSApp({ initialModule = 'dashboard', embedded = false, 
 	return (
 		<StoreProvider>
 			<PmsProvider>
-				<div className={embedded ? "min-h-full w-full bg-[#F9F9FA]" : "app-shell flex min-h-screen w-full bg-[#F9F9FA]"}>
+				<div className={embedded ? "min-h-full w-full bg-[var(--bg)]" : "app-shell flex min-h-screen w-full bg-[var(--bg)]"}>
 					{!embedded && <Sidebar activeModule={activeModule} onModuleChange={setActiveModule} />}
 					<div className={embedded ? "min-w-0" : "flex min-w-0 flex-1 flex-col"}>
 						{showTopBar && !embedded && <TopBar moduleLabel={currentModule?.label || ''} />}
