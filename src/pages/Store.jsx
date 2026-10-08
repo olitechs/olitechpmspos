@@ -44,7 +44,18 @@ export default function Store({ initialTab = 'overview' }) {
 
   const addProduct=async(form)=>{try{await inventoryService.createProduct({...form,category:isFnbManager?'F&B':form.category,property_id:propertyId,current_stock:Number(form.current_stock)||0,min_stock:Number(form.min_stock)||0,max_stock:Number(form.max_stock)||0,cost_price:Number(form.cost_price)||0,selling_price:Number(form.selling_price)||0});toast.success('Product added.');setProductModal(null);load();}catch(e){toast.error(e.message);}};
   const editProduct=async(form)=>{try{await inventoryService.updateProduct(form.id,{...form,category:isFnbManager?'F&B':form.category,current_stock:Number(form.current_stock)||0,min_stock:Number(form.min_stock)||0,max_stock:Number(form.max_stock)||0,cost_price:Number(form.cost_price)||0,selling_price:Number(form.selling_price)||0,supplier_id:form.supplier_id||null});toast.success('Product updated.');setProductModal(null);load();}catch(e){toast.error(e.message);}};
-  const importRows=async(rows)=>{\n    try {\n      const result=await inventoryService.bulkUpsertProducts(propertyId,rows);\n      const errors=Array.isArray(result?.errors)?result.errors:[];\n      const processed=Number(result?.processed||0);\n      if(errors.length) toast.warning(`${processed} registered; ${errors.length} row(s) rejected. Check the import errors.`);\n      else toast.success(`${processed || rows.length} products registered. POS-enabled rows are now available from Store in the POS catalogue.`);\n      load();\n      return result;\n    } catch(e){toast.error(e.message);throw e;}\n  };\n  const addSupplier=async(f)=>{await inventoryService.createSupplier({propertyId,...f});toast.success('Supplier added.');load();};
+  const importRows=async(rows)=>{
+    try {
+      const result=await inventoryService.bulkUpsertProducts(propertyId,rows);
+      const errors=Array.isArray(result?.errors)?result.errors:[];
+      const processed=Number(result?.processed||0);
+      if(errors.length) toast.warning(`${processed} registered; ${errors.length} row(s) rejected. Check the import errors.`);
+      else toast.success(`${processed || rows.length} products registered. POS-enabled rows are now available from Store in the POS catalogue.`);
+      load();
+      return result;
+    } catch(e){toast.error(e.message);throw e;}
+  };
+  const addSupplier=async(f)=>{await inventoryService.createSupplier({propertyId,...f});toast.success('Supplier added.');load();};
   const recordUsage=async(f)=>{await inventoryService.recordUsage({propertyId,...f});load();};
   const report=async()=>{try{const ms=await inventoryService.listMovements(propertyId,{from:reportFrom,to:reportTo,category:reportCategory});await inventoryService.exportStockReport(ms,`olitechs-stock-report-${reportFrom||'all'}-${reportTo||'today'}.xlsx`);}catch(e){toast.error(e.message);}};
 
