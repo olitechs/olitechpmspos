@@ -34,6 +34,14 @@ export default function PaywallGuard({ module, children }) {
 
       try {
         const access = await pmsService.getSubscriptionAccess(user.property.id, module);
+        // Dashboard is a landing workspace and is permitted whenever the property is active and packaged.
+        if (module === 'dashboard' && access?.reason === 'subscription_required') {
+          const packageEnabled = ['standard', 'premium', 'professional'].includes(user.property.package);
+          if (packageEnabled && user.property.status === 'active') {
+            setState({ loading: false, allowed: true, reason: 'active_package_dashboard' });
+            return;
+          }
+        }
         if (alive) {
           setState({
             loading: false,
