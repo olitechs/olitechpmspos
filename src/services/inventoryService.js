@@ -123,6 +123,44 @@ export const inventoryService = {
     return data;
   },
 
+  async listInventoryHistory(propertyId, filters = {}) {
+    let q = supabase.from('inventory_stock_history').select('*').eq('property_id', propertyId).order('created_at', { ascending: false }).limit(500);
+    if (filters.productId) q = q.eq('product_id', filters.productId);
+    const { data, error } = await q; if (error) throw new Error(error.message); return data || [];
+  },
+  async getInventoryValuation(propertyId) {
+    const { data, error } = await supabase.rpc('fn_inventory_valuation', { p_property_id: propertyId });
+    if (error) throw new Error(error.message); return data || [];
+  },
+  async getInventoryValuationSummary(propertyId) {
+    const { data, error } = await supabase.rpc('fn_inventory_valuation_summary', { p_property_id: propertyId });
+    if (error) throw new Error(error.message); return Array.isArray(data) ? data[0] || null : data;
+  },
+  async listExpiryWatch(propertyId) {
+    const { data, error } = await supabase.from('inventory_expiry_watch').select('*').eq('property_id', propertyId).order('expiry_date', { ascending: true });
+    if (error) throw new Error(error.message); return data || [];
+  },
+  async postAdjustment(payload) {
+    const { data, error } = await supabase.rpc('fn_post_stock_adjustment', { p_property_id: payload.propertyId, p_product_id: payload.productId, p_change: Number(payload.changeQty), p_reason: payload.reason, p_location_id: payload.locationId || null });
+    if (error) throw new Error(error.message); return data;
+  },
+  async createInventoryCount(payload) {
+    const { data, error } = await supabase.rpc('fn_create_inventory_count', { p_property_id: payload.propertyId, p_location_id: payload.locationId, p_lines: payload.lines || [], p_reference: payload.reference || null });
+    if (error) throw new Error(error.message); return data;
+  },
+  async approveInventoryCount(countId) {
+    const { data, error } = await supabase.rpc('fn_approve_inventory_count', { p_count_id: countId });
+    if (error) throw new Error(error.message); return data;
+  },
+  async postWastage(payload) {
+    const { data, error } = await supabase.rpc('fn_post_wastage', { p_property_id: payload.propertyId, p_product_id: payload.productId, p_quantity: Number(payload.quantity), p_reason: payload.reason, p_location_id: payload.locationId || null, p_expiry_date: payload.expiryDate || null });
+    if (error) throw new Error(error.message); return data;
+  },
+  async postProduction(payload) {
+    const { data, error } = await supabase.rpc('fn_post_production', { p_property_id: payload.propertyId, p_recipe_id: payload.recipeId, p_output_product_id: payload.outputProductId, p_quantity: Number(payload.quantity), p_reference: payload.reference || null });
+    if (error) throw new Error(error.message); return data;
+  },
+
   async listSuppliers(propertyId) {
     const { data, error } = await supabase.from('suppliers').select('*').eq('property_id', propertyId).order('name');
     if (error) throw new Error(error.message);
