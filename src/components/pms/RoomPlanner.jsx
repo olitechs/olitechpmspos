@@ -32,7 +32,9 @@ export const getReservationBarStyle = (status = 'occupied') => ({
   closed:{background:'var(--stay-closed)',color:'var(--text)',border:'var(--stay-closed)',label:'Out of order / closure'},
 }[status] || {background:'var(--stay-occupied)',color:'var(--action-text)',border:'var(--stay-occupied)',label:'In-house'});
 
-export const getPaymentStyle=(status)=>({fully_paid:{background:'var(--pay-total)',color:'var(--action-text)',border:'var(--pay-total)',label:'Total Paid'},partially_paid:{background:'var(--pay-partial)',color:'var(--action-text)',border:'var(--pay-partial)',label:'Partially Paid'},not_paid:{background:'var(--pay-none)',color:'var(--action-text)',border:'var(--pay-none)',label:'No Amount Paid'}}[status]||{background:'var(--pay-none)',color:'var(--action-text)',border:'var(--pay-none)',label:'No Amount Paid'});\n\nexport function getBarOpacity(bookingStatus) { return bookingStatus === 'checked_out' ? 0.5 : 1; }
+export const getPaymentStyle=(status)=>({fully_paid:{background:'var(--pay-total)',color:'var(--action-text)',border:'var(--pay-total)',label:'Total Paid'},partially_paid:{background:'var(--pay-partial)',color:'var(--action-text)',border:'var(--pay-partial)',label:'Partially Paid'},not_paid:{background:'var(--pay-none)',color:'var(--action-text)',border:'var(--pay-none)',label:'No Amount Paid'}}[status]||{background:'var(--pay-none)',color:'var(--action-text)',border:'var(--pay-none)',label:'No Amount Paid'});
+
+export function getBarOpacity(bookingStatus) { return bookingStatus === 'checked_out' ? 0.5 : 1; }
 export function isOverlapping(r1, r2) { return r1.roomId === r2.roomId && r1.checkIn < r2.checkOut && r2.checkIn < r1.checkOut; }
 export function checkOverlap(reservationList, newRoomId, newCheckIn, newCheckOut, excludeReservationId) {
   return reservationList.find((r) => {
