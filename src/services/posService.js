@@ -189,6 +189,15 @@ export const posService = {
       });
   },
 
+  async getShiftReconciliation({ propertyId, shiftId }) {
+    const { data, error } = await supabase.rpc('fn_pos_shift_reconciliation', {
+      p_property_id: propertyId,
+      p_pos_shift_id: shiftId,
+    });
+    if (error) throw new Error(error.message);
+    return data || {};
+  },
+
   async refireKitchenOrder({ propertyId, orderId, reason }) {
     const { data, error } = await supabase.rpc('fn_refire_kitchen_order', {
       p_property_id: propertyId,
