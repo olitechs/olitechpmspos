@@ -1,8 +1,9 @@
 import { BarChart3, ShoppingBag, ShoppingCart, Users, PlugZap, Settings, HelpCircle, Building2, Store, Printer, MonitorCog, LayoutGrid, LayoutDashboard } from 'lucide-react';
 
 export const MAIN_NAV = [
-  { id:'backoffice', label:'Back Office', path:'/backoffice', roles:['admin','owner','store_manager','pos_staff','accountant'], color:'#2C3E50', icon:LayoutDashboard },
+  { id:'backoffice', label:'Back Office', path:'/backoffice', roles:['admin','owner'], color:'#2C3E50', icon:LayoutDashboard },
   { id:'frontoffice', label:'Front Office', path:'/frontoffice', roles:['admin','owner','front_desk','housekeeping'], color:'#2C3E50', icon:Building2 },
+  { id:'pos', label:'POS & F&B', path:'/pos', roles:['admin','owner','pos_staff'], color:'#2C3E50', icon:ShoppingCart },
   { id:'stores', label:'Stores', path:'/stores', roles:['admin','owner','store_manager'], color:'#2C3E50', icon:Store },
 ];
 
