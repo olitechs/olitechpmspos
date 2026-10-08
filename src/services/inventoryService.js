@@ -250,34 +250,32 @@ export const inventoryService = {
     return this.adjustProductStock(productId, -Math.abs(Number(qty) || 0), reason || 'Stock deduction');
   },
 
-  // POS integration. Product IDs may already be UUIDs; legacy/mock menu IDs are
-  // resolved by name so existing POS menu items continue to work after the Store
-  // module is enabled. Missing mappings are deliberately skipped and surfaced as
-  // a non-blocking result so inventory can never roll back a completed sale.
+  // POS inventory is fail-closed: every mapped item must post through the
+  // authoritative stock ledger. A missing product mapping or failed deduction
+  // is an error, never a non-blocking "skipped" result.
   async deductStockForOrder({ propertyId, orderItems = [], reference = 'POS Sale' }) {
     if (!propertyId || !orderItems.length) return { deducted: [], skipped: [] };
-    const deducted = [], skipped = [];
+    const deducted = [];
     for (const item of orderItems) {
-      try {
-        let product = null;
-        if (isUuid(item.productId)) {
-          const { data } = await supabase.from('products').select('*').eq('property_id', propertyId).eq('id', item.productId).maybeSingle();
-          product = data;
-        }
-        if (!product && item.name) {
-          const { data } = await supabase.from('products').select('*').eq('property_id', propertyId).ilike('name', item.name).limit(1).maybeSingle();
-          product = data;
-        }
-        if (!product) { skipped.push({ ...item, reason: 'Product not mapped in Store' }); continue; }
-        const result = await this.deductStock(product.id, Number(item.qty) || 0, `${reference} - ${item.qty}x ${product.name}`);
-        deducted.push({ product, qty: Number(item.qty) || 0, result });
-      } catch (error) {
-        skipped.push({ ...item, reason: error.message });
+      let product = null;
+      if (isUuid(item.productId)) {
+        const { data, error } = await supabase.from('products').select('*').eq('property_id', propertyId).eq('id', item.productId).maybeSingle();
+        if (error) throw new Error(error.message);
+        product = data;
       }
+      if (!product && item.name) {
+        const { data, error } = await supabase.from('products').select('*').eq('property_id', propertyId).ilike('name', item.name).limit(1).maybeSingle();
+        if (error) throw new Error(error.message);
+        product = data;
+      }
+      if (!product) throw new Error(`Product mapping missing in Store for POS item: ${item.name || item.productId || 'Unknown item'}`);
+      const qty = Number(item.qty) || 0;
+      if (qty <= 0) throw new Error(`Invalid stock quantity for POS item: ${product.name}`);
+      const result = await this.deductStock(product.id, qty, `${reference} - ${qty}x ${product.name}`);
+      deducted.push({ product, qty, result });
     }
-    return { deducted, skipped };
+    return { deducted, skipped: [] };
   },
-
   async deductRoomAmenities({ propertyId, items = [], roomNumber }) {
     return this.deductStockForOrder({ propertyId, orderItems: items, reference: `PMS Check-in - Room ${roomNumber || ''}`.trim() });
   },
