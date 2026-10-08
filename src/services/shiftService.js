@@ -26,7 +26,7 @@ export const shiftService = {
   async getShiftReport(shiftId) {
     const {data:shift,error}=await supabase.from('pos_shifts').select('*').eq('id',shiftId).single();
     if(error) throw new Error(error.message);
-    const {data:rows,error:rowsError}=await supabase.from('pos_receipts').select('*').eq('shift_id',shiftId).eq('status','posted').order('created_at');
+    const {data:rows,error:rowsError}=await supabase.from('pos_receipts').select('*').eq('pos_shift_id',shiftId).eq('status','posted').order('created_at');
     if(rowsError) throw new Error(rowsError.message);
     const payments={cash:{amount:0,count:0},mpesa:{amount:0,count:0},card:{amount:0,count:0},bank:{amount:0,count:0},room_charge:{amount:0,count:0},other:{amount:0,count:0}};
     const categories={food:{qty:0,amount:0},drinks:{qty:0,amount:0}};
