@@ -225,8 +225,15 @@ export const pmsService = {
 
 	async recordPayment({ propertyId, reservationId, amount, method }) {
 		const shift = await this.getOpenCashierShift(propertyId);
-		const { error } = await supabase.from('payments').insert({ property_id: propertyId, reservation_id: reservationId, amount, method, shift_id: shift?.id || null });
+		const { data, error } = await supabase.rpc('fn_record_front_desk_payment', {
+			p_property_id: propertyId,
+			p_reservation_id: reservationId,
+			p_amount: Number(amount || 0),
+			p_method: method,
+			p_shift_id: shift?.id || null,
+		});
 		if (error) throw new Error(error.message);
+		return data;
 	},
 
 	async createReservationBundle({ propertyId, roomIds, groupId, guestName, phone, checkIn, checkOut, paymentStatus, channel, mealPlan, adults, kidsCount, kidsAges, totalAmount, amountPaid, notes }) {
