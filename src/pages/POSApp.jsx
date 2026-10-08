@@ -53,7 +53,7 @@ function ComingSoon({ label }) {
 // Main authenticated app shell: sidebar/bottom-nav + top bar + the active
 // module. Wraps everything the POS and PMS modules need (table sessions,
 // printers, rooms, reservations) in their local-state providers.
-export default function POSApp({ initialModule = 'dashboard', embedded = false }) {
+export default function POSApp({ initialModule = 'dashboard', embedded = false, workspaceModule = null }) {
 	const location = useLocation();
 	const queryModule = new URLSearchParams(location.search).get('module');
 	const [activeModule, setActiveModule] = useState(queryModule || initialModule);
@@ -139,7 +139,7 @@ export default function POSApp({ initialModule = 'dashboard', embedded = false }
 						{showTopBar && !embedded && <TopBar moduleLabel={currentModule?.label || ''} />}
 						<div className="min-h-0 flex-1 overflow-y-auto">
 							<ErrorBoundary label={currentModule?.label || 'This section'}>
-								<RouteGuard module={activeModule === 'pos' || activeModule === 'cashier' ? 'pos' : activeModule === 'store' || activeModule === 'inventory' || activeModule === 'purchasing' || activeModule === 'recipes' || activeModule === 'transfers' || activeModule === 'channels' ? 'store' : 'backoffice'}>
+								<RouteGuard module={workspaceModule || (activeModule === 'pos' || activeModule === 'cashier' ? 'pos' : activeModule === 'store' || activeModule === 'inventory' || activeModule === 'purchasing' || activeModule === 'recipes' || activeModule === 'transfers' || activeModule === 'channels' ? 'store' : activeModule === 'reservations' || activeModule === 'rooms' || activeModule === 'guests' || activeModule === 'folio' || activeModule === 'housekeeping' || activeModule === 'night-audit' ? 'frontoffice' : 'backoffice')}>
 									{activeModule === 'settings' ? content : <PaywallGuard module={activeModule}>{content}</PaywallGuard>}
 								</RouteGuard>
 							</ErrorBoundary>
