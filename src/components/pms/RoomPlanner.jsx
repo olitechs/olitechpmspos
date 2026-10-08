@@ -4,7 +4,7 @@ import {
   Printer, BedDouble, Download, AlertTriangle,
 } from 'lucide-react';
 import {
-  format, addDays, differenceInCalendarDays, eachDayOfInterval, startOfMonth,
+  format, addDays, differenceInCalendarDays, eachDayOfInterval, endOfMonth, startOfMonth, subDays,
 } from 'date-fns';
 import { toast } from 'sonner';
 import { pmsService } from '@/services/pmsService';
@@ -18,10 +18,9 @@ export const CHANNELS = ['direct', 'booking_com', 'unknown'];
 export const MEAL_PLANS = ['bed_only', 'bb', 'half_board', 'full_board'];
 export const BOOKING_STATUSES = ['booked', 'checked_in', 'checked_out'];
 
-const DAY_WIDTH = 110;
-const ROOM_COL_WIDTH = 210;
+const DAY_WIDTH = 92;
+const ROOM_COL_WIDTH = 190;
 const PRINT_MAX_DAYS = 30;
-const DEFAULT_PLANNER_DAYS = 15;
 
 // CALENDAR THEME: Green/Yellow/Orange - Rectangle bars, English
 export const getReservationBarStyle = (status = 'occupied') => ({
@@ -106,8 +105,8 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   const propertyId = user?.property?.id;
   const todayDate = useMemo(() => new Date(), []);
   const today = dateKey(todayDate);
-    const [range, setRange] = useState(null);
-  const [windowStart, setWindowStart] = useState(todayDate);
+    const [month, setMonth] = useState(startOfMonth(todayDate));
+  const [range, setRange] = useState(null);
   const [fromInput, setFromInput] = useState('');
   const [toInput, setToInput] = useState('');
   const [rangeError, setRangeError] = useState('');
@@ -143,8 +142,12 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
 
   const columns = useMemo(() => {
     if (range) return eachDayOfInterval({ start: parseDate(range.from), end: parseDate(range.to) });
-    return Array.from({ length: DEFAULT_PLANNER_DAYS }, (_, index) => addDays(windowStart, index));
-  }, [range, windowStart]);
+    const monthDays = eachDayOfInterval({ start: startOfMonth(month), end: endOfMonth(month) });
+    if (focusToday && month.getTime() === startOfMonth(todayDate).getTime() && todayDate.getDate() <= 2) {
+      return [subDays(startOfMonth(month), 2), subDays(startOfMonth(month), 1), ...monthDays];
+    }
+    return monthDays;
+  }, [range, month, focusToday, todayDate]);
 
   useEffect(() => {
     if (modal?.reservationId) setLinked(normalizedReservations.filter(r => r.groupId && r.groupId === modal.groupId));
@@ -239,9 +242,9 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     setRange({ from: fromInput, to: toInput }); setFocusToday(false);
   };
   const addClosure = () => { const room=plannerRooms[0]; if(!room) return; const start=addDays(todayDate,2); const end=addDays(start,2); setClosures(prev=>[...prev,{id:`closure-${Date.now()}`,roomId:room.id,start:dateKey(start),end:dateKey(end),label:'Out of order'}]); toast.success(`Closure added to Room ${room.number}`); };
-  const clearRange = () => { setRange(null); setRangeError(''); setFromInput(''); setToInput(''); setWindowStart(todayDate); setRange(null); setFocusToday(true); };
-  const goToday = () => { setRange(null); setFromInput(''); setToInput(''); setWindowStart(todayDate); setFocusToday(true); };
-  const shiftWindow = (delta) => { setRange(null); setFocusToday(false); setWindowStart((d) => addDays(d, delta * DEFAULT_PLANNER_DAYS)); };
+  const clearRange = () => { setRange(null); setRangeError(''); setFromInput(''); setToInput(''); setMonth(startOfMonth(todayDate)); setFocusToday(true); };
+  const goToday = () => { setRange(null); setFromInput(''); setToInput(''); setMonth(startOfMonth(todayDate)); setFocusToday(true); };
+  const shiftMonth = (delta) => { setRange(null); setFocusToday(false); setMonth((d) => new Date(d.getFullYear(), d.getMonth() + delta, 1)); };
 
   const visibleReservation = (rv) => {
     const arrival = parseDate(rv.checkIn), departure = parseDate(rv.checkOut); if (!arrival || !departure) return null;
@@ -280,10 +283,10 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     <div className="px-4 pt-3 pb-2 shrink-0 print-hidden">
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: 'var(--text)', border: `1px solid var(--text)`, color: 'var(--action)' }}><CalendarDays size={17}/><span className="font-bold text-sm">Room Planner</span></div>
-        <button onClick={() => shiftWindow(-1)} className="p-2 rounded-xl font-bold" style={{background:'var(--surface)',border:`1px solid var(--text)`,color:'var(--text)'}}><ChevronLeft size={18}/></button>
+        <button onClick={() => shiftMonth(-1)} className="p-2 rounded-xl font-bold" style={{background:'var(--surface)',border:`1px solid var(--text)`,color:'var(--text)'}}><ChevronLeft size={18}/></button>
         <button onClick={goToday} className="px-4 py-2 rounded-xl text-xs font-black" style={{background:'var(--action)',border:`1px solid var(--text)`,color:'var(--text)'}}>Today</button>
-        <button onClick={() => shiftWindow(1)} className="p-2 rounded-xl font-bold" style={{background:'var(--surface)',border:`1px solid var(--text)`,color:'var(--text)'}}><ChevronRight size={18}/></button>
-        <div className="text-lg font-bold ml-1" style={{color:NAVY}}>{range ? `${format(parseDate(range.from),'d MMM yyyy')} – ${format(parseDate(range.to),'d MMM yyyy')}` : `${format(windowStart,'d MMM')} – ${format(addDays(windowStart, DEFAULT_PLANNER_DAYS - 1),'d MMM yyyy')}`}</div>
+        <button onClick={() => shiftMonth(1)} className="p-2 rounded-xl font-bold" style={{background:'var(--surface)',border:`1px solid var(--text)`,color:'var(--text)'}}><ChevronRight size={18}/></button>
+        <div className="text-lg font-bold ml-1" style={{color:NAVY}}>{range ? `${format(parseDate(range.from),'d MMM yyyy')} – ${format(parseDate(range.to),'d MMM yyyy')}` : `\${format(startOfMonth(month),'d MMM yyyy')} – \${format(endOfMonth(month),'d MMM yyyy')}`}</div>
         <div className="ml-auto flex items-center gap-2">
           <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-xl" style={{background:'var(--surface)',border:`2px solid var(--text)`}}><span className="text-xs font-black" style={{color:'var(--text)'}}>From</span><InputField type="date" value={fromInput} onChange={e=>setFromInput(e.target.value)} className="w-[135px] h-8"/><span className="text-xs font-black" style={{color:'var(--text)'}}>To</span><InputField type="date" value={toInput} onChange={e=>setToInput(e.target.value)} className="w-[135px] h-8"/><button onClick={applyRange} className="px-4 h-8 rounded-lg text-xs font-black" style={{background:'var(--action)',color:'var(--text)',border:'1px solid var(--text)'}}>Apply</button><button onClick={clearRange} className="px-3 h-8 rounded-lg text-xs font-bold" style={{background:'var(--surface)',border:`1px solid var(--text)`,color:'var(--text)'}}>Clear</button></div>
           {onRefresh && <button title="Refresh" onClick={onRefresh} className="p-2 rounded-xl" style={{background:'var(--surface)',border:`1px solid var(--text)`,color:'var(--text)'}}><RefreshCw size={16}/></button>}
