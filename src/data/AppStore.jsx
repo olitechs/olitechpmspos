@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useRef, useEff
 import { INITIAL_ZONES, INITIAL_STAFF, TABLE_CARD } from './mockData';
 import { useAuth } from '@/lib/AuthContext';
 import { posService } from '@/services/posService';
+import { printOrderByCategory } from '@/services/printService';
 import {
   PrinterStatus, PrintJobStatus, testConnection as psTestConnection,
   pairUsbDevice, pairBluetoothDevice, pairSerialDevice, forgetDevice,
@@ -559,24 +560,29 @@ export function StoreProvider({ children }) {
 
     if (!printTickets) return { id: record.id, failedCenters: [] };
 
+    const routed = await printOrderByCategory({
+      propertyId, table: table.number, tableNumber: table.number, orderNumber, checkNo: orderNumber,
+      waiter: draft.waiter, createdAt: new Date().toISOString(), items: orderLines,
+    });
+    const resultsByArea = {
+      food_orders: routed.results?.filter((r) => r.assignmentType === 'food_orders') || [],
+      drinks_orders: routed.results?.filter((r) => r.assignmentType === 'drinks_orders') || [],
+    };
+    const nextPrintJobs = { ...record.printJobs };
     for (const center of centers) {
-      const printer = orderPrinterForCenter(center);
-      if (!printer) {
-        updateLocal({ printJobs: { ...record.printJobs, [center]: { status: PrintJobStatus.FAILED, printerId: null, printerName: null, error: `No order printer configured for ${center}.` } } });
-        record = { ...record, printJobs: { ...record.printJobs, [center]: { status: PrintJobStatus.FAILED, printerId: null, printerName: null, error: `No order printer configured for ${center}.` } } };
-        continue;
-      }
-      const printingJobs = { ...record.printJobs, [center]: { ...record.printJobs[center], status: PrintJobStatus.PRINTING, printerId: printer.id, printerName: printer.name } };
-      record = { ...record, printJobs: printingJobs };
-      updateLocal({ printJobs: printingJobs });
-      const text = buildTicketText(center, orderLines.filter((l) => l.center === center));
-      const result = await sendPrintJob(printer, text, { title: `Kitchen Ticket — ${center}`, thermal: true });
-      const finalJobs = { ...record.printJobs, [center]: { status: result.ok ? PrintJobStatus.PRINTED : PrintJobStatus.FAILED, printerId: printer.id, printerName: printer.name, error: result.ok ? null : result.friendlyError } };
-      record = { ...record, printJobs: finalJobs };
-      updateLocal({ printJobs: finalJobs });
+      const isBar = String(center).toLowerCase().includes('bar') || orderLines.some((l) => l.center === center && ['drink','drinks','bibite'].includes(String(l.category || '').toLowerCase()));
+      const assignmentType = isBar ? 'drinks_orders' : 'food_orders';
+      const result = resultsByArea[assignmentType]?.[0];
+      nextPrintJobs[center] = {
+        status: result?.ok ? PrintJobStatus.PRINTED : PrintJobStatus.FAILED,
+        printerId: result?.printerId || null, printerName: result?.printerName || null,
+        error: result?.friendlyError || (result ? null : 'No printer assigned to ' + assignmentType + '.'),
+        jobId: result?.jobId || null,
+      };
     }
-
-    const finalOrder = kitchenOrdersRef.current.find((o) => o.id === record.id) || record;
+    const finalRecord = { ...record, printJobs: nextPrintJobs };
+    setKitchenOrders((prev) => prev.map((o) => (o.id === record.id ? finalRecord : o)));
+    persistKitchenOrder(finalRecord);    const finalOrder = kitchenOrdersRef.current.find((o) => o.id === record.id) || record;
     const failedCenters = Object.entries(finalOrder.printJobs || {}).filter(([, j]) => j.status === PrintJobStatus.FAILED).map(([c]) => c);
     return { id: record.id, failedCenters };
   }, [orderPrinterForCenter, persistKitchenOrder, propertyId]);
