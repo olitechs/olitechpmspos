@@ -26,7 +26,7 @@ export default function Folio() {
     setLoading(true); setError('');
     try {
       const rows = await pmsService.listReservations(propertyId);
-      setReservations((rows || []).filter((r) => !['cancelled', 'checked-out'].includes(r.status)));
+      setReservations((rows || []).filter((r) => !['cancelled', 'checked-out', 'checked_out'].includes(r.status)));
     } catch (e) { setError(e.message); }
     finally { setLoading(false); }
   };
