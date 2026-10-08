@@ -41,6 +41,20 @@ export async function getAssignments(propertyId) {
   return data || [];
 }
 
+async function resolveRetryPrinter(job, propertyId) {
+  if (!propertyId) return null;
+  const printers = await getPrinters(propertyId);
+  const assignments = await getAssignments(propertyId);
+  const original = job?.printer_id ? printers.find((printer) => printer.id === job.printer_id) : null;
+  if (original) return original;
+  const fallbackIds = assignments
+    .filter((assignment) => assignment.assignment_type === job?.assignment_type)
+    .map((assignment) => assignment.printer_id);
+  return fallbackIds
+    .map((id) => printers.find((printer) => printer.id === id))
+    .find((printer) => printer && printer.is_online !== false) || null;
+}
+
 async function createFnbPrintJob({propertyId,printerId,assignmentType,jobType,copyType=null,title='',contentHtml='',payload={},retryOf=null}) {
   if (!propertyId) return null;
   const {data,error}=await supabase.from('fnb_print_jobs').insert({
@@ -336,7 +350,7 @@ export async function printOrderByCategory(order) {
   const results = [];
   for (const group of groups) {
     if (!group.items.length) continue;
-    const targets = assignments.filter((a) => a.assignment_type === group.type).map((a) => printers.find((p) => p.id === a.printer_id)).filter(Boolean);
+    const targets = assignments.filter((a) => a.assignment_type === group.type).map((a) => printers.find((p) => p.id === a.printer_id)).filter(Boolean).filter((p,i,a) => a.findIndex((x) => x.id === p.id) === i);
     if (!targets.length) {
       const queued = await createFnbPrintJob({
         propertyId, printerId:null, assignmentType:group.type,
@@ -452,7 +466,18 @@ export async function printReceipt(type, data) {
   const printers = await getPrinters(propertyId);
   const assignments = await getAssignments(propertyId);
   const targets = assignments.filter((a) => a.assignment_type === assignmentType).map((a) => printers.find((p) => p.id === a.printer_id)).filter(Boolean);
-  if (!targets.length) return { ok:false, friendlyError:`No printer assigned to ${assignmentType}.` };
+  if (!targets.length) {
+    const content = receiptHtml(settings, type, data, 'CUSTOMER COPY');
+    const queued = await createFnbPrintJob({
+      propertyId, printerId:null, assignmentType, jobType:type, copyType:'duplicate',
+      title:type === 'UNSETTLED' ? 'Unsettled Bill' : 'Final Receipt',
+      contentHtml:content,
+      payload:{orderNumber:data.orderNumber||data.checkNo||null,total:data.total||0}
+    });
+    const message = `No printer assigned to ${assignmentType}.`;
+    await updateFnbPrintJob(queued.id, propertyId, 'failed', message, null);
+    return { ok:false, results:[], jobId:queued.id, assignmentType, friendlyError:message };
+  }
   const copyCount = type === 'UNSETTLED' ? Math.max(1, Math.min(2, Number(settings.unsettled_receipt_copy_count || 2))) : 2;
   const copies = type === 'UNSETTLED'
     ? (copyCount === 1 ? ['CUSTOMER COPY'] : ['CUSTOMER COPY', settings.unsettled_receipt_front_office_copy === false ? 'SECOND COPY' : 'FRONT OFFICE COPY'])
@@ -480,4 +505,13 @@ export async function printShiftReport(shiftData, printer) {
   return {ok:first.ok&&second.ok,results:[first,second]};
 }
 export async function listFnbPrintJobs(propertyId,{status=null,limit=50}={}) { if (!propertyId) return []; let q=supabase.from('fnb_print_jobs').select('*').eq('property_id',propertyId).order('created_at',{ascending:false}).limit(Math.min(100,Math.max(1,limit))); if(status) q=q.eq('status',status); const {data,error}=await q; if(error) throw error; return data||[]; }
-export async function retryFnbPrintJob(jobId,propertyId) { const {data:job,error}=await supabase.from('fnb_print_jobs').select('*').eq('id',jobId).eq('property_id',propertyId).single(); if(error) throw error; if(!job.printer_id) throw new Error('Original printer is no longer configured.'); const {data:printer,error:printerError}=await supabase.from('property_printers').select('*').eq('id',job.printer_id).eq('property_id',propertyId).single(); if(printerError) throw printerError; return printToPrinter(printer,job.content_html,{propertyId,jobType:job.job_type,copyType:job.copy_type,assignmentType:job.assignment_type,payload:job.payload||{},title:job.title||'OliTechs Print',retryOf:job.id}); }
+export async function retryFnbPrintJob(jobId,propertyId) {
+  const {data:job,error}=await supabase.from('fnb_print_jobs').select('*').eq('id',jobId).eq('property_id',propertyId).single();
+  if(error) throw error;
+  const printer = await resolveRetryPrinter(job, propertyId);
+  if(!printer) throw new Error(`No available printer is assigned to ${job.assignment_type || 'this print job'}.`);
+  return printToPrinter(printer,job.content_html,{
+    propertyId,jobType:job.job_type,copyType:job.copy_type,assignmentType:job.assignment_type,
+    payload:job.payload||{},title:job.title||'OliTechs Print',retryOf:job.id
+  });
+}
