@@ -184,11 +184,16 @@ export function PmsProvider({ children }) {
 	const addReservation = useCallback(
 		async (data) => {
 			try {
+				const nights = Math.max(1, Math.round((new Date(data.departure) - new Date(data.arrival)) / 86400000));
+				const nightlyRate = Number(data.rate ?? 0);
+				const totalAmount = Number(data.totalAmount ?? (nightlyRate * nights));
+				const amountPaid = Number(data.amountPaid ?? 0);
+				const paymentStatus = data.paymentStatus || (amountPaid >= totalAmount && totalAmount > 0 ? 'fully_paid' : amountPaid > 0 ? 'partially_paid' : 'not_paid');
 				await pmsService.createReservationBundle({
 					propertyId, roomIds: [data.roomId], groupId: null, guestName: data.guest, phone: data.phone,
-					checkIn: data.arrival, checkOut: data.departure, paymentStatus: data.paymentStatus || 'not_paid', channel: data.channel || 'direct',
+					checkIn: data.arrival, checkOut: data.departure, paymentStatus, channel: data.channel || 'direct',
 					mealPlan: data.mealPlan || 'bed_only', adults: Number(data.adults || data.partySize || 1), kidsCount: Number(data.kidsCount || 0),
-					kidsAges: data.kidsAges || [], totalAmount: Number(data.totalAmount ?? data.rate ?? 0), amountPaid: Number(data.amountPaid || 0), notes: data.notes || '',
+					kidsAges: data.kidsAges || [], totalAmount, amountPaid, notes: data.notes || '',
 				});
 				await reload();
 			} catch (err) { setError(err.message); throw err; }
