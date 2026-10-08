@@ -62,7 +62,7 @@ function PublicRoute(){const {user,isLoadingAuth,isLoadingPublicSettings}=useAut
 function ProtectedRoute({app,children}){const {user,isLoadingAuth,isLoadingPublicSettings}=useAuth();if(isLoadingAuth||isLoadingPublicSettings)return <AuthLoading/>;if(!user)return <Navigate to="/signin" replace/>;if(user?.isPlatformOwner)return <Navigate to="/admin" replace/>;if(!canAccessApp(appRole(user),app,user?.property?.package))return <Navigate to={'/'+getDefaultApp(appRole(user),user?.property?.package)} replace/>;const property=user?.property;const full=property?.status==='active'&&property?.package&&property.package!=='none';if(!full)return <PendingApproval/>;return children||<Outlet/>;}
 function LegacyPOS(){return <ProtectedRoute app="pos"><POSApp initialModule="pos" workspaceModule="pos"/></ProtectedRoute>;}
 function BackOfficeStorePage({tab="overview"}){return <Store initialTab={tab}/>;}
-function BackOfficeReportPage({kind}){if(kind==="sales")return <Reports/>;if(kind==="inventory")return <BackOfficeStorePage tab="alerts"/>;return <StaffAdmin/>;}
+function BackOfficeReportPage({kind}){if(kind==="sales")return <Reports/>;if(kind==="inventory")return <BackOfficeStorePage tab="alerts"/>;if(kind==="employees")return <TimecardsPage/>;return <ModuleStatusPage module={kind || "reports"} back="/backoffice"/>;}
 function BackOfficeSettingsPage(){
   const { slug = '' } = useParams();
   if(slug==='receipt') return <ReceiptSettings/>;
