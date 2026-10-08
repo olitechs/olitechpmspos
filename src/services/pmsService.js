@@ -173,6 +173,14 @@ export const pmsService = {
 		return data || [];
 	},
 
+	 subscribeToHousekeeping(propertyId, { onChange } = {}) {
+		if (!propertyId || typeof onChange !== 'function') return null;
+		return supabase.channel(`housekeeping:${propertyId}`)
+			.on('postgres_changes', { event: '*', schema: 'public', table: 'housekeeping_tasks', filter: `property_id=eq.${propertyId}` },
+				(payload) => onChange({ eventType: payload.eventType, row: payload.new || payload.old || null }))
+			.subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error('[HK] realtime channel failed'); });
+	},
+
 	async createHousekeepingTask(payload) {
 		const { data, error } = await supabase.from('housekeeping_tasks').insert(payload).select().single();
 		if (error) throw new Error(error.message);
