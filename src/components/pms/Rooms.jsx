@@ -14,7 +14,7 @@ export default function Rooms() {
   const [openRoom, setOpenRoom] = useState(null);
 
   return (
-    <div className="flex flex-col h-full overflow-hidden" style={{ background: '#F5F3EF' }}>
+    <div className="flex flex-col h-full overflow-hidden" style={{ background: 'var(--bg)' }}>
       {/* Tabs */}
       <div className="flex items-center gap-2 px-4 pt-3 pb-2 shrink-0">
         {['planner', 'reservations', 'management'].map((t) => (
