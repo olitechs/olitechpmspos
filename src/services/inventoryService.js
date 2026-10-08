@@ -123,6 +123,8 @@ export const inventoryService = {
     return data;
   },
 
+  async listRecipes(propertyId) { const { data, error } = await supabase.from('recipes').select('*, recipe_ingredients(*, product:products(id,name,unit))').eq('property_id', propertyId).eq('active', true).order('menu_item_name'); if (error) throw new Error(error.message); return data || []; },
+
   async listInventoryHistory(propertyId, filters = {}) {
     let q = supabase.from('inventory_stock_history').select('*').eq('property_id', propertyId).order('created_at', { ascending: false }).limit(500);
     if (filters.productId) q = q.eq('product_id', filters.productId);
