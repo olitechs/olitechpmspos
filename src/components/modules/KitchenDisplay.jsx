@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useStore } from '@/data/AppStore';
 import { useAuth } from '@/lib/AuthContext';
 import { pmsService } from '@/services/pmsService';
+import { posService } from '@/services/posService';
+import { printOrderByCategory } from '@/services/printService';
 import { getPrinters, getAssignments, printVoidTicket } from '@/services/printService';
 import { NAVY, NAVY2, BORDER_DARK, SAND, MUTED_DARK } from '@/data/themePalette';
 
@@ -30,6 +32,10 @@ export default function KitchenDisplay() {
   const [signature, setSignature] = useState('');
   const [voidError, setVoidError] = useState('');
   const [voidBusy, setVoidBusy] = useState(false);
+  const [refireOrder, setRefireOrder] = useState(null);
+  const [refireReason, setRefireReason] = useState('');
+  const [refireBusy, setRefireBusy] = useState(false);
+  const [refireError, setRefireError] = useState('');
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -64,6 +70,38 @@ export default function KitchenDisplay() {
   const approveVoid = async (v) => {
     if (!propertyId || !signature.trim()) { setVoidError('Manager signature is required.'); return; }
     try { await pmsService.approveVoid({propertyId,voidId:v.id,signature:signature.trim()}); setSignature(''); setVoids(await pmsService.listVoidedItems(propertyId)); } catch(e) { setVoidError(e.message); }
+  };
+
+  const performRefire = async () => {
+    if (!propertyId || !refireOrder || !refireReason.trim()) {
+      setRefireError('A re-fire reason is required.');
+      return;
+    }
+    setRefireBusy(true); setRefireError('');
+    try {
+      const saved = await posService.refireKitchenOrder({
+        propertyId,
+        orderId: refireOrder.id,
+        reason: refireReason.trim(),
+      });
+      const result = await printOrderByCategory({
+        propertyId,
+        table: saved.table_number,
+        tableNumber: saved.table_number,
+        orderNumber: saved.order_number,
+        checkNo: saved.order_number,
+        waiter: saved.waiter,
+        createdAt: new Date().toISOString(),
+        items: Array.isArray(saved.order_lines) ? saved.order_lines : [],
+      });
+      if (!result.ok) throw new Error('Re-fire was authorized and logged, but the kitchen/bar printer did not complete the ticket.');
+      setRefireOrder(null);
+      setRefireReason('');
+    } catch (e) {
+      setRefireError(e.message || 'Re-fire failed.');
+    } finally {
+      setRefireBusy(false);
+    }
   };
 
   return (
@@ -154,7 +192,16 @@ export default function KitchenDisplay() {
               </div>
 
               {NEXT_STATUS[order.status] && (
-                <div className="px-4 pb-3 pt-1">
+                <div className="px-4 pb-3 pt-1 space-y-2">
+                  {canApproveVoid && (
+                    <button
+                      onClick={() => { setRefireOrder(order); setRefireReason(''); setRefireError(''); }}
+                      className="w-full py-2 rounded-xl text-xs font-bold border"
+                      style={{ borderColor: st.color, color: st.color, background: 'transparent' }}
+                    >
+                      Re-fire Ticket
+                    </button>
+                  )}
                   <button
                     onClick={() => updateKitchenOrderStatus(order.id, NEXT_STATUS[order.status])}
                     className="w-full py-2.5 rounded-xl text-xs font-bold"
@@ -169,6 +216,22 @@ export default function KitchenDisplay() {
         })}
       </div>
         </>
+      )}
+      {refireOrder && (
+        <div className="fixed inset-0 z-[260] flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#11161C] p-5 shadow-2xl">
+            <div className="text-lg font-black text-white">Re-fire kitchen ticket</div>
+            <p className="mt-1 text-xs text-slate-400">
+              This creates an audit event and prints the complete ticket again. It does not create a new sale.
+            </p>
+            {refireError && <div className="mt-3 rounded-xl bg-red-500/10 p-3 text-xs font-bold text-red-300">{refireError}</div>}
+            <textarea value={refireReason} onChange={e=>setRefireReason(e.target.value)} placeholder="Reason, e.g. printer jam or ticket lost" className="mt-4 min-h-24 w-full rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-white outline-none" />
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={()=>setRefireOrder(null)} disabled={refireBusy} className="rounded-xl bg-white/10 px-4 py-2 text-xs font-bold text-white">Cancel</button>
+              <button onClick={performRefire} disabled={refireBusy||!refireReason.trim()} className="rounded-xl bg-[#FFD100] px-4 py-2 text-xs font-black text-[#090C11]">{refireBusy?'Re-firing…':'Authorize & Re-fire'}</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
