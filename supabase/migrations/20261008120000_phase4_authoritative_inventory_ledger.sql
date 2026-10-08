@@ -151,3 +151,9 @@ order by abs(round(p.current_stock-coalesce(sum(case when sm.type in ('in','open
 $$;
 grant execute on function public.fn_inventory_valuation(uuid) to authenticated;
 grant execute on function public.fn_inventory_reconciliation(uuid) to authenticated;
+
+-- Security parity: reporting functions are authenticated-only API surfaces.
+revoke all on function public.fn_inventory_reconciliation(uuid) from public,anon;
+revoke all on function public.fn_inventory_valuation(uuid) from public,anon;
+grant execute on function public.fn_inventory_reconciliation(uuid) to authenticated;
+grant execute on function public.fn_inventory_valuation(uuid) to authenticated;
