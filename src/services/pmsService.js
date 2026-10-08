@@ -307,8 +307,9 @@ export const pmsService = {
 	},
 
 	async checkOutRoom(roomId) {
-		const { error } = await supabase.rpc('fn_check_out_room', { p_room_id: roomId });
+		const { data, error } = await supabase.rpc('fn_check_out_room', { p_room_id: roomId });
 		if (error) throw new Error(error.message);
+		return data;
 	},
 
 	async removeReservation(reservationId) {
