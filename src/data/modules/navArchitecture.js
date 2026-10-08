@@ -2,7 +2,7 @@ import { BarChart3, ShoppingBag, ShoppingCart, Users, PlugZap, Settings, HelpCir
 
 export const MAIN_NAV = [
   { id:'backoffice', label:'Back Office', path:'/backoffice', roles:['admin','owner'], color:'#2C3E50', icon:LayoutDashboard },
-  { id:'frontoffice', label:'Front Office', path:'/frontoffice', roles:['admin','owner','front_desk','housekeeping'], color:'#2C3E50', icon:Building2 },
+  { id:'frontoffice', label:'Front Office', path:'/frontoffice', roles:['admin','owner','front_office_manager','front_desk','housekeeping'], color:'#2C3E50', icon:Building2 },
   { id:'pos', label:'POS & F&B', path:'/pos', roles:['admin','owner','pos_staff'], color:'#2C3E50', icon:ShoppingCart },
   { id:'stores', label:'Stores', path:'/stores', roles:['admin','owner','store_manager'], color:'#2C3E50', icon:Store },
 ];
@@ -19,9 +19,9 @@ export const BACK_OFFICE_NAV = [
 ];
 
 export const STORES_NAV = [['All Stores','/stores','store'],['Store Settings','/stores/settings','settings'],['POS Devices','/stores/pos-devices','devices'],['Printers','/stores/printers','printers'],['KDS Screens','/stores/kds','kds']];
-export const FRONT_OFFICE_NAV = [['Dashboard','/frontoffice','dashboard',['admin','owner','front_desk','housekeeping']],['Room Rack','/frontoffice/rooms','rooms',['admin','owner','front_desk','housekeeping']],['Reservations','/frontoffice/reservations','reservations',['admin','owner','front_desk']],['Folio','/frontoffice/folio','folio',['admin','owner','front_desk']],['Housekeeping','/frontoffice/housekeeping','housekeeping',['admin','owner','front_desk','housekeeping']],['Night Audit','/frontoffice/night-audit','night-audit',['admin','owner','front_desk']]];
+export const FRONT_OFFICE_NAV = [['Dashboard','/frontoffice','dashboard',['admin','owner','front_desk','housekeeping']],['Room Rack','/frontoffice/rooms','rooms',['admin','owner','front_office_manager','front_desk']],['Reservations','/frontoffice/reservations','reservations',['admin','owner','front_desk']],['Folio','/frontoffice/folio','folio',['admin','owner','front_office_manager','front_desk']],['Housekeeping','/frontoffice/housekeeping','housekeeping',['admin','owner','front_desk','housekeeping']],['Night Audit','/frontoffice/night-audit','night-audit',['admin','owner','front_office_manager']]];
 
-export const ROLE_ALIASES = { hotel_admin:'admin', super_admin:'owner', general_manager:'owner', receptionist:'front_desk', front_office_manager:'front_desk', housekeeping_supervisor:'housekeeping', housekeeper:'housekeeping', waiter:'pos_staff', cashier:'pos_staff', fb_manager:'pos_staff' };
+export const ROLE_ALIASES = { hotel_admin:'admin', super_admin:'owner', general_manager:'owner', receptionist:'front_desk', housekeeping_supervisor:'housekeeping', housekeeper:'housekeeping', waiter:'pos_staff', cashier:'pos_staff', fb_manager:'pos_staff' };
 export function normalizeAppRole(role){ const v=String(role||'').toLowerCase().trim(); return ROLE_ALIASES[v]||v||'front_desk'; }
 export function canAccessApp(role,appId){ const app=MAIN_NAV.find(x=>x.id===appId); return !!app && app.roles.includes(normalizeAppRole(role)); }
 export function getDefaultApp(role){ const r=normalizeAppRole(role); return MAIN_NAV.find(x=>x.roles.includes(r))?.id||'backoffice'; }
