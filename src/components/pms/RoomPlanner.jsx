@@ -98,7 +98,7 @@ const emptyForm = (room, date) => ({
 });
 
 
-export const MOCK_ROOM_PLANNER_ROOMS = Array.from({length:15},(_,i)=>({id:`mock-room-${i+1}`,number:String(101+i),name:`Room ${101+i}`,room_type_id:`type-${1+(i%3)}`,room_type_name:['Standard','Deluxe','Suite'][i%3]}));
+export const MOCK_ROOM_PLANNER_ROOMS = Array.from({length:15},(_,i)=>({id:`mock-room-${i+1}`,number:String(101+i),name:`Room ${101+i}`,room_type_id:`type-${1+(i%3)}`,roomTypeName:['Standard','Deluxe','Suite'][i%3]}));
 export const MOCK_ROOM_PLANNER_STAYS = Array.from({length:20},(_,i)=>{
  const base=new Date(); base.setHours(0,0,0,0); const start=new Date(base); start.setDate(base.getDate()-4+(i%16)); const end=new Date(start); end.setDate(start.getDate()+Math.max(1,2+(i%4)));
  const states=['optioned','confirmed','occupied','checkout','checked_out','closed']; const payments=['not_paid','partially_paid','fully_paid'];
