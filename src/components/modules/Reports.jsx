@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LineChart, Line } from 'recharts';
+import { XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { CalendarDays, Download, Printer, RefreshCw, TrendingUp, Hotel, ShoppingCart, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { reportingService } from '@/services/reportingService';
-import { NAVY, TEAL_DARK, BORDER, SAND, SURFACE, MUTED, SLATE } from '@/data/themePalette';
+import { NAVY, TEAL_DARK, BORDER, SAND, SURFACE, MUTED } from '@/data/themePalette';
 
 const money = (value) => `KES ${Number(value || 0).toLocaleString('en-KE', { maximumFractionDigits: 0 })}`;
 const todayKenya = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Nairobi' }).format(new Date());
