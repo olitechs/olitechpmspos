@@ -104,13 +104,21 @@ export const inventoryService = {
   },
 
   async createProduct(product) {
-    const { data, error } = await supabase.from('products').insert(product).select('*, supplier:suppliers(id,name)').single();
+    if (!product?.property_id || !String(product?.name || '').trim()) throw new Error('Product name and property are required.');
+    await this.bulkUpsertProducts(product.property_id, [product]);
+    let query = supabase.from('products').select('*, supplier:suppliers(id,name)').eq('property_id', product.property_id);
+    query = product.sku ? query.eq('sku', product.sku) : query.ilike('name', product.name);
+    const { data, error } = await query.limit(1).maybeSingle();
     if (error) throw new Error(error.message);
     return data;
   },
 
   async updateProduct(id, patch) {
-    const { data, error } = await supabase.from('products').update(patch).eq('id', id).select('*, supplier:suppliers(id,name)').single();
+    const { data: existing, error: readError } = await supabase.from('products').select('*').eq('id', id).single();
+    if (readError) throw new Error(readError.message);
+    const merged = { ...existing, ...patch, current_stock: Number(patch.current_stock ?? existing.current_stock) };
+    await this.bulkUpsertProducts(existing.property_id, [merged]);
+    const { data, error } = await supabase.from('products').select('*, supplier:suppliers(id,name)').eq('id', id).single();
     if (error) throw new Error(error.message);
     return data;
   },
