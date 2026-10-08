@@ -126,6 +126,8 @@ export const inventoryService = {
   async listRecipes(propertyId) { const { data, error } = await supabase.from('recipes').select('*, recipe_ingredients(*, product:products(id,name,unit))').eq('property_id', propertyId).eq('active', true).order('menu_item_name'); if (error) throw new Error(error.message); return data || []; },
 
   async listInventoryReconciliation(propertyId) { const { data,error }=await supabase.rpc('fn_inventory_reconciliation',{p_property_id:propertyId}); if(error) throw new Error(error.message); return data||[]; },
+  async listGoodsReceipts(propertyId) { const { data,error }=await supabase.from('goods_receipts').select('*, purchase_order:purchase_orders(invoice_no), goods_receipt_lines(*)').eq('property_id',propertyId).order('received_at',{ascending:false}); if(error) throw new Error(error.message); return data||[]; },
+
   async listPurchaseReceiving(propertyId) { const { data,error }=await supabase.from('purchase_orders').select('*, supplier:suppliers(id,name)').eq('property_id',propertyId).order('purchase_date',{ascending:false}); if(error) throw new Error(error.message); return data||[]; },
   async createPurchaseOrder(payload) { const { data,error }=await supabase.rpc('fn_create_purchase_order',{p_property_id:payload.propertyId,p_supplier_id:payload.supplierId||null,p_lines:payload.lines||[],p_invoice_no:payload.invoiceNo||null}); if(error) throw new Error(error.message); return data; },
   async receivePurchaseOrder(purchaseOrderId, receivedLines=null) { const { data,error }=await supabase.rpc('fn_receive_purchase_order',{p_purchase_order_id:purchaseOrderId,p_received_lines:receivedLines}); if(error) throw new Error(error.message); return data; },
