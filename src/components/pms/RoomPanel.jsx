@@ -16,6 +16,7 @@ export default function RoomPanel({ room, onClose }) {
 	const [partySize, setPartySize] = useState(1);
 	const [rate, setRate] = useState('');
 	const [error, setError] = useState('');
+	const [busy, setBusy] = useState(false);
 
 	if (!room) return null;
 
@@ -24,22 +25,25 @@ export default function RoomPanel({ room, onClose }) {
 	const isOccupied = room.status === 'occupied';
 	const isHousekeepingState = ['dirty', 'cleaning', 'maintenance', 'out_of_service', 'blocked'].includes(room.status);
 
-	const submitCheckIn = () => {
+	const submitCheckIn = async () => {
 		if (!name || !phone || !checkIn || !checkOut) {
 			setError('Guest name, phone, check-in and check-out dates are required.');
 			return;
 		}
-		pms.checkInRoom(room.id, {
-			name, phone, checkIn, checkOut,
-			partySize: Number(partySize) || 1,
-			rate: Number(rate) || room.guest?.rate || 0,
-		});
-		onClose();
+		setBusy(true);
+		setError('');
+		try {
+			await pms.checkInRoom(room.id, { name, phone, checkIn, checkOut, partySize: Number(partySize) || 1, rate: Number(rate) || room.guest?.rate || 0 });
+			onClose();
+		} catch (err) { setError(err.message || 'Unable to check in guest.'); }
+		finally { setBusy(false); }
 	};
 
-	const handleCheckOut = () => {
-		pms.checkOutRoom(room.id);
-		onClose();
+	const handleCheckOut = async () => {
+		setBusy(true); setError('');
+		try { await pms.checkOutRoom(room.id); onClose(); }
+		catch (err) { setError(err.message || 'Unable to check out guest.'); }
+		finally { setBusy(false); }
 	};
 
 	const setStatus = (status) => {
@@ -85,17 +89,18 @@ export default function RoomPanel({ room, onClose }) {
 							className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold"
 							style={{ background: DESTRUCTIVE, color: '#fff' }}
 						>
-							<LogOut size={16} /> Check Out
+							<LogOut size={16} /> {busy ? 'Processing…' : 'Check Out'}
 						</button>
 					)}
 
 					{isBooked && (
 						<button
-							onClick={() => pms.checkInReservation(room.reservationId) || onClose()}
+							disabled={busy}
+							onClick={async () => { setBusy(true); setError(''); try { await pms.checkInReservation(room.reservationId); onClose(); } catch (err) { setError(err.message || 'Unable to check in reservation.'); } finally { setBusy(false); } }}
 							className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold"
 							style={{ background: TEAL, color: '#090C11' }}
 						>
-							<DoorOpen size={16} /> Check In Now
+							<DoorOpen size={16} /> {busy ? 'Processing…' : 'Check In Now'}
 						</button>
 					)}
 
@@ -187,6 +192,7 @@ export default function RoomPanel({ room, onClose }) {
 							{error && <div className="text-xs mb-3" style={{ color: DESTRUCTIVE }}>{error}</div>}
 
 							<button
+								disabled={busy}
 								onClick={submitCheckIn}
 								className="w-full py-3 rounded-xl text-sm font-bold"
 								style={{ background: TEAL, color: '#090C11' }}
