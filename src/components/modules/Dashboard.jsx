@@ -184,7 +184,7 @@ export default function Dashboard({ onNavigateToPOS, onNavigateToRooms, onNaviga
             <div className="text-sm font-bold">Need to work the dining floor?</div>
             <div className="mt-1 text-xs text-white/60">Open the POS workspace to manage tables, orders, bills, and payments.</div>
           </div>
-          <button type="button" onClick={onNavigateToPOS} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold transition-colors hover:bg-[#FFEE32] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFD300] focus-visible:ring-offset-2 focus-visible:ring-offset-[#090C11]" style={{ background: TEAL, color: NAVY }}>
+          <button type="button" onClick={onNavigateToPOS} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold transition-colors hover:bg-[var(--brand-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--brand-dark)]" style={{ background: TEAL, color: NAVY }}>
             Open POS <ArrowUpRight size={16} aria-hidden="true" />
           </button>
         </div>
