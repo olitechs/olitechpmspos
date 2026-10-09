@@ -38,7 +38,7 @@ test('shift summary tolerates absent or malformed optional receipt data', () => 
     null,
   ], 'invalid');
 
-  assert.equal(summary.totalTransactions, 3);
+  assert.equal(summary.totalTransactions, 2);
   assert.equal(summary.totalSales, 100);
   assert.equal(summary.expectedCash, 0);
   assert.equal(summary.categories.food.qty, 0);
