@@ -9,5 +9,10 @@
   },
   "exclude": [
     "src/pages/Admin/Roles.jsx"
+  ],
+  "include": [
+    "src/**/*",
+    "vite.config.js",
+    "tailwind.config.js"
   ]
 }
