@@ -1,5 +1,5 @@
 import React,{useEffect,useMemo,useState} from 'react';
-import {CloudOff,Plus,Search,Printer,Wifi,RefreshCw} from 'lucide-react';
+import {Plus,Search,Printer,RefreshCw} from 'lucide-react';
 import {toast} from 'sonner';
 import {Dialog,DialogContent,DialogFooter,DialogHeader,DialogTitle} from '@/components/ui/dialog';
 import {Checkbox} from '@/components/ui/checkbox';
