@@ -4,6 +4,7 @@ import {
   Plus, RefreshCw, Search, Trash2, X
 } from 'lucide-react';
 import { usePms } from '@/data/PmsStore';
+import { getPmsDateKey, overlapsStayRanges } from '@/lib/pmsDateUtils';
 
 const STATUS = {
   booked: 'Booked',
@@ -17,11 +18,11 @@ function money(value) {
 }
 
 function todayIso() {
-  return new Date().toISOString().slice(0, 10);
+  return getPmsDateKey();
 }
 
 function overlaps(aStart, aEnd, bStart, bEnd) {
-  return aStart < bEnd && bStart < aEnd;
+  return overlapsStayRanges(aStart, aEnd, bStart, bEnd);
 }
 
 function Field({ label, children }) {
