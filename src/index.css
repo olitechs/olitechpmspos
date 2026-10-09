@@ -10,6 +10,10 @@
     --action: #FFC400;
     --action-hover: #E6B000;
     --action-text: #0B0F14;
+    --brand-primary: var(--action);
+    --brand-surface: #FFFFFF;
+    --on-dark: #FFFFFF;
+    --stay-text: #FFFFFF;
     --brand-soft: #FFF4C2;
 
     --bg: #F6F7F9;
@@ -82,6 +86,10 @@
     --action: #FFC400;
     --action-hover: #E6B000;
     --action-text: #0B0F14;
+    --brand-primary: var(--action);
+    --brand-surface: #161B22;
+    --on-dark: #0B0F14;
+    --stay-text: #0B0F14;
     --brand-soft: #3A2F00;
 
     --bg: #0E1116;
