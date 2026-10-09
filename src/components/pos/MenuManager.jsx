@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Download, Edit3, FileSpreadsheet, Plus, Settings2, Upload, X } from 'lucide-react';
+import { Download, Edit3, Plus, Settings2, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { inventoryService } from '@/services/inventoryService';
 import { useAuth } from '@/lib/AuthContext';
