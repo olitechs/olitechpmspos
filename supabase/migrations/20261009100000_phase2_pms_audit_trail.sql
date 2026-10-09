@@ -11,7 +11,7 @@ create index if not exists audit_logs_property_reservation_created_idx
 create or replace function public.fn_audit_pms_reservation_change()
 returns trigger
 language plpgsql
-security definer
+security invoker
 set search_path = public, pg_temp
 as $$
 declare
@@ -118,7 +118,8 @@ begin
 end;
 $$;
 
-revoke all on function public.fn_audit_pms_reservation_change() from public, anon, authenticated;
+revoke all on function public.fn_audit_pms_reservation_change() from public, anon;
+grant execute on function public.fn_audit_pms_reservation_change() to authenticated, service_role;
 drop trigger if exists trg_audit_pms_reservation_change on public.reservations;
 create trigger trg_audit_pms_reservation_change
 after insert or update or delete on public.reservations
@@ -127,7 +128,7 @@ for each row execute function public.fn_audit_pms_reservation_change();
 create or replace function public.fn_audit_pms_room_status_change()
 returns trigger
 language plpgsql
-security definer
+security invoker
 set search_path = public, pg_temp
 as $$
 begin
@@ -145,7 +146,8 @@ begin
 end;
 $$;
 
-revoke all on function public.fn_audit_pms_room_status_change() from public, anon, authenticated;
+revoke all on function public.fn_audit_pms_room_status_change() from public, anon;
+grant execute on function public.fn_audit_pms_room_status_change() to authenticated, service_role;
 drop trigger if exists trg_audit_pms_room_status_change on public.rooms;
 create trigger trg_audit_pms_room_status_change
 after update of status on public.rooms
@@ -156,7 +158,7 @@ for each row execute function public.fn_audit_pms_room_status_change();
 create or replace function public.fn_audit_pms_folio_event()
 returns trigger
 language plpgsql
-security definer
+security invoker
 set search_path = public, pg_temp
 as $$
 declare
@@ -215,7 +217,8 @@ begin
 end;
 $$;
 
-revoke all on function public.fn_audit_pms_folio_event() from public, anon, authenticated;
+revoke all on function public.fn_audit_pms_folio_event() from public, anon;
+grant execute on function public.fn_audit_pms_folio_event() to authenticated, service_role;
 drop trigger if exists trg_audit_pms_folio_charges on public.folio_charges;
 create trigger trg_audit_pms_folio_charges
 after insert or update or delete on public.folio_charges
