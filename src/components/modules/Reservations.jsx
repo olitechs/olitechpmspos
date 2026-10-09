@@ -364,9 +364,9 @@ function ReservationDrawer({ reservation: r, rooms, pms, propertyId, busy, onClo
               auditEvents.length ? <ol className="space-y-3">{auditEvents.map((event) => {
                 const snapshot = event.new_value || event.old_value || {};
                 const room = rooms.find((item) => item.id === snapshot.room_id);
-                const details = [snapshot.guest_name, room ? `Room ${room.number}` : null, snapshot.arrival && snapshot.departure ? `${snapshot.arrival} → ${snapshot.departure}` : null, snapshot.status].filter(Boolean).join(' · ');
+                const details = [snapshot.guest_name || r.guestName, room ? `Room ${room.number}` : null, snapshot.arrival && snapshot.departure ? `${snapshot.arrival} → ${snapshot.departure}` : null, snapshot.status, snapshot.amount != null ? `KES ${Number(snapshot.amount).toLocaleString('en-KE')}` : null, snapshot.method, snapshot.source, snapshot.description].filter(Boolean).join(' · ');
                 return <li key={event.id} className="border-l-2 border-slate-300 pl-3">
-                  <div className="text-xs font-semibold capitalize text-slate-900">{String(event.action || 'reservation event').replace(/^pms_reservation_/, '').replace(/_/g, ' ')}</div>
+                  <div className="text-xs font-semibold capitalize text-slate-900">{String(event.action || 'reservation event').replace(/^pms_/, '').replace(/_/g, ' ')}</div>
                   <div className="mt-0.5 text-[11px] text-slate-500">{new Date(event.created_at).toLocaleString('en-KE', { timeZone: 'Africa/Nairobi' })} · {event.actor_id ? `Staff ${event.actor_id.slice(0, 8)}` : 'System / integration'}</div>
                   {details && <div className="mt-1 text-xs text-slate-600">{details}</div>}
                 </li>;
