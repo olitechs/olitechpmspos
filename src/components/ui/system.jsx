@@ -47,10 +47,12 @@ export function StatTile({ label, value, detail, icon: Icon, trend, className = 
 }
 
 const STATUS_TONES = {
-  success: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
-  warning: 'bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-300',
-  danger: 'bg-red-50 text-red-800 dark:bg-red-950 dark:text-red-300',
-  info: 'bg-blue-50 text-blue-800 dark:bg-blue-950 dark:text-blue-300',
+  // Keep status meaning tied to the same semantic tokens used by the rest of
+  // the application; this prevents badges drifting from light/dark themes.
+  success: 'bg-[var(--surface-2)] text-[var(--success-text)]',
+  warning: 'bg-[var(--surface-2)] text-[var(--warning-text)]',
+  danger: 'bg-[var(--surface-2)] text-[var(--danger)]',
+  info: 'bg-[var(--surface-2)] text-[var(--info)]',
   neutral: 'bg-[var(--surface-2)] text-[var(--text)]',
 };
 export function StatusBadge({ children, status = 'neutral', className = '' }) {
