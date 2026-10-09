@@ -13,7 +13,6 @@ import { useAuth } from '@/lib/AuthContext';
 import { findRoomReservationOverlap, getPmsTodayDate, overlapsStayRanges } from '@/lib/pmsDateUtils';
 import { NAVY, TEAL, SAND, SURFACE, SURFACE2, BORDER, MUTED, DESTRUCTIVE } from '@/data/palette';
 
-export const PAYMENT_STATUS = ['fully_paid', 'partially_paid', 'not_paid'];
 export const CHANNELS = ['direct', 'booking_com', 'unknown'];
 export const MEAL_PLANS = ['bed_only', 'bb', 'half_board', 'full_board'];
 export const BOOKING_STATUSES = ['booked', 'checked_in', 'checked_out'];
