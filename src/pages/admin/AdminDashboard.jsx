@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Building2, Clock, CheckCircle2, ShieldAlert, Users, Package, ArrowRight, RefreshCw, Plus, ClipboardList, Activity, Ban, CreditCard } from 'lucide-react';
+import { Building2, Clock, CheckCircle2, ShieldAlert, Users, ArrowRight, RefreshCw, Plus, ClipboardList, Activity, Ban, CreditCard } from 'lucide-react';
 import { platformService } from '@/services/platformService';
 import { supabase } from '@/lib/supabaseClient';
 import { PACKAGE_LABELS } from '@/lib/entitlements';

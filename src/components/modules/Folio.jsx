@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Banknote, CreditCard, Plus, ReceiptText, RefreshCw, Search, X } from 'lucide-react';
+import { Banknote, CreditCard, Plus, RefreshCw, Search, X } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { pmsService } from '@/services/pmsService';
 

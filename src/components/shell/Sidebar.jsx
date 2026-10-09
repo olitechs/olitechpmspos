@@ -1,51 +1,10 @@
-import React,{useMemo,useState}from"react";
+import React,{useEffect,useMemo,useState}from"react";
 import{useLocation,useNavigate}from"react-router-dom";
-import{UtensilsCrossed,Grid3X3,CalendarDays,ClipboardList,Sparkles,Users,Boxes,Package,ShoppingCart,ChefHat,Shirt,ArrowRightLeft,Globe2,PlugZap,BarChart3,Percent,Banknote,ClipboardCheck,ShieldCheck,Settings,ChevronLeft,ChevronRight,ChevronDown,Menu,X,LayoutDashboard,Building2,Receipt,Search,LogOut,BedDouble}from"lucide-react";
+import{ChevronLeft,ChevronRight,ChevronDown,Menu,X,Building2,Search,LogOut}from"lucide-react";
 import{useAuth}from"@/lib/AuthContext";
 import{getDefaultModulesForRole,getSessionStaff,normalizeStaffRole,canUseModule}from"@/services/authService";
+import{MASTER_ROLES,SIDEBAR_SECTIONS}from"@/data/modules/sidebarNavigation";
 
-const MASTER_ROLES=new Set(["hotel_admin","super_admin"]);
-const SECTIONS=[
- {key:"main",title:"Main",items:[
-  {id:"dashboard",label:"Dashboard",icon:LayoutDashboard,roles:["hotel_admin","super_admin","front_office_manager","receptionist","front_desk"],path:"/backoffice",active:["dashboard"]},
-  {id:"pos",label:"Point of Sale",icon:UtensilsCrossed,roles:["hotel_admin","super_admin","pos_staff","waiter","cashier","fb_manager"],path:"/pos",active:["pos"]},
-  {id:"reports",label:"Reports",icon:BarChart3,roles:["hotel_admin","super_admin","front_office_manager","store_manager","fb_manager"],path:"/backoffice/reports/sales",active:["reports"],group:"dropdown"}
- ]},
- {key:"front-office",title:"Front Office",items:[
-  {id:"room-planner",label:"Room Planner",icon:BedDouble,roles:["hotel_admin","super_admin","front_office_manager","receptionist","front_desk","housekeeping_supervisor"],path:"/frontoffice/room-planner",active:["rooms","room-planner"]},
-  {id:"reservations",label:"Reservations",icon:CalendarDays,roles:["hotel_admin","super_admin","front_office_manager","receptionist","front_desk"],path:"/frontoffice/reservations",active:["reservations"]},
-  {id:"folio",label:"Guest Folio",icon:Receipt,roles:["hotel_admin","super_admin","front_office_manager","receptionist","front_desk"],path:"/frontoffice/folio",active:["folio"]},
-  {id:"housekeeping",label:"Housekeeping",icon:Sparkles,roles:["hotel_admin","super_admin","front_office_manager","receptionist","front_desk","housekeeping_supervisor"],path:"/frontoffice/housekeeping",active:["housekeeping"]},
-  {id:"night-audit",label:"Night Audit",icon:ClipboardCheck,roles:["hotel_admin","super_admin","front_office_manager"],path:"/frontoffice/night-audit",active:["night-audit"]}
- ]},
- {key:"items",title:"Items",items:[
-  {id:"item-list",label:"Item list",icon:ClipboardList,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/backoffice/items/list",active:["products"],sub:true},
-  {id:"categories",label:"Categories",icon:Grid3X3,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/backoffice/items/categories",active:["categories"],sub:true},
-  {id:"modifiers",label:"Modifiers",icon:Sparkles,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/backoffice/items/modifiers",active:["modifiers"],sub:true},
-  {id:"discounts",label:"Discounts",icon:Percent,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/backoffice/items/discounts",active:["discounts"],sub:true}
- ]},
- {key:"inventory-management",title:"Inventory management",items:[
-  {id:"purchasing",label:"Purchase orders",icon:ShoppingCart,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/backoffice/inventory/purchase-orders",active:["purchasing"],sub:true},
-  {id:"transfers",label:"Transfer orders",icon:ArrowRightLeft,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/backoffice/inventory/transfer-orders",active:["transfers"],sub:true},
-  {id:"adjustments",label:"Stock adjustments",icon:ClipboardCheck,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/backoffice/inventory/stock-adjustments",active:["inventory"],sub:true},
-  {id:"counts",label:"Inventory counts",icon:Boxes,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/backoffice/inventory/counts",active:["inventory"],sub:true},
-  {id:"productions",label:"Productions",icon:ChefHat,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/backoffice/inventory/productions",active:["recipes"],sub:true},
-  {id:"suppliers",label:"Suppliers",icon:Package,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/backoffice/inventory/suppliers",active:["suppliers"],sub:true},
-  {id:"inventory-history",label:"Inventory history",icon:Receipt,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/backoffice/inventory/history",active:["inventory"],sub:true},
-  {id:"inventory-valuation",label:"Inventory valuation",icon:Banknote,roles:["hotel_admin","super_admin","store_manager","fb_manager"],path:"/backoffice/inventory/valuation",active:["inventory"],sub:true}
- ]},
- {key:"employees",title:"Employees",items:[
-  {id:"employee-list",label:"Employee list",icon:Users,roles:["hotel_admin","super_admin"],path:"/backoffice/employees/list",active:["roles"],sub:true},
-  {id:"access-rights",label:"Access rights",icon:ShieldCheck,roles:["hotel_admin","super_admin"],path:"/backoffice/employees/list",active:["roles"],sub:true},
-  {id:"timecards",label:"Timecards",icon:CalendarDays,roles:["hotel_admin","super_admin"],path:"/backoffice/employees/timecards",active:["roles"],sub:true},
-  {id:"total-hours",label:"Total hours worked",icon:ClipboardCheck,roles:["hotel_admin","super_admin"],path:"/backoffice/employees/hours",active:["roles"],sub:true}
- ]},
- {key:"operations",title:"Operations",items:[
-  {id:"customers",label:"Customers",icon:Users,roles:["hotel_admin","super_admin","front_office_manager","receptionist","front_desk"],path:"/backoffice/customers",active:["guests"]},
-  {id:"integrations",label:"Integrations",icon:PlugZap,roles:["hotel_admin","super_admin","front_office_manager"],path:"/backoffice/integrations",active:["booking-engine"],group:"dropdown"},
-  {id:"settings",label:"Settings",icon:Settings,roles:["hotel_admin","super_admin","front_office_manager"],path:"/backoffice/settings/features",active:["settings"]}
- ]}
-];
 
 function getRole(user){const s=getSessionStaff();return normalizeStaffRole(s?.role||user?.staff?.role||user?.propertyRole||user?.role||"")}
 function itemModule(item){if(["roles","settings"].includes(item.id))return"admin";if(["room-planner","reservations","folio","housekeeping","night-audit"].includes(item.id))return"frontoffice";if(["pos","cashier","dining-tables"].includes(item.id))return"pos";if(["store","products","recipes","purchasing","laundry","transfers","booking-engine","channels","reports","inventory"].includes(item.id))return"store";return"backoffice"}
@@ -55,10 +14,11 @@ export default function Sidebar({activeModule,onModuleChange,staffRole}){
  const{user,logout}=useAuth();const navigate=useNavigate();const location=useLocation();
  const[collapsed,setCollapsedState]=useState(()=>{try{return localStorage.getItem("olitech_sidebar_collapsed")==="true"}catch{return false}});
  const[mobileOpen,setMobileOpen]=useState(false);const[query,setQuery]=useState("");const[ownerOpen,setOwnerOpen]=useState(false);
+ useEffect(()=>{if(!mobileOpen)return;const onKeyDown=event=>{if(event.key==="Escape")setMobileOpen(false)};window.addEventListener("keydown",onKeyDown);return()=>window.removeEventListener("keydown",onKeyDown)},[mobileOpen]);
  const setCollapsed=v=>{setCollapsedState(v);try{localStorage.setItem("olitech_sidebar_collapsed",String(v))}catch{}};
  const role=normalizeStaffRole(staffRole||getRole(user));const assigned=useMemo(()=>getAssigned(user,role),[user,role]);const master=!!user?.isPlatformOwner||MASTER_ROLES.has(role);
  const canAccess=item=>master||(item.roles.includes(role)&&(itemModule(item)==="admin"||canUseModule(user,itemModule(item))));
- const sections=SECTIONS.map(s=>({...s,items:s.items.filter(canAccess).filter(i=>!query||i.label.toLowerCase().includes(query.toLowerCase()))})).filter(s=>s.items.length);
+ const sections=SIDEBAR_SECTIONS.map(s=>({...s,items:s.items.filter(canAccess).filter(i=>!query||i.label.toLowerCase().includes(query.toLowerCase()))})).filter(s=>s.items.length);
  const hotelName=user?.property?.name||user?.property?.business_name||"OliTechs Hotel";
  const staff=getSessionStaff();const displayName=user?.name||staff?.full_name||"Staff";
  const initials=displayName.split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join("").toUpperCase()||"OT";
@@ -89,8 +49,8 @@ export default function Sidebar({activeModule,onModuleChange,staffRole}){
   <div className={`shrink-0 border-t border-[var(--border)] ${collapsed?"p-2":"p-3"}`}>
    <button type="button" onClick={()=>setOwnerOpen(v=>!v)} className={`flex w-full items-center rounded-xl bg-[var(--brand-surface)] ${collapsed?"justify-center p-2":"gap-3 p-2"}`}><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--brand-primary)] text-[11px] font-black text-[var(--text)]">{initials}</div>{!collapsed&&<div className="min-w-0 flex-1 text-left"><div className="truncate text-[12px] font-bold text-[var(--text)]">{displayName}</div><div className="truncate text-[10px] text-[var(--muted)]">{roleLabel}</div></div>}{!collapsed&&<ChevronDown size={15} className="text-[var(--muted)]"/>}</button>{ownerOpen&&!collapsed&&<div className="mt-2 overflow-hidden rounded-xl border border-[var(--border)] bg-white shadow-lg"><button onClick={()=>navigate("/admin")} className="block w-full px-3 py-2 text-left text-xs hover:bg-[var(--brand-soft)]">Account</button><button onClick={logout} className="block w-full px-3 py-2 text-left text-xs text-[var(--danger)] hover:bg-[var(--brand-soft)]">Sign out</button></div>}
   </div>
-  <button type="button" onClick={()=>setMobileOpen(false)} className="absolute right-2 top-3 rounded-lg p-2 text-[var(--muted)] hover:bg-[var(--bg)] md:hidden" aria-label="Close navigation"><X size={18}/></button>
+  <button type="button" onClick={()=>setMobileOpen(false)} className="absolute right-2 top-3 rounded-lg p-2 text-[var(--muted)] hover:bg-[var(--bg)] md:hidden" aria-label="Close navigation" aria-expanded={mobileOpen}><X size={18}/></button>
  </aside>;
 
- return <>{mobileOpen&&<button type="button" onClick={()=>setMobileOpen(false)} aria-label="Close navigation" className="fixed inset-0 z-40 bg-[var(--brand-dark)]/30 backdrop-blur-sm md:hidden"/>}{sidebar}<button type="button" onClick={()=>setMobileOpen(true)} className="fixed left-3 top-3 z-30 rounded-xl border border-[var(--border)] bg-white p-2.5 text-[var(--text)] shadow-sm md:hidden" aria-label="Open navigation"><Menu size={20}/></button></>;
+ return <>{mobileOpen&&<button type="button" onClick={()=>setMobileOpen(false)} aria-label="Close navigation" className="fixed inset-0 z-40 bg-[var(--brand-dark)]/30 backdrop-blur-sm md:hidden"/>}{sidebar}<button type="button" onClick={()=>setMobileOpen(true)} className="fixed left-3 top-3 z-30 rounded-xl border border-[var(--border)] bg-white p-2.5 text-[var(--text)] shadow-sm md:hidden" aria-label="Open navigation" aria-expanded={mobileOpen}><Menu size={20}/></button></>;
 }

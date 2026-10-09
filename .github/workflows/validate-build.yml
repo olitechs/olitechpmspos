@@ -42,5 +42,17 @@ jobs:
             if ($errors.Count -gt 0) { throw "PowerShell syntax errors in ${file}: $($errors | Out-String)" }
           }
 
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test navigation and role access
+        run: npm run test:architecture
+
+      - name: Audit theme contrast
+        run: npm run check:contrast
+
       - name: Build application
         run: npm run build

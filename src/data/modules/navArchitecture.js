@@ -22,5 +22,5 @@ export const ROLE_ALIASES = { hotel_admin:'admin', super_admin:'owner', general_
 const PACKAGE_MODULES = { none: [], standard:['frontoffice','pos'], premium:['frontoffice','pos','backoffice','store'], professional:['frontoffice','pos','backoffice','store'] };
 export function normalizeAppRole(role){ const v=String(role||'').toLowerCase().trim(); return ROLE_ALIASES[v]||v||'front_desk'; }
 export function canAccessApp(role,appId,propertyPackage){ const app=MAIN_NAV.find(x=>x.id===appId); if(!app||!app.roles.includes(normalizeAppRole(role)))return false; if(propertyPackage&&propertyPackage!=='none')return PACKAGE_MODULES[propertyPackage]?.includes(appId)??false; return !propertyPackage; }
-export function getDefaultApp(role,propertyPackage){ const r=normalizeAppRole(role); return MAIN_NAV.find(x=>x.roles.includes(r)&&(!propertyPackage||PACKAGE_MODULES[propertyPackage]?.includes(x.id)))?.id||'frontoffice'; }
+export function getDefaultApp(role,propertyPackage){ const r=normalizeAppRole(role); return MAIN_NAV.find(x=>x.roles.includes(r)&&(!propertyPackage||PACKAGE_MODULES[propertyPackage]?.includes(x.id)))?.id||null; }
 export function getPackageModules(propertyPackage){ return PACKAGE_MODULES[propertyPackage]||[]; }

@@ -19,7 +19,6 @@ import KitchenDisplay from '@/components/modules/KitchenDisplay';
 import Reports from '@/components/modules/Reports';
 import SettingsPanel from '@/components/modules/SettingsPanel';
 import Rooms from '@/components/pms/Rooms';
-import RoomManagement from '@/components/pms/RoomManagement';
 import Housekeeping from '@/components/modules/Housekeeping';
 import Maintenance from '@/components/modules/Maintenance';
 import Purchasing from '@/components/modules/Purchasing';

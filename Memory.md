@@ -190,4 +190,14 @@ Receipts must remain server-authoritative.
 
 The seven foundation documents are the decision baseline. If a later agent proposes a change that conflicts with them, it must explicitly identify the conflict and obtain an updated decision rather than silently changing architecture.
 
-**Status: DRAFT - Awaiting Approval**
+**Status: APPROVED FOR SCOPED PHASE 1 ONLY — 2026-10-09**
+
+## 11. Owner Authorization — 2026-10-09
+
+The owner has authorized the scoped Phase 1 implementation described in the implementation brief supplied for this task. This authorization covers the design-token/shared-shell foundation only, must be delivered on a dedicated feature branch and pull request, and does not authorize merging the existing open Phase 1 foundation PR, changing the Room Planner behavior, or advancing to a later phase without a separate approval.
+
+The implementation brief's approved yellow/charcoal palette supersedes the older blue/slate target palette in the previous draft of `Design.md` and `design-system/olitechs-pms-pos/MASTER.md`. Record the corresponding ADR in `Architecture.md` and keep the docs and implementation aligned.
+
+The current repository already has an open PR #10 named `feat: Phase 1 foundation architecture and security`. This UI/design-system work is isolated on `feature/phase-1-design-system-shell`; do not alter or close PR #10.
+
+**Authorization status: APPROVED FOR SCOPED PHASE 1 ONLY — 2026-10-09.**
