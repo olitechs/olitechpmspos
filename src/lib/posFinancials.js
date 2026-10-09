@@ -29,6 +29,12 @@ export function summarizePosReceipts(rows = [], openingCash = 0, splitPayments =
     other: { amount: 0, count: 0 },
     split_unallocated: { amount: 0, count: 0 },
   };
+  const reconciliation = {
+    splitReceiptCount: 0,
+    splitUnallocatedCount: 0,
+    splitAllocationVarianceCount: 0,
+    splitAllocationVariance: 0,
+  };
   const categories = {
     food: { qty: 0, amount: 0 },
     drinks: { qty: 0, amount: 0 },
@@ -47,14 +53,24 @@ export function summarizePosReceipts(rows = [], openingCash = 0, splitPayments =
     .map((receipt) => {
       const method = normalizePosPaymentMethod(receipt.payment_method);
       if (method === 'split') {
+        reconciliation.splitReceiptCount += 1;
         const allocations = allocationsByReceipt.get(receipt.id) || [];
         if (allocations.length) {
+          const allocatedTotal = allocations.reduce((sum, allocation) => sum + amount(allocation.amount), 0);
+          const difference = amount(receipt.total) - allocatedTotal;
+          if (Math.abs(difference) >= 0.01) {
+            reconciliation.splitAllocationVarianceCount += 1;
+            reconciliation.splitAllocationVariance += difference;
+          }
           allocations.forEach((allocation) => {
-            const allocationMethod = normalizePosPaymentMethod(allocation.payment_method);
-            payments[allocationMethod].amount += amount(allocation.amount);
-            payments[allocationMethod].count += 1;
+            const normalizedMethod = normalizePosPaymentMethod(allocation.payment_method);
+            const allocationMethod = normalizedMethod === 'split' ? 'other' : normalizedMethod;
+            const payment = payments[allocationMethod] || payments.other;
+            payment.amount += amount(allocation.amount);
+            payment.count += 1;
           });
         } else {
+          reconciliation.splitUnallocatedCount += 1;
           payments.split_unallocated.amount += amount(receipt.total);
           payments.split_unallocated.count += 1;
         }
@@ -83,6 +99,7 @@ export function summarizePosReceipts(rows = [], openingCash = 0, splitPayments =
     orders,
     payments,
     categories,
+    reconciliation,
     totalSales,
     totalTransactions: orders.length,
     expectedCash: amount(openingCash) + cashSales,
