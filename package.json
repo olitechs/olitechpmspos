@@ -17,7 +17,7 @@
     "print-agent:dev": "node tools/print-agent/print-agent-v2.js",
     "print-agent:v2": "node tools/print-agent/print-agent-v2.js",
     "check:contrast": "node tools/design-system/check-contrast.mjs",
-    "test:architecture": "node --test src/data/modules/navArchitecture.test.js src/data/modules/sidebarNavigation.test.js tools/design-system/system-ui.test.mjs"
+    "test:architecture": "node --test src/data/modules/navArchitecture.test.js src/data/modules/sidebarNavigation.test.js tools/design-system/system-ui.test.mjs src/lib/pmsDateUtils.test.js"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^17.0.0",
