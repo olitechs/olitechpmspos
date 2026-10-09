@@ -1,0 +1,109 @@
+const PAYMENT_METHOD_ALIASES = Object.freeze({
+  room: 'room_charge',
+  room_charge: 'room_charge',
+  cash: 'cash',
+  mpesa: 'mpesa',
+  card: 'card',
+  bank: 'bank',
+  other: 'other',
+  split: 'split',
+});
+
+export function normalizePosPaymentMethod(method) {
+  const key = String(method || 'other').trim().toLowerCase();
+  return PAYMENT_METHOD_ALIASES[key] || 'other';
+}
+
+const amount = (value) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+export function summarizePosReceipts(rows = [], openingCash = 0, splitPayments = []) {
+  const payments = {
+    cash: { amount: 0, count: 0 },
+    mpesa: { amount: 0, count: 0 },
+    card: { amount: 0, count: 0 },
+    bank: { amount: 0, count: 0 },
+    room_charge: { amount: 0, count: 0 },
+    other: { amount: 0, count: 0 },
+    split_unallocated: { amount: 0, count: 0 },
+  };
+  const reconciliation = {
+    splitReceiptCount: 0,
+    splitUnallocatedCount: 0,
+    splitAllocationVarianceCount: 0,
+    splitAllocationVariance: 0,
+  };
+  const categories = {
+    food: { qty: 0, amount: 0 },
+    drinks: { qty: 0, amount: 0 },
+  };
+
+  const allocationsByReceipt = new Map();
+  (Array.isArray(splitPayments) ? splitPayments : []).forEach((allocation) => {
+    if (!allocation?.receipt_id) return;
+    const list = allocationsByReceipt.get(allocation.receipt_id) || [];
+    list.push(allocation);
+    allocationsByReceipt.set(allocation.receipt_id, list);
+  });
+
+  const orders = (Array.isArray(rows) ? rows : [])
+    .filter((receipt) => receipt && typeof receipt === 'object' && (!receipt.status || receipt.status === 'posted'))
+    .map((receipt) => {
+      const method = normalizePosPaymentMethod(receipt.payment_method);
+      if (method === 'split') {
+        reconciliation.splitReceiptCount += 1;
+        const allocations = allocationsByReceipt.get(receipt.id) || [];
+        if (allocations.length) {
+          const allocatedTotal = allocations.reduce((sum, allocation) => sum + amount(allocation.amount), 0);
+          const difference = amount(receipt.total) - allocatedTotal;
+          if (Math.abs(difference) >= 0.01) {
+            reconciliation.splitAllocationVarianceCount += 1;
+            reconciliation.splitAllocationVariance += difference;
+          }
+          allocations.forEach((allocation) => {
+            const normalizedMethod = normalizePosPaymentMethod(allocation.payment_method);
+            const allocationMethod = normalizedMethod === 'split' ? 'other' : normalizedMethod;
+            const payment = payments[allocationMethod] || payments.other;
+            payment.amount += amount(allocation.amount);
+            payment.count += 1;
+          });
+        } else {
+          reconciliation.splitUnallocatedCount += 1;
+          payments.split_unallocated.amount += amount(receipt.total);
+          payments.split_unallocated.count += 1;
+        }
+      } else {
+        payments[method].amount += amount(receipt.total);
+        payments[method].count += 1;
+      }
+
+      (Array.isArray(receipt.items) ? receipt.items : []).forEach((item) => {
+        const qty = Math.max(0, amount(item?.qty ?? item?.quantity ?? 1));
+        const lineAmount = item?.total != null
+          ? amount(item.total)
+          : amount(item?.price) * qty;
+        const categoryLabel = String(item?.category || '').toLowerCase();
+        const center = String(item?.center || '').toLowerCase();
+        const category = categoryLabel.includes('drink') || center === 'bar' ? 'drinks' : 'food';
+        categories[category].qty += qty;
+        categories[category].amount += lineAmount;
+      });
+      return receipt;
+    });
+
+  const totalSales = orders.reduce((sum, receipt) => sum + amount(receipt.total), 0);
+  const cashSales = payments.cash.amount;
+  return {
+    orders,
+    payments,
+    categories,
+    reconciliation,
+    totalSales,
+    totalTransactions: orders.length,
+    expectedCash: amount(openingCash) + cashSales,
+    countedCash: null,
+    variance: null,
+  };
+}

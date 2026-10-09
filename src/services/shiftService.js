@@ -1,10 +1,10 @@
 import { supabase } from '@/lib/supabaseClient';
 import * as XLSX from 'xlsx';
+import { normalizePosPaymentMethod, summarizePosReceipts } from '@/lib/posFinancials';
 
 const KENYA_DATE = new Intl.DateTimeFormat('en-CA',{timeZone:'Africa/Nairobi'});
 const today = () => KENYA_DATE.format(new Date());
 
-const normalizeMethod = (m) => ({ room:'room_charge',room_charge:'room_charge',cash:'cash',mpesa:'mpesa',card:'card',bank:'bank',other:'other' }[String(m||'').toLowerCase()] || String(m||'other').toLowerCase());
 
 export const shiftService = {
   async getCurrentShift(propertyId) {
@@ -28,16 +28,20 @@ export const shiftService = {
     if(error) throw new Error(error.message);
     const {data:rows,error:rowsError}=await supabase.from('pos_receipts').select('*').eq('pos_shift_id',shiftId).eq('status','posted').order('created_at');
     if(rowsError) throw new Error(rowsError.message);
-    const payments={cash:{amount:0,count:0},mpesa:{amount:0,count:0},card:{amount:0,count:0},bank:{amount:0,count:0},room_charge:{amount:0,count:0},other:{amount:0,count:0}};
-    const categories={food:{qty:0,amount:0},drinks:{qty:0,amount:0}};
-    const orders=(rows||[]).map(r=>{
-      const method=normalizeMethod(r.payment_method); const p=payments[method]||payments.other; p.amount+=Number(r.total||0);p.count+=1;
-      (Array.isArray(r.items)?r.items:[]).forEach(i=>{const qty=Number(i.qty||i.quantity||1);const amount=Number(i.total||0)||Number(i.price||0)*qty;const cat=String(i.category||i.center||'').toLowerCase().includes('drink')||String(i.center||'').toLowerCase()==='bar'?'drinks':'food';categories[cat].qty+=qty;categories[cat].amount+=amount;});
-      return r;
-    });
-    const total=Object.values(payments).reduce((s,p)=>s+p.amount,0);
-    const cash=payments.cash.amount;
-    return {shift,orders,payments,categories,totalSales:total,totalTransactions:orders.length,expectedCash:Number(shift.opening_cash||0)+cash,countedCash:null,variance:null};
+    const receipts = rows || [];
+    const splitReceiptIds = receipts.filter((receipt) => receipt.payment_method === 'split').map((receipt) => receipt.id);
+    let splitPayments = [];
+    if (splitReceiptIds.length) {
+      const { data: allocations, error: allocationError } = await supabase
+        .from('pos_receipt_payments')
+        .select('receipt_id, payment_method, amount')
+        .eq('property_id', shift.property_id)
+        .in('receipt_id', splitReceiptIds);
+      if (allocationError) throw new Error(allocationError.message);
+      splitPayments = allocations || [];
+    }
+    const summary = summarizePosReceipts(receipts, shift.opening_cash || 0, splitPayments);
+    return { shift, ...summary };
   },
   async listShifts(propertyId,date=null) {
     let q=supabase.from('pos_shifts').select('*').eq('property_id',propertyId).order('opened_at',{ascending:false});
@@ -63,13 +67,16 @@ export function exportShiftToExcel(report) {
     ['Room Charge',money(report.payments.room_charge.amount),report.payments.room_charge.count],
     ['Other',money(report.payments.other.amount),report.payments.other.count],
     ['Total Sales',money(report.totalSales),report.totalTransactions],
+    ['Split Receipts',Number(report.reconciliation?.splitReceiptCount||0),''],
+    ['Split Receipts Without Allocations',Number(report.reconciliation?.splitUnallocatedCount||0),''],
+    ['Split Allocation Variance (receipt less allocated)',money(report.reconciliation?.splitAllocationVariance||0),Number(report.reconciliation?.splitAllocationVarianceCount||0)],
     ['Expected Cash',money(report.expectedCash),''],
     ['Counted Cash',report.countedCash==null?'':money(report.countedCash),''],
     ['Variance',report.variance==null?'':money(report.variance),''],
   ];
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(summary),'Summary');
   const detailed=[['Bill No','Check No','Table','Waiter','Time','Items','Payment Method','Amount','Guest']];
-  report.orders.forEach(r=>detailed.push([r.order_number||'',r.order_number||'',r.table_number||'',r.waiter||'',new Date(r.created_at).toLocaleString('en-KE'),(Array.isArray(r.items)?r.items:[]).map(i=>`${i.name||''} x${i.qty||i.quantity||1}`).join(', '),normalizeMethod(r.payment_method),money(r.total),r.guest_name||'']));
+  report.orders.forEach(r=>detailed.push([r.order_number||'',r.order_number||'',r.table_number||'',r.waiter||'',new Date(r.created_at).toLocaleString('en-KE'),(Array.isArray(r.items)?r.items:[]).map(i=>`${i.name||''} x${i.qty||i.quantity||1}`).join(', '),normalizePosPaymentMethod(r.payment_method),money(r.total),r.guest_name||'']));
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(detailed),'Detailed Orders');
   const sales=report.totalSales||0; const breakdown=[['Payment Method','Transaction Count','Total Amount','% of Sales']];
   Object.entries(report.payments).forEach(([k,v])=>breakdown.push([k,v.count,money(v.amount),sales?money(v.amount)/sales:0]));
