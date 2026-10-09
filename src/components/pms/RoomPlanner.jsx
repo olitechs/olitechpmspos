@@ -105,6 +105,8 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   const todayDate = useMemo(() => getPmsTodayDate(), []);
   const today = dateKey(todayDate);
     const [month, setMonth] = useState(startOfMonth(todayDate));
+  const [viewMode, setViewMode] = useState('month');
+  const [windowStart, setWindowStart] = useState(todayDate);
   const [range, setRange] = useState(null);
   const [fromInput, setFromInput] = useState('');
   const [toInput, setToInput] = useState('');
@@ -139,29 +141,34 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     return [...groups.entries()];
   }, [plannerRooms, roomTypeMap]);
 
+  const dayWidth = viewMode === 'rolling' ? 110 : DAY_WIDTH;
   const columns = useMemo(() => {
     if (range) return eachDayOfInterval({ start: parseDate(range.from), end: parseDate(range.to) });
+    if (viewMode === 'rolling') {
+      const start = parseDate(dateKey(windowStart));
+      return eachDayOfInterval({ start, end: addDays(start, 14) });
+    }
     const monthDays = eachDayOfInterval({ start: startOfMonth(month), end: endOfMonth(month) });
     if (focusToday && month.getTime() === startOfMonth(todayDate).getTime() && todayDate.getDate() <= 2) {
       return [subDays(startOfMonth(month), 2), subDays(startOfMonth(month), 1), ...monthDays];
     }
     return monthDays;
-  }, [range, month, focusToday, todayDate]);
+  }, [range, month, focusToday, todayDate, viewMode, windowStart]);
 
   useEffect(() => {
     if (modal?.reservationId) setLinked(normalizedReservations.filter(r => r.groupId && r.groupId === modal.groupId));
   }, [modal?.reservationId, modal?.groupId, normalizedReservations]);
 
   useEffect(() => {
-    if (!focusToday || range || !scrollRef.current || !todayRef.current) return;
+    if (!focusToday || range || viewMode !== 'month' || !scrollRef.current || !todayRef.current) return;
     const timer = setTimeout(() => {
       const target = todayRef.current;
-      const desired = Math.max(0, target.offsetLeft - ROOM_COL_WIDTH - (DAY_WIDTH * 2));
+      const desired = Math.max(0, target.offsetLeft - ROOM_COL_WIDTH - (dayWidth * 2));
       scrollRef.current.scrollLeft = desired;
       setFocusToday(false);
     }, 50);
     return () => clearTimeout(timer);
-  }, [columns, focusToday, range]);
+  }, [columns, focusToday, range, viewMode]);
 
   useEffect(() => {
     if (!printNow) return;
@@ -241,9 +248,11 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     setRange({ from: fromInput, to: toInput }); setFocusToday(false);
   };
   const addClosure = () => { const room=plannerRooms[0]; if(!room) return; const start=addDays(todayDate,2); const end=addDays(start,2); setClosures(prev=>[...prev,{id:`closure-${Date.now()}`,roomId:room.id,start:dateKey(start),end:dateKey(end),label:'Out of order'}]); toast.success(`Closure added to Room ${room.number}`); };
-  const clearRange = () => { setRange(null); setRangeError(''); setFromInput(''); setToInput(''); setMonth(startOfMonth(todayDate)); setFocusToday(true); };
-  const goToday = () => { setRange(null); setFromInput(''); setToInput(''); setMonth(startOfMonth(todayDate)); setFocusToday(true); };
+  const clearRange = () => { setRange(null); setRangeError(''); setFromInput(''); setToInput(''); setMonth(startOfMonth(todayDate)); setWindowStart(todayDate); setFocusToday(true); };
+  const goToday = () => { setRange(null); setFromInput(''); setToInput(''); setMonth(startOfMonth(todayDate)); setWindowStart(todayDate); setFocusToday(viewMode === 'month'); };
   const shiftMonth = (delta) => { setRange(null); setFocusToday(false); setMonth((d) => new Date(d.getFullYear(), d.getMonth() + delta, 1)); };
+  const shiftWindow = (delta) => { setRange(null); setFocusToday(false); setWindowStart((d) => addDays(parseDate(dateKey(d)), delta)); };
+  const switchView = (mode) => { setViewMode(mode); setRange(null); setFocusToday(mode === 'month'); if (mode === 'rolling') setWindowStart(todayDate); else setMonth(startOfMonth(todayDate)); };
 
   const visibleReservation = (rv) => {
     const arrival = parseDate(rv.checkIn), departure = parseDate(rv.checkOut); if (!arrival || !departure) return null;
@@ -282,10 +291,11 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     <div className="px-4 pt-3 pb-2 shrink-0 print-hidden">
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: 'var(--text)', border: `1px solid var(--text)`, color: 'var(--action)' }}><CalendarDays size={17}/><span className="font-bold text-sm">Room Planner</span></div>
-        <button onClick={() => shiftMonth(-1)} className="p-2 rounded-xl font-bold" style={{background:'var(--surface)',border:`1px solid var(--text)`,color:'var(--text)'}}><ChevronLeft size={18}/></button>
+        <button onClick={() => viewMode === 'rolling' ? shiftWindow(-15) : shiftMonth(-1)} aria-label={viewMode === 'rolling' ? 'Previous 15 days' : 'Previous month'} className="p-2 rounded-xl font-bold" style={{background:'var(--surface)',border:`1px solid var(--text)`,color:'var(--text)'}}><ChevronLeft size={18}/></button>
+        <div role="group" aria-label="Planner view" className="flex items-center rounded-xl border p-1" style={{background:'var(--surface)',borderColor:'var(--text)'}}><button type="button" aria-pressed={viewMode === 'month'} onClick={() => switchView('month')} className="rounded-lg px-3 py-1.5 text-xs font-black" style={{background:viewMode === 'month'?'var(--text)':'transparent',color:viewMode === 'month'?'var(--action)':'var(--text)'}}>Month</button><button type="button" aria-pressed={viewMode === 'rolling'} onClick={() => switchView('rolling')} className="rounded-lg px-3 py-1.5 text-xs font-black" style={{background:viewMode === 'rolling'?'var(--text)':'transparent',color:viewMode === 'rolling'?'var(--action)':'var(--text)'}}>15-day</button></div>
         <button onClick={goToday} className="px-4 py-2 rounded-xl text-xs font-black" style={{background:'var(--action)',border:`1px solid var(--text)`,color:'var(--text)'}}>Today</button>
-        <button onClick={() => shiftMonth(1)} className="p-2 rounded-xl font-bold" style={{background:'var(--surface)',border:`1px solid var(--text)`,color:'var(--text)'}}><ChevronRight size={18}/></button>
-        <div className="text-lg font-bold ml-1" style={{color:NAVY}}>{range ? `${format(parseDate(range.from),'d MMM yyyy')} – ${format(parseDate(range.to),'d MMM yyyy')}` : `${format(startOfMonth(month),'d MMM yyyy')} – ${format(endOfMonth(month),'d MMM yyyy')}`}</div>
+        <button onClick={() => viewMode === 'rolling' ? shiftWindow(15) : shiftMonth(1)} aria-label={viewMode === 'rolling' ? 'Next 15 days' : 'Next month'} className="p-2 rounded-xl font-bold" style={{background:'var(--surface)',border:`1px solid var(--text)`,color:'var(--text)'}}><ChevronRight size={18}/></button>
+        <div className="text-lg font-bold ml-1" style={{color:NAVY}}>{range ? `${format(parseDate(range.from),'d MMM yyyy')} – ${format(parseDate(range.to),'d MMM yyyy')}` : viewMode === 'rolling' ? `${format(columns[0],'d MMM yyyy')} – ${format(columns[columns.length - 1],'d MMM yyyy')} · 15 days` : `${format(startOfMonth(month),'d MMM yyyy')} – ${format(endOfMonth(month),'d MMM yyyy')}`}</div>
         <div className="ml-auto flex items-center gap-2">
           <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-xl" style={{background:'var(--surface)',border:`2px solid var(--text)`}}><span className="text-xs font-black" style={{color:'var(--text)'}}>From</span><InputField type="date" value={fromInput} onChange={e=>setFromInput(e.target.value)} className="w-[135px] h-8"/><span className="text-xs font-black" style={{color:'var(--text)'}}>To</span><InputField type="date" value={toInput} onChange={e=>setToInput(e.target.value)} className="w-[135px] h-8"/><button onClick={applyRange} className="px-4 h-8 rounded-lg text-xs font-black" style={{background:'var(--action)',color:'var(--text)',border:'1px solid var(--text)'}}>Apply</button><button onClick={clearRange} className="px-3 h-8 rounded-lg text-xs font-bold" style={{background:'var(--surface)',border:`1px solid var(--text)`,color:'var(--text)'}}>Clear</button></div>
           {onRefresh && <button title="Refresh" onClick={onRefresh} className="p-2 rounded-xl" style={{background:'var(--surface)',border:`1px solid var(--text)`,color:'var(--text)'}}><RefreshCw size={16}/></button>}
@@ -300,14 +310,14 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     </div>
 
     <div ref={scrollRef} className="flex-1 min-h-0 overflow-auto px-4 pb-4 print-hidden">
-      <div className="rounded-xl overflow-hidden shadow-sm" style={{background:'var(--surface)',border:`1px solid var(--border)`, minWidth: `${ROOM_COL_WIDTH + columns.length * DAY_WIDTH}px`}}>
-        <div className="grid sticky top-0 z-40" style={{gridTemplateColumns:`${ROOM_COL_WIDTH}px repeat(${columns.length}, ${DAY_WIDTH}px)`}}>
+      <div className="rounded-xl overflow-hidden shadow-sm" style={{background:'var(--surface)',border:`1px solid var(--border)`, minWidth: `${ROOM_COL_WIDTH + columns.length * dayWidth}px`}}>
+        <div className="grid sticky top-0 z-40" style={{gridTemplateColumns:`${ROOM_COL_WIDTH}px repeat(${columns.length}, ${dayWidth}px)`}}>
           <div className="sticky left-0 z-50 px-3 py-2 text-xs font-black uppercase tracking-wide flex items-center" style={{background:'var(--text)',color:'var(--action)',borderRight:`2px solid var(--text)`,borderBottom:`2px solid var(--text)`}}>Rooms</div>
           {columns.map((d,i)=>{const weekend=d.getDay()===0||d.getDay()===6;const isT=dateKey(d)===today;return <div key={dateKey(d)} ref={isT?todayRef:null} className="text-center py-1 relative" style={{background:isT?'var(--action)':weekend?'var(--grid-weekend)':'var(--surface)',color:'var(--text)',borderRight:`1px solid var(--border)`,borderBottom:`2px solid var(--text)`,height:52, fontWeight: isT?900:600}}><div className="text-[10px] uppercase font-black">{format(d,'EEE')}</div><div className="text-sm font-black">{d.getDate()}</div><div className="text-[9px]">{format(d,'MMM')}</div>{isT&&<span className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 text-[8px] px-2 py-0.5 rounded-full font-black" style={{background:'var(--text)',color:'var(--action)',border:'1px solid var(--action)'}}>TODAY</span>}</div>})}
         </div>
 
         {groupedRooms.map(([typeName, group])=><React.Fragment key={typeName}>
-          {group.map(room=>{const roomReservations=normalizedReservations.filter(r=>r.roomId===room.id); return <div key={room.id} className="grid relative" style={{gridTemplateColumns:`${ROOM_COL_WIDTH}px repeat(${columns.length}, ${DAY_WIDTH}px)`, minHeight: 44}}>
+          {group.map(room=>{const roomReservations=normalizedReservations.filter(r=>r.roomId===room.id); return <div key={room.id} className="grid relative" style={{gridTemplateColumns:`${ROOM_COL_WIDTH}px repeat(${columns.length}, ${dayWidth}px)`, minHeight: 44}}>
             <div className="sticky left-0 z-20 px-3 py-2 flex items-center gap-2" style={{background:'var(--surface)',borderRight:`2px solid var(--text)`,borderBottom:`1px solid var(--border)`}}><div><div className="flex items-center gap-2"><div className="font-black text-[13px]" style={{color:'var(--text)'}}>{room.number}</div><span className="rounded-full px-1.5 py-0.5 text-[9px] font-black" style={{background:'var(--bg)',color:'var(--muted)'}}>{roomReservations.length} stay{roomReservations.length===1?'':'s'}</span></div><div className="text-[10px] font-semibold truncate max-w-[160px]" style={{color:'var(--muted)'}}>{room.name || typeName}</div></div></div>
             {columns.map(d=>{const weekend=d.getDay()===0||d.getDay()===6;const key=dateKey(d);const target=dragTarget?.roomId===room.id&&dragTarget?.date===key;return <div key={key} onClick={()=>{if(!drag&&!suppressCellClick.current)openCreate(room,d)}} onDragOver={e=>handleCellDragOver(e,room,d)} onDrop={e=>handleCellDrop(e,room,d)} className="cursor-pointer" style={{background:target?'rgba(255,211,0,.25)':weekend?'var(--grid-weekend)':key===today?'rgba(255,211,0,.12)':'var(--surface)',borderRight:`1px solid var(--border)`,borderBottom:`1px solid var(--border)`, minHeight:44}}/>})}
             {roomReservations.map(rv=>{
@@ -315,8 +325,8 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
               const stayStatus=rv.plannerStatus || (rv.bookingStatus==='checked_out'?'checked_out':rv.bookingStatus==='checked_in'?'occupied':'confirmed');
               const ps=getReservationBarStyle(stayStatus); const pay=getPaymentStyle(rv.paymentStatus);
               const checked=rv.bookingStatus==='checked_out';
-              const left=ROOM_COL_WIDTH+l.start*DAY_WIDTH+4;
-              const width=Math.max(DAY_WIDTH*l.span-8,100);
+              const left=ROOM_COL_WIDTH+l.start*dayWidth+4;
+              const width=Math.max(dayWidth*l.span-8,100);
               return <div key={rv.id} draggable onDragStart={e=>beginDrag(e,rv)} onDragEnd={()=>{setDrag(null);setDragTarget(null)}} onClick={e=>{e.stopPropagation();openEdit(rv)}} className="reservation-bar absolute top-[6px] h-[32px] cursor-grab active:cursor-grabbing group print-color-exact" style={{left,width,background:ps.background,color:ps.color,border:`1.5px ${stayStatus==='optioned'?'dashed':'solid'} ${ps.border}`,borderLeft:`4px solid ${pay.border}`,opacity:getBarOpacity(rv.bookingStatus),zIndex:10}} title={`${rv.guestName} · ${ps.label} · ${rv.checkIn} → ${rv.checkOut}`}>
               <span className="truncate font-black text-[11px]" title={`${rv.guestName} · ${rv.checkIn} → ${rv.checkOut}`}>{rv.guestName || 'Guest'}</span><span className="ml-1.5 shrink-0 text-[10px] opacity-90 font-bold">{formatGuests(rv)}</span>
               <span className="ml-auto hidden group-hover:flex items-center gap-1 print:hidden"><button onClick={e=>{e.stopPropagation();openFolio(rv)}} className="w-5 h-5 rounded flex items-center justify-center" style={{background:'rgba(0,0,0,0.2)'}}><BedDouble size={10}/></button></span>
@@ -324,7 +334,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
           </div>})}
         </React.Fragment>)}
 
-        <div className="grid sticky bottom-0 z-30" style={{gridTemplateColumns:`${ROOM_COL_WIDTH}px repeat(${columns.length}, ${DAY_WIDTH}px)`,background:'var(--bg)',borderTop:'2px solid var(--text)'}}>
+        <div className="grid sticky bottom-0 z-30" style={{gridTemplateColumns:`${ROOM_COL_WIDTH}px repeat(${columns.length}, ${dayWidth}px)`,background:'var(--bg)',borderTop:'2px solid var(--text)'}}>
           {['arrivals','inHouse','checkOuts'].map((kind,idx)=><React.Fragment key={kind}><div className="sticky left-0 z-40 px-3 py-2 text-xs font-black" style={{background:'var(--text)',color:'var(--action)',borderBottom:idx===2?'none':`1px solid var(--border)`}}>{kind==='arrivals'?'Arrivals':kind==='inHouse'?'In-House':'Departures'}</div>{columns.map(d=>{const s=calculateDailyStats(normalizedReservations,d);const value=s[kind];return <div key={`${kind}-${dateKey(d)}`} className="text-center py-2 text-xs font-black" style={{color:'var(--text)',background:'var(--surface)',borderRight:`1px solid var(--border)`,borderBottom:idx===2?'none':`1px solid var(--border)`}}>{value}</div>})}</React.Fragment>)}
         </div>
       </div>
