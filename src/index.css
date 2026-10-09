@@ -21,6 +21,7 @@
     --surface-2: #F1F3F6;
     --border: #E2E6EB;
     --border-strong: #C5CCD5;
+    --control-border: var(--muted);
     --text: #0F1720;
     --muted: #5B6677;
 
@@ -97,6 +98,7 @@
     --surface-2: #1C222B;
     --border: #2A313B;
     --border-strong: #3A4350;
+    --control-border: var(--muted);
     --text: #F3F4F6;
     --muted: #9AA4B2;
 
@@ -139,7 +141,7 @@
   h1, h2, h3, h4, .font-heading { font-family: var(--font-heading); }
   button, a, input, select, textarea { transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease, box-shadow 140ms ease; }
   button { min-height: 36px; }
-  input, select, textarea { border-color: var(--border); }
+  input, select, textarea { border-color: var(--control-border); }
   :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
   ::selection { background: var(--brand-soft); color: var(--text); }
   @media (prefers-reduced-motion: reduce) {
@@ -152,9 +154,9 @@
   .global-card { background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow); border-radius: var(--radius); }
   .global-primary-button { background: var(--action); color: var(--action-text); min-height: 36px; border-radius: var(--radius-control); }
   .global-primary-button:hover { background: var(--action-hover); }
-  .global-secondary-button { background: var(--surface); border: 1px solid var(--border-strong); color: var(--text); min-height: 36px; border-radius: var(--radius-control); }
+  .global-secondary-button { background: var(--surface); border: 1px solid var(--control-border); color: var(--text); min-height: 36px; border-radius: var(--radius-control); }
   .global-secondary-button:hover { background: var(--surface-2); }
-  .theme-toggle { background: var(--surface); color: var(--text); border-color: var(--border); }
+  .theme-toggle { background: var(--surface); color: var(--text); border-color: var(--control-border); }
   .theme-toggle:hover { background: var(--surface-2); }
   .status-legend { color: var(--muted); }
   .legend-swatch { width: 13px; height: 13px; border-radius: 3px; border: 2px solid currentColor; display: inline-block; }
