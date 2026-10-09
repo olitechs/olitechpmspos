@@ -26,9 +26,21 @@ export const shiftService = {
   async getShiftReport(shiftId) {
     const {data:shift,error}=await supabase.from('pos_shifts').select('*').eq('id',shiftId).single();
     if(error) throw new Error(error.message);
-    const {data:rows,error:rowsError}=await supabase.from('pos_receipts').select('*').eq('shift_id',shiftId).eq('status','posted').order('created_at');
+    const {data:rows,error:rowsError}=await supabase.from('pos_receipts').select('*').eq('pos_shift_id',shiftId).eq('status','posted').order('created_at');
     if(rowsError) throw new Error(rowsError.message);
-    const summary = summarizePosReceipts(rows || [], shift.opening_cash || 0);
+    const receipts = rows || [];
+    const splitReceiptIds = receipts.filter((receipt) => receipt.payment_method === 'split').map((receipt) => receipt.id);
+    let splitPayments = [];
+    if (splitReceiptIds.length) {
+      const { data: allocations, error: allocationError } = await supabase
+        .from('pos_receipt_payments')
+        .select('receipt_id, payment_method, amount')
+        .eq('property_id', shift.property_id)
+        .in('receipt_id', splitReceiptIds);
+      if (allocationError) throw new Error(allocationError.message);
+      splitPayments = allocations || [];
+    }
+    const summary = summarizePosReceipts(receipts, shift.opening_cash || 0, splitPayments);
     return { shift, ...summary };
   },
   async listShifts(propertyId,date=null) {
