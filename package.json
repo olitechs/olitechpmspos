@@ -16,7 +16,8 @@
     "print-agent:run": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/print-agent/run-windows.ps1",
     "print-agent:dev": "node tools/print-agent/print-agent-v2.js",
     "print-agent:v2": "node tools/print-agent/print-agent-v2.js",
-    "check:contrast": "node tools/design-system/check-contrast.mjs"
+    "check:contrast": "node tools/design-system/check-contrast.mjs",
+    "test:architecture": "node --test src/data/modules/navArchitecture.test.js"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^17.0.0",
