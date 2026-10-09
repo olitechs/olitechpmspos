@@ -224,10 +224,9 @@ export const pmsService = {
 	async listReservationAuditEvents({ propertyId, reservationId }) {
 		const { data, error } = await supabase
 			.from('audit_logs')
-			.select('id, actor_id, action, old_value, new_value, created_at')
+			.select('id, actor_id, action, old_value, new_value, created_at, related_reservation_id')
 			.eq('property_id', propertyId)
-			.eq('entity_type', 'reservation')
-			.eq('entity_id', reservationId)
+			.eq('related_reservation_id', reservationId)
 			.order('created_at', { ascending: false })
 			.limit(50);
 		if (error) throw new Error(error.message);
