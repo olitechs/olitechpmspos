@@ -48,5 +48,8 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Audit theme contrast
+        run: npm run check:contrast
+
       - name: Build application
         run: npm run build
