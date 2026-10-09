@@ -1,0 +1,49 @@
+name: Temporary Phase 1 lockfile repair
+
+on:
+  push:
+    branches:
+      - feature/phase-1-design-system-shell
+
+permissions:
+  contents: write
+
+concurrency:
+  group: phase-1-lockfile-repair
+  cancel-in-progress: false
+
+jobs:
+  repair-lockfile:
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, 'chore(deps): synchronize package lock')"
+    steps:
+      - name: Checkout Phase 1 branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/phase-1-design-system-shell
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Regenerate lockfile from package manifest
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+      - name: Verify clean locked installation
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Commit synchronized lockfile
+        run: |
+          if git diff --quiet -- package-lock.json; then
+            echo "package-lock.json is already synchronized."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git commit -m "chore(deps): synchronize package lock"
+          git push origin HEAD:feature/phase-1-design-system-shell
