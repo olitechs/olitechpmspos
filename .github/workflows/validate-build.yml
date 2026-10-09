@@ -48,6 +48,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Test navigation and role access
+        run: npm run test:architecture
+
       - name: Audit theme contrast
         run: npm run check:contrast
 
