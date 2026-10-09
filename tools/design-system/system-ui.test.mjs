@@ -57,3 +57,8 @@ test('theme foundation includes light/dark semantic tokens and reduced-motion ha
     assert.match(theme, new RegExp(token + ':'));
   }
 });
+
+test('mobile sidebar exposes expanded state and closes with Escape', () => {
+  assert.match(sidebar, /aria-expanded=\{mobileOpen\}/, 'mobile navigation controls should expose expanded state');
+  assert.match(sidebar, /event\.key===\"Escape\"/, 'Escape should dismiss the open mobile navigation');
+});
