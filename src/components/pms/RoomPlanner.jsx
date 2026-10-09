@@ -9,7 +9,6 @@ import {
 import { toast } from 'sonner';
 import { pmsService } from '@/services/pmsService';
 import { Select } from '@/components/ui/select';
-import StatusLegend from '@/components/ui/StatusLegend';
 import { useAuth } from '@/lib/AuthContext';
 import { NAVY, TEAL, SAND, SURFACE, SURFACE2, BORDER, MUTED, DESTRUCTIVE } from '@/data/palette';
 
