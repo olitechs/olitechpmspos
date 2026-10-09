@@ -18,7 +18,7 @@ const amount = (value) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-export function summarizePosReceipts(rows = [], openingCash = 0) {
+export function summarizePosReceipts(rows = [], openingCash = 0, splitPayments = []) {
   const payments = {
     cash: { amount: 0, count: 0 },
     mpesa: { amount: 0, count: 0 },
@@ -26,18 +26,41 @@ export function summarizePosReceipts(rows = [], openingCash = 0) {
     bank: { amount: 0, count: 0 },
     room_charge: { amount: 0, count: 0 },
     other: { amount: 0, count: 0 },
+    split_unallocated: { amount: 0, count: 0 },
   };
   const categories = {
     food: { qty: 0, amount: 0 },
     drinks: { qty: 0, amount: 0 },
   };
 
+  const allocationsByReceipt = new Map();
+  (Array.isArray(splitPayments) ? splitPayments : []).forEach((allocation) => {
+    if (!allocation?.receipt_id) return;
+    const list = allocationsByReceipt.get(allocation.receipt_id) || [];
+    list.push(allocation);
+    allocationsByReceipt.set(allocation.receipt_id, list);
+  });
+
   const orders = (Array.isArray(rows) ? rows : [])
     .filter((receipt) => receipt && typeof receipt === 'object' && (!receipt.status || receipt.status === 'posted'))
     .map((receipt) => {
       const method = normalizePosPaymentMethod(receipt.payment_method);
-      payments[method].amount += amount(receipt.total);
-      payments[method].count += 1;
+      if (method === 'split') {
+        const allocations = allocationsByReceipt.get(receipt.id) || [];
+        if (allocations.length) {
+          allocations.forEach((allocation) => {
+            const allocationMethod = normalizePosPaymentMethod(allocation.payment_method);
+            payments[allocationMethod].amount += amount(allocation.amount);
+            payments[allocationMethod].count += 1;
+          });
+        } else {
+          payments.split_unallocated.amount += amount(receipt.total);
+          payments.split_unallocated.count += 1;
+        }
+      } else {
+        payments[method].amount += amount(receipt.total);
+        payments[method].count += 1;
+      }
 
       (Array.isArray(receipt.items) ? receipt.items : []).forEach((item) => {
         const qty = Math.max(0, amount(item?.qty ?? item?.quantity ?? 1));
@@ -53,7 +76,7 @@ export function summarizePosReceipts(rows = [], openingCash = 0) {
       return receipt;
     });
 
-  const totalSales = Object.values(payments).reduce((sum, payment) => sum + payment.amount, 0);
+  const totalSales = orders.reduce((sum, receipt) => sum + amount(receipt.total), 0);
   const cashSales = payments.cash.amount;
   return {
     orders,
