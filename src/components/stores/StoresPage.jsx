@@ -1,5 +1,5 @@
 import React,{useEffect,useState} from 'react';
-import {Building2,Plus,Trash2} from 'lucide-react';
+import {Building2,Trash2} from 'lucide-react';
 import {supabase} from '@/lib/supabaseClient';
 import {usePrinterStore} from '@/data/modules/printerStore';
 
