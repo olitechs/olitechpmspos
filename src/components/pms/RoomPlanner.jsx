@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { pmsService } from '@/services/pmsService';
 import { Select } from '@/components/ui/select';
 import { useAuth } from '@/lib/AuthContext';
+import { findRoomReservationOverlap, getPmsTodayDate, overlapsStayRanges } from '@/lib/pmsDateUtils';
 import { NAVY, TEAL, SAND, SURFACE, SURFACE2, BORDER, MUTED, DESTRUCTIVE } from '@/data/palette';
 
 export const PAYMENT_STATUS = ['fully_paid', 'partially_paid', 'not_paid'];
@@ -34,12 +35,11 @@ export const getReservationBarStyle = (status = 'occupied') => ({
 export const getPaymentStyle=(status)=>({fully_paid:{background:'var(--pay-total)',color:'var(--action-text)',border:'var(--pay-total)',label:'Total Paid'},partially_paid:{background:'var(--pay-partial)',color:'var(--action-text)',border:'var(--pay-partial)',label:'Partially Paid'},not_paid:{background:'var(--pay-none)',color:'var(--action-text)',border:'var(--pay-none)',label:'No Amount Paid'}}[status]||{background:'var(--pay-none)',color:'var(--action-text)',border:'var(--pay-none)',label:'No Amount Paid'});
 
 export function getBarOpacity(bookingStatus) { return bookingStatus === 'checked_out' ? 0.5 : 1; }
-export function isOverlapping(r1, r2) { return r1.roomId === r2.roomId && r1.checkIn < r2.checkOut && r2.checkIn < r1.checkOut; }
+export function isOverlapping(r1, r2) {
+  return r1.roomId === r2.roomId && overlapsStayRanges(r1.checkIn, r1.checkOut, r2.checkIn, r2.checkOut);
+}
 export function checkOverlap(reservationList, newRoomId, newCheckIn, newCheckOut, excludeReservationId) {
-  return reservationList.find((r) => {
-    const candidate = { roomId: r.roomId, checkIn: r.checkIn || r.arrival, checkOut: r.checkOut || r.departure };
-    return r.id !== excludeReservationId && isOverlapping(candidate, { roomId: newRoomId, checkIn: newCheckIn, checkOut: newCheckOut });
-  }) || null;
+  return findRoomReservationOverlap(reservationList, newRoomId, newCheckIn, newCheckOut, excludeReservationId);
 }
 export function calculateDailyStats(reservations, date) {
   const key = typeof date === 'string' ? date : format(date, 'yyyy-MM-dd');
@@ -102,7 +102,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   const plannerReservations = reservations;
   const { user } = useAuth();
   const propertyId = user?.property?.id;
-  const todayDate = useMemo(() => new Date(), []);
+  const todayDate = useMemo(() => getPmsTodayDate(), []);
   const today = dateKey(todayDate);
     const [month, setMonth] = useState(startOfMonth(todayDate));
   const [range, setRange] = useState(null);
