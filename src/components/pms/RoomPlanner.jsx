@@ -188,9 +188,8 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     if (!form.adults || form.adults < 1 || form.adults > 10) return 'Adults must be between 1 and 10.';
     if (form.kidsCount < 0 || form.kidsCount > 6) return 'Kids must be between 0 and 6.';
     if (form.kidsAges.length !== Number(form.kidsCount) || form.kidsAges.some(a => Number(a) < 0 || Number(a) > 17)) return 'Each child age must be between 0 and 17.';
-    if (form.paymentStatus === 'fully_paid' && Number(form.amountPaid) !== Number(form.totalAmount)) return 'Fully paid plannerReservations must have Amount Paid equal to Total Amount.';
-    if (Number(form.amountPaid) < 0 || Number(form.amountPaid) > Number(form.totalAmount)) return 'Amount Paid must be between 0 and Total Amount.';
-    if (form.paymentStatus === 'partially_paid' && Number(form.amountPaid) >= Number(form.totalAmount)) return 'Partially paid must be less than Total Amount.';
+    if (Number(form.amountPaid) < 0 || Number(form.amountPaid) > Number(form.totalAmount)) return 'Recorded payments cannot exceed the booking total. Adjust the booking total or reconcile payments in Guest Folio.';
+    if (Number(form.amountPaid) > 0 && Number(form.amountPaid) < Number(form.totalAmount) * 0.5) return 'Recorded payments are below the current 50% deposit threshold. Reconcile the folio before reducing the booking total.';
     const ids = form.joint ? form.selectedRoomIds : [form.roomId];
     if (!ids.length || ids.some(Boolean) === false) return 'Select at least one room.';
     for (const roomId of ids) {
