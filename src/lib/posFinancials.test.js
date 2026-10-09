@@ -43,3 +43,22 @@ test('shift summary tolerates absent or malformed optional receipt data', () => 
   assert.equal(summary.expectedCash, 0);
   assert.equal(summary.categories.food.qty, 0);
 });
+
+
+test('split receipts reconcile against tender allocations without double-counting sales', () => {
+  const summary = summarizePosReceipts([
+    { id: 'split-1', status: 'posted', payment_method: 'split', total: 1000, items: [{ qty: 2, price: 500, category: 'Food' }] },
+    { id: 'split-legacy', status: 'posted', payment_method: 'split', total: 200, items: [] },
+  ], 100, [
+    { receipt_id: 'split-1', payment_method: 'cash', amount: 400 },
+    { receipt_id: 'split-1', payment_method: 'mpesa', amount: 600 },
+  ]);
+
+  assert.equal(summary.totalSales, 1200);
+  assert.equal(summary.totalTransactions, 2);
+  assert.equal(summary.payments.cash.amount, 400);
+  assert.equal(summary.payments.mpesa.amount, 600);
+  assert.equal(summary.payments.split_unallocated.amount, 200);
+  assert.equal(summary.expectedCash, 500);
+  assert.equal(Object.values(summary.payments).reduce((sum, payment) => sum + payment.amount, 0), 1200);
+});
