@@ -62,3 +62,31 @@ test('split receipts reconcile against tender allocations without double-countin
   assert.equal(summary.expectedCash, 500);
   assert.equal(Object.values(summary.payments).reduce((sum, payment) => sum + payment.amount, 0), 1200);
 });
+
+
+test('split tender reconciliation exposes missing and mismatched allocations', () => {
+  const summary = summarizePosReceipts([
+    { id: 'underpaid', status: 'posted', payment_method: 'split', total: 1000, items: [] },
+    { id: 'unallocated', status: 'posted', payment_method: 'split', total: 250, items: [] },
+  ], 0, [
+    { receipt_id: 'underpaid', payment_method: 'cash', amount: 700 },
+    { receipt_id: 'underpaid', payment_method: 'mpesa', amount: 200 },
+  ]);
+
+  assert.equal(summary.reconciliation.splitReceiptCount, 2);
+  assert.equal(summary.reconciliation.splitUnallocatedCount, 1);
+  assert.equal(summary.reconciliation.splitAllocationVarianceCount, 1);
+  assert.equal(summary.reconciliation.splitAllocationVariance, 100);
+  assert.equal(summary.payments.split_unallocated.amount, 250);
+});
+
+test('unexpected split allocation method cannot crash shift reporting', () => {
+  const summary = summarizePosReceipts([
+    { id: 'split-1', status: 'posted', payment_method: 'split', total: 100, items: [] },
+  ], 0, [
+    { receipt_id: 'split-1', payment_method: 'split', amount: 100 },
+  ]);
+
+  assert.equal(summary.payments.other.amount, 100);
+  assert.equal(summary.totalSales, 100);
+});
