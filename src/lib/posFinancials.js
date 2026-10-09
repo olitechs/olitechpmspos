@@ -33,7 +33,7 @@ export function summarizePosReceipts(rows = [], openingCash = 0) {
   };
 
   const orders = (Array.isArray(rows) ? rows : [])
-    .filter((receipt) => !receipt?.status || receipt.status === 'posted')
+    .filter((receipt) => receipt && typeof receipt === 'object' && (!receipt.status || receipt.status === 'posted'))
     .map((receipt) => {
       const method = normalizePosPaymentMethod(receipt.payment_method);
       payments[method].amount += amount(receipt.total);
