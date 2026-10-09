@@ -15,14 +15,14 @@ test('shared operational UI exports the Phase 1 primitives', () => {
 });
 
 test('status badges use semantic theme tokens instead of fixed palette colors', () => {
-  const block = source.match(/const STATUS_TONES = \\{([\\s\\S]*?)\\n\\};/);
+  const block = source.match(/const STATUS_TONES = \{([\s\S]*?)\n\};/);
   assert.ok(block, 'STATUS_TONES map should exist');
   for (const tone of ['success', 'warning', 'danger', 'info', 'neutral']) {
     assert.match(block[1], new RegExp(tone + ':'));
   }
-  assert.match(block[1], /var\\(--success-text\\)/);
-  assert.match(block[1], /var\\(--warning-text\\)/);
-  assert.match(block[1], /var\\(--danger\\)/);
-  assert.match(block[1], /var\\(--info\\)/);
+  assert.match(block[1], /var\(--success-text\)/);
+  assert.match(block[1], /var\(--warning-text\)/);
+  assert.match(block[1], /var\(--danger\)/);
+  assert.match(block[1], /var\(--info\)/);
   assert.doesNotMatch(block[1], /(?:emerald|amber|red|blue)-(?:50|800|950|300)/);
 });
