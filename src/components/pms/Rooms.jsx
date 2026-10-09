@@ -3,7 +3,7 @@ import { usePms } from '@/data/PmsStore';
 import RoomPanel from '@/components/pms/RoomPanel';
 import RoomManagement from '@/components/pms/RoomManagement';
 import RoomPlanner from '@/components/pms/RoomPlanner';
-import { NAVY, TEAL, SAND, SURFACE, SURFACE2, BORDER, MUTED, DESTRUCTIVE } from '@/data/palette';
+import { NAVY, TEAL, SURFACE, SURFACE2, BORDER, MUTED, DESTRUCTIVE } from '@/data/palette';
 
 
 
