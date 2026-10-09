@@ -262,4 +262,19 @@ Do not perform a “big bang” replacement of `PmsStore.jsx` and `AppStore.jsx`
 - No destructive migration renumbering without database-state evidence.
 - No architecture change that removes an existing working hotel workflow.
 
-**Status: DRAFT - Awaiting Approval**
+
+
+## 9. Architecture Decision Record — 2026-10-09
+
+### ADR-001: Adopt the approved OliTechs yellow/charcoal semantic design tokens
+
+**Status:** Accepted for scoped Phase 1 by owner authorization recorded in `Memory.md`.
+
+**Decision:** The visual system uses charcoal/near-black for brand structure, `#FFC400` for primary actions with dark action text, neutral cool-gray surfaces, and semantic status tokens. This replaces the older blue/slate palette proposed in the draft design document. The source of truth is CSS custom properties in `src/index.css`; Tailwind and compatibility palette modules map to those tokens rather than defining competing hex values.
+
+**Constraints:** Preserve existing application workflows and role/module navigation. Do not change Room Planner behavior. Keep table/room/stay/payment states distinguishable by text or icon as well as color. Keep POS/kitchen touch controls at least 48px high while standard controls remain compact. Do not merge or alter existing PR #10.
+
+**Consequences:** Existing hard-coded palette references must be migrated incrementally. Any unmigrated component must continue to render using compatible semantic tokens. Contrast and responsive verification must be reported as completed only after measured/tested.
+
+
+**Status: Approved for scoped Phase 1 implementation — 2026-10-09**
