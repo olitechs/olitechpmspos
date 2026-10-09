@@ -4,8 +4,8 @@ import {
   BedDouble, Building2, CalendarDays, ChevronDown, ChevronLeft, ChevronRight,
   ClipboardCheck, ClipboardList, Grid3X3, HelpCircle, LayoutDashboard, LogOut,
   Menu, Package, Printer, Receipt, Search, Settings, ShoppingBag, ShoppingCart,
-  Sparkles, Store, Users, UtensilsCrossed, X, BarChart3, PlugZap, Boxes,
-  ChefHat, ArrowRightLeft, Banknote, Percent, ShieldCheck, Shirt, MonitorCog, LayoutGrid,
+  Sparkles, Store, Users, X, BarChart3, PlugZap, Boxes,
+  ChefHat, ArrowRightLeft, Banknote, Percent, ShieldCheck, MonitorCog, LayoutGrid,
 } from 'lucide-react';
 import { BACK_OFFICE_NAV, FRONT_OFFICE_NAV, STORES_NAV, normalizeAppRole } from '@/data/modules/navArchitecture';
 import { useAuth } from '@/lib/AuthContext';
