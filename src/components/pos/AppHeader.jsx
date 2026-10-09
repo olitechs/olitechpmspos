@@ -1,6 +1,6 @@
 import React from 'react';
 import ThemeToggle from '@/components/ui/ThemeToggle';
-import { NAVY, NAVY2, TEAL, TEAL_LIGHT, MUTED_DARK } from '@/data/themePalette';
+import { NAVY, TEAL, TEAL_LIGHT, MUTED_DARK } from '@/data/themePalette';
 
 const TABS = [
   { id: 'floor', label: 'Floor Plan', icon: '⬛' },
