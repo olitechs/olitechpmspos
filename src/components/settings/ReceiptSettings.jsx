@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Upload, Save, Building2, ShieldAlert } from 'lucide-react';
+import { Save, Building2, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { DEFAULT_RECEIPT_SETTINGS, getPropertySettings, savePropertySettings, uploadPropertyLogo } from '@/services/settingsService';
 import ReceiptPreview from '@/components/settings/ReceiptPreview';
