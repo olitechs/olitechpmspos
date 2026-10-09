@@ -6,6 +6,7 @@ const PAYMENT_METHOD_ALIASES = Object.freeze({
   card: 'card',
   bank: 'bank',
   other: 'other',
+  split: 'split',
 });
 
 export function normalizePosPaymentMethod(method) {
