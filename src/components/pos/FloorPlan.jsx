@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Circle, Grid2X2, Move, Pencil, Save, X } from 'lucide-react';
 import { useStore } from '@/data/AppStore';
 import { RESERVATIONS_TONIGHT, tableLabel } from '@/data/mockData';
-import { NAVY2, SAND, SURFACE, BORDER, BORDER_DARK, MUTED_DARK } from '@/data/themePalette';
+import { BORDER, MUTED_DARK } from '@/data/themePalette';
 
 const SHAPE_KEY = 'tableShapeMode';
 const POSITION_KEY = 'tableLayoutPositions';
