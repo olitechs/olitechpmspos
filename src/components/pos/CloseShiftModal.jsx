@@ -1,5 +1,5 @@
 import React,{useEffect,useMemo,useState}from'react';
-import{Download,Printer,X,LockKeyhole,AlertTriangle}from'lucide-react';
+import{Download,X,LockKeyhole,AlertTriangle}from'lucide-react';
 import{toast}from'sonner';
 import{useAuth}from'@/lib/AuthContext';
 import{authService,getSessionStaff}from'@/services/authService';
