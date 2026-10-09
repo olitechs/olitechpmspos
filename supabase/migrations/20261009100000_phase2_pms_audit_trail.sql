@@ -1,3 +1,8 @@
+alter table public.audit_logs add column if not exists entity_type text;
+alter table public.audit_logs add column if not exists entity_id uuid;
+create index if not exists audit_logs_property_entity_created_idx
+  on public.audit_logs(property_id, entity_type, entity_id, created_at desc);
+
 -- Phase 2: immutable audit events for reservation lifecycle and room-status changes.
 -- Keep the payload intentionally limited to operational fields; do not copy guest phone or free-text notes.
 create or replace function public.fn_audit_pms_reservation_change()
@@ -102,8 +107,8 @@ begin
     );
   end if;
 
-  insert into public.audit_logs(actor_id, property_id, action, old_value, new_value)
-  values (auth.uid(), v_property_id, v_action, v_old, v_new);
+  insert into public.audit_logs(actor_id, property_id, action, old_value, new_value, entity_type, entity_id)
+  values (auth.uid(), v_property_id, v_action, v_old, v_new, 'reservation', coalesce(new.id, old.id));
 
   if tg_op = 'DELETE' then return old; end if;
   return new;
@@ -124,13 +129,14 @@ set search_path = public, pg_temp
 as $$
 begin
   if old.status is not distinct from new.status then return new; end if;
-  insert into public.audit_logs(actor_id, property_id, action, old_value, new_value)
+  insert into public.audit_logs(actor_id, property_id, action, old_value, new_value, entity_type, entity_id)
   values (
     auth.uid(),
     new.property_id,
     'pms_room_status_changed',
     jsonb_build_object('room_id', old.id, 'room_number', old.number, 'status', old.status),
-    jsonb_build_object('room_id', new.id, 'room_number', new.number, 'status', new.status)
+    jsonb_build_object('room_id', new.id, 'room_number', new.number, 'status', new.status),
+    'room', new.id
   );
   return new;
 end;
