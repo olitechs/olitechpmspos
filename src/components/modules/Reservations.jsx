@@ -6,7 +6,7 @@ import {
 import { usePms } from '@/data/PmsStore';
 import { useAuth } from '@/lib/AuthContext';
 import { pmsService } from '@/services/pmsService';
-import { getPmsDateKey, overlapsStayRanges } from '@/lib/pmsDateUtils';
+import { getPmsDateKey } from '@/lib/pmsDateUtils';
 
 const STATUS = {
   booked: 'Booked',
@@ -21,10 +21,6 @@ function money(value) {
 
 function todayIso() {
   return getPmsDateKey();
-}
-
-function overlaps(aStart, aEnd, bStart, bEnd) {
-  return overlapsStayRanges(aStart, aEnd, bStart, bEnd);
 }
 
 function Field({ label, children }) {
