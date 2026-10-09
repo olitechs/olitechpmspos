@@ -18,34 +18,27 @@ Existing design references:
 
 ## 2. Approved Target Palette
 
-> **Important:** These are Phase 1 target tokens. Phase 0 does not modify the live palette files.
+| Token | Light | Dark | Usage |
+|---|---|---|---|
+| Brand dark | `#0B0F14` | `#F3F4F6` | Brand structure / inverse text |
+| Brand charcoal | `#1F252D` | `#161B22` | Navigation and strong surfaces |
+| Action / brand primary | `#FFC400` | `#FFC400` | Primary actions; always use dark action text |
+| Action hover | `#E6B000` | `#E6B000` | Primary action hover |
+| Action text | `#0B0F14` | `#0B0F14` | Text on yellow action surfaces; never white |
+| Brand soft | `#FFF4C2` | `#3A2F00` | Selected/soft brand surface |
+| Background | `#F6F7F9` | `#0E1116` | Main application background |
+| Surface | `#FFFFFF` | `#161B22` | Cards, dialogs, menus |
+| Surface 2 | `#F1F3F6` | `#1C222B` | Secondary surfaces |
+| Border | `#E2E6EB` | `#2A313B` | Default separators and controls |
+| Strong border | `#C5CCD5` | `#3A4350` | Strong separators |
+| Text | `#0F1720` | `#F3F4F6` | Main text |
+| Muted text | `#5B6677` | `#9AA4B2` | Secondary text |
+| Info / focus | `#2563EB` | `#60A5FA` | Information and 3px keyboard focus ring |
+| Success | `#059669` | `#34D399` | Success states |
+| Warning | `#D97706` | `#FBBF24` | Attention states |
+| Danger | `#DC2626` | `#F87171` | Errors and destructive actions |
 
-| Token | Hex | Usage |
-|---|---|---|
-| Primary Slate | `#0F172A` | Primary text, strong navigation, primary brand anchor |
-| Accent Blue | `#2563EB` | Primary action, selected state, links |
-| Background | `#F8FAFC` | Main application background |
-| Border | `#E2E8F0` | Cards, tables, inputs, dividers |
-| Success | `#059669` | Ready, paid, confirmed, healthy |
-| Warning | `#D97706` | Pending, attention, reconciliation |
-| Danger | `#DC2626` | Errors, destructive actions, blocked states |
-
-### Existing palette conflict
-
-The current `src/data/palette.js` defines:
-
-- `NAVY #090C11`
-- `NAVY2 #262B32`
-- `TEAL #FFD300`
-- `TEAL_DARK #FFD100`
-- `TEAL_LIGHT #FFEE32`
-- `SAND #F5F3EF`
-- `SURFACE #FFFFFF`
-- `BORDER #E5E5E5`
-
-and `tailwind.config.js` contains yellow/black tokens such as `primaryHex #FFD300`.
-
-Therefore Phase 1 must migrate tokens deliberately rather than mixing the two palettes.
+This palette supersedes the previous blue/slate proposal. CSS variables in `src/index.css` are canonical; Tailwind and `src/data/palette.js` / `src/data/themePalette.js` are mappings/compatibility exports, not separate sources of truth. Status must include readable text and/or an icon, not color alone. Do not use yellow text on light surfaces or decorative gradients.
 
 ## 3. Typography
 
@@ -319,4 +312,4 @@ Avoid:
 - [ ] Reservation actions remain discoverable.
 - [ ] Dark mode, if implemented later, uses semantic tokens rather than duplicated component colors.
 
-**Status: DRAFT - Awaiting Approval**
+**Status: Approved for scoped Phase 1 implementation — 2026-10-09**
