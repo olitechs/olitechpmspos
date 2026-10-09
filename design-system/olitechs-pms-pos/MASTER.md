@@ -15,20 +15,24 @@ Premium minimalism with restrained hospitality character. Use crisp surfaces, 1p
 Avoid glassmorphism, decorative gradients, oversized hero cards, excessive pills, and hover-only critical actions.
 
 ## Brand
-Black #090C11
-Charcoal #262B32
-Brand Yellow #FFD300
-Yellow Dark #FFD100
-Yellow Light #FFEE32
-App Background #F8F8F7
+
+Charcoal / near-black #0B0F14 and #1F252D
+Brand Yellow #FFC400 (primary actions use dark text #0B0F14)
+Action Hover #E6B000
+Brand Soft #FFF4C2
+App Background #F6F7F9
 Surface #FFFFFF
-Secondary Surface #F2F2F2
-Border #E5E5E5
-Strong Border #757B81
-Primary Text #090C11
-Secondary Text #757B81
-Destructive #D32F2F
-Warning #EF6C00
+Secondary Surface #F1F3F6
+Border #E2E6EB
+Strong Border #C5CCD5
+Primary Text #0F1720
+Secondary Text #5B6677
+Info / Focus #2563EB
+Success #059669
+Warning #D97706
+Destructive #DC2626
+
+This approved palette supersedes the previous blue/slate palette proposal. CSS variables in `src/index.css` are the single source of truth; do not introduce duplicate hard-coded palette systems. Use dark text on yellow actions, never white. Status must include a label and/or icon as well as color.
 
 ## Typography
 System sans for UI. Page titles 20–24px. Section titles 13–15px. Body 14–15px. Operational labels 11–12px. Metrics 20–28px with tabular/monospace numerals.
