@@ -221,6 +221,18 @@ export const pmsService = {
 		return data;
 	},
 
+	async listReservationAuditEvents({ propertyId, reservationId }) {
+		const { data, error } = await supabase
+			.from('audit_logs')
+			.select('id, actor_id, action, old_value, new_value, created_at, related_reservation_id')
+			.eq('property_id', propertyId)
+			.eq('related_reservation_id', reservationId)
+			.order('created_at', { ascending: false })
+			.limit(50);
+		if (error) throw new Error(error.message);
+		return data || [];
+	},
+
 	async getFolio(reservationId) {
 		const [{ data: charges, error: chargesError }, { data: totals, error: totalsError }] = await Promise.all([
 			supabase.from('folio_charges').select('*').eq('reservation_id', reservationId).order('created_at'),

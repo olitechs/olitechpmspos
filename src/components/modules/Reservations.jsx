@@ -1,9 +1,12 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   CalendarDays, CheckCircle2, ChevronRight, DoorOpen, LogOut, MoveRight,
   Plus, RefreshCw, Search, Trash2, X
 } from 'lucide-react';
 import { usePms } from '@/data/PmsStore';
+import { useAuth } from '@/lib/AuthContext';
+import { pmsService } from '@/services/pmsService';
+import { getPmsDateKey } from '@/lib/pmsDateUtils';
 
 const STATUS = {
   booked: 'Booked',
@@ -17,11 +20,7 @@ function money(value) {
 }
 
 function todayIso() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function overlaps(aStart, aEnd, bStart, bEnd) {
-  return aStart < bEnd && bStart < aEnd;
+  return getPmsDateKey();
 }
 
 function Field({ label, children }) {
@@ -38,6 +37,8 @@ const buttonClass = "inline-flex items-center justify-center gap-2 rounded-lg px
 
 export default function Reservations() {
   const pms = usePms();
+  const { user } = useAuth();
+  const propertyId = user?.property?.id;
   const [selectedDate, setSelectedDate] = useState(todayIso());
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
@@ -200,7 +201,7 @@ export default function Reservations() {
       </div>
 
       {showNew && <NewReservationModal rooms={availableRooms} onClose={() => setShowNew(false)} onCreate={createReservation} busy={busy} />}
-      {selected && <ReservationDrawer reservation={selected} rooms={rooms} pms={pms} busy={busy} onClose={() => setSelected(null)} onRun={run} />}
+      {selected && <ReservationDrawer reservation={selected} rooms={rooms} pms={pms} propertyId={propertyId} busy={busy} onClose={() => setSelected(null)} onRun={run} />}
     </div>
   );
 }
@@ -259,10 +260,28 @@ function NewReservationModal({ rooms, onClose, onCreate, busy }) {
   );
 }
 
-function ReservationDrawer({ reservation: r, rooms, pms, busy, onClose, onRun }) {
+function ReservationDrawer({ reservation: r, rooms, pms, propertyId, busy, onClose, onRun }) {
   const [moveRoomId, setMoveRoomId] = useState(r.roomId || '');
   const [newDeparture, setNewDeparture] = useState(r.checkOut || '');
-  const [amountPaid, setAmountPaid] = useState(String(r.amountPaid || 0));
+  const [auditEvents, setAuditEvents] = useState([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditError, setAuditError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    if (!propertyId || !r?.id) {
+      setAuditEvents([]);
+      setAuditLoading(false);
+      return undefined;
+    }
+    setAuditLoading(true);
+    setAuditError('');
+    pmsService.listReservationAuditEvents({ propertyId, reservationId: r.id })
+      .then((rows) => { if (active) setAuditEvents(rows); })
+      .catch((error) => { if (active) { setAuditEvents([]); setAuditError(error.message || 'Audit history is unavailable.'); } })
+      .finally(() => { if (active) setAuditLoading(false); });
+    return () => { active = false; };
+  }, [propertyId, r?.id]);
 
   const save = async (patch) => {
     await onRun(() => pms.updatePlannerReservation(r.id, {
@@ -277,7 +296,7 @@ function ReservationDrawer({ reservation: r, rooms, pms, busy, onClose, onRun })
       kidsCount: patch.kidsCount ?? r.kidsCount,
       kidsAges: patch.kidsAges ?? r.kidsAges,
       totalAmount: patch.totalAmount ?? r.totalAmount,
-      amountPaid: patch.amountPaid ?? Number(amountPaid || 0),
+      amountPaid: patch.amountPaid ?? Number(r.amountPaid || 0),
       notes: patch.notes ?? r.notes,
     }));
   };
@@ -326,14 +345,29 @@ function ReservationDrawer({ reservation: r, rooms, pms, busy, onClose, onRun })
           </section>
 
           <section className="rounded-xl border border-slate-200 p-4">
-            <h3 className="mb-3 text-sm font-bold text-slate-950">Payment status</h3>
+            <h3 className="mb-2 text-sm font-bold text-slate-950">Booking payment metadata</h3>
             <div className="grid gap-3 sm:grid-cols-2">
-              <Info label="Total" value={money(r.totalAmount)} />
-              <Field label="Amount paid"><input type="number" min="0" className={inputClass} value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} /></Field>
+              <Info label="Booking total" value={money(r.totalAmount)} />
+              <Info label="Booking payment status" value={(r.paymentStatus || 'not_paid').replace(/_/g, ' ')} />
             </div>
-            <button disabled={busy} className={buttonClass + " mt-3 bg-slate-950 text-white"} onClick={() => save({ amountPaid: Number(amountPaid || 0), paymentStatus: Number(amountPaid || 0) >= Number(r.totalAmount || 0) && Number(r.totalAmount || 0) > 0 ? 'fully_paid' : Number(amountPaid || 0) > 0 ? 'partially_paid' : 'not_paid' })}>Update payment status</button>
+            <p className="mt-3 text-xs leading-5 text-slate-500">Actual payments must be posted and reconciled in Guest Folio. This reservation screen does not create or edit payment transactions.</p>
           </section>
 
+          <section className="rounded-xl border border-slate-200 p-4">
+            <div className="mb-3 flex items-center justify-between gap-3"><h3 className="text-sm font-bold text-slate-950">Reservation audit history</h3><span className="text-xs text-slate-500">{auditEvents.length} events</span></div>
+            {auditLoading ? <p className="text-sm text-slate-500">Loading audit history…</p> :
+              auditError ? <p className="text-xs leading-5 text-slate-500">{auditError} Audit visibility is restricted to property administrators.</p> :
+              auditEvents.length ? <ol className="space-y-3">{auditEvents.map((event) => {
+                const snapshot = event.new_value || event.old_value || {};
+                const room = rooms.find((item) => item.id === snapshot.room_id);
+                const details = [snapshot.guest_name || r.guestName, room ? `Room ${room.number}` : null, snapshot.arrival && snapshot.departure ? `${snapshot.arrival} → ${snapshot.departure}` : null, snapshot.status, snapshot.amount != null ? `KES ${Number(snapshot.amount).toLocaleString('en-KE')}` : null, snapshot.method, snapshot.source, snapshot.description].filter(Boolean).join(' · ');
+                return <li key={event.id} className="border-l-2 border-slate-300 pl-3">
+                  <div className="text-xs font-semibold capitalize text-slate-900">{String(event.action || 'reservation event').replace(/^pms_/, '').replace(/_/g, ' ')}</div>
+                  <div className="mt-0.5 text-[11px] text-slate-500">{new Date(event.created_at).toLocaleString('en-KE', { timeZone: 'Africa/Nairobi' })} · {event.actor_id ? `Staff ${event.actor_id.slice(0, 8)}` : 'System / integration'}</div>
+                  {details && <div className="mt-1 text-xs text-slate-600">{details}</div>}
+                </li>;
+              })}</ol> : <p className="text-sm text-slate-500">No recorded changes for this reservation.</p>}
+          </section>
           <div className="flex flex-wrap gap-2 border-t border-slate-200 pt-4">
             {r.status === 'booked' && <button disabled={busy} className={buttonClass + " bg-[#FFD300] text-slate-950"} onClick={checkIn}><DoorOpen size={15} /> Check in</button>}
             {r.status === 'checked-in' && <button disabled={busy} className={buttonClass + " bg-slate-950 text-white"} onClick={checkOut}><LogOut size={15} /> Check out</button>}

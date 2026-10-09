@@ -164,6 +164,7 @@ export function PmsProvider({ children }) {
 				await reload();
 			} catch (err) {
 				setError(err.message);
+				throw err;
 			}
 		},
 		[propertyId, reload]
@@ -176,6 +177,7 @@ export function PmsProvider({ children }) {
 				await reload();
 			} catch (err) {
 				setError(err.message);
+				throw err;
 			}
 		},
 		[reload]
@@ -188,6 +190,7 @@ export function PmsProvider({ children }) {
 				await reload();
 			} catch (err) {
 				setError(err.message);
+				throw err;
 			}
 		},
 		[reload]
@@ -241,6 +244,7 @@ export function PmsProvider({ children }) {
 				await reload();
 			} catch (err) {
 				setError(err.message);
+				throw err;
 			}
 		},
 		[reload]
@@ -253,6 +257,7 @@ export function PmsProvider({ children }) {
 				await reload();
 			} catch (err) {
 				setError(err.message);
+				throw err;
 			}
 		},
 		[reload]

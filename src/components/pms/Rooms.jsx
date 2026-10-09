@@ -12,6 +12,13 @@ export default function Rooms() {
   const pms = usePms();
   const [tab, setTab] = useState('planner');
   const [openRoom, setOpenRoom] = useState(null);
+  const [actionError, setActionError] = useState('');
+
+  const runAction = async (action) => {
+    setActionError('');
+    try { await action(); }
+    catch (error) { setActionError(error?.message || 'The operation failed.'); }
+  };
 
   return (
     <div className="flex flex-col h-full overflow-hidden" style={{ background: 'var(--bg)' }}>
@@ -37,6 +44,7 @@ export default function Rooms() {
 
       {tab === 'reservations' && (
         <div className="flex-1 overflow-y-auto p-4">
+          {actionError && <div role="alert" className="mb-3 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">{actionError}</div>}
           <div className="rounded-2xl overflow-hidden" style={{ background: SURFACE, border: `1px solid ${BORDER}` }}>
             <table className="w-full text-sm">
               <thead>
@@ -64,10 +72,10 @@ export default function Rooms() {
                     </td>
                     <td className="px-4 py-3">
                       {rv.status === 'booked' && (
-                        <button onClick={() => pms.checkInReservation(rv.id)} className="px-3 py-1.5 rounded-lg text-xs font-bold" style={{ background: TEAL, color: '#090C11' }}>Check In</button>
+                        <button onClick={() => runAction(() => pms.checkInReservation(rv.id))} className="px-3 py-1.5 rounded-lg text-xs font-bold" style={{ background: TEAL, color: '#090C11' }}>Check In</button>
                       )}
                       {rv.status === 'booked' && (
-                        <button onClick={() => pms.removeReservation(rv.id)} className="px-3 py-1.5 rounded-lg text-xs font-semibold ml-1" style={{ background: SURFACE, border: `1px solid ${BORDER}`, color: DESTRUCTIVE }}>Remove</button>
+                        <button onClick={() => runAction(() => pms.removeReservation(rv.id))} className="px-3 py-1.5 rounded-lg text-xs font-semibold ml-1" style={{ background: SURFACE, border: `1px solid ${BORDER}`, color: DESTRUCTIVE }}>Remove</button>
                       )}
                     </td>
                   </tr>

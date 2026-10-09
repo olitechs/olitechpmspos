@@ -120,3 +120,13 @@ Adds server-side fired kitchen/bar orders and KDS status transitions (`new` → 
 
 ### 0037 — Persistent printer configuration
 Persists property-level printer definitions, routing purposes, centers, and connection settings. Live connection state is intentionally reset to `Not Configured` on reload because USB/Bluetooth/network connectivity is device-specific.
+
+
+## Phase 2 PMS integrity migrations — 2026-10-09
+
+After the existing `20261008084000_phase2_folio_checkout_housekeeping.sql` migration, apply the Phase 2 migrations in timestamp order:
+
+1. `20261009100000_phase2_pms_audit_trail.sql` — adds indexed reservation/room entity references to audit events and records reservation lifecycle plus room-status changes.
+2. `20261009103000_phase2_folio_payment_reconciliation.sql` — allows qualifying booking deposits to be posted through the front-desk payment RPC, keeps folio balances non-negative before the first room charge, and ensures checkout writes a valid reservation payment status while enforcing the outstanding-balance check.
+
+Both migrations are additive/re-runnable. Test them on a non-production Supabase project before production rollout. The repository CI build does not execute these SQL functions against a live Supabase database, so database workflow acceptance remains pending until migration application and end-to-end testing.

@@ -201,3 +201,8 @@ The implementation brief's approved yellow/charcoal palette supersedes the older
 The current repository already has an open PR #10 named `feat: Phase 1 foundation architecture and security`. This UI/design-system work is isolated on `feature/phase-1-design-system-shell`; do not alter or close PR #10.
 
 **Authorization status: APPROVED FOR SCOPED PHASE 1 ONLY — 2026-10-09.**
+
+
+## 12. Owner Authorization — Phase 2 — 2026-10-09
+
+The owner explicitly authorized merging Phase 1 and starting Phase 2. Phase 2 is isolated on `feature/phase-2-core-pms` and covers Front Office / Core PMS integrity: timezone-safe date handling, reservation overlap and concurrency safety, Room Planner month and rolling 15-day views, check-in/out, room moves and stay extensions, folio balance enforcement/posting, housekeeping synchronization, and auditable operations. Preserve existing functionality and do not touch POS financial behavior outside a required PMS integration fix. No Phase 2 changes are authorized on `main`; use a dedicated PR and stop at the Phase 2 acceptance gate.
