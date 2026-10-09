@@ -1,4 +1,4 @@
-import React,{useMemo,useState}from"react";
+import React,{useEffect,useMemo,useState}from"react";
 import{useLocation,useNavigate}from"react-router-dom";
 import{ChevronLeft,ChevronRight,ChevronDown,Menu,X,Building2,Search,LogOut}from"lucide-react";
 import{useAuth}from"@/lib/AuthContext";
@@ -14,6 +14,7 @@ export default function Sidebar({activeModule,onModuleChange,staffRole}){
  const{user,logout}=useAuth();const navigate=useNavigate();const location=useLocation();
  const[collapsed,setCollapsedState]=useState(()=>{try{return localStorage.getItem("olitech_sidebar_collapsed")==="true"}catch{return false}});
  const[mobileOpen,setMobileOpen]=useState(false);const[query,setQuery]=useState("");const[ownerOpen,setOwnerOpen]=useState(false);
+ useEffect(()=>{if(!mobileOpen)return;const onKeyDown=event=>{if(event.key==="Escape")setMobileOpen(false)};window.addEventListener("keydown",onKeyDown);return()=>window.removeEventListener("keydown",onKeyDown)},[mobileOpen]);
  const setCollapsed=v=>{setCollapsedState(v);try{localStorage.setItem("olitech_sidebar_collapsed",String(v))}catch{}};
  const role=normalizeStaffRole(staffRole||getRole(user));const assigned=useMemo(()=>getAssigned(user,role),[user,role]);const master=!!user?.isPlatformOwner||MASTER_ROLES.has(role);
  const canAccess=item=>master||(item.roles.includes(role)&&(itemModule(item)==="admin"||canUseModule(user,itemModule(item))));
@@ -48,8 +49,8 @@ export default function Sidebar({activeModule,onModuleChange,staffRole}){
   <div className={`shrink-0 border-t border-[var(--border)] ${collapsed?"p-2":"p-3"}`}>
    <button type="button" onClick={()=>setOwnerOpen(v=>!v)} className={`flex w-full items-center rounded-xl bg-[var(--brand-surface)] ${collapsed?"justify-center p-2":"gap-3 p-2"}`}><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--brand-primary)] text-[11px] font-black text-[var(--text)]">{initials}</div>{!collapsed&&<div className="min-w-0 flex-1 text-left"><div className="truncate text-[12px] font-bold text-[var(--text)]">{displayName}</div><div className="truncate text-[10px] text-[var(--muted)]">{roleLabel}</div></div>}{!collapsed&&<ChevronDown size={15} className="text-[var(--muted)]"/>}</button>{ownerOpen&&!collapsed&&<div className="mt-2 overflow-hidden rounded-xl border border-[var(--border)] bg-white shadow-lg"><button onClick={()=>navigate("/admin")} className="block w-full px-3 py-2 text-left text-xs hover:bg-[var(--brand-soft)]">Account</button><button onClick={logout} className="block w-full px-3 py-2 text-left text-xs text-[var(--danger)] hover:bg-[var(--brand-soft)]">Sign out</button></div>}
   </div>
-  <button type="button" onClick={()=>setMobileOpen(false)} className="absolute right-2 top-3 rounded-lg p-2 text-[var(--muted)] hover:bg-[var(--bg)] md:hidden" aria-label="Close navigation"><X size={18}/></button>
+  <button type="button" onClick={()=>setMobileOpen(false)} className="absolute right-2 top-3 rounded-lg p-2 text-[var(--muted)] hover:bg-[var(--bg)] md:hidden" aria-label="Close navigation" aria-expanded={mobileOpen}><X size={18}/></button>
  </aside>;
 
- return <>{mobileOpen&&<button type="button" onClick={()=>setMobileOpen(false)} aria-label="Close navigation" className="fixed inset-0 z-40 bg-[var(--brand-dark)]/30 backdrop-blur-sm md:hidden"/>}{sidebar}<button type="button" onClick={()=>setMobileOpen(true)} className="fixed left-3 top-3 z-30 rounded-xl border border-[var(--border)] bg-white p-2.5 text-[var(--text)] shadow-sm md:hidden" aria-label="Open navigation"><Menu size={20}/></button></>;
+ return <>{mobileOpen&&<button type="button" onClick={()=>setMobileOpen(false)} aria-label="Close navigation" className="fixed inset-0 z-40 bg-[var(--brand-dark)]/30 backdrop-blur-sm md:hidden"/>}{sidebar}<button type="button" onClick={()=>setMobileOpen(true)} className="fixed left-3 top-3 z-30 rounded-xl border border-[var(--border)] bg-white p-2.5 text-[var(--text)] shadow-sm md:hidden" aria-label="Open navigation" aria-expanded={mobileOpen}><Menu size={20}/></button></>;
 }
