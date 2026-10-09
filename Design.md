@@ -312,4 +312,29 @@ Avoid:
 - [ ] Reservation actions remain discoverable.
 - [ ] Dark mode, if implemented later, uses semantic tokens rather than duplicated component colors.
 
+
+
+## 12. Phase 1 Contrast Spot-Check
+
+Contrast ratios calculated from the specified sRGB tokens (WCAG relative luminance formula):
+
+| Pair | Ratio | Result |
+|---|---:|---|
+| Light primary text on white | 18.05:1 | Pass AA text |
+| Light muted text on white | 5.81:1 | Pass AA text |
+| Dark primary text on dark surface | 15.72:1 | Pass AA text |
+| Dark muted text on dark surface | 6.86:1 | Pass AA text |
+| Dark action text on brand yellow | 12.03:1 | Pass AA text |
+| Light warning text on white | 5.02:1 | Pass AA text |
+| Light success text on white | 5.48:1 | Pass AA text |
+| Default light border `#E2E6EB` on white | 1.25:1 | Fails 3:1 UI boundary contrast if used alone |
+| Strong light border `#C5CCD5` on white | 1.62:1 | Fails 3:1 UI boundary contrast if used alone |
+| Default dark border `#2A313B` on dark surface | 1.32:1 | Fails 3:1 UI boundary contrast if used alone |
+| Strong dark border `#3A4350` on dark surface | 1.73:1 | Fails 3:1 UI boundary contrast if used alone |
+
+The approved border colors are retained for cards and dividers, but interactive controls use the separate semantic `--control-border: var(--muted)` token and a visible 3px focus ring. This spot-check is not a full page-level WCAG audit; all component states and migrated screens still require browser verification.
+
+**Phase 1 implementation status:** token and documentation alignment plus shared shell refactor are in progress. This phase is not accepted until build/lint/typecheck, role-route regression, responsive review, font packaging, shared component adoption, and the remaining sidebar consolidation are verified.
+
+
 **Status: Approved for scoped Phase 1 implementation — 2026-10-09**
