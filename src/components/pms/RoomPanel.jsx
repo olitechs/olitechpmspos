@@ -46,9 +46,17 @@ export default function RoomPanel({ room, onClose }) {
 		finally { setBusy(false); }
 	};
 
-	const setStatus = (status) => {
-		pms.setRoomStatus(room.id, status);
-		onClose();
+	const setStatus = async (status) => {
+		setBusy(true);
+		setError('');
+		try {
+			await pms.setRoomStatus(room.id, status);
+			onClose();
+		} catch (err) {
+			setError(err.message || 'Unable to update room status.');
+		} finally {
+			setBusy(false);
+		}
 	};
 
 	return (
