@@ -7,6 +7,7 @@ import {
   canAccessApp,
   getDefaultApp,
   getPackageModules,
+  normalizeAppPath,
 } from './navArchitecture.js';
 
 test('navigation app identifiers and paths are unique', () => {
@@ -48,4 +49,18 @@ test('default workspace selection never bypasses an explicit package restriction
   assert.equal(getDefaultApp('front_desk'), 'frontoffice');
   assert.equal(getDefaultApp('admin', 'none'), null);
   assert.equal(getDefaultApp('admin', 'unrecognized-tier'), null);
+});
+
+test('route normalization preserves root and removes only trailing slashes and query/hash suffixes', () => {
+  assert.equal(normalizeAppPath('/'), '/');
+  assert.equal(normalizeAppPath('/frontoffice/room-planner/'), '/frontoffice/room-planner');
+  assert.equal(normalizeAppPath('/backoffice/reports/sales///?range=month'), '/backoffice/reports/sales');
+  assert.equal(normalizeAppPath('stores/settings/'), '/stores/settings');
+});
+
+test('canonical stores workspace ID is consistent across package tiers', () => {
+  assert.ok(getPackageModules('premium').includes('stores'));
+  assert.ok(getPackageModules('professional').includes('stores'));
+  assert.equal(canAccessApp('store_manager', 'stores', 'premium'), true);
+  assert.equal(canAccessApp('store_manager', 'stores', 'professional'), true);
 });
