@@ -7,6 +7,7 @@ const app = read('../../App.jsx');
 const shell = read('../../components/layout/AppShell.jsx');
 const topNav = read('../../components/layout/TopAppNav.jsx');
 const frontLayout = read('../../components/layout/FrontOfficeLayout.jsx');
+const posLayout = read('../../components/layout/POSLayout.jsx');
 const posApp = read('../../pages/POSApp.jsx');
 const navArchitecture = read('./navArchitecture.js');
 const sidebarNavigation = read('./sidebarNavigation.js');
@@ -42,11 +43,22 @@ test('workspace layouts own one shell and embedded module routes suppress legacy
   assert.match(app, /path="\/backoffice" element={<BackOfficeLayout\/>}/);
   assert.match(app, /path="\/frontoffice" element={<FrontOfficeLayout\/>}/);
   assert.match(app, /path="\/stores" element={<StoresLayout\/>}/);
+  assert.match(app, /path="\/pos" element={<POSLayout\/>}/);
+  assert.match(posLayout, /<AppShell workspace="pos" \/>/);
+  assert.match(shell, /workspace !== 'pos' && <aside/);
+  assert.match(shell, /workspace === 'pos' \? 'w-full min-h-full'/);
   assert.match(shell, /<TopAppNav\s*\/>/);
   assert.match(frontLayout, /return <AppShell workspace="frontoffice" \/>/);
   assert.match(posApp, /!embedded && <Sidebar/);
   assert.match(posApp, /showTopBar && !embedded && <TopBar/);
   assert.match(posApp, /isMobile && !embedded && <POSTabs/);
+});
+
+test('standalone POS uses the global workspace switcher and hides the generic duplicate sidebar', () => {
+  assert.match(app, /path="\\/pos" element={<POSLayout\\/>}><Route index element={<POSApp initialModule="pos" embedded workspaceModule="pos"\\/>}/><\\/Route>/);
+  assert.match(posLayout, /AppShell workspace="pos"/);
+  assert.match(shell, /if \(workspace === 'pos'\) return \[\]/);
+  assert.match(shell, /workspace !== 'pos' && <aside/);
 });
 
 test('Room Planner is the deliberate full-screen shell exception, including trailing slash', () => {
