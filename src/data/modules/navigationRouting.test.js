@@ -9,6 +9,7 @@ const topNav = read('../../components/layout/TopAppNav.jsx');
 const frontLayout = read('../../components/layout/FrontOfficeLayout.jsx');
 const posLayout = read('../../components/layout/POSLayout.jsx');
 const posApp = read('../../pages/POSApp.jsx');
+const inventoryOperations = read('../../components/modules/InventoryOperations.jsx');
 const navArchitecture = read('./navArchitecture.js');
 const sidebarNavigation = read('./sidebarNavigation.js');
 
@@ -73,4 +74,29 @@ test('active navigation comparisons use normalized paths for direct URLs and tra
   assert.match(shell, /event\.key === 'Escape'/);
   assert.doesNotMatch(shell, /location\.pathname === path/);
   assert.doesNotMatch(shell, /location\.pathname === item\.path/);
+});
+
+
+test('inventory destinations select their own operational section instead of defaulting to Locations', () => {
+  for (const [path, tab] of [
+    ['inventory/stock-adjustments', 'adjustments'],
+    ['inventory/counts', 'counts'],
+    ['inventory/productions', 'production'],
+    ['inventory/history', 'history'],
+    ['inventory/valuation', 'valuation'],
+  ]) {
+    assert.match(app, new RegExp('path="' + path + '" element={<InventoryOperations initialTab="' + tab + '"\\/>}'));
+  }
+  assert.match(inventoryOperations, /function InventoryOperations\(\{initialTab='locations'\}\)/);
+  assert.match(inventoryOperations, /useEffect\(\(\)=>\{if\(tabs\.some\(\(\[id\]\)=>id===initialTab\)\)setTab\(initialTab\)\},\[initialTab\]\)/);
+});
+
+test('embedded operational content follows route changes including browser history changes', () => {
+  assert.match(posApp, /const routeModule = queryModule \|\| initialModule/);
+  assert.match(posApp, /useEffect\(\(\) => \{ setActiveModule\(routeModule\); \}, \[routeModule\]\)/);
+});
+
+test('employee reporting does not silently render timecards as a report', () => {
+  assert.match(app, /function BackOfficeReportPage\(\{kind\}\)[\s\S]*?if\(kind==="sales"\)return <Reports\/>;[\s\S]*?Employee Report/);
+  assert.match(app, /path="reports\/inventory" element={<BackOfficeReportPage kind="inventory"\/>}/);
 });
