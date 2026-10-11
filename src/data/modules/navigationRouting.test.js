@@ -100,3 +100,17 @@ test('employee reporting does not silently render timecards as a report', () => 
   assert.match(app, /function BackOfficeReportPage\(\{kind\}\)[\s\S]*?if\(kind==="sales"\)return <Reports\/>;[\s\S]*?Employee Report/);
   assert.match(app, /path="reports\/inventory" element={<BackOfficeReportPage kind="inventory"\/>}/);
 });
+
+
+test('workspace highlighting remains active on nested routes and exact POS route only', () => {
+  assert.match(topNav, /end=\{a\.id==='pos'\}/);
+  assert.match(topNav, /to=\{a\.path\}/);
+  assert.match(shell, /pathname === path \|\| pathname\.startsWith\(path \+ '\/'\)/);
+});
+
+test('mobile sidebar closes after selection and Escape without affecting planner full-screen layout', () => {
+  assert.match(shell, /onClick=\{\(\) => setMobileOpen\(false\)\}/);
+  assert.match(shell, /event\.key === 'Escape'/);
+  assert.match(frontLayout, /if \(isDedicatedPlanner\)/);
+  assert.match(frontLayout, /fixed inset-0 z-50 h-\[100dvh\] w-screen/);
+});
