@@ -1,7 +1,7 @@
 # Phase 1 — Navigation and shell remediation progress
 
 **Branch:** `phase-1-navigation-shell`  
-**Status:** implementation slice committed; verification and phase acceptance remain open  
+**Status:** navigation implementation slice committed; CI gates pass on code head `a1f2ae82e4cf730f2e8e7bfedcc53a600a4cdb5f`; browser verification and phase acceptance remain open  
 **Production impact:** none; no deployment or database operation was performed
 
 ## Changes in this slice
@@ -18,14 +18,23 @@
 
 - The standalone `/pos` route now uses `POSLayout` and embeds `POSApp`, preserving `POSContainer`'s floor/order/bill controls while using the shared global workspace switcher. The generic sidebar is hidden for this workspace to avoid a second unrelated navigation system. Browser verification is still required to confirm the POS controls, provider state, and narrow-screen layout behave as expected.
 
-## Verification not yet claimed
+## Automated verification
 
-The GitHub connector could not execute the Node test suite locally. The repository's current validation workflows are configured for `main` and pull requests targeting `main`; no PR has been opened from this branch because Phase 0 remains open and its audit/remediation commits must not be mixed into a Phase 1 PR.
+GitHub Actions passed on code head `a1f2ae82e4cf730f2e8e7bfedcc53a600a4cdb5f`:
+- ESLint
+- TypeScript typecheck
+- Architecture/navigation test suite (27 tests, including route and shell smoke checks)
+- Theme contrast audit
+- Vite production build
+- Production QA workflow build/lint
+
+An earlier CI run exposed a literal escaped newline in the route helper and then an overly broad route-test parser. Both were corrected; the passing runs above include those corrections. These are CI results, not proof of browser-level interaction behavior.
+
+No PR has been opened from this branch because Phase 0 remains open and its audit/remediation commits must not be mixed into a Phase 1 PR.
 
 Before accepting this phase:
-1. Run `npm ci`, `npm run lint`, `npm run typecheck`, `npm run test:architecture`, `npm run check:contrast`, and `npm run build` against the exact branch head.
-2. Add/run real browser smoke checks at 1440px, 1024px, and 390px for workspace links, direct routes, trailing slashes, back/forward, mobile open/close/Escape, role filtering, and the Room Planner full-screen exception.
-3. Verify every navigation destination renders its intended page content and exactly one intended shell.
-4. Resolve or explicitly accept the remaining Phase 0 gate blockers before promotion: the migration source reconciliation, isolated browser tests, and unexecuted local test suite.
+1. Run real browser smoke checks at 1440px, 1024px, and 390px for workspace links, direct routes, trailing slashes, back/forward, mobile open/close/Escape, role filtering, and the Room Planner full-screen exception.
+2. Verify every navigation destination renders its intended page content and exactly one intended shell; static source checks cannot prove page behavior.
+3. Resolve or explicitly accept the remaining Phase 0 gate blockers before promotion: migration source reconciliation and isolated security regression tests.
 
 Do not merge or deploy based on static source assertions alone.
