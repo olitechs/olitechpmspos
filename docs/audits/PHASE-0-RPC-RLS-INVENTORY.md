@@ -389,3 +389,14 @@ Current policy count: 209. Table/command groups with multiple policies: 0. Supab
 3. Verify role/package/tenant boundaries on every exposed SECURITY DEFINER function. A guard marker is not sufficient: inspect all branches, delegated calls, dynamic SQL, search_path, and table ownership.
 4. Run write-denial and allowed-write tests only on a disposable Supabase branch with deterministic fixtures; no production mutation tests were attempted.
 5. Do not revoke the 96 authenticated-callable SECURITY DEFINER functions wholesale. Review each caller and intended contract, then tighten grants or function bodies in reviewed migration batches.
+
+## Advisor overlap reconciliation addendum
+
+The initial same-table/same-command counter in this inventory does not count an `ALL` policy as overlapping a `SELECT` policy. The live Supabase advisor's 20 findings are five database roles across each of four tables:
+
+- `public.pos_discounts`: `pos_discounts_select` + `pos_discounts_write`
+- `public.pos_menu_modifier_groups`: `pos_menu_modifier_groups_select` + `pos_menu_modifier_groups_write`
+- `public.pos_modifier_groups`: `pos_modifier_groups_select` + `pos_modifier_groups_write`
+- `public.pos_modifier_options`: `pos_modifier_options_select` + `pos_modifier_options_write`
+
+Each pair is reported for `anon`, `authenticated`, `authenticator`, `dashboard_user`, and `supabase_privileged_role` (4 × 5 = 20 findings). The write policy uses `FOR ALL`, so it also participates in SELECT and combines permissively with the dedicated SELECT policy. Inspect each pair's full USING/WITH CHECK predicates and intended read access before changing either policy. Do not remove the `ALL` policy until its INSERT/UPDATE/DELETE behavior has been preserved by narrower policies and tested.
