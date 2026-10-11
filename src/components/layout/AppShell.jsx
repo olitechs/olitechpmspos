@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import {
   BedDouble, Building2, CalendarDays, ChevronDown, ChevronLeft, ChevronRight,
@@ -49,6 +49,15 @@ export default function AppShell({ workspace = 'backoffice' }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [ownerOpen, setOwnerOpen] = useState(false);
   const [query, setQuery] = useState('');
+
+  useEffect(() => {
+    if (!mobileOpen) return undefined;
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') setMobileOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [mobileOpen]);
 
   const nav = useMemo(() => {
     if (workspace === 'frontoffice') {
