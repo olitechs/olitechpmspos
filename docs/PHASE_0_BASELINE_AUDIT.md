@@ -139,3 +139,40 @@ This baseline commit intentionally does **not**:
 - [ ] Compare migration history with the deployed Supabase project without modifying production.
 
 **Phase 0 status: baseline findings documented; exit gate is not yet fully satisfied.** The remaining checklist items are prerequisites for declaring the audit exhaustive and moving to broad refactoring.
+
+
+## 7. Live Supabase production baseline (read-only)
+
+Connected project identified as **`olitechs-pms-pos`** (`mszogmazldxjsiytrlxr`), region `eu-west-1`, status `ACTIVE_HEALTHY`. No DDL, data, or migration operation was executed during this audit.
+
+The live migration ledger returned **34 applied versions**. This is substantially different in shape from the root repository's long set of numeric-prefix and timestamped migration files. The live ledger includes applied versions such as `20261008015806`, `20261008032718`, and `20261008145428`; some stored migration names do not match the full filename prefixes in the repository. This is evidence that the migration history must be reconciled, not evidence that the live schema is necessarily broken. The audit did not attempt to run pending migrations or compare every live table/function definition.
+
+### Supabase advisors — findings to triage
+
+The production project’s read-only advisors returned:
+
+- **Security WARN:** 1 anonymous-callable `SECURITY DEFINER` function, `public.fn_public_booking_engine_config(p_property_id uuid)`. Confirm whether public execution is intentional and whether the function limits returned fields/property access.
+- **Security WARN:** 96 authenticated-callable `SECURITY DEFINER` functions. This count is not 96 proven vulnerabilities; each function must be checked for explicit role/property authorization and least-privilege grants. Prioritize administrative, financial, staff, inventory, and cross-property RPCs.
+- **Security WARN:** leaked-password protection is disabled in Supabase Auth.
+- **Performance WARN:** 20 cases of multiple permissive RLS policies, including some policies that mention the `anon` role. Inspect the effective policy logic for unintended OR-permission widening; consolidate only after preserving required access.
+- **Performance INFO:** 43 foreign keys without covering indexes and 107 unused indexes. Treat these as candidates for workload/schema review, not automatic delete/add instructions.
+
+Advisor references:
+- [Supabase database linter — SECURITY DEFINER functions callable by anon](https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable)
+- [Supabase database linter — SECURITY DEFINER functions callable by authenticated users](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable)
+
+**Safety requirement:** no broad grant revocation, RLS policy rewrite, index deletion, or migration replay is authorized by these warnings alone. Phase 3/7 must inspect each function/policy and prove expected access with tests before applying a forward-only fix.
+
+## 8. Updated defect register additions
+
+| ID | Priority | Finding | Owner phase | Acceptance evidence |
+|---|---|---|---|---|
+| AUD-013 | P0 | Root migration filenames and live migration ledger are not reconciled | Phase 7 | Every local migration mapped to live version/name; safe forward-only plan approved |
+| AUD-014 | P0 | Anonymous execution warning for `fn_public_booking_engine_config` | Phase 3/7 | Public use-case documented and function output/authorization tested; grants minimized |
+| AUD-015 | P1 | 96 authenticated-callable SECURITY DEFINER RPCs require authorization review | Phase 3/7 | RPC inventory includes caller grants, role/property checks, and positive/negative tests |
+| AUD-016 | P1 | 20 multiple-permissive-policy advisor warnings | Phase 3/7 | Effective access evaluated per table/role/action; no unintended permission widening |
+| AUD-017 | P1 | Leaked-password protection disabled | Phase 3 | Setting enabled or formally risk-accepted with owner approval |
+| AUD-018 | P2 | 43 foreign keys lack covering indexes | Phase 7 | Query/workload-informed index review |
+| AUD-019 | P2 | 107 indexes reported unused | Phase 7 | Review query windows and constraints before retaining/removing candidates |
+
+The migration-ledger comparison is now **partially complete**: the live ledger was retrieved and its count/current entries recorded, but each live version still needs a file-by-file mapping and schema drift review. The final Phase 0 exit gate therefore remains open.
