@@ -2,7 +2,7 @@ name: OliTechs Production QA
 
 on:
   push:
-    branches: [main]
+    branches: [main, phase-1-navigation-shell]
   pull_request:
     branches: [main]
 
