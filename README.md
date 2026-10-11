@@ -4,162 +4,133 @@
 
 <br/>
 
-**Replace Opera Cloud and the paper ledger with one fast, professional platform.**<br/>
-Front Desk · Reservations · Housekeeping · Billing · Restaurant POS — built for Africa, works without internet.
+**Front desk, reservations, housekeeping, billing and restaurant POS in one platform.**
+Built to replace Opera Cloud and manual books for hotels, lodges and serviced apartments in Africa.
 
 <br/>
 
-[![Live Demo](https://img.shields.io/badge/LIVE%20DEMO-olitechpmspos.vercel.app-FACC15?style=for-the-badge&labelColor=0A0A0A&logo=vercel&logoColor=FACC15)](https://olitechpmspos.vercel.app)
+[![Live demo](https://img.shields.io/badge/Live_demo-olitechpmspos.vercel.app-FACC15?style=for-the-badge&labelColor=0A0A0A)](https://olitechpmspos.vercel.app)
 
-![License](https://img.shields.io/badge/License-MIT-FACC15?style=flat-square&labelColor=0A0A0A)
-![Vite](https://img.shields.io/badge/Vite-FACC15?style=flat-square&labelColor=0A0A0A&logo=vite&logoColor=FACC15)
-![React](https://img.shields.io/badge/React_18-FACC15?style=flat-square&labelColor=0A0A0A&logo=react&logoColor=FACC15)
-![Supabase](https://img.shields.io/badge/Supabase-FACC15?style=flat-square&labelColor=0A0A0A&logo=supabase&logoColor=FACC15)
-![Tailwind](https://img.shields.io/badge/Tailwind_CSS-FACC15?style=flat-square&labelColor=0A0A0A&logo=tailwindcss&logoColor=FACC15)
-![Offline First](https://img.shields.io/badge/Offline--first-yes-FACC15?style=flat-square&labelColor=0A0A0A)
-![KRA ETR](https://img.shields.io/badge/KRA%20%2F%20ETR-compliant-FACC15?style=flat-square&labelColor=0A0A0A)
+![React](https://img.shields.io/badge/React_18-0A0A0A?style=flat-square&logo=react&logoColor=FACC15)
+![Vite](https://img.shields.io/badge/Vite-0A0A0A?style=flat-square&logo=vite&logoColor=FACC15)
+![Supabase](https://img.shields.io/badge/Supabase-0A0A0A?style=flat-square&logo=supabase&logoColor=FACC15)
+![Tailwind](https://img.shields.io/badge/Tailwind-0A0A0A?style=flat-square&logo=tailwindcss&logoColor=FACC15)
+![License](https://img.shields.io/badge/License-MIT-0A0A0A?style=flat-square)
 
-[**Features**](#-features) · [**Workflows**](#-workflows) · [**Architecture**](#-architecture) · [**Quick Start**](#-quick-start) · [**Brand**](#-brand) · [**Roles**](#-roles--permissions) · [**Roadmap**](#-roadmap)
+[Features](#features) · [Screenshots](#screenshots) · [Workflows](#workflows) · [Architecture](#architecture) · [Quick start](#quick-start) · [Roadmap](#roadmap)
 
 </div>
 
----
+<br/>
 
-## ✨ Why Olitech?
+## Overview
+
+Olitech PMS is a single system for the whole property. A guest books, checks in, eats at the restaurant, and settles one folio at check-out, with no re-keying between departments.
 
 | | |
 |---|---|
-| 🌍 **Built for African operations** | Power cuts and patchy connectivity are the norm, not the exception. Olitech keeps working offline and syncs when the network returns. |
-| 🧾 **Kenya-ready compliance** | KRA / ETR compliant invoicing out of the box. |
-| 🔗 **One folio, every department** | Restaurant, bar and room charges land on the same guest folio. No re-keying, no end-of-day reconciliation headaches. |
-| ⚡ **Two-click front desk** | Check-in and check-out in two clicks. Drag and drop reservations on the rack. |
-| 🏢 **Multi-property ready** | Multiple properties and workspaces under one account. |
+| **Offline-first** | Keeps working through power cuts and weak connections. |
+| **One folio** | Room, restaurant and bar charges post to the same guest bill. |
+| **Fast front desk** | Check-in and check-out in two clicks. Drag and drop on the rack. |
+| **Kenya-ready** | KRA / ETR compliant invoicing. |
+| **Multi-property** | Several properties and workspaces under one account. |
 
----
+<br/>
 
-## 📸 Screenshots
+## Screenshots
 
 <table>
   <tr>
-    <td align="center" width="50%"><b>Dashboard</b><br/><sub>Occupancy, arrivals, departures and revenue at a glance</sub></td>
-    <td align="center" width="50%"><b>Room Rack</b><br/><sub>Drag-and-drop calendar with colour-coded status</sub></td>
+    <td width="50%"><img src="docs/screenshots/dashboard.png" alt="Dashboard"/><br/><b>Dashboard</b><br/><sub>Arrivals, departures, occupancy and revenue.</sub></td>
+    <td width="50%"><img src="docs/screenshots/rack.png" alt="Room rack"/><br/><b>Room rack</b><br/><sub>Drag-and-drop calendar with status colours.</sub></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/dashboard.png" alt="Olitech dashboard"/></td>
-    <td><img src="docs/screenshots/rack.png" alt="Olitech room rack"/></td>
-  </tr>
-  <tr>
-    <td align="center"><b>Folio / Billing</b><br/><sub>Split, transfer, void and city ledger</sub></td>
-    <td align="center"><b>Restaurant POS</b><br/><sub>Tables, orders, KDS and room charge</sub></td>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/folio.png" alt="Olitech folio"/></td>
-    <td><img src="docs/screenshots/pos.png" alt="Olitech restaurant POS"/></td>
+    <td width="50%"><img src="docs/screenshots/folio.png" alt="Folio and billing"/><br/><b>Folio and billing</b><br/><sub>Split, transfer, void and city ledger.</sub></td>
+    <td width="50%"><img src="docs/screenshots/pos.png" alt="Restaurant POS"/><br/><b>Restaurant POS</b><br/><sub>Tables, orders, kitchen display, room charge.</sub></td>
   </tr>
 </table>
 
-> Regenerate all screenshots with `npm run screenshots` (see [Capturing screenshots](#-capturing-screenshots)).
-
-<details>
-<summary><b>🎨 Room status colour guide</b></summary>
 <br/>
 
-| Status | Colour | Meaning |
-|---|---|---|
-| 🟩 Vacant Clean | Green | Ready to sell |
-| 🟧 Vacant Dirty | Amber | Awaiting housekeeping |
-| 🟦 Occupied | Blue | Guest in house |
-| 🟪 Checking Out Today | Indigo | Departure due |
-| ⬜ Out of Order | Grey, diagonal stripe | Not sellable |
+## Features
 
-</details>
+### Property management
 
----
-
-## 🧩 Features
-
-### 🏨 PMS: Property Management
-
-| Module | What you get |
+| Module | Capabilities |
 |---|---|
-| **Room Rack** | Visual calendar with drag-and-drop reservations and room moves |
-| **Reservations** | Create, amend and cancel. Check-in and check-out in 2 clicks |
-| **Rates & Inventory** | Room types, rate plans, taxes and fees |
-| **Guests** | Guest profiles with full stay history |
-| **Folio Management** | Split, transfer, void, and post to City Ledger |
-| **Housekeeping** | Dirty, Clean, Out of Order and Inspection workflow |
-| **Night Audit** | Day closure and end-of-day rollover |
-| **Reports** | Occupancy, ADR, RevPAR and Cashier reports |
+| Room rack | Visual calendar, drag-and-drop reservations and room moves |
+| Reservations | Create, amend, cancel. Two-click check-in and check-out |
+| Rates | Room types, rate plans, taxes and fees |
+| Guests | Profiles with full stay history |
+| Folio | Split, transfer, void, City Ledger |
+| Housekeeping | Dirty, Clean, Out of Order, Inspection |
+| Night audit | Day closure and rollover |
+| Reports | Occupancy, ADR, RevPAR, Cashier |
 
-### 🍽️ POS: Point of Sale
+### Point of sale
 
-| Module | What you get |
+| Module | Capabilities |
 |---|---|
-| **Outlets** | Restaurant, Bar and Coffee Shop POS |
-| **Floor & Tables** | Table and floor management |
-| **KDS** | Kitchen Display System, so orders reach the kitchen instantly |
-| **Room Charge** | Post a bill directly to a guest folio |
-| **Inventory** | Automatic stock deduction on sale |
+| Outlets | Restaurant, Bar, Coffee Shop |
+| Floor | Tables and floor plan |
+| Kitchen | Kitchen Display System (KDS) |
+| Room charge | Post a bill straight to a guest folio |
+| Inventory | Stock deducted on sale |
 
-### 🛡️ Platform
+### Platform
 
-- **Offline-first**: keeps working without internet
-- **Multi-property and multi-workspace**
-- **Role-based access**: Admin, Front Desk, Housekeeping, POS, Accountant
-- **KRA / ETR compliant invoicing** (Kenya)
+- Offline-first operation
+- Multi-property and multi-workspace
+- Role-based access: Admin, Front Desk, Housekeeping, POS, Accountant
+- KRA / ETR compliant invoicing
 
----
+<br/>
 
-## 🔄 Workflows
+## Workflows
 
-### 1. Guest journey, from booking to settlement
+### Guest journey
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FACC15','primaryTextColor':'#0A0A0A','primaryBorderColor':'#0A0A0A','lineColor':'#0A0A0A','secondaryColor':'#FFFFFF','tertiaryColor':'#FEF9C3','noteBkgColor':'#FEF9C3','noteTextColor':'#0A0A0A','actorBkg':'#FACC15','actorBorder':'#0A0A0A','actorTextColor':'#0A0A0A','signalColor':'#0A0A0A','signalTextColor':'#0A0A0A','fontFamily':'Inter, Segoe UI, Arial, sans-serif'}}}%%
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FACC15','primaryTextColor':'#0A0A0A','primaryBorderColor':'#0A0A0A','lineColor':'#404040','secondaryColor':'#FFFFFF','tertiaryColor':'#FFFFFF','fontFamily':'Inter, Segoe UI, Arial, sans-serif'}}}%%
 flowchart LR
-    A([📞 Booking<br/>Walk-in · Phone · OTA]) --> B[Reservation<br/>created]
-    B --> C{Arrival day}
-    C -->|Room ready| D[✅ Check-in<br/>2 clicks]
-    C -->|Room dirty| H[🧹 Housekeeping<br/>cleans & inspects]
+    A[Booking] --> B[Reservation]
+    B --> C{Room ready?}
+    C -- Yes --> D[Check-in]
+    C -- No --> H[Housekeeping]
     H --> D
-    D --> E[(Guest Folio<br/>opens)]
-    E --> F[🍽️ POS charges<br/>Room · Bar · Restaurant]
-    E --> G[🛏️ Nightly room<br/>& tax postings]
-    F --> I
-    G --> I[Folio review<br/>Split · Transfer · Void]
-    I --> J[💳 Check-out<br/>& payment]
-    J --> K[🧾 KRA / ETR<br/>invoice]
-    J --> L[🧹 Room → Dirty]
-    L --> H
+    D --> E[(Guest folio)]
+    E --> F[POS and room charges]
+    F --> G[Check-out and payment]
+    G --> I[KRA / ETR invoice]
+    G --> H
 ```
 
-### 2. Restaurant order to room charge
+### Restaurant order to room charge
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FACC15','primaryTextColor':'#0A0A0A','primaryBorderColor':'#0A0A0A','lineColor':'#0A0A0A','secondaryColor':'#FFFFFF','tertiaryColor':'#FEF9C3','noteBkgColor':'#FEF9C3','noteTextColor':'#0A0A0A','actorBkg':'#FACC15','actorBorder':'#0A0A0A','actorTextColor':'#0A0A0A','signalColor':'#0A0A0A','signalTextColor':'#0A0A0A','fontFamily':'Inter, Segoe UI, Arial, sans-serif'}}}%%
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FACC15','primaryTextColor':'#0A0A0A','primaryBorderColor':'#0A0A0A','lineColor':'#404040','actorBkg':'#FACC15','actorBorder':'#0A0A0A','actorTextColor':'#0A0A0A','signalColor':'#404040','signalTextColor':'#0A0A0A','noteBkgColor':'#FFFFFF','fontFamily':'Inter, Segoe UI, Arial, sans-serif'}}}%%
 sequenceDiagram
     autonumber
     actor W as Waiter
-    participant POS as POS Terminal
-    participant KDS as Kitchen Display
-    participant INV as Inventory
-    participant F as Guest Folio
-    W->>POS: Open table, add items
-    POS->>KDS: Send order to kitchen
-    KDS-->>POS: Ready
-    W->>POS: Close bill
+    participant P as POS
+    participant K as Kitchen display
+    participant F as Guest folio
+    W->>P: Open table, add items
+    P->>K: Send to kitchen
+    K-->>P: Ready
+    W->>P: Close bill
     alt Room charge
-        POS->>F: Post charge to folio
-    else Cash / Card / M-Pesa
-        POS->>POS: Settle at the till
+        P->>F: Post to folio
+    else Cash, card or M-Pesa
+        P->>P: Settle at till
     end
-    POS->>INV: Deduct stock
+    P->>P: Deduct stock
 ```
 
-### 3. Room status lifecycle
+### Room status
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FACC15','primaryTextColor':'#0A0A0A','primaryBorderColor':'#0A0A0A','lineColor':'#0A0A0A','secondaryColor':'#FFFFFF','tertiaryColor':'#FEF9C3','noteBkgColor':'#FEF9C3','noteTextColor':'#0A0A0A','actorBkg':'#FACC15','actorBorder':'#0A0A0A','actorTextColor':'#0A0A0A','signalColor':'#0A0A0A','signalTextColor':'#0A0A0A','fontFamily':'Inter, Segoe UI, Arial, sans-serif'}}}%%
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FACC15','primaryTextColor':'#0A0A0A','primaryBorderColor':'#0A0A0A','lineColor':'#404040','fontFamily':'Inter, Segoe UI, Arial, sans-serif'}}}%%
 stateDiagram-v2
     direction LR
     [*] --> VacantClean
@@ -174,204 +145,130 @@ stateDiagram-v2
     OutOfOrder --> VacantDirty: Repaired
 ```
 
-### 4. Daily operations cycle
+| Status | Colour |
+|---|---|
+| Vacant clean | Green |
+| Vacant dirty | Amber |
+| Occupied | Blue |
+| Checking out today | Indigo |
+| Out of order | Grey, diagonal stripe |
+
+<br/>
+
+## Architecture
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FACC15','primaryTextColor':'#0A0A0A','primaryBorderColor':'#0A0A0A','lineColor':'#0A0A0A','secondaryColor':'#FFFFFF','tertiaryColor':'#FEF9C3','noteBkgColor':'#FEF9C3','noteTextColor':'#0A0A0A','actorBkg':'#FACC15','actorBorder':'#0A0A0A','actorTextColor':'#0A0A0A','signalColor':'#0A0A0A','signalTextColor':'#0A0A0A','fontFamily':'Inter, Segoe UI, Arial, sans-serif'}}}%%
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FACC15','primaryTextColor':'#0A0A0A','primaryBorderColor':'#0A0A0A','lineColor':'#404040','clusterBkg':'#FFFFFF','clusterBorder':'#0A0A0A','fontFamily':'Inter, Segoe UI, Arial, sans-serif'}}}%%
 flowchart TB
-    M[🌅 Morning<br/>Arrivals · Departures · Housekeeping list] --> D[☀️ Day<br/>Front desk · POS · Folio postings]
-    D --> N[🌙 Evening<br/>Cashier shift close]
-    N --> NA[🔒 Night Audit<br/>Post room & tax · Close day]
-    NA --> R[📊 Reports<br/>Occupancy · ADR · RevPAR]
-    R --> M
-```
-
----
-
-## 🏗️ Architecture
-
-```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FACC15','primaryTextColor':'#0A0A0A','primaryBorderColor':'#0A0A0A','lineColor':'#0A0A0A','secondaryColor':'#FFFFFF','tertiaryColor':'#FEF9C3','noteBkgColor':'#FEF9C3','noteTextColor':'#0A0A0A','actorBkg':'#FACC15','actorBorder':'#0A0A0A','actorTextColor':'#0A0A0A','signalColor':'#0A0A0A','signalTextColor':'#0A0A0A','fontFamily':'Inter, Segoe UI, Arial, sans-serif'}}}%%
-flowchart TB
-    subgraph Client["🖥️ Client: Vite + React 18"]
+    subgraph Client[Client: Vite + React 18]
         UI[shadcn/ui + Tailwind]
-        ZS[Zustand<br/>UI & local state]
-        TQ[TanStack Query<br/>server cache]
-        OFF[(Offline queue)]
+        ZS[Zustand]
+        TQ[TanStack Query]
     end
-    subgraph Supabase["☁️ Supabase"]
+    subgraph Backend[Supabase]
         AUTH[Auth]
         PG[(Postgres + RLS)]
         RT[Realtime]
     end
     UI --> ZS
     UI --> TQ
-    TQ <--> OFF
-    OFF <-->|sync when online| PG
+    TQ <--> PG
     UI --> AUTH
     PG --> RT --> TQ
-    subgraph Host["🚀 Vercel"]
-        CDN[Static hosting]
-    end
-    CDN --> Client
+    V[Vercel] --> Client
 ```
 
 | Layer | Technology |
 |---|---|
-| **Frontend** | Vite · React 18 · Tailwind CSS · shadcn/ui |
-| **State** | Zustand + TanStack Query *(migrating from `PmsStore.jsx` / `AppStore.jsx`)* |
-| **Backend** | Supabase: Postgres, Auth, Row Level Security, Realtime |
-| **Auth** | Supabase Auth *(migrating from the `src/services/authService.js` localStorage layer)* |
-| **Deployment** | Vercel |
+| Frontend | Vite, React 18, Tailwind CSS, shadcn/ui |
+| State | Zustand, TanStack Query (migrating from `PmsStore.jsx` and `AppStore.jsx`) |
+| Backend | Supabase: Postgres, Auth, Row Level Security, Realtime |
+| Auth | Supabase Auth (migrating from the localStorage layer in `src/services/authService.js`) |
+| Hosting | Vercel |
 
-> **🔐 Multi-tenant by design.** Every table is scoped to a business and branch, and access is enforced with Postgres Row Level Security, so one property can never read another's data.
+<br/>
 
----
+## Quick start
 
-## 🎨 Brand
-
-| | Hex | Use |
-|---|---|---|
-| ⬛ **Black** | `#0A0A0A` | Sidebar, headers, primary text |
-| 🟨 **Yellow** | `#FACC15` | Primary actions, highlights, active states |
-| ⬜ **White** | `#FFFFFF` | Surfaces and cards |
-
-Room status colours (green, amber, blue, indigo, grey) stay semantic and are not part of the brand palette.
-
----
-
-## 🚀 Quick Start
-
-**Prerequisites:** Node.js 18+ and a free [Supabase](https://supabase.com) project.
+Requires Node.js 18+ and a [Supabase](https://supabase.com) project.
 
 ```bash
-# 1. Clone
 git clone https://github.com/olitechs/olitechpmspos.git
 cd olitechpmspos
-
-# 2. Install
 npm install
 
-# 3. Configure environment
 cp .env.example .env.local
-# then add your keys:
-#   VITE_SUPABASE_URL=...
-#   VITE_SUPABASE_ANON_KEY=...
+# set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY
 
-# 4. Run
-npm run dev
-
-# 5. Build for production
-npm run build
+npm run dev        # development
+npm run build      # production build
 ```
 
-> **First login:** the first account you create becomes the **Admin**.
+The first account you create becomes the **Admin**.
 
-### Scripts
+<br/>
 
-| Command | Description |
-|---|---|
-| `npm run dev` | Start the dev server |
-| `npm run build` | Production build |
-| `npm run preview` | Preview the production build locally |
+## Roles
 
----
+| Role | Front desk | Housekeeping | POS | Folio | Reports | Settings |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|
+| Admin | Full | Full | Full | Full | Full | Full |
+| Front Desk | Full | View | View | Full | View | None |
+| Housekeeping | None | Full | None | None | None | None |
+| POS | None | None | Full | Room charge | None | None |
+| Accountant | None | None | View | Full | Full | None |
 
-## 📷 Capturing screenshots
+Treat this as the intended default and adjust it to match the implementation.
 
-Screenshots are produced from the running app with [Playwright](https://playwright.dev), so they always match the current UI.
+<br/>
+
+## Screenshots, regenerated
+
+Screenshots come from the running app with [Playwright](https://playwright.dev).
 
 ```bash
-npm i -D playwright
-npx playwright install chromium
-npm run dev            # in one terminal
-npm run screenshots    # in another
+npm i -D playwright && npx playwright install chromium
+npm run dev
+OLITECH_EMAIL=you@example.com OLITECH_PASSWORD=secret node scripts/capture-screenshots.mjs
 ```
 
-Add this to `package.json`:
+<br/>
 
-```json
-"scripts": { "screenshots": "node scripts/capture-screenshots.mjs" }
-```
+## Brand
 
-Set `OLITECH_EMAIL` and `OLITECH_PASSWORD` to log in. Edit the `SHOTS` list in `scripts/capture-screenshots.mjs` if your routes differ.
+| Colour | Hex | Use |
+|---|---|---|
+| Black | `#0A0A0A` | Sidebar, headers, text |
+| Yellow | `#FACC15` | Primary actions and highlights. Use on black, never as text on white. |
+| White | `#FFFFFF` | Surfaces and cards |
 
----
+<br/>
 
-## 👥 Roles & Permissions
+## Roadmap
 
-| Role | Front Desk | Housekeeping | POS | Billing / Folio | Reports | Settings |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|
-| **Admin** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Front Desk** | ✅ | 👁️ | 👁️ | ✅ | 👁️ | ❌ |
-| **Housekeeping** | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **POS** | ❌ | ❌ | ✅ | 🔸 Room charge only | ❌ | ❌ |
-| **Accountant** | ❌ | ❌ | 👁️ | ✅ | ✅ | ❌ |
-
-✅ Full access · 👁️ View only · 🔸 Limited · ❌ No access
-
-> The matrix above is the intended default. Adjust it to match your implementation.
-
----
-
-## 🗂️ Project Structure
-
-```text
-olitechpmspos/
-├── src/
-│   ├── components/      # shadcn/ui and shared components
-│   ├── pages/           # Dashboard, Rack, Reservations, Folio, POS ...
-│   ├── services/        # Supabase and auth service layer
-│   ├── store/           # Zustand stores
-│   └── lib/             # Helpers and utilities
-├── docs/
-│   ├── assets/          # Banner and diagrams
-│   └── screenshots/     # README screenshots (generated)
-├── scripts/
-│   └── capture-screenshots.mjs
-├── .env.example
-└── package.json
-```
-
-> Update folder names to match the actual repo layout.
-
----
-
-## 🧭 Roadmap
-
-- [x] Room Rack, Reservations, Folio, Housekeeping, Night Audit
-- [x] Restaurant / Bar POS with KDS and room charge
-- [x] KRA / ETR compliant invoicing
-- [ ] Complete migration from localStorage auth to Supabase Auth
-- [ ] Complete migration from `PmsStore` / `AppStore` to Zustand + TanStack Query
-- [ ] Design-system refresh: unified palette, calmer dashboard
+- [x] Room rack, reservations, folio, housekeeping, night audit
+- [x] Restaurant and bar POS with KDS and room charge
+- [x] KRA / ETR invoicing
+- [ ] Move auth from localStorage to Supabase Auth
+- [ ] Move `PmsStore` and `AppStore` to Zustand and TanStack Query
+- [ ] Unified design system and calmer dashboard
 - [ ] Payments and reporting expansion
-- [ ] Roles and licensing
-- [ ] Hardware support: receipt and kitchen printers, cash drawers
+- [ ] Hardware: receipt and kitchen printers, cash drawers
 - [ ] Channel manager and OTA integrations
 
----
+<br/>
 
-## 🤝 Contributing
+## Contributing
 
-1. Fork the repo and create a branch: `git checkout -b feature/my-feature`
-2. Commit your changes: `git commit -m "feat: add my feature"`
-3. Push and open a Pull Request
+Fork, branch (`feature/my-feature`), commit, and open a pull request. Keep changes focused and describe the problem and the fix.
 
-Please keep PRs focused, and describe the problem and the fix.
+## License
 
----
-
-## 📄 License
-
-Released under the [MIT License](LICENSE).
-
----
+[MIT](LICENSE)
 
 <div align="center">
+<br/>
 
-**Built with ❤️ for the hospitality industry in Africa.**
-
-[Live Demo](https://olitechpmspos.vercel.app) · [Report a Bug](https://github.com/olitechs/olitechpmspos/issues) · [Request a Feature](https://github.com/olitechs/olitechpmspos/issues)
+[Live demo](https://olitechpmspos.vercel.app) · [Report a bug](https://github.com/olitechs/olitechpmspos/issues) · [Request a feature](https://github.com/olitechs/olitechpmspos/issues)
 
 </div>
