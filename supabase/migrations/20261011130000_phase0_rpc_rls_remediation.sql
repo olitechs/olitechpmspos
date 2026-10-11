@@ -17,8 +17,15 @@ AS $function$
 DECLARE
   v_property public.properties;
   v_name text;
+  v_actor_id uuid;
 BEGIN
-  IF auth.uid() IS NULL OR p_user_id IS DISTINCT FROM auth.uid() THEN
+  IF auth.role() = 'service_role' THEN
+    v_actor_id := p_user_id;
+  ELSE
+    v_actor_id := auth.uid();
+  END IF;
+
+  IF v_actor_id IS NULL OR p_user_id IS DISTINCT FROM v_actor_id THEN
     RAISE EXCEPTION 'A user may only create or retrieve their own pending property.'
       USING ERRCODE = '42501';
   END IF;
@@ -26,7 +33,7 @@ BEGIN
   SELECT p.* INTO v_property
   FROM public.properties p
   JOIN public.property_users pu ON pu.property_id = p.id
-  WHERE pu.user_id = auth.uid() AND pu.role = 'owner'
+  WHERE pu.user_id = v_actor_id AND pu.role = 'owner'
   ORDER BY p.created_at DESC
   LIMIT 1;
 
@@ -43,12 +50,12 @@ BEGIN
   INSERT INTO public.properties
     (name, business_name, created_by, email, contact_person, status, package)
   VALUES
-    (v_name, NULLIF(trim(p_business_name), ''), auth.uid(),
+    (v_name, NULLIF(trim(p_business_name), ''), v_actor_id,
      NULLIF(trim(p_email), ''), NULLIF(trim(p_full_name), ''), 'pending', 'none')
   RETURNING * INTO v_property;
 
   INSERT INTO public.property_users (property_id, user_id, role)
-  VALUES (v_property.id, auth.uid(), 'owner');
+  VALUES (v_property.id, v_actor_id, 'owner');
 
   RETURN v_property;
 EXCEPTION
@@ -56,7 +63,7 @@ EXCEPTION
     SELECT p.* INTO v_property
     FROM public.properties p
     JOIN public.property_users pu ON pu.property_id = p.id
-    WHERE pu.user_id = auth.uid() AND pu.role = 'owner'
+    WHERE pu.user_id = v_actor_id AND pu.role = 'owner'
     ORDER BY p.created_at DESC
     LIMIT 1;
     IF FOUND THEN RETURN v_property; END IF;
@@ -82,11 +89,13 @@ AS $function$
   WHERE p.property_id = p_property_id
     AND p.pos_enabled = true
     AND p.pos_active = true
-    AND auth.uid() IS NOT NULL
     AND (
+      auth.role() = 'service_role'
+      OR (auth.uid() IS NOT NULL AND (
       public.is_platform_owner()
       OR public.is_member_of_property(p_property_id)
       OR public.current_staff_role(p_property_id) IS NOT NULL
+      ))
     )
   ORDER BY COALESCE(NULLIF(p.pos_category, ''), p.category), p.pos_sort, p.name;
 $function$;
@@ -102,11 +111,13 @@ AS $function$
   WHERE s.property_id = p_property_id
     AND s.status = 'open'
     AND s.date = (now() AT TIME ZONE 'Africa/Nairobi')::date
-    AND auth.uid() IS NOT NULL
     AND (
+      auth.role() = 'service_role'
+      OR (auth.uid() IS NOT NULL AND (
       public.is_platform_owner()
       OR public.is_member_of_property(p_property_id)
       OR public.current_staff_role(p_property_id) IS NOT NULL
+      ))
     )
   ORDER BY s.opened_at DESC
   LIMIT 1;
