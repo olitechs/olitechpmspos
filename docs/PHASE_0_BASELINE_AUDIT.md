@@ -176,3 +176,43 @@ Advisor references:
 | AUD-019 | P2 | 107 indexes reported unused | Phase 7 | Review query windows and constraints before retaining/removing candidates |
 
 The migration-ledger comparison is now **partially complete**: the live ledger was retrieved and its count/current entries recorded, but each live version still needs a file-by-file mapping and schema drift review. The final Phase 0 exit gate therefore remains open.
+
+
+## 9. Verification update — 2026-10-11
+
+### CI job-level evidence
+
+The two baseline GitHub Actions runs were checked beyond their top-level conclusion:
+
+- `Validate OliTechs PMS POS` (run 38121173660): job `build` completed successfully.
+- `OliTechs Production QA` (run 38121173610): job `web-build` completed successfully.
+
+This confirms those configured CI jobs passed on baseline commit `8fc2dba43204efb8e2a6048a5dfbd78b4c366d2a`. It does not replace isolated local reproduction or browser route coverage.
+
+### Tracked migration inventory
+
+A fresh recursive Git tree query at the baseline commit returned `truncated: false`, 486 tracked files, 167 under `src/`, and 147 SQL migration files when counting both root `supabase/migrations/` and archived `v6/supabase/migrations/`. The root migration directory contains 108 SQL files; the archived `v6/` tree contains 39 SQL files, many copied from root. Treat `v6/` as a possible historical snapshot until references/build packaging are proven; do not run its migrations.
+
+The root migration directory has repeated numeric prefixes, including `0016`, `0028`, `0032`, `0033`, `0034`, `0035`, `0037`, `0040`, `0045`, `0047`, `0048`, and `0049`, as well as repeated timestamp prefixes `20261008170000` and `20261008223000`. This is confirmed from the tracked tree.
+
+### Read-only Supabase advisor snapshot
+
+Project `olitechs-pms-pos` (`mszogmazldxjsiytrlxr`) was inspected read-only. It reports `ACTIVE_HEALTHY`. The live migration ledger contains 34 applied versions. The local-to-live mapping is **not yet complete**; ledger names often differ from full root filename prefixes, so version numbers must not be inferred from names alone.
+
+Advisor snapshot observed at approximately `2026-10-11T07:41:38Z`:
+
+- Security: 1 anonymous-callable `SECURITY DEFINER` RPC (`fn_public_booking_engine_config(p_property_id uuid)`); 96 authenticated-callable `SECURITY DEFINER` RPCs; leaked-password protection disabled.
+- Performance/policy: 43 foreign keys without covering indexes; 107 indexes reported unused; 20 multiple-permissive-policy warnings.
+- Active Edge Function: `print-proxy`, version 4, `verify_jwt=true`.
+
+These are advisor findings, not proof that all flagged functions are exploitable or that all indexes should be added/removed. Review each RPC's grants, role checks, property scoping, and intended public use. Review workload and constraint coverage before any index change. No SQL, DDL, data, grants, policies, or migration history was changed during this read-only check.
+
+### Remaining blockers and gate
+
+Phase 0 still cannot be marked passed because:
+1. The machine-readable feature map is not complete for every navigation item, component, service, RPC, and RLS policy.
+2. A clean local install/build and browser-level direct-route smoke test have not been run in an isolated checkout. The earlier clone attempt failed because the environment could not resolve `github.com`.
+3. The 34 live migration ledger entries have not yet been reconciled one-by-one against root migration files and deployed schema state.
+4. Security advisor findings need a function-by-function authorization inventory before proposing any policy/grant changes.
+
+**Decision: Phase 0 remains OPEN. Do not begin broad runtime refactoring or migration edits until these blockers have reproducible evidence or are explicitly accepted as scoped limitations.**
