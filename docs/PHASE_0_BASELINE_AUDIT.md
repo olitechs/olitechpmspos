@@ -216,3 +216,45 @@ Phase 0 still cannot be marked passed because:
 4. Security advisor findings need a function-by-function authorization inventory before proposing any policy/grant changes.
 
 **Decision: Phase 0 remains OPEN. Do not begin broad runtime refactoring or migration edits until these blockers have reproducible evidence or are explicitly accepted as scoped limitations.**
+
+
+## 10. Phase 0 expanded evidence update — 2026-10-11
+
+### New audit artifacts
+
+- [Feature / route / service / RPC / RLS map](./audits/PHASE-0-FEATURE-SECURITY-MAP.md)
+- [All 34 live migration entries and source candidates](./audits/PHASE-0-MIGRATION-RECONCILIATION.md)
+- [RPC grant and RLS policy inventory](./audits/PHASE-0-RPC-RLS-INVENTORY.md)
+- [Route inventory](./audits/PHASE-0-ROUTE-INVENTORY.md)
+
+### Confirmed authorization and policy defects
+
+- `create_pending_property_for_user` is SECURITY DEFINER and callable by authenticated users. A read-only role simulation as User A supplied User B's ID and the RPC returned User B's existing property row. The function does not verify the target ID equals `auth.uid()`. This negative authorization test **failed**.
+- `fn_list_pos_menu` is SECURITY DEFINER and callable by authenticated users. A simulated nonmember requested another property's menu; membership was false, but the RPC returned one row. This negative authorization test **failed**.
+- `fn_current_pos_shift` is SECURITY DEFINER and lacks an explicit tenant/role guard in its body. No current-day open shift existed for the tested properties, so the cross-tenant return test was inconclusive.
+- The `properties_update_owner_admin` WITH CHECK expression contains the uncorrelated scalar subquery `properties_1.id = properties_1.id`. Evaluating that scalar expression against the current two-property database produced SQLSTATE `21000` (more than one row), indicating a likely owner/admin update failure.
+- `fn_public_booking_engine_config` is the single anon-callable SECURITY DEFINER RPC. It returns payment instructions without checking the setting's `enabled` flag or property status. The current test properties had no booking settings, so populated-disabled-config exposure remains untested.
+- The 20 multiple-permissive-policy advisor findings are five roles each across four tables: `pos_discounts`, `pos_menu_modifier_groups`, `pos_modifier_groups`, and `pos_modifier_options`. In each case, a `FOR ALL` write policy also applies to SELECT and overlaps the dedicated SELECT policy. Review full predicates before changing them.
+
+### Authorization tests completed
+
+Read-only SQL role simulations ran inside transactions that were rolled back. User A could read their own property/reservations and could not read another property through direct RLS. The negative RPC cases above demonstrate that table RLS alone does not protect data returned by every SECURITY DEFINER function.
+
+No production mutation tests were run. Positive and negative write tests for all operational RPC families still require a disposable Supabase development branch with seeded two-tenant fixtures. Creating a Supabase branch requires a separate cost check/confirmation, so it has not been created in this phase.
+
+### Fresh local validation and browser tests
+
+A second fresh clone/install attempt was made for branch `audit/phase-0-baseline`, followed by the intended command sequence (`npm ci`, lint, typecheck, architecture tests, contrast check, build). It stopped at clone because this environment still cannot resolve `github.com`; none of those local commands ran. The CI workflows do run lint, typecheck, architecture tests, contrast audit, and build; they do not include Playwright/browser smoke tests.
+
+- [Latest successful validation run before the final RPC/RLS inventory commit](https://github.com/olitechs/olitechpmspos/actions/runs/38122907134)
+- [Latest successful production QA run before the final RPC/RLS inventory commit](https://github.com/olitechs/olitechpmspos/actions/runs/38122907235)
+
+The latest documentation commit triggered new workflow runs, which must finish successfully before the PR is ready. These are documentation-only changes, but CI still needs to complete on the exact head.
+
+### Migration reconciliation status
+
+The live ledger has 34 versions. All are now recorded individually in the migration reconciliation artifact. Source candidates exist for most; unresolved or partial source mapping remains for ledger entries #2, #5, #6, #11, #12, and #26. Exact statement-to-file equivalence and every changed-object diff are not yet complete. Production migration history remains untouched.
+
+### Gate decision
+
+**Phase 0 remains OPEN.** The feature map and per-object inventory are now documented, and several authorization failures are confirmed. Phase 1 remains blocked until the confirmed security issues have an approved fix plan, migration/source drift is resolved, and the exact-head CI plus browser/tenant regression tests are completed.
