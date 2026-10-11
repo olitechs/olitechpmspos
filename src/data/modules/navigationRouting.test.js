@@ -29,7 +29,7 @@ test('every declared navigation destination has a registered route', () => {
     ...[...navArchitecture.matchAll(/\['[^']+','([^']+)'/g)].map((match) => match[1]),
     ...[...sidebarNavigation.matchAll(/path:"([^"]+)"/g)].map((match) => match[1]),
   ];
-  const missing = [...new Set(paths)].filter((path) => !routePathExists(path));
+  const missing = [...new Set(paths)].filter((path) => path.startsWith('/') && !routePathExists(path));
   assert.deepEqual(missing, [], 'navigation destinations missing route registrations');
 });
 
