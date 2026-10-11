@@ -65,7 +65,7 @@ export default function AppShell({ workspace = 'backoffice' }) {
       ...item,
       icon: BACK_ICONS[item.id] || LayoutDashboard,
       active: (item.path && (pathname === item.path || pathname.startsWith(item.path + '/')))
-        || item.children?.some(([, path]) => location.pathname === path || location.pathname.startsWith(path + '/')),
+        || item.children?.some(([, path]) => pathname === path || pathname.startsWith(path + '/')),
     })).filter(item => !query || item.label.toLowerCase().includes(query.toLowerCase())
       || item.children?.some(([label]) => label.toLowerCase().includes(query.toLowerCase())));
   }, [workspace, role, pathname, query]);
