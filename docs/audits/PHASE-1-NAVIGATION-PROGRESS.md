@@ -14,6 +14,10 @@
 - The shared shell closes the mobile sidebar with Escape.
 - Added static architecture smoke tests for navigation destinations, workspace shell ownership, the full-screen Room Planner exception, embedded legacy navigation suppression, and trailing-slash handling.
 
+## Remaining implementation item
+
+- The standalone `/pos` route still uses `LegacyPOS` and the non-embedded `POSApp` shell. This slice removes the legacy sidebar/topbar only from routes that already embed `POSApp`; it does **not** yet prove that every workspace shares one shell. Consolidating the standalone POS route requires a carefully tested POS workspace layout so floor/order/bill navigation and POS providers remain intact. Keep this explicitly open rather than deleting the legacy shell prematurely.
+
 ## Verification not yet claimed
 
 The GitHub connector could not execute the Node test suite locally. The repository's current validation workflows are configured for `main` and pull requests targeting `main`; no PR has been opened from this branch because Phase 0 remains open and its audit/remediation commits must not be mixed into a Phase 1 PR.
