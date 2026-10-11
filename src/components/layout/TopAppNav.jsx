@@ -1,6 +1,5 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { ExternalLink } from 'lucide-react';
 import { MAIN_NAV, canAccessApp, normalizeAppRole } from '@/data/modules/navArchitecture';
 import { useAuth } from '@/lib/AuthContext';
 import { getSessionStaff, normalizeStaffRole } from '@/services/authService';
@@ -20,11 +19,8 @@ export default function TopAppNav(){
     return <NavLink
      key={a.id}
      to={a.path}
-     target="_blank"
-     rel="noopener noreferrer"
-     title={`Open ${a.label} in a new tab`}
      className={({isActive})=>[
-      'group flex min-w-[142px] items-center justify-center gap-2 rounded-md px-5 text-[13px] font-semibold transition-colors',
+      'flex min-w-[142px] items-center justify-center gap-2 rounded-md px-5 text-[13px] font-semibold transition-colors',
       isActive
        ? 'bg-[var(--bg)] text-[var(--text)] shadow-[inset_0_-3px_0_var(--brand-primary)]'
        : 'text-[var(--muted)] hover:bg-[var(--bg)] hover:text-[var(--text)]'
