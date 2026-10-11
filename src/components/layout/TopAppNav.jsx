@@ -19,6 +19,7 @@ export default function TopAppNav(){
     return <NavLink
      key={a.id}
      to={a.path}
+     end={a.id==='pos'}
      className={({isActive})=>[
       'flex min-w-[142px] shrink-0 items-center justify-center gap-2 rounded-md px-5 text-[13px] font-semibold transition-colors',
       isActive
