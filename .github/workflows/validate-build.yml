@@ -1,4 +1,5 @@
 name: Validate OliTechs PMS POS
+# Keep the Phase 1 navigation branch under the same validation gates as main.
 
 on:
   push:
