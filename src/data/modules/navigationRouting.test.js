@@ -55,7 +55,7 @@ test('workspace layouts own one shell and embedded module routes suppress legacy
 });
 
 test('standalone POS uses the global workspace switcher and hides the generic duplicate sidebar', () => {
-  assert.match(app, /path="\\/pos" element={<POSLayout\\/>}><Route index element={<POSApp initialModule="pos" embedded workspaceModule="pos"\\/>}/><\\/Route>/);
+  assert.ok(app.includes('path="/pos" element={<POSLayout/>}><Route index element={<POSApp initialModule="pos" embedded workspaceModule="pos"/>}/></Route>'));
   assert.match(posLayout, /AppShell workspace="pos"/);
   assert.match(shell, /if \(workspace === 'pos'\) return \[\]/);
   assert.match(shell, /workspace !== 'pos' && <aside/);
