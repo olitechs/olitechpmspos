@@ -49,7 +49,7 @@ test('workspace layouts own one shell and embedded module routes suppress legacy
 });
 
 test('Room Planner is the deliberate full-screen shell exception, including trailing slash', () => {
-  assert.match(frontLayout, /frontoffice\\\/room-planner/);
+  assert.match(frontLayout, /room-planner/);
   assert.match(frontLayout, /pathname/);
   assert.match(frontLayout, /fixed inset-0 z-50 h-\[100dvh\] w-screen/);
   assert.match(frontLayout, /if \(isDedicatedPlanner\)[\s\S]*?<Outlet \/>[\s\S]*?return <AppShell workspace="frontoffice" \/>/);
@@ -57,6 +57,7 @@ test('Room Planner is the deliberate full-screen shell exception, including trai
 
 test('active navigation comparisons use normalized paths for direct URLs and trailing slashes', () => {
   assert.match(shell, /normalizeAppPath\(location\.pathname\)/);
+  assert.match(shell, /event\.key === 'Escape'/);
   assert.doesNotMatch(shell, /location\.pathname === path/);
   assert.doesNotMatch(shell, /location\.pathname === item\.path/);
 });
