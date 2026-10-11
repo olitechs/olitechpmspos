@@ -63,4 +63,10 @@ test('canonical stores workspace ID is consistent across package tiers', () => {
   assert.ok(getPackageModules('professional').includes('stores'));
   assert.equal(canAccessApp('store_manager', 'stores', 'premium'), true);
   assert.equal(canAccessApp('store_manager', 'stores', 'professional'), true);
+  assert.equal(canAccessApp('store_manager', 'stores', 'standard'), false);
+  assert.equal(canAccessApp('store_manager', 'stores', 'none'), false);
+  assert.equal(canAccessApp('front_desk', 'stores', 'professional'), false);
+  assert.equal(canAccessApp('admin', 'stores', 'premium'), true);
+  assert.equal(canAccessApp('admin', 'stores', 'standard'), false);
+  assert.equal(getDefaultApp('store_manager', 'professional'), 'stores');
 });
