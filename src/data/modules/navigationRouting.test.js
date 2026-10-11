@@ -42,7 +42,7 @@ test('workspace layouts own one shell and embedded module routes suppress legacy
   assert.match(app, /path="\/backoffice" element={<BackOfficeLayout\/>}/);
   assert.match(app, /path="\/frontoffice" element={<FrontOfficeLayout\/>}/);
   assert.match(app, /path="\/stores" element={<StoresLayout\/>}/);
-  assert.match(shell, /<TopAppNav\/>/);
+  assert.match(shell, /<TopAppNav\s*\/>/);
   assert.match(frontLayout, /return <AppShell workspace="frontoffice" \/>/);
   assert.match(posApp, /!embedded && <Sidebar/);
   assert.match(posApp, /showTopBar && !embedded && <TopBar/);
