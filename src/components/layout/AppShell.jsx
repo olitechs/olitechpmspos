@@ -65,6 +65,7 @@ export default function AppShell({ workspace = 'backoffice' }) {
         id, label, path, icon: FRONT_ICONS[id], active: pathname === path || pathname.startsWith(path + '/'),
       }));
     }
+    if (workspace === 'pos') return [];
     if (workspace === 'stores') {
       return STORES_NAV.map(([label, path, id]) => ({
         id, label, path, icon: STORE_ICONS[id], active: pathname === path || pathname.startsWith(path + '/'),
@@ -86,8 +87,8 @@ export default function AppShell({ workspace = 'backoffice' }) {
     <div className="flex h-screen min-h-0 flex-col overflow-hidden bg-[var(--bg)] text-[var(--text)]">
       <TopAppNav />
       <div className="flex min-h-0 flex-1">
-        {mobileOpen && <button type="button" aria-label="Close navigation" onClick={() => setMobileOpen(false)} className="fixed inset-0 z-40 bg-black/40 md:hidden" />}
-        <aside className={[
+        {workspace !== 'pos' && mobileOpen && <button type="button" aria-label="Close navigation" onClick={() => setMobileOpen(false)} className="fixed inset-0 z-40 bg-black/40 md:hidden" />}
+        {workspace !== 'pos' && <aside className={[
           'fixed inset-y-0 left-0 z-50 flex min-h-0 flex-col border-r border-[var(--border)] bg-[var(--surface)] transition-[width,transform] duration-150 md:static md:z-auto md:translate-x-0',
           collapsed ? 'w-16' : 'w-60',
           mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
@@ -131,13 +132,13 @@ export default function AppShell({ workspace = 'backoffice' }) {
             </button>
             {ownerOpen && <button type="button" onClick={logout} className="flex min-h-9 w-full items-center gap-2 rounded-md px-2 text-xs text-[var(--danger)] hover:bg-[var(--surface-2)]"><LogOut size={14} />{!collapsed && 'Sign out'}</button>}
           </div>
-        </aside>
+        </aside>}
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <div className="flex h-12 shrink-0 items-center border-b border-[var(--border)] bg-[var(--surface)] px-3 md:hidden">
+          {workspace !== 'pos' && <div className="flex h-12 shrink-0 items-center border-b border-[var(--border)] bg-[var(--surface)] px-3 md:hidden">
             <button type="button" onClick={() => setMobileOpen(true)} className="rounded-md p-2 text-[var(--text)]" aria-label="Open navigation"><Menu size={18} /></button>
             <span className="ml-2 text-sm font-semibold">{hotelName}</span>
-          </div>
-          <main className="min-h-0 min-w-0 flex-1 overflow-auto"><div className="mx-auto w-full max-w-[1600px]"><Outlet /></div></main>
+          </div>}
+          <main className="min-h-0 min-w-0 flex-1 overflow-auto"><div className={workspace === 'pos' ? 'w-full min-h-full' : 'mx-auto w-full max-w-[1600px]'}><Outlet /></div></main>
         </div>
       </div>
     </div>
