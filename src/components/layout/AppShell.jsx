@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import {
   BedDouble, Building2, CalendarDays, ChevronDown, ChevronLeft, ChevronRight,
   ClipboardCheck, ClipboardList, Grid3X3, HelpCircle, LayoutDashboard, LogOut,
@@ -7,7 +7,7 @@ import {
   Sparkles, Store, Users, X, BarChart3, PlugZap, Boxes,
   ChefHat, ArrowRightLeft, Banknote, Percent, ShieldCheck, MonitorCog, LayoutGrid,
 } from 'lucide-react';
-import { BACK_OFFICE_NAV, FRONT_OFFICE_NAV, STORES_NAV, normalizeAppRole } from '@/data/modules/navArchitecture';
+import { BACK_OFFICE_NAV, FRONT_OFFICE_NAV, STORES_NAV, normalizeAppPath, normalizeAppRole } from '@/data/modules/navArchitecture';
 import { useAuth } from '@/lib/AuthContext';
 import { getSessionStaff, normalizeStaffRole } from '@/services/authService';
 import TopAppNav from './TopAppNav';
@@ -43,7 +43,7 @@ function backOfficeAllowed(item, role) {
 export default function AppShell({ workspace = 'backoffice' }) {
   const { user, logout } = useAuth();
   const location = useLocation();
-  const navigate = useNavigate();
+  const pathname = normalizeAppPath(location.pathname);
   const role = currentRole(user);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -53,22 +53,22 @@ export default function AppShell({ workspace = 'backoffice' }) {
   const nav = useMemo(() => {
     if (workspace === 'frontoffice') {
       return FRONT_OFFICE_NAV.filter(item => item[3].includes(role)).map(([label, path, id]) => ({
-        id, label, path, icon: FRONT_ICONS[id], active: location.pathname === path || location.pathname.startsWith(path + '/'),
+        id, label, path, icon: FRONT_ICONS[id], active: pathname === path || pathname.startsWith(path + '/'),
       }));
     }
     if (workspace === 'stores') {
       return STORES_NAV.map(([label, path, id]) => ({
-        id, label, path, icon: STORE_ICONS[id], active: location.pathname === path || location.pathname.startsWith(path + '/'),
+        id, label, path, icon: STORE_ICONS[id], active: pathname === path || pathname.startsWith(path + '/'),
       }));
     }
     return BACK_OFFICE_NAV.filter(item => backOfficeAllowed(item, role)).map(item => ({
       ...item,
       icon: BACK_ICONS[item.id] || LayoutDashboard,
-      active: (item.path && (location.pathname === item.path || location.pathname.startsWith(item.path + '/')))
+      active: (item.path && (pathname === item.path || pathname.startsWith(item.path + '/')))
         || item.children?.some(([, path]) => location.pathname === path || location.pathname.startsWith(path + '/')),
     })).filter(item => !query || item.label.toLowerCase().includes(query.toLowerCase())
       || item.children?.some(([label]) => label.toLowerCase().includes(query.toLowerCase())));
-  }, [workspace, role, location.pathname, query]);
+  }, [workspace, role, pathname, query]);
 
   const hotelName = user?.property?.name || user?.property?.business_name || 'OliTechs Hotel';
   const email = user?.email || getSessionStaff()?.email || '';
