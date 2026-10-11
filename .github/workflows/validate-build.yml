@@ -1,9 +1,11 @@
 name: Validate OliTechs PMS POS
+# Keep Phase 1 route and shell regression tests under the main validation gates.
 
 on:
   push:
     branches:
       - main
+      - phase-1-navigation-shell
   pull_request:
     branches:
       - main

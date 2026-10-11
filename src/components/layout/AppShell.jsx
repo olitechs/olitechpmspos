@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import {
   BedDouble, Building2, CalendarDays, ChevronDown, ChevronLeft, ChevronRight,
   ClipboardCheck, ClipboardList, Grid3X3, HelpCircle, LayoutDashboard, LogOut,
@@ -7,7 +7,7 @@ import {
   Sparkles, Store, Users, X, BarChart3, PlugZap, Boxes,
   ChefHat, ArrowRightLeft, Banknote, Percent, ShieldCheck, MonitorCog, LayoutGrid,
 } from 'lucide-react';
-import { BACK_OFFICE_NAV, FRONT_OFFICE_NAV, STORES_NAV, normalizeAppRole } from '@/data/modules/navArchitecture';
+import { BACK_OFFICE_NAV, FRONT_OFFICE_NAV, STORES_NAV, normalizeAppPath, normalizeAppRole } from '@/data/modules/navArchitecture';
 import { useAuth } from '@/lib/AuthContext';
 import { getSessionStaff, normalizeStaffRole } from '@/services/authService';
 import TopAppNav from './TopAppNav';
@@ -43,32 +43,42 @@ function backOfficeAllowed(item, role) {
 export default function AppShell({ workspace = 'backoffice' }) {
   const { user, logout } = useAuth();
   const location = useLocation();
-  const navigate = useNavigate();
+  const pathname = normalizeAppPath(location.pathname);
   const role = currentRole(user);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [ownerOpen, setOwnerOpen] = useState(false);
   const [query, setQuery] = useState('');
 
+  useEffect(() => {
+    if (!mobileOpen) return undefined;
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') setMobileOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [mobileOpen]);
+
   const nav = useMemo(() => {
     if (workspace === 'frontoffice') {
       return FRONT_OFFICE_NAV.filter(item => item[3].includes(role)).map(([label, path, id]) => ({
-        id, label, path, icon: FRONT_ICONS[id], active: location.pathname === path || location.pathname.startsWith(path + '/'),
+        id, label, path, icon: FRONT_ICONS[id], active: pathname === path || pathname.startsWith(path + '/'),
       }));
     }
+    if (workspace === 'pos') return [];
     if (workspace === 'stores') {
       return STORES_NAV.map(([label, path, id]) => ({
-        id, label, path, icon: STORE_ICONS[id], active: location.pathname === path || location.pathname.startsWith(path + '/'),
+        id, label, path, icon: STORE_ICONS[id], active: pathname === path || pathname.startsWith(path + '/'),
       }));
     }
     return BACK_OFFICE_NAV.filter(item => backOfficeAllowed(item, role)).map(item => ({
       ...item,
       icon: BACK_ICONS[item.id] || LayoutDashboard,
-      active: (item.path && (location.pathname === item.path || location.pathname.startsWith(item.path + '/')))
-        || item.children?.some(([, path]) => location.pathname === path || location.pathname.startsWith(path + '/')),
+      active: (item.path && (pathname === item.path || pathname.startsWith(item.path + '/')))
+        || item.children?.some(([, path]) => pathname === path || pathname.startsWith(path + '/')),
     })).filter(item => !query || item.label.toLowerCase().includes(query.toLowerCase())
       || item.children?.some(([label]) => label.toLowerCase().includes(query.toLowerCase())));
-  }, [workspace, role, location.pathname, query]);
+  }, [workspace, role, pathname, query]);
 
   const hotelName = user?.property?.name || user?.property?.business_name || 'OliTechs Hotel';
   const email = user?.email || getSessionStaff()?.email || '';
@@ -77,8 +87,8 @@ export default function AppShell({ workspace = 'backoffice' }) {
     <div className="flex h-screen min-h-0 flex-col overflow-hidden bg-[var(--bg)] text-[var(--text)]">
       <TopAppNav />
       <div className="flex min-h-0 flex-1">
-        {mobileOpen && <button type="button" aria-label="Close navigation" onClick={() => setMobileOpen(false)} className="fixed inset-0 z-40 bg-black/40 md:hidden" />}
-        <aside className={[
+        {workspace !== 'pos' && mobileOpen && <button type="button" aria-label="Close navigation" onClick={() => setMobileOpen(false)} className="fixed inset-0 z-40 bg-black/40 md:hidden" />}
+        {workspace !== 'pos' && <aside className={[
           'fixed inset-y-0 left-0 z-50 flex min-h-0 flex-col border-r border-[var(--border)] bg-[var(--surface)] transition-[width,transform] duration-150 md:static md:z-auto md:translate-x-0',
           collapsed ? 'w-16' : 'w-60',
           mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
@@ -122,13 +132,13 @@ export default function AppShell({ workspace = 'backoffice' }) {
             </button>
             {ownerOpen && <button type="button" onClick={logout} className="flex min-h-9 w-full items-center gap-2 rounded-md px-2 text-xs text-[var(--danger)] hover:bg-[var(--surface-2)]"><LogOut size={14} />{!collapsed && 'Sign out'}</button>}
           </div>
-        </aside>
+        </aside>}
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <div className="flex h-12 shrink-0 items-center border-b border-[var(--border)] bg-[var(--surface)] px-3 md:hidden">
+          {workspace !== 'pos' && <div className="flex h-12 shrink-0 items-center border-b border-[var(--border)] bg-[var(--surface)] px-3 md:hidden">
             <button type="button" onClick={() => setMobileOpen(true)} className="rounded-md p-2 text-[var(--text)]" aria-label="Open navigation"><Menu size={18} /></button>
             <span className="ml-2 text-sm font-semibold">{hotelName}</span>
-          </div>
-          <main className="min-h-0 min-w-0 flex-1 overflow-auto"><div className="mx-auto w-full max-w-[1600px]"><Outlet /></div></main>
+          </div>}
+          <main className="min-h-0 min-w-0 flex-1 overflow-auto"><div className={workspace === 'pos' ? 'w-full min-h-full' : 'mx-auto w-full max-w-[1600px]'}><Outlet /></div></main>
         </div>
       </div>
     </div>

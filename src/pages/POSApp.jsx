@@ -55,8 +55,11 @@ function ComingSoon({ label }) {
 export default function POSApp({ initialModule = 'dashboard', embedded = false, workspaceModule = null, storeTab = null }) {
 	const location = useLocation();
 	const queryModule = new URLSearchParams(location.search).get('module');
-	const [activeModule, setActiveModule] = useState(queryModule || initialModule);
-	useEffect(() => { if (queryModule && queryModule !== activeModule) setActiveModule(queryModule); }, [queryModule]);
+	const routeModule = queryModule || initialModule;
+	const [activeModule, setActiveModule] = useState(routeModule);
+	// Keep routed content aligned with browser back/forward and sibling routes.
+	// Local module actions (such as Dashboard → POS) remain local until the URL changes.
+	useEffect(() => { setActiveModule(routeModule); }, [routeModule]);
 	const isMobile = useIsMobile();
 
 	const currentModule = MODULES.find((m) => m.id === activeModule);

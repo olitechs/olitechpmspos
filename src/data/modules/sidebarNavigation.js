@@ -32,7 +32,7 @@ export const SIDEBAR_SECTIONS=[
  ]},
  {key:"employees",title:"Employees",items:[
   {id:"employee-list",label:"Employee list",icon:Users,roles:["hotel_admin","super_admin"],path:"/backoffice/employees/list",active:["roles"],sub:true},
-  {id:"access-rights",label:"Access rights",icon:ShieldCheck,roles:["hotel_admin","super_admin"],path:"/backoffice/employees/list",active:["roles"],sub:true},
+  {id:"access-rights",label:"Access rights",icon:ShieldCheck,roles:["hotel_admin","super_admin"],path:"/backoffice/employees/access-rights",active:["roles"],sub:true},
   {id:"timecards",label:"Timecards",icon:CalendarDays,roles:["hotel_admin","super_admin"],path:"/backoffice/employees/timecards",active:["roles"],sub:true},
   {id:"total-hours",label:"Total hours worked",icon:ClipboardCheck,roles:["hotel_admin","super_admin"],path:"/backoffice/employees/hours",active:["roles"],sub:true}
  ]},

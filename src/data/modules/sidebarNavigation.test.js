@@ -24,4 +24,6 @@ test('sidebar master roles remain explicit and restricted routes retain role dec
   assert.ok(planner.roles.includes('front_desk'));
   assert.ok(accessRights.roles.includes('hotel_admin'));
   assert.ok(!accessRights.roles.includes('front_desk'));
+  assert.equal(accessRights.path, '/backoffice/employees/access-rights');
+  assert.notEqual(accessRights.path, items.find(item => item.id === 'employee-list').path);
 });
