@@ -16,7 +16,7 @@
 
 ## Remaining implementation item
 
-- The standalone `/pos` route still uses `LegacyPOS` and the non-embedded `POSApp` shell. This slice removes the legacy sidebar/topbar only from routes that already embed `POSApp`; it does **not** yet prove that every workspace shares one shell. Consolidating the standalone POS route requires a carefully tested POS workspace layout so floor/order/bill navigation and POS providers remain intact. Keep this explicitly open rather than deleting the legacy shell prematurely.
+- The standalone `/pos` route now uses `POSLayout` and embeds `POSApp`, preserving `POSContainer`'s floor/order/bill controls while using the shared global workspace switcher. The generic sidebar is hidden for this workspace to avoid a second unrelated navigation system. Browser verification is still required to confirm the POS controls, provider state, and narrow-screen layout behave as expected.
 
 ## Verification not yet claimed
 
