@@ -13,6 +13,7 @@ const sidebarNavigation = read('./sidebarNavigation.js');
 
 function routePathExists(path) {
   if (path === '/backoffice') return /path="\/backoffice"/.test(app);
+  if (path.startsWith('/backoffice/settings/')) return /path="settings\/:slug"/.test(app);
   if (path.startsWith('/backoffice/')) return new RegExp('path="' + path.slice('/backoffice/'.length) + '"').test(app);
   if (path === '/frontoffice') return /path="\/frontoffice"/.test(app);
   if (path.startsWith('/frontoffice/')) return new RegExp('path="' + path.slice('/frontoffice/'.length) + '"').test(app);
