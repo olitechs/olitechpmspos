@@ -82,6 +82,7 @@ AS $function$
   WHERE p.property_id = p_property_id
     AND p.pos_enabled = true
     AND p.pos_active = true
+    AND auth.uid() IS NOT NULL
     AND (
       public.is_platform_owner()
       OR public.is_member_of_property(p_property_id)
@@ -101,6 +102,7 @@ AS $function$
   WHERE s.property_id = p_property_id
     AND s.status = 'open'
     AND s.date = (now() AT TIME ZONE 'Africa/Nairobi')::date
+    AND auth.uid() IS NOT NULL
     AND (
       public.is_platform_owner()
       OR public.is_member_of_property(p_property_id)
