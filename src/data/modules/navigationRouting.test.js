@@ -126,3 +126,13 @@ test('subscription checks use workspace entitlement keys rather than screen ids'
   assert.equal(getSubscriptionEntitlement('cashier'), 'pos');
   assert.equal(getSubscriptionEntitlement('dashboard', 'frontoffice'), 'dashboard');
 });
+
+
+test('database subscription access normalizes screen ids and legacy workspace names', () => {
+  const migration = read('../../../supabase/migrations/20261012160000_workspace_entitlement_module_normalization.sql');
+  assert.match(migration, /when 'rooms' then 'frontoffice'/);
+  assert.match(migration, /when 'stores' then 'store'/);
+  assert.match(migration, /when 'cashier' then 'pos'/);
+  assert.match(migration, /where case lower\(trim\(enabled\.module\)\)/);
+  assert.doesNotMatch(migration, /p_module\s*=\s*any\(s\.enabled_modules\)/);
+});
