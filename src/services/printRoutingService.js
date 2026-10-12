@@ -75,8 +75,27 @@ const ticket = (items, { orderNumber, table, waiter, center }) => [
   '',
 ].join('\n');
 
+async function ensureStoreHydrated(propertyId) {
+  const current = usePrinterStore.getState();
+  if (current.storeId && current.propertyId === propertyId && current.workspaceId) return current;
+  if (!propertyId) throw new Error('A property is required to resolve the printer store.');
+  const { data: store, error } = await supabase.from('stores')
+    .select('id')
+    .eq('property_id', propertyId)
+    .order('is_default', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`Could not resolve the property printer store: ${error.message}`);
+  if (!store?.id) throw new Error('No printer store is configured for this property.');
+  await usePrinterStore.getState().hydrate(store.id);
+  return usePrinterStore.getState();
+}
+
 export async function printOrder(order = {}) {
-  const state = usePrinterStore.getState();
+  let state = usePrinterStore.getState();
+  if (!state.storeId || !state.workspaceId || (order.propertyId && state.propertyId !== order.propertyId)) {
+    state = await ensureStoreHydrated(order.propertyId);
+  }
   if (!state.storeId || !state.workspaceId) {
     throw new Error('Printer-group routing is not ready: select a store and reload its printer configuration.');
   }
