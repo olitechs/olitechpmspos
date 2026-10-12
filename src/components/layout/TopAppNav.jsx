@@ -1,4 +1,5 @@
 import React from 'react';
+import { ExternalLink } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { MAIN_NAV, canAccessApp, normalizeAppRole } from '@/data/modules/navArchitecture';
 import { useAuth } from '@/lib/AuthContext';
