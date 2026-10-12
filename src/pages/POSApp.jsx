@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { StoreProvider } from '@/data/AppStore';
 import { PmsProvider } from '@/data/PmsStore';
 import { MODULES } from '@/data/platformData';
+import { getSubscriptionEntitlement } from '@/data/modules/navArchitecture';
 import { SAND, NAVY, MUTED } from '@/data/themePalette';
 import { useIsMobile } from '@/hooks/use-mobile';
 import Sidebar from '@/components/shell/Sidebar';
@@ -142,7 +143,7 @@ export default function POSApp({ initialModule = 'dashboard', embedded = false, 
 						<div className="min-h-0 flex-1 overflow-y-auto">
 							<ErrorBoundary label={currentModule?.label || 'This section'}>
 								<RouteGuard module={workspaceModule || (activeModule === 'pos' || activeModule === 'cashier' ? 'pos' : activeModule === 'store' || activeModule === 'inventory' || activeModule === 'purchasing' || activeModule === 'recipes' || activeModule === 'transfers' || activeModule === 'channels' ? 'store' : activeModule === 'reservations' || activeModule === 'rooms' || activeModule === 'guests' || activeModule === 'folio' || activeModule === 'housekeeping' || activeModule === 'night-audit' ? 'frontoffice' : 'backoffice')}>
-									{activeModule === 'settings' ? content : <PaywallGuard module={activeModule}>{content}</PaywallGuard>}
+									{activeModule === 'settings' ? content : <PaywallGuard module={getSubscriptionEntitlement(activeModule, workspaceModule)}>{content}</PaywallGuard>}
 								</RouteGuard>
 							</ErrorBoundary>
 						</div>
