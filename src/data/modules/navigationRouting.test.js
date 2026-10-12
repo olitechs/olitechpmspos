@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { getSubscriptionEntitlement } from './navArchitecture.js';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
@@ -113,4 +114,15 @@ test('mobile sidebar closes after selection and Escape without affecting planner
   assert.match(shell, /event\.key === 'Escape'/);
   assert.match(frontLayout, /if \(isDedicatedPlanner\)/);
   assert.match(frontLayout, /fixed inset-0 z-50 h-\[100dvh\] w-screen/);
+});
+
+
+test('subscription checks use workspace entitlement keys rather than screen ids', () => {
+  assert.equal(getSubscriptionEntitlement('rooms', 'frontoffice'), 'frontoffice');
+  assert.equal(getSubscriptionEntitlement('reservations', 'frontoffice'), 'frontoffice');
+  assert.equal(getSubscriptionEntitlement('inventory', 'backoffice'), 'backoffice');
+  assert.equal(getSubscriptionEntitlement('kds', 'stores'), 'store');
+  assert.equal(getSubscriptionEntitlement('rooms'), 'frontoffice');
+  assert.equal(getSubscriptionEntitlement('cashier'), 'pos');
+  assert.equal(getSubscriptionEntitlement('dashboard', 'frontoffice'), 'dashboard');
 });
