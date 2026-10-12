@@ -18,9 +18,7 @@ export const usePrinterStore = create(persist((set, get) => ({
         supabase.from('printers').select('*').eq('store_id', storeId).order('name'),
         supabase.from('print_agents').select('*').order('last_seen', { ascending: false })
       ]);
-      for (const error of [storesError, groupsError, printersError, agentsError]) {
-        if (error) throw error;
-      }
+      for (const error of [storesError, groupsError, printersError, agentsError]) if (error) throw error;
 
       const store = (stores || []).find(s => s.id === storeId);
       const ids = (groups || []).map(g => g.id);
@@ -73,9 +71,7 @@ export const usePrinterStore = create(persist((set, get) => ({
     return data;
   },
 
-  async addPrinterGroup(input) {
-    return get().savePrinterGroup(input);
-  },
+  async addPrinterGroup(input) { return get().savePrinterGroup(input); },
 
   async updatePrinterGroup(input) {
     if (!input.id) throw new Error('Printer group ID is required.');
@@ -92,7 +88,7 @@ export const usePrinterStore = create(persist((set, get) => ({
   },
 
   async addPrinter(input) {
-    const { storeId, workspaceId, propertyId } = get();
+    const { storeId, workspaceId } = get();
     if (!storeId || !workspaceId) throw new Error('Select a store before adding a printer.');
     const name = String(input.name || '').trim();
     if (!name || name.length > 100) throw new Error('Printer name must contain 1 to 100 characters.');
@@ -106,7 +102,7 @@ export const usePrinterStore = create(persist((set, get) => ({
     if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Printer port must be an integer between 1 and 65535.');
 
     const { data, error } = await supabase.from('printers').insert({
-      id: id(), workspace_id: workspaceId, store_id: storeId, property_id: propertyId,
+      id: id(), workspace_id: workspaceId, store_id: storeId,
       name, connection_type: input.connectionType || 'network',
       ip_address: ipAddress || null, port,
       mac_address: input.macAddress || null, is_kitchen: !!input.isKitchen,
