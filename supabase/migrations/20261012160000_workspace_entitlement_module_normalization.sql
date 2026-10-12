@@ -1,6 +1,6 @@
 -- Normalize individual screen ids to the workspace-level subscription keys used by
--- Platform Admin package assignments. Previously "rooms" was checked literally
--- against enabled_modules (which contains "frontoffice"), causing false paywalls.
+-- Platform Admin package assignments. Preserve package-derived entitlements and the
+-- dashboard landing-workspace exception from the existing production function.
 create or replace function public.fn_subscription_access(
   p_property_id uuid,
   p_module text
@@ -16,6 +16,7 @@ declare
   allowed boolean := false;
   v_plan text;
   v_entitlement_module text;
+  v_enabled_modules text[];
 begin
   if not (public.is_platform_owner() or public.is_member_of_property(p_property_id)) then
     raise exception 'Not authorized';
@@ -43,7 +44,7 @@ begin
     insert into public.property_subscriptions(
       property_id,plan_code,status,enabled_modules,updated_by
     )
-    values(p_property_id,v_plan,'active','{}',auth.uid())
+    values(p_property_id,v_plan,'active',public.platform_package_modules(p.package),auth.uid())
     on conflict(property_id) do nothing;
 
     select * into s from public.property_subscriptions where property_id=p_property_id;
@@ -56,8 +57,8 @@ begin
     );
   end if;
 
-  -- Platform Admin's active property/package state is authoritative for
-  -- workspace availability. Do not let stale legacy billing dates lock it.
+  -- Preserve the production rule: active property + assigned package + active
+  -- subscription is authoritative; trial/grace rules remain unchanged.
   if p.status='active' and p.package<>'none' and s.status='active' then
     allowed:=true;
   elsif s.status='trial' then
@@ -71,8 +72,7 @@ begin
     allowed:=false;
   end if;
 
-  -- Subscription records are workspace-level: frontoffice, pos, backoffice,
-  -- store. Route-level modules must resolve to the owning workspace first.
+  -- Translate screen-level IDs to the canonical package entitlement keys.
   v_entitlement_module := case lower(trim(coalesce(p_module,'')))
     when 'frontoffice' then 'frontoffice'
     when 'front_office' then 'frontoffice'
@@ -113,12 +113,22 @@ begin
     else lower(trim(coalesce(p_module,'')))
   end;
 
-  -- Normalize older module spellings already stored in enabled_modules as well,
-  -- so legacy entries and current package keys behave consistently.
-  if allowed and cardinality(coalesce(s.enabled_modules,'{}'))>0
+  -- Dashboard is a non-billable landing workspace, as in the existing production
+  -- implementation. Unknown module keys remain denied rather than failing open.
+  if allowed and v_entitlement_module='dashboard' then
+    allowed:=true;
+  elsif allowed and v_entitlement_module not in ('frontoffice','pos','backoffice','store') then
+    allowed:=false;
+  end if;
+
+  -- A blank legacy allowlist follows the assigned package. Non-empty lists remain
+  -- enforced, but legacy screen/workspace aliases are normalized before comparison.
+  v_enabled_modules := coalesce(nullif(s.enabled_modules,'{}'::text[]), public.platform_package_modules(p.package));
+
+  if allowed and v_entitlement_module <> 'dashboard'
      and not exists (
        select 1
-       from unnest(coalesce(s.enabled_modules,'{}')) as enabled(module)
+       from unnest(coalesce(v_enabled_modules,'{}'::text[])) as enabled(module)
        where case lower(trim(enabled.module))
          when 'front_office' then 'frontoffice'
          when 'pms' then 'frontoffice'
