@@ -174,6 +174,7 @@ export default function POSContainer() {
 		const dispatchTickets = async () => {
 			if (isPrinterGroupRoutingEnabled()) {
 				const jobs = await printRoutedOrder({
+					propertyId,
 					id: orderNumber,
 					orderId: kitchenOrderRecord?.id,
 					orderNumber,
