@@ -25,3 +25,27 @@ export function normalizeAppRole(role){ const v=String(role||'').toLowerCase().t
 export function canAccessApp(role,appId,propertyPackage){ const app=MAIN_NAV.find(x=>x.id===appId); if(!app||!app.roles.includes(normalizeAppRole(role)))return false; if(propertyPackage&&propertyPackage!=='none')return PACKAGE_MODULES[propertyPackage]?.includes(appId)??false; return !propertyPackage; }
 export function getDefaultApp(role,propertyPackage){ const r=normalizeAppRole(role); return MAIN_NAV.find(x=>x.roles.includes(r)&&(!propertyPackage||PACKAGE_MODULES[propertyPackage]?.includes(x.id)))?.id||null; }
 export function getPackageModules(propertyPackage){ return PACKAGE_MODULES[propertyPackage]||[]; }
+
+
+/**
+ * Resolve the subscription entitlement key for a module or embedded workspace.
+ * Subscription rows store workspace-level keys (frontoffice, pos, backoffice, store),
+ * not every individual screen id such as "rooms" or "reservations".
+ */
+export function getSubscriptionEntitlement(module, workspaceModule = null) {
+  const active = String(module || '').toLowerCase().trim();
+  const workspace = String(workspaceModule || '').toLowerCase().trim();
+
+  // The dashboard is a landing page; PaywallGuard has a specific approved-package
+  // exception for it, so do not accidentally turn it into a workspace entitlement.
+  if (active === 'dashboard') return 'dashboard';
+
+  const workspaceAliases = { stores: 'store', store: 'store' };
+  if (workspace) return workspaceAliases[workspace] || workspace;
+
+  if (['rooms', 'room-planner', 'room_planner', 'reservations', 'guests', 'folio', 'housekeeping', 'night-audit', 'night_audit', 'maintenance', 'laundry'].includes(active)) return 'frontoffice';
+  if (['pos', 'cashier'].includes(active)) return 'pos';
+  if (['store', 'stores', 'inventory', 'purchasing', 'recipes', 'transfers', 'channels', 'kitchen', 'kds', 'printers', 'pos-devices', 'pos_devices'].includes(active)) return 'store';
+  if (['backoffice', 'back_office', 'reports', 'booking-engine', 'booking_engine', 'settings', 'employees', 'customers'].includes(active)) return 'backoffice';
+  return active || 'backoffice';
+}
