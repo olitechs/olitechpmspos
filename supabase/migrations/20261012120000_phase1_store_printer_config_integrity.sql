@@ -44,15 +44,18 @@ declare
   v_categories uuid[] := coalesce(p_category_ids, '{}');
   v_printers uuid[] := coalesce(p_printer_ids, '{}');
 begin
-  if auth.uid() is null and not public.is_platform_owner() then
+  if auth.uid() is null then
     raise exception 'Authentication required.' using errcode = '42501';
+  end if;
+  if p_property_id is null then
+    raise exception 'The selected store is not linked to a property.' using errcode = '22023';
   end if;
 
   select * into v_store
   from public.stores s
   where s.id = p_store_id
     and s.workspace_id = p_workspace_id
-    and s.property_id is not distinct from p_property_id;
+    and s.property_id = p_property_id;
 
   if not found then
     raise exception 'Store, workspace and property do not match.' using errcode = '22023';
@@ -77,8 +80,7 @@ begin
     select 1 from unnest(v_categories) as requested(id)
     where not exists (
       select 1 from public.pos_menu_categories c
-      where c.id = requested.id
-        and c.property_id is not distinct from p_property_id
+      where c.id = requested.id and c.property_id = p_property_id
     )
   ) then
     raise exception 'One or more categories do not belong to this property.' using errcode = '22023';
@@ -106,7 +108,7 @@ begin
     where id = p_group_id
       and workspace_id = p_workspace_id
       and store_id = p_store_id
-      and property_id is not distinct from p_property_id
+      and property_id = p_property_id
     returning id into v_group_id;
 
     if v_group_id is null then
@@ -114,25 +116,148 @@ begin
     end if;
   end if;
 
-  -- All link replacement is in this transaction: any constraint/error rolls back
-  -- the group mutation and both link sets together.
-  delete from public.printer_group_categories
-  where printer_group_id = v_group_id;
-
-  delete from public.printer_group_printers
-  where printer_group_id = v_group_id;
+  -- Atomic replacement: any invalid link or constraint failure rolls back all changes.
+  delete from public.printer_group_categories where printer_group_id = v_group_id;
+  delete from public.printer_group_printers where printer_group_id = v_group_id;
 
   insert into public.printer_group_categories(printer_group_id, category_id, property_id)
-  select v_group_id, requested.id, p_property_id
-  from unnest(v_categories) as requested(id);
+  select v_group_id, requested.id, p_property_id from unnest(v_categories) as requested(id);
 
   insert into public.printer_group_printers(printer_group_id, printer_id)
-  select v_group_id, requested.id
-  from unnest(v_printers) as requested(id);
+  select v_group_id, requested.id from unnest(v_printers) as requested(id);
 
   return v_group_id;
 end;
 $$;
+
+-- A direct link-table write must not attach a printer from another store.
+create or replace function public.fn_printer_group_printers_store_guard()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not exists (
+    select 1
+    from public.printer_groups g
+    join public.printers p on p.id = new.printer_id
+    where g.id = new.printer_group_id
+      and g.store_id = p.store_id
+      and g.workspace_id = p.workspace_id
+  ) then
+    raise exception 'Printer and printer group must belong to the same store and workspace.'
+      using errcode = '23514';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists printer_group_printers_store_guard on public.printer_group_printers;
+create trigger printer_group_printers_store_guard
+before insert or update on public.printer_group_printers
+for each row execute function public.fn_printer_group_printers_store_guard();
+
+-- Split broad member access into read access and manager-only writes.
+drop policy if exists printer_groups_access on public.printer_groups;
+drop policy if exists printer_groups_select on public.printer_groups;
+drop policy if exists printer_groups_insert on public.printer_groups;
+drop policy if exists printer_groups_update on public.printer_groups;
+drop policy if exists printer_groups_delete on public.printer_groups;
+create policy printer_groups_select on public.printer_groups for select
+  using (public.is_workspace_member(workspace_id) and public.is_store_member(store_id));
+create policy printer_groups_insert on public.printer_groups for insert
+  with check (public.can_manage_store_printer_config(workspace_id, store_id));
+create policy printer_groups_update on public.printer_groups for update
+  using (public.can_manage_store_printer_config(workspace_id, store_id))
+  with check (public.can_manage_store_printer_config(workspace_id, store_id));
+create policy printer_groups_delete on public.printer_groups for delete
+  using (public.can_manage_store_printer_config(workspace_id, store_id));
+
+drop policy if exists printers_access on public.printers;
+drop policy if exists printers_select on public.printers;
+drop policy if exists printers_insert on public.printers;
+drop policy if exists printers_update on public.printers;
+drop policy if exists printers_delete on public.printers;
+create policy printers_select on public.printers for select
+  using (public.is_workspace_member(workspace_id) and public.is_store_member(store_id));
+create policy printers_insert on public.printers for insert
+  with check (public.can_manage_store_printer_config(workspace_id, store_id));
+create policy printers_update on public.printers for update
+  using (public.can_manage_store_printer_config(workspace_id, store_id))
+  with check (public.can_manage_store_printer_config(workspace_id, store_id));
+create policy printers_delete on public.printers for delete
+  using (public.can_manage_store_printer_config(workspace_id, store_id));
+
+drop policy if exists printer_group_categories_access on public.printer_group_categories;
+drop policy if exists printer_group_categories_select on public.printer_group_categories;
+drop policy if exists printer_group_categories_insert on public.printer_group_categories;
+drop policy if exists printer_group_categories_update on public.printer_group_categories;
+drop policy if exists printer_group_categories_delete on public.printer_group_categories;
+create policy printer_group_categories_select on public.printer_group_categories for select
+  using (exists (
+    select 1 from public.printer_groups g
+    where g.id = printer_group_id
+      and public.is_workspace_member(g.workspace_id)
+      and public.is_store_member(g.store_id)
+  ));
+create policy printer_group_categories_insert on public.printer_group_categories for insert
+  with check (exists (
+    select 1 from public.printer_groups g
+    where g.id = printer_group_id
+      and public.can_manage_store_printer_config(g.workspace_id, g.store_id)
+      and g.property_id = property_id
+  ));
+create policy printer_group_categories_update on public.printer_group_categories for update
+  using (exists (
+    select 1 from public.printer_groups g
+    where g.id = printer_group_id
+      and public.can_manage_store_printer_config(g.workspace_id, g.store_id)
+  ))
+  with check (exists (
+    select 1 from public.printer_groups g
+    where g.id = printer_group_id
+      and public.can_manage_store_printer_config(g.workspace_id, g.store_id)
+      and g.property_id = property_id
+  ));
+create policy printer_group_categories_delete on public.printer_group_categories for delete
+  using (exists (
+    select 1 from public.printer_groups g
+    where g.id = printer_group_id
+      and public.can_manage_store_printer_config(g.workspace_id, g.store_id)
+  ));
+
+drop policy if exists printer_group_printers_access on public.printer_group_printers;
+create policy printer_group_printers_select on public.printer_group_printers for select
+  using (exists (
+    select 1 from public.printer_groups g
+    where g.id = printer_group_id
+      and public.is_workspace_member(g.workspace_id)
+      and public.is_store_member(g.store_id)
+  ));
+create policy printer_group_printers_insert on public.printer_group_printers for insert
+  with check (exists (
+    select 1 from public.printer_groups g
+    where g.id = printer_group_id
+      and public.can_manage_store_printer_config(g.workspace_id, g.store_id)
+  ));
+create policy printer_group_printers_update on public.printer_group_printers for update
+  using (exists (
+    select 1 from public.printer_groups g
+    where g.id = printer_group_id
+      and public.can_manage_store_printer_config(g.workspace_id, g.store_id)
+  ))
+  with check (exists (
+    select 1 from public.printer_groups g
+    where g.id = printer_group_id
+      and public.can_manage_store_printer_config(g.workspace_id, g.store_id)
+  ));
+create policy printer_group_printers_delete on public.printer_group_printers for delete
+  using (exists (
+    select 1 from public.printer_groups g
+    where g.id = printer_group_id
+      and public.can_manage_store_printer_config(g.workspace_id, g.store_id)
+  ));
 
 revoke all on function public.can_manage_store_printer_config(uuid, uuid) from public, anon;
 grant execute on function public.can_manage_store_printer_config(uuid, uuid) to authenticated;
