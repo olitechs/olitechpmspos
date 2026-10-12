@@ -21,6 +21,15 @@ as $$
       where sm.store_id = p_store_id
         and sm.user_id = auth.uid()
         and lower(sm.role) in ('owner', 'admin', 'manager')
+    )
+    or exists (
+      select 1 from public.stores s
+      where s.id = p_store_id
+        and s.workspace_id = p_workspace_id
+        and (
+          public.property_role(s.property_id) in ('owner', 'admin', 'manager')
+          or public.current_staff_role(s.property_id) in ('hotel_admin', 'super_admin', 'fb_manager')
+        )
     );
 $$;
 
