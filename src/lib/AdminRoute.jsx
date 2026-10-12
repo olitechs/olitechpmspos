@@ -1,8 +1,8 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 
-// Client-side UX gate. Server-side Supabase RLS remains the authoritative
-// security boundary for platform operations.
+// Client-side route separation is defense in depth. Supabase RLS and guarded
+// database functions remain the authoritative authorization boundary.
 export default function AdminRoute() {
   const { user, isLoadingAuth, authChecked } = useAuth();
   const location = useLocation();
@@ -13,28 +13,31 @@ export default function AdminRoute() {
 
   if (!user) return <Navigate to="/admin/login" replace />;
 
+  const isPlatformOwner = user?.isPlatformOwner === true;
   const propertyAdmin = ['owner', 'admin', 'manager'].includes(String(user?.propertyRole || '').toLowerCase());
-  const staffAdmin = ['hotel_admin', 'super_admin'].includes(String(user?.staff?.role || '').toLowerCase());
+  const staffAdmin = ['hotel_admin', 'super_admin', 'fb_manager'].includes(String(user?.staff?.role || '').toLowerCase());
 
-  // Platform administrators and hotel/property administrators are separate
-  // security domains. Platform owners must never enter property staff/settings
-  // screens, even by typing the URL directly.
-  const propertyOnlyPaths = [
-    '/admin/roles',
-    '/admin/settings',
-    '/admin/settings/printers',
-    '/admin/settings/receipt',
-    '/admin/settings/unsettled-receipt',
-  ];
+  const platformOnlyPaths = ['/admin/properties', '/admin/audit-log'];
+  const isPlatformOnlyPath = platformOnlyPaths.some((path) =>
+    location.pathname === path || location.pathname.startsWith(`${path}/`)
+  );
+
+  const propertyOnlyPaths = ['/admin/roles', '/admin/settings'];
   const isPropertyOnlyPath = propertyOnlyPaths.some((path) =>
     location.pathname === path || location.pathname.startsWith(`${path}/`)
   );
 
-  if (user.isPlatformOwner && isPropertyOnlyPath) {
+  // Never expose platform-wide property/subscription/audit pages to property admins.
+  if (!isPlatformOwner && (isPlatformOnlyPath || location.pathname === '/admin')) {
+    return <Navigate to="/backoffice" replace />;
+  }
+
+  // Platform owners use platform operations, not tenant staff/settings screens.
+  if (isPlatformOwner && isPropertyOnlyPath) {
     return <Navigate to="/admin" replace />;
   }
 
-  if (!user.isPlatformOwner && !propertyAdmin && !staffAdmin) {
+  if (!isPlatformOwner && !propertyAdmin && !staffAdmin) {
     return <Navigate to="/backoffice" replace />;
   }
 
