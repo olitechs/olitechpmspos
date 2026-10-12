@@ -251,3 +251,123 @@ WITH CHECK (
       )
   )
 );
+
+
+-- Read access is tenant-scoped; mutation access requires an actual manager role.
+CREATE OR REPLACE FUNCTION public.fn_can_manage_store_printers(p_workspace_id uuid, p_store_id uuid, p_property_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+  SELECT auth.uid() IS NOT NULL AND (
+    EXISTS (SELECT 1 FROM public.workspace_members wm
+      WHERE wm.workspace_id = p_workspace_id AND wm.user_id = auth.uid()
+        AND wm.role IN ('owner','admin'))
+    OR EXISTS (SELECT 1 FROM public.store_members sm
+      WHERE sm.store_id = p_store_id AND sm.user_id = auth.uid()
+        AND sm.role IN ('owner','admin','manager'))
+    OR (p_property_id IS NOT NULL AND public.is_member_of_property(p_property_id)
+        AND public.property_role(p_property_id) IN ('owner','admin','manager'))
+  );
+$function$;
+
+DROP POLICY IF EXISTS printers_access ON public.printers;
+CREATE POLICY printers_select_tenant ON public.printers FOR SELECT
+USING (
+  EXISTS (SELECT 1 FROM public.workspace_members wm WHERE wm.workspace_id = printers.workspace_id AND wm.user_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM public.store_members sm WHERE sm.store_id = printers.store_id AND sm.user_id = auth.uid())
+  OR (SELECT s.property_id FROM public.stores s WHERE s.id = printers.store_id) IS NOT NULL
+     AND public.is_member_of_property((SELECT s.property_id FROM public.stores s WHERE s.id = printers.store_id))
+);
+CREATE POLICY printers_insert_manager ON public.printers FOR INSERT
+WITH CHECK (public.fn_can_manage_store_printers(workspace_id, store_id, (SELECT s.property_id FROM public.stores s WHERE s.id = store_id)));
+CREATE POLICY printers_update_manager ON public.printers FOR UPDATE
+USING (public.fn_can_manage_store_printers(workspace_id, store_id, (SELECT s.property_id FROM public.stores s WHERE s.id = store_id)))
+WITH CHECK (public.fn_can_manage_store_printers(workspace_id, store_id, (SELECT s.property_id FROM public.stores s WHERE s.id = store_id)));
+CREATE POLICY printers_delete_manager ON public.printers FOR DELETE
+USING (public.fn_can_manage_store_printers(workspace_id, store_id, (SELECT s.property_id FROM public.stores s WHERE s.id = store_id)));
+
+DROP POLICY IF EXISTS printer_groups_access ON public.printer_groups;
+CREATE POLICY printer_groups_select_tenant ON public.printer_groups FOR SELECT
+USING (
+  EXISTS (SELECT 1 FROM public.workspace_members wm WHERE wm.workspace_id = printer_groups.workspace_id AND wm.user_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM public.store_members sm WHERE sm.store_id = printer_groups.store_id AND sm.user_id = auth.uid())
+  OR (property_id IS NOT NULL AND public.is_member_of_property(property_id))
+);
+CREATE POLICY printer_groups_insert_manager ON public.printer_groups FOR INSERT
+WITH CHECK (public.fn_can_manage_store_printers(workspace_id, store_id, property_id));
+CREATE POLICY printer_groups_update_manager ON public.printer_groups FOR UPDATE
+USING (public.fn_can_manage_store_printers(workspace_id, store_id, property_id))
+WITH CHECK (public.fn_can_manage_store_printers(workspace_id, store_id, property_id));
+CREATE POLICY printer_groups_delete_manager ON public.printer_groups FOR DELETE
+USING (public.fn_can_manage_store_printers(workspace_id, store_id, property_id));
+
+DROP POLICY IF EXISTS printer_group_categories_access ON public.printer_group_categories;
+CREATE POLICY printer_group_categories_select_tenant ON public.printer_group_categories FOR SELECT
+USING (property_id IS NOT NULL AND public.is_member_of_property(property_id));
+CREATE POLICY printer_group_categories_insert_manager ON public.printer_group_categories FOR INSERT
+WITH CHECK (
+  property_id IS NOT NULL AND EXISTS (
+    SELECT 1 FROM public.printer_groups g WHERE g.id = printer_group_categories.printer_group_id
+      AND public.fn_can_manage_store_printers(g.workspace_id, g.store_id, g.property_id)
+      AND g.property_id = printer_group_categories.property_id
+  )
+);
+CREATE POLICY printer_group_categories_update_manager ON public.printer_group_categories FOR UPDATE
+USING (
+  property_id IS NOT NULL AND EXISTS (
+    SELECT 1 FROM public.printer_groups g WHERE g.id = printer_group_categories.printer_group_id
+      AND public.fn_can_manage_store_printers(g.workspace_id, g.store_id, g.property_id)
+      AND g.property_id = printer_group_categories.property_id
+  )
+)
+WITH CHECK (
+  property_id IS NOT NULL AND EXISTS (
+    SELECT 1 FROM public.printer_groups g WHERE g.id = printer_group_categories.printer_group_id
+      AND public.fn_can_manage_store_printers(g.workspace_id, g.store_id, g.property_id)
+      AND g.property_id = printer_group_categories.property_id
+  )
+);
+CREATE POLICY printer_group_categories_delete_manager ON public.printer_group_categories FOR DELETE
+USING (
+  property_id IS NOT NULL AND EXISTS (
+    SELECT 1 FROM public.printer_groups g WHERE g.id = printer_group_categories.printer_group_id
+      AND public.fn_can_manage_store_printers(g.workspace_id, g.store_id, g.property_id)
+      AND g.property_id = printer_group_categories.property_id
+  )
+);
+
+DROP POLICY IF EXISTS printer_group_printers_access ON public.printer_group_printers;
+CREATE POLICY printer_group_printers_select_tenant ON public.printer_group_printers FOR SELECT
+USING (
+  EXISTS (SELECT 1 FROM public.printer_groups g
+    WHERE g.id = printer_group_printers.printer_group_id
+      AND (EXISTS (SELECT 1 FROM public.workspace_members wm WHERE wm.workspace_id = g.workspace_id AND wm.user_id = auth.uid())
+        OR EXISTS (SELECT 1 FROM public.store_members sm WHERE sm.store_id = g.store_id AND sm.user_id = auth.uid())
+        OR (g.property_id IS NOT NULL AND public.is_member_of_property(g.property_id)))
+);
+CREATE POLICY printer_group_printers_insert_manager ON public.printer_group_printers FOR INSERT
+WITH CHECK (
+  EXISTS (SELECT 1 FROM public.printer_groups g
+    WHERE g.id = printer_group_printers.printer_group_id
+      AND public.fn_can_manage_store_printers(g.workspace_id, g.store_id, g.property_id))
+);
+CREATE POLICY printer_group_printers_update_manager ON public.printer_group_printers FOR UPDATE
+USING (
+  EXISTS (SELECT 1 FROM public.printer_groups g
+    WHERE g.id = printer_group_printers.printer_group_id
+      AND public.fn_can_manage_store_printers(g.workspace_id, g.store_id, g.property_id))
+)
+WITH CHECK (
+  EXISTS (SELECT 1 FROM public.printer_groups g
+    WHERE g.id = printer_group_printers.printer_group_id
+      AND public.fn_can_manage_store_printers(g.workspace_id, g.store_id, g.property_id))
+);
+CREATE POLICY printer_group_printers_delete_manager ON public.printer_group_printers FOR DELETE
+USING (
+  EXISTS (SELECT 1 FROM public.printer_groups g
+    WHERE g.id = printer_group_printers.printer_group_id
+      AND public.fn_can_manage_store_printers(g.workspace_id, g.store_id, g.property_id))
+);
