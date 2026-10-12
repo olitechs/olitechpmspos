@@ -6,7 +6,7 @@ const id = () => globalThis.crypto?.randomUUID?.() || String(Date.now());
 
 export const usePrinterStore = create(persist((set, get) => ({
   stores: [], storeId: null, propertyId: null, workspaceId: null,
-  printers: [], printAgents: [], printerGroups: [], loading: false, error: null,
+  printers: [], printAgents: [], printerGroups: [], categories: [], loading: false, error: null,
 
   async hydrate(storeId) {
     if (!storeId) return;
@@ -21,6 +21,15 @@ export const usePrinterStore = create(persist((set, get) => ({
       for (const error of [storesError, groupsError, printersError, agentsError]) if (error) throw error;
 
       const store = (stores || []).find(s => s.id === storeId);
+      let categories = [];
+      if (store?.property_id) {
+        const categoryResult = await supabase.from('pos_menu_categories')
+          .select('id,name,production_center')
+          .eq('property_id', store.property_id)
+          .order('sort_order');
+        if (categoryResult.error) throw categoryResult.error;
+        categories = categoryResult.data || [];
+      }
       const ids = (groups || []).map(g => g.id);
       let links = [], cats = [];
       if (ids.length) {
@@ -35,7 +44,7 @@ export const usePrinterStore = create(persist((set, get) => ({
       set({
         stores: stores || [], propertyId: store?.property_id || null,
         workspaceId: store?.workspace_id || null, printers: printers || [],
-        printAgents: agents || [],
+        printAgents: agents || [], categories,
         printerGroups: (groups || []).map(g => ({
           ...g,
           categoryIds: cats.filter(x => x.printer_group_id === g.id).map(x => x.category_id),
@@ -137,10 +146,14 @@ export const usePrinterStore = create(persist((set, get) => ({
   },
 
   splitOrderByPrinterGroups(items = []) {
+    const { categories = [], printerGroups = [] } = get();
+    const normalize = value => String(value ?? '').trim().toLowerCase();
     const out = new Map();
     for (const item of items) {
-      const categoryId = item.categoryId || item.category_id;
-      const groups = categoryId ? get().getPrinterGroupsForCategory(categoryId) : [];
+      const explicitId = item.categoryId || item.category_id;
+      const categoryName = normalize(item.pos_category || item.categoryName || item.category);
+      const categoryId = explicitId || categories.find(c => normalize(c.name) === categoryName)?.id || null;
+      const groups = categoryId ? printerGroups.filter(g => (g.categoryIds || []).includes(categoryId)) : [];
       for (const group of groups) {
         if (!out.has(group.id)) out.set(group.id, []);
         out.get(group.id).push(item);
