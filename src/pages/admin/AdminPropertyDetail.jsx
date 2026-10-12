@@ -8,6 +8,19 @@ import PackageAssignmentModal from './PackageAssignmentModal';
 
 const ROLES=['owner','admin','manager','reception','cashier','waiter','kitchen','housekeeping','maintenance','accountant','storekeeper'];
 const SUB_STATUSES=['trial','active','past_due','suspended','cancelled'];
+const PLAN_MODULES = {
+  standard: ['frontoffice', 'pos'],
+  premium: ['frontoffice', 'pos', 'backoffice', 'store'],
+  professional: ['frontoffice', 'pos', 'backoffice', 'store'],
+  enterprise: ['frontoffice', 'pos', 'backoffice', 'store'],
+};
+const MODULE_LABELS = {
+  frontoffice: 'Front Office',
+  pos: 'POS & F&B',
+  backoffice: 'Back Office',
+  store: 'Stores',
+};
+const planModules = (planCode) => PLAN_MODULES[String(planCode || '').trim().toLowerCase()] || PLAN_MODULES.standard;
 
 const isoInput=(v)=>v ? new Date(v).toISOString().slice(0,16) : '';
 
@@ -24,7 +37,7 @@ export default function AdminPropertyDetail() {
   const [ownerEmail,setOwnerEmail]=useState('');
   const [memberEmail,setMemberEmail]=useState('');
   const [memberRole,setMemberRole]=useState('admin');
-  const [subForm,setSubForm]=useState({planCode:'starter',status:'trial',trialEndsAt:'',currentPeriodEndsAt:'',graceEndsAt:'',modules:''});
+  const [subForm,setSubForm]=useState({planCode:'standard',status:'trial',trialEndsAt:'',currentPeriodEndsAt:'',graceEndsAt:''});
 
   const load=useCallback(async()=>{
     setLoading(true); setError('');
@@ -37,9 +50,9 @@ export default function AdminPropertyDetail() {
       ]);
       setProperty(p); setMembers(m); setAuditLog(log); setSubscription(s);
       if(s) setSubForm({
-        planCode:s.plan_code||'starter',status:s.status||'trial',
+        planCode:PLAN_MODULES[s.plan_code] ? s.plan_code : 'standard',status:s.status||'trial',
         trialEndsAt:isoInput(s.trial_ends_at),currentPeriodEndsAt:isoInput(s.current_period_ends_at),
-        graceEndsAt:isoInput(s.grace_ends_at),modules:(s.enabled_modules||[]).join(', ')
+        graceEndsAt:isoInput(s.grace_ends_at)
       });
       const owner=m.find(x=>x.role==='owner'); setOwnerEmail(owner?.email||'');
     }catch(e){setError(e.message)}finally{setLoading(false)}
@@ -49,7 +62,17 @@ export default function AdminPropertyDetail() {
   const run=async(fn)=>{setBusy(true);setError('');try{await fn();await load()}catch(e){setError(e.message)}finally{setBusy(false)}};
 
   const setStatus=(status)=>run(()=>platformService.setStatusManaged(id,status));
-  const setPackage=(pkg)=>run(()=>platformService.setPackageManaged(id,pkg));
+  const setPackage=(pkg)=>run(async()=>{
+    await platformService.setPackageManaged(id,pkg);
+    const planCode = pkg === 'none' ? 'standard' : pkg;
+    await platformService.updateSubscription({
+      propertyId:id,planCode,status:pkg === 'none' ? 'suspended' : (subscription?.status || 'active'),
+      trialEndsAt:subscription?.trial_ends_at || null,
+      currentPeriodEndsAt:subscription?.current_period_ends_at || null,
+      graceEndsAt:subscription?.grace_ends_at || null,
+      enabledModules:pkg === 'none' ? [] : planModules(planCode)
+    });
+  });
 
   const assignOwner=async()=>{
     if(!ownerEmail.trim()) return setError('Enter an owner email.');
@@ -63,11 +86,12 @@ export default function AdminPropertyDetail() {
 
   const removeMember=(userId)=>{if(window.confirm('Remove this member from the property?'))run(()=>platformService.removePropertyMember(id,userId))};
 
+  const changePlanCode=(planCode)=>setSubForm(f=>({...f,planCode}));
   const saveSubscription=()=>run(()=>platformService.updateSubscription({
     propertyId:id,planCode:subForm.planCode,status:subForm.status,
     trialEndsAt:subForm.trialEndsAt||null,currentPeriodEndsAt:subForm.currentPeriodEndsAt||null,
     graceEndsAt:subForm.graceEndsAt||null,
-    enabledModules:subForm.modules.split(',').map(x=>x.trim()).filter(Boolean)
+    enabledModules:planModules(subForm.planCode)
   }));
 
   if(loading)return <div className="text-muted-foreground text-sm">Loading property...</div>;
@@ -112,14 +136,14 @@ export default function AdminPropertyDetail() {
     </section>
 
     <section className="bg-card border border-border rounded-2xl p-5 space-y-4">
-      <div><h2 className="font-semibold">Subscription & Module Entitlements</h2><p className="text-xs text-muted-foreground mt-1">Empty module list means no subscription-level allowlist. When modules are listed, access is restricted to those module keys.</p></div>
+      <div><h2 className="font-semibold">Subscription & Module Entitlements</h2><p className="text-xs text-muted-foreground mt-1">Use the canonical module keys below. An empty list means no subscription-level allowlist; package and subscription status rules still apply.</p><div className="mt-3 grid sm:grid-cols-2 gap-2 text-xs"><div className="rounded-lg border border-border p-2"><strong>frontoffice</strong><span className="block text-muted-foreground">Front Office</span></div><div className="rounded-lg border border-border p-2"><strong>pos</strong><span className="block text-muted-foreground">POS & F&B</span></div><div className="rounded-lg border border-border p-2"><strong>backoffice</strong><span className="block text-muted-foreground">Back Office</span></div><div className="rounded-lg border border-border p-2"><strong>store</strong><span className="block text-muted-foreground">Stores</span></div></div><p className="text-xs text-muted-foreground mt-2">Dashboard is a landing workspace, not a billable module.</p></div>
       <div className="grid md:grid-cols-2 gap-4">
-        <label className="text-sm font-medium">Plan Code<input value={subForm.planCode} onChange={e=>setSubForm(f=>({...f,planCode:e.target.value}))} className="mt-1 w-full h-10 rounded-lg border border-input px-3 bg-background"/></label>
+        <label className="text-sm font-medium">Plan Code<select value={subForm.planCode} onChange={e=>changePlanCode(e.target.value)} className="mt-1 w-full h-10 rounded-lg border border-input px-3 bg-background">{Object.keys(PLAN_MODULES).map(plan=><option key={plan} value={plan}>{plan.charAt(0).toUpperCase()+plan.slice(1)}</option>)}</select><span className="mt-1 block text-xs font-normal text-muted-foreground">Selecting a plan automatically sets its module allowlist.</span></label>
         <label className="text-sm font-medium">Subscription Status<select value={subForm.status} onChange={e=>setSubForm(f=>({...f,status:e.target.value}))} className="mt-1 w-full h-10 rounded-lg border border-input px-3 bg-background">{SUB_STATUSES.map(s=><option key={s}>{s}</option>)}</select></label>
         {[
           ['trialEndsAt','Trial Ends'],['currentPeriodEndsAt','Current Period Ends'],['graceEndsAt','Grace Ends']
         ].map(([k,l])=><label key={k} className="text-sm font-medium">{l}<input type="datetime-local" value={subForm[k]} onChange={e=>setSubForm(f=>({...f,[k]:e.target.value}))} className="mt-1 w-full h-10 rounded-lg border border-input px-3 bg-background"/></label>)}
-        <label className="text-sm font-medium md:col-span-2">Enabled Module Keys<input value={subForm.modules} onChange={e=>setSubForm(f=>({...f,modules:e.target.value}))} placeholder="inventory, revenue_analytics, maintenance" className="mt-1 w-full h-10 rounded-lg border border-input px-3 bg-background"/></label>
+        <div className="md:col-span-2"><div className="text-sm font-medium">Enabled Module Keys</div><div className="mt-2 flex flex-wrap gap-2">{planModules(subForm.planCode).map(key=><span key={key} className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium"><span>{key}</span><span className="text-muted-foreground">— {MODULE_LABELS[key]}</span></span>)}</div><p className="mt-2 text-xs text-muted-foreground">Automatically assigned for the selected plan. Standard enables Front Office and POS; Premium, Professional and Enterprise enable all four modules.</p></div>
       </div>
       <Button disabled={busy} onClick={saveSubscription}><Save className="w-4 h-4 mr-2"/>Save Subscription</Button>
       {subscription&&<div className="text-xs text-muted-foreground">Last updated: {subscription.updated_at?new Date(subscription.updated_at).toLocaleString():'—'}</div>}
