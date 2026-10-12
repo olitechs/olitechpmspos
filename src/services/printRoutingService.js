@@ -101,7 +101,7 @@ export async function printOrder(order = {}) {
     workspace_id: state.workspaceId,
     printer_id: printer.id,
     printer_group_id: plan.groupId,
-    order_id: null,
+    order_id: /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(order.orderId || '')) ? order.orderId : null,
     content_escpos_base64: encode(ticket(plan.lines, {
       orderNumber: order.orderNumber || order.checkNo || order.id,
       table: order.table || order.tableNumber,
