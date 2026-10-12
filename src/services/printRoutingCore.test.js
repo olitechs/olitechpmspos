@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { splitLinesByPrinterGroup, planPrinterJobs, pickOrderPrinter } from './printRoutingCore.js';
+import { splitLinesByPrinterGroup, pickOrderPrinter } from './printRoutingCore.js';
 
 const read = path => readFileSync(new URL(path, import.meta.url), 'utf8');
 
