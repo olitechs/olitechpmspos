@@ -47,6 +47,7 @@ export const usePrinterStore = create(persist((set, get) => ({
         printAgents: agents || [], categories,
         printerGroups: (groups || []).map(g => ({
           ...g,
+          productionCenter: g.production_center || g.productionCenter || '',
           categoryIds: cats.filter(x => x.printer_group_id === g.id).map(x => x.category_id),
           categoryCount: cats.filter(x => x.printer_group_id === g.id).length,
           printerIds: links.filter(x => x.printer_group_id === g.id).map(x => x.printer_id)
