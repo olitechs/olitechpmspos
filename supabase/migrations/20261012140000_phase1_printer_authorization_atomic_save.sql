@@ -177,3 +177,77 @@ WITH CHECK (
 );
 
 NOTIFY pgrst, 'reload schema';
+
+
+-- Platform ownership grants platform-level administration, not implicit membership
+-- in every property/store settings surface. Property UI queries must be scoped
+-- by an actual workspace/store or property membership.
+DROP POLICY IF EXISTS stores_select ON public.stores;
+CREATE POLICY stores_select ON public.stores FOR SELECT
+USING (
+  EXISTS (SELECT 1 FROM public.workspace_members wm WHERE wm.workspace_id = stores.workspace_id AND wm.user_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM public.store_members sm WHERE sm.store_id = stores.id AND sm.user_id = auth.uid())
+  OR (property_id IS NOT NULL AND public.is_member_of_property(property_id))
+);
+
+DROP POLICY IF EXISTS printers_access ON public.printers;
+CREATE POLICY printers_access ON public.printers FOR ALL
+USING (
+  (EXISTS (SELECT 1 FROM public.workspace_members wm WHERE wm.workspace_id = printers.workspace_id AND wm.user_id = auth.uid())
+   OR EXISTS (SELECT 1 FROM public.store_members sm WHERE sm.store_id = printers.store_id AND sm.user_id = auth.uid())
+   OR (SELECT s.property_id FROM public.stores s WHERE s.id = printers.store_id) IS NOT NULL
+      AND public.is_member_of_property((SELECT s.property_id FROM public.stores s WHERE s.id = printers.store_id)))
+WITH CHECK (
+  (EXISTS (SELECT 1 FROM public.workspace_members wm WHERE wm.workspace_id = printers.workspace_id AND wm.user_id = auth.uid())
+   OR EXISTS (SELECT 1 FROM public.store_members sm WHERE sm.store_id = printers.store_id AND sm.user_id = auth.uid())
+   OR (SELECT s.property_id FROM public.stores s WHERE s.id = printers.store_id) IS NOT NULL
+      AND public.is_member_of_property((SELECT s.property_id FROM public.stores s WHERE s.id = printers.store_id)))
+);
+
+DROP POLICY IF EXISTS printer_groups_access ON public.printer_groups;
+CREATE POLICY printer_groups_access ON public.printer_groups FOR ALL
+USING (
+  (EXISTS (SELECT 1 FROM public.workspace_members wm WHERE wm.workspace_id = printer_groups.workspace_id AND wm.user_id = auth.uid())
+   OR EXISTS (SELECT 1 FROM public.store_members sm WHERE sm.store_id = printer_groups.store_id AND sm.user_id = auth.uid())
+   OR (property_id IS NOT NULL AND public.is_member_of_property(property_id)))
+WITH CHECK (
+  (EXISTS (SELECT 1 FROM public.workspace_members wm WHERE wm.workspace_id = printer_groups.workspace_id AND wm.user_id = auth.uid())
+   OR EXISTS (SELECT 1 FROM public.store_members sm WHERE sm.store_id = printer_groups.store_id AND sm.user_id = auth.uid())
+   OR (property_id IS NOT NULL AND public.is_member_of_property(property_id)))
+);
+
+DROP POLICY IF EXISTS printer_group_categories_access ON public.printer_group_categories;
+CREATE POLICY printer_group_categories_access ON public.printer_group_categories FOR ALL
+USING (
+  property_id IS NOT NULL AND public.is_member_of_property(property_id)
+  AND EXISTS (SELECT 1 FROM public.printer_groups g WHERE g.id = printer_group_id AND g.property_id = printer_group_categories.property_id)
+)
+WITH CHECK (
+  property_id IS NOT NULL AND public.is_member_of_property(property_id)
+  AND EXISTS (SELECT 1 FROM public.printer_groups g WHERE g.id = printer_group_id AND g.property_id = printer_group_categories.property_id)
+);
+
+DROP POLICY IF EXISTS printer_group_printers_access ON public.printer_group_printers;
+CREATE POLICY printer_group_printers_access ON public.printer_group_printers FOR ALL
+USING (
+  EXISTS (
+    SELECT 1 FROM public.printer_groups g
+    WHERE g.id = printer_group_printers.printer_group_id
+      AND (
+        EXISTS (SELECT 1 FROM public.workspace_members wm WHERE wm.workspace_id = g.workspace_id AND wm.user_id = auth.uid())
+        OR EXISTS (SELECT 1 FROM public.store_members sm WHERE sm.store_id = g.store_id AND sm.user_id = auth.uid())
+        OR (g.property_id IS NOT NULL AND public.is_member_of_property(g.property_id))
+      )
+  )
+)
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM public.printer_groups g
+    WHERE g.id = printer_group_printers.printer_group_id
+      AND (
+        EXISTS (SELECT 1 FROM public.workspace_members wm WHERE wm.workspace_id = g.workspace_id AND wm.user_id = auth.uid())
+        OR EXISTS (SELECT 1 FROM public.store_members sm WHERE sm.store_id = g.store_id AND sm.user_id = auth.uid())
+        OR (g.property_id IS NOT NULL AND public.is_member_of_property(g.property_id))
+      )
+  )
+);
