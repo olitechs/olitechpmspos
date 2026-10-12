@@ -11,7 +11,6 @@ import OpenTableDialog from '@/components/pos/OpenTableDialog';
 import PinPad from '@/components/auth/PinPad';
 import { authService } from '@/services/authService';
 import { useAuth } from '@/lib/AuthContext';
-import { isFeatureEnabled } from '@/lib/featureFlags';
 import { printOrderByCategory } from '@/services/printService';
 import { printOrder as printRoutedOrder, isPrinterGroupRoutingEnabled } from '@/services/printRoutingService';
 import { usePrinterStore as usePrinterStoreV2 } from '@/data/modules/printerStore';
@@ -172,23 +171,64 @@ export default function POSContainer() {
 			createdAt: Date.now(),
 			items: linesSnapshot,
 		});
-		const printResult = isFeatureEnabled('printerGroupRouting') ? await printRoutedOrder({ id: orderNumber, items: linesSnapshot }).then(jobs => ({ ok: jobs.length > 0, jobs })).catch(() => printOrder()) : await printOrder();
+		const dispatchTickets = async () => {
+			if (isPrinterGroupRoutingEnabled()) {
+				const jobs = await printRoutedOrder({
+					id: orderNumber,
+					orderNumber,
+					table: tableLabel(table),
+					waiter: store.getSession(table.id)?.waiter,
+					items: linesSnapshot,
+				});
+				return { ok: jobs.length > 0, jobs, queued: true };
+			}
+			return printOrder();
+		};
+		let printResult;
+		try {
+			printResult = await dispatchTickets();
+		} catch (error) {
+			toast.error(`Order ${orderNumber} was saved, but KOT/BOT routing failed.`, {
+				description: error?.message || 'Check printer groups, category mappings, and assigned physical printers.',
+				duration: 12000,
+				action: { label: 'Retry Tickets', onClick: async () => {
+					try {
+						const retry = await dispatchTickets();
+						if (retry.ok) {
+							await posService.markKotSent({ propertyId, tableKey: table.id }).catch(() => {});
+							toast.success(retry.queued ? `Order ${orderNumber} queued for the print agent.` : `Order ${orderNumber} tickets printed.`);
+						} else {
+							toast.error('Ticket retry failed. Check printer assignments.');
+						}
+					} catch (retryError) {
+						toast.error(retryError?.message || 'Ticket retry failed. Check printer configuration.');
+					}
+				}},
+			});
+			return;
+		}
 		if (!printResult.ok) {
 			const failures = (printResult.results || []).filter((r) => !r.ok).map((r) => r.friendlyError).filter(Boolean);
 			toast.error(`Order ${orderNumber} was saved, but one or more tickets did not print.`, {
 				description: failures.join(' ') || 'Check printer assignments.',
 				duration: 12000,
 				action: { label: 'Retry Tickets', onClick: async () => {
-					const retry = await printOrder();
-					if (retry.ok) { await posService.markKotSent({ propertyId, tableKey: table.id }).catch(() => {}); toast.success(`Order ${orderNumber} tickets printed.`); }
-					else toast.error('Ticket retry failed. Check printer assignments.');
+					try {
+						const retry = await dispatchTickets();
+						if (retry.ok) {
+							await posService.markKotSent({ propertyId, tableKey: table.id }).catch(() => {});
+							toast.success(retry.queued ? `Order ${orderNumber} queued for the print agent.` : `Order ${orderNumber} tickets printed.`);
+						} else toast.error('Ticket retry failed. Check printer assignments.');
+					} catch (retryError) {
+						toast.error(retryError?.message || 'Ticket retry failed. Check printer configuration.');
+					}
 				}},
 			});
 			return;
 		}
 
 		await posService.markKotSent({ propertyId, tableKey: table.id }).catch((error) => console.warn('[POS] failed to mark KOT sent', error));
-		toast.success(`Order ${orderNumber} sent to kitchen/bar printers.`);
+		toast.success(printResult.queued ? `Order ${orderNumber} queued for the print agent.` : `Order ${orderNumber} tickets printed.`);
 	};
 
 	const openTableTransfer = () => {
