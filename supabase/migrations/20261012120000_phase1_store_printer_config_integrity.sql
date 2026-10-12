@@ -272,4 +272,48 @@ grant execute on function public.can_manage_store_printer_config(uuid, uuid) to 
 revoke all on function public.fn_save_store_printer_group(uuid, uuid, uuid, uuid, text, uuid[], uuid[]) from public, anon;
 grant execute on function public.fn_save_store_printer_group(uuid, uuid, uuid, uuid, text, uuid[], uuid[]) to authenticated;
 
+
+-- Tenant ownership of a printer/group is immutable. Moving a device requires
+-- an explicit delete/recreate flow so existing links cannot become cross-store.
+create or replace function public.fn_guard_printer_tenant_reassignment()
+returns trigger
+language plpgsql
+set search_path = public
+as $
+begin
+  if new.store_id is distinct from old.store_id
+     or new.workspace_id is distinct from old.workspace_id then
+    raise exception 'Printer store/workspace cannot be reassigned; remove and register the printer in the target store.'
+      using errcode = '23514';
+  end if;
+  return new;
+end;
+$;
+
+drop trigger if exists printer_tenant_reassignment_guard on public.printers;
+create trigger printer_tenant_reassignment_guard
+before update of store_id, workspace_id on public.printers
+for each row execute function public.fn_guard_printer_tenant_reassignment();
+
+create or replace function public.fn_guard_printer_group_tenant_reassignment()
+returns trigger
+language plpgsql
+set search_path = public
+as $
+begin
+  if new.store_id is distinct from old.store_id
+     or new.workspace_id is distinct from old.workspace_id
+     or new.property_id is distinct from old.property_id then
+    raise exception 'Printer group tenant ownership cannot be reassigned; create a new group in the target store.'
+      using errcode = '23514';
+  end if;
+  return new;
+end;
+$;
+
+drop trigger if exists printer_group_tenant_reassignment_guard on public.printer_groups;
+create trigger printer_group_tenant_reassignment_guard
+before update of store_id, workspace_id, property_id on public.printer_groups
+for each row execute function public.fn_guard_printer_group_tenant_reassignment();
+
 notify pgrst, 'reload schema';
