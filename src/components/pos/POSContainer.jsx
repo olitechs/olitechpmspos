@@ -156,7 +156,7 @@ export default function POSContainer() {
 		setActiveTab('floor');
 		setActiveTable(null);
 
-		await store.fireKitchenOrder({
+		const kitchenOrderRecord = await store.fireKitchenOrder({
 			table, orderLines: linesSnapshot, orderNumber,
 			buildTicketText: (center, lines) => buildKitchenTicketText(center, lines, { orderNumber, table, propertyName, waiter: store.getSession(table.id)?.waiter }),
 			printTickets: false,
@@ -175,6 +175,7 @@ export default function POSContainer() {
 			if (isPrinterGroupRoutingEnabled()) {
 				const jobs = await printRoutedOrder({
 					id: orderNumber,
+					orderId: kitchenOrderRecord?.id,
 					orderNumber,
 					table: tableLabel(table),
 					waiter: store.getSession(table.id)?.waiter,
