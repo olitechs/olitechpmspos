@@ -9,7 +9,7 @@ const PLATFORM_NAV = [
 ];
 
 const PROPERTY_NAV = [
-  { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
+  { to: '/backoffice', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/admin/roles', label: 'Staff & Roles', icon: UsersRound },
   { to: '/admin/settings', label: 'Property Settings', icon: Settings },
   { to: '/admin/settings/printers', label: 'Printer Settings', icon: Settings },
