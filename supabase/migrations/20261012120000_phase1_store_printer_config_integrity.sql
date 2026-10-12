@@ -215,7 +215,6 @@ create policy printer_group_categories_insert on public.printer_group_categories
     select 1 from public.printer_groups g
     where g.id = printer_group_id
       and public.can_manage_store_printer_config(g.workspace_id, g.store_id)
-      and g.property_id = property_id
   ));
 create policy printer_group_categories_update on public.printer_group_categories for update
   using (exists (
@@ -227,7 +226,6 @@ create policy printer_group_categories_update on public.printer_group_categories
     select 1 from public.printer_groups g
     where g.id = printer_group_id
       and public.can_manage_store_printer_config(g.workspace_id, g.store_id)
-      and g.property_id = property_id
   ));
 create policy printer_group_categories_delete on public.printer_group_categories for delete
   using (exists (
