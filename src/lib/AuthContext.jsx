@@ -70,15 +70,17 @@ export function AuthProvider({ children }) {
     navigate('/login', { replace: true });
   }, [navigate, location]);
 
-  const login = useCallback(async (email, password) => {
+  const login = useCallback(async (email, password, options = {}) => {
     const loggedInUser = await authService.login({ email, password });
     setUser(loggedInUser);
     localStorage.setItem('olitech_token', 'supabase_session');
     setAuthError(null);
     setAuthChecked(true);
-    const dest = getReturnTo('/');
+    const dest = options.redirectTo || (loggedInUser?.isPlatformOwner ? '/admin' : getReturnTo('/'));
     clearReturnTo();
-    navigate(dest, { replace: true });
+    // Dedicated admin login must validate the account role before navigating;
+    // otherwise a property account can be redirected away before the denial is shown.
+    if (options.navigate !== false) navigate(dest, { replace: true });
     return loggedInUser;
   }, [navigate]);
 
