@@ -39,7 +39,7 @@ export default function RouteGuard({ module, children }) {
   // Property/platform administrators authenticate with their Supabase email + password.
   // A staff PIN never elevates an account to administrator access.
   const master = !!user?.isPlatformOwner || masterRoles.has(role) ||
-    (!user?.staff?.role && ['owner', 'admin', 'manager'].includes(propertyRole));
+    ['owner', 'admin', 'manager'].includes(propertyRole);
   const [staff, setStaff] = useState([]);
   const [selected, setSelected] = useState(getActiveStaff());
   const [pinOpen, setPinOpen] = useState(false);
