@@ -175,7 +175,7 @@ export default function RouteGuard({ module, children }) {
             </div>
           )}
         </div>
-        <p className="mt-6 text-center text-[10px] font-semibold uppercase tracking-[.16em] text-[#8B8B83]">Property-scoped access · Attempts are monitored</p>
+        <p className="mt-6 text-center text-[10px] font-semibold uppercase tracking-[.16em] text-[#8B8B83]">Property-scoped access · PIN required</p>
       </section>
       {pinOpen && selected && <PinPad fullscreen title="ENTER PIN TO LOG IN" staffName={selected.full_name} error={error} onSubmit={verify} onClose={() => { setPinOpen(false); setError(''); }} />}
     </main>
