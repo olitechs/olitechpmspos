@@ -9,12 +9,12 @@
 --     'authenticated', 'public.staff', 'pin_hash', 'select'
 --   );
 -- true means the authenticated role can currently read pin_hash. Record the
--- result with the release evidence; this check is diagnostic, not a substitute
--- for reviewing effective grants and testing the API.
+-- result with release evidence; this check is diagnostic, not a substitute for
+-- reviewing effective grants and testing the API.
 --
--- 1. Five failed attempts in a rolling 10-minute window lock the (auth user,
---    property) pair for 5 minutes. On a shared terminal this pauses PIN entry
---    for that signed-in user/property pair, not every user at the property.
+-- 1. Five failed attempts within 10 minutes lock the (auth user, property)
+--    pair for 5 minutes. On a shared terminal this pauses PIN entry for that
+--    signed-in user/property pair, not every user at the property.
 -- 2. Failed attempts are logged to staff_logs with action = 'wrong_pin'.
 -- 3. Remove table-level and column-level pin_hash SELECT grants, then restore
 --    authenticated SELECT only for the other current staff columns.
@@ -60,13 +60,20 @@ begin
     raise exception 'Not allowed.' using errcode = '42501';
   end if;
 
+  if p_property_id is null
+     or p_module is null
+     or btrim(p_module) = ''
+     or p_pin_hash is null then
+    raise exception 'Invalid PIN verification request.' using errcode = '22023';
+  end if;
+
   if not public.is_member_of_property(p_property_id)
      and not public.is_platform_owner() then
     raise exception 'Not allowed.' using errcode = '42501';
   end if;
 
-  -- Serialize attempts when an attempt row already exists. The subsequent
-  -- INSERT ... ON CONFLICT update remains atomic for first-attempt races.
+  -- Lock the existing attempt row before checking lockout. INSERT ... ON
+  -- CONFLICT below serializes first-attempt races on the same user/property.
   select *
     into a
     from public.staff_pin_attempts
@@ -176,8 +183,10 @@ $$;
 grant execute on function public.verify_staff_pin(uuid, text, text) to authenticated;
 revoke execute on function public.verify_staff_pin(uuid, text, text) from anon, public;
 
--- Remove both table-wide and any legacy column-specific SELECT grants on the
--- sensitive hash column. Then restore reads for all other current columns.
+-- Remove table-wide and column-level SELECT access to the sensitive hash.
+-- Restore all current non-hash columns used by the staff directory. Existing
+-- UPDATE(pin_hash) privileges from the PIN reset flow are intentionally
+-- unaffected; reset_staff_pin remains the intended credential-change path.
 revoke select (pin_hash) on public.staff from public, anon, authenticated;
 revoke select on public.staff from public, anon, authenticated;
 
@@ -208,18 +217,19 @@ notify pgrst, 'reload schema';
 commit;
 
 -- Regression checks in a disposable Supabase staging project:
--- A. No auth user can call the verifier without a property membership (unless
---    they are a platform owner); unauthenticated calls are rejected.
--- B. Four wrong PINs return reason=wrong_pin; the fifth returns reason=locked.
--- C. Further attempts during lockout do not extend or bypass the lock.
--- D. Lockout expires after five minutes; the 10-minute failure window resets.
--- E. A successful PIN clears that user's attempts for that property and still
+-- A. Unauthenticated calls and authenticated non-members are rejected.
+-- B. Null/blank module or null property/hash are rejected without changing the
+--    attempt counter; malformed input cannot trigger a staff_logs constraint
+--    failure that rolls back a failed-attempt increment.
+-- C. Four wrong PINs return reason=wrong_pin; the fifth returns reason=locked.
+-- D. Further attempts during lockout do not extend or bypass the lock.
+-- E. Lockout expires after five minutes; the 10-minute failure window resets.
+-- F. A successful PIN clears that user's attempts for the property and still
 --    creates/refreshes staff_sessions, updates last_login, and writes module_entry.
--- F. Failed attempts write wrong_pin logs without disclosing staff identities.
--- G. User/property pairs are isolated; one user locked out does not lock out
---    another auth user at the same property.
--- H. PIN verification remains limited to active staff assigned to p_module.
--- I. authenticated cannot SELECT staff.pin_hash through PostgREST or SQL, while
+-- G. Failed attempts write wrong_pin logs without disclosing staff identities.
+-- H. User/property pairs are isolated; another auth user is not locked out.
+-- I. Verification remains limited to active staff assigned to p_module.
+-- J. authenticated cannot SELECT staff.pin_hash through PostgREST or SQL, while
 --    normal non-sensitive staff fields used by the app remain readable.
--- J. Existing POS login/logout, module access, and staff audit logs regressions
---    pass before promotion.
+-- K. Existing POS login/logout, module access, staff management, PIN reset,
+--    and staff audit-log flows pass before promotion.
