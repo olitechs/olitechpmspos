@@ -297,6 +297,11 @@ export const authService = {
 		if (error) throw new Error(error.message);
 	},
 
+	async clearActiveStaffSession() {
+		const { error } = await supabase.rpc('clear_active_staff_session');
+		if (error) throw new Error(error.message);
+	},
+
 	async verifyStaffPin({ propertyId, module, pin }) {
 		const pinHash = await hashPin(pin);
 		const { data, error } = await supabase.rpc('verify_staff_pin', { p_property_id: propertyId, p_module: module, p_pin_hash: pinHash });
