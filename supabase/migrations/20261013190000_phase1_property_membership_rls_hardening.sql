@@ -38,7 +38,10 @@ create policy property_users_update
   for update
   using (
     public.is_platform_owner()
-    or public.property_role(property_id) in ('owner', 'admin')
+    or (
+      public.property_role(property_id) in ('owner', 'admin')
+      and role <> 'owner'
+    )
   )
   with check (
     public.is_platform_owner()
@@ -65,7 +68,7 @@ comment on policy property_users_insert on public.property_users is
   'Platform owners may assign property memberships. Existing property owners/admins may add non-owner members only to their own property. Initial owner memberships are created through trusted server-side registration routines.';
 
 comment on policy property_users_update on public.property_users is
-  'Platform owners may update any property membership. Existing property owners/admins may update non-owner memberships within their own property, but cannot promote a member to owner.';
+  'Platform owners may update any property membership. Existing property owners/admins may update non-owner memberships within their own property, but cannot edit, demote, or promote an owner membership.';
 
 comment on policy property_users_delete on public.property_users is
   'Platform owners may remove any property membership. Existing property owners/admins may remove non-owner memberships within their own property, but cannot delete an owner membership.';
