@@ -53,33 +53,99 @@ alter table public.pos_devices enable row level security;
 drop policy if exists pos_devices_select on public.pos_devices;
 create policy pos_devices_select on public.pos_devices for select to authenticated
 using (
-  public.is_member_of_property(property_id)
-  and exists (select 1 from public.stores s where s.id=store_id and s.property_id=pos_devices.property_id)
+  (public.is_member_of_property(property_id)
+    and exists (select 1 from public.stores s where s.id=pos_devices.store_id and s.property_id=pos_devices.property_id))
+  or exists (select 1 from public.workspace_members wm where wm.workspace_id=pos_devices.workspace_id and wm.user_id=auth.uid())
+  or exists (select 1 from public.store_members sm where sm.store_id=pos_devices.store_id and sm.user_id=auth.uid())
 );
 
 drop policy if exists pos_devices_insert on public.pos_devices;
 create policy pos_devices_insert on public.pos_devices for insert to authenticated
 with check (
-  public.can_manage_store_printer_config(workspace_id, store_id)
-  and public.is_member_of_property(property_id)
+  (
+  public.is_platform_owner()
+  or (
+    public.is_member_of_property(property_id)
+    and (
+      public.property_role(property_id) in ('owner','admin','manager')
+      or public.current_staff_role(property_id) in ('hotel_admin','super_admin','store_manager','fb_manager')
+    )
+  )
+  or exists (
+    select 1 from public.workspace_members wm
+    where wm.workspace_id=pos_devices.workspace_id and wm.user_id=auth.uid() and wm.role in ('owner','admin')
+  )
+  or exists (
+    select 1 from public.store_members sm
+    where sm.store_id=pos_devices.store_id and sm.user_id=auth.uid() and lower(sm.role) in ('owner','admin','manager')
+  )
+)
 );
 
 drop policy if exists pos_devices_update on public.pos_devices;
 create policy pos_devices_update on public.pos_devices for update to authenticated
 using (
-  public.can_manage_store_printer_config(workspace_id, store_id)
-  and public.is_member_of_property(property_id)
+  (
+  public.is_platform_owner()
+  or (
+    public.is_member_of_property(property_id)
+    and (
+      public.property_role(property_id) in ('owner','admin','manager')
+      or public.current_staff_role(property_id) in ('hotel_admin','super_admin','store_manager','fb_manager')
+    )
+  )
+  or exists (
+    select 1 from public.workspace_members wm
+    where wm.workspace_id=pos_devices.workspace_id and wm.user_id=auth.uid() and wm.role in ('owner','admin')
+  )
+  or exists (
+    select 1 from public.store_members sm
+    where sm.store_id=pos_devices.store_id and sm.user_id=auth.uid() and lower(sm.role) in ('owner','admin','manager')
+  )
+)
 )
 with check (
-  public.can_manage_store_printer_config(workspace_id, store_id)
-  and public.is_member_of_property(property_id)
+  (
+  public.is_platform_owner()
+  or (
+    public.is_member_of_property(property_id)
+    and (
+      public.property_role(property_id) in ('owner','admin','manager')
+      or public.current_staff_role(property_id) in ('hotel_admin','super_admin','store_manager','fb_manager')
+    )
+  )
+  or exists (
+    select 1 from public.workspace_members wm
+    where wm.workspace_id=pos_devices.workspace_id and wm.user_id=auth.uid() and wm.role in ('owner','admin')
+  )
+  or exists (
+    select 1 from public.store_members sm
+    where sm.store_id=pos_devices.store_id and sm.user_id=auth.uid() and lower(sm.role) in ('owner','admin','manager')
+  )
+)
 );
 
 drop policy if exists pos_devices_delete on public.pos_devices;
 create policy pos_devices_delete on public.pos_devices for delete to authenticated
 using (
-  public.can_manage_store_printer_config(workspace_id, store_id)
-  and public.is_member_of_property(property_id)
+  (
+  public.is_platform_owner()
+  or (
+    public.is_member_of_property(property_id)
+    and (
+      public.property_role(property_id) in ('owner','admin','manager')
+      or public.current_staff_role(property_id) in ('hotel_admin','super_admin','store_manager','fb_manager')
+    )
+  )
+  or exists (
+    select 1 from public.workspace_members wm
+    where wm.workspace_id=pos_devices.workspace_id and wm.user_id=auth.uid() and wm.role in ('owner','admin')
+  )
+  or exists (
+    select 1 from public.store_members sm
+    where sm.store_id=pos_devices.store_id and sm.user_id=auth.uid() and lower(sm.role) in ('owner','admin','manager')
+  )
+)
 );
 
 grant select, insert, update, delete on public.pos_devices to authenticated;
