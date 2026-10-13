@@ -42,6 +42,6 @@ The test transaction was rolled back so the temporary booking-engine setting cha
 
 - **Production migration has not been applied by this change.** Review the PR and run the migration against a production-equivalent staging schema first.
 - The disposable database is not schema-equivalent to production; these checks validate the target functions and relevant objects, not the entire PMS/POS system.
-- Current-shift positive-path testing needs a dedicated disposable open-shift fixture and a staff-session fixture. The current-shift negative tenant check passed, but no positive shift row was available in the test data.
+- Current-shift positive and negative checks passed using a temporary open-shift fixture in the disposable database: the authorized property owner received the fixture; a nonmember received no shift. The fixture transaction was rolled back. Staff-session-specific positive-path testing remains outstanding.
 - Browser-level booking, staff-PIN login, shift opening/closing, menu rendering, KOT printing, and financial workflows still need smoke/regression tests.
 - The broader audit remains open for other authenticated `SECURITY DEFINER` functions and the known property-update policy defect. This migration intentionally does not modify unrelated RPCs or that policy.
