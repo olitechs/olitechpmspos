@@ -128,7 +128,9 @@ export default function RouteGuard({ module, children }) {
         return;
       }
       sessionStorage.setItem(ACTIVE_STAFF_KEY, JSON.stringify(result.staff));
-      const all = getModuleAccess();
+      // Server stores one active staff identity per signed-in account. Clear
+      // prior workspace grants so a staff switch cannot inherit another role.
+      const all = {};
       all[moduleKey] = { staffId: result.staff.id, at: Date.now() };
       sessionStorage.setItem(ACCESS_KEY, JSON.stringify(all));
       setSelected(result.staff);
@@ -144,13 +146,10 @@ export default function RouteGuard({ module, children }) {
   if (!propertyId) return <DeniedScreen message="No hotel property is assigned to this account." />;
 
   const activeStaff = getActiveStaff();
-  const visibleStaff = activeStaff
+  const activeStaffCanUseModule = !!activeStaff && (activeStaff.assigned_modules || []).includes(moduleKey);
+  const visibleStaff = activeStaffCanUseModule
     ? staff.filter((row) => row.id === activeStaff.id && row.is_active)
     : staff.filter((row) => row.is_active && Array.isArray(row.assigned_modules) && row.assigned_modules.includes(moduleKey));
-
-  if (activeStaff && !(activeStaff.assigned_modules || []).includes(moduleKey)) {
-    return <DeniedScreen message="This staff member is not assigned to this workspace. Contact the Property Admin." />;
-  }
 
   return (
     <main className="flex min-h-full w-full flex-1 items-center justify-center bg-[#F5F3EF] px-4 py-8">
