@@ -1,13 +1,12 @@
 import React from 'react';
 import { ExternalLink, LockKeyhole } from 'lucide-react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { MAIN_NAV, canAccessApp, normalizeAppRole } from '@/data/modules/navArchitecture';
 import { useAuth } from '@/lib/AuthContext';
 import { getSessionStaff, normalizeStaffRole } from '@/services/authService';
 
 export default function TopAppNav() {
   const { user } = useAuth();
-  const location = useLocation();
   const s = getSessionStaff();
   const raw = s?.role || user?.staff?.role || user?.propertyRole || user?.role;
   const role = normalizeAppRole(normalizeStaffRole(raw));
