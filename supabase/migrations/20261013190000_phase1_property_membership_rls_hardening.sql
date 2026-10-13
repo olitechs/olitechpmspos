@@ -90,6 +90,9 @@ commit;
 -- H. Signup still creates exactly one pending/none property and owner
 --    membership through the auth trigger / ensure_my_pending_property.
 -- I. Existing memberships and property access remain intact after migration.
+-- J. A property admin cannot update/demote an existing owner membership.
+-- K. Membership updates cannot be used to change the member's effective
+--    property access; verify old-row and new-row property authorization.
 --
 -- Do not apply to production until these checks pass and all property-scoped
 -- table policies/RPCs have been reviewed for tenant isolation.
