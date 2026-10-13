@@ -18,6 +18,12 @@ Migration: `20261013210000_harden_booking_and_tenant_sensitive_rpcs.sql`
 - All functions retain a fixed `search_path = public`; no broad changes to unrelated RPC grants are included.
 - Migration is forward-only; historical migration files are unchanged.
 
+## Production ACL and high-risk RPC audit
+
+Read-only production catalog audit (project `mszogmazldxjsiytrlxr`) found 100 public `SECURITY DEFINER` functions: 96 executable by `authenticated`, and only one executable by `anon`—the public booking-config RPC addressed here. The disposable project's advisor output differs from production ACLs, so production catalog results, not disposable advisor counts, are used for the grant assessment.
+
+A targeted review of financial and inventory RPCs found tenant or role checks in sampled functions including `fn_record_pos_sale`, `fn_close_pos_shift`, `fn_approve_cashier_adjustment`, `fn_apply_stock_movement`, `fn_post_stock_adjustment`, `fn_receive_purchase_order`, `fn_consume_recipe_stock`, `fn_channel_connection_upsert`, and `fn_upsert_subscription`. This is a targeted sample, not a sign-off of all 96 authenticated-callable functions. The remaining inventory still requires per-function authorization review.
+
 ## Disposable database regression checks
 
 Applied the migration to disposable project `rmkcwminrizloosvegzp`, then ran assertions inside a transaction that was rolled back:
