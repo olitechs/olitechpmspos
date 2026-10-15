@@ -1,0 +1,3 @@
+-- Standalone staff PIN authentication foundation.
+-- This migration intentionally does not change existing staff PIN RPCs or production auth behavior.
+-- Apply only after reviewing the accompanying server-side verification implementation.
