@@ -13,6 +13,10 @@ const posApp = read('../../pages/POSApp.jsx');
 const inventoryOperations = read('../../components/modules/InventoryOperations.jsx');
 const navArchitecture = read('./navArchitecture.js');
 const sidebarNavigation = read('./sidebarNavigation.js');
+const roomPlanner = read('../../components/pms/RoomPlanner.jsx');
+const legacySidebar = read('../../components/shell/Sidebar.jsx');
+const pmsService = read('../../services/pmsService.js');
+const distributionOps = read('../../components/modules/DistributionOps.jsx');
 
 function routePathExists(path) {
   if (path === '/backoffice') return /path="\/backoffice"/.test(app);
@@ -33,6 +37,21 @@ test('every declared navigation destination has a registered route', () => {
   ];
   const missing = [...new Set(paths)].filter((path) => path.startsWith('/') && !routePathExists(path));
   assert.deepEqual(missing, [], 'navigation destinations missing route registrations');
+});
+
+test('navigation-related source files contain no unresolved merge separators', () => {
+  for (const [name, source] of [
+    ['POSApp', posApp],
+    ['Room Planner', roomPlanner],
+    ['legacy Sidebar', legacySidebar],
+    ['PMS service', pmsService],
+    ['Distribution Operations', distributionOps],
+  ]) {
+    assert.doesNotMatch(source, /^={7}$/m, name + ' must not contain merge separator lines');
+  }
+  assert.match(roomPlanner, /getPaymentStatusFromAmounts/);
+  assert.match(legacySidebar, /SIDEBAR_SECTIONS/);
+  assert.match(pmsService, /fn_subscription_access/);
 });
 
 test('POSApp contains resolved source and preserves route and subscription guards', () => {
