@@ -76,7 +76,7 @@ export default function PublicSignIn() {
                 </div>
 
                 {error && (
-                  <div role="alert" className="mb-4 rounded-xl border border-red-100 bg-red-50 px-3 py-2.5 text-xs font-medium text-red-600">
+                  <div role="alert" className="mb-4 rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] px-3 py-2.5 text-xs font-medium text-[var(--danger-text)]">
                     {error}
                   </div>
                 )}
@@ -137,7 +137,7 @@ export default function PublicSignIn() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="flex h-11 w-full items-center justify-center rounded-xl bg-[var(--surface)] text-sm font-medium text-[var(--text)] shadow-sm transition hover:bg-[var(--primary-soft)] hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2"
+                    className="flex h-11 w-full items-center justify-center rounded-xl bg-[var(--primary)] text-sm font-medium text-white shadow-none transition hover:bg-[var(--primary-hover)] disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2"
                   >
                     {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Signing in...</> : 'Sign in'}
                   </button>
