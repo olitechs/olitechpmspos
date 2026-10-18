@@ -31,7 +31,8 @@ export const getReservationBarStyle = (status = 'occupied') => ({
   closed:{background:'var(--stay-closed)',color:'var(--text)',border:'var(--stay-closed)',label:'Out of order / closure'},
 }[status] || {background:'var(--stay-occupied)',color:'var(--action-text)',border:'var(--stay-occupied)',label:'In-house'});
 
-export const getPaymentStyle=(status)=>({fully_paid:{background:'var(--pay-total)',color:'var(--action-text)',border:'var(--pay-total)',label:'Total Paid'},partially_paid:{background:'var(--pay-partial)',color:'var(--action-text)',border:'var(--pay-partial)',label:'Partially Paid'},not_paid:{background:'var(--pay-none)',color:'var(--action-text)',border:'var(--pay-none)',label:'No Amount Paid'}}[status]||{background:'var(--pay-none)',color:'var(--action-text)',border:'var(--pay-none)',label:'No Amount Paid'});
+export const getPaymentStatusFromAmounts = (amountPaid, totalAmount) => { const paid = Number(amountPaid || 0); const total = Number(totalAmount || 0); if (total > 0 && paid >= total) return 'fully_paid'; if (paid > 0) return 'partially_paid'; return 'not_paid'; };
+export const getPaymentStyle=(status)=>({fully_paid:{background:'var(--pay-total)',color:'var(--action-text)',border:'var(--pay-total)',label:'Fully Paid'},partially_paid:{background:'var(--pay-partial)',color:'var(--text)',border:'var(--pay-partial)',label:'Deposit / Partially Paid'},not_paid:{background:'var(--pay-none)',color:'var(--action-text)',border:'var(--pay-none)',label:'Not Paid'}}[status]||{background:'var(--pay-none)',color:'var(--action-text)',border:'var(--pay-none)',label:'Not Paid'});
 
 export function getBarOpacity(bookingStatus) { return bookingStatus === 'checked_out' ? 0.5 : 1; }
 export function isOverlapping(r1, r2) {
@@ -188,7 +189,6 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     if (form.kidsCount < 0 || form.kidsCount > 6) return 'Kids must be between 0 and 6.';
     if (form.kidsAges.length !== Number(form.kidsCount) || form.kidsAges.some(a => Number(a) < 0 || Number(a) > 17)) return 'Each child age must be between 0 and 17.';
     if (Number(form.amountPaid) < 0 || Number(form.amountPaid) > Number(form.totalAmount)) return 'Recorded payments cannot exceed the booking total. Adjust the booking total or reconcile payments in Guest Folio.';
-    if (Number(form.amountPaid) > 0 && Number(form.amountPaid) < Number(form.totalAmount) * 0.5) return 'Recorded payments are below the current 50% deposit threshold. Reconcile the folio before reducing the booking total.';
     const ids = form.joint ? form.selectedRoomIds : [form.roomId];
     if (!ids.length || ids.some(Boolean) === false) return 'Select at least one room.';
     for (const roomId of ids) {
@@ -204,10 +204,11 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     try {
       if (modal.mode === 'create') {
         const roomIds = form.joint ? form.selectedRoomIds : [form.roomId];
-        await pmsService.createReservationBundle({ propertyId, groupId: roomIds.length > 1 ? crypto.randomUUID() : null, roomIds, guestName: form.guestName.trim(), checkIn: form.checkIn, checkOut: form.checkOut, paymentStatus: form.paymentStatus, channel: form.channel, mealPlan: form.mealPlan, adults: Number(form.adults), kidsCount: Number(form.kidsCount), kidsAges: form.kidsAges.map(Number), totalAmount: Number(form.totalAmount || 0), amountPaid: Number(form.amountPaid || 0), notes: form.notes });
+        const totalAmount = Number(form.totalAmount || 0); const amountPaid = Number(form.amountPaid || 0); const paymentStatus = getPaymentStatusFromAmounts(amountPaid, totalAmount);
+        await pmsService.createReservationBundle({ propertyId, groupId: roomIds.length > 1 ? crypto.randomUUID() : null, roomIds, guestName: form.guestName.trim(), checkIn: form.checkIn, checkOut: form.checkOut, paymentStatus, channel: form.channel, mealPlan: form.mealPlan, adults: Number(form.adults), kidsCount: Number(form.kidsCount), kidsAges: form.kidsAges.map(Number), totalAmount, amountPaid, notes: form.notes });
         toast.success('Reservation created');
       } else {
-        const totalAmount = Number(form.totalAmount || 0); const amountPaid = Number(form.amountPaid || 0); const paymentStatus = amountPaid >= totalAmount && totalAmount > 0 ? 'fully_paid' : amountPaid > 0 ? 'partially_paid' : 'not_paid';
+        const totalAmount = Number(form.totalAmount || 0); const amountPaid = Number(form.amountPaid || 0); const paymentStatus = getPaymentStatusFromAmounts(amountPaid, totalAmount);
         await pmsService.updatePlannerReservation(modal.reservationId, { guestName: form.guestName.trim(), roomId: form.roomId, checkIn: form.checkIn, checkOut: form.checkOut, paymentStatus, channel: form.channel, mealPlan: form.mealPlan, adults: Number(form.adults), kidsCount: Number(form.kidsCount), kidsAges: form.kidsAges.map(Number), totalAmount, amountPaid, notes: form.notes });
         toast.success('Reservation updated');
       }
@@ -327,7 +328,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
             {roomReservations.map(rv=>{
               const l=visibleReservation(rv);if(!l)return null;
               const stayStatus=rv.plannerStatus || (rv.bookingStatus==='checked_out'?'checked_out':rv.bookingStatus==='checked_in'?'occupied':'confirmed');
-              const ps=getReservationBarStyle(stayStatus); const pay=getPaymentStyle(rv.paymentStatus);
+              const ps=getReservationBarStyle(stayStatus); const pay=getPaymentStyle(getPaymentStatusFromAmounts(rv.amountPaid, rv.totalAmount));
               const checked=rv.bookingStatus==='checked_out';
               const left=ROOM_COL_WIDTH+l.start*dayWidth+4;
               const width=Math.max(dayWidth*l.span-8,100);
@@ -349,7 +350,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
       <Field label="Guest Name"><InputField value={form.guestName} onChange={e=>setForm({...form,guestName:e.target.value})} autoFocus placeholder="Guest full name"/></Field>
       <div className="grid md:grid-cols-2 gap-3"><Field label="Check-in"><InputField type="date" value={form.checkIn} onChange={e=>setForm({...form,checkIn:e.target.value})}/></Field><Field label="Check-out (exclusive)"><InputField type="date" value={form.checkOut} min={form.checkIn} onChange={e=>setForm({...form,checkOut:e.target.value})}/></Field></div>
       {formError&&<div className="text-xs p-3 rounded-lg" style={{background:'#FDECEC',color:DESTRUCTIVE}}>{formError}</div>}
-      <div className="rounded-lg p-3 text-xs leading-5" style={{background:'var(--surface-2)',border:'1px solid var(--border)',color:'var(--muted)'}}><strong style={{color:'var(--text)'}}>Payment ledger</strong><div>{modal.mode === 'create' ? 'New bookings start unpaid.' : `Booking payment status: ${paymentLabel[form.paymentStatus] || form.paymentStatus} · Recorded: KES ${Number(form.amountPaid || 0).toLocaleString()}`}</div>Record deposits and other actual payments from Guest Folio. Planner edits do not create payment transactions.</div>
+      <div className="rounded-lg p-3 text-xs leading-5" style={{background:'var(--surface-2)',border:'1px solid var(--border)',color:'var(--muted)'}}><strong style={{color:'var(--text)'}}>Payment ledger</strong><div>{modal.mode === 'create' ? 'New bookings start unpaid.' : `Booking payment status: ${paymentLabel[getPaymentStatusFromAmounts(form.amountPaid, form.totalAmount)]} · Recorded: KES ${Number(form.amountPaid || 0).toLocaleString()}`}</div>Record deposits and other actual payments from Guest Folio. Planner edits do not create payment transactions.</div>
       <div className="grid md:grid-cols-2 gap-3"><Field label="Reservation Channel"><SelectField value={form.channel} onChange={v=>setForm({...form,channel:v})}><option value="direct">Direct</option><option value="booking_com">Booking.com</option><option value="unknown">Unknown</option></SelectField></Field><Field label="Meal Plan"><SelectField value={form.mealPlan} onChange={v=>setForm({...form,mealPlan:v})}><option value="bed_only">Bed Only</option><option value="bb">BB</option><option value="half_board">HB</option><option value="full_board">FB</option></SelectField></Field></div>
       <Field label="Total Amount"><InputField type="number" min="0" step="0.01" value={form.totalAmount} onChange={e=>setForm({...form,totalAmount:e.target.value})}/></Field>
       <div className="flex items-center justify-between pt-2"><div>{modal.mode==='edit'&&<button onClick={handleDelete} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold" style={{color:DESTRUCTIVE,border:`1px solid ${DESTRUCTIVE}`}}><Trash2 size={14}/> Delete</button>}</div><div className="flex gap-2"><button onClick={()=>setModal(null)} className="px-4 py-2.5 rounded-xl text-sm" style={{border:`1px solid ${BORDER}`,color:MUTED}}>Cancel</button><button disabled={saving} onClick={saveReservation} className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-bold disabled:opacity-60" style={{background:'var(--action)',color:'var(--text)',border:'1px solid var(--text)'}}><Save size={15}/>{saving?'Saving…':'Save'}</button></div></div>
