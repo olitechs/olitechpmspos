@@ -24,7 +24,7 @@ test('POS sale migration routes stock through the shared posting owner rather th
   assert.match(posMigration, /insert into public\.stock_movements/i);
   // Characterization guard: this migration rewrites the legacy direct-write fragment.
   // Source-ID/idempotency is a known open defect and is covered by the phase-2 integration plan.
-  assert.match(posMigration, /'pos_sale',null/i);
+  assert.match(posMigration, /''pos_sale'',null/i);
 });
 
 test('GRN receipt owns quantity posting through the shared writer and guards over-receipt', () => {
