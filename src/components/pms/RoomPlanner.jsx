@@ -56,7 +56,9 @@ export function calculateDailyStats(reservations, date) {
 }
 
 const ROOM_STATUS = {
-  available: { fill: 'var(--text-muted)', label: 'Available' }, booked: { fill: 'var(--primary)', label: 'Booked' }, occupied: { fill: 'var(--room-occupied)', label: 'Occupied' },\n  dirty: { fill: 'var(--room-dirty)', label: 'Dirty' }, cleaning: { fill: 'var(--room-clean)', label: 'Cleaning' }, maintenance: { fill: 'var(--room-out-of-order)', label: 'Maintenance' },\n  out_of_service: { fill: 'var(--room-out-of-order)', label: 'Out of Service' }, blocked: { fill: 'var(--room-out-of-order)', label: 'Blocked' },
+  available: { fill: 'var(--text-muted)', label: 'Available' }, booked: { fill: 'var(--primary)', label: 'Booked' }, occupied: { fill: 'var(--room-occupied)', label: 'Occupied' },
+  dirty: { fill: 'var(--room-dirty)', label: 'Dirty' }, cleaning: { fill: 'var(--room-clean)', label: 'Cleaning' }, maintenance: { fill: 'var(--room-out-of-order)', label: 'Maintenance' },
+  out_of_service: { fill: 'var(--room-out-of-order)', label: 'Out of Service' }, blocked: { fill: 'var(--room-out-of-order)', label: 'Blocked' },
 };
 const channelLabel = { direct: 'Direct', booking_com: 'Booking.com', unknown: 'Unknown' };
 const mealLabel = { bed_only: 'Bed Only', bb: 'BB', half_board: 'HB', full_board: 'FB' };
