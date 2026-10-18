@@ -111,20 +111,20 @@
     --room-charge: #5b3df5;
     --focus: #5b3df5;
 
-    --table-free: #9AA4B2;
-    --table-occupied: #5b3df5;
-    --table-bill: #EAB308;
-    --table-reserved: #C4B5FD;
-    --table-paid: #34D399;
-    --room-clean: #34D399;
-    --room-dirty: #EAB308;
-    --stay-occupied: #5b3df5;
-    --stay-checkout: #A5B4FC;
-    --stay-optioned: #5EEAD4;
+    --table-free: #C0C6D0;
+    --table-occupied: #16A34A;
+    --table-bill: #F97316;
+    --table-reserved: #EAB308;
+    --table-paid: #16A34A;
+    --room-clean: #16A34A;
+    --room-dirty: #F97316;
+    --stay-occupied: #16A34A;
+    --stay-checkout: #F97316;
+    --stay-optioned: #EAB308;
     --stay-closed: #9AA4B2;
     --pay-none: #F97316;
     --pay-partial: #EAB308;
-    --pay-total: #B6FF2E;
+    --pay-total: #16A34A;
 
     --grid-weekend: #1C222B;
     --grid-today: #854D0E;
