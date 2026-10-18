@@ -13,6 +13,10 @@ const posApp = read('../../pages/POSApp.jsx');
 const inventoryOperations = read('../../components/modules/InventoryOperations.jsx');
 const navArchitecture = read('./navArchitecture.js');
 const sidebarNavigation = read('./sidebarNavigation.js');
+const roomPlanner = read('../../components/pms/RoomPlanner.jsx');
+const legacySidebar = read('../../components/shell/Sidebar.jsx');
+const pmsService = read('../../services/pmsService.js');
+const distributionOps = read('../../components/modules/DistributionOps.jsx');
 
 function routePathExists(path) {
   if (path === '/backoffice') return /path="\/backoffice"/.test(app);
@@ -33,6 +37,34 @@ test('every declared navigation destination has a registered route', () => {
   ];
   const missing = [...new Set(paths)].filter((path) => path.startsWith('/') && !routePathExists(path));
   assert.deepEqual(missing, [], 'navigation destinations missing route registrations');
+});
+
+test('navigation-related source files contain no unresolved merge separators', () => {
+  for (const [name, source] of [
+    ['POSApp', posApp],
+    ['Room Planner', roomPlanner],
+    ['legacy Sidebar', legacySidebar],
+    ['PMS service', pmsService],
+    ['Distribution Operations', distributionOps],
+  ]) {
+    assert.doesNotMatch(source, /^={7}$/m, name + ' must not contain merge separator lines');
+  }
+  assert.match(roomPlanner, /getPaymentStatusFromAmounts/);
+  assert.match(legacySidebar, /SIDEBAR_SECTIONS/);
+  assert.match(pmsService, /fn_subscription_access/);
+});
+
+test('POSApp contains resolved source and preserves route and subscription guards', () => {
+  assert.doesNotMatch(posApp, /^={7}$/m);
+  assert.match(posApp, /<RouteGuard module={guardedWorkspace}>/);
+  assert.match(posApp, /<PaywallGuard module={getSubscriptionEntitlement\(activeModule, workspaceModule\)}>/);
+  assert.match(posApp, /useEffect\(\(\) => \{\s*setActiveModule\(routeModule\);\s*\}, \[routeModule\]\)/);
+});
+
+test('legacy Store Settings URL redirects instead of duplicating the All Stores page', () => {
+  assert.ok(app.includes('<Route path="settings" element={<Navigate to="/stores" replace/>}/>'));
+  assert.ok(!navArchitecture.includes('Store Settings'));
+  assert.ok(navArchitecture.includes("['All Stores','/stores','store']"));
 });
 
 test('workspace links navigate in the current tab by default', () => {
@@ -94,7 +126,7 @@ test('inventory destinations select their own operational section instead of def
 
 test('embedded operational content follows route changes including browser history changes', () => {
   assert.match(posApp, /const routeModule = queryModule \|\| initialModule/);
-  assert.match(posApp, /useEffect\(\(\) => \{ setActiveModule\(routeModule\); \}, \[routeModule\]\)/);
+  assert.match(posApp, /useEffect\(\(\) => \{\s*setActiveModule\(routeModule\);\s*\}, \[routeModule\]\)/);
 });
 
 test('employee reporting does not silently render timecards as a report', () => {
@@ -104,7 +136,7 @@ test('employee reporting does not silently render timecards as a report', () => 
 
 
 test('workspace highlighting remains active on nested routes and exact POS route only', () => {
-  assert.match(topNav, /end=\{a\.id==='pos'\}/);
+  assert.match(topNav, /end=\{a\.id\s*===\s*'pos'\}/);
   assert.match(topNav, /to=\{a\.path\}/);
   assert.match(shell, /pathname === path \|\| pathname\.startsWith\(path \+ '\/'\)/);
 });

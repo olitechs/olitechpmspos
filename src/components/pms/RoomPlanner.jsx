@@ -205,8 +205,6 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     try {
       if (modal.mode === 'create') {
         const roomIds = form.joint ? form.selectedRoomIds : [form.roomId];
-        await pmsService.createReservationBundle({ propertyId, groupId: roomIds.length > 1 ? crypto.randomUUID() : null, roomIds, guestName: form.guestName.trim(), phone: form.phone.trim(), checkIn: form.checkIn, checkOut: form.checkOut, paymentStatus: form.paymentStatus, channel: form.channel, mealPlan: form.mealPlan, adults: Number(form.adults), kidsCount: Number(form.kidsCount), kidsAges: form.kidsAges.map(Number), totalAmount: Number(form.totalAmount || 0), amountPaid: Number(form.amountPaid || 0), notes: form.notes });
-=======
         const totalAmount = Number(form.totalAmount || 0); const amountPaid = Number(form.amountPaid || 0); const paymentStatus = getPaymentStatusFromAmounts(amountPaid, totalAmount);
         await pmsService.createReservationBundle({ propertyId, groupId: roomIds.length > 1 ? crypto.randomUUID() : null, roomIds, guestName: form.guestName.trim(), checkIn: form.checkIn, checkOut: form.checkOut, paymentStatus, channel: form.channel, mealPlan: form.mealPlan, adults: Number(form.adults), kidsCount: Number(form.kidsCount), kidsAges: form.kidsAges.map(Number), totalAmount, amountPaid, notes: form.notes });
         toast.success('Reservation created');
@@ -357,62 +355,6 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
       </div>
     </div>
 
-    {modal && <Modal wide title={modal.mode==='create'?'Add Booking':'Edit Booking'} onClose={()=>setModal(null)}>
-      <div className="p-5 space-y-4" style={{background:'#F7F9FC',color:NAVY}}>
-        {modal.mode==='edit'&&form.joint&&<div className="rounded-lg p-3" style={{background:'#FFF7E6',border:'1px solid #F0D49A',color:NAVY}}><div className="flex items-start gap-2"><Link2 size={17}/><div className="flex-1"><div className="font-bold text-sm">Joint Reservation · Group #{String(modal.groupId).slice(0,6).toUpperCase()} · {linked.length} rooms linked</div></div><button onClick={splitGroup} className="text-xs font-bold px-2 py-1 rounded" style={{border:`1px solid ${BORDER}`}}>Split Group</button></div></div>}
-
-        <section className="overflow-hidden border rounded-md bg-white" style={{borderColor:'#D7DCE4'}}>
-          <h3 className="px-3 py-2 text-xs font-bold" style={{background:'#D3D8E1',color:'#263548'}}>Main Data</h3>
-          <div className="grid gap-4 p-4 md:grid-cols-4">
-            <Field label="I arrive *"><InputField type="date" value={form.checkIn} onChange={e=>setForm({...form,checkIn:e.target.value})} required/></Field>
-            <Field label="Departure *"><InputField type="date" value={form.checkOut} min={form.checkIn} onChange={e=>setForm({...form,checkOut:e.target.value})} required/></Field>
-            <Field label="Nights"><div className="h-10 flex items-center gap-2 text-sm font-semibold" style={{color:NAVY}}><CalendarDays size={15}/>{Math.max(0,differenceInCalendarDays(parseDate(form.checkOut)||new Date(),parseDate(form.checkIn)||new Date()))}</div></Field>
-            <Field label="Channel"><SelectField value={form.channel} onChange={v=>setForm({...form,channel:v})}><option value="direct">Direct</option><option value="booking_com">Booking.com</option><option value="unknown">Other / OTA</option></SelectField></Field>
-          </div>
-        </section>
-
-        <section className="overflow-hidden border rounded-md bg-white" style={{borderColor:'#D7DCE4'}}>
-          <h3 className="px-3 py-2 text-xs font-bold" style={{background:'#D3D8E1',color:'#263548'}}>Guest Details</h3>
-          <div className="grid gap-4 p-4 md:grid-cols-2">
-            <Field label="Guest full name *"><InputField value={form.guestName} onChange={e=>setForm({...form,guestName:e.target.value})} autoFocus placeholder="Surname and first name" required/></Field>
-            <Field label="Telephone"><InputField type="tel" value={form.phone||''} onChange={e=>setForm({...form,phone:e.target.value})} placeholder="+254 …"/></Field>
-            <div className="md:col-span-2"><Field label="Notes / special requests"><textarea value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} rows={3} className="w-full rounded-md px-3 py-2 text-sm outline-none" style={{background:SURFACE,border:`1px solid ${BORDER}`,color:NAVY}} placeholder="Guest requests, arrival notes, family requirements…"/></Field></div>
-          </div>
-        </section>
-
-        <section className="overflow-hidden border rounded-md bg-white" style={{borderColor:'#D7DCE4'}}>
-          <h3 className="px-3 py-2 text-xs font-bold" style={{background:'#D3D8E1',color:'#263548'}}>Room & Occupancy</h3>
-          <div className="grid gap-4 p-4 md:grid-cols-4">
-            <div className="md:col-span-4"><Field label="Room / Apartment *"><SelectField value={form.roomId} onChange={v=>setForm({...form,roomId:v,roomTypeId:plannerRooms.find(r=>r.id===v)?.room_type_id||'',totalAmount:Number(plannerRooms.find(r=>r.id===v)?.base_rate||form.totalAmount||0)*(Math.max(1,differenceInCalendarDays(parseDate(form.checkOut)||new Date(),parseDate(form.checkIn)||new Date())))})}><option value="">Select room</option>{plannerRooms.map(r=><option key={r.id} value={r.id}>Room {r.number} · {r.roomTypeName||r.roomType||'Room'}{r.capacity? ` · capacity ${r.capacity}`:''}</option>)}</SelectField></Field></div>
-            <Field label="Adults *"><InputField type="number" min="1" max="10" value={form.adults} onChange={e=>setForm({...form,adults:Number(e.target.value)})} required/></Field>
-            <Field label="Children"><InputField type="number" min="0" max="6" value={form.kidsCount} onChange={e=>{const count=Math.max(0,Math.min(6,Number(e.target.value)||0));setForm({...form,kidsCount:count,kidsAges:Array.from({length:count},(_,i)=>form.kidsAges[i]??'')})}}/></Field>
-            <Field label="Meal Plan"><SelectField value={form.mealPlan} onChange={v=>setForm({...form,mealPlan:v})}><option value="bed_only">Bed Only</option><option value="bb">Bed & Breakfast</option><option value="half_board">Half Board</option><option value="full_board">Full Board</option></SelectField></Field>
-            <Field label="Reservation Status"><SelectField value={form.paymentStatus} onChange={v=>setForm({...form,paymentStatus:v})}><option value="not_paid">Optioned / Unpaid</option><option value="partially_paid">Partially Paid</option><option value="fully_paid">Confirmed / Fully Paid</option></SelectField></Field>
-            {Number(form.kidsCount)>0&&<div className="md:col-span-4 rounded-md p-3" style={{background:'#EEF6FF',border:'1px solid #C8DDF5'}}>
-              <div className="mb-3 text-sm font-bold" style={{color:'#173B65'}}>Children’s ages <span className="font-normal text-xs">· required for each child (0–17 years)</span></div>
-              <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">{Array.from({length:Number(form.kidsCount)},(_,i)=><Field key={i} label={`Child ${i+1} age *`}><SelectField value={String(form.kidsAges[i]??'')} onChange={v=>setForm({...form,kidsAges:form.kidsAges.map((age,j)=>j===i?v:age)})}><option value="">Select age</option>{Array.from({length:18},(_,age)=><option key={age} value={String(age)}>{age===0?'Under 1 year':age===1?'1 year':`${age} years`}</option>)}</SelectField></Field>)}</div>
-            </div>}
-          </div>
-        </section>
-
-        <section className="overflow-hidden border rounded-md bg-white" style={{borderColor:'#D7DCE4'}}>
-          <h3 className="px-3 py-2 text-xs font-bold" style={{background:'#D3D8E1',color:'#263548'}}>Rate & Payment Details</h3>
-          <div className="grid gap-3 p-3 md:grid-cols-3" style={{background:'#DDEEFF'}}>
-            <Field label="Total Overnight Stay *"><InputField type="number" min="0" step="0.01" value={form.totalAmount} onChange={e=>setForm({...form,totalAmount:e.target.value})} required/></Field>
-            <Field label="Deposit / Amount Paid"><InputField type="number" min="0" step="0.01" value={form.amountPaid} onChange={e=>setForm({...form,amountPaid:e.target.value})}/></Field>
-            <Field label="Balance Due"><div className="h-10 flex items-center px-3 rounded-md bg-white border text-sm font-bold" style={{borderColor:BORDER}}>KES {Math.max(0,Number(form.totalAmount||0)-Number(form.amountPaid||0)).toLocaleString()}</div></Field>
-          </div>
-          <div className="px-4 py-3 text-xs leading-5" style={{color:MUTED}}>Payment transactions must be recorded and reconciled in Guest Folio. This form records the booking amount and deposit metadata only.</div>
-        </section>
-
-        {formError&&<div className="rounded-md px-3 py-2 text-sm" style={{background:'#FDECEC',color:DESTRUCTIVE}}>{formError}</div>}
-        <div className="flex items-center justify-between gap-3 border-t pt-4" style={{borderColor:BORDER}}>
-          <div>{modal.mode==='edit'&&<button onClick={handleDelete} className="flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-bold" style={{color:DESTRUCTIVE,border:`1px solid ${DESTRUCTIVE}`}}><Trash2 size={14}/> Delete</button>}</div>
-          <div className="flex gap-2"><button onClick={()=>setModal(null)} className="px-4 py-2.5 rounded-md text-sm bg-white" style={{border:`1px solid ${BORDER}`,color:NAVY}}>Cancel</button><button disabled={saving} onClick={saveReservation} className="flex items-center gap-1.5 px-5 py-2.5 rounded-md text-sm font-bold disabled:opacity-60" style={{background:'#2166A8',color:'#fff'}}><Save size={15}/>{saving?'Saving…':'Save Booking'}</button></div>
-        </div>
-      </div>
-    </Modal>}
-=======
     {modal && <Modal wide title={modal.mode==='create'?'New Reservation':'Edit Reservation'} onClose={()=>setModal(null)}><div className="p-5 space-y-4">
       {modal.mode==='edit'&&form.joint&&<div className="rounded-xl p-3" style={{background:'rgba(255,211,0,.12)',border:`1px solid ${TEAL}`,color:NAVY}}><div className="flex items-start gap-2"><Link2 size={17}/><div className="flex-1"><div className="font-bold text-sm">Joint Reservation - Group #{String(modal.groupId).slice(0,6).toUpperCase()} - {linked.length} plannerRooms linked</div></div><button onClick={splitGroup} className="text-xs font-bold px-2 py-1 rounded-lg" style={{border:`1px solid ${BORDER}`}}>Split Group</button></div></div>}
       <Field label="Guest Name"><InputField value={form.guestName} onChange={e=>setForm({...form,guestName:e.target.value})} autoFocus placeholder="Guest full name"/></Field>
