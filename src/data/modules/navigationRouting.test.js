@@ -126,7 +126,7 @@ test('inventory destinations select their own operational section instead of def
 
 test('embedded operational content follows route changes including browser history changes', () => {
   assert.match(posApp, /const routeModule = queryModule \|\| initialModule/);
-  assert.match(posApp, /useEffect\(\(\) => \{ setActiveModule\(routeModule\); \}, \[routeModule\]\)/);
+  assert.match(posApp, /useEffect\(\(\) => \{\s*setActiveModule\(routeModule\);\s*\}, \[routeModule\]\)/);
 });
 
 test('employee reporting does not silently render timecards as a report', () => {
@@ -136,7 +136,7 @@ test('employee reporting does not silently render timecards as a report', () => 
 
 
 test('workspace highlighting remains active on nested routes and exact POS route only', () => {
-  assert.match(topNav, /end=\{a\.id==='pos'\}/);
+  assert.match(topNav, /end=\{a\.id\s*===\s*'pos'\}/);
   assert.match(topNav, /to=\{a\.path\}/);
   assert.match(shell, /pathname === path \|\| pathname\.startsWith\(path \+ '\/'\)/);
 });
