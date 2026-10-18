@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { pmsService } from '@/services/pmsService';
 
 const money = (v) => `KES ${Number(v || 0).toLocaleString('en-KE', { maximumFractionDigits: 2 })}`;
-const input = "w-full rounded-lg border border-[var(--border)] bg-white px-3 py-2.5 text-sm text-[var(--text)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]";
+const input = "w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-sm text-[var(--text)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]";
 const btn = "inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50";
 
 export default function Folio() {
@@ -67,13 +67,13 @@ export default function Folio() {
       <div className="mx-auto max-w-[1500px] space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div><h1 className="text-xl font-bold text-slate-950">Guest Folio & Cashier</h1><p className="mt-1 text-sm text-[var(--text-muted)]">Review live charges, record payments and settle guest balances.</p></div>
-          <button className={btn + " border border-[var(--border)] bg-white text-slate-800"} onClick={refresh} disabled={loading || busy}><RefreshCw size={15} /> Refresh</button>
+          <button className={btn + " border border-[var(--border)] bg-[var(--surface)] text-slate-800"} onClick={refresh} disabled={loading || busy}><RefreshCw size={15} /> Refresh</button>
         </div>
 
         {error && <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
 
         <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
-          <section className="overflow-hidden rounded-xl border border-[var(--border)] bg-white">
+          <section className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
             <div className="border-b border-[var(--border)] p-3"><div className="relative"><Search size={15} className="absolute left-3 top-3 text-slate-400"/><input className={input+" pl-9"} placeholder="Search guest or phone" value={query} onChange={(e)=>setQuery(e.target.value)}/></div></div>
             <div className="max-h-[650px] overflow-y-auto">
               {loading ? <div className="p-6 text-center text-sm text-[var(--text-muted)]">Loading stays…</div> :
@@ -85,12 +85,12 @@ export default function Folio() {
             </div>
           </section>
 
-          <section className="min-h-[500px] rounded-xl border border-[var(--border)] bg-white">
+          <section className="min-h-[500px] rounded-xl border border-[var(--border)] bg-[var(--surface)]">
             {!selected ? <div className="flex h-full min-h-[500px] items-center justify-center text-sm text-[var(--text-muted)]">Select a stay to open its folio.</div> :
             <div>
               <div className="flex flex-col gap-3 border-b border-[var(--border)] p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div><div className="text-lg font-bold text-slate-950">{selected.guest_name}</div><div className="text-xs text-[var(--text-muted)]">Stay {selected.arrival} → {selected.departure}</div></div>
-                <div className="flex gap-2"><button className={btn+" border border-[var(--border)] bg-white"} onClick={()=>setChargeOpen(true)}><Plus size={15}/> Add charge</button><button className={btn+" bg-[#FFD300] text-slate-950"} onClick={()=>setPaymentOpen(true)}><Banknote size={15}/> Take payment</button></div>
+                <div className="flex gap-2"><button className={btn+" border border-[var(--border)] bg-[var(--surface)]"} onClick={()=>setChargeOpen(true)}><Plus size={15}/> Add charge</button><button className={btn+" bg-[#FFD300] text-slate-950"} onClick={()=>setPaymentOpen(true)}><Banknote size={15}/> Take payment</button></div>
               </div>
               <div className="grid grid-cols-3 gap-3 border-b border-[var(--border)] p-4">
                 <Metric label="Charges" value={money(total)}/><Metric label="Paid" value={money(paid)}/><Metric label="Balance" value={money(balance)} alert={balance>0}/>
@@ -117,6 +117,6 @@ export default function Folio() {
   );
 }
 function Metric({label,value,alert}){return <div className="rounded-lg bg-[var(--canvas)] p-3"><div className="text-[10px] font-medium uppercase tracking-wide text-[var(--text-muted)]">{label}</div><div className={`mt-1 text-lg font-bold ${alert?'text-amber-700':'text-slate-950'}`}>{value}</div></div>}
-function Modal({title,children,onClose}){return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"><div className="w-full max-w-md rounded-2xl bg-white shadow-2xl"><div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4"><h2 className="font-bold text-slate-950">{title}</h2><button onClick={onClose}><X size={18}/></button></div><div className="p-5">{children}</div></div></div>}
+function Modal({title,children,onClose}){return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"><div className="w-full max-w-md rounded-xl bg-[var(--surface)] shadow-2xl"><div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4"><h2 className="font-bold text-slate-950">{title}</h2><button onClick={onClose}><X size={18}/></button></div><div className="p-5">{children}</div></div></div>}
 function ChargeModal({onClose,onSubmit,busy}){const [description,setDescription]=useState('');const [amount,setAmount]=useState('');const [source,setSource]=useState('other');return <Modal title="Add folio charge" onClose={onClose}><form onSubmit={e=>{e.preventDefault();if(description&&Number(amount)>0)onSubmit({description,amount:Number(amount),source})}} className="space-y-4"><label className="block text-xs font-medium text-[var(--text-muted)]">Description<input className={input+" mt-1"} value={description} onChange={e=>setDescription(e.target.value)} placeholder="Laundry, transfer, activity…" /></label><label className="block text-xs font-medium text-[var(--text-muted)]">Source<select className={input+" mt-1"} value={source} onChange={e=>setSource(e.target.value)}><option value="other">Other</option><option value="room">Room</option><option value="pos">POS</option></select></label><label className="block text-xs font-medium text-[var(--text-muted)]">Amount<input type="number" min="0.01" step="0.01" className={input+" mt-1"} value={amount} onChange={e=>setAmount(e.target.value)}/></label><button disabled={busy} className={btn+" w-full bg-slate-950 text-white"}><Plus size={15}/> Post charge</button></form></Modal>}
 function PaymentModal({balance,onClose,onSubmit,busy}){const [amount,setAmount]=useState(String(balance>0?balance:''));const [method,setMethod]=useState('cash');return <Modal title="Take payment" onClose={onClose}><form onSubmit={e=>{e.preventDefault();const n=Number(amount);if(n>0&&n<=balance)onSubmit({amount:n,method})}} className="space-y-4"><div className="rounded-lg bg-[var(--canvas)] p-3 text-sm">Outstanding balance: <strong>{money(balance)}</strong></div><label className="block text-xs font-medium text-[var(--text-muted)]">Amount<input type="number" min="0.01" max={balance} step="0.01" className={input+" mt-1"} value={amount} onChange={e=>setAmount(e.target.value)}/></label><label className="block text-xs font-medium text-[var(--text-muted)]">Payment method<select className={input+" mt-1"} value={method} onChange={e=>setMethod(e.target.value)}><option value="cash">Cash</option><option value="card">Card</option><option value="mpesa">M-Pesa</option><option value="bank_transfer">Bank transfer</option></select></label><button disabled={busy||balance<=0} className={btn+" w-full bg-[#FFD300] text-slate-950"}><CreditCard size={15}/> Record payment</button></form></Modal>}
