@@ -14,7 +14,8 @@
     --primary-soft: #DDF0F1;
     --accent: #E8955A;
     --text: #223039;
-    --text-muted: #5D7079; /* Darkened slightly to meet WCAG AA on canvas and white surfaces. */
+    /* Darkened slightly to meet WCAG AA on canvas and white surfaces. */
+    --text-muted: #5D7079;
     --border: #E1EAEC;
     --success: #2F9E7A;
     --success-text: #236F58;
