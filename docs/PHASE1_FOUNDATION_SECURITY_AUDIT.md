@@ -7,7 +7,7 @@
 
 ## Executive result
 
-Phase 1 is **not yet clear to merge or deploy**. The audit confirms security and provenance work remains. This PR deliberately starts with a small client-auth boundary cleanup and a regression guard; it does not claim that all Phase 1 acceptance gates are satisfied.
+Phase 1 security remediation is **not complete**. This PR's limited client-only authentication-marker cleanup can be merged independently after its code checks pass; that merge does not close the broader Phase 1 security or database acceptance gates. No database changes are included.
 
 ## Read-only database baseline
 
@@ -37,7 +37,7 @@ The Supabase project named `olitechs-pms-pos` was inspected using read-only meta
 - Draft PR #10: `feat: Phase 1 foundation architecture and security`.
 - Draft PR #30: property-membership RLS / owner-escalation hardening. Its disposable-database and negative-test acceptance gates remain open in the PR description.
 - PR #20: prior RPC/RLS remediation, merged; its description explicitly notes that the disposable schema was incomplete relative to production and that source-to-live reconciliation and browser smoke tests remained open.
-- The `main` branch currently has no branch protection / required status checks enabled. This PR must remain unmerged until checks and review gates are satisfied.
+- The `main` branch currently has no branch protection / required status checks enabled. This PR's client-only change must have passing CI before merge. Database-security work remains blocked from deployment until its separate acceptance gates are satisfied.
 
 ## Phase 1 blockers and acceptance gates
 
@@ -53,7 +53,7 @@ The Supabase project named `olitechs-pms-pos` was inspected using read-only meta
 - Remove only the redundant custom `olitech_token` marker writes from the active `src/lib/AuthContext.jsx`.
 - Add a static architecture regression test for that invariant and include it in `npm run test:architecture`.
 - Do not change SQL migrations, RLS policies, POS/KDS dispatch, printer transport/recovery, reservation logic, financial logic, `AppStore.jsx`, `PmsStore.jsx`, or `v6/`.
-- Do not merge this PR or proceed to Phase 2. Remaining Phase 1 gates above must be completed and verified before deployment.
+- This merge does not complete Phase 1 security remediation and does not authorize production database changes or Phase 2. Remaining Phase 1 gates above must be completed and verified before any database-security rollout.
 
 ## Verification status
 
@@ -63,6 +63,6 @@ The Supabase project named `olitechs-pms-pos` was inspected using read-only meta
 | Read-only production schema counts | Completed: 79 public tables, 136 public functions |
 | Supabase security/performance advisors | Completed; findings above recorded |
 | Source search for active-root custom token marker | Completed |
-| Local build / lint / typecheck / architecture tests | Not run: repository clone blocked by unavailable outbound DNS |
+| GitHub Actions lint / typecheck / architecture tests / contrast audit / production build | Passed on the PR head; architecture suite 54/54 |
 | Two-property database regression tests | Not run: current disposable schema is not certified production-equivalent |
 | Production writes | None |
