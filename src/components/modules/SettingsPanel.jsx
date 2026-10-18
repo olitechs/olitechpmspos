@@ -44,7 +44,7 @@ export default function SettingsPanel(){
  return <div className="flex-1 overflow-y-auto p-4" style={{background:SAND}}>
    <div className="mb-5"><h2 className="text-xl font-black" style={{color:NAVY}}>Settings</h2><p className="mt-1 text-sm" style={{color:MUTED}}>Configure your property, team, receipts and printing workflow.</p></div>
    <div className="grid max-w-4xl gap-3 md:grid-cols-2">
-    {SECTIONS.map(s=>{const Icon=s.icon;return <button key={s.id} disabled={s.disabled} onClick={()=>!s.disabled&&setView(s.id)} className="flex items-center gap-4 rounded-2xl p-4 text-left transition" style={{background:SURFACE,border:`1px solid ${BORDER}`,opacity:s.disabled?.58:1,cursor:s.disabled?'default':'pointer'}}>
+    {SECTIONS.map(s=>{const Icon=s.icon;return <button key={s.id} disabled={s.disabled} onClick={()=>!s.disabled&&setView(s.id)} className="flex items-center gap-4 rounded-xl p-4 text-left transition" style={{background:SURFACE,border:`1px solid ${BORDER}`,opacity:s.disabled?.58:1,cursor:s.disabled?'default':'pointer'}}>
       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl" style={{background:`${TEAL}14`}}><Icon size={19} style={{color:TEAL_DARK}}/></span>
       <span className="min-w-0 flex-1"><span className="block text-sm font-medium" style={{color:NAVY}}>{s.label}</span><span className="mt-1 block text-xs" style={{color:MUTED}}>{s.desc}</span></span>
       <span className="flex items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-medium" style={{borderColor:BORDER,color:s.disabled?MUTED:TEAL_DARK}}>{s.disabled?'Coming soon':<>Configure <ChevronRight size={12}/></>}</span>
