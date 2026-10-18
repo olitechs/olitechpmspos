@@ -35,6 +35,12 @@ test('every declared navigation destination has a registered route', () => {
   assert.deepEqual(missing, [], 'navigation destinations missing route registrations');
 });
 
+test('legacy Store Settings URL redirects instead of duplicating the All Stores page', () => {
+  assert.match(app, /path="settings" element={<Navigate to="\\/stores" replace\\/>}/);
+  assert.doesNotMatch(navArchitecture, /Store Settings.*\\/stores\\/settings/);
+  assert.match(navArchitecture, /\\['All Stores','\\/stores','store'\\]/);
+});
+
 test('workspace links navigate in the current tab by default', () => {
   assert.doesNotMatch(topNav, /target="_blank"/);
   assert.doesNotMatch(topNav, /rel="noopener noreferrer"/);
