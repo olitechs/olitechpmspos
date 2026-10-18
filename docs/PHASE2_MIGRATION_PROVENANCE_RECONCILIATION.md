@@ -114,3 +114,25 @@ A read-only production aggregate compared each product's `current_stock`, signed
 - Achieved: refreshed the 38-entry live ledger; inspected effective grants and relevant RLS policies; compared the current bodies/signatures/ACLs of the main inventory functions; confirmed a clean aggregate snapshot at the time queried.
 - Not achieved: recovered the missing deployed SQL for inventory operation RPC bodies; proved exact SQL equivalence for all 38 ledger entries; run two-property role/tenant/stock-mutation regression tests against a production-equivalent schema.
 - Therefore the migration gate remains **open**. No corrective migration should be drafted or applied until the remaining deployed-source gaps are resolved and runtime test fixtures exist.
+
+
+## 2026-10-18 forensic capture and fixture gate
+
+Exact live catalog definitions have now been captured read-only from production and committed as forensic evidence:
+
+- `docs/audit/PHASE2_LIVE_INVENTORY_RPC_SNAPSHOT_20261018.sql` — 15 exact `pg_get_functiondef` definitions plus identity arguments, language, security-definer status, function config and anon/authenticated EXECUTE checks. Includes `fn_apply_stock_movement`, `fn_record_pos_sale`, `fn_reverse_pos_stock`, `fn_inventory_valuation`, `fn_post_stock_adjustment`, `fn_approve_inventory_count`, `fn_post_wastage`, `fn_post_production`, `fn_complete_stock_transfer`, `fn_receive_purchase_order`, `fn_consume_recipe_stock`, `fn_record_stock_usage`, `fn_adjust_product_stock`, `fn_bulk_upsert_store_products`, and `fn_upsert_recipe`.
+- `docs/audit/PHASE2_LIVE_INVENTORY_TRIGGERS_20261018.json` — exact current trigger and trigger-function definitions for `products`, `product_stock_locations`, and `stock_movements`.
+
+These snapshots close the **evidence-capture gap** for the listed live RPCs: the deployed definitions no longer need to be guessed or reconstructed from comments in source migrations. They do **not** prove that a committed migration file is equivalent to the deployed function; the forensic snapshots must never be replayed as migrations. The live `fn_post_stock_adjustment`, `fn_approve_inventory_count`, `fn_post_wastage`, and `fn_post_production` bodies are now available for line-by-line review against the source candidates.
+
+### Production-equivalent fixture decision
+
+The existing project `rmkcwminrizloosvegzp` is explicitly named `olitech-phase-0-disposable-test`, but is **not production-equivalent**. A read-only signature comparison found it missing current production signatures for `fn_apply_stock_movement`, `fn_post_stock_adjustment`, `fn_approve_inventory_count`, `fn_post_wastage`, `fn_post_production`, and `fn_inventory_valuation`; its `fn_record_pos_sale` signature is older. Its Supabase security advisor also reports RLS disabled on `public.pos_shifts` and a SECURITY DEFINER view `public.my_properties`. No runtime inventory mutation tests were run against it, because results would not validate the current production schema.
+
+The read-only advisor snapshot is recorded in `docs/audit/PHASE2_SUPABASE_ADVISOR_BASELINE_20261018.md`. Production baseline: 96 authenticated-executable SECURITY DEFINER warnings, one anon-executable SECURITY DEFINER function, one RLS-enabled table without policies, leaked-password protection warning; performance baseline 45 unindexed foreign keys, 103 unused indexes, 20 multiple-permissive-policy findings. The disposable baseline is separately recorded and must not be conflated with production.
+
+### Gate status
+
+- **Closed:** live definitions captured for 15 inventory RPCs; current product/location/ledger trigger definitions captured; production and disposable project signature differences documented; both projects' Supabase advisor baselines recorded.
+- **Still open:** full 38-entry source migration mapping and body equivalence (migration ledger has no SQL checksums); a production-equivalent local/disposable schema with two-property role fixtures; passing runtime regression tests for restricted cost access, tenant isolation, location-specific adjustment/count, POS/recipe/GRN/transfer/void/refund idempotency; full application compatibility for column-level cost access.
+- **No database migration has been applied.** A candidate migration must not be applied to production or the old disposable project until those gates pass. Movement-time costing and workbook/report implementation remain blocked until then.
