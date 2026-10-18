@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { StoreProvider } from '@/data/AppStore';
 import { PmsProvider } from '@/data/PmsStore';
@@ -16,10 +16,7 @@ import Receipts from '@/components/modules/Receipts';
 import Folio from '@/components/modules/Folio';
 import Cashier from '@/components/modules/Cashier';
 import NightAudit from '@/components/modules/NightAudit';
-import KitchenDisplay from '@/components/modules/KitchenDisplay';
-import Reports from '@/components/modules/Reports';
 import SettingsPanel from '@/components/modules/SettingsPanel';
-import Rooms from '@/components/pms/Rooms';
 import Housekeeping from '@/components/modules/Housekeeping';
 import Maintenance from '@/components/modules/Maintenance';
 import Purchasing from '@/components/modules/Purchasing';
@@ -30,11 +27,15 @@ import BookingEngine from '@/components/modules/BookingEngine';
 import ChannelManager from '@/components/modules/ChannelManager';
 import DistributionOps from '@/components/modules/DistributionOps';
 import Inventory from '@/components/modules/Inventory';
-import Store from '@/pages/Store';
-import POSContainer from '@/components/pos/POSContainer';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import RouteGuard from '@/components/auth/RouteGuard';
 import PaywallGuard from '@/components/auth/PaywallGuard';
+
+const POSContainer = lazy(() => import('@/components/pos/POSContainer'));
+const Rooms = lazy(() => import('@/components/pms/Rooms'));
+const Reports = lazy(() => import('@/components/modules/Reports'));
+const Store = lazy(() => import('@/pages/Store'));
+const KitchenDisplay = lazy(() => import('@/components/modules/KitchenDisplay'));
 
 const COMING_SOON_IDS = new Set(MODULES.filter((module) => module.comingSoon).map((module) => module.id));
 
@@ -175,9 +176,11 @@ export default function POSApp({
             <div className="min-h-0 flex-1 overflow-y-auto">
               <ErrorBoundary label={currentModule?.label || 'This section'}>
                 <RouteGuard module={guardedWorkspace}>
-                  {activeModule === 'settings'
-                    ? content
-                    : <PaywallGuard module={getSubscriptionEntitlement(activeModule, workspaceModule)}>{content}</PaywallGuard>}
+                  <Suspense fallback={<div className="flex min-h-48 items-center justify-center bg-[var(--canvas)] text-sm text-[var(--text-muted)]" role="status">Loading module…</div>}>
+                    {activeModule === 'settings'
+                      ? content
+                      : <PaywallGuard module={getSubscriptionEntitlement(activeModule, workspaceModule)}>{content}</PaywallGuard>}
+                  </Suspense>
                 </RouteGuard>
               </ErrorBoundary>
             </div>
