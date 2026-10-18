@@ -71,3 +71,14 @@ test('database regression gate covers cost access, tenant isolation, immutable l
   assert.match(databaseGate, /rollback-only transaction/i);
   assert.match(databaseGate, /cross-property/i);
 });
+
+const runtimeGate = await read('../../supabase/tests/phase2_inventory_runtime_regression.sql');
+
+test('rollback-only runtime suite exercises tenant isolation and location balance round-trip', () => {
+  for (const assertion of [
+    'COST-RT-001', 'TENANT-RT-001', 'TENANT-RT-002',
+    'LEDGER-RT-001', 'BALANCE-RT-001', 'BALANCE-RT-003', 'BALANCE-RT-004',
+  ]) assert.ok(runtimeGate.includes(assertion), `missing runtime regression assertion: ${assertion}`);
+  assert.match(runtimeGate, /begin;[\s\S]*set local role authenticated[\s\S]*rollback;/i);
+  assert.match(runtimeGate, /Never run this against production/i);
+});
