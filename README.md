@@ -258,6 +258,11 @@ OLITECH_EMAIL=you@example.com OLITECH_PASSWORD=secret node scripts/capture-scree
 
 <br/>
 
+## Engineering audit notes
+
+- [Phase 0 repository audit and stock-control roadmap](docs/PHASED_REPO_AUDIT_AND_STOCK_CONTROL_ROADMAP.md)
+- [Phase 2 inventory security and data-integrity audit](docs/PHASE2_INVENTORY_SECURITY_AUDIT.md) — read-only findings; database changes remain gated.
+
 ## Contributing
 
 Fork, branch (`feature/my-feature`), commit, and open a pull request. Keep changes focused and describe the problem and the fix.
