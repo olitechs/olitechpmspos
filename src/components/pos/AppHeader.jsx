@@ -18,7 +18,7 @@ export default function AppHeader({ activeTab, onTabChange, activeTable, onClose
       {/* Brand */}
       <div className="flex items-center gap-2">
         <div className="flex flex-col leading-none">
-          <span className="font-bold text-white tracking-wide text-base font-mono tracking-[0.05em]">
+          <span className="font-bold text-[var(--primary)] tracking-wide text-base font-mono tracking-[0.05em]">
             OliTechs POS
           </span>
           <span className="text-xs" style={{ color: TEAL_LIGHT }}>Visiwa Beach Resort</span>
@@ -54,14 +54,14 @@ export default function AppHeader({ activeTab, onTabChange, activeTable, onClose
       </nav>
 
       <div className="flex items-center gap-3">
-        {onManageMenu && <button onClick={onManageMenu} className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-xs font-black text-white hover:bg-white/15">Menu</button>}
+        {onManageMenu && <button onClick={onManageMenu} className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--primary-soft)] px-3 py-2 text-xs font-black text-[var(--primary)] hover:bg-[var(--sidebar)]">Menu</button>}
         {shift?.status === 'open' && onCloseShift && (
-          <button onClick={onCloseShift} className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-xs font-black text-white hover:bg-white/15">
+          <button onClick={onCloseShift} className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--primary-soft)] px-3 py-2 text-xs font-black text-[var(--primary)] hover:bg-[var(--sidebar)]">
             Close Shift
           </button>
         )}
         <div className="text-right">
-          <div className="text-white font-mono text-base font-bold">{timeStr}</div>
+          <div className="text-[var(--primary)] font-mono text-base font-bold">{timeStr}</div>
           <div className="text-xs" style={{ color: TEAL_LIGHT }}>{dateStr}</div>
         </div>
       </div>
