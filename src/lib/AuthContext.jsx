@@ -73,7 +73,6 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (email, password, options = {}) => {
     const loggedInUser = await authService.login({ email, password });
     setUser(loggedInUser);
-    localStorage.setItem('olitech_token', 'supabase_session');
     setAuthError(null);
     setAuthChecked(true);
     const dest = options.redirectTo || (loggedInUser?.isPlatformOwner ? '/admin' : getReturnTo('/'));
@@ -101,7 +100,6 @@ export function AuthProvider({ children }) {
   const logout = useCallback(async () => {
     await authService.logout();
     setUser(null);
-    localStorage.removeItem('olitech_token');
     try {
       sessionStorage.removeItem('olitech_module_access_v2');
       sessionStorage.removeItem('olitech_active_staff_v2');
