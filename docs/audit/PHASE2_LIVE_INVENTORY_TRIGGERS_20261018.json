@@ -1,0 +1,17 @@
+-- FORENSIC SNAPSHOT ONLY — captured read-only from production catalog on 2026-10-18.
+-- Project ref: mszogmazldxjsiytrlxr. DO NOT APPLY OR REPLAY.
+-- Exact trigger and trigger-function definitions; evidence only, not a migration.
+[
+  {
+    "table": "products",
+    "trigger": "products_sync_default_location",
+    "trigger_definition": "CREATE TRIGGER products_sync_default_location AFTER UPDATE OF current_stock ON public.products FOR EACH ROW WHEN ((old.current_stock IS DISTINCT FROM new.current_stock)) EXECUTE FUNCTION fn_sync_product_default_location()",
+    "function_definition": "CREATE OR REPLACE FUNCTION public.fn_sync_product_default_location()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\ndeclare v_location_id uuid; v_delta numeric;\nbegin\n if new.current_stock is distinct from old.current_stock then\n  v_delta:=coalesce(new.current_stock,0)-coalesce(old.current_stock,0);\n  insert into public.inventory_locations(property_id,name) values(new.property_id,coalesce(nullif(trim(new.location),''),'Main Store')) on conflict(property_id,name) do nothing;\n  select id into v_location_id from public.inventory_locations where property_id=new.property_id and name=coalesce(nullif(trim(new.location),''),'Main Store') limit 1;\n  insert into public.product_stock_locations(property_id,product_id,location_id,qty) values(new.property_id,new.id,v_location_id,greatest(0,coalesce(new.current_stock,0)))\n  on conflict(product_id,location_id) do update set qty=greatest(0,product_stock_locations.qty+v_delta);\n end if;\n return new;\nend $function$\n"
+  },
+  {
+    "table": "products",
+    "trigger": "products_touch",
+    "trigger_definition": "CREATE TRIGGER products_touch BEFORE UPDATE ON public.products FOR EACH ROW EXECUTE FUNCTION fn_touch_products()",
+    "function_definition": "CREATE OR REPLACE FUNCTION public.fn_touch_products()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'public'\nAS $function$ begin new.updated_at = now(); return new; end $function$\n"
+  }
+]

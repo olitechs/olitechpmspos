@@ -258,6 +258,20 @@ OLITECH_EMAIL=you@example.com OLITECH_PASSWORD=secret node scripts/capture-scree
 
 <br/>
 
+## Engineering audit notes
+
+- [Phase 0 repository audit and stock-control roadmap](docs/PHASED_REPO_AUDIT_AND_STOCK_CONTROL_ROADMAP.md)
+- [Phase 2 inventory security and data-integrity audit](docs/PHASE2_INVENTORY_SECURITY_AUDIT.md) — read-only findings; database changes remain gated.
+- [Inventory event and role/action matrix](docs/PHASE2_INVENTORY_EVENT_AND_ROLE_MATRIX.md) — one posting owner per event and deny-by-default action capabilities.
+- [Current migration provenance reconciliation](docs/PHASE2_MIGRATION_PROVENANCE_RECONCILIATION.md) — 38 live entries; unresolved mappings remain deployment blockers.
+- [Captured live inventory RPC definitions](docs/audit/PHASE2_LIVE_INVENTORY_RPC_SNAPSHOT_20261018.sql) — forensic evidence only; never replay as SQL.
+- [Captured live inventory triggers](docs/audit/PHASE2_LIVE_INVENTORY_TRIGGERS_20261018.json) — exact production trigger catalog snapshot.
+- [Supabase advisor baseline](docs/audit/PHASE2_SUPABASE_ADVISOR_BASELINE_20261018.md) — production and disposable findings with fixture decision.
+- [Forward-only migration review plan](docs/audit/PHASE2_FORWARD_MIGRATION_REVIEW_PLAN.md) — target SQL changes, preflight, regression gates and recovery plan; not executable SQL.
+- [Inventory database regression gate](supabase/tests/phase2_inventory_security_regression.sql) — read-only catalog assertions, expected to fail on known pre-fix gaps.
+- [Rollback-only inventory runtime regression](supabase/tests/phase2_inventory_runtime_regression.sql) — requires explicit fixture IDs and must run only on a local/disposable database.
+- [Inventory source-contract tests](tools/inventory/phase2-ledger-contract.test.mjs) — included in `npm run test:architecture`.
+
 ## Contributing
 
 Fork, branch (`feature/my-feature`), commit, and open a pull request. Keep changes focused and describe the problem and the fix.
