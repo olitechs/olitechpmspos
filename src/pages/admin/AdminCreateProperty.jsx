@@ -162,7 +162,7 @@ export default function AdminCreateProperty() {
             <Button type="button" variant="outline" onClick={findOwner} disabled={loadingOwner}>{loadingOwner?'Checking…':'Find User'}</Button>
           </div>
           {ownerChecked && owner && <div className="rounded-lg bg-emerald-50 text-emerald-800 p-3 text-sm">Owner found: <strong>{owner.full_name || owner.email}</strong> · {owner.email}</div>}
-          {ownerChecked && !owner && <div className="rounded-lg bg-amber-50 text-amber-800 p-3 text-sm">No matching registered user.</div>}
+          {ownerChecked && !owner && <div className="rounded-lg bg-orange-50 text-orange-800 p-3 text-sm">No matching registered user.</div>}
         </section>
 
         <div className="flex justify-end gap-2">
