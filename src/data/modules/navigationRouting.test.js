@@ -36,9 +36,9 @@ test('every declared navigation destination has a registered route', () => {
 });
 
 test('legacy Store Settings URL redirects instead of duplicating the All Stores page', () => {
-  assert.match(app, /path="settings" element={<Navigate to="\\/stores" replace\\/>}/);
-  assert.doesNotMatch(navArchitecture, /Store Settings.*\\/stores\\/settings/);
-  assert.match(navArchitecture, /\\['All Stores','\\/stores','store'\\]/);
+  assert.ok(app.includes('<Route path="settings" element={<Navigate to="/stores" replace/>}/>'));
+  assert.ok(!navArchitecture.includes('Store Settings'));
+  assert.ok(navArchitecture.includes("['All Stores','/stores','store']"));
 });
 
 test('workspace links navigate in the current tab by default', () => {
