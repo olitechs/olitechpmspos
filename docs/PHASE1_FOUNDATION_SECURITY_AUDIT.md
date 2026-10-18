@@ -28,9 +28,9 @@ The Supabase project named `olitechs-pms-pos` was inspected using read-only meta
 ### Authentication boundary
 
 - `src/lib/AuthContext.jsx` uses `authService` and listens to Supabase Auth state changes.
-- The active root app still writes `localStorage.olitech_token = "supabase_session"` on login/registration and removes it on logout.
-- Repository search found no active-root read of this marker; the remaining matches are writes/removal plus the historical `v6/` duplicate.
-- The marker is not a credential and must never be used as proof of authentication or authorization. The scoped change removes the redundant active-root marker writes while preserving the Supabase Auth session and existing UI state flow. The historical `v6/` tree remains untouched.
+- The initial source audit found writes/removal for `localStorage.olitech_token = "supabase_session"` in the active root app, with no active-root reads.
+- This PR removes those active-root writes/removal; the regression test confirms their absence. The historical `v6/` duplicate remains untouched.
+- The marker was not a credential and must never be used as proof of authentication or authorization. Supabase Auth remains the session authority.
 
 ### Existing work that must not be duplicated or merged blindly
 
