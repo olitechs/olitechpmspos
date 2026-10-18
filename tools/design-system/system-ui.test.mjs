@@ -23,7 +23,7 @@ test('status badges use semantic theme tokens instead of fixed palette colors', 
   assert.match(block[1], /var\(--success-text\)/);
   assert.match(block[1], /var\(--warning-text\)/);
   assert.match(block[1], /var\(--danger-text\)/);
-  assert.match(block[1], /var\(--info\)/);
+  assert.match(block[1], /var\(--primary\)/);
   assert.doesNotMatch(block[1], /(?:emerald|amber|red|blue)-(?:50|800|950|300)/);
 });
 
