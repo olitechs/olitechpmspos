@@ -55,9 +55,9 @@ export function calculateDailyStats(reservations, date) {
 }
 
 const ROOM_STATUS = {
-  available: { fill: '#757B81', label: 'Available' }, booked: { fill: 'var(--action)', label: 'Booked' }, occupied: { fill: '#F56C5A', label: 'Occupied' },
-  dirty: { fill: '#B08968', label: 'Dirty' }, cleaning: { fill: '#D9A441', label: 'Cleaning' }, maintenance: { fill: '#8A8371', label: 'Maintenance' },
-  out_of_service: { fill: '#5E7180', label: 'Out of Service' }, blocked: { fill: '#3A3A3A', label: 'Blocked' },
+  available: { fill: '#16A34A', label: 'Available' }, booked: { fill: '#EAB308', label: 'Booked' }, occupied: { fill: '#16A34A', label: 'Occupied' },
+  dirty: { fill: '#F97316', label: 'Dirty' }, cleaning: { fill: '#EAB308', label: 'Cleaning' }, maintenance: { fill: '#F97316', label: 'Maintenance' },
+  out_of_service: { fill: '#5B6677', label: 'Out of Service' }, blocked: { fill: '#23262f', label: 'Blocked' },
 };
 const channelLabel = { direct: 'Direct', booking_com: 'Booking.com', unknown: 'Unknown' };
 const mealLabel = { bed_only: 'Bed Only', bb: 'BB', half_board: 'HB', full_board: 'FB' };
@@ -345,7 +345,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     </div>
 
     {modal && <Modal wide title={modal.mode==='create'?'New Reservation':'Edit Reservation'} onClose={()=>setModal(null)}><div className="p-5 space-y-4">
-      {modal.mode==='edit'&&form.joint&&<div className="rounded-xl p-3" style={{background:'rgba(255,211,0,.12)',border:`1px solid ${TEAL}`,color:NAVY}}><div className="flex items-start gap-2"><Link2 size={17}/><div className="flex-1"><div className="font-bold text-sm">Joint Reservation - Group #{String(modal.groupId).slice(0,6).toUpperCase()} - {linked.length} plannerRooms linked</div></div><button onClick={splitGroup} className="text-xs font-bold px-2 py-1 rounded-lg" style={{border:`1px solid ${BORDER}`}}>Split Group</button></div></div>}
+      {modal.mode==='edit'&&form.joint&&<div className="rounded-xl p-3" style={{background:'rgba(182,255,46,.12)',border:`1px solid ${TEAL}`,color:NAVY}}><div className="flex items-start gap-2"><Link2 size={17}/><div className="flex-1"><div className="font-bold text-sm">Joint Reservation - Group #{String(modal.groupId).slice(0,6).toUpperCase()} - {linked.length} plannerRooms linked</div></div><button onClick={splitGroup} className="text-xs font-bold px-2 py-1 rounded-lg" style={{border:`1px solid ${BORDER}`}}>Split Group</button></div></div>}
       <Field label="Guest Name"><InputField value={form.guestName} onChange={e=>setForm({...form,guestName:e.target.value})} autoFocus placeholder="Guest full name"/></Field>
       <div className="grid md:grid-cols-2 gap-3"><Field label="Check-in"><InputField type="date" value={form.checkIn} onChange={e=>setForm({...form,checkIn:e.target.value})}/></Field><Field label="Check-out (exclusive)"><InputField type="date" value={form.checkOut} min={form.checkIn} onChange={e=>setForm({...form,checkOut:e.target.value})}/></Field></div>
       {formError&&<div className="text-xs p-3 rounded-lg" style={{background:'#FDECEC',color:DESTRUCTIVE}}>{formError}</div>}
@@ -378,10 +378,10 @@ function PrintGrid({ rooms = [], groupedRooms = [], reservations = [], columns =
   const roomWidth = 130; const dayWidth = Math.max(48, Math.floor(770 / Math.max(1, columns.length)));
   return <div id="room-planner-print-grid" className="print-color-exact" style={{background:'#fff',color:'#111',fontSize:8}}>
     <div style={{display:'grid',gridTemplateColumns:`${roomWidth}px repeat(${columns.length},${dayWidth}px)`}}>
-      <div style={{background:'var(--text)',color:'#fff',fontWeight:700,padding:'5px'}}>ROOM</div>{columns.map(d=><div key={dateKey(d)} style={{background:d.getDay()===0||d.getDay()===6?'var(--surface)':'#262B32',color:d.getDay()===0||d.getDay()===6?'var(--text)':'#fff',textAlign:'center',padding:'5px 1px',fontWeight:700}}>{format(d,'EE').slice(0,2)}<br/>{format(d,'d MMM')}</div>)}
+      <div style={{background:'var(--text)',color:'#fff',fontWeight:700,padding:'5px'}}>ROOM</div>{columns.map(d=><div key={dateKey(d)} style={{background:d.getDay()===0||d.getDay()===6?'var(--surface)':'#23262f',color:d.getDay()===0||d.getDay()===6?'var(--text)':'#fff',textAlign:'center',padding:'5px 1px',fontWeight:700}}>{format(d,'EE').slice(0,2)}<br/>{format(d,'d MMM')}</div>)}
       {groupedRooms.map(([type, group])=><React.Fragment key={type}><div style={{gridColumn:'1 / -1',background:'var(--bg)',fontWeight:700,padding:'4px'}}>{type}</div>{group.map(room=>{const rs=reservations.filter(r=>r.roomId===room.id && r.checkIn<dateKey(addDays(columns[columns.length-1],1)) && r.checkOut>dateKey(columns[0]));return <React.Fragment key={room.id}><div style={{padding:'4px',borderBottom:'1px solid #ddd',fontWeight:700}}>Room {room.number}</div>{columns.map(d=>{const rv=rs.find(r=>r.checkIn<=dateKey(d)&&r.checkOut>dateKey(d));const stayStatus=rv?(rv.plannerStatus || (rv.bookingStatus==='checked_out'?'checked_out':rv.bookingStatus==='checked_in'?'occupied':'confirmed')):null;const ps=rv?getReservationBarStyle(stayStatus):null;return <div key={dateKey(d)} className="print-color-exact" style={{minHeight:32,padding:'3px',borderLeft:'1px solid #ddd',borderBottom:'1px solid #ddd',background:rv?(ps.background):((d.getDay()===0||d.getDay()===6)?'var(--surface)':'#fff'),color:rv?ps.color:'var(--text)',fontWeight:rv?700:400,opacity:rv?.bookingStatus==='checked_out'?0.45:1}}>{rv&&rv.checkIn===dateKey(d)?rv.guestName:''}</div>})}</React.Fragment>})}</React.Fragment>)}
-      <div style={{gridColumn:'1 / -1',borderTop:'2px solid var(--action)',background:'#202020',padding:'4px',fontWeight:700}}>Daily Summary</div>
-      {['arrivals','inHouse','checkOuts'].map(kind=><React.Fragment key={kind}><div style={{background:'#202020',color:'var(--surface)',padding:'3px',fontWeight:700}}>{kind==='arrivals'?'Arrivals':kind==='inHouse'?'In-House':'Check-Outs'}</div>{columns.map(d=>{const s=calculateDailyStats(reservations,d);const v=s[kind];return <div key={`${kind}-${dateKey(d)}`} style={{background:'#202020',textAlign:'center',padding:'3px',fontWeight:v?700:400,color:v?(kind==='arrivals'?'var(--action)':kind==='inHouse'?'var(--surface)':'#757B81'):'#757B81'}}>{v}</div>})}</React.Fragment>)}
+      <div style={{gridColumn:'1 / -1',borderTop:'2px solid var(--action)',background:'#23262f',padding:'4px',fontWeight:700}}>Daily Summary</div>
+      {['arrivals','inHouse','checkOuts'].map(kind=><React.Fragment key={kind}><div style={{background:'#23262f',color:'var(--surface)',padding:'3px',fontWeight:700}}>{kind==='arrivals'?'Arrivals':kind==='inHouse'?'In-House':'Check-Outs'}</div>{columns.map(d=>{const s=calculateDailyStats(reservations,d);const v=s[kind];return <div key={`${kind}-${dateKey(d)}`} style={{background:'#23262f',textAlign:'center',padding:'3px',fontWeight:v?700:400,color:v?(kind==='arrivals'?'var(--action)':kind==='inHouse'?'var(--surface)':'#757B81'):'#757B81'}}>{v}</div>})}</React.Fragment>)}
     </div>
   </div>;
 }

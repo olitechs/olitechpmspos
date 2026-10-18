@@ -54,6 +54,7 @@ import StoresPage from "@/components/stores/StoresPage";
 import POSDevicesPage from '@/components/stores/POSDevicesPage';
 import ModuleStatusPage from "@/components/shared/ModuleStatusPage";
 import OperationalSettingsPage from "@/components/settings/OperationalSettingsPage";
+import Phase9FeaturesPage from "@/components/settings/Phase9FeaturesPage";
 import CategoriesPage from "@/components/settings/CategoriesPage";
 import TimecardsPage from "@/components/settings/TimecardsPage";
 import EmployeeListPage from "@/components/settings/EmployeeListPage";
@@ -70,7 +71,8 @@ function BackOfficeSettingsPage(){
   if(slug==='billing') return <SubscriptionPanel/>;
   if(slug==='kitchen-printers') return <KitchenPrintersPage/>;
   if(['modifiers','discounts','suppliers'].includes(slug)) return <Phase2CataloguePage section={slug}/>;
-  if(['features','payment-types','taxes','loyalty','open-tickets','dining-options'].includes(slug)) return <OperationalSettingsPage module={slug}/>;
+  if(slug==='features') return <Phase9FeaturesPage/>;
+  if(['payment-types','taxes','loyalty','open-tickets','dining-options'].includes(slug)) return <OperationalSettingsPage module={slug}/>;
   return <ModuleStatusPage module={slug || 'features'} back='/backoffice/settings/features'/>;
 }
 function AppRoutes(){return <AuthProvider><Routes>

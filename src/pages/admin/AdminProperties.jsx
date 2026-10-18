@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import PackageAssignmentModal from './PackageAssignmentModal';
 
 const STATUS_STYLES = {
-	pending: 'bg-amber-100 text-amber-800',
+	pending: 'bg-orange-100 text-orange-800',
 	active: 'bg-emerald-100 text-emerald-800',
 	suspended: 'bg-red-100 text-red-800',
 	rejected: 'bg-slate-200 text-slate-700',
