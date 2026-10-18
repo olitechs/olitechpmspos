@@ -20,7 +20,7 @@
 
 The repository has 78 legacy numbered migration files and 49 timestamp-prefixed files. There are 14 duplicate filename version prefixes, including duplicate legacy versions `0016`, `0028`, `0032`, `0033`, `0034`, `0035`, `0037`, `0040`, `0045`, `0047`, `0048`, `0049`, and timestamp collisions `20261008170000` and `20261008223000`.
 
-Only 18 of the 38 production ledger entries match a source migration filename after removing the leading version prefix. The other 20 do **not** have an exact normalized filename match; this does not prove those migrations are absent, because names/versions have been rewritten or renamed in parts of the history. It does mean every remaining mapping needs a manual evidence trail before migration replay or repair.
+20 of the 38 production ledger entries match a source migration filename after normalizing the leading version prefix from both names. The other 18 do **not** have an exact normalized filename match; this does not prove those migrations are absent, because some may be represented by combined, renamed, or re-versioned source files. They require manual content/object-level mapping before migration replay or repair.
 
 Specific remediation provenance gaps:
 - Production ledger ends at `20261013194854_restore_property_scoped_stores`.
