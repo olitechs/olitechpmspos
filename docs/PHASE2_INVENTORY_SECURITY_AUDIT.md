@@ -136,3 +136,14 @@ The initial automated source-contract suite passed after correcting a SQL-string
 ### Updated implementation gate
 
 No forward-only SQL migration has been authored or applied. Before implementation, the remaining work is to recover/compare the exact SQL provenance for unresolved live entries and inventory source files, build repeatable two-property runtime tests in the existing disposable/local environment, and then design the corrective migration. Do not infer that the source/live migration gate is closed from the green app CI.
+
+
+### Additional effective-grant check and regression gate
+
+A separate read-only privilege query distinguished RLS policies from effective table privileges:
+
+- `authenticated` currently has **SELECT/INSERT/UPDATE/DELETE table privileges on `product_stock_locations`**, and the table has membership-only INSERT/UPDATE/DELETE policies. This permits an authenticated property member to change location balances directly without the authoritative movement function. This is an additional **P0 ledger-integrity issue**.
+- `authenticated` does **not** currently have direct INSERT/UPDATE/DELETE table privileges on `stock_movements`, `stock_usage`, or `stock_transfers`. Although some write/delete policies remain in the catalog, those policies do not grant privileges by themselves; the direct table DML path is currently blocked by ACLs. Preserve that distinction in the correction migration and remove stale policies only after exact policy/ACL reconciliation.
+- `authenticated` does have direct table DML privileges on `products`, `inventory_counts`, `inventory_count_lines`, and `stock_adjustments`. Their RLS policy sets must be reviewed together with effective grants; table privileges alone do not bypass RLS, but no mutation path should be left with a membership-only or absent action policy.
+
+An initial database catalog regression gate was added at `supabase/tests/phase2_inventory_security_regression.sql`. It is deliberately expected to fail against the pre-fix schema on the cost and direct location-balance assertions; it must be run only on local/already-authorized disposable schema after a fix is prepared. It performs catalog assertions only and does not modify data. The runtime two-property fixture tests remain separate and outstanding.
