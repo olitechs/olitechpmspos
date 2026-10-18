@@ -99,3 +99,15 @@ test('live inventory evidence and advisor baseline are captured without replay i
   assert.match(advisorBaseline, /not production-equivalent/i);
   assert.match(advisorBaseline, /RLS disabled on/);
 });
+
+const migrationReviewPlan = await read('../../docs/audit/PHASE2_FORWARD_MIGRATION_REVIEW_PLAN.md');
+
+test('forward migration design is gated on schema parity and runtime authorization tests', () => {
+  for (const section of [
+    'Cost-field confidentiality', 'Deny-by-default action authorization',
+    'One owner for location + aggregate stock balances',
+    'Source idempotency and immutable posting', 'Forward-only rollout and recovery',
+  ]) assert.ok(migrationReviewPlan.includes(section), `missing migration review section: ${section}`);
+  assert.match(migrationReviewPlan, /not a SQL migration/i);
+  assert.match(migrationReviewPlan, /do not use the current.*as-is/i);
+});
