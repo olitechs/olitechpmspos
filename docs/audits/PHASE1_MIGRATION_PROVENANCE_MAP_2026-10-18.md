@@ -48,6 +48,19 @@ The production catalog confirms that relevant objects currently exist, including
 
 The live `create_pending_property_for_user(uuid,text,text,text)` definition still accepts caller-supplied `p_user_id` without checking it against `auth.uid()`; this is the high-priority security drift recorded in `PHASE1_LIVE_SECURITY_DRIFT_2026-10-18.md`. The production fix remains unapplied.
 
+
+### Additional live catalog observations
+
+Read-only catalog inspection also found:
+- `pos_receipt_payments` exists with RLS enabled and indexes `pos_receipt_payments_receipt_idx`, `pos_receipt_payments_property_idx`, and `pos_receipt_payments_receipt_method_idx`.
+- `pos_receipts` has `pos_receipts_property_idempotency_key_uidx`, `pos_receipts_pos_shift_id_idx`, and reconciliation/status indexes. This is consistent with split-payment/reconciliation features being present, but does not distinguish which of the multiple candidate migrations introduced them.
+- `property_printers` has `property_printers_connection_type_idx` and `property_printers_transport_status_idx`. The catalog query did not return `printer_assignments_printer_type_unique`; since the candidate cleanup uses `DROP INDEX IF EXISTS`, its absence cannot prove that migration ran.
+- `rooms`, `reservations`, and `guests` are members of `supabase_realtime`, consistent with the PMS realtime feature. Publication membership does not establish the exact migration provenance.
+- `products_sync_default_location` exists and invokes `fn_sync_product_default_location()`, supporting the stock-location sync feature's presence. The trigger/function still need body and ACL comparison against the candidate file.
+- Recipe/transfer tables and their primary/unique indexes exist. That establishes current objects, not whether `0028`, `0030`, or one of the deployed legacy migrations was the source.
+
+These observations narrow the object-level comparison but do not upgrade the candidate rows to “equivalent with evidence”; exact SQL artifacts/deployment records and full relevant definition/ACL diffs are still required.
+
 ## Required proof to close a row
 
 For each unresolved row, capture:
