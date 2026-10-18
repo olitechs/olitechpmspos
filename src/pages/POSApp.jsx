@@ -42,7 +42,7 @@ function ComingSoon({ label }) {
   return (
     <div className="flex flex-1 items-center justify-center" style={{ background: SAND }}>
       <div className="max-w-sm text-center">
-        <h2 className="mb-2 text-lg font-semibold" style={{ color: NAVY }}>{label}</h2>
+        <h2 className="mb-2 text-lg font-medium" style={{ color: NAVY }}>{label}</h2>
         <p className="text-sm" style={{ color: MUTED }}>
           This module isn't wired up to real data yet — it's on the roadmap.
         </p>
