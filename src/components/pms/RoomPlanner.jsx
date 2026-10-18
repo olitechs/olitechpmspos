@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import {
   CalendarDays, ChevronLeft, ChevronRight, Link2, Plus, RefreshCw, X, Save, Trash2,
-  Printer, BedDouble, Download, AlertTriangle,
+  Printer, BedDouble, Download, AlertTriangle, Settings2,
 } from 'lucide-react';
 import {
   format, addDays, differenceInCalendarDays, eachDayOfInterval, endOfMonth, startOfMonth, subDays,
@@ -128,6 +128,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   const [chargeDescription, setChargeDescription] = useState('Room charge');
   const [printPreview, setPrintPreview] = useState(false);
   const [printNow, setPrintNow] = useState(false);
+  const [plannerToolsOpen, setPlannerToolsOpen] = useState(false);
   const [closures, setClosures] = useState([]);
   const scrollRef = useRef(null);
   const todayRef = useRef(null);
@@ -293,25 +294,34 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     .room-planner-scroll { position: relative; min-width: 0; }
     .room-planner-room-cell { box-shadow: 5px 0 8px -6px rgba(15,23,42,.5); }
     .room-planner-room-cell::after { content: ''; position: absolute; top: 0; right: -1px; bottom: 0; width: 1px; background: var(--border); pointer-events: none; } .room-planner-date-cell { scroll-margin-left: 2px; transition: background-color 120ms ease; } .room-planner-date-cell:hover { filter: brightness(.97); } .room-planner-date-cell.room-planner-today { box-shadow: inset 0 -3px 0 var(--action); }  .room-planner-day-cell { transition: background-color 100ms ease; } .room-planner-day-cell:hover { background-color: color-mix(in srgb, var(--action) 9%, var(--surface)); } .room-planner-day-cell.room-planner-weekend { background-color: color-mix(in srgb, var(--grid-weekend) 78%, var(--surface)); } .room-planner-day-cell.room-planner-today-cell { box-shadow: inset 1px 0 0 color-mix(in srgb, var(--action) 40%, transparent), inset -1px 0 0 color-mix(in srgb, var(--action) 40%, transparent); } .reservation-bar { display:flex; align-items:center; padding:0 9px; font-size:11px; font-weight:700; border-radius:7px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-height:26px; box-shadow: 0 2px 4px rgba(15,23,42,.14); transition: box-shadow 120ms ease, filter 120ms ease; } .reservation-bar:hover { box-shadow: 0 4px 9px rgba(15,23,42,.2); filter: saturate(1.04); } .room-planner-grid-row { min-height: 48px; } @media (prefers-reduced-motion: reduce) { .room-planner-date-cell, .room-planner-day-cell, .reservation-bar { transition: none; } }`}</style>
-    <div className="px-4 pt-3 pb-2 shrink-0 print-hidden">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: 'var(--text)', border: `1px solid var(--text)`, color: 'var(--action)' }}><CalendarDays size={17}/><span className="font-bold text-sm">Room Planner</span></div>
-        <button onClick={() => viewMode === 'rolling' ? shiftWindow(-15) : shiftMonth(-1)} aria-label={viewMode === 'rolling' ? 'Previous 15 days' : 'Previous month'} className="p-2 rounded-xl font-bold" style={{background:'var(--surface)',border:`1px solid var(--text)`,color:'var(--text)'}}><ChevronLeft size={18}/></button>
-        <div role="group" aria-label="Planner view" className="flex items-center rounded-xl border p-1" style={{background:'var(--surface)',borderColor:'var(--text)'}}><button type="button" aria-pressed={viewMode === 'month'} onClick={() => switchView('month')} className="rounded-lg px-3 py-1.5 text-xs font-black" style={{background:viewMode === 'month'?'var(--text)':'transparent',color:viewMode === 'month'?'var(--action)':'var(--text)'}}>Month</button><button type="button" aria-pressed={viewMode === 'rolling'} onClick={() => switchView('rolling')} className="rounded-lg px-3 py-1.5 text-xs font-black" style={{background:viewMode === 'rolling'?'var(--text)':'transparent',color:viewMode === 'rolling'?'var(--action)':'var(--text)'}}>15-day</button></div>
-        <button onClick={goToday} className="px-4 py-2 rounded-xl text-xs font-black" style={{background:'var(--action)',border:`1px solid var(--text)`,color:'var(--text)'}}>Today</button>
-        <button onClick={() => viewMode === 'rolling' ? shiftWindow(15) : shiftMonth(1)} aria-label={viewMode === 'rolling' ? 'Next 15 days' : 'Next month'} className="p-2 rounded-xl font-bold" style={{background:'var(--surface)',border:`1px solid var(--text)`,color:'var(--text)'}}><ChevronRight size={18}/></button>
-        <div className="text-lg font-bold ml-1" style={{color:NAVY}}>{range ? `${format(parseDate(range.from),'d MMM yyyy')} – ${format(parseDate(range.to),'d MMM yyyy')}` : viewMode === 'rolling' ? `${format(columns[0],'d MMM yyyy')} – ${format(columns[columns.length - 1],'d MMM yyyy')} · 15 days` : `${format(startOfMonth(month),'d MMM yyyy')} – ${format(endOfMonth(month),'d MMM yyyy')}`}</div>
-        <div className="ml-auto flex items-center gap-2">
-          <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-xl" style={{background:'var(--surface)',border:`2px solid var(--text)`}}><span className="text-xs font-black" style={{color:'var(--text)'}}>From</span><InputField type="date" value={fromInput} onChange={e=>setFromInput(e.target.value)} className="w-[135px] h-8"/><span className="text-xs font-black" style={{color:'var(--text)'}}>To</span><InputField type="date" value={toInput} onChange={e=>setToInput(e.target.value)} className="w-[135px] h-8"/><button onClick={applyRange} className="px-4 h-8 rounded-lg text-xs font-black" style={{background:'var(--action)',color:'var(--text)',border:'1px solid var(--text)'}}>Apply</button><button onClick={clearRange} className="px-3 h-8 rounded-lg text-xs font-bold" style={{background:'var(--surface)',border:`1px solid var(--text)`,color:'var(--text)'}}>Clear</button></div>
-          {onRefresh && <button title="Refresh" onClick={onRefresh} className="p-2 rounded-xl" style={{background:'var(--surface)',border:`1px solid var(--text)`,color:'var(--text)'}}><RefreshCw size={16}/></button>}
-          <button title="Print Calendar" onClick={()=>setPrintPreview(true)} className="p-2 rounded-xl" style={{background:'var(--surface)',border:`1px solid var(--text)`,color:'var(--text)'}}><Printer size={16}/></button>
-          <button onClick={() => openCreate(plannerRooms[0], range ? parseDate(range.from) : todayDate)} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black" style={{background:'var(--action)',color:'var(--text)',border:'2px solid var(--text)'}}><Plus size={15}/> Add Booking</button>
+    <div className="room-planner-toolbar px-3 pt-3 pb-2 shrink-0 print-hidden">
+      <div className="room-planner-toolbar-main flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-2 px-3 py-2 rounded-md" style={{background:'var(--planner-navy)',color:'#FFFFFF'}}><CalendarDays size={17}/><span className="font-bold text-sm">Room Planner</span></div>
+        <button onClick={goToday} className="room-planner-tool-button px-4 py-2 rounded-md text-xs font-black" style={{background:'var(--planner-blue)',color:'#FFFFFF',border:'1px solid var(--planner-blue)'}}>Today</button>
+        <button onClick={() => viewMode === 'rolling' ? shiftWindow(-15) : shiftMonth(-1)} aria-label={viewMode === 'rolling' ? 'Previous 15 days' : 'Previous month'} className="room-planner-tool-button px-3 py-2 rounded-md font-bold" style={{background:'var(--surface-2)',border:'1px solid var(--border-strong)',color:'var(--text)'}}><ChevronLeft size={17}/></button>
+        <button onClick={() => switchView('rolling')} aria-pressed={viewMode === 'rolling'} className="room-planner-tool-button px-4 py-2 rounded-md text-xs font-black" style={{background:viewMode === 'rolling'?'var(--planner-blue)':'var(--surface-2)',color:viewMode === 'rolling'?'#FFFFFF':'var(--text)',border:'1px solid var(--border-strong)'}}>15 GG</button>
+        <button onClick={() => switchView('month')} aria-pressed={viewMode === 'month'} className="room-planner-tool-button px-4 py-2 rounded-md text-xs font-black" style={{background:viewMode === 'month'?'var(--planner-blue)':'var(--surface-2)',color:viewMode === 'month'?'#FFFFFF':'var(--text)',border:'1px solid var(--border-strong)'}}>Month</button>
+        <button onClick={() => viewMode === 'rolling' ? shiftWindow(15) : shiftMonth(1)} aria-label={viewMode === 'rolling' ? 'Next 15 days' : 'Next month'} className="room-planner-tool-button px-3 py-2 rounded-md font-bold" style={{background:'var(--surface-2)',border:'1px solid var(--border-strong)',color:'var(--text)'}}><ChevronRight size={17}/></button>
+        <select aria-label="Select month" value={format(month,'yyyy-MM')} onChange={e=>{const [year,mo]=e.target.value.split('-').map(Number);setRange(null);setFromInput('');setToInput('');setFocusToday(false);setViewMode('month');setMonth(new Date(year,mo-1,1));}} className="room-planner-tool-button min-w-[155px] px-3 py-2 rounded-md text-xs font-semibold" style={{background:'var(--surface)',border:'1px solid var(--border-strong)',color:'var(--text)'}}>
+          {Array.from({length:25},(_,i)=>{const d=new Date(todayDate.getFullYear(),todayDate.getMonth()-12+i,1);return <option key={format(d,'yyyy-MM')} value={format(d,'yyyy-MM')}>{format(d,'MMMM yyyy')}</option>})}
+        </select>
+        <div className="room-planner-date-range text-sm font-bold px-2" style={{color:'var(--text)'}}>{range ? `${format(parseDate(range.from),'d MMM yyyy')} – ${format(parseDate(range.to),'d MMM yyyy')}` : viewMode === 'rolling' ? `${format(columns[0],'d MMM yyyy')} – ${format(columns[columns.length - 1],'d MMM yyyy')}` : format(month,'MMMM yyyy')}</div>
+        <div className="room-planner-toolbar-actions ml-auto flex items-center gap-2">
+          <button title="Print calendar" aria-label="Print calendar" onClick={()=>setPrintPreview(true)} className="room-planner-tool-button p-2.5 rounded-md" style={{background:'var(--surface-2)',border:'1px solid var(--border-strong)',color:'var(--text)'}}><Printer size={17}/></button>
+          <button title="Planner settings and date range" aria-label="Planner settings and date range" onClick={()=>setPlannerToolsOpen(v=>!v)} className="room-planner-tool-button p-2.5 rounded-md" style={{background:'var(--planner-blue)',border:'1px solid var(--planner-blue)',color:'#FFFFFF'}}><Settings2 size={17}/></button>
+          {onRefresh && <button title="Refresh" aria-label="Refresh reservations" onClick={onRefresh} className="room-planner-tool-button p-2.5 rounded-md" style={{background:'var(--surface-2)',border:'1px solid var(--border-strong)',color:'var(--text)'}}><RefreshCw size={16}/></button>}
+          <button onClick={() => openCreate(plannerRooms[0], range ? parseDate(range.from) : todayDate)} className="room-planner-tool-button flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-black" style={{background:'var(--planner-navy)',color:'#FFFFFF',border:'1px solid var(--planner-navy)'}}><Plus size={15}/> Add Booking</button>
         </div>
       </div>
+      {plannerToolsOpen && <div className="room-planner-settings-panel mt-3 p-3 rounded-md flex flex-wrap items-end gap-2" style={{background:'var(--surface-2)',border:'1px solid var(--border)'}}>
+        <div className="text-xs font-bold w-full" style={{color:'var(--text)'}}>Custom date range</div>
+        <label className="flex items-center gap-2 text-xs font-semibold" style={{color:'var(--text)'}}>From <InputField type="date" value={fromInput} onChange={e=>setFromInput(e.target.value)} className="w-[145px] h-9"/></label>
+        <label className="flex items-center gap-2 text-xs font-semibold" style={{color:'var(--text)'}}>To <InputField type="date" value={toInput} onChange={e=>setToInput(e.target.value)} className="w-[145px] h-9"/></label>
+        <button onClick={applyRange} className="px-4 h-9 rounded-md text-xs font-black" style={{background:'var(--planner-blue)',color:'#FFFFFF'}}>Apply range</button>
+        <button onClick={clearRange} className="px-4 h-9 rounded-md text-xs font-bold" style={{background:'var(--surface)',border:'1px solid var(--border-strong)',color:'var(--text)'}}>Clear</button>
+        <span className="text-xs ml-auto" style={{color:'var(--muted)'}}>{plannerRooms.length} rooms · {normalizedReservations.length} active stays</span>
+      </div>}
       {rangeError && <div className="mt-2 flex items-center gap-2 text-xs font-semibold" style={{color:DESTRUCTIVE}}><AlertTriangle size={14}/>{rangeError}</div>}
-      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-bold" style={{color:'var(--text)'}}>
-        <span>{plannerRooms.length} rooms · {normalizedReservations.length} active stays</span><span className="opacity-60">Guest names appear on each stay bar · click to open reservation · drag to move</span>
-      </div>
     </div>
 
     <div ref={scrollRef} tabIndex={0} role="region" aria-label="Room availability timeline. Scroll horizontally to change dates and vertically to change rooms." className="room-planner-scroll flex-1 min-h-0 overflow-auto px-4 pb-4 print-hidden">
@@ -332,7 +342,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
               const checked=rv.bookingStatus==='checked_out';
               const left=ROOM_COL_WIDTH+l.start*dayWidth+4;
               const width=Math.max(dayWidth*l.span-8,100);
-              return <div key={rv.id} draggable onDragStart={e=>beginDrag(e,rv)} onDragEnd={()=>{setDrag(null);setDragTarget(null)}} onClick={e=>{e.stopPropagation();openEdit(rv)}} className="reservation-bar absolute top-[7px] h-[34px] cursor-grab active:cursor-grabbing group print-color-exact" style={{left,width,background:ps.background,color:ps.color,border:`1.5px ${stayStatus==='optioned'?'dashed':'solid'} ${ps.border}`,borderLeft:`4px solid ${pay.border}`,opacity:getBarOpacity(rv.bookingStatus),zIndex:10}} title={`${rv.guestName} · ${ps.label} · ${rv.checkIn} → ${rv.checkOut}`}>
+              return <div key={rv.id} draggable onDragStart={e=>beginDrag(e,rv)} onDragEnd={()=>{setDrag(null);setDragTarget(null)}} onClick={e=>{e.stopPropagation();openEdit(rv)}} className="reservation-bar absolute top-[7px] h-[34px] cursor-grab active:cursor-grabbing group print-color-exact" style={{left,width,background:stayStatus==='optioned'?'var(--stay-optioned)':pay.background,color:stayStatus==='optioned'?'#FFFFFF':pay.color,border:`1.5px ${stayStatus==='optioned'?'dashed':'solid'} ${stayStatus==='optioned'?'var(--stay-optioned)':pay.border}`,borderLeft:`4px solid ${pay.border}`,opacity:getBarOpacity(rv.bookingStatus),zIndex:10}} title={`${rv.guestName} · ${ps.label} · ${rv.checkIn} → ${rv.checkOut}`}>
               <span className="truncate font-black text-[11px]" title={`${rv.guestName} · ${rv.checkIn} → ${rv.checkOut}`}>{rv.guestName || 'Guest'}</span><span className="ml-1.5 shrink-0 text-[10px] opacity-90 font-bold">{formatGuests(rv)}</span>
               <span className="ml-auto hidden group-hover:flex items-center gap-1 print:hidden"><button onClick={e=>{e.stopPropagation();openFolio(rv)}} className="w-5 h-5 rounded flex items-center justify-center" style={{background:'rgba(0,0,0,0.2)'}}><BedDouble size={10}/></button></span>
             </div>})}
@@ -366,11 +376,12 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
 
     {printPreview&&<Modal wide title="Print Calendar Preview" onClose={()=>setPrintPreview(false)} print><div className="p-5"><div className="mb-4"><h1 className="text-lg font-bold" style={{color:NAVY}}>{printTitle}</h1><p className="text-xs mt-1" style={{color:MUTED}}>{printSubtitle}</p>{!range&&columns.length>PRINT_MAX_DAYS&&<p className="text-xs mt-1" style={{color:'var(--warning)'}}>Print preview is limited to the first 30 days of the current month.</p>}</div><PrintGrid rooms={plannerRooms} groupedRooms={groupedRooms} reservations={normalizedReservations} columns={printRange}/><div className="flex justify-end gap-2 mt-4 print:hidden"><button onClick={()=>setPrintPreview(false)} className="px-4 py-2 rounded-lg" style={{border:`1px solid ${BORDER}`}}>Close</button><button onClick={downloadPdf} className="flex items-center gap-2 px-4 py-2 rounded-lg" style={{border:`1px solid ${BORDER}`,color:NAVY}}><Download size={15}/> Download PDF</button><button onClick={()=>setPrintNow(true)} className="flex items-center gap-2 px-4 py-2 rounded-lg font-bold" style={{background:TEAL,color:'var(--text)'}}><Printer size={15}/> Print</button></div></div></Modal>}
 
-    <div className="px-4 py-3 flex items-center gap-3 text-xs font-black border-t-2 print-hidden" style={{background:'var(--surface)',borderColor:'var(--text)'}}>
-      <span className="flex items-center gap-1.5"><i className="w-4 h-4 rounded" style={{background:'var(--pay-none)'}}/> Not Paid</span>
-      <span className="flex items-center gap-1.5"><i className="w-4 h-4 rounded" style={{background:'var(--pay-partial)'}}/> Deposit / Partially Paid</span>
-      <span className="flex items-center gap-1.5"><i className="w-4 h-4 rounded" style={{background:'var(--pay-total)'}}/> Fully Paid</span>
-      <span className="ml-auto text-[11px] font-bold" style={{color:MUTED}}>{plannerRooms.length} plannerRooms · {normalizedReservations.length} plannerReservations</span>
+    <div className="room-planner-payment-legend px-4 py-3 flex flex-wrap items-center gap-2 text-xs font-black print-hidden" style={{background:'var(--surface)',borderTop:'1px solid var(--border)'}}>
+      <span className="room-planner-legend-item flex items-center gap-1.5 px-2 py-1.5 rounded-sm" style={{background:'var(--pay-none)',color:'#FFFFFF'}}><i className="w-3 h-3 rounded-sm border border-white/70"/> Nessun Importo Versato</span>
+      <span className="room-planner-legend-item flex items-center gap-1.5 px-2 py-1.5 rounded-sm" style={{background:'var(--pay-partial)',color:'#1F2937'}}><i className="w-3 h-3 rounded-sm border border-black/20"/> Parzialmente Saldata</span>
+      <span className="room-planner-legend-item flex items-center gap-1.5 px-2 py-1.5 rounded-sm" style={{background:'var(--pay-total)',color:'#FFFFFF'}}><i className="w-3 h-3 rounded-sm border border-white/70"/> Totale Saldato</span>
+      <span className="room-planner-legend-item flex items-center gap-1.5 px-2 py-1.5 rounded-sm" style={{background:'var(--stay-optioned)',color:'#FFFFFF'}}><i className="w-3 h-3 rounded-sm border border-white/70 border-dashed"/> Opzionata</span>
+      <span className="ml-auto text-[11px] font-bold" style={{color:MUTED}}>{plannerRooms.length} rooms · {normalizedReservations.length} reservations</span>
     </div>
   </div>;
 }
