@@ -23,16 +23,16 @@ const PRINT_MAX_DAYS = 30;
 
 // CALENDAR THEME: Green/Yellow/Orange - Rectangle bars, English
 export const getReservationBarStyle = (status = 'occupied') => ({
-  optioned:{background:'var(--stay-optioned)',color:'var(--action-text)',border:'var(--stay-optioned)',label:'Optioned'},
+  optioned:{background:'var(--stay-optioned)',color:'var(--payment-text)',border:'var(--stay-optioned)',label:'Optioned'},
   confirmed:{background:'transparent',color:'var(--text)',border:'var(--stay-occupied)',label:'Confirmed / arriving'},
-  occupied:{background:'var(--stay-occupied)',color:'var(--action-text)',border:'var(--stay-occupied)',label:'In-house'},
-  checkout:{background:'var(--stay-checkout)',color:'var(--action-text)',border:'var(--stay-checkout)',label:'Checking out today'},
-  checked_out:{background:'var(--stay-occupied)',color:'var(--action-text)',border:'var(--stay-occupied)',label:'Checked out'},
+  occupied:{background:'var(--stay-occupied)',color:'var(--payment-text)',border:'var(--stay-occupied)',label:'In-house'},
+  checkout:{background:'var(--stay-checkout)',color:'var(--payment-text)',border:'var(--stay-checkout)',label:'Checking out today'},
+  checked_out:{background:'var(--stay-occupied)',color:'var(--payment-text)',border:'var(--stay-occupied)',label:'Checked out'},
   closed:{background:'var(--stay-closed)',color:'var(--text)',border:'var(--stay-closed)',label:'Out of order / closure'},
-}[status] || {background:'var(--stay-occupied)',color:'var(--action-text)',border:'var(--stay-occupied)',label:'In-house'});
+}[status] || {background:'var(--stay-occupied)',color:'var(--payment-text)',border:'var(--stay-occupied)',label:'In-house'});
 
 export const getPaymentStatusFromAmounts = (amountPaid, totalAmount) => { const paid = Number(amountPaid || 0); const total = Number(totalAmount || 0); if (total > 0 && paid >= total) return 'fully_paid'; if (paid > 0) return 'partially_paid'; return 'not_paid'; };
-export const getPaymentStyle=(status)=>({fully_paid:{background:'var(--pay-paid)',color:'var(--action-text)',border:'var(--pay-paid)',label:'Fully Paid'},partially_paid:{background:'var(--pay-deposit)',color:'var(--text)',border:'var(--pay-deposit)',label:'Deposit / Partially Paid'},not_paid:{background:'var(--pay-unpaid)',color:'var(--action-text)',border:'var(--pay-unpaid)',label:'Not Paid'}}[status]||{background:'var(--pay-unpaid)',color:'var(--action-text)',border:'var(--pay-unpaid)',label:'Not Paid'});
+export const getPaymentStyle=(status)=>({fully_paid:{background:'var(--pay-paid)',color:'var(--payment-text)',border:'var(--pay-paid)',label:'Fully Paid'},partially_paid:{background:'var(--pay-deposit)',color:'var(--payment-deposit-text)',border:'var(--pay-deposit)',label:'Deposit / Partially Paid'},not_paid:{background:'var(--pay-unpaid)',color:'var(--payment-text)',border:'var(--pay-unpaid)',label:'Not Paid'}}[status]||{background:'var(--pay-unpaid)',color:'var(--payment-text)',border:'var(--pay-unpaid)',label:'Not Paid'});
 
 export function getBarOpacity(bookingStatus) { return bookingStatus === 'checked_out' ? 0.5 : 1; }
 export function isOverlapping(r1, r2) {
@@ -56,9 +56,7 @@ export function calculateDailyStats(reservations, date) {
 }
 
 const ROOM_STATUS = {
-  available: { fill: '#757B81', label: 'Available' }, booked: { fill: 'var(--primary)', label: 'Booked' }, occupied: { fill: '#F56C5A', label: 'Occupied' },
-  dirty: { fill: '#B08968', label: 'Dirty' }, cleaning: { fill: '#D9A441', label: 'Cleaning' }, maintenance: { fill: '#8A8371', label: 'Maintenance' },
-  out_of_service: { fill: '#5E7180', label: 'Out of Service' }, blocked: { fill: '#3A3A3A', label: 'Blocked' },
+  available: { fill: 'var(--text-muted)', label: 'Available' }, booked: { fill: 'var(--primary)', label: 'Booked' }, occupied: { fill: 'var(--room-occupied)', label: 'Occupied' },\n  dirty: { fill: 'var(--room-dirty)', label: 'Dirty' }, cleaning: { fill: 'var(--room-clean)', label: 'Cleaning' }, maintenance: { fill: 'var(--room-out-of-order)', label: 'Maintenance' },\n  out_of_service: { fill: 'var(--room-out-of-order)', label: 'Out of Service' }, blocked: { fill: 'var(--room-out-of-order)', label: 'Blocked' },
 };
 const channelLabel = { direct: 'Direct', booking_com: 'Booking.com', unknown: 'Unknown' };
 const mealLabel = { bed_only: 'Bed Only', bb: 'BB', half_board: 'HB', full_board: 'FB' };
