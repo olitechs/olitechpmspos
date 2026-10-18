@@ -23,8 +23,8 @@ const SECTIONS = [
 
 function Breadcrumb({label,onBack}) {
   return <div className="flex items-center gap-2 border-b px-4 py-3" style={{borderColor:BORDER,background:SURFACE}}>
-    <button onClick={onBack} className="flex items-center gap-1 text-xs font-semibold" style={{color:TEAL_DARK}}><ChevronLeft size={14}/>Settings</button>
-    <span style={{color:MUTED}}>/</span><span className="text-xs font-bold uppercase tracking-widest" style={{color:NAVY}}>{label}</span>
+    <button onClick={onBack} className="flex items-center gap-1 text-xs font-medium" style={{color:TEAL_DARK}}><ChevronLeft size={14}/>Settings</button>
+    <span style={{color:MUTED}}>/</span><span className="text-xs font-medium " style={{color:NAVY}}>{label}</span>
   </div>;
 }
 
@@ -46,11 +46,11 @@ export default function SettingsPanel(){
    <div className="grid max-w-4xl gap-3 md:grid-cols-2">
     {SECTIONS.map(s=>{const Icon=s.icon;return <button key={s.id} disabled={s.disabled} onClick={()=>!s.disabled&&setView(s.id)} className="flex items-center gap-4 rounded-2xl p-4 text-left transition" style={{background:SURFACE,border:`1px solid ${BORDER}`,opacity:s.disabled?.58:1,cursor:s.disabled?'default':'pointer'}}>
       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl" style={{background:`${TEAL}14`}}><Icon size={19} style={{color:TEAL_DARK}}/></span>
-      <span className="min-w-0 flex-1"><span className="block text-sm font-bold" style={{color:NAVY}}>{s.label}</span><span className="mt-1 block text-xs" style={{color:MUTED}}>{s.desc}</span></span>
-      <span className="flex items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-bold" style={{borderColor:BORDER,color:s.disabled?MUTED:TEAL_DARK}}>{s.disabled?'Coming soon':<>Configure <ChevronRight size={12}/></>}</span>
+      <span className="min-w-0 flex-1"><span className="block text-sm font-medium" style={{color:NAVY}}>{s.label}</span><span className="mt-1 block text-xs" style={{color:MUTED}}>{s.desc}</span></span>
+      <span className="flex items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-medium" style={{borderColor:BORDER,color:s.disabled?MUTED:TEAL_DARK}}>{s.disabled?'Coming soon':<>Configure <ChevronRight size={12}/></>}</span>
     </button>})}
    </div>
-   {backoffice&&<button onClick={()=>navigate('/settings/kitchen-printers')} className="mr-3 mt-4 rounded-xl border px-4 py-3 text-xs font-bold" style={{borderColor:BORDER,color:TEAL_DARK,background:SURFACE}}>Back Office settings</button>}
-   {canSubscription&&<button onClick={()=>setView('subscription')} className="mt-4 rounded-xl border px-4 py-3 text-xs font-bold" style={{borderColor:BORDER,color:MUTED,background:SURFACE}}>Subscription & Paywall</button>}
+   {backoffice&&<button onClick={()=>navigate('/settings/kitchen-printers')} className="mr-3 mt-4 rounded-xl border px-4 py-3 text-xs font-medium" style={{borderColor:BORDER,color:TEAL_DARK,background:SURFACE}}>Back Office settings</button>}
+   {canSubscription&&<button onClick={()=>setView('subscription')} className="mt-4 rounded-xl border px-4 py-3 text-xs font-medium" style={{borderColor:BORDER,color:MUTED,background:SURFACE}}>Subscription & Paywall</button>}
  </div>;
 }
