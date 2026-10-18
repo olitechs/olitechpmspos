@@ -88,27 +88,27 @@
     --action-hover: #9CE622;
     --action-text: #23262f;
     --brand-primary: var(--action);
-    --brand-surface: #23262f;
+    --brand-surface: #2D303A;
     --on-dark: #23262f;
-    --stay-text: #23262f;
-    --brand-soft: #854D0E;
+    --stay-text: #FFFFFF;
+    --brand-soft: #3F4D2A;
 
     --bg: #23262f;
-    --surface: #23262f;
-    --surface-2: #1C222B;
-    --border: #2A313B;
-    --border-strong: #3A4350;
-    --control-border: var(--muted);
+    --surface: #2D303A;
+    --surface-2: #383C47;
+    --border: #454B57;
+    --border-strong: #5B6677;
+    --control-border: var(--border-strong);
     --text: #F3F4F6;
-    --muted: #9AA4B2;
+    --muted: #C0C6D0;
 
     --info: #5b3df5;
-    --success: #34D399;
-    --success-text: #34D399;
-    --warning: #EAB308;
-    --warning-text: #EAB308;
-    --danger: #F87171;
-    --room-charge: #A5B4FC;
+    --success: #16A34A;
+    --success-text: #16A34A;
+    --warning: #F97316;
+    --warning-text: #F97316;
+    --danger: #DC2626;
+    --room-charge: #5b3df5;
     --focus: #5b3df5;
 
     --table-free: #9AA4B2;
