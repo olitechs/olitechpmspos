@@ -104,7 +104,6 @@ export const pmsService = {
 	async listChannelSyncQueue(propertyId) { const {data,error}=await supabase.from('channel_sync_queue').select('*').eq('property_id',propertyId).order('created_at',{ascending:false}).limit(100); if(error) throw new Error(error.message); return data||[]; },
 	async listChannelReservationEvents(propertyId) { const {data,error}=await supabase.from('channel_reservation_events').select('*').eq('property_id',propertyId).order('received_at',{ascending:false}).limit(100); if(error) throw new Error(error.message); return data||[]; },
 	async listConfirmationMessages(propertyId) { const {data,error}=await supabase.from('confirmation_messages').select('*').eq('property_id',propertyId).order('created_at',{ascending:false}).limit(100); if(error) throw new Error(error.message); return data||[]; },
-=======
 	async getSubscription(propertyId) { const {data,error}=await supabase.rpc('fn_get_subscription',{p_property_id:propertyId}); if(error) throw new Error(error.message); return data; },
 	async getMySubscriptionOverview() { const {data,error}=await supabase.rpc('fn_get_my_subscription_overview'); if(error) throw new Error(error.message); return Array.isArray(data) ? (data[0] || null) : data; },
 	async getSubscriptionAccess(propertyId,module) { const {data,error}=await supabase.rpc('fn_subscription_access',{p_property_id:propertyId,p_module:module}); if(error) throw new Error(error.message); return data||{allowed:false}; },
