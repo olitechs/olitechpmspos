@@ -82,3 +82,20 @@ test('rollback-only runtime suite exercises tenant isolation and location balanc
   assert.match(runtimeGate, /begin;[\s\S]*set local role authenticated[\s\S]*rollback;/i);
   assert.match(runtimeGate, /Never run this against production/i);
 });
+
+const liveRpcSnapshot = await read('../../docs/audit/PHASE2_LIVE_INVENTORY_RPC_SNAPSHOT_20261018.sql');
+const liveTriggerSnapshot = await read('../../docs/audit/PHASE2_LIVE_INVENTORY_TRIGGERS_20261018.json');
+const advisorBaseline = await read('../../docs/audit/PHASE2_SUPABASE_ADVISOR_BASELINE_20261018.md');
+
+test('live inventory evidence and advisor baseline are captured without replay instructions', () => {
+  for (const fn of [
+    'fn_apply_stock_movement', 'fn_post_stock_adjustment', 'fn_approve_inventory_count',
+    'fn_post_wastage', 'fn_post_production', 'fn_complete_stock_transfer',
+    'fn_receive_purchase_order', 'fn_consume_recipe_stock', 'fn_record_pos_sale',
+    'fn_reverse_pos_stock', 'fn_inventory_valuation',
+  ]) assert.ok(liveRpcSnapshot.includes(`OBJECT: public.${fn}(`), `missing live definition: ${fn}`);
+  assert.match(liveRpcSnapshot, /DO NOT APPLY OR REPLAY THIS FILE/i);
+  assert.match(liveTriggerSnapshot, /products_sync_default_location/);
+  assert.match(advisorBaseline, /not production-equivalent/i);
+  assert.match(advisorBaseline, /RLS disabled on/);
+});
