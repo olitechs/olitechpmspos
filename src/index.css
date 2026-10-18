@@ -190,3 +190,7 @@
 @media print {
   .app-shell { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* Enforce the light-theme typography contract across legacy utility classes. */
+.font-semibold, .font-bold, .font-extrabold, .font-black, strong, b { font-weight: 500 !important; }
+h1, h2, h3, h4 { text-transform: none; }
