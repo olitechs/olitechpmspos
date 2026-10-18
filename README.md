@@ -17,7 +17,7 @@ Built to replace Opera Cloud and manual books for hotels, lodges and serviced ap
 ![Tailwind](https://img.shields.io/badge/Tailwind-0A0A0A?style=flat-square&logo=tailwindcss&logoColor=FACC15)
 ![License](https://img.shields.io/badge/License-MIT-0A0A0A?style=flat-square)
 
-[Features](#features) · [Screenshots](#screenshots) · [Workflows](#workflows) · [Architecture](#architecture) · [Quick start](#quick-start) · [Roadmap](#roadmap)
+[Features](#features) · [Screenshots](#screenshots) · [Workflows](#workflows) · [Architecture](#architecture) · [Quick start](#quick-start) · [Roadmap](#roadmap) · [Repository audit & stock-control plan](docs/PHASED_REPO_AUDIT_AND_STOCK_CONTROL_ROADMAP.md)
 
 </div>
 
