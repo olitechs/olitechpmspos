@@ -51,7 +51,7 @@ const STATUS_TONES = {
   // the application; this prevents badges drifting from light/dark themes.
   success: 'bg-[var(--surface)] text-[var(--success-text)]',
   warning: 'bg-[var(--surface)] text-[var(--warning-text)]',
-  danger: 'bg-[var(--surface)] text-[var(--danger)]',
+  danger: 'bg-[var(--surface)] text-[var(--danger-text)]',
   info: 'bg-[var(--surface)] text-[var(--info)]',
   neutral: 'bg-[var(--surface-2)] text-[var(--text)]',
 };
@@ -109,7 +109,7 @@ export function ConfirmDialog({ open, title = 'Are you sure?', description, conf
       <section role="alertdialog" aria-modal="true" aria-labelledby="confirm-dialog-title" aria-describedby={description ? 'confirm-dialog-description' : undefined} className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-2xl">
         <h2 id="confirm-dialog-title" className="text-base font-semibold text-[var(--text)]">{title}</h2>
         {description && <p id="confirm-dialog-description" className="mt-2 text-sm text-[var(--muted)]">{description}</p>}
-        <div className="mt-5 flex justify-end gap-2"><button type="button" disabled={busy} onClick={onCancel} className="rounded-md border border-[var(--control-border)] px-3 text-sm font-medium text-[var(--text)] hover:bg-[var(--surface-2)] disabled:opacity-60">{cancelLabel}</button><button type="button" disabled={busy} onClick={onConfirm} className={`rounded-md px-3 text-sm font-semibold disabled:opacity-60 ${destructive ? 'bg-[var(--danger)] text-white' : 'bg-[var(--action)] text-[var(--action-text)] hover:bg-[var(--action-hover)]'}`}>{busy ? 'Please wait…' : confirmLabel}</button></div>
+        <div className="mt-5 flex justify-end gap-2"><button type="button" disabled={busy} onClick={onCancel} className="rounded-md border border-[var(--control-border)] px-3 text-sm font-medium text-[var(--text)] hover:bg-[var(--surface-2)] disabled:opacity-60">{cancelLabel}</button><button type="button" disabled={busy} onClick={onConfirm} className={`rounded-md px-3 text-sm font-semibold disabled:opacity-60 ${destructive ? 'bg-[var(--danger-text)] text-white' : 'bg-[var(--action)] text-[var(--action-text)] hover:bg-[var(--action-hover)]'}`}>{busy ? 'Please wait…' : confirmLabel}</button></div>
       </section>
     </div>
   );
@@ -137,5 +137,5 @@ export function SegmentedControl({ options = [], value, onChange, className = ''
 }
 
 export function FormField({ label, htmlFor, hint, error, required = false, children, className = '' }) {
-  return <div className={`min-w-0 space-y-1.5 ${className}`.trim()}>{label && <label htmlFor={htmlFor} className="block text-sm font-medium text-[var(--text)]">{label}{required && <span className="ml-1 text-[var(--danger)]" aria-hidden="true">*</span>}</label>}{children}{error ? <p role="alert" className="text-xs text-[var(--danger)]">{error}</p> : hint ? <p className="text-xs text-[var(--muted)]">{hint}</p> : null}</div>;
+  return <div className={`min-w-0 space-y-1.5 ${className}`.trim()}>{label && <label htmlFor={htmlFor} className="block text-sm font-medium text-[var(--text)]">{label}{required && <span className="ml-1 text-[var(--danger-text)]" aria-hidden="true">*</span>}</label>}{children}{error ? <p role="alert" className="text-xs text-[var(--danger-text)]">{error}</p> : hint ? <p className="text-xs text-[var(--muted)]">{hint}</p> : null}</div>;
 }
