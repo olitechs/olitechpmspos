@@ -54,7 +54,7 @@
     --primary-foreground: #FFFFFF;
     --secondary: var(--sidebar);
     --secondary-foreground: var(--text);
-    --muted: var(--canvas);
+    --muted: var(--text-muted);
     --muted-foreground: var(--text-muted);
     --accent-foreground: var(--text);
     --destructive: var(--danger);
@@ -79,7 +79,7 @@
     --on-dark: var(--text);
     --stay-text: var(--text);
     --brand-soft: var(--primary-soft);
-    --legacy-muted: var(--text-muted);
+
     --warning-text-legacy: var(--warning-text);
     --room-charge: var(--primary);
     --focus: var(--primary);
