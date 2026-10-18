@@ -59,3 +59,15 @@ test('the event contract explicitly requires server-side role enforcement and lo
   assert.match(eventContract, /location balances summing to the aggregate/i);
   assert.match(eventContract, /direct \x60products\x60 select/i);
 });
+
+const databaseGate = await read('../../supabase/tests/phase2_inventory_security_regression.sql');
+
+test('database regression gate covers cost access, tenant isolation, immutable ledger, and balance ownership', () => {
+  for (const assertion of [
+    'COST-001', 'COST-002', 'TENANT-001', 'LEDGER-001',
+    'LEDGER-002', 'BALANCE-001', 'BALANCE-003', 'TRANSFER-001',
+    'GRN-001', 'POS-002',
+  ]) assert.ok(databaseGate.includes(assertion), `missing database regression assertion: ${assertion}`);
+  assert.match(databaseGate, /rollback-only transaction/i);
+  assert.match(databaseGate, /cross-property/i);
+});
