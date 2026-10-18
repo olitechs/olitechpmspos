@@ -197,7 +197,7 @@ export default function PublicSignUp() {
                   </div>
 
                   <label htmlFor="signup-terms" className="flex cursor-pointer items-start gap-2 pt-1 text-[10px] leading-4 text-[var(--text-muted)]">
-                    <input id="signup-terms" type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} className="mt-0.5 h-3 w-3 rounded border-[#D1D5DB] accent-[#FFC400]" />
+                    <input id="signup-terms" type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} className="mt-0.5 h-3 w-3 rounded border-[var(--border)] accent-[var(--primary)]" />
                     <span>I agree to the Terms &amp; Privacy.</span>
                   </label>
 
@@ -211,7 +211,7 @@ export default function PublicSignUp() {
 
                   <p className="pt-1 text-center text-[10px] text-[var(--text-muted)]">
                     Already have an account?{' '}
-                    <Link to="/signin" className="font-medium text-[var(--text)] underline decoration-[#FFC400] decoration-2 underline-offset-2 hover:text-[#8A6A00]">Sign in</Link>
+                    <Link to="/signin" className="font-medium text-[var(--text)] underline decoration-[var(--primary)] decoration-2 underline-offset-2 hover:text-[var(--primary-hover)]">Sign in</Link>
                   </p>
                 </form>
               </div>
