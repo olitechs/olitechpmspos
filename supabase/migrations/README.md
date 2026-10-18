@@ -130,3 +130,23 @@ After the existing `20261008084000_phase2_folio_checkout_housekeeping.sql` migra
 2. `20261009103000_phase2_folio_payment_reconciliation.sql` — allows qualifying booking deposits to be posted through the front-desk payment RPC, keeps folio balances non-negative before the first room charge, and ensures checkout writes a valid reservation payment status while enforcing the outstanding-balance check.
 
 Both migrations are additive/re-runnable. Test them on a non-production Supabase project before production rollout. The repository CI build does not execute these SQL functions against a live Supabase database, so database workflow acceptance remains pending until migration application and end-to-end testing.
+
+
+## Phase 9 — property feature entitlements
+
+Apply `0015_property_feature_entitlements.sql` and then `0016_enforce_property_feature_entitlements.sql` after the existing migrations. These migrations add property-scoped feature overrides, package-ceiling validation, owner/admin authorization, audit entries, and restrictive RLS checks for the mapped feature tables. Existing tenant RLS policies remain in place and compose with the restrictive checks.
+
+Verify the migration result in the Supabase SQL editor:
+
+```sql
+select property_id, feature_key, enabled, updated_by, updated_at
+from public.property_feature_entitlements
+order by updated_at desc;
+
+select public.fn_property_feature_enabled(
+  '<PROPERTY_UUID>'::uuid,
+  'inventory'
+);
+```
+
+Only platform owners and the property's owner/admin can change a feature toggle. A feature cannot be enabled when the assigned package excludes it. A property member may read only the effective entitlements for a property they belong to. The restrictive RLS migration applies to mapped tables that already have RLS enabled and a `property_id` column; review the deployed schema and add any feature-owned tables missing from the mapping before claiming every workflow is covered. SECURITY DEFINER operational RPCs that write without touching these mapped tables must independently call `fn_property_feature_enabled` before completing a feature-sensitive operation.
