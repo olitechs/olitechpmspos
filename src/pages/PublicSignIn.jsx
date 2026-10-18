@@ -128,7 +128,7 @@ export default function PublicSignIn() {
 
                   <div className="flex items-center justify-between gap-3 pt-0.5 text-[10px] text-[var(--text-muted)]">
                     <label htmlFor="remember-me" className="flex cursor-pointer items-center gap-2">
-                      <input id="remember-me" type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="h-3 w-3 rounded border-[#D1D5DB] accent-[#FFC400]" />
+                      <input id="remember-me" type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="h-3 w-3 rounded border-[var(--border)] accent-[var(--primary)]" />
                       Remember me
                     </label>
                     <Link to="/forgot-password" className="font-medium text-[var(--text-muted)] hover:text-[var(--text)] hover:underline">Forgot Password?</Link>
@@ -144,7 +144,7 @@ export default function PublicSignIn() {
 
                   <p className="pt-1 text-center text-[10px] text-[var(--text-muted)]">
                     Don&apos;t have an account?{' '}
-                    <Link to="/signup" className="font-medium text-[var(--text)] underline decoration-[#FFC400] decoration-2 underline-offset-2 hover:text-[#8A6A00]">Sign Up</Link>
+                    <Link to="/signup" className="font-medium text-[var(--text)] underline decoration-[var(--primary)] decoration-2 underline-offset-2 hover:text-[var(--primary-hover)]">Sign Up</Link>
                   </p>
                 </form>
               </div>
