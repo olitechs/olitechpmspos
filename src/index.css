@@ -45,9 +45,9 @@
     --stay-checkout: #4338CA;
     --stay-optioned: #0F766E;
     --stay-closed: #5B6677;
-    --pay-none: #B45309;
-    --pay-partial: #A16207;
-    --pay-total: #047857;
+    --pay-none: #F97316;
+    --pay-partial: #EAB308;
+    --pay-total: #16A34A;
 
     --grid-weekend: #F1F3F6;
     --grid-today: #FFF4C2;
@@ -122,9 +122,9 @@
     --stay-checkout: #A5B4FC;
     --stay-optioned: #5EEAD4;
     --stay-closed: #9AA4B2;
-    --pay-none: #FDBA74;
-    --pay-partial: #FDE047;
-    --pay-total: #A3E635;
+    --pay-none: #F97316;
+    --pay-partial: #EAB308;
+    --pay-total: #16A34A;
 
     --grid-weekend: #1C222B;
     --grid-today: #3A2F00;
