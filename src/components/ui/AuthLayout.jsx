@@ -67,19 +67,19 @@ export default function AuthLayout({ icon: Icon = ShieldCheck, title, subtitle, 
 
               <div className="relative flex h-full items-center justify-center p-10 xl:p-16">
                 <div className="relative w-full max-w-[610px]">
-                  <div className="absolute left-[8%] top-[5%] flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--surface)] text-[var(--primary)] shadow-[0_12px_30px_rgba(18,20,24,.10)]">
+                  <div className="absolute left-[8%] top-[5%] flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--surface)] text-[var(--primary)] shadow-[0_12px_30px_rgba(34,48,57,.08)]">
                     <Sparkles className="h-5 w-5" />
                   </div>
 
-                  <div className="absolute right-[7%] top-[12%] flex h-11 w-11 items-center justify-center rounded-full bg-[var(--surface)] text-[var(--text-muted)] shadow-[0_12px_30px_rgba(18,20,24,.10)]">
+                  <div className="absolute right-[7%] top-[12%] flex h-11 w-11 items-center justify-center rounded-full bg-[var(--surface)] text-[var(--text-muted)] shadow-[0_12px_30px_rgba(34,48,57,.08)]">
                     <CheckCircle2 className="h-5 w-5" />
                   </div>
 
-                  <div className="relative mx-auto flex aspect-[1.08/1] w-[76%] items-center justify-center rounded-full bg-[var(--primary-soft)] shadow-[0_30px_70px_rgba(18,20,24,.12)]">
+                  <div className="relative mx-auto flex aspect-[1.08/1] w-[76%] items-center justify-center rounded-full bg-[var(--primary-soft)] shadow-[0_30px_70px_rgba(34,48,57,.08)]">
                     <div className="absolute inset-[8%] rounded-full border-[18px] border-white/35" />
 
-                    <div className="relative w-[48%] rounded-[22px] border-[7px] border-[#121418] bg-[var(--surface)] p-3 shadow-[0_25px_50px_rgba(18,20,24,.18)]">
-                      <div className="flex h-9 items-center justify-center rounded-lg bg-[#121418]">
+                    <div className="relative w-[48%] rounded-[22px] border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[0_25px_50px_rgba(34,48,57,.08)]">
+                      <div className="flex h-9 items-center justify-center rounded-lg bg-[var(--primary-soft)]">
                         <div className="h-2 w-14 rounded-full bg-[var(--primary-soft)]" />
                       </div>
                       <div className="mt-4 space-y-2">
@@ -91,13 +91,13 @@ export default function AuthLayout({ icon: Icon = ShieldCheck, title, subtitle, 
                       <div className="mx-auto mt-4 h-1.5 w-10 rounded-full bg-[#D1D5DB]" />
                     </div>
 
-                    <div className="absolute -bottom-[3%] right-[12%] h-[45%] w-[20%] rounded-t-[45%] bg-[#121418]" />
-                    <div className="absolute bottom-[12%] right-[20%] h-[32%] w-[9%] rounded-full bg-[var(--primary-soft)] shadow-[8px_20px_0_0_#121418]" />
+                    <div className="absolute -bottom-[3%] right-[12%] h-[45%] w-[20%] rounded-t-[45%] bg-[var(--primary-soft)]" />
+                    <div className="absolute bottom-[12%] right-[20%] h-[32%] w-[9%] rounded-full bg-[var(--primary-soft)] shadow-none" />
                   </div>
 
-                  <div className="absolute bottom-[4%] left-[3%] rounded-2xl border border-white bg-[var(--surface)] px-4 py-3 shadow-[0_16px_35px_rgba(18,20,24,.10)]">
+                  <div className="absolute bottom-[4%] left-[3%] rounded-2xl border border-white bg-[var(--surface)] px-4 py-3 shadow-[0_16px_35px_rgba(34,48,57,.08)]">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#121418] text-[var(--primary)]">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--primary-soft)] text-[var(--primary)]">
                         <KeyRound className="h-4 w-4" />
                       </div>
                       <div>
@@ -107,7 +107,7 @@ export default function AuthLayout({ icon: Icon = ShieldCheck, title, subtitle, 
                     </div>
                   </div>
 
-                  <div className="absolute bottom-[15%] right-[1%] flex items-center gap-2 rounded-full bg-[#121418] px-4 py-2 text-[10px] font-medium text-[var(--text)] shadow-lg">
+                  <div className="absolute bottom-[15%] right-[1%] flex items-center gap-2 rounded-full bg-[var(--primary-soft)] px-4 py-2 text-[10px] font-medium text-[var(--text)] shadow-lg">
                     Secure workspace
                     <ArrowUpRight className="h-3.5 w-3.5 text-[var(--primary)]" />
                   </div>
