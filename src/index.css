@@ -15,6 +15,10 @@
     --on-dark: #FFFFFF;
     --stay-text: #FFFFFF;
     --brand-soft: #FFF4C2;
+    --planner-ice: #E7F0FA;
+    --planner-blue-soft: #7BA4D0;
+    --planner-blue: #2E5E99;
+    --planner-navy: #0D2440;
 
     --bg: #F6F7F9;
     --surface: #FFFFFF;
@@ -92,6 +96,10 @@
     --on-dark: #0B0F14;
     --stay-text: #0B0F14;
     --brand-soft: #3A2F00;
+    --planner-ice: #1B2D43;
+    --planner-blue-soft: #7BA4D0;
+    --planner-blue: #2E5E99;
+    --planner-navy: #0D2440;
 
     --bg: #0E1116;
     --surface: #161B22;
@@ -199,4 +207,31 @@
 
 @media print {
   .app-shell { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+
+/* Room Planner reference UI: Sapphire Veil palette and responsive toolbar. */
+@layer components {
+  .room-planner-toolbar { background: var(--surface); border-bottom: 1px solid var(--border); }
+  .room-planner-toolbar-main { min-height: 42px; }
+  .room-planner-tool-button { min-height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; }
+  .room-planner-tool-button:focus-visible { outline: 3px solid var(--planner-blue-soft); outline-offset: 2px; }
+  .room-planner-settings-panel { box-shadow: var(--shadow); }
+  .room-planner-payment-legend { min-height: 48px; }
+  .room-planner-legend-item { font-size: 12px; line-height: 1.1; }
+}
+@media (max-width: 900px) {
+  .room-planner-toolbar-main { align-items: stretch; }
+  .room-planner-date-range { flex-basis: 100%; order: 10; padding: 4px 0; }
+  .room-planner-toolbar-actions { margin-left: 0; }
+  .room-planner-legend-item { font-size: 11px; }
+}
+@media (max-width: 560px) {
+  .room-planner-toolbar { padding-left: 8px; padding-right: 8px; }
+  .room-planner-toolbar-main { gap: 6px; }
+  .room-planner-tool-button { min-height: 40px; }
+  .room-planner-toolbar-actions { width: 100%; }
+  .room-planner-toolbar-actions > button:last-child { margin-left: auto; }
+  .room-planner-settings-panel label { width: 100%; justify-content: space-between; }
+  .room-planner-settings-panel label input { flex: 1; min-width: 0; }
+  .room-planner-payment-legend { gap: 6px; padding: 8px; }
 }
