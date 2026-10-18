@@ -35,6 +35,13 @@ test('every declared navigation destination has a registered route', () => {
   assert.deepEqual(missing, [], 'navigation destinations missing route registrations');
 });
 
+test('POSApp contains resolved source and preserves route and subscription guards', () => {
+  assert.doesNotMatch(posApp, /^={7}$/m);
+  assert.match(posApp, /<RouteGuard module={guardedWorkspace}>/);
+  assert.match(posApp, /<PaywallGuard module={getSubscriptionEntitlement\(activeModule, workspaceModule\)}>/);
+  assert.match(posApp, /useEffect\(\(\) => \{\s*setActiveModule\(routeModule\);\s*\}, \[routeModule\]\)/);
+});
+
 test('legacy Store Settings URL redirects instead of duplicating the All Stores page', () => {
   assert.ok(app.includes('<Route path="settings" element={<Navigate to="/stores" replace/>}/>'));
   assert.ok(!navArchitecture.includes('Store Settings'));
