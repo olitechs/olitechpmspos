@@ -34,7 +34,7 @@ const ROOM_GROUPS = [
   { key: 'ooo', label: 'Out of order', color: 'var(--stay-closed)', statuses: ['maintenance', 'out_of_service', 'blocked'] },
 ];
 
-const ACTIVITY_COLORS = { order: 'var(--text)', payment: 'var(--action)', reserve: 'var(--info)' };
+const ACTIVITY_COLORS = { order: 'var(--text)', payment: 'var(--primary)', reserve: 'var(--info)' };
 
 /* ------------------------------------------------------------------ */
 /* Building blocks                                                     */
@@ -42,7 +42,7 @@ const ACTIVITY_COLORS = { order: 'var(--text)', payment: 'var(--action)', reserv
 
 function Card({ className = '', children }) {
   return (
-    <section className={`rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow)] ${className}`}>
+    <section className={`rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-none ${className}`}>
       {children}
     </section>
   );
@@ -52,9 +52,9 @@ function CardHeader({ title, meta, icon: Icon, action }) {
   return (
     <header className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
       <div className="flex min-w-0 items-center gap-2">
-        {Icon && <Icon size={15} aria-hidden="true" className="shrink-0 text-[var(--muted)]" />}
-        <h2 className="truncate text-sm font-semibold text-[var(--text)]">{title}</h2>
-        {meta !== undefined && meta !== '' && <span className="shrink-0 text-xs text-[var(--muted)]">{meta}</span>}
+        {Icon && <Icon size={15} aria-hidden="true" className="shrink-0 text-[var(--text-muted)]" />}
+        <h2 className="truncate text-sm font-medium text-[var(--text)]">{title}</h2>
+        {meta !== undefined && meta !== '' && <span className="shrink-0 text-xs text-[var(--text-muted)]">{meta}</span>}
       </div>
       {action}
     </header>
@@ -62,7 +62,7 @@ function CardHeader({ title, meta, icon: Icon, action }) {
 }
 
 function EmptyState({ children }) {
-  return <div className="px-4 py-8 text-center text-sm text-[var(--muted)]">{children}</div>;
+  return <div className="px-4 py-8 text-center text-sm text-[var(--text-muted)]">{children}</div>;
 }
 
 /** Primary KPI tile. Renders as a button when it navigates somewhere. */
@@ -72,20 +72,20 @@ function Kpi({ label, value, sub, icon: Icon, onClick, accent = false }) {
     <Tag
       type={onClick ? 'button' : undefined}
       onClick={onClick}
-      className={`group flex min-h-[112px] w-full flex-col justify-between rounded-lg border bg-[var(--surface)] p-4 text-left shadow-[var(--shadow)] ${
-        accent ? 'border-[var(--action)]' : 'border-[var(--border)]'
-      } ${onClick ? 'hover:border-[var(--muted)]' : ''}`}
+      className={`group flex min-h-[112px] w-full flex-col justify-between rounded-lg border bg-[var(--surface)] p-4 text-left shadow-none ${
+        accent ? 'border-[var(--primary)]' : 'border-[var(--border)]'
+      } ${onClick ? 'hover:border-[var(--text-muted)]' : ''}`}
     >
       <div className="flex items-start justify-between gap-3">
-        <span className="text-xs font-medium text-[var(--muted)]">{label}</span>
-        <span className="flex items-center gap-1 text-[var(--muted)]">
+        <span className="text-xs font-medium text-[var(--text-muted)]">{label}</span>
+        <span className="flex items-center gap-1 text-[var(--text-muted)]">
           {Icon && <Icon size={16} aria-hidden="true" />}
           {onClick && <ChevronRight size={14} aria-hidden="true" className="opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />}
         </span>
       </div>
       <div>
-        <div className="font-mono text-[28px] font-semibold leading-none tracking-tight text-[var(--text)]">{value}</div>
-        {sub && <div className="mt-1.5 text-xs text-[var(--muted)]">{sub}</div>}
+        <div className="font-mono text-[28px] font-medium leading-none tracking-tight text-[var(--text)]">{value}</div>
+        {sub && <div className="mt-1.5 text-xs text-[var(--text-muted)]">{sub}</div>}
       </div>
     </Tag>
   );
@@ -94,9 +94,9 @@ function Kpi({ label, value, sub, icon: Icon, onClick, accent = false }) {
 function MiniStat({ label, value, sub }) {
   return (
     <div className="min-w-0 px-4 py-3">
-      <div className="text-xs text-[var(--muted)]">{label}</div>
-      <div className="mt-1 truncate font-mono text-xl font-semibold text-[var(--text)]">{value}</div>
-      {sub && <div className="mt-0.5 truncate text-xs text-[var(--muted)]">{sub}</div>}
+      <div className="text-xs text-[var(--text-muted)]">{label}</div>
+      <div className="mt-1 truncate font-mono text-xl font-medium text-[var(--text)]">{value}</div>
+      {sub && <div className="mt-0.5 truncate text-xs text-[var(--text-muted)]">{sub}</div>}
     </div>
   );
 }
@@ -120,12 +120,12 @@ function MovementList({ title, icon, rows, emptyText, onViewAll, timeLabel }) {
         <ul className="divide-y divide-[var(--border)]">
           {rows.slice(0, 6).map((r) => (
             <li key={r.id} className="flex items-center gap-3 px-4 py-2.5">
-              <span className="flex h-8 min-w-[44px] items-center justify-center rounded-md bg-[var(--bg)] px-2 font-mono text-xs font-semibold text-[var(--text)]">
+              <span className="flex h-8 min-w-[44px] items-center justify-center rounded-md bg-[var(--canvas)] px-2 font-mono text-xs font-medium text-[var(--text)]">
                 {r.roomNumber || '—'}
               </span>
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-medium text-[var(--text)]">{r.guest || 'Guest'}</div>
-                <div className="truncate text-xs text-[var(--muted)]">
+                <div className="truncate text-xs text-[var(--text-muted)]">
                   {r.partySize ? `${r.partySize} guest${Number(r.partySize) === 1 ? '' : 's'}` : timeLabel}
                 </div>
               </div>
@@ -133,7 +133,7 @@ function MovementList({ title, icon, rows, emptyText, onViewAll, timeLabel }) {
           ))}
         </ul>
       )}
-      {rows.length > 6 && <div className="mt-auto border-t border-[var(--border)] px-4 py-2 text-xs text-[var(--muted)]">+${rows.length - 6} more</div>}
+      {rows.length > 6 && <div className="mt-auto border-t border-[var(--border)] px-4 py-2 text-xs text-[var(--text-muted)]">+${rows.length - 6} more</div>}
     </Card>
   );
 }
@@ -216,17 +216,17 @@ export default function Dashboard({ onNavigateToPOS, onNavigateToRooms, onNaviga
   const dateLabel = new Intl.DateTimeFormat('en-KE', { timeZone: TZ, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[var(--bg)]">
+    <div className="flex-1 overflow-y-auto bg-[var(--canvas)]">
       <div className="mx-auto w-full max-w-[1600px] space-y-6 p-4 sm:p-5 lg:p-6">
         {/* ===== Header: context + actions ===== */}
         <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-medium text-[var(--muted)]">{dateLabel}</p>
-            <h1 className="mt-0.5 text-2xl font-semibold tracking-tight text-[var(--text)]">Today at a glance</h1>
+            <p className="text-xs font-medium text-[var(--text-muted)]">{dateLabel}</p>
+            <h1 className="mt-0.5 text-2xl font-medium tracking-tight text-[var(--text)]">Today at a glance</h1>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {updatedAt && (
-              <span className="mr-1 text-xs text-[var(--muted)]">
+              <span className="mr-1 text-xs text-[var(--text-muted)]">
                 Updated {updatedAt.toLocaleTimeString('en-KE', { timeZone: TZ, hour: '2-digit', minute: '2-digit' })}
               </span>
             )}
@@ -241,7 +241,7 @@ export default function Dashboard({ onNavigateToPOS, onNavigateToRooms, onNaviga
             <button
               type="button"
               onClick={goPOS}
-              className="global-primary-button inline-flex min-h-10 items-center gap-2 rounded-lg px-4 text-sm font-semibold"
+              className="global-primary-button inline-flex min-h-10 items-center gap-2 rounded-lg px-4 text-sm font-medium"
             >
               Open POS <ArrowUpRight size={15} aria-hidden="true" />
             </button>
@@ -328,7 +328,7 @@ export default function Dashboard({ onNavigateToPOS, onNavigateToRooms, onNaviga
                       <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: g.color }} aria-hidden="true" />
                       {g.label}
                     </span>
-                    <span className="font-mono font-semibold text-[var(--text)]">{dash(fo.counts[g.key])}</span>
+                    <span className="font-mono font-medium text-[var(--text)]">{dash(fo.counts[g.key])}</span>
                   </li>
                 ))}
               </ul>
@@ -362,11 +362,11 @@ export default function Dashboard({ onNavigateToPOS, onNavigateToRooms, onNaviga
               <ul className="divide-y divide-[var(--border)]">
                 {topItems.slice(0, 5).map((item, i) => (
                   <li key={`${item.name}-${i}`} className="flex items-center gap-3 px-4 py-2.5">
-                    <span className="w-5 shrink-0 text-center font-mono text-xs font-semibold text-[var(--muted)]">{i + 1}</span>
+                    <span className="w-5 shrink-0 text-center font-mono text-xs font-medium text-[var(--text-muted)]">{i + 1}</span>
                     <span className="min-w-0 flex-1 truncate text-sm font-medium text-[var(--text)]">{item.name}</span>
                     <span className="shrink-0 text-right">
-                      <span className="block font-mono text-sm font-semibold text-[var(--text)]">×{item.qty}</span>
-                      <span className="block font-mono text-[11px] text-[var(--muted)]">{kes(item.revenue)}</span>
+                      <span className="block font-mono text-sm font-medium text-[var(--text)]">×{item.qty}</span>
+                      <span className="block font-mono text-[11px] text-[var(--text-muted)]">{kes(item.revenue)}</span>
                     </span>
                   </li>
                 ))}
@@ -386,10 +386,10 @@ export default function Dashboard({ onNavigateToPOS, onNavigateToRooms, onNaviga
                     <li key={`${p.method}-${i}`}>
                       <div className="mb-1.5 flex items-center justify-between gap-3 text-sm">
                         <span className="font-medium capitalize text-[var(--text)]">{String(p.method || '').replace(/_/g, ' ')}</span>
-                        <span className="font-mono text-xs text-[var(--muted)]">{kes(p.amount)} · {pct}%</span>
+                        <span className="font-mono text-xs text-[var(--text-muted)]">{kes(p.amount)} · {pct}%</span>
                       </div>
                       <div className="h-2 overflow-hidden rounded-full bg-[var(--border)]" aria-hidden="true">
-                        <div className="h-full rounded-full bg-[var(--action)]" style={{ width: `${pct}%` }} />
+                        <div className="h-full rounded-full bg-[var(--primary)]" style={{ width: `${pct}%` }} />
                       </div>
                     </li>
                   );
@@ -406,12 +406,12 @@ export default function Dashboard({ onNavigateToPOS, onNavigateToRooms, onNaviga
               <ul className="divide-y divide-[var(--border)]">
                 {liveActivity.map((a, i) => (
                   <li key={`${a.created_at}-${i}`} className="flex gap-3 px-4 py-2.5">
-                    <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full" style={{ background: ACTIVITY_COLORS[a.type] || 'var(--muted)' }} aria-hidden="true" />
+                    <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full" style={{ background: ACTIVITY_COLORS[a.type] || 'var(--text-muted)' }} aria-hidden="true" />
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm font-medium text-[var(--text)]">{a.action}</div>
-                      <div className="truncate text-xs text-[var(--muted)]">{a.detail}</div>
+                      <div className="truncate text-xs text-[var(--text-muted)]">{a.detail}</div>
                     </div>
-                    <time className="shrink-0 font-mono text-[11px] text-[var(--muted)]">
+                    <time className="shrink-0 font-mono text-[11px] text-[var(--text-muted)]">
                       {a.created_at ? new Date(a.created_at).toLocaleTimeString('en-KE', { timeZone: TZ, hour: '2-digit', minute: '2-digit' }) : '—'}
                     </time>
                   </li>
@@ -421,7 +421,7 @@ export default function Dashboard({ onNavigateToPOS, onNavigateToRooms, onNaviga
           </Card>
         </div>
 
-        <p className="pb-2 text-xs text-[var(--muted)]">
+        <p className="pb-2 text-xs text-[var(--text-muted)]">
           Room and guest figures come from the PMS. Revenue and POS figures come from completed POS receipts for the current Kenya business date.
         </p>
       </div>
