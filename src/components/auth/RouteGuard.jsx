@@ -18,104 +18,170 @@ export function hasModuleAccess(module) {
 export function touchModuleAccess(module) {
   const all = getModuleAccess(); all[module] = { ...(all[module] || {}), at: Date.now() }; sessionStorage.setItem(ACCESS_KEY, JSON.stringify(all));
 }
-export function clearModuleAccess(module) { const all = getModuleAccess(); delete all[module]; sessionStorage.setItem(ACCESS_KEY, JSON.stringify(all)); }
-export function clearAllModuleAccess() { sessionStorage.removeItem(ACCESS_KEY); sessionStorage.removeItem(ACTIVE_STAFF_KEY); }
-export function getActiveStaff() { try { return JSON.parse(sessionStorage.getItem(ACTIVE_STAFF_KEY) || 'null'); } catch { return null; } }
+export function clearModuleAccess(module) {
+  const all = getModuleAccess(); delete all[module]; sessionStorage.setItem(ACCESS_KEY, JSON.stringify(all));
+}
+export function clearAllModuleAccess() {
+  try { sessionStorage.removeItem(ACCESS_KEY); sessionStorage.removeItem(ACTIVE_STAFF_KEY); } catch {}
+}
+export function getActiveStaff() {
+  try { return JSON.parse(sessionStorage.getItem(ACTIVE_STAFF_KEY) || 'null'); } catch { return null; }
+}
 
-const moduleLabel = { pos: 'Front Office · POS', backoffice: 'Back Office · PMS', store: 'Store / Controls', admin: 'Admin' };
-const masterRoles = new Set(['super_admin','hotel_admin']);
+const moduleLabel = { pos: 'POS & F&B', frontoffice: 'Front Office · PMS', backoffice: 'Back Office', store: 'Stores', admin: 'Admin' };
+const masterRoles = new Set(['super_admin', 'hotel_admin']);
 
 export default function RouteGuard({ module, children }) {
   const { user } = useAuth();
+  const moduleKey = module === 'stores' ? 'store' : module;
   const role = normalizeStaffRole(user?.staff?.role || user?.propertyRole || user?.role);
   const propertyRole = String(user?.propertyRole || '').toLowerCase();
-  const master = user?.isPlatformOwner || masterRoles.has(role) || (!user?.staff?.role && ['owner','admin','manager'].includes(propertyRole));
+  // Property/platform administrators authenticate with their Supabase email + password.
+  // A staff PIN never elevates an account to administrator access.
+  const master = !!user?.isPlatformOwner || masterRoles.has(role) ||
+    ['owner', 'admin', 'manager'].includes(propertyRole);
   const [staff, setStaff] = useState([]);
   const [selected, setSelected] = useState(getActiveStaff());
-  const [open, setOpen] = useState(false);
+  const [pinOpen, setPinOpen] = useState(false);
   const [error, setError] = useState('');
+  const [, setRefresh] = useState(0);
   const propertyId = user?.property?.id;
 
   useEffect(() => {
-    if (master || !propertyId) return;
+    if (master || !propertyId) return undefined;
     let alive = true;
-    authService.listStaff(propertyId, module).then((rows) => { if (alive) setStaff(rows); }).catch(() => {});
+    authService.listStaff(propertyId, moduleKey)
+      .then((rows) => { if (alive) setStaff(rows); })
+      .catch((err) => { if (alive) setError(err?.message || 'Could not load staff for this property.'); });
     return () => { alive = false; };
-  }, [propertyId, module, master]);
+  }, [propertyId, moduleKey, master]);
 
   useEffect(() => {
-    if (master) return;
+    if (master) return undefined;
     const check = async () => {
       const current = getActiveStaff();
       if (current) {
         try {
-          const rows = await authService.listStaff(propertyId, module);
+          const rows = await authService.listStaff(propertyId, moduleKey);
           if (!rows.some((row) => row.id === current.id)) {
-            clearModuleAccess(module);
-            sessionStorage.removeItem(ACTIVE_STAFF_KEY);
+            clearAllModuleAccess();
             setSelected(null);
-            setOpen(false);
-            return;
+            setPinOpen(false);
           }
-        } catch { /* keep the current session when the network is temporarily unavailable */ }
+        } catch { /* Do not break an already-open workspace during a transient network issue. */ }
       }
-      if (!hasModuleAccess(module)) setOpen(true);
+      setRefresh((v) => v + 1);
     };
-    const timer = setInterval(check, 30000);
-    return () => clearInterval(timer);
-  }, [module, master, propertyId]);
+    const timer = window.setInterval(check, 30000);
+    return () => window.clearInterval(timer);
+  }, [moduleKey, master, propertyId]);
 
   useEffect(() => {
-    if (master || !hasModuleAccess(module)) return;
+    if (master || !hasModuleAccess(moduleKey)) return undefined;
     let last = 0;
     const activity = () => {
       const now = Date.now();
-      if (now - last > 60000) { last = now; touchModuleAccess(module); authService.touchActiveStaffSession().catch(() => {}); }
+      if (now - last > 60000) {
+        last = now;
+        touchModuleAccess(moduleKey);
+        authService.touchActiveStaffSession().catch(() => {});
+      }
     };
-    const events = ['click','keydown','mousemove','touchstart'];
+    const events = ['click', 'keydown', 'mousemove', 'touchstart'];
     events.forEach((event) => window.addEventListener(event, activity, { passive: true }));
     return () => events.forEach((event) => window.removeEventListener(event, activity));
-  }, [module, master]);
+  }, [moduleKey, master]);
 
-  if (master || hasModuleAccess(module)) return <>{children}</>;
+  useEffect(() => {
+    if (master) return undefined;
+    const lock = (event) => {
+      const requested = event?.detail?.module;
+      if (requested && requested !== moduleKey && requested !== 'all') return;
+      clearAllModuleAccess();
+      setSelected(null);
+      setPinOpen(false);
+      setError('');
+      setRefresh((v) => v + 1);
+      authService.clearActiveStaffSession().catch(() => {});
+    };
+    const close = () => clearAllModuleAccess();
+    window.addEventListener('olitech:lock-workspace', lock);
+    // Require a fresh PIN after a tab/window is closed or refreshed.
+    window.addEventListener('beforeunload', close);
+    return () => {
+      window.removeEventListener('olitech:lock-workspace', lock);
+      window.removeEventListener('beforeunload', close);
+    };
+  }, [moduleKey, master]);
 
-  const choose = (person) => { setSelected(person); setError(''); setOpen(true); };
+  if (master || hasModuleAccess(moduleKey)) return <>{children}</>;
+
+  const choose = (person) => { setSelected(person); setError(''); setPinOpen(true); };
   const verify = async (pin) => {
     setError('');
     try {
-      const result = await authService.verifyStaffPin({ propertyId, module, pin });
-      if (!result?.ok) { setError('Wrong PIN'); return; }
+      const result = await authService.verifyStaffPin({ propertyId, module: moduleKey, pin });
+      if (!result?.ok) {
+        setError(result?.reason === 'locked'
+          ? `Too many incorrect attempts. Try again in ${Math.max(1, Math.ceil((result.retry_after_seconds || 60) / 60))} minute(s).`
+          : 'Incorrect PIN. Please try again.');
+        return;
+      }
       sessionStorage.setItem(ACTIVE_STAFF_KEY, JSON.stringify(result.staff));
-      const all = getModuleAccess(); all[module] = { staffId: result.staff.id, at: Date.now() }; sessionStorage.setItem(ACCESS_KEY, JSON.stringify(all));
-      setSelected(result.staff); setOpen(false); setError('');
+      // Server stores one active staff identity per signed-in account. Clear
+      // prior workspace grants so a staff switch cannot inherit another role.
+      const all = {};
+      all[moduleKey] = { staffId: result.staff.id, at: Date.now() };
+      sessionStorage.setItem(ACCESS_KEY, JSON.stringify(all));
+      setSelected(result.staff);
+      setPinOpen(false);
+      setError('');
+      setRefresh((v) => v + 1);
       window.dispatchEvent(new CustomEvent('olitech:staff-changed', { detail: result.staff }));
-    } catch (e) { setError(e.message || 'Unable to verify PIN.'); }
+    } catch (err) {
+      setError(err?.message || 'Unable to verify PIN. Check your connection and try again.');
+    }
   };
 
   if (!propertyId) return <DeniedScreen message="No hotel property is assigned to this account." />;
+
   const activeStaff = getActiveStaff();
-  const visibleStaff = activeStaff ? staff.filter((row) => row.id === activeStaff.id) : staff;
-  if (activeStaff && !(activeStaff.assigned_modules || []).includes(module)) {
-    return <DeniedScreen message="Access Denied — this staff member is not assigned to this workspace. Contact the Hotel Admin." />;
-  }
+  const activeStaffCanUseModule = !!activeStaff && (activeStaff.assigned_modules || []).includes(moduleKey);
+  const visibleStaff = activeStaffCanUseModule
+    ? staff.filter((row) => row.id === activeStaff.id && row.is_active)
+    : staff.filter((row) => row.is_active && Array.isArray(row.assigned_modules) && row.assigned_modules.includes(moduleKey));
 
   return (
-    <>
-      <div className="flex h-full flex-1 items-center justify-center bg-[#F5F3EF] p-6">
-        <div className="max-w-lg text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#090C11] text-xl font-black text-[#FFD300]">OT</div>
-          <h2 className="text-xl font-black text-[#090C11]">{moduleLabel[module] || 'Protected Module'}</h2>
-          <p className="mt-2 text-sm text-[#5F666D]">Select an active staff member assigned to this module, then enter their PIN.</p>
-          <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">{visibleStaff.length ? visibleStaff.map((person) => <button key={person.id} onClick={() => choose(person)} className="flex items-center gap-3 rounded-2xl border-2 border-[#090C11] bg-white p-3 text-left hover:bg-[#FFD300]"><div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FFD300] font-black text-[#090C11]">{person.avatar || person.full_name?.slice(0,2).toUpperCase()}</div><div className="min-w-0"><div className="truncate text-sm font-black">{person.full_name}</div><div className="text-[10px] font-bold uppercase text-[#6B7280]">{person.role.replaceAll('_',' ')}</div></div><LockKeyhole size={15} className="ml-auto"/></button>) : <div className="col-span-full rounded-2xl border-2 border-dashed border-[#D1D5DB] bg-white p-5 text-sm text-[#6B7280]">No staff is assigned to this module yet. A Hotel Admin must add or assign staff in Admin → Roles.</div>}</div>
+    <main className="flex min-h-full w-full flex-1 items-center justify-center bg-[#F5F3EF] px-4 py-8">
+      <section className="w-full max-w-xl rounded-3xl border border-[#E4E1D9] bg-white p-6 shadow-xl sm:p-9" aria-labelledby="pin-wall-title">
+        <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#090C11] text-lg font-black text-[#FFD300]">OT</div>
+        <p className="text-center text-[10px] font-black uppercase tracking-[.25em] text-[#8B8B83]">OliTechs secure access</p>
+        <h1 id="pin-wall-title" className="mt-2 text-center text-2xl font-black tracking-tight text-[#090C11]">ENTER PIN TO LOG IN</h1>
+        <p className="mt-2 text-center text-sm text-[#5F666D]">
+          {moduleLabel[moduleKey] || 'Protected workspace'} · Select your staff profile, then enter your assigned 4–6 digit PIN.
+        </p>
+        {error && !pinOpen && <div role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+        <div className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {visibleStaff.length ? visibleStaff.map((person) => (
+            <button key={person.id} type="button" onClick={() => choose(person)}
+              className="flex min-h-[72px] items-center gap-3 rounded-2xl border border-[#E5E7EB] bg-white p-3 text-left transition hover:border-[#090C11] hover:bg-[#FFF8CC] focus:outline-none focus:ring-2 focus:ring-[#FFD300]">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#FFD300] font-black text-[#090C11]">{person.avatar || person.full_name?.slice(0, 2).toUpperCase()}</span>
+              <span className="min-w-0 flex-1"><span className="block truncate text-sm font-black text-[#090C11]">{person.full_name}</span><span className="mt-1 block truncate text-[10px] font-bold uppercase tracking-wide text-[#6B7280]">{String(person.role || 'staff').replaceAll('_', ' ')}</span></span>
+              <LockKeyhole size={16} className="shrink-0 text-[#6B7280]" />
+            </button>
+          )) : (
+            <div className="col-span-full rounded-2xl border border-dashed border-[#D1D5DB] bg-[#FAFAF8] p-5 text-center text-sm text-[#6B7280]">
+              {staff.length ? 'No active staff member is assigned to this workspace.' : 'No staff profiles are available. Ask the Property Admin to create a staff profile and assign a PIN.'}
+            </div>
+          )}
         </div>
-      </div>
-      {open && selected && <PinPad title={`Enter PIN for ${moduleLabel[module]}`} staffName={selected.full_name} error={error} onSubmit={verify} onClose={() => setOpen(false)} />}
-      {!open && selected && !hasModuleAccess(module) && <PinPad title={`Enter PIN for ${moduleLabel[module]}`} staffName={selected.full_name} error={error} onSubmit={verify} onClose={() => setSelected(null)} />}
-
-    </>
+        <p className="mt-6 text-center text-[10px] font-semibold uppercase tracking-[.16em] text-[#8B8B83]">Property-scoped access · PIN required</p>
+      </section>
+      {pinOpen && selected && <PinPad fullscreen title="ENTER PIN TO LOG IN" staffName={selected.full_name} error={error} onSubmit={verify} onClose={() => { setPinOpen(false); setError(''); }} />}
+    </main>
   );
 }
 
-export function DeniedScreen({ message = 'Access Denied — Contact Hotel Admin.' }) {
+export function DeniedScreen({ message = 'Access Denied — Contact Property Admin.' }) {
   return <div className="flex h-full flex-1 items-center justify-center bg-[#F5F3EF] p-6"><div className="text-center"><div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#090C11] text-xl font-black text-[#FFD300]">OT</div><ShieldAlert className="mx-auto h-8 w-8 text-red-600"/><h2 className="mt-3 text-xl font-black text-[#090C11]">Access Denied</h2><p className="mt-1 text-sm text-[#6B7280]">{message}</p></div></div>;
 }

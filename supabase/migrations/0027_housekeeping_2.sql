@@ -20,6 +20,35 @@ create table if not exists public.housekeeping_tasks (
 create index if not exists housekeeping_tasks_property_status_idx on public.housekeeping_tasks(property_id,status,priority,created_at);
 create index if not exists housekeeping_tasks_room_idx on public.housekeeping_tasks(room_id,status);
 
+-- Existing-schema compatibility: 0012 may already have created this table.
+alter table public.housekeeping_tasks
+  add column if not exists reservation_id uuid references public.reservations(id) on delete set null;
+alter table public.housekeeping_tasks
+  add column if not exists started_at timestamptz;
+alter table public.housekeeping_tasks
+  add column if not exists inspected_at timestamptz;
+alter table public.housekeeping_tasks
+  add column if not exists inspected_by uuid references auth.users(id) on delete set null;
+alter table public.housekeeping_tasks
+  add column if not exists inspection_notes text;
+alter table public.housekeeping_tasks
+  add column if not exists updated_at timestamptz not null default now();
+
+alter table public.housekeeping_tasks
+  drop constraint if exists housekeeping_tasks_task_type_check;
+alter table public.housekeeping_tasks
+  add constraint housekeeping_tasks_task_type_check
+  check (task_type in ('cleaning','inspection','turndown','deep_clean','linen_change','checkout_clean','stayover','maintenance'));
+
+alter table public.housekeeping_tasks
+  drop constraint if exists housekeeping_tasks_status_check;
+alter table public.housekeeping_tasks
+  add constraint housekeeping_tasks_status_check
+  check (status in ('pending','assigned','in_progress','completed','inspected','rejected','cancelled'));
+
+create index if not exists housekeeping_tasks_reservation_idx
+  on public.housekeeping_tasks(reservation_id);
+
 alter table public.housekeeping_tasks enable row level security;
 drop policy if exists housekeeping_tasks_select on public.housekeeping_tasks;
 create policy housekeeping_tasks_select on public.housekeeping_tasks for select using (public.is_platform_owner() or public.is_member_of_property(property_id));
@@ -113,20 +142,29 @@ declare v jsonb;
 begin
  if not (public.is_platform_owner() or public.is_member_of_property(p_property_id)) then raise exception 'Not allowed.'; end if;
  select jsonb_build_object(
-  'rooms',jsonb_build_object(
-    'dirty',count(*) filter(where status='dirty'),
-    'cleaning',count(*) filter(where status='cleaning'),
-    'available',count(*) filter(where status='available'),
-    'occupied',count(*) filter(where status='occupied'),
-    'maintenance',count(*) filter(where status='maintenance')),
-  'tasks',jsonb_build_object(
-    'pending',count(*) filter(where t.status='pending'),
-    'in_progress',count(*) filter(where t.status='in_progress'),
-    'completed',count(*) filter(where t.status='completed'),
-    'rejected',count(*) filter(where t.status='rejected'))
- ) into v
- from public.rooms r left join public.housekeeping_tasks t on t.room_id=r.id and t.status not in ('cancelled','inspected')
- where r.property_id=p_property_id;
+  'rooms', (
+    select jsonb_build_object(
+      'dirty', count(*) filter(where r.status='dirty'),
+      'cleaning', count(*) filter(where r.status='cleaning'),
+      'available', count(*) filter(where r.status='available'),
+      'occupied', count(*) filter(where r.status='occupied'),
+      'maintenance', count(*) filter(where r.status='maintenance')
+    )
+    from public.rooms r
+    where r.property_id=p_property_id
+  ),
+  'tasks', (
+    select jsonb_build_object(
+      'pending', count(*) filter(where t.status='pending'),
+      'in_progress', count(*) filter(where t.status='in_progress'),
+      'completed', count(*) filter(where t.status='completed'),
+      'rejected', count(*) filter(where t.status='rejected')
+    )
+    from public.housekeeping_tasks t
+    where t.property_id=p_property_id
+      and t.status not in ('cancelled','inspected')
+  )
+) into v;
  return v;
 end;
 $$;
@@ -157,6 +195,15 @@ language plpgsql
 as $$
 declare v_res public.reservations; v_task public.housekeeping_tasks;
 begin
+ if not exists (
+   select 1
+   from public.rooms r
+   where r.id=p_room_id
+     and (public.is_platform_owner() or public.is_member_of_property(r.property_id))
+ ) then
+   raise exception 'Not allowed.';
+ end if;
+
  select * into v_res from public.reservations where room_id=p_room_id and status='checked-in' order by created_at desc limit 1;
  if v_res.id is not null then update public.reservations set status='checked-out' where id=v_res.id; end if;
  update public.rooms set status='dirty' where id=p_room_id;

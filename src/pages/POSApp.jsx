@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { StoreProvider } from '@/data/AppStore';
 import { PmsProvider } from '@/data/PmsStore';
 import { MODULES } from '@/data/platformData';
+import { getSubscriptionEntitlement } from '@/data/modules/navArchitecture';
 import { SAND, NAVY, MUTED } from '@/data/themePalette';
 import { useIsMobile } from '@/hooks/use-mobile';
 import Sidebar from '@/components/shell/Sidebar';
@@ -19,7 +20,6 @@ import KitchenDisplay from '@/components/modules/KitchenDisplay';
 import Reports from '@/components/modules/Reports';
 import SettingsPanel from '@/components/modules/SettingsPanel';
 import Rooms from '@/components/pms/Rooms';
-import RoomManagement from '@/components/pms/RoomManagement';
 import Housekeeping from '@/components/modules/Housekeeping';
 import Maintenance from '@/components/modules/Maintenance';
 import Purchasing from '@/components/modules/Purchasing';
@@ -29,11 +29,13 @@ import Transfers from '@/components/modules/Transfers';
 import BookingEngine from '@/components/modules/BookingEngine';
 import ChannelManager from '@/components/modules/ChannelManager';
 import DistributionOps from '@/components/modules/DistributionOps';
+=======
 import Inventory from '@/components/modules/Inventory';
 import Store from '@/pages/Store';
 import POSContainer from '@/components/pos/POSContainer';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import RouteGuard from '@/components/auth/RouteGuard';
+import PaywallGuard from '@/components/auth/PaywallGuard';
 
 const COMING_SOON_IDS = new Set(MODULES.filter((m) => m.comingSoon).map((m) => m.id));
 
@@ -53,11 +55,14 @@ function ComingSoon({ label }) {
 // Main authenticated app shell: sidebar/bottom-nav + top bar + the active
 // module. Wraps everything the POS and PMS modules need (table sessions,
 // printers, rooms, reservations) in their local-state providers.
-export default function POSApp({ initialModule = 'dashboard' }) {
+export default function POSApp({ initialModule = 'dashboard', embedded = false, workspaceModule = null, storeTab = null }) {
 	const location = useLocation();
 	const queryModule = new URLSearchParams(location.search).get('module');
-	const [activeModule, setActiveModule] = useState(queryModule || initialModule);
-	useEffect(() => { if (queryModule && queryModule !== activeModule) setActiveModule(queryModule); }, [queryModule]);
+	const routeModule = queryModule || initialModule;
+	const [activeModule, setActiveModule] = useState(routeModule);
+	// Keep routed content aligned with browser back/forward and sibling routes.
+	// Local module actions (such as Dashboard → POS) remain local until the URL changes.
+	useEffect(() => { setActiveModule(routeModule); }, [routeModule]);
 	const isMobile = useIsMobile();
 
 	const currentModule = MODULES.find((m) => m.id === activeModule);
@@ -110,11 +115,12 @@ export default function POSApp({ initialModule = 'dashboard' }) {
 			case 'booking-engine': content = <BookingEngine />; break;
 			case 'channels': content = <ChannelManager />; break;
 			case 'distribution-ops': content = <DistributionOps />; break;
+=======
 			case 'inventory':
 				content = <Inventory />;
 				break;
 			case 'store':
-				content = <Store />;
+				content = <Store initialTab={storeTab || 'overview'} />;
 				break;
 			case 'reports':
 				content = <Reports />;
@@ -134,18 +140,21 @@ export default function POSApp({ initialModule = 'dashboard' }) {
 	return (
 		<StoreProvider>
 			<PmsProvider>
-				<div className="app-shell flex h-screen w-screen overflow-hidden">
-					{!isMobile && <Sidebar activeModule={activeModule} onModuleChange={setActiveModule} />}
-					<div className="flex flex-col flex-1 min-w-0">
-						{showTopBar && <TopBar moduleLabel={currentModule?.label || ''} />}
-						<div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+				<div className={embedded ? "min-h-full w-full bg-[var(--bg)]" : "app-shell flex min-h-screen w-full bg-[var(--bg)]"}>
+					{!embedded && <Sidebar activeModule={activeModule} onModuleChange={setActiveModule} />}
+					<div className={embedded ? "min-w-0" : "flex min-w-0 flex-1 flex-col"}>
+						{showTopBar && !embedded && <TopBar moduleLabel={currentModule?.label || ''} />}
+						<div className="min-h-0 flex-1 overflow-y-auto">
 							<ErrorBoundary label={currentModule?.label || 'This section'}>
 								<RouteGuard module={activeModule === 'pos' ? 'pos' : activeModule === 'store' || activeModule === 'inventory' || activeModule === 'purchasing' || activeModule === 'recipes' || activeModule === 'transfers' || activeModule === 'channels' ? 'store' : 'backoffice'}>
 									{content}
+=======
+								<RouteGuard module={workspaceModule || (activeModule === 'pos' || activeModule === 'cashier' ? 'pos' : activeModule === 'store' || activeModule === 'inventory' || activeModule === 'purchasing' || activeModule === 'recipes' || activeModule === 'transfers' || activeModule === 'channels' ? 'store' : activeModule === 'reservations' || activeModule === 'rooms' || activeModule === 'guests' || activeModule === 'folio' || activeModule === 'housekeeping' || activeModule === 'night-audit' ? 'frontoffice' : 'backoffice')}>
+									{activeModule === 'settings' ? content : <PaywallGuard module={getSubscriptionEntitlement(activeModule, workspaceModule)}>{content}</PaywallGuard>}
 								</RouteGuard>
 							</ErrorBoundary>
 						</div>
-						{isMobile && <POSTabs activeModule={activeModule} onModuleChange={setActiveModule} />}
+						{isMobile && !embedded && <POSTabs activeModule={activeModule} onModuleChange={setActiveModule} />}
 					</div>
 				</div>
 			</PmsProvider>

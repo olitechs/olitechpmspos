@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Plus, Pencil, Trash2, BedDouble, Layers3 } from 'lucide-react';
+import { Pencil, Trash2, BedDouble, Layers3 } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { pmsService } from '@/services/pmsService';
 import { NAVY, TEAL, TEAL_DARK, SAND, SURFACE, SURFACE2, BORDER, MUTED, DESTRUCTIVE } from '@/data/themePalette';

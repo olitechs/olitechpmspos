@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { pmsService } from '@/services/pmsService';
+import { supabase } from '@/lib/supabaseClient';
 
 // PMS data model — now backed by Supabase (see supabase/migrations/0002_pms_core.sql)
 // and scoped to the signed-in user's property via RLS. The shapes returned
@@ -125,6 +126,17 @@ export function PmsProvider({ children }) {
 		reload();
 	}, [reload]);
 
+	useEffect(() => {
+		if (!propertyId) return undefined;
+		const channel = supabase
+			.channel('pms-property-' + propertyId)
+			.on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: 'property_id=eq.' + propertyId }, () => reload())
+			.on('postgres_changes', { event: '*', schema: 'public', table: 'reservations', filter: 'property_id=eq.' + propertyId }, () => reload())
+			.on('postgres_changes', { event: '*', schema: 'public', table: 'guests', filter: 'property_id=eq.' + propertyId }, () => reload())
+			.subscribe();
+		return () => { supabase.removeChannel(channel); };
+	}, [propertyId, reload]);
+
 	const roomsById = useMemo(() => new Map(rawRooms.map((r) => [r.id, r])), [rawRooms]);
 	const rooms = useMemo(() => {
 		const typeMap = new Map(roomTypes.map((t) => [t.id, t.name]));
@@ -152,6 +164,7 @@ export function PmsProvider({ children }) {
 				await reload();
 			} catch (err) {
 				setError(err.message);
+				throw err;
 			}
 		},
 		[propertyId, reload]
@@ -164,6 +177,7 @@ export function PmsProvider({ children }) {
 				await reload();
 			} catch (err) {
 				setError(err.message);
+				throw err;
 			}
 		},
 		[reload]
@@ -176,6 +190,7 @@ export function PmsProvider({ children }) {
 				await reload();
 			} catch (err) {
 				setError(err.message);
+				throw err;
 			}
 		},
 		[reload]
@@ -184,11 +199,16 @@ export function PmsProvider({ children }) {
 	const addReservation = useCallback(
 		async (data) => {
 			try {
+				const nights = Math.max(1, Math.round((new Date(data.departure) - new Date(data.arrival)) / 86400000));
+				const nightlyRate = Number(data.rate ?? 0);
+				const totalAmount = Number(data.totalAmount ?? (nightlyRate * nights));
+				const amountPaid = Number(data.amountPaid ?? 0);
+				const paymentStatus = data.paymentStatus || (amountPaid >= totalAmount && totalAmount > 0 ? 'fully_paid' : amountPaid > 0 ? 'partially_paid' : 'not_paid');
 				await pmsService.createReservationBundle({
 					propertyId, roomIds: [data.roomId], groupId: null, guestName: data.guest, phone: data.phone,
-					checkIn: data.arrival, checkOut: data.departure, paymentStatus: data.paymentStatus || 'not_paid', channel: data.channel || 'direct',
+					checkIn: data.arrival, checkOut: data.departure, paymentStatus, channel: data.channel || 'direct',
 					mealPlan: data.mealPlan || 'bed_only', adults: Number(data.adults || data.partySize || 1), kidsCount: Number(data.kidsCount || 0),
-					kidsAges: data.kidsAges || [], totalAmount: Number(data.totalAmount ?? data.rate ?? 0), amountPaid: Number(data.amountPaid || 0), notes: data.notes || '',
+					kidsAges: data.kidsAges || [], totalAmount, amountPaid, notes: data.notes || '',
 				});
 				await reload();
 			} catch (err) { setError(err.message); throw err; }
@@ -224,6 +244,7 @@ export function PmsProvider({ children }) {
 				await reload();
 			} catch (err) {
 				setError(err.message);
+				throw err;
 			}
 		},
 		[reload]
@@ -236,6 +257,7 @@ export function PmsProvider({ children }) {
 				await reload();
 			} catch (err) {
 				setError(err.message);
+				throw err;
 			}
 		},
 		[reload]

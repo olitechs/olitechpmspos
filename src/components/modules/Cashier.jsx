@@ -2,6 +2,7 @@ import React from 'react';
 import { Banknote, CheckCircle2, RefreshCw, ShieldAlert, XCircle } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { pmsService } from '@/services/pmsService';
+import { printReceipt, getPrinters, getAssignments, printRefundSlip } from '@/services/printService';
 
 const money = (v) => `KES ${Number(v || 0).toLocaleString('en-KE', { maximumFractionDigits: 2 })}`;
 const dateTime = (v) => new Date(v).toLocaleString('en-KE', { dateStyle: 'short', timeStyle: 'short' });
@@ -21,11 +22,13 @@ export default function Cashier() {
   const [selected, setSelected] = React.useState(null);
   const [adjustmentType, setAdjustmentType] = React.useState('void');
   const [adjustmentAmount, setAdjustmentAmount] = React.useState('');
+  const [refundMethod, setRefundMethod] = React.useState('');
   const [reason, setReason] = React.useState('');
   const [busy, setBusy] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState('');
   const [approvalNote, setApprovalNote] = React.useState('');
+  const [reprintBusy, setReprintBusy] = React.useState(null);
 
   const load = React.useCallback(async () => {
     if (!propertyId) return;
@@ -70,6 +73,7 @@ export default function Cashier() {
     setSelected(receipt);
     setAdjustmentType(receipt.status === 'voided' ? 'refund' : 'void');
     setAdjustmentAmount(String(receipt.total || ''));
+    setRefundMethod(receipt.payment_method === 'split' ? '' : (receipt.payment_method || ''));
     setReason('');
   };
 
@@ -80,12 +84,54 @@ export default function Cashier() {
     if (!Number.isFinite(amount) || amount <= 0) throw new Error('Enter a valid adjustment amount.');
     if (amount > Number(selected.total || 0)) throw new Error('Adjustment exceeds the receipt total.');
     if (!reason.trim()) throw new Error('A reason is required.');
+    if (adjustmentType === 'refund' && selected.payment_method === 'split' && !refundMethod) throw new Error('Select the payment method to refund.');
+    if (adjustmentType === 'void' && selected.payment_method === 'split') throw new Error('Split-payment transactions must be refunded by payment method rather than voided.');
     await pmsService.recordCashierAdjustment({
       propertyId, shiftId: shift.id, adjustmentType, targetType: 'pos_receipt',
-      targetId: selected.id, amount, reason: reason.trim(),
+      targetId: selected.id, amount, reason: reason.trim(), refundMethod: adjustmentType === 'refund' ? (refundMethod || null) : null,
     });
+    if (adjustmentType === 'refund') {
+      try {
+        const [printers, assignments] = await Promise.all([getPrinters(propertyId), getAssignments(propertyId)]);
+        const targets = assignments.filter(a => a.assignment_type === 'refund_slips')
+          .map(a => printers.find(p => p.id === a.printer_id)).filter(Boolean)
+          .filter((p,i,a) => a.findIndex(x => x.id === p.id) === i);
+        if (targets.length) {
+          const results = await Promise.all(targets.map(printer => printRefundSlip(printer, {
+            propertyId, receiptId: selected.id, orderNumber: selected.order_number,
+            checkNo: selected.order_number, method: refundMethod || selected.payment_method,
+            guest: selected.guest_name, room: selected.room_number,
+            amount, reason: reason.trim(), createdAt: new Date().toISOString()
+          })));
+          if (!results.some(r => r.ok)) setError('Refund was posted, but the configured refund printer could not print the control slip.');
+        }
+      } catch (printError) {
+        setError(`Refund was posted, but the control slip could not be printed: ${printError.message || 'printer error'}`);
+      }
+    }
     setSelected(null); setAdjustmentAmount(''); setReason('');
   });
+
+  const reprint = async (receipt) => {
+    setReprintBusy(receipt.id); setError('');
+    try {
+      const result = await printReceipt('RECEIPT', {
+        propertyId,
+        items: Array.isArray(receipt.items) ? receipt.items : [],
+        total: receipt.total,
+        paymentMethod: receipt.payment_method,
+        waiter: receipt.waiter,
+        table: receipt.table_number,
+        checkNo: receipt.order_number,
+        orderNumber: receipt.order_number,
+        createdAt: receipt.created_at,
+        currency: 'KES',
+        voidedCount: receipt.status === 'voided' ? 1 : 0,
+      });
+      if (!result.ok) throw new Error(result.friendlyError || 'Receipt printer did not complete the reprint.');
+    } catch (e) { setError(e.message || 'Receipt reprint failed.'); }
+    finally { setReprintBusy(null); }
+  };
 
   const decideAdjustment = (adjustmentId, approve) => run(async () => {
     await pmsService.approveCashierAdjustment({ adjustmentId, approve, reason: approvalNote.trim() || null });
@@ -95,7 +141,7 @@ export default function Cashier() {
   const variance = shift && shift.closing_cash_count != null ? Number(shift.variance || 0) : null;
   const postedReceipts = receipts.filter((r) => r.status === 'posted');
 
-  return <div className="flex-1 overflow-y-auto bg-[#f8f8f7] p-4 lg:p-6">
+  return <div className="min-h-full bg-[#f8f8f7] p-4 lg:p-8">
     <div className="mx-auto max-w-[1500px] space-y-4">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -107,7 +153,7 @@ export default function Cashier() {
 
       {error && <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
 
-      {!shift ? <section className="max-w-xl rounded-xl border border-slate-200 bg-white p-5">
+      {!shift ? <section className="mx-auto w-full max-w-xl rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex items-center gap-3"><Banknote size={20}/><div><h2 className="font-bold">Open cashier shift</h2><p className="text-sm text-slate-500">Enter the physical cash float before taking payments.</p></div></div>
         <label className="mt-4 block text-xs font-semibold text-slate-600">Opening float<input className={input + ' mt-1'} type="number" min="0" step="0.01" value={openingFloat} onChange={(e) => setOpeningFloat(e.target.value)} placeholder="0.00"/></label>
         <button className={btn + ' mt-4 w-full bg-[#FFD300] text-slate-950'} disabled={busy || openingFloat === ''} onClick={open}><CheckCircle2 size={15}/> Open shift</button>
@@ -139,7 +185,10 @@ export default function Cashier() {
                     <td className="px-3 py-3 capitalize">{r.payment_method}</td>
                     <td className="px-3 py-3 text-right font-mono font-semibold">{money(r.total)}</td>
                     <td className="px-3 py-3"><Status status={r.status}/></td>
-                    <td className="px-3 py-3 text-right">{r.status === 'posted' && <button className="font-semibold text-red-700 hover:underline" onClick={() => selectReceipt(r)}>Adjust</button>}</td>
+                    <td className="px-3 py-3 text-right"><div className="flex justify-end gap-3">
+  <button className="font-semibold text-slate-700 hover:underline" disabled={reprintBusy===r.id} onClick={() => reprint(r)}>{reprintBusy===r.id ? 'Printing…' : 'Reprint'}</button>
+  {r.status === 'posted' && <button className="font-semibold text-red-700 hover:underline" onClick={() => selectReceipt(r)}>Adjust</button>}
+</div></td>
                   </tr>)}
                   {!receipts.length && <tr><td colSpan="7" className="px-3 py-12 text-center text-sm text-slate-500">No POS receipts have been posted in this shift.</td></tr>}
                 </tbody>
@@ -154,8 +203,12 @@ export default function Cashier() {
               {!selected ? <div className="mt-4 rounded-lg bg-slate-50 p-4 text-xs text-slate-600"><ShieldAlert size={17} className="mb-2"/><p>Select <strong>Adjust</strong> on a posted receipt to begin.</p></div> : <div className="mt-4 space-y-3">
                 <div className="rounded-lg bg-slate-50 p-3 text-xs"><div className="font-bold">{selected.order_number || 'POS transaction'}</div><div className="mt-1">{selected.guest_name || 'Walk-in'} · {money(selected.total)} · {selected.payment_method}</div></div>
                 <label className="block text-xs font-semibold text-slate-600">Action<select className={input + ' mt-1'} value={adjustmentType} onChange={(e) => setAdjustmentType(e.target.value)}>
-                  <option value="void">Void</option><option value="refund">Refund</option><option value="discount">Discount</option>
+                  <option value="void">Void</option><option value="refund">Refund</option>
                 </select></label>
+                {adjustmentType === 'refund' && <label className="block text-xs font-semibold text-slate-600">Refund payment method<select className={input + ' mt-1'} value={refundMethod} onChange={(e) => setRefundMethod(e.target.value)}>
+                  {selected.payment_method !== 'split' && <option value={selected.payment_method}>{selected.payment_method}</option>}
+                  {selected.payment_method === 'split' && <><option value="">Select method</option><option value="cash">Cash</option><option value="card">Card</option><option value="mpesa">M-Pesa</option><option value="bank">Bank</option><option value="room">Room charge</option></>}
+                </select></label>}
                 <label className="block text-xs font-semibold text-slate-600">Amount<input className={input + ' mt-1'} type="number" min="0.01" max={selected.total} step="0.01" value={adjustmentAmount} onChange={(e) => setAdjustmentAmount(e.target.value)}/></label>
                 <label className="block text-xs font-semibold text-slate-600">Reason<textarea className={input + ' mt-1'} rows="3" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Explain the correction"/></label>
                 <button className={btn + ' w-full bg-red-600 text-white'} disabled={busy} onClick={postAdjustment}>Post {adjustmentType}</button>

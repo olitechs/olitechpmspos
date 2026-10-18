@@ -17,7 +17,7 @@ export const STAFF_ROLES = [
   'super_admin','hotel_admin','front_office_manager','receptionist','front_desk',
   'pos_staff','waiter','cashier','store_manager','fb_manager','housekeeping_supervisor',
 ];
-export const MODULE_NAMES = ['pos','backoffice','store'];
+export const MODULE_NAMES = ['backoffice','frontoffice','pos','store'];
 export const ROLE_LABELS = {
   super_admin: 'Super Admin / Owner', hotel_admin: 'Hotel Admin', front_office_manager: 'Front Office Manager',
   receptionist: 'Receptionist', front_desk: 'Front Desk', pos_staff: 'POS Staff', waiter: 'Waiter', cashier: 'Cashier',
@@ -31,15 +31,32 @@ export function normalizeStaffRole(role) {
 export function getDefaultModulesForRole(role) {
   switch (normalizeStaffRole(role)) {
     case 'super_admin': case 'hotel_admin': return [...MODULE_NAMES];
-    case 'front_office_manager': return ['backoffice','store'];
-    case 'receptionist': case 'front_desk': return ['backoffice'];
+    case 'front_office_manager': return ['frontoffice'];
+    case 'receptionist': case 'front_desk': return ['frontoffice','pos'];
     case 'pos_staff': case 'waiter': case 'cashier': return ['pos'];
     case 'store_manager': return ['store'];
     case 'fb_manager': return ['pos','store'];
-    case 'housekeeping_supervisor': return ['backoffice','store'];
+    case 'housekeeping_supervisor': return ['frontoffice'];
     default: return [];
   }
 }
+
+export function hasSubscriptionModule(user, module) {
+  if (user?.isPlatformOwner) return true;
+  const modules = user?.subscription?.enabled_modules || [];
+  const normalized = module === 'stores' ? 'store' : module;
+  return modules.includes(normalized);
+}
+export function canRoleUseModule(user, module) {
+  if (user?.isPlatformOwner) return true;
+  const role = normalizeStaffRole(getSessionStaff()?.role || user?.staff?.role || user?.propertyRole || user?.role);
+  if (role === 'super_admin' || role === 'hotel_admin') return true;
+  const assigned = getSessionStaff()?.assigned_modules || user?.staff?.assigned_modules || [];
+  if (assigned.length) return assigned.includes(module === 'stores' ? 'store' : module);
+  return getDefaultModulesForRole(role).includes(module === 'stores' ? 'store' : module);
+}
+export function canUseModule(user, module) { return hasSubscriptionModule(user, module) && canRoleUseModule(user, module); }
+
 export function generatePin(length = 4) {
   const digits = [];
   const bytes = new Uint32Array(length);
@@ -60,7 +77,7 @@ export async function hashPin(pin) {
   return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2,'0')).join('');
 }
 
-function toAppUser({ profile, property, propertyRole, staff = null }) {
+function toAppUser({ profile, property, propertyRole, staff = null, subscription = null }) {
 	if (!profile) return null;
 	return {
 		id: profile.id,
@@ -74,6 +91,8 @@ function toAppUser({ profile, property, propertyRole, staff = null }) {
 		property: property || null,
 		propertyRole: propertyRole || null,
 		staff,
+		subscription,
+		package: property?.package || 'none',
 	};
 }
 
@@ -110,17 +129,30 @@ async function loadCurrentUserDetails() {
 	// A regular user's primary property — a person can technically belong
 	// to more than one property later, but the login/onboarding flow only
 	// needs "their" property today.
-	const { data: membership } = await supabase
+	const { data: memberships, error: membershipError } = await supabase
 		.from('property_users')
 		.select('role, property:properties(*)')
 		.eq('user_id', authUser.id)
-		.limit(1)
-		.maybeSingle();
+		.limit(10);
+
+	// A user can be assigned to more than one property. The previous
+	// maybeSingle() call returned no membership when that happened, which made
+	// the entire hotel/backoffice side appear unavailable. Always resolve one
+	// valid property from the returned membership rows.
+	if (membershipError) {
+		console.error('[authService] property membership lookup failed:', membershipError.message);
+	}
+	const membershipRows = Array.isArray(memberships) ? memberships : [];
+	const membership = membershipRows.find((row) => row?.property?.id) || null;
 	const propertyId = membership?.property?.id;
 	let staff = null;
+	let subscription = null;
 	if (propertyId) {
 		const { data: staffRow } = await supabase.from('staff').select('id,full_name,email,phone,role,assigned_modules,is_active,property_id,avatar,last_login,user_id').eq('property_id', propertyId).ilike('email', authUser.email || '').maybeSingle();
 		staff = staffRow || null;
+		const { data: subscriptionRow, error: subscriptionError } = await supabase.rpc('fn_get_subscription', { p_property_id: propertyId });
+		if (subscriptionError) console.error('[authService] subscription lookup failed:', subscriptionError.message);
+		subscription = subscriptionRow || null;
 	}
 
 	return toAppUser({
@@ -128,6 +160,7 @@ async function loadCurrentUserDetails() {
 		property: membership?.property || null,
 		propertyRole: membership?.role || null,
 		staff,
+		subscription,
 	});
 }
 
@@ -264,6 +297,11 @@ export const authService = {
 		if (error) throw new Error(error.message);
 	},
 
+	async clearActiveStaffSession() {
+		const { error } = await supabase.rpc('clear_active_staff_session');
+		if (error) throw new Error(error.message);
+	},
+
 	async verifyStaffPin({ propertyId, module, pin }) {
 		const pinHash = await hashPin(pin);
 		const { data, error } = await supabase.rpc('verify_staff_pin', { p_property_id: propertyId, p_module: module, p_pin_hash: pinHash });
@@ -272,7 +310,7 @@ export const authService = {
 
 
 	async requestPasswordReset({ email }) {
-		const redirectTo = typeof window !== 'undefined' ? `${window.location.origin}/reset-password` : undefined;
+		const redirectTo = 'https://olitechpmspos.vercel.app/reset-password';
 		await supabase.auth.resetPasswordForEmail((email || '').trim().toLowerCase(), { redirectTo });
 		// Always resolve successfully — don't reveal whether the email exists.
 		return { sent: true };

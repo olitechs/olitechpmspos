@@ -14,9 +14,9 @@ export const tableLabel = (table, zoneId) => `${tablePrefix(zoneId ?? table?.zon
 // matching order printer (Kitchen / Bar / Dessert).
 export const CATEGORY_CENTER = {
   Antipasti: 'Kitchen', Secondi: 'Kitchen', Pesce: 'Kitchen', Pizze: 'Kitchen', Contorni: 'Kitchen',
-  Bibite: 'Bar', Dolci: 'Dessert',
+  Bibite: 'Bar', Dolci: 'Kitchen',
 };
-export const CENTERS = ['Kitchen', 'Bar', 'Dessert'];
+export const CENTERS = ['Kitchen', 'Bar'];
 
 export const CATEGORIES = [
   'Antipasti', 'Secondi', 'Pesce', 'Pizze', 'Contorni', 'Bibite', 'Dolci',

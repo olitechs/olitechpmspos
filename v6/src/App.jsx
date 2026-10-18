@@ -17,6 +17,8 @@ import AdminLogin from '@/pages/admin/AdminLogin';
 import AdminLayout from '@/pages/admin/AdminLayout';
 import AdminDashboard from '@/pages/admin/AdminDashboard';
 import AdminProperties from '@/pages/admin/AdminProperties';
+import AdminCreateProperty from '@/pages/admin/AdminCreateProperty';
+import AdminEditProperty from '@/pages/admin/AdminEditProperty';
 import AdminPropertyDetail from '@/pages/admin/AdminPropertyDetail';
 import AdminAuditLog from '@/pages/admin/AdminAuditLog';
 import Roles from '@/pages/Admin/Roles';
@@ -71,7 +73,9 @@ function AppRoutes(){
     <Route element={<AdminRoute/>}><Route element={<AdminLayout/>}>
       <Route path="/admin" element={<AdminHome/>}/>
       <Route path="/admin/properties" element={<AdminProperties/>}/>
+      <Route path="/admin/properties/new" element={<AdminCreateProperty/>}/>
       <Route path="/admin/properties/:id" element={<AdminPropertyDetail/>}/>
+      <Route path="/admin/properties/:id/edit" element={<AdminEditProperty/>}/>
       <Route path="/admin/audit-log" element={<AdminAuditLog/>}/>
       <Route path="/admin/roles" element={<Roles/>}/>
     </Route></Route>

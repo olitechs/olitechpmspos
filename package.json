@@ -9,7 +9,15 @@
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "print-agent": "node tools/print-agent/print-agent-v2.js",
+    "print-agent:install": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/print-agent/install-windows.ps1",
+    "print-agent:uninstall": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/print-agent/uninstall-windows.ps1",
+    "print-agent:run": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/print-agent/run-windows.ps1",
+    "print-agent:dev": "node tools/print-agent/print-agent-v2.js",
+    "print-agent:v2": "node tools/print-agent/print-agent-v2.js",
+    "check:contrast": "node tools/design-system/check-contrast.mjs",
+    "test:architecture": "node --test src/data/modules/navArchitecture.test.js src/data/modules/sidebarNavigation.test.js src/data/modules/navigationRouting.test.js src/services/printRoutingCore.test.js tools/design-system/system-ui.test.mjs src/lib/pmsDateUtils.test.js"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^17.0.0",
@@ -30,7 +38,6 @@
     "@radix-ui/react-popover": "^1.1.6",
     "@radix-ui/react-progress": "^1.1.2",
     "@radix-ui/react-radio-group": "^1.2.3",
-    "@radix-ui/react-scroll-area": "^1.2.3",
     "@radix-ui/react-select": "^2.1.6",
     "@radix-ui/react-separator": "^1.1.2",
     "@radix-ui/react-slider": "^1.2.3",
@@ -76,6 +83,7 @@
     "three": "^0.171.0",
     "vaul": "^1.1.2",
     "zod": "^3.24.2",
+    "zustand": "^5.0.8",
     "xlsx": "^0.18.5",
     "papaparse": "^5.5.3"
   },

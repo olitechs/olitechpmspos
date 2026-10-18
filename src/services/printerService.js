@@ -15,9 +15,9 @@
 // "print agent" (a tiny local HTTP service, e.g. on localhost, that the
 // browser can reach and that itself owns the raw socket to the printer).
 //
-//   - Network printers: genuinely tested/printed to ONLY if the printer is
-//     configured with a Print Agent URL. Without one, we report
-//     `UNSUPPORTED` honestly instead of faking a socket check.
+//   - Network printers: genuinely tested/printed through the local Print
+//     Agent. The agent owns the raw TCP socket to the hotel's LAN printer.
+
 //   - USB printers: real WebUSB (`navigator.usb`) — genuine device
 //     permission/open/transfer calls.
 //   - Bluetooth printers: real Web Bluetooth (`navigator.bluetooth`) —
@@ -123,53 +123,56 @@ function toFriendlyError(rawError, context = {}) {
 	return 'Printer connection failed. Please check the printer and try again.';
 }
 
-function withTimeout(promise, ms, controller) {
-	return new Promise((resolve, reject) => {
-		const timer = setTimeout(() => {
-			controller?.abort();
-			const err = new Error('Connection timed out');
-			err.name = 'AbortError';
-			reject(err);
-		}, ms);
-		promise.then(
-			(v) => { clearTimeout(timer); resolve(v); },
-			(e) => { clearTimeout(timer); reject(e); }
-		);
-	});
-}
-
 // --- Connection testing -----------------------------------------------------
 
-async function testNetwork(printer, { timeoutMs }) {
-	if (!printer.agentUrl) {
-		return {
-			status: PrinterStatus.UNSUPPORTED,
-			friendlyError: 'Direct browser-to-network-printer testing isn\'t possible (browsers cannot open raw sockets). Add a Print Agent URL, or use a USB/Bluetooth/System printer instead.',
-		};
-	}
-	const controller = new AbortController();
-	try {
-		const res = await withTimeout(
-			fetch(`${printer.agentUrl.replace(/\/$/, '')}/test-connection`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ host: printer.host, port: Number(printer.port) }),
-				signal: controller.signal,
-			}),
-			timeoutMs,
-			controller
-		);
-		if (!res.ok) {
-			return { status: PrinterStatus.FAILED, friendlyError: `Print agent reported an error (HTTP ${res.status}).`, rawError: `HTTP ${res.status}` };
-		}
-		const data = await res.json().catch(() => ({}));
-		if (data.reachable) {
-			return { status: PrinterStatus.CONNECTED };
-		}
-		return { status: PrinterStatus.OFFLINE, friendlyError: `Unable to reach ${printer.host}:${printer.port}. Check that the printer is powered on and connected to the network.` };
-	} catch (err) {
-		return { status: PrinterStatus.FAILED, friendlyError: toFriendlyError(err, { agent: true }), rawError: String(err?.message || err) };
-	}
+async function postToLocalAgent(printer, path, text = '') {
+  const base = String(printer.agentUrl || 'http://127.0.0.1:8631').replace(/\/+$/, '');
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+  try {
+    const response = await fetch(`${base}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        host: printer.host,
+        port: Number(printer.port || 9100),
+        printerId: printer.id || null,
+        propertyId: printer.propertyId || null,
+        text,
+      }),
+      signal: controller.signal,
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data?.ok) {
+      return {
+        ok: false,
+        friendlyError: data?.message || `Unable to reach ${printer.host}:${printer.port || 9100}.`,
+        code: data?.code || `HTTP_${response.status}`,
+      };
+    }
+    return { ok: true, data };
+  } catch (err) {
+    return {
+      ok: false,
+      friendlyError: toFriendlyError(err, { agent: true }),
+      rawError: String(err?.message || err),
+      code: err?.name === 'AbortError' ? 'TIMEOUT' : 'LOCAL_AGENT_UNAVAILABLE',
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function testNetwork(printer) {
+  if (!printer.host) return { status:PrinterStatus.ERROR, friendlyError:'Printer IP address is required.' };
+  const result = await postToLocalAgent(printer, '/test');
+  if (result.ok) return { status:PrinterStatus.CONNECTED, transport:'local_agent' };
+  return {
+    status: result.code === 'LOCAL_AGENT_UNAVAILABLE' ? PrinterStatus.FAILED : PrinterStatus.OFFLINE,
+    friendlyError: result.friendlyError,
+    rawError: result.rawError,
+    transport:'local_agent',
+  };
 }
 
 async function testUsb(printer) {
@@ -192,6 +195,24 @@ async function testUsb(printer) {
 	} catch (err) {
 		return { status: PrinterStatus.ERROR, friendlyError: toFriendlyError(err), rawError: String(err?.message || err) };
 	}
+}
+
+async function testSerial(printer) {
+  if (!navigator.serial) {
+    return { status: PrinterStatus.UNSUPPORTED, friendlyError: 'This browser does not support serial printer access (Web Serial).' };
+  }
+  try {
+    const handle = deviceHandles.get(printer.id);
+    if (!handle) {
+      return { status: PrinterStatus.DISCONNECTED, friendlyError: 'No serial device paired yet. Click "Connect" to select the printer.' };
+    }
+    if (!handle.readable && !handle.writable) {
+      return { status: PrinterStatus.DISCONNECTED, friendlyError: 'The serial printer is not open. Reconnect the printer.' };
+    }
+    return { status: PrinterStatus.CONNECTED };
+  } catch (err) {
+    return { status: PrinterStatus.ERROR, friendlyError: toFriendlyError(err), rawError: String(err?.message || err) };
+  }
 }
 
 async function testBluetooth(printer) {
@@ -218,10 +239,7 @@ async function testBluetooth(printer) {
 }
 
 async function testSystem() {
-	if (typeof window === 'undefined' || typeof window.print !== 'function') {
-		return { status: PrinterStatus.UNSUPPORTED, friendlyError: 'System printing is not available in this environment.' };
-	}
-	return { status: PrinterStatus.CONNECTED };
+	return { status: PrinterStatus.UNSUPPORTED, friendlyError: 'Windows/browser printing is disabled. Configure a real Network IP thermal printer.' };
 }
 
 // Runs a real connectivity test for the printer's configured connection
@@ -264,6 +282,26 @@ export async function pairUsbDevice(printer) {
 	}
 }
 
+export async function pairSerialDevice(printer) {
+  if (!navigator.serial) {
+    return { ok: false, friendlyError: 'This browser does not support serial printer access (Web Serial).' };
+  }
+  try {
+    const port = await navigator.serial.requestPort();
+    await port.open({
+      baudRate: Number(printer.baudRate) || 9600,
+      dataBits: 8,
+      stopBits: 1,
+      parity: 'none',
+      flowControl: 'none',
+    });
+    deviceHandles.set(printer.id, port);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, friendlyError: toFriendlyError(err), rawError: String(err?.message || err) };
+  }
+}
+
 export async function pairBluetoothDevice(printer) {
 	if (!navigator.bluetooth) {
 		return { ok: false, friendlyError: 'This browser does not support Bluetooth printer access (Web Bluetooth).' };
@@ -286,24 +324,22 @@ export function forgetDevice(printerId) {
 
 // --- Printing ---------------------------------------------------------------
 
+function escPosBytes(text) {
+	const body = String(text ?? '').replace(/\r/g, '').replace(/\n{3,}/g, '\n\n').trim();
+	return new Uint8Array([0x1b, 0x40, ...new TextEncoder().encode(body + '\n\n'), 0x1d, 0x56, 0x00]);
+}
+
+
 async function sendToAgent(printer, text) {
-	const controller = new AbortController();
-	try {
-		const res = await withTimeout(
-			fetch(`${printer.agentUrl.replace(/\/$/, '')}/print`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ host: printer.host, port: Number(printer.port), text }),
-				signal: controller.signal,
-			}),
-			DEFAULT_TIMEOUT_MS,
-			controller
-		);
-		if (!res.ok) return { ok: false, friendlyError: `Print agent reported an error (HTTP ${res.status}).` };
-		return { ok: true };
-	} catch (err) {
-		return { ok: false, friendlyError: toFriendlyError(err, { agent: true }), rawError: String(err?.message || err) };
-	}
+  const result = await postToLocalAgent(printer, '/print', text);
+  if (result.ok) return { ok:true, direct:true, transport:'local_agent' };
+  return {
+    ok:false,
+    friendlyError:result.friendlyError,
+    rawError:result.rawError,
+    code:result.code,
+    transport:'local_agent',
+  };
 }
 
 async function sendToUsb(printer, text) {
@@ -317,12 +353,38 @@ async function sendToUsb(printer, text) {
 			return { ok: false, friendlyError: 'This USB device does not expose a printable interface.' };
 		}
 		await handle.claimInterface(iface.interfaceNumber).catch(() => {});
-		const data = new TextEncoder().encode(text);
+		const data = escPosBytes(text);
 		await handle.transferOut(outEndpoint.endpointNumber, data);
 		return { ok: true };
 	} catch (err) {
 		return { ok: false, friendlyError: toFriendlyError(err), rawError: String(err?.message || err) };
 	}
+}
+
+async function sendToSerial(printer, text) {
+  const handle = deviceHandles.get(printer.id);
+  if (!handle) return { ok: false, friendlyError: 'No serial device paired. Connect the printer first.' };
+  try {
+    if (!handle.writable) {
+      await handle.open({
+        baudRate: Number(printer.baudRate) || 9600,
+        dataBits: 8,
+        stopBits: 1,
+        parity: 'none',
+        flowControl: 'none',
+      });
+    }
+    const writer = handle.writable.getWriter();
+    try {
+      const data = escPosBytes(text);
+      await writer.write(data);
+    } finally {
+      writer.releaseLock();
+    }
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, friendlyError: toFriendlyError(err), rawError: String(err?.message || err) };
+  }
 }
 
 async function sendToBluetooth(printer, text) {
@@ -332,7 +394,7 @@ async function sendToBluetooth(printer, text) {
 		if (!handle.gatt.connected) await handle.gatt.connect();
 		const service = await handle.gatt.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb');
 		const characteristic = await service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb');
-		const data = new TextEncoder().encode(text);
+		const data = escPosBytes(text);
 		// Thermal printers over BLE typically need chunked writes.
 		const CHUNK = 180;
 		for (let i = 0; i < data.length; i += CHUNK) {
@@ -344,22 +406,8 @@ async function sendToBluetooth(printer, text) {
 	}
 }
 
-function sendToSystem(text, title) {
-	try {
-		const win = window.open('', '_blank', 'width=380,height=600');
-		if (!win) {
-			return { ok: false, friendlyError: 'The print window was blocked by the browser. Allow pop-ups for this site and try again.' };
-		}
-		win.document.write(`<pre style="font-family:'Courier New',monospace;font-size:12px;white-space:pre-wrap;">${escapeHtml(text)}</pre>`);
-		win.document.title = title || 'Print';
-		win.document.close();
-		win.focus();
-		win.print();
-		win.close();
-		return { ok: true };
-	} catch (err) {
-		return { ok: false, friendlyError: 'The system print dialog could not be opened.', rawError: String(err?.message || err) };
-	}
+function sendToSystem() {
+	return { ok: false, friendlyError: 'Windows/browser printing is disabled. Configure a real Network IP thermal printer.' };
 }
 
 function escapeHtml(str) {
@@ -368,10 +416,10 @@ function escapeHtml(str) {
 
 // Sends `text` to `printer`. Requires the printer to already be CONNECTED
 // (except `system`, which always opens the OS dialog). Never throws.
-export async function sendPrintJob(printer, text, { title } = {}) {
+export async function sendPrintJob(printer, text, { title, thermal = false } = {}) {
 	if (!printer) return { ok: false, friendlyError: 'No printer is configured for this purpose.' };
 	try {
-		if (printer.connectionType === 'system') return sendToSystem(text, title);
+		if (printer.connectionType === 'system') return sendToSystem(text, title, { thermal });
 		if (printer.status !== PrinterStatus.CONNECTED) {
 			return { ok: false, friendlyError: `${printer.name} is not connected. Test the connection and try again.` };
 		}
@@ -379,6 +427,7 @@ export async function sendPrintJob(printer, text, { title } = {}) {
 			case 'network': return await sendToAgent(printer, text);
 			case 'usb': return await sendToUsb(printer, text);
 			case 'bluetooth': return await sendToBluetooth(printer, text);
+			case 'serial': return await sendToSerial(printer, text);
 			default: return { ok: false, friendlyError: 'Unknown connection type.' };
 		}
 	} catch (err) {

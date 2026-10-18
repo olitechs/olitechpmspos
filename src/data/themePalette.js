@@ -1,25 +1,25 @@
-// Global OliTechs "Yellow / Black Premium" palette.
-// Room Planner uses src/data/palette.js and is intentionally kept unchanged.
-export const NAVY = '#090C11';
-export const NAVY2 = '#262B32';
-export const SLATE = '#757B81';
-export const TEAL = '#FFD300';
-export const TEAL_DARK = '#FFD100';
-export const TEAL_LIGHT = '#FFEE32';
-export const SAND = '#F8F8F7';
-export const SURFACE = '#FFFFFF';
-export const SURFACE2 = '#F2F2F2';
-export const BORDER = '#E5E5E5';
-export const BORDER_DARK = '#757B81';
-export const MUTED = '#757B81';
-export const MUTED_DARK = '#757B81';
-export const DESTRUCTIVE = '#D32F2F';
-export const ERR = '#EF6C00';
+// Compatibility exports for existing components.
+// Canonical visual values live in src/index.css.
+export const NAVY = 'var(--text)';
+export const NAVY2 = 'var(--brand-charcoal)';
+export const SLATE = 'var(--muted)';
+export const TEAL = 'var(--action)';
+export const TEAL_DARK = 'var(--action-hover)';
+export const TEAL_LIGHT = 'var(--brand-soft)';
+export const SAND = 'var(--bg)';
+export const SURFACE = 'var(--surface)';
+export const SURFACE2 = 'var(--surface-2)';
+export const BORDER = 'var(--border)';
+export const BORDER_DARK = 'var(--border-strong)';
+export const MUTED = 'var(--muted)';
+export const MUTED_DARK = 'var(--muted)';
+export const DESTRUCTIVE = 'var(--danger)';
+export const ERR = 'var(--warning)';
 
 export const STATUS = {
-  free: { fill: '#FFFFFF', border: BORDER, text: NAVY, dot: '#757B81' },
-  occupied: { fill: NAVY2, border: NAVY2, text: '#FFFFFF', dot: TEAL },
-  unsettled: { fill: '#FFEE32', border: TEAL_DARK, text: NAVY, dot: ERR },
+  free: { fill: 'var(--surface)', border: BORDER, text: NAVY, dot: 'var(--table-free)' },
+  occupied: { fill: 'var(--surface)', border: 'var(--table-occupied)', text: NAVY, dot: 'var(--table-occupied)' },
+  unsettled: { fill: 'var(--brand-soft)', border: 'var(--table-bill)', text: NAVY, dot: 'var(--table-bill)' },
 };
 
 export { getTextColorForBg } from '@/utils/textContrast';

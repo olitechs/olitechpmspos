@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Banknote, CreditCard, Plus, ReceiptText, RefreshCw, Search, X } from 'lucide-react';
+import { Banknote, CreditCard, Plus, RefreshCw, Search, X } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { pmsService } from '@/services/pmsService';
 
@@ -26,7 +26,7 @@ export default function Folio() {
     setLoading(true); setError('');
     try {
       const rows = await pmsService.listReservations(propertyId);
-      setReservations((rows || []).filter((r) => !['cancelled', 'checked-out'].includes(r.status)));
+      setReservations((rows || []).filter((r) => !['cancelled', 'checked-out', 'checked_out'].includes(r.status)));
     } catch (e) { setError(e.message); }
     finally { setLoading(false); }
   };

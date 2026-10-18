@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { platformService } from '@/services/platformService';
+import { supabase } from '@/lib/supabaseClient';
 import { PACKAGE_LABELS } from '@/lib/entitlements';
 import { Button } from '@/components/ui/button';
 import PackageAssignmentModal from './PackageAssignmentModal';
@@ -11,6 +12,10 @@ const STATUS_STYLES = {
 	suspended: 'bg-red-100 text-red-800',
 	rejected: 'bg-slate-200 text-slate-700',
 	inactive: 'bg-slate-200 text-slate-700',
+	trial: 'bg-blue-100 text-blue-800',
+	past_due: 'bg-orange-100 text-orange-800',
+	cancelled: 'bg-slate-200 text-slate-700',
+	'not configured': 'bg-slate-100 text-slate-600',
 };
 
 function StatusBadge({ status }) {
@@ -37,6 +42,12 @@ export default function AdminProperties() {
 
 	useEffect(() => {
 		load();
+		const channel = supabase
+			.channel('platform-properties-live')
+			.on('postgres_changes', { event: '*', schema: 'public', table: 'properties' }, () => load())
+			.on('postgres_changes', { event: '*', schema: 'public', table: 'property_subscriptions' }, () => load())
+			.subscribe();
+		return () => { supabase.removeChannel(channel); };
 	}, [load]);
 
 	const withBusy = async (id, fn) => {
@@ -74,9 +85,12 @@ export default function AdminProperties() {
 
 	return (
 		<div className="space-y-6">
-			<div>
-				<h1 className="text-2xl font-bold text-foreground">Properties</h1>
-				<p className="text-sm text-muted-foreground mt-1">Review applications, approve, and manage package assignments.</p>
+			<div className="flex items-start justify-between gap-4">
+				<div>
+					<h1 className="text-2xl font-bold text-foreground">Properties</h1>
+					<p className="text-sm text-muted-foreground mt-1">Review applications, approve, manage packages, subscriptions and live property access.</p>
+				</div>
+				<Link to="/admin/properties/new" className="inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium">+ Add Property</Link>
 			</div>
 
 			{error && <div className="p-4 rounded-xl bg-destructive/10 text-destructive text-sm">{error}</div>}
@@ -88,6 +102,7 @@ export default function AdminProperties() {
 							<th className="px-4 py-3 font-medium">Property</th>
 							<th className="px-4 py-3 font-medium">Status</th>
 							<th className="px-4 py-3 font-medium">Package</th>
+							<th className="px-4 py-3 font-medium">Subscription / Entitlements</th>
 							<th className="px-4 py-3 font-medium">Created</th>
 							<th className="px-4 py-3 font-medium text-right">Actions</th>
 						</tr>
@@ -95,14 +110,14 @@ export default function AdminProperties() {
 					<tbody>
 						{loading && (
 							<tr>
-								<td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">
+								<td colSpan={6} className="px-4 py-6 text-center text-muted-foreground">
 									Loading properties...
 								</td>
 							</tr>
 						)}
 						{!loading && properties.length === 0 && (
 							<tr>
-								<td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">
+								<td colSpan={6} className="px-4 py-6 text-center text-muted-foreground">
 									No properties yet.
 								</td>
 							</tr>
@@ -119,7 +134,19 @@ export default function AdminProperties() {
 								<td className="px-4 py-3">
 									<StatusBadge status={p.status} />
 								</td>
-								<td className="px-4 py-3">{PACKAGE_LABELS[p.package]}</td>
+								<td className="px-4 py-3">
+									<div>{PACKAGE_LABELS[p.package] || 'No Package'}</div>
+									{p.subscription_plan_code && p.subscription_plan_code !== p.package && (
+										<div className="text-xs text-muted-foreground mt-0.5">Plan: {p.subscription_plan_code}</div>
+									)}
+								</td>
+								<td className="px-4 py-3">
+									<div className="flex items-center gap-2">
+										<StatusBadge status={p.subscription_status || 'not configured'} />
+										<Link to={`/admin/properties/${p.id}`} className="text-xs font-medium text-primary hover:underline">View subscription</Link>
+									</div>
+									{p.current_period_ends_at && <div className="text-xs text-muted-foreground mt-1">Ends {new Date(p.current_period_ends_at).toLocaleDateString()}</div>}
+								</td>
 								<td className="px-4 py-3 text-muted-foreground">{new Date(p.created_at).toLocaleDateString()}</td>
 								<td className="px-4 py-3">
 									<div className="flex justify-end gap-2">

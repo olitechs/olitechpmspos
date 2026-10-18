@@ -2,6 +2,37 @@ import { supabase } from '@/lib/supabaseClient';
 
 export const pmsService = {
 
+	async removeOrderItem({ propertyId, tableKey, itemId, removeQty, reason, removedByName }) {
+		const { data, error } = await supabase.rpc('fn_remove_pos_item', {
+			p_property_id: propertyId,
+			p_table_key: tableKey,
+			p_item_id: String(itemId),
+			p_remove_qty: Number(removeQty || 1),
+			p_reason: reason || 'Item removed',
+			p_removed_by_name: removedByName || null,
+		});
+		if (error) throw new Error(error.message);
+		return data || null;
+	},
+	async listVoidedItems(propertyId, { date = null } = {}) {
+		const effectiveDate = date || new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Nairobi' }).format(new Date());
+		let q = supabase.from('pos_void_items').select('*').eq('property_id', propertyId).order('created_at', { ascending: false });
+		if (effectiveDate) q = q.gte('created_at', `${effectiveDate}T00:00:00+03:00`).lt('created_at', `${effectiveDate}T23:59:59+03:00`);
+		const { data, error } = await q;
+		if (error) throw new Error(error.message);
+		return data || [];
+	},
+	async approveVoid({ propertyId, voidId, signature }) {
+		const { data, error } = await supabase.from('pos_void_items').update({
+			status: 'approved',
+			approved_at: new Date().toISOString(),
+			approved_by: (await supabase.auth.getUser()).data.user?.id || null,
+			manager_signature: signature || null,
+		}).eq('id', voidId).eq('property_id', propertyId).select().single();
+		if (error) throw new Error(error.message);
+		return data;
+	},
+
 	async listProducts(propertyId) {
 		const { data, error } = await supabase.from('products').select('*').eq('property_id', propertyId).order('name');
 		if (error) throw new Error(error.message);
@@ -57,7 +88,7 @@ export const pmsService = {
 		if (error) throw new Error(error.message); return data || [];
 	},
 	async createStockTransfer({ propertyId, fromLocationId, toLocationId, lines, reference }) {
-		const { data, error } = await supabase.from('stock_transfers').insert({ property_id: propertyId, from_location_id: fromLocationId, to_location_id: toLocationId, lines, reference: reference || null, created_by: (await supabase.auth.getUser()).data.user?.id }).select().single();
+		const { data, error } = await supabase.rpc('fn_create_stock_transfer', { p_property_id: propertyId, p_from: fromLocationId, p_to: toLocationId, p_lines: lines || [], p_reference: reference || null });
 		if (error) throw new Error(error.message); return data;
 	},
 	async completeStockTransfer(transferId) {
@@ -73,6 +104,12 @@ export const pmsService = {
 	async listChannelSyncQueue(propertyId) { const {data,error}=await supabase.from('channel_sync_queue').select('*').eq('property_id',propertyId).order('created_at',{ascending:false}).limit(100); if(error) throw new Error(error.message); return data||[]; },
 	async listChannelReservationEvents(propertyId) { const {data,error}=await supabase.from('channel_reservation_events').select('*').eq('property_id',propertyId).order('received_at',{ascending:false}).limit(100); if(error) throw new Error(error.message); return data||[]; },
 	async listConfirmationMessages(propertyId) { const {data,error}=await supabase.from('confirmation_messages').select('*').eq('property_id',propertyId).order('created_at',{ascending:false}).limit(100); if(error) throw new Error(error.message); return data||[]; },
+=======
+	async getSubscription(propertyId) { const {data,error}=await supabase.rpc('fn_get_subscription',{p_property_id:propertyId}); if(error) throw new Error(error.message); return data; },
+	async getMySubscriptionOverview() { const {data,error}=await supabase.rpc('fn_get_my_subscription_overview'); if(error) throw new Error(error.message); return Array.isArray(data) ? (data[0] || null) : data; },
+	async getSubscriptionAccess(propertyId,module) { const {data,error}=await supabase.rpc('fn_subscription_access',{p_property_id:propertyId,p_module:module}); if(error) throw new Error(error.message); return data||{allowed:false}; },
+	async upsertSubscription({propertyId,planCode,status,trialEndsAt=null,currentPeriodEndsAt=null,graceEndsAt=null,enabledModules=[]}) { const {data,error}=await supabase.rpc('fn_upsert_subscription',{p_property_id:propertyId,p_plan_code:planCode,p_status:status,p_trial_ends_at:trialEndsAt,p_current_period_ends_at:currentPeriodEndsAt,p_grace_ends_at:graceEndsAt,p_enabled_modules:enabledModules}); if(error) throw new Error(error.message); return data; },
+	async listSubscriptionEvents(propertyId) { const {data,error}=await supabase.from('subscription_events').select('*').eq('property_id',propertyId).order('created_at',{ascending:false}).limit(100); if(error) throw new Error(error.message); return data||[]; },
 	async listRoomTypes(propertyId) {
 		const { data, error } = await supabase.from('room_types').select('*').eq('property_id', propertyId).order('name');
 		if (error) throw new Error(error.message);
@@ -142,6 +179,14 @@ export const pmsService = {
 		return data || [];
 	},
 
+	 subscribeToHousekeeping(propertyId, { onChange } = {}) {
+		if (!propertyId || typeof onChange !== 'function') return null;
+		return supabase.channel(`housekeeping:${propertyId}`)
+			.on('postgres_changes', { event: '*', schema: 'public', table: 'housekeeping_tasks', filter: `property_id=eq.${propertyId}` },
+				(payload) => onChange({ eventType: payload.eventType, row: payload.new || payload.old || null }))
+			.subscribe((status) => { if (status === 'CHANNEL_ERROR') console.error('[HK] realtime channel failed'); });
+	},
+
 	async createHousekeepingTask(payload) {
 		const { data, error } = await supabase.from('housekeeping_tasks').insert(payload).select().single();
 		if (error) throw new Error(error.message);
@@ -182,6 +227,18 @@ export const pmsService = {
 		return data;
 	},
 
+	async listReservationAuditEvents({ propertyId, reservationId }) {
+		const { data, error } = await supabase
+			.from('audit_logs')
+			.select('id, actor_id, action, old_value, new_value, created_at, related_reservation_id')
+			.eq('property_id', propertyId)
+			.eq('related_reservation_id', reservationId)
+			.order('created_at', { ascending: false })
+			.limit(50);
+		if (error) throw new Error(error.message);
+		return data || [];
+	},
+
 	async getFolio(reservationId) {
 		const [{ data: charges, error: chargesError }, { data: totals, error: totalsError }] = await Promise.all([
 			supabase.from('folio_charges').select('*').eq('reservation_id', reservationId).order('created_at'),
@@ -194,8 +251,15 @@ export const pmsService = {
 
 	async recordPayment({ propertyId, reservationId, amount, method }) {
 		const shift = await this.getOpenCashierShift(propertyId);
-		const { error } = await supabase.from('payments').insert({ property_id: propertyId, reservation_id: reservationId, amount, method, shift_id: shift?.id || null });
+		const { data, error } = await supabase.rpc('fn_record_front_desk_payment', {
+			p_property_id: propertyId,
+			p_reservation_id: reservationId,
+			p_amount: Number(amount || 0),
+			p_method: method,
+			p_shift_id: shift?.id || null,
+		});
 		if (error) throw new Error(error.message);
+		return data;
 	},
 
 	async createReservationBundle({ propertyId, roomIds, groupId, guestName, phone, checkIn, checkOut, paymentStatus, channel, mealPlan, adults, kidsCount, kidsAges, totalAmount, amountPaid, notes }) {
@@ -269,8 +333,9 @@ export const pmsService = {
 	},
 
 	async checkOutRoom(roomId) {
-		const { error } = await supabase.rpc('fn_check_out_room', { p_room_id: roomId });
+		const { data, error } = await supabase.rpc('fn_check_out_room', { p_room_id: roomId });
 		if (error) throw new Error(error.message);
+		return data;
 	},
 
 	async removeReservation(reservationId) {
@@ -396,8 +461,8 @@ export const pmsService = {
 		const { error } = await supabase.rpc('charge_restaurant_to_room', { p_property_id: propertyId, p_reservation_id: reservationId, p_description: description, p_amount: amount });
 		if (error) throw new Error(error.message);
 	},
-	async recordPosSale({ propertyId, tableNumber, orderNumber, items, subtotal, discountAmount, vat, total, paymentMethod, reservationId }) {
-		const { data, error } = await supabase.rpc('fn_record_pos_sale', { p_property_id: propertyId, p_table_number: tableNumber, p_order_number: orderNumber, p_items: items, p_subtotal: subtotal, p_discount_amount: discountAmount || 0, p_vat: vat, p_total: total, p_payment_method: paymentMethod, p_reservation_id: reservationId || null });
+	async recordPosSale({ propertyId, tableNumber, orderNumber, items, subtotal, discountAmount, vat, total, paymentMethod, reservationId, shiftId, waiter, discountId = null, discountName = null, idempotencyKey = null, paymentAllocations = null }) {
+		const { data, error } = await supabase.rpc('fn_record_pos_sale', { p_property_id: propertyId, p_table_number: tableNumber, p_order_number: orderNumber, p_items: items, p_subtotal: subtotal, p_discount_amount: discountAmount || 0, p_vat: vat, p_total: total, p_payment_method: paymentMethod, p_reservation_id: reservationId || null, p_shift_id: shiftId || null, p_waiter: waiter || null, p_discount_id: discountId || null, p_discount_name: discountName || null, p_idempotency_key: idempotencyKey || orderNumber || null, p_payment_allocations: paymentAllocations || null });
 		if (error) throw new Error(error.message);
 		return data;
 	},
@@ -440,11 +505,29 @@ export const pmsService = {
 		if (error) throw new Error(error.message);
 		return data || { total_revenue: 0, transactions: 0, average_check: 0, payment_breakdown: [], top_items: [], hourly_revenue: [] };
 	},
+	async getDailyHotelMetrics(propertyId, businessDate) {
+		const { data, error } = await supabase.rpc('fn_daily_hotel_metrics', { p_property_id: propertyId, p_business_date: businessDate || undefined });
+		if (error) throw new Error(error.message);
+		return data || {};
+	},
+
+	async getRecentDashboardActivity(propertyId, limit = 8) {
+		const { data, error } = await supabase.rpc('fn_recent_dashboard_activity', {
+			p_property_id: propertyId,
+			p_limit: limit,
+		});
+		if (error) throw new Error(error.message);
+		return Array.isArray(data) ? data : [];
+	},
 
 	async addFolioCharge({ propertyId, reservationId, source = 'other', description, amount }) {
-		const { data, error } = await supabase.from('folio_charges').insert({
-			property_id: propertyId, reservation_id: reservationId, source, description, amount: Number(amount || 0),
-		}).select().single();
+		const { data, error } = await supabase.rpc('fn_add_folio_charge', {
+			p_property_id: propertyId,
+			p_reservation_id: reservationId,
+			p_source: source,
+			p_description: description,
+			p_amount: Number(amount || 0),
+		});
 		if (error) throw new Error(error.message);
 		return data;
 	},
@@ -497,10 +580,10 @@ export const pmsService = {
 		return data || [];
 	},
 
-	async recordCashierAdjustment({ propertyId, shiftId, adjustmentType, targetType, targetId, amount, reason }) {
+	async recordCashierAdjustment({ propertyId, shiftId, adjustmentType, targetType, targetId, amount, reason, refundMethod = null }) {
 		const { data, error } = await supabase.rpc('fn_record_cashier_adjustment', {
 			p_property_id: propertyId, p_shift_id: shiftId || null, p_adjustment_type: adjustmentType,
-			p_target_type: targetType, p_target_id: targetId, p_amount: Number(amount || 0), p_reason: reason,
+			p_target_type: targetType, p_target_id: targetId, p_amount: Number(amount || 0), p_reason: reason, p_refund_method: refundMethod || null,
 		});
 		if (error) throw new Error(error.message);
 		return data;

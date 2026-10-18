@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Eye, EyeOff, KeyRound, Pencil, Plus, ShieldCheck, Trash2, UserPlus, X } from 'lucide-react';
+import { Eye, EyeOff, KeyRound, Pencil, ShieldCheck, Trash2, UserPlus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/AuthContext';
 import { authService, generatePin, getDefaultModulesForRole, MODULE_NAMES, ROLE_LABELS, STAFF_ROLES, normalizeStaffRole } from '@/services/authService';
 
-const MODULE_LABELS = { pos: 'POS', backoffice: 'Back Office', store: 'Store' };
+const MODULE_LABELS = { pos: 'POS & F&B', frontoffice: 'Front Office', backoffice: 'Back Office', store: 'Stores' };
 const empty = { fullName:'', email:'', phone:'', role:'waiter', modules:['pos'], pin:'', confirmPin:'', is_active:true };
 const initials = (s='') => s.split(/\s+/).filter(Boolean).slice(0,2).map((x)=>x[0]).join('').toUpperCase() || 'ST';
 

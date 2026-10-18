@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { ShieldCheck, Mail, Lock, Loader2 } from 'lucide-react';
 import AuthLayout from '@/components/ui/AuthLayout';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/AuthContext';
 
 export default function AdminLogin() {
 	const { login, user } = useAuth();
+	const navigate = useNavigate();
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
 	const [error, setError] = useState('');
@@ -24,9 +25,11 @@ export default function AdminLogin() {
 		setError('');
 		setLoading(true);
 		try {
-			const loggedInUser = await login(email, password);
+			const loggedInUser = await login(email, password, { navigate: false });
 			if (!loggedInUser?.isPlatformOwner) {
-				setError('This account does not have platform owner access.');
+				setError('This account does not have platform owner access. Use the property sign-in page instead.');
+			} else {
+				navigate('/admin', { replace: true });
 			}
 		} catch (err) {
 			setError(err.message || 'Sign in failed.');

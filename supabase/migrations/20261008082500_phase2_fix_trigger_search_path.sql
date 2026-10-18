@@ -1,0 +1,1 @@
+alter function public.fn_phase2_touch_updated_at() set search_path=public;

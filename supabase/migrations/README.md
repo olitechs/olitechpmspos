@@ -105,3 +105,28 @@ Adds room types (e.g. Standard Garden View, Double Terrace, 2 Bedroom Apartment)
 
 ## 0014 — Production Room Planner
 Adds the production reservation model used by the Room Planner: payment status, channel, meal plan, kids ages, total/paid amounts, joint/group reservations, transactional create/edit/delete/move operations, and strict date-overlap validation. Run after 0013 and refresh the app. The planner uses `fn_create_reservation_bundle`, `fn_update_planner_reservation`, `fn_move_planner_reservation`, `fn_move_reservation_group`, `fn_add_room_to_reservation_group`, `fn_split_reservation_group`, and `fn_delete_planner_reservation`.
+
+
+### 0033 — Persistent POS table sessions
+Adds server-side active POS table sessions and in-progress order lines. Apply this migration before using the production POS on multiple terminals or relying on refresh recovery.
+
+### 0034 — Live dashboard activity
+Adds a property-scoped dashboard activity RPC using posted POS receipts and reservation events. It intentionally exposes only operational metadata.
+
+### 0035 — Void-safe POS reporting
+Updates the daily POS summary so voided receipts are excluded from revenue, transaction counts, payment breakdowns, top items, and hourly reporting.
+### 0036 — Persistent kitchen display
+Adds server-side fired kitchen/bar orders and KDS status transitions (`new` → `preparing` → `ready` → `served`). POS fires the order before attempting printer work, and the Kitchen Display can recover active orders after refresh or from another terminal. Apply this migration before using the production KDS.
+
+### 0037 — Persistent printer configuration
+Persists property-level printer definitions, routing purposes, centers, and connection settings. Live connection state is intentionally reset to `Not Configured` on reload because USB/Bluetooth/network connectivity is device-specific.
+
+
+## Phase 2 PMS integrity migrations — 2026-10-09
+
+After the existing `20261008084000_phase2_folio_checkout_housekeeping.sql` migration, apply the Phase 2 migrations in timestamp order:
+
+1. `20261009100000_phase2_pms_audit_trail.sql` — adds indexed reservation/room entity references to audit events and records reservation lifecycle plus room-status changes.
+2. `20261009103000_phase2_folio_payment_reconciliation.sql` — allows qualifying booking deposits to be posted through the front-desk payment RPC, keeps folio balances non-negative before the first room charge, and ensures checkout writes a valid reservation payment status while enforcing the outstanding-balance check.
+
+Both migrations are additive/re-runnable. Test them on a non-production Supabase project before production rollout. The repository CI build does not execute these SQL functions against a live Supabase database, so database workflow acceptance remains pending until migration application and end-to-end testing.

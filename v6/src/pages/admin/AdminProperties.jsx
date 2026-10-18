@@ -74,9 +74,12 @@ export default function AdminProperties() {
 
 	return (
 		<div className="space-y-6">
-			<div>
-				<h1 className="text-2xl font-bold text-foreground">Properties</h1>
-				<p className="text-sm text-muted-foreground mt-1">Review applications, approve, and manage package assignments.</p>
+			<div className="flex items-start justify-between gap-4">
+				<div>
+					<h1 className="text-2xl font-bold text-foreground">Properties</h1>
+					<p className="text-sm text-muted-foreground mt-1">Review applications, approve, and manage package assignments.</p>
+				</div>
+				<Link to="/admin/properties/new" className="inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium">+ Add Property</Link>
 			</div>
 
 			{error && <div className="p-4 rounded-xl bg-destructive/10 text-destructive text-sm">{error}</div>}
