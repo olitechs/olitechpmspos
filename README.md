@@ -262,6 +262,10 @@ OLITECH_EMAIL=you@example.com OLITECH_PASSWORD=secret node scripts/capture-scree
 
 - [Phase 0 repository audit and stock-control roadmap](docs/PHASED_REPO_AUDIT_AND_STOCK_CONTROL_ROADMAP.md)
 - [Phase 2 inventory security and data-integrity audit](docs/PHASE2_INVENTORY_SECURITY_AUDIT.md) — read-only findings; database changes remain gated.
+- [Inventory event and role/action matrix](docs/PHASE2_INVENTORY_EVENT_AND_ROLE_MATRIX.md) — one posting owner per event and deny-by-default action capabilities.
+- [Current migration provenance reconciliation](docs/PHASE2_MIGRATION_PROVENANCE_RECONCILIATION.md) — 38 live entries; unresolved mappings remain deployment blockers.
+- [Inventory database regression gate](supabase/tests/phase2_inventory_security_regression.sql) — read-only catalog assertions, expected to fail on known pre-fix gaps.
+- [Inventory source-contract tests](tools/inventory/phase2-ledger-contract.test.mjs) — included in `npm run test:architecture`.
 
 ## Contributing
 
