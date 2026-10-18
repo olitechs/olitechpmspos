@@ -10,14 +10,14 @@ const todayKenya = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Na
 
 function startOfMonth(date) { return `${date.slice(0, 8)}01`; }
 function Stat({ label, value, sub, icon: Icon }) {
-  return <div className="rounded-2xl p-4" style={{ background: SURFACE, border: `1px solid ${BORDER}` }}>
+  return <div className="rounded-xl p-4" style={{ background: SURFACE, border: `1px solid ${BORDER}` }}>
     <div className="mb-1 flex items-center justify-between gap-2"><div className="text-[11px] font-medium " style={{ color: MUTED }}>{label}</div>{Icon && <Icon size={15} style={{ color: TEAL_DARK }} />}</div>
     <div className="font-mono text-xl font-medium" style={{ color: NAVY }}>{value}</div>
     {sub && <div className="mt-1 text-xs" style={{ color: MUTED }}>{sub}</div>}
   </div>;
 }
 function Section({ title, children }) {
-  return <section className="rounded-2xl overflow-hidden" style={{ background: SURFACE, border: `1px solid ${BORDER}` }}>
+  return <section className="rounded-xl overflow-hidden" style={{ background: SURFACE, border: `1px solid ${BORDER}` }}>
     <div className="border-b px-4 py-3" style={{ borderColor: BORDER }}><h2 className="text-xs font-medium " style={{ color: NAVY }}>{title}</h2></div>
     <div className="p-4">{children}</div>
   </section>;
@@ -130,7 +130,7 @@ export default function Reports() {
 
       <div className="mb-4 flex flex-wrap gap-2">{tabs.map(([key,label,Icon])=><button key={key} type="button" onClick={()=>setTab(key)} className="inline-flex min-h-10 items-center gap-2 rounded-xl px-3 text-xs font-medium" style={{ background: tab===key ? NAVY : SURFACE, color: tab===key ? '#fff' : NAVY, border: `1px solid ${tab===key ? NAVY : BORDER}` }}><Icon size={14}/>{label}</button>)}</div>
 
-      {loading && !report ? <div className="rounded-2xl p-10 text-center text-sm" style={{ background:SURFACE,color:MUTED,border:`1px solid ${BORDER}` }}>Loading live transactional data…</div> : report && <>
+      {loading && !report ? <div className="rounded-xl p-10 text-center text-sm" style={{ background:SURFACE,color:MUTED,border:`1px solid ${BORDER}` }}>Loading live transactional data…</div> : report && <>
         {tab==='overview' && <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
             <Stat label="Occupancy" value={`${report.hotel?.occupancy_percent || 0}%`} sub={`${report.hotel?.occupied_room_nights || 0} / ${report.hotel?.available_room_nights || 0} room nights`} icon={Hotel}/>
