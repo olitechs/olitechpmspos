@@ -114,3 +114,25 @@ Do not implement or apply a database migration until all are satisfied:
 2. Fix role enforcement and location-balance correctness in a reviewed forward migration, plus corresponding client error handling.
 3. Add movement-time costing after the valuation policy is agreed and tested.
 4. Only then implement department-configurable usage and full daily/weekly/monthly Excel reporting.
+
+
+## Phase 2 follow-up — current read-only recheck (2026-10-18)
+
+The current production migration ledger now returns **38** entries; the earlier Phase 0 reconciliation document was a 34-entry snapshot from 2026-10-11. The newer four entries are `workspace_entitlement_module_normalization_20261012`, `staff_pin_throttle_and_hash_privileges`, `pos_device_registry`, and `restore_property_scoped_stores`. A current Phase 2 provenance report lists all 38 rows and explicitly leaves unresolved mappings open: `docs/PHASE2_MIGRATION_PROVENANCE_RECONCILIATION.md`.
+
+Additional read-only catalog evidence confirms:
+
+- `fn_inventory_valuation(uuid)` is SECURITY INVOKER and executable by `authenticated`; it returns `cost_price` and `stock_value` without its own membership/role predicate. The `products_select` policy permits any member of the property to select product rows, including the cost column. This is a live, directly reproducible cost-visibility gap, not merely a UI concern.
+- The following authenticated-executable SECURITY DEFINER inventory RPCs currently check property membership but do not show an action-specific `can_store_write` guard in the sampled bodies: `fn_post_stock_adjustment`, `fn_approve_inventory_count`, `fn_complete_stock_transfer`, `fn_consume_recipe_stock`, `fn_receive_purchase_order`, `fn_post_wastage`, and `fn_post_production`. Each still requires individual role/module/active-session enforcement review.
+- `fn_record_pos_sale` delegates tracked product and recipe-ingredient quantity changes to `fn_apply_stock_movement`. It also calls `fn_consume_recipe_stock`; its subsequent direct-item loop excludes menu items that match an active recipe. The contract therefore assigns recipe ingredient posting to the recipe consumer for POS sales and forbids a second ingredient posting path.
+- `fn_complete_stock_transfer` writes location balances and paired movement rows directly rather than calling `fn_apply_stock_movement`. This is acceptable only if transfer completion is its single atomic posting owner, records source links, preserves total quantity, and cannot be repeated.
+- `fn_post_stock_adjustment` and `fn_approve_inventory_count` update `product_stock_locations` and then call `fn_apply_stock_movement`; the `products_sync_default_location` trigger updates location balances again when `products.current_stock` changes. This confirms the structural double-application risk. A read-only aggregate check of current production products found no present difference under the current signed-movement calculation; absence of existing drift does not eliminate the defect on future location-specific postings.
+- Live policies include UPDATE on `stock_movements`, DELETE on `stock_usage`, and DELETE on `stock_transfers`, each guarded by property membership/owner rather than an immutable-posted-event contract. The previous Phase 10 delete lock did not cover all of these stock tables. Corrections must use explicit compensating events and reviewed ACL/policy changes, not direct edits/deletes.
+- `fn_reverse_pos_stock` is not executable directly by `authenticated` (only privileged roles), which is appropriate for an internal helper; the void/refund RPCs call it within their financial transaction. Reversal source IDs and duplicate/partial-refund behavior still need runtime tests.
+- The existing disposable project has an unrelated critical advisor finding: RLS is disabled on `public.pos_shifts`. It was only inspected; no remediation was applied. This should be tracked separately rather than changed incidentally during inventory work.
+
+The initial automated source-contract suite passed after correcting a SQL-string escaping assertion. GitHub validation run **#531** and Production QA run **#256** both completed successfully on commit `1a5b2602f6fe321a05b6d3203ce47ba144c4f266`. These are source-contract/app CI checks only; they do **not** certify live database authorization or balance behavior.
+
+### Updated implementation gate
+
+No forward-only SQL migration has been authored or applied. Before implementation, the remaining work is to recover/compare the exact SQL provenance for unresolved live entries and inventory source files, build repeatable two-property runtime tests in the existing disposable/local environment, and then design the corrective migration. Do not infer that the source/live migration gate is closed from the green app CI.
