@@ -48,7 +48,7 @@ export function StatTile({ label, value, detail, icon: Icon, trend, className = 
 
 const STATUS_TONES = {
   // Keep status meaning tied to the same semantic tokens used by the rest of
-  // the application; this prevents badges drifting from light/dark themes.
+  // the application; this prevents badges drifting between operational screens.
   success: 'bg-[var(--success-soft)] text-[var(--success-text)]',
   warning: 'bg-[var(--warning-soft)] text-[var(--warning-text)]',
   danger: 'bg-[var(--danger-soft)] text-[var(--danger-text)]',
