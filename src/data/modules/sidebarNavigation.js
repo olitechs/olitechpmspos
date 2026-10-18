@@ -39,7 +39,7 @@ export const SIDEBAR_SECTIONS=[
  {key:"operations",title:"Operations",items:[
   {id:"customers",label:"Customers",icon:Users,roles:["hotel_admin","super_admin","front_office_manager","receptionist","front_desk"],path:"/backoffice/customers",active:["guests"]},
   {id:"integrations",label:"Integrations",icon:PlugZap,roles:["hotel_admin","super_admin","front_office_manager"],path:"/backoffice/integrations",active:["booking-engine"],group:"dropdown"},
-  {id:"settings",label:"Settings",icon:Settings,roles:["hotel_admin","super_admin","front_office_manager"],path:"/backoffice/settings/features",active:["settings"]}
+  {id:"settings",label:"Features",icon:PlugZap,roles:["hotel_admin","super_admin"],path:"/backoffice/settings/features",active:["settings","features"]}
  ]}
 ];
 
