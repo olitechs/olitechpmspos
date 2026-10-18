@@ -1,5 +1,5 @@
-const YELLOW_BGS = ['#FFD300', '#FFD100', '#FFEE32', '#F9A825'];
-const DARK_BGS = ['#090C11', '#262B32', '#202020', '#333533'];
+const YELLOW_BGS = ['#B6FF2E', '#9CE622', '#FFEE32', '#F9A825'];
+const DARK_BGS = ['#23262f', '#262B32', '#202020', '#333533'];
 
 function normalizeHex(hex) {
   return String(hex || '').trim().toUpperCase();
@@ -11,9 +11,9 @@ function normalizeHex(hex) {
  */
 export function getTextColorForBg(hex) {
   const normalized = normalizeHex(hex);
-  if (YELLOW_BGS.includes(normalized)) return '#090C11';
+  if (YELLOW_BGS.includes(normalized)) return '#23262f';
   if (DARK_BGS.includes(normalized)) return '#FFFFFF';
-  return '#090C11';
+  return '#23262f';
 }
 
 export { YELLOW_BGS, DARK_BGS };
