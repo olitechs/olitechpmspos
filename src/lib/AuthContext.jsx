@@ -90,7 +90,6 @@ export function AuthProvider({ children }) {
       return result;
     }
     setUser(result);
-    localStorage.setItem('olitech_token', 'supabase_session');
     setAuthError(null);
     setAuthChecked(true);
     navigate('/', { replace: true });
