@@ -6,6 +6,8 @@
 -- test_user_a_id, test_property_a_id, test_property_b_id,
 -- test_product_a_id, test_product_b_id,
 -- test_default_location_id, test_nondefault_location_id.
+-- test_user_a_id must be authorized to post adjustments in property A (owner/admin/inventory manager).
+-- Product A and both location IDs must belong to property A; product B must belong to property B.
 -- The transaction is rolled back at the end; if an assertion fails, psql stops and the
 -- connection's open transaction is rolled back when the session closes.
 
@@ -101,6 +103,14 @@ begin
 
   if not exists(select 1 from public.products where id=product_a and property_id=property_a) then
     raise exception 'FIXTURE-003: product A must belong to property A';
+  end if;
+  if not exists(select 1 from public.products where id=product_b and property_id=property_b) then
+    raise exception 'FIXTURE-004: product B must belong to property B';
+  end if;
+  if not exists(select 1 from public.inventory_locations where id=default_location and property_id=property_a)
+     or not exists(select 1 from public.inventory_locations where id=other_location and property_id=property_a)
+     or default_location=other_location then
+    raise exception 'FIXTURE-005: distinct default and non-default locations must belong to property A';
   end if;
 
   -- Cross-property product IDs must not be usable with property A's mutation context.
