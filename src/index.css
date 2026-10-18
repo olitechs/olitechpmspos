@@ -14,13 +14,16 @@
     --primary-soft: #DDF0F1;
     --accent: #E8955A;
     --text: #223039;
-    --text-muted: #6B7C85;
+    --text-muted: #5D7079; /* Darkened slightly to meet WCAG AA on canvas and white surfaces. */
     --border: #E1EAEC;
     --success: #2F9E7A;
+    --success-text: #236F58;
     --success-soft: #E3F4EE;
     --danger: #D9534F;
+    --danger-text: #B42318;
     --danger-soft: #FBE9E8;
     --warning: #E07A5F;
+    --warning-text: #9A4B36;
     --warning-soft: #FCEDE8;
     --info: var(--primary);
     --info-soft: var(--primary-soft);
@@ -30,10 +33,6 @@
     --room-checkout: #6C63D9;
     --room-out-of-order: #B8BEC6;
 
-    /* Payment colours are reserved for .room-planner. */
-    --pay-paid: #3FA77A;
-    --pay-deposit: #F2C14E;
-    --pay-unpaid: #EE8A3C;
 
     --planner-ice: var(--primary-soft);
     --planner-blue-soft: var(--primary-soft);
@@ -79,9 +78,8 @@
     --on-dark: var(--text);
     --stay-text: var(--text);
     --brand-soft: var(--primary-soft);
-    --muted: var(--text-muted);
-    --success-text: var(--success);
-    --warning-text: var(--warning);
+    --legacy-muted: var(--text-muted);
+    --warning-text-legacy: var(--warning-text);
     --room-charge: var(--primary);
     --focus: var(--primary);
     --table-free: var(--text-muted);
@@ -93,9 +91,6 @@
     --stay-checkout: var(--room-checkout);
     --stay-optioned: var(--primary);
     --stay-closed: var(--room-out-of-order);
-    --pay-none: var(--pay-unpaid);
-    --pay-partial: var(--pay-deposit);
-    --pay-total: var(--pay-paid);
     --font-body: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     --font-heading: var(--font-body);
     --font-display: var(--font-body);
@@ -137,9 +132,10 @@
   .legend-checked_out { color: var(--room-occupied); opacity: .5; }
   .legend-closed { color: var(--room-out-of-order); background: repeating-linear-gradient(45deg, var(--room-out-of-order) 0 6px, var(--border) 6px 12px); }
   .payment-chip { width: 18px; height: 5px; border-radius: 999px; display: inline-block; }
-  .room-planner .payment-none { background: var(--pay-unpaid); }
-  .room-planner .payment-partial { background: var(--pay-deposit); }
-  .room-planner .payment-total { background: var(--pay-paid); }
+  .room-planner { --pay-paid: #3FA77A; --pay-deposit: #F2C14E; --pay-unpaid: #EE8A3C; --payment-text: #223039; --payment-deposit-text: #5A4310; }
+  .room-planner .payment-none { background: var(--pay-unpaid); color: var(--payment-text); }
+  .room-planner .payment-partial { background: var(--pay-deposit); color: var(--payment-deposit-text); }
+  .room-planner .payment-total { background: var(--pay-paid); color: var(--payment-text); }
   .room-planner .stay { background: var(--stay-color); color: var(--stay-text, #FFFFFF); border-radius: 4px; padding: 2px 8px; border-left: 4px solid var(--pay-color, transparent); transition: opacity 150ms ease; }
   .room-planner .stay[data-status="occupied"] { --stay-color: var(--room-occupied); }
   .room-planner .stay[data-status="checkout"] { --stay-color: var(--room-checkout); }
