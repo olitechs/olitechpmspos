@@ -62,7 +62,7 @@ const ROOM_STATUS = {
 };
 const channelLabel = { direct: 'Direct', booking_com: 'Booking.com', unknown: 'Unknown' };
 const mealLabel = { bed_only: 'Bed Only', bb: 'BB', half_board: 'HB', full_board: 'FB' };
-const paymentLabel = { fully_paid: 'Fully Paid', partially_paid: 'Partially Paid', not_paid: 'Not Paid' };
+const paymentLabel = { fully_paid: 'Fully Paid', partially_paid: 'Deposit / Partially Paid', not_paid: 'Not Paid' };
 
 const dateKey = (d) => format(d, 'yyyy-MM-dd');
 const parseDate = (v) => { if (!v) return null; const [y, m, d] = String(v).slice(0, 10).split('-').map(Number); return new Date(y, m - 1, d); };
@@ -368,7 +368,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
 
     <div className="px-4 py-3 flex items-center gap-3 text-xs font-black border-t-2 print-hidden" style={{background:'var(--surface)',borderColor:'var(--text)'}}>
       <span className="flex items-center gap-1.5"><i className="w-4 h-4 rounded" style={{background:'var(--pay-none)'}}/> Not Paid</span>
-      <span className="flex items-center gap-1.5"><i className="w-4 h-4 rounded" style={{background:'var(--pay-partial)'}}/> Partially Paid</span>
+      <span className="flex items-center gap-1.5"><i className="w-4 h-4 rounded" style={{background:'var(--pay-partial)'}}/> Deposit / Partially Paid</span>
       <span className="flex items-center gap-1.5"><i className="w-4 h-4 rounded" style={{background:'var(--pay-total)'}}/> Fully Paid</span>
       <span className="ml-auto text-[11px] font-bold" style={{color:MUTED}}>{plannerRooms.length} plannerRooms · {normalizedReservations.length} plannerReservations</span>
     </div>
