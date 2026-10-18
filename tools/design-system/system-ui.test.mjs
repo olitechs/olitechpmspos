@@ -48,15 +48,7 @@ test('sidebar has accessible mobile open/close controls and a scrollable navigat
   assert.match(sidebar, /aria-label="Search navigation"/, 'navigation search should be labelled for assistive technology');
 });
 
-test('theme foundation includes light/dark semantic tokens and reduced-motion handling', () => {
-  assert.match(theme, /:root\s*\{[\s\S]*?--bg:/);
-  assert.match(theme, /\[data-theme="dark"\]/);
-  assert.match(theme, /\.dark\s*\{/);
-  assert.match(theme, /prefers-reduced-motion:\s*reduce/);
-  for (const token of ['--surface', '--surface-2', '--border', '--text', '--muted', '--focus']) {
-    assert.match(theme, new RegExp(token + ':'));
-  }
-});
+test('theme foundation uses Coastal Linen light tokens and reduced-motion handling', () => {\n  assert.match(theme, /:root\\s*\\{[\\s\\S]*?--canvas: #F6F9F9/);\n  assert.match(theme, /--primary: #0F7C86/);\n  assert.match(theme, /--surface: #FFFFFF/);\n  assert.doesNotMatch(theme, /\\[data-theme=\"dark\"\\]|\\.dark\\s*\\{/);\n  assert.match(theme, /prefers-reduced-motion:\\s*reduce/);\n  for (const token of ['--surface', '--surface-2', '--border', '--text', '--muted', '--focus']) {\n    assert.match(theme, new RegExp(token + ':'));\n  }\n});
 
 test('mobile sidebar exposes expanded state and closes with Escape', () => {
   assert.match(sidebar, /aria-expanded=\{mobileOpen\}/, 'mobile navigation controls should expose expanded state');
