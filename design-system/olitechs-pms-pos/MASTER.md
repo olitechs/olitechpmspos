@@ -1,48 +1,37 @@
-# OliTechs PMS + POS — UI/UX Pro Max Design System
+# OliTechs PMS + POS — Coastal Linen design system
 
 ## Product
-Hotel property management system + point of sale for front office, F&B, housekeeping, inventory, and management teams.
+Hotel property management and point of sale for front office, restaurant, housekeeping, stores and management teams.
 
 ## Design intent
-Professional hospitality operations console: fast to scan, dense without feeling cramped, calm under pressure, and optimized for desktop/tablet workflows.
+Premium, light operational UI: airy spacing, clear context, restrained colour and fast scanning. Preserve operational density where needed without nested cards or heavy dividers.
 
-## Layout
-Use a persistent navigation rail, compact context bar, 12-column content grid, sticky table headers where useful, and progressive disclosure for secondary actions.
+## Canonical tokens
+All canonical colours are defined once in `src/index.css :root`. Tailwind and shadcn values map to those tokens.
 
-## Visual style
-Premium minimalism with restrained hospitality character. Use crisp surfaces, 1px borders, shallow shadows, strong black/charcoal navigation, and yellow for primary actions, selected states, attention, and brand moments.
+- Canvas `#F6F9F9`; surface `#FFFFFF`; sidebar `#EAF3F3`.
+- Primary `#0F7C86`; hover `#0C6870`; soft selection `#DDF0F1`; accent `#E8955A`.
+- Text `#223039`; muted `#6B7C85`; border `#E1EAEC`.
+- Success `#2F9E7A` / `#E3F4EE`; danger `#D9534F` / `#FBE9E8`; warning `#E07A5F` / `#FCEDE8`.
+- Room rack status: clean `#3FA77A`, dirty `#D9826B`, occupied `#4B7BE5`, checkout today `#6C63D9`, out of order `#B8BEC6`.
 
-Avoid glassmorphism, decorative gradients, oversized hero cards, excessive pills, and hover-only critical actions.
+## Theme rules
+Allowed colours are the tokens above and their semantic mappings. Black/near-black application surfaces, yellow/amber outside the Room Planner payment exception, dark mode, saturated warning states, and font weights above 500 are banned. Thermal print/receipt templates remain black on white. Room Planner payment colours are scoped to `.room-planner`: paid `#3FA77A`/white, deposit `#F2C14E`/`#5A4310`, unpaid `#EE8A3C`/white. No payment token outside the planner. Selection and today's column use primary/primary-soft.
 
-## Brand
+## Component rules
+- Cards: white, 1px border, 12px radius, no heavy shadows.
+- Shadows only on floating menus, popovers and dialogs: `0 8px 24px rgba(34,48,57,0.08)`.
+- One filled primary button per screen; other buttons outlined or text-only.
+- Sidebar: pale teal, muted items, selected item primary-soft with primary text/icon.
+- Tables: white rows, canvas header, muted 12–13px headings, subtle row dividers.
+- Inputs: white, border token, visible 2px primary focus ring at 30% opacity.
+- Typography: system UI, 400/500 weights, body 14–16px, headings 18–22px/500 and sentence case.
+- Icons: outline, 18–20px; active primary, otherwise muted.
+- Respect reduced motion; no blur/backdrop-filter or heavy gradients.
+- POS touch targets at least 44px; status always has text or an icon in addition to colour.
 
-Charcoal / near-black #0B0F14 and #1F252D
-Brand Yellow #FFC400 (primary actions use dark text #0B0F14)
-Action Hover #E6B000
-Brand Soft #FFF4C2
-App Background #F6F7F9
-Surface #FFFFFF
-Secondary Surface #F1F3F6
-Border #E2E6EB
-Strong Border #C5CCD5
-Primary Text #0F1720
-Secondary Text #5B6677
-Info / Focus #2563EB
-Success #059669
-Warning #D97706
-Destructive #DC2626
+## Layout and navigation
+Keep operational context visible. Primary navigation categories are Front office, Planner, Folios, Restaurant, Stores and Reports; secondary modules belong under Settings, subject to existing role/module access. Search and create actions should occupy consistent positions. Avoid route/permission changes in visual-only work.
 
-This approved palette supersedes the previous blue/slate palette proposal. CSS variables in `src/index.css` are the single source of truth; do not introduce duplicate hard-coded palette systems. Use dark text on yellow actions, never white. Status must include a label and/or icon as well as color.
-
-## Typography
-System sans for UI. Page titles 20–24px. Section titles 13–15px. Body 14–15px. Operational labels 11–12px. Metrics 20–28px with tabular/monospace numerals.
-
-## Accessibility
-Status must never rely on color alone. Maintain visible focus states, keyboard access, readable contrast, and reduced-motion support.
-
-## Hospitality hierarchy
-1. Operational status
-2. Arrivals, departures, in-house guests and room status
-3. Revenue, cashier and folio exceptions
-4. Department queues
-5. Detailed records and configuration
+## Accessibility and performance
+Meet WCAG AA for text and controls, preserve keyboard access, and check contrast of muted text on canvas/surface and white on primary. Measure build output before/after; lazy-load heavy routes and charts only when safe and verified.

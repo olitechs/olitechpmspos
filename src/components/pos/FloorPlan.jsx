@@ -67,9 +67,9 @@ function Tile({ table, session, shape, designMode, onSelect, onMove }) {
     <div className="font-bold text-[10px] leading-tight mt-1">{statusMeta.label}</div>
     <div className="font-bold text-[10px] leading-tight mt-1">{table.seats} seats</div>
     {status==='occupied'&&<div className="font-black text-[10px] leading-tight mt-1 truncate max-w-full">{guests}p • {elapsedLabel(session.openedAt)}</div>}
-    {status==='bill'&&<span className="mt-1 max-w-full truncate rounded px-1.5 py-0.5 text-[8px] font-black uppercase leading-tight" style={{background:'var(--table-bill)',color:'var(--action-text)'}}>BILL PRINTED</span>}
+    {status==='bill'&&<span className="mt-1 max-w-full truncate rounded px-1.5 py-0.5 text-[8px] font-black uppercase leading-tight" style={{background:'var(--warning-soft)',color:'var(--warning-text)'}}>BILL PRINTED</span>}
     {designMode&&<Move size={11} className="absolute bottom-1 opacity-60"/>}
-    {status==='occupied'&&orderCount>0&&<span className="absolute top-1 right-1 min-w-5 h-5 px-1 rounded-full text-[8px] font-black flex items-center justify-center" style={{background:'var(--text)',color:'var(--surface)'}}>{orderCount}</span>}
+    {status==='occupied'&&orderCount>0&&<span className="absolute top-1 right-1 min-w-5 h-5 px-1 rounded-full text-[8px] font-black flex items-center justify-center" style={{background:'var(--primary-soft)',color:'var(--primary)'}}>{orderCount}</span>}
   </button>;
 }
 export default function FloorPlan({ onTableSelect }) {
@@ -124,7 +124,7 @@ export default function FloorPlan({ onTableSelect }) {
         <div className="ml-auto flex items-center gap-1 shrink-0 rounded-xl p-1 bg-[var(--surface)] border-2 border-[var(--border)]">
           <button type="button" onClick={() => setShape('square')} className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-black" style={{background:shape==='square'?'var(--action)':'var(--surface)',color:shape==='square'?'var(--action-text)':'var(--text)'}}><Grid2X2 size={14} /> Square</button>
           <button type="button" onClick={() => setShape('circle')} className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-black" style={{background:shape==='circle'?'var(--action)':'var(--surface)',color:shape==='circle'?'var(--action-text)':'var(--text)'}}><Circle size={14} /> Circle</button>
-          <button type="button" onClick={() => setDesignMode((v) => !v)} className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-black border-l-2 border-[var(--border)]" style={{ background:designMode?'var(--text)':'var(--surface)',color:designMode?'var(--action)':'var(--text)' }}><Pencil size={14} /> Design Layout</button>
+          <button type="button" onClick={() => setDesignMode((v) => !v)} className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-black border-l-2 border-[var(--border)]" style={{ background:designMode?'var(--primary-soft)':'var(--surface)',color:designMode?'var(--primary)':'var(--text)' }}><Pencil size={14} /> Design Layout</button>
           {designMode && <button type="button" onClick={saveLayout} className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-black" style={{ background:'var(--action)',color:'var(--action-text)' }}><Save size={14} /> Save</button>}
           {designMode && <button type="button" onClick={() => setDesignMode(false)} className="p-2 rounded-lg text-[var(--text)]" title="Close design mode"><X size={14} /></button>}
         </div>

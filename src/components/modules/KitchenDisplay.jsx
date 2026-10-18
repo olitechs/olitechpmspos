@@ -7,13 +7,13 @@ import { printOrderByCategory } from '@/services/printService';
 import { printOrder as printRoutedOrder, isPrinterGroupRoutingEnabled } from '@/services/printRoutingService';
 import { toast } from 'sonner';
 import { getPrinters, getAssignments, printVoidTicket } from '@/services/printService';
-import { NAVY, NAVY2, BORDER_DARK, SAND, MUTED_DARK } from '@/data/themePalette';
+import { NAVY, NAVY2, BORDER_DARK, SAND } from '@/data/themePalette';
 
 const STATUS_CONFIG = {
-  new: { color: '#FFD100', bg: 'rgba(255,209,0,0.15)', label: 'NEW' },
-  preparing: { color: '#8FA0AD', bg: 'rgba(143,160,173,0.15)', label: 'PREPARING' },
-  ready: { color: '#D4A93A', bg: 'rgba(212,169,58,0.15)', label: 'READY' },
-  served: { color: MUTED_DARK, bg: 'rgba(110,138,134,0.12)', label: 'SERVED' },
+  new: { color: 'var(--primary)', bg: 'var(--primary-soft)', label: 'New' },
+  preparing: { color: 'var(--text-muted)', bg: 'var(--sidebar)', label: 'Preparing' },
+  ready: { color: 'var(--warning-text)', bg: 'var(--warning-soft)', label: 'Ready' },
+  served: { color: 'var(--success-text)', bg: 'var(--success-soft)', label: 'Served' },
 };
 const NEXT_STATUS = { new: 'preparing', preparing: 'ready', ready: 'served' };
 

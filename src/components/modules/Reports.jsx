@@ -10,20 +10,20 @@ const todayKenya = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Na
 
 function startOfMonth(date) { return `${date.slice(0, 8)}01`; }
 function Stat({ label, value, sub, icon: Icon }) {
-  return <div className="rounded-2xl p-4" style={{ background: SURFACE, border: `1px solid ${BORDER}` }}>
-    <div className="mb-1 flex items-center justify-between gap-2"><div className="text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: MUTED }}>{label}</div>{Icon && <Icon size={15} style={{ color: TEAL_DARK }} />}</div>
-    <div className="font-mono text-xl font-bold" style={{ color: NAVY }}>{value}</div>
+  return <div className="rounded-xl p-4" style={{ background: SURFACE, border: `1px solid ${BORDER}` }}>
+    <div className="mb-1 flex items-center justify-between gap-2"><div className="text-[11px] font-medium " style={{ color: MUTED }}>{label}</div>{Icon && <Icon size={15} style={{ color: TEAL_DARK }} />}</div>
+    <div className="font-mono text-xl font-medium" style={{ color: NAVY }}>{value}</div>
     {sub && <div className="mt-1 text-xs" style={{ color: MUTED }}>{sub}</div>}
   </div>;
 }
 function Section({ title, children }) {
-  return <section className="rounded-2xl overflow-hidden" style={{ background: SURFACE, border: `1px solid ${BORDER}` }}>
-    <div className="border-b px-4 py-3" style={{ borderColor: BORDER }}><h2 className="text-xs font-bold uppercase tracking-[0.14em]" style={{ color: NAVY }}>{title}</h2></div>
+  return <section className="rounded-xl overflow-hidden" style={{ background: SURFACE, border: `1px solid ${BORDER}` }}>
+    <div className="border-b px-4 py-3" style={{ borderColor: BORDER }}><h2 className="text-xs font-medium " style={{ color: NAVY }}>{title}</h2></div>
     <div className="p-4">{children}</div>
   </section>;
 }
 function Table({ columns, rows, empty = 'No transactional data for this period.' }) {
-  return <div className="overflow-x-auto"><table className="w-full min-w-[520px] text-sm"><thead><tr style={{ borderBottom: `1px solid ${BORDER}` }}>{columns.map(c => <th key={c.key} className="px-3 py-2 text-left text-[11px] font-bold uppercase tracking-wide" style={{ color: MUTED }}>{c.label}</th>)}</tr></thead><tbody>{rows.length ? rows.map((row, i) => <tr key={row.id || row.key || i} style={{ borderBottom: `1px solid ${BORDER}` }}>{columns.map(c => <td key={c.key} className="px-3 py-2" style={{ color: NAVY }}>{c.render ? c.render(row) : row[c.key]}</td>)}</tr>) : <tr><td colSpan={columns.length} className="px-3 py-8 text-center text-sm" style={{ color: MUTED }}>{empty}</td></tr>}</tbody></table></div>;
+  return <div className="overflow-x-auto"><table className="w-full min-w-[520px] text-sm"><thead><tr style={{ borderBottom: `1px solid ${BORDER}` }}>{columns.map(c => <th key={c.key} className="px-3 py-2 text-left text-[11px] font-medium " style={{ color: MUTED }}>{c.label}</th>)}</tr></thead><tbody>{rows.length ? rows.map((row, i) => <tr key={row.id || row.key || i} style={{ borderBottom: `1px solid ${BORDER}` }}>{columns.map(c => <td key={c.key} className="px-3 py-2" style={{ color: NAVY }}>{c.render ? c.render(row) : row[c.key]}</td>)}</tr>) : <tr><td colSpan={columns.length} className="px-3 py-8 text-center text-sm" style={{ color: MUTED }}>{empty}</td></tr>}</tbody></table></div>;
 }
 function downloadCsv(filename, rows) {
   const csv = rows.map(row => row.map(value => `"${String(value ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
@@ -116,21 +116,21 @@ export default function Reports() {
   return <div className="flex-1 overflow-y-auto p-4 sm:p-5 lg:p-6" style={{ background: SAND }}>
     <div className="mx-auto w-full max-w-[1600px]">
       <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div><div className="mb-1 text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: MUTED }}>Management reporting</div><h1 className="text-xl font-extrabold tracking-tight sm:text-2xl" style={{ color: NAVY }}>Transactional reports</h1><p className="mt-1 text-sm" style={{ color: MUTED }}>All KPIs are calculated from PMS, POS, cashier and inventory transactions for the selected Kenya business-date range.</p></div>
+        <div><div className="mb-1 text-[11px] font-medium " style={{ color: MUTED }}>Management reporting</div><h1 className="text-xl font-extrabold tracking-tight sm:text-2xl" style={{ color: NAVY }}>Transactional reports</h1><p className="mt-1 text-sm" style={{ color: MUTED }}>All KPIs are calculated from PMS, POS, cashier and inventory transactions for the selected Kenya business-date range.</p></div>
         <div className="flex flex-wrap gap-2">
-          <label className="flex min-h-11 items-center gap-2 rounded-xl border bg-white px-3" style={{ borderColor: BORDER }}><CalendarDays size={15} style={{ color: TEAL_DARK }} /><input aria-label="From date" type="date" value={from} onChange={e=>setFrom(e.target.value)} className="bg-transparent text-sm font-semibold outline-none" /></label>
-          <label className="flex min-h-11 items-center gap-2 rounded-xl border bg-white px-3" style={{ borderColor: BORDER }}><span className="text-xs font-bold" style={{ color: MUTED }}>TO</span><input aria-label="To date" type="date" value={to} onChange={e=>setTo(e.target.value)} className="bg-transparent text-sm font-semibold outline-none" /></label>
-          <button type="button" onClick={load} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-bold disabled:opacity-50" style={{ background: NAVY, color: '#fff' }}><RefreshCw size={15} className={loading?'animate-spin':''}/>Refresh</button>
-          <button type="button" onClick={exportCsv} disabled={!report || loading} className="inline-flex min-h-11 items-center gap-2 rounded-xl border bg-white px-3 text-sm font-bold disabled:opacity-50" style={{ borderColor: BORDER, color: NAVY }}><Download size={15}/>CSV</button>
-          <button type="button" onClick={printReport} className="inline-flex min-h-11 items-center gap-2 rounded-xl border bg-white px-3 text-sm font-bold" style={{ borderColor: BORDER, color: NAVY }}><Printer size={15}/>Print</button>
+          <label className="flex min-h-11 items-center gap-2 rounded-xl border bg-white px-3" style={{ borderColor: BORDER }}><CalendarDays size={15} style={{ color: TEAL_DARK }} /><input aria-label="From date" type="date" value={from} onChange={e=>setFrom(e.target.value)} className="bg-transparent text-sm font-medium outline-none" /></label>
+          <label className="flex min-h-11 items-center gap-2 rounded-xl border bg-white px-3" style={{ borderColor: BORDER }}><span className="text-xs font-medium" style={{ color: MUTED }}>TO</span><input aria-label="To date" type="date" value={to} onChange={e=>setTo(e.target.value)} className="bg-transparent text-sm font-medium outline-none" /></label>
+          <button type="button" onClick={load} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium disabled:opacity-50" style={{ background: NAVY, color: '#fff' }}><RefreshCw size={15} className={loading?'animate-spin':''}/>Refresh</button>
+          <button type="button" onClick={exportCsv} disabled={!report || loading} className="inline-flex min-h-11 items-center gap-2 rounded-xl border bg-white px-3 text-sm font-medium disabled:opacity-50" style={{ borderColor: BORDER, color: NAVY }}><Download size={15}/>CSV</button>
+          <button type="button" onClick={printReport} className="inline-flex min-h-11 items-center gap-2 rounded-xl border bg-white px-3 text-sm font-medium" style={{ borderColor: BORDER, color: NAVY }}><Printer size={15}/>Print</button>
         </div>
       </div>
 
       {error && <div role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
-      <div className="mb-4 flex flex-wrap gap-2">{tabs.map(([key,label,Icon])=><button key={key} type="button" onClick={()=>setTab(key)} className="inline-flex min-h-10 items-center gap-2 rounded-xl px-3 text-xs font-bold" style={{ background: tab===key ? NAVY : SURFACE, color: tab===key ? '#fff' : NAVY, border: `1px solid ${tab===key ? NAVY : BORDER}` }}><Icon size={14}/>{label}</button>)}</div>
+      <div className="mb-4 flex flex-wrap gap-2">{tabs.map(([key,label,Icon])=><button key={key} type="button" onClick={()=>setTab(key)} className="inline-flex min-h-10 items-center gap-2 rounded-xl px-3 text-xs font-medium" style={{ background: tab===key ? NAVY : SURFACE, color: tab===key ? '#fff' : NAVY, border: `1px solid ${tab===key ? NAVY : BORDER}` }}><Icon size={14}/>{label}</button>)}</div>
 
-      {loading && !report ? <div className="rounded-2xl p-10 text-center text-sm" style={{ background:SURFACE,color:MUTED,border:`1px solid ${BORDER}` }}>Loading live transactional data…</div> : report && <>
+      {loading && !report ? <div className="rounded-xl p-10 text-center text-sm" style={{ background:SURFACE,color:MUTED,border:`1px solid ${BORDER}` }}>Loading live transactional data…</div> : report && <>
         {tab==='overview' && <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
             <Stat label="Occupancy" value={`${report.hotel?.occupancy_percent || 0}%`} sub={`${report.hotel?.occupied_room_nights || 0} / ${report.hotel?.available_room_nights || 0} room nights`} icon={Hotel}/>
@@ -144,7 +144,7 @@ export default function Reports() {
           </div>
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.35fr_1fr]">
             <Section title="Daily POS sales"><ResponsiveContainer width="100%" height={260}><LineChart data={daily}><XAxis dataKey="business_date" tick={{fontSize:10,fill:MUTED}}/><YAxis hide/><Tooltip formatter={(v)=>[money(v),'Revenue']}/><Line type="monotone" dataKey="revenue" stroke={TEAL_DARK} strokeWidth={3} dot={false}/></LineChart></ResponsiveContainer></Section>
-            <Section title="Management controls"><div className="grid grid-cols-2 gap-3">{[['Open shifts',report.cashier?.open_shifts],['Closed shifts',report.cashier?.closed_shifts],['Stock movements',report.inventory?.stock_movements],['Transfers',report.inventory?.transfer_orders],['Arrivals',report.hotel?.arrivals],['Departures',report.hotel?.departures]].map(([k,v])=><div key={k} className="rounded-xl p-3" style={{background:SAND}}><div className="text-[11px] uppercase tracking-wide" style={{color:MUTED}}>{k}</div><div className="mt-1 font-mono text-lg font-bold" style={{color:NAVY}}>{Number(v||0).toLocaleString()}</div></div>)}</div></Section>
+            <Section title="Management controls"><div className="grid grid-cols-2 gap-3">{[['Open shifts',report.cashier?.open_shifts],['Closed shifts',report.cashier?.closed_shifts],['Stock movements',report.inventory?.stock_movements],['Transfers',report.inventory?.transfer_orders],['Arrivals',report.hotel?.arrivals],['Departures',report.hotel?.departures]].map(([k,v])=><div key={k} className="rounded-xl p-3" style={{background:SAND}}><div className="text-[11px] " style={{color:MUTED}}>{k}</div><div className="mt-1 font-mono text-lg font-medium" style={{color:NAVY}}>{Number(v||0).toLocaleString()}</div></div>)}</div></Section>
           </div>
         </div>}
 

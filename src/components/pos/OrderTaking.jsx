@@ -234,7 +234,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
         {menuCategories.map((cat) => (
           <button
             key={cat} onClick={() => setActiveCategory(cat)}
-            className="w-full py-3 px-2 rounded-lg text-sm font-semibold text-center"
+            className="w-full py-3 px-2 rounded-lg text-sm font-medium text-center"
             style={{
               background: activeCategory === cat ? TEAL : 'transparent',
               color: activeCategory === cat ? '#fff' : MUTED_DARK,
@@ -247,7 +247,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
 
       {/* Menu grid */}
       <div className="flex-1 overflow-y-auto p-3">
-        <div className="text-xs font-bold uppercase tracking-widest mb-3 px-1" style={{ color: MUTED }}>{activeCategory}</div>
+        <div className="text-xs font-medium uppercase tracking-widest mb-3 px-1" style={{ color: MUTED }}>{activeCategory}</div>
         {missingCenters.length > 0 && (
           <div className="mb-3">
             <PrintWarn message={`No order printer set for ${missingCenters.join(', ')} — configure in Settings`} />
@@ -268,12 +268,12 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
                 }}
               >
                 {inOrder && (
-                  <span className="absolute top-2 right-2 w-5 h-5 rounded-full text-xs font-bold font-mono flex items-center justify-center" style={{ background: TEAL_LIGHT, color: NAVY }}>
+                  <span className="absolute top-2 right-2 w-5 h-5 rounded-full text-xs font-medium font-mono flex items-center justify-center" style={{ background: TEAL_LIGHT, color: NAVY }}>
                     {inOrder.qty}
                   </span>
                 )}
-                <div className="text-sm font-semibold leading-tight" style={{ color: inOrder ? MUTED_DARK : NAVY }}>{item.name}</div>
-                <div className="mt-1 text-sm font-mono font-bold" style={{ color: inOrder ? TEAL_LIGHT : MUTED }}>{fmt(item.price)}</div>{menuItems.length > 0 && <div className="mt-1 text-[10px] font-bold" style={{ color: Number(item.stock) <= 0 ? '#EF4444' : MUTED }}>{Number(item.stock) <= 0 ? 'OUT OF STOCK' : `Stock ${item.stock} ${item.unit}`}</div>}
+                <div className="text-sm font-medium leading-tight" style={{ color: inOrder ? MUTED_DARK : NAVY }}>{item.name}</div>
+                <div className="mt-1 text-sm font-mono font-medium" style={{ color: inOrder ? TEAL_LIGHT : MUTED }}>{fmt(item.price)}</div>{menuItems.length > 0 && <div className="mt-1 text-[10px] font-medium" style={{ color: Number(item.stock) <= 0 ? '#EF4444' : MUTED }}>{Number(item.stock) <= 0 ? 'OUT OF STOCK' : `Stock ${item.stock} ${item.unit}`}</div>}
               </button>
             );
           })}
@@ -298,9 +298,9 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
             orderLines.map((line) => (
               <div key={line.id} className="flex items-center gap-1 py-1.5" style={{ borderBottom: `1px solid ${BORDER_DARK}` }}>
                 <div className="flex items-center gap-0.5">
-                  <button onClick={() => changeQty(line.id, -1)} className="w-6 h-6 rounded text-xs font-bold flex items-center justify-center" style={{ background: NAVY2, color: MUTED_DARK }}>−</button>
-                  <span className="w-5 text-center text-xs font-bold font-mono text-white">{line.qty}</span>
-                  <button onClick={() => changeQty(line.id, 1)} className="w-6 h-6 rounded text-xs font-bold flex items-center justify-center" style={{ background: NAVY2, color: TEAL_LIGHT }}>+</button>
+                  <button onClick={() => changeQty(line.id, -1)} className="w-6 h-6 rounded text-xs font-medium flex items-center justify-center" style={{ background: NAVY2, color: MUTED_DARK }}>−</button>
+                  <span className="w-5 text-center text-xs font-medium font-mono text-white">{line.qty}</span>
+                  <button onClick={() => changeQty(line.id, 1)} className="w-6 h-6 rounded text-xs font-medium flex items-center justify-center" style={{ background: NAVY2, color: TEAL_LIGHT }}>+</button>
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-xs leading-tight truncate" style={{ color: '#D8E2EC' }}>{line.name}</div>
@@ -321,7 +321,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
             <div className="flex justify-between text-xs mb-2" style={{ color: MUTED_DARK }}>
               <span>VAT 16%</span><span className="font-mono">{vat.toLocaleString()}</span>
             </div>
-            <div className="flex justify-between text-sm font-bold mb-3 text-white">
+            <div className="flex justify-between text-sm font-medium mb-3 text-white">
               <span>TOTAL KES</span><span className="font-mono">{total.toLocaleString()}</span>
             </div>
           </div>
@@ -330,14 +330,14 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
         <div className="px-3 pb-3 flex flex-col gap-2">
           <button
             onClick={onSendToKitchen} disabled={orderLines.length === 0}
-            className="w-full py-3 rounded-xl text-sm font-bold transition-all active:scale-95"
+            className="w-full py-3 rounded-xl text-sm font-medium transition-all active:scale-95"
             style={{ background: orderLines.length > 0 ? TEAL : NAVY2, color: orderLines.length > 0 ? '#fff' : MUTED_DARK, cursor: orderLines.length > 0 ? 'pointer' : 'not-allowed' }}
           >
             Send & Print Ticket
           </button>
           <button
             onClick={onBill} disabled={orderLines.length === 0}
-            className="w-full py-2.5 rounded-xl text-xs font-semibold transition-all"
+            className="w-full py-2.5 rounded-xl text-xs font-medium transition-all"
             style={{ background: 'transparent', color: orderLines.length > 0 ? TEAL_LIGHT : MUTED_DARK, border: `1.5px solid ${orderLines.length > 0 ? TEAL_DARK : BORDER_DARK}`, cursor: orderLines.length > 0 ? 'pointer' : 'not-allowed' }}
           >
             Request Bill →
@@ -345,7 +345,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
           <button
             onClick={onMoveTable}
             disabled={!onMoveTable || orderLines.length === 0}
-            className="w-full py-2.5 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-2"
+            className="w-full py-2.5 rounded-xl text-xs font-medium transition-all flex items-center justify-center gap-2"
             style={{ background: 'transparent', color: orderLines.length > 0 ? TEAL_LIGHT : MUTED_DARK, border: `1.5px solid ${orderLines.length > 0 ? TEAL_DARK : BORDER_DARK}`, cursor: orderLines.length > 0 ? 'pointer' : 'not-allowed' }}
           >
             Move / Join Table
@@ -353,42 +353,42 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
         </div>
       </div>
       {modifierTarget && (
-        <div className="fixed inset-0 z-[240] flex items-center justify-center bg-black/60 p-4">
+        <div className="fixed inset-0 z-[240] flex items-center justify-center bg-[rgba(34,48,57,0.25)] p-4">
           <div className="w-full max-w-lg rounded-3xl bg-white p-5 shadow-2xl">
             <div className="flex items-start justify-between gap-3">
-              <div><div className="text-lg font-black text-slate-950">Customize {modifierTarget.name}</div><p className="mt-1 text-xs text-slate-500">Choose the available options before adding it to the order.</p></div>
-              <button onClick={() => setModifierTarget(null)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"><X size={18}/></button>
+              <div><div className="text-lg font-medium text-[var(--text)]">Customize {modifierTarget.name}</div><p className="mt-1 text-xs text-[var(--text-muted)]">Choose the available options before adding it to the order.</p></div>
+              <button onClick={() => setModifierTarget(null)} className="rounded-lg p-2 text-[var(--text-muted)] hover:bg-slate-100"><X size={18}/></button>
             </div>
             <div className="mt-4 space-y-4">
               {modifierGroups.map((group) => {
                 const selected = modifierSelections[group.id] || [];
-                return <div key={group.id} className="rounded-2xl border border-slate-200 p-4">
-                  <div className="mb-3 flex items-center justify-between"><div><div className="font-black text-slate-900">{group.name}</div><div className="text-[11px] text-slate-500">{group.selection_type === 'multiple' ? 'Choose up to ' + group.max_selections : 'Choose one'}{group.required ? ' · Required' : ' · Optional'}</div></div><span className="text-xs font-bold text-slate-400">{selected.length} selected</span></div>
-                  <div className="grid gap-2 sm:grid-cols-2">{group.options.map((option) => <button key={option.id} onClick={() => toggleModifier(group, option)} className="flex items-center justify-between rounded-xl border-2 p-3 text-left" style={{borderColor:selected.includes(option.id)?TEAL:'#E2E8F0',background:selected.includes(option.id)?'#F0FDFA':'#fff'}}><span className="text-sm font-bold text-slate-800">{option.name}</span><span className="text-xs font-black">{Number(option.price_delta_minor||0)>0?'+KES '+Number(Number(option.price_delta_minor)/100).toLocaleString('en-KE',{minimumFractionDigits:2}):'Included'}</span></button>)}</div>
+                return <div key={group.id} className="rounded-2xl border border-[var(--border)] p-4">
+                  <div className="mb-3 flex items-center justify-between"><div><div className="font-medium text-[var(--text)]">{group.name}</div><div className="text-[11px] text-[var(--text-muted)]">{group.selection_type === 'multiple' ? 'Choose up to ' + group.max_selections : 'Choose one'}{group.required ? ' · Required' : ' · Optional'}</div></div><span className="text-xs font-medium text-[var(--text-muted)]">{selected.length} selected</span></div>
+                  <div className="grid gap-2 sm:grid-cols-2">{group.options.map((option) => <button key={option.id} onClick={() => toggleModifier(group, option)} className="flex items-center justify-between rounded-xl border-2 p-3 text-left" style={{borderColor:selected.includes(option.id)?TEAL:'var(--border)',background:selected.includes(option.id)?'var(--primary-soft)':'var(--surface)'}}><span className="text-sm font-medium text-[var(--text)]">{option.name}</span><span className="text-xs font-medium">{Number(option.price_delta_minor||0)>0?'+KES '+Number(Number(option.price_delta_minor)/100).toLocaleString('en-KE',{minimumFractionDigits:2}):'Included'}</span></button>)}</div>
                 </div>
               })}
             </div>
-            <div className="mt-5 flex justify-end gap-2"><button onClick={() => setModifierTarget(null)} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold">Cancel</button><button disabled={modifierLoading} onClick={confirmModifiers} className="rounded-xl px-5 py-2.5 text-sm font-black text-white" style={{background:TEAL}}>Add to Order</button></div>
+            <div className="mt-5 flex justify-end gap-2"><button onClick={() => setModifierTarget(null)} className="rounded-xl border border-[var(--border)] px-4 py-2.5 text-sm font-medium">Cancel</button><button disabled={modifierLoading} onClick={confirmModifiers} className="rounded-xl px-5 py-2.5 text-sm font-medium text-white" style={{background:TEAL}}>Add to Order</button></div>
           </div>
         </div>
       )}
       {removeTarget && (
-        <div className="fixed inset-0 z-[250] flex items-center justify-center bg-black/60 p-4">
+        <div className="fixed inset-0 z-[250] flex items-center justify-center bg-[rgba(34,48,57,0.25)] p-4">
           <div className="w-full max-w-md rounded-3xl bg-white p-5 shadow-2xl">
             <div className="flex items-start justify-between gap-3">
-              <div><div className="flex items-center gap-2 text-base font-black text-slate-950"><AlertTriangle size={18} className="text-red-600"/>Cancel sent item</div><p className="mt-1 text-xs text-slate-500">This item was already sent to production or the bill was printed. A control void will be recorded.</p></div>
-              <button onClick={()=>setRemoveTarget(null)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"><X size={18}/></button>
+              <div><div className="flex items-center gap-2 text-base font-medium text-[var(--text)]"><AlertTriangle size={18} className="text-[var(--danger-text)]"/>Cancel sent item</div><p className="mt-1 text-xs text-[var(--text-muted)]">This item was already sent to production or the bill was printed. A control void will be recorded.</p></div>
+              <button onClick={()=>setRemoveTarget(null)} className="rounded-lg p-2 text-[var(--text-muted)] hover:bg-slate-100"><X size={18}/></button>
             </div>
             <div className="mt-4 rounded-2xl border border-red-100 bg-red-50 p-4">
-              <div className="font-black text-slate-950">{removeTarget.line.name}</div>
+              <div className="font-medium text-[var(--text)]">{removeTarget.line.name}</div>
               <div className="mt-1 text-xs text-slate-600">Original quantity: {removeTarget.line.qty} · Removing: {removeTarget.removeQty} · Remaining: {Math.max(0, removeTarget.line.qty-removeTarget.removeQty)}</div>
             </div>
-            <label className="mt-4 block text-xs font-black uppercase tracking-wider text-slate-500">Reason required
-              <textarea value={removeReason} onChange={e=>setRemoveReason(e.target.value)} rows={3} placeholder="Wrong order, guest cancellation, duplicate item…" className="mt-2 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm outline-none focus:border-red-400"/>
+            <label className="mt-4 block text-xs font-medium  text-[var(--text-muted)]">Reason required
+              <textarea value={removeReason} onChange={e=>setRemoveReason(e.target.value)} rows={3} placeholder="Wrong order, guest cancellation, duplicate item…" className="mt-2 w-full resize-none rounded-xl border border-[var(--border)] bg-slate-50 p-3 text-sm outline-none focus:border-red-400"/>
             </label>
-            {removeError && <div className="mt-3 rounded-xl bg-red-50 p-3 text-xs font-bold text-red-700">{removeError}</div>}
-            <div className="mt-4 flex items-center gap-2 text-[11px] font-semibold text-slate-500"><ShieldCheck size={15}/>Kitchen/Bar control slip will be printed when enabled.</div>
-            <div className="mt-4 flex justify-end gap-2"><button onClick={()=>setRemoveTarget(null)} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold">Keep Item</button><button disabled={removeBusy} onClick={requestRemoval} className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-black text-white disabled:opacity-50">{removeBusy?'Removing…':needsManagerPin?'Request Manager PIN':'Confirm Void'}</button></div>
+            {removeError && <div className="mt-3 rounded-xl bg-red-50 p-3 text-xs font-medium text-red-700">{removeError}</div>}
+            <div className="mt-4 flex items-center gap-2 text-[11px] font-medium text-[var(--text-muted)]"><ShieldCheck size={15}/>Kitchen/Bar control slip will be printed when enabled.</div>
+            <div className="mt-4 flex justify-end gap-2"><button onClick={()=>setRemoveTarget(null)} className="rounded-xl border border-[var(--border)] px-4 py-2.5 text-sm font-medium">Keep Item</button><button disabled={removeBusy} onClick={requestRemoval} className="rounded-xl bg-[var(--danger)] px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50">{removeBusy?'Removing…':needsManagerPin?'Request Manager PIN':'Confirm Void'}</button></div>
           </div>
         </div>
       )}
