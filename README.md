@@ -265,6 +265,7 @@ OLITECH_EMAIL=you@example.com OLITECH_PASSWORD=secret node scripts/capture-scree
 - [Inventory event and role/action matrix](docs/PHASE2_INVENTORY_EVENT_AND_ROLE_MATRIX.md) — one posting owner per event and deny-by-default action capabilities.
 - [Current migration provenance reconciliation](docs/PHASE2_MIGRATION_PROVENANCE_RECONCILIATION.md) — 38 live entries; unresolved mappings remain deployment blockers.
 - [Inventory database regression gate](supabase/tests/phase2_inventory_security_regression.sql) — read-only catalog assertions, expected to fail on known pre-fix gaps.
+- [Rollback-only inventory runtime regression](supabase/tests/phase2_inventory_runtime_regression.sql) — requires explicit fixture IDs and must run only on a local/disposable database.
 - [Inventory source-contract tests](tools/inventory/phase2-ledger-contract.test.mjs) — included in `npm run test:architecture`.
 
 ## Contributing
