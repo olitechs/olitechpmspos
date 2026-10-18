@@ -28,6 +28,8 @@ import Laundry from '@/components/modules/Laundry';
 import Transfers from '@/components/modules/Transfers';
 import BookingEngine from '@/components/modules/BookingEngine';
 import ChannelManager from '@/components/modules/ChannelManager';
+import DistributionOps from '@/components/modules/DistributionOps';
+=======
 import Inventory from '@/components/modules/Inventory';
 import Store from '@/pages/Store';
 import POSContainer from '@/components/pos/POSContainer';
@@ -112,6 +114,8 @@ export default function POSApp({ initialModule = 'dashboard', embedded = false, 
 			case 'transfers': content = <Transfers />; break;
 			case 'booking-engine': content = <BookingEngine />; break;
 			case 'channels': content = <ChannelManager />; break;
+			case 'distribution-ops': content = <DistributionOps />; break;
+=======
 			case 'inventory':
 				content = <Inventory />;
 				break;
@@ -142,6 +146,9 @@ export default function POSApp({ initialModule = 'dashboard', embedded = false, 
 						{showTopBar && !embedded && <TopBar moduleLabel={currentModule?.label || ''} />}
 						<div className="min-h-0 flex-1 overflow-y-auto">
 							<ErrorBoundary label={currentModule?.label || 'This section'}>
+								<RouteGuard module={activeModule === 'pos' ? 'pos' : activeModule === 'store' || activeModule === 'inventory' || activeModule === 'purchasing' || activeModule === 'recipes' || activeModule === 'transfers' || activeModule === 'channels' ? 'store' : 'backoffice'}>
+									{content}
+=======
 								<RouteGuard module={workspaceModule || (activeModule === 'pos' || activeModule === 'cashier' ? 'pos' : activeModule === 'store' || activeModule === 'inventory' || activeModule === 'purchasing' || activeModule === 'recipes' || activeModule === 'transfers' || activeModule === 'channels' ? 'store' : activeModule === 'reservations' || activeModule === 'rooms' || activeModule === 'guests' || activeModule === 'folio' || activeModule === 'housekeeping' || activeModule === 'night-audit' ? 'frontoffice' : 'backoffice')}>
 									{activeModule === 'settings' ? content : <PaywallGuard module={getSubscriptionEntitlement(activeModule, workspaceModule)}>{content}</PaywallGuard>}
 								</RouteGuard>
