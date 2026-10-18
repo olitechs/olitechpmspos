@@ -30,7 +30,7 @@ export default function TopAppNav() {
         {workspaces.map((a) => {
           const I = a.icon;
           return (
-            <NavLink key={a.id} to={a.path} end={a.id === 'pos'}
+            <NavLink key={a.id} to={a.path} end={a.id==='pos'}
               className={({ isActive }) => [
                 'flex min-w-[142px] shrink-0 items-center justify-center gap-2 rounded-md px-5 text-[13px] font-semibold transition-colors',
                 isActive ? 'bg-[var(--bg)] text-[var(--text)] shadow-[inset_0_-3px_0_var(--brand-primary)]' : 'text-[var(--muted)] hover:bg-[var(--bg)] hover:text-[var(--text)]',
