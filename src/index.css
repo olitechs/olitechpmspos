@@ -6,21 +6,23 @@
   :root {
     color-scheme: light;
     /* Coastal Linen: canonical colour tokens. Define colours here only. */
-    --canvas: #F6F9F9;
+    --canvas: #F4F7F8;
     --surface: #FFFFFF;
-    --sidebar: #EAF3F3;
+    --sidebar: #E6EFF0;
     --primary: #0F7C86;
-    --primary-hover: #0C6870;
+    --primary-foreground: #FFFFFF;
+    --primary-hover: #0B6169;
     --primary-soft: #DDF0F1;
-    --accent: #E8955A;
-    --text: #223039;
+    --accent: #C98A52;
+    --text: #14232B;
     /* Darkened slightly to meet WCAG AA on canvas and white surfaces. */
-    --text-muted: #5D7079;
-    --border: #E1EAEC;
+    --text-muted: #566A73;
+    --border: #DCE5E8;
     --success: #2F9E7A;
     --success-text: #236F58;
     --success-soft: #E3F4EE;
     --danger: #D9534F;
+    --danger-foreground: #FFFFFF;
     --danger-text: #B42318;
     --danger-soft: #FBE9E8;
     --warning: #E07A5F;
@@ -33,6 +35,13 @@
     --room-occupied: #4B7BE5;
     --room-checkout: #6C63D9;
     --room-out-of-order: #B8BEC6;
+    --floor-bg: #D7D7D7;
+    --table-free-bg: #74C365; --table-free-fg: #10260A; --table-free-border: #5CA84E;
+    --table-occupied-bg: #FA003F; --table-occupied-fg: #FFFFFF; --table-occupied-border: #C70032;
+    --table-bill-bg: #FAFAFA; --table-bill-fg: #14232B; --table-bill-border: #9AA3A8;
+    --payment-deposit-foreground: #5A4310;
+    --payment-status-foreground: #14232B;
+    --stay-optioned-foreground: #FFFFFF;
 
 
     --planner-ice: var(--primary-soft);
@@ -42,7 +51,8 @@
     --grid-weekend: var(--canvas);
     --grid-today: var(--primary-soft);
     --shadow: none;
-    --shadow-overlay: 0 8px 24px rgba(34, 48, 57, 0.08);
+    --shadow-overlay: 0 8px 24px rgba(20,35,43,.08);
+    --overlay-scrim: rgba(20,35,43,.65);
 
     /* shadcn semantic mappings */
     --background: var(--canvas);
@@ -51,14 +61,13 @@
     --card-foreground: var(--text);
     --popover: var(--surface);
     --popover-foreground: var(--text);
-    --primary-foreground: #FFFFFF;
     --secondary: var(--sidebar);
     --secondary-foreground: var(--text);
     --muted: var(--text-muted);
     --muted-foreground: var(--text-muted);
     --accent-foreground: var(--text);
     --destructive: var(--danger);
-    --destructive-foreground: #FFFFFF;
+    --destructive-foreground: var(--danger-foreground);
     --input: var(--border);
     --ring: var(--primary);
     --radius: 12px;
@@ -73,7 +82,7 @@
     --brand-charcoal: var(--sidebar);
     --action: var(--primary);
     --action-hover: var(--primary-hover);
-    --action-text: #FFFFFF;
+    --action-text: var(--primary-foreground);
     --brand-primary: var(--primary);
     --brand-surface: var(--surface);
     --on-dark: var(--text);
@@ -83,9 +92,9 @@
     --warning-text-legacy: var(--warning-text);
     --room-charge: var(--primary);
     --focus: var(--primary);
-    --table-free: var(--text-muted);
-    --table-occupied: var(--room-occupied);
-    --table-bill: var(--warning);
+    --table-free: var(--table-free-bg);
+    --table-occupied: var(--table-occupied-bg);
+    --table-bill: var(--table-bill-bg);
     --table-reserved: var(--room-checkout);
     --table-paid: var(--success);
     --stay-occupied: var(--room-occupied);
@@ -96,6 +105,26 @@
     --font-heading: var(--font-body);
     --font-display: var(--font-body);
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --canvas:#0E1417; --surface:#151D21; --sidebar:#11191C;
+    --primary:#2BB3BF; --primary-hover:#4CC7D1; --primary-soft:#12343A;
+    --primary-foreground:#062226;
+    --accent:#D9A06B;
+    --text:#E6EEF0; --text-muted:#93A5AD; --border:#26343A;
+    --success:#3DBE95; --success-text:#7BDDBC; --success-soft:#12302A;
+    --danger:#F0645F; --danger-foreground:#0E1417; --danger-text:#FF9A96; --danger-soft:#3A1B1B;
+    --warning:#F0906F; --warning-text:#FFB59B; --warning-soft:#38231B;
+    --room-clean:#4FBF8E; --room-dirty:#E39580; --room-occupied:#6B96F0;
+    --room-checkout:#8B84E8; --room-out-of-order:#5A6670;
+    --shadow-overlay:0 8px 24px rgba(0,0,0,.45);
+    --overlay-scrim: rgba(0,0,0,.65);
+    --floor-bg:#1B2327;
+    --payment-deposit-foreground: #5A4310;
+    --payment-status-foreground: #0E1417;
+    --stay-optioned-foreground: #0E1417;
   }
 
   * { box-sizing: border-box; }
@@ -118,7 +147,7 @@
 @layer components {
   .app-shell { background: var(--canvas); color: var(--text); }
   .global-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: none; }
-  .global-primary-button { background: var(--primary); color: #FFFFFF; min-height: 40px; border: 1px solid var(--primary); border-radius: var(--radius-control); font-weight: 500; }
+  .global-primary-button { background: var(--primary); color: var(--primary-foreground); min-height: 40px; border: 1px solid var(--primary); border-radius: var(--radius-control); font-weight: 500; }
   .global-primary-button:hover { background: var(--primary-hover); }
   .global-secondary-button { background: var(--surface); border: 1px solid var(--border); color: var(--primary); min-height: 40px; border-radius: var(--radius-control); font-weight: 500; }
   .global-secondary-button:hover { background: var(--primary-soft); }
@@ -133,11 +162,11 @@
   .legend-checked_out { color: var(--room-occupied); opacity: .5; }
   .legend-closed { color: var(--room-out-of-order); background: repeating-linear-gradient(45deg, var(--room-out-of-order) 0 6px, var(--border) 6px 12px); }
   .payment-chip { width: 18px; height: 5px; border-radius: 999px; display: inline-block; }
-  .room-planner { --pay-paid: #3FA77A; --pay-deposit: #F2C14E; --pay-unpaid: #EE8A3C; --payment-text: #223039; --payment-deposit-text: #5A4310; }
+  .room-planner { --pay-paid: #3FA77A; --pay-deposit: #F2C14E; --pay-unpaid: #EE8A3C; --payment-text: var(--payment-status-foreground); --payment-deposit-text: var(--payment-deposit-foreground); }
   .room-planner .payment-none { background: var(--pay-unpaid); color: var(--payment-text); }
   .room-planner .payment-partial { background: var(--pay-deposit); color: var(--payment-deposit-text); }
   .room-planner .payment-total { background: var(--pay-paid); color: var(--payment-text); }
-  .room-planner .stay { background: var(--stay-color); color: var(--stay-text, #FFFFFF); border-radius: 4px; padding: 2px 8px; border-left: 4px solid var(--pay-color, transparent); transition: opacity 150ms ease; }
+  .room-planner .stay { background: var(--stay-color); color: var(--stay-text, var(--primary-foreground)); border-radius: 4px; padding: 2px 8px; border-left: 4px solid var(--pay-color, transparent); transition: opacity 150ms ease; }
   .room-planner .stay[data-status="occupied"] { --stay-color: var(--room-occupied); }
   .room-planner .stay[data-status="checkout"] { --stay-color: var(--room-checkout); }
   .room-planner .stay[data-status="optioned"] { --stay-color: var(--primary); border-style: dashed; }
@@ -190,6 +219,9 @@
 @media print {
   .app-shell { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* Keep floor status labels bold enough for the fixed occupied-state colour contrast. */
+.floor-table-tile .font-bold, .floor-table-tile .font-black { font-weight: 700 !important; }
 
 /* Enforce the light-theme typography contract across legacy utility classes. */
 .font-semibold, .font-bold, .font-extrabold, .font-black, strong, b { font-weight: 500 !important; }

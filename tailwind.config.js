@@ -1,6 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  darkMode: false,
+  darkMode: ['class'],
   content: ['./index.html', './src/**/*.{ts,tsx,js,jsx}'],
   theme: {
     extend: {
@@ -9,7 +9,8 @@ module.exports = {
       boxShadow: { card: 'none', overlay: 'var(--shadow-overlay)' },
       colors: {
         brand: { dark: 'var(--text)', charcoal: 'var(--sidebar)', primary: 'var(--primary)', hover: 'var(--primary-hover)', soft: 'var(--primary-soft)' },
-        action: { DEFAULT: 'var(--primary)', hover: 'var(--primary-hover)', foreground: '#FFFFFF' },
+        action: { DEFAULT: 'var(--primary)', hover: 'var(--primary-hover)', foreground: 'var(--primary-foreground)' },
+        table: { free: 'var(--table-free-bg)', occupied: 'var(--table-occupied-bg)', bill: 'var(--table-bill-bg)' },
         info: 'var(--info)', success: 'var(--success)', warning: 'var(--warning)', danger: 'var(--danger)',
         surface: { DEFAULT: 'var(--surface)', secondary: 'var(--sidebar)' },
         text: { DEFAULT: 'var(--text)', muted: 'var(--text-muted)' },
@@ -26,7 +27,7 @@ module.exports = {
         destructive: { DEFAULT: 'var(--destructive)', foreground: 'var(--destructive-foreground)' },
         border: 'var(--border)', input: 'var(--input)', ring: 'var(--ring)',
         chart: { '1': 'var(--primary)', '2': 'var(--success)', '3': 'var(--accent)', '4': 'var(--danger)', '5': 'var(--primary-soft)' },
-        sidebar: { DEFAULT: 'var(--sidebar)', foreground: 'var(--text)', primary: 'var(--primary)', 'primary-foreground': '#FFFFFF', accent: 'var(--primary-soft)', 'accent-foreground': 'var(--primary)', border: 'var(--border)', ring: 'var(--primary)' },
+        sidebar: { DEFAULT: 'var(--sidebar)', foreground: 'var(--text)', primary: 'var(--primary)', 'primary-foreground': 'var(--primary-foreground)', accent: 'var(--primary-soft)', 'accent-foreground': 'var(--primary)', border: 'var(--border)', ring: 'var(--primary)' },
       },
       fontFamily: { heading: ['var(--font-heading)'], body: ['var(--font-body)'], display: ['var(--font-display)'], mono: ['var(--font-mono)'] },
       fontSize: {
