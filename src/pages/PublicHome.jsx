@@ -212,11 +212,11 @@ function ProductMock() {
           <span className="ml-3 text-[10px] font-bold text-[#757B81]">OliTechs Grand Hotel · Room Planner</span>
         </div>
         <div className="rounded-[18px] bg-[#F5F3EF] p-3">
-          <div className="grid grid-cols-[115px_repeat(7,minmax(48px,1fr))] overflow-hidden rounded-xl border border-[#D6D6D6] bg-white text-[9px]">
-            <div className="bg-[#090C11] p-2 font-bold text-white">SEPTEMBER 2026</div>
+          <div className="grid grid-cols-[115px_repeat(7,minmax(48px,1fr))] overflow-hidden rounded-xl border border-[#D6D6D6] bg-surface text-[9px]">
+            <div className="bg-[#090C11] p-2 font-bold text-foreground">SEPTEMBER 2026</div>
             {days.map((d, i) => <div key={d} className={`p-2 text-center font-bold ${i > 4 ? 'bg-[#EDEAE3]' : 'bg-[#262B32]'} text-white`}>{d}</div>)}
             <div className="border-t border-[#E5E5E5] p-2 font-bold">STANDARD GARDEN</div>
-            <div className="col-span-4 border-t border-[#E5E5E5] bg-[#090C11] p-2 text-white">Front desk · Direct · 1A</div>
+            <div className="col-span-4 border-t border-[#E5E5E5] bg-[#090C11] p-2 text-foreground">Front desk · Direct · 1A</div>
             <div className="col-span-2 border-t border-[#E5E5E5]" />
             <div className="border-t border-[#E5E5E5] bg-[#EDEAE3]" />
             <div className="border-t border-[#E5E5E5] p-2 font-bold">STANDARD OCEAN</div>
@@ -225,9 +225,9 @@ function ProductMock() {
             <div className="col-span-2 border-t border-[#E5E5E5] bg-[#EDEAE3]" />
           </div>
           <div className="mt-2 grid grid-cols-3 gap-2">
-            <div className="rounded-lg bg-[#090C11] p-2 text-[9px] text-white"><b className="text-[#FFD300]">3</b> Arrivals</div>
-            <div className="rounded-lg bg-[#090C11] p-2 text-[9px] text-white"><b>8</b> In-House</div>
-            <div className="rounded-lg bg-[#090C11] p-2 text-[9px] text-white"><b className="text-[#757B81]">2</b> Check-Outs</div>
+            <div className="rounded-lg bg-[#090C11] p-2 text-[9px] text-foreground"><b className="text-[#FFD300]">3</b> Arrivals</div>
+            <div className="rounded-lg bg-[#090C11] p-2 text-[9px] text-foreground"><b>8</b> In-House</div>
+            <div className="rounded-lg bg-[#090C11] p-2 text-[9px] text-foreground"><b className="text-[#757B81]">2</b> Check-Outs</div>
           </div>
         </div>
       </div>
@@ -246,10 +246,10 @@ function PricingCard({ plan, annual }) {
             {plan.eyebrow}
           </span>
         )}
-        <h3 className="mt-5 text-xl font-black text-white">{plan.name}</h3>
+        <h3 className="mt-5 text-xl font-black text-foreground">{plan.name}</h3>
         <p className="mt-1 text-sm text-[#757B81]">{plan.subtitle}</p>
         <div className="mt-6 flex items-end gap-2">
-          <span className="text-3xl font-black tracking-tight text-white">{price}</span>
+          <span className="text-3xl font-black tracking-tight text-foreground">{price}</span>
           <span className="pb-1 text-xs text-[#757B81]">{annual ? plan.note : plan.name === 'Free' ? plan.note : '/mo'}</span>
         </div>
         <p className="mt-1 text-[10px] text-[#757B81]">{annual ? 'Billed annually' : 'Billing monthly'}</p>
@@ -278,7 +278,7 @@ export default function PublicHome() {
   ];
 
   return (
-    <div id="top" className="min-h-screen overflow-x-hidden bg-[#090C11] text-white selection:bg-[#FFD300] selection:text-[#090C11]">
+    <div id="top" className="min-h-screen overflow-x-hidden bg-[#090C11] text-foreground selection:bg-[#FFD300] selection:text-[#090C11]">
       <nav className="sticky top-0 z-50 border-b border-white/10 bg-[#090C11]/80 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-6 px-5 sm:px-6">
           <a href="#top" className="flex shrink-0 items-center gap-3">
@@ -286,18 +286,18 @@ export default function PublicHome() {
             <span className="hidden font-black tracking-tight sm:block">OliTechs Grand</span>
           </a>
           <div className="hidden flex-1 items-center justify-center gap-7 lg:flex">
-            {scrollLinks.map(([label, href]) => <a key={label} href={href} className="text-sm text-[#A1A1AA] transition hover:text-white">{label}</a>)}
+            {scrollLinks.map(([label, href]) => <a key={label} href={href} className="text-sm text-[#A1A1AA] transition hover:text-foreground">{label}</a>)}
           </div>
           <div className="ml-auto flex items-center gap-3">
-            <Link to="/signin" className="hidden px-2 py-2 text-sm font-semibold text-white sm:block">Sign In</Link>
+            <Link to="/signin" className="hidden px-2 py-2 text-sm font-semibold text-foreground sm:block">Sign In</Link>
             <Link to="/signup" className="rounded-full bg-[#FFD300] px-5 py-2.5 text-sm font-black text-[#090C11] hover:bg-[#FFD100]">Start Free Trial</Link>
-            <button onClick={() => setMobileOpen(!mobileOpen)} className="rounded-lg p-2 text-white lg:hidden" aria-label="Menu">{mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}</button>
+            <button onClick={() => setMobileOpen(!mobileOpen)} className="rounded-lg p-2 text-foreground lg:hidden" aria-label="Menu">{mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}</button>
           </div>
         </div>
         {mobileOpen && <div className="border-t border-white/10 bg-[#090C11] px-5 py-4 lg:hidden">
           <div className="flex flex-col gap-1">
             {scrollLinks.map(([label, href]) => <a key={label} href={href} onClick={() => setMobileOpen(false)} className="rounded-lg px-3 py-3 text-sm text-[#D6D6D6] hover:bg-[#262B32]">{label}</a>)}
-            <Link to="/signin" className="px-3 py-3 text-sm text-white">Sign In</Link>
+            <Link to="/signin" className="px-3 py-3 text-sm text-foreground">Sign In</Link>
           </div>
         </div>}
       </nav>
@@ -308,7 +308,7 @@ export default function PublicHome() {
           <FloatOrb className="pointer-events-none absolute -right-16 top-32 h-64 w-64 rounded-full bg-[#FFD300]/5 blur-3xl" duration={14} x={-18} y={22} />
 
           <motion.div initial="hidden" animate="show" variants={{ show: { transition: { staggerChildren: 0.08 } } }} className="relative">
-            <motion.div variants={fadeUp} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#1E1E1E] px-3 py-1.5 text-xs font-bold text-white">
+            <motion.div variants={fadeUp} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#1E1E1E] px-3 py-1.5 text-xs font-bold text-foreground">
               <ShieldCheck className="h-3.5 w-3.5 text-[#FFD300]" /> Kenyan-built hospitality software
             </motion.div>
             <motion.h1 variants={fadeUp} className="mt-6 max-w-3xl text-5xl font-black leading-[0.94] tracking-[-0.045em] sm:text-6xl lg:text-[64px]">
@@ -319,7 +319,7 @@ export default function PublicHome() {
             </motion.p>
             <motion.div variants={fadeUp} className="mt-8 flex flex-wrap gap-3">
               <Link to="/signup" className="rounded-full bg-[#FFD300] px-7 py-3.5 text-sm font-black text-[#090C11] hover:bg-[#FFD100]">Start 7-Day Free Trial <ArrowRight className="ml-1 inline h-4 w-4" /></Link>
-              <a href="#planner" className="rounded-full bg-white px-7 py-3.5 text-sm font-bold text-[#090C11] hover:bg-[#D6D6D6]"><Play className="mr-1 inline h-4 w-4 fill-current" /> See Room Planner</a>
+              <a href="#planner" className="rounded-full bg-surface px-7 py-3.5 text-sm font-bold text-[#090C11] hover:bg-[#D6D6D6]"><Play className="mr-1 inline h-4 w-4 fill-current" /> See Room Planner</a>
             </motion.div>
             <motion.p variants={fadeUp} className="mt-4 text-xs text-[#757B81]">No credit card required · Cancel anytime · Setup in 5 minutes</motion.p>
             <motion.div variants={fadeUp} className="mt-10 grid max-w-lg grid-cols-3 gap-2">
@@ -339,11 +339,11 @@ export default function PublicHome() {
         <Reveal as="section" className="mx-auto max-w-7xl px-5 pb-8 sm:px-6">
           <div className="rounded-2xl border border-white/10 bg-[#161616] p-5 sm:p-6">
             <div className="flex flex-col items-center justify-between gap-5 sm:flex-row">
-              <p className="text-sm font-bold text-white">Talk to the team directly — no ticket queue.</p>
+              <p className="text-sm font-bold text-foreground">Talk to the team directly — no ticket queue.</p>
               <div className="flex flex-wrap items-center justify-center gap-3">
-                <a href={CONTACT.whatsapp} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-full border border-white/10 bg-[#202020] px-4 py-2 text-xs font-black text-white hover:border-[#FFD300]"><MessageCircle className="h-4 w-4 text-[#FFD300]" /> WhatsApp</a>
-                <a href={CONTACT.phoneHref} className="flex items-center gap-2 rounded-full border border-white/10 bg-[#202020] px-4 py-2 text-xs font-black text-white hover:border-[#FFD300]"><Phone className="h-4 w-4 text-[#FFD300]" /> {CONTACT.phone}</a>
-                <a href={`mailto:${CONTACT.email}`} className="flex items-center gap-2 rounded-full border border-white/10 bg-[#202020] px-4 py-2 text-xs font-black text-white hover:border-[#FFD300]"><Mail className="h-4 w-4 text-[#FFD300]" /> {CONTACT.email}</a>
+                <a href={CONTACT.whatsapp} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-full border border-white/10 bg-[#202020] px-4 py-2 text-xs font-black text-foreground hover:border-[#FFD300]"><MessageCircle className="h-4 w-4 text-[#FFD300]" /> WhatsApp</a>
+                <a href={CONTACT.phoneHref} className="flex items-center gap-2 rounded-full border border-white/10 bg-[#202020] px-4 py-2 text-xs font-black text-foreground hover:border-[#FFD300]"><Phone className="h-4 w-4 text-[#FFD300]" /> {CONTACT.phone}</a>
+                <a href={`mailto:${CONTACT.email}`} className="flex items-center gap-2 rounded-full border border-white/10 bg-[#202020] px-4 py-2 text-xs font-black text-foreground hover:border-[#FFD300]"><Mail className="h-4 w-4 text-[#FFD300]" /> {CONTACT.email}</a>
               </div>
             </div>
           </div>
@@ -402,7 +402,7 @@ export default function PublicHome() {
 
         <Reveal as="section" id="pricing" className="mx-auto max-w-7xl px-5 py-24 sm:px-6">
           <div className="mx-auto max-w-2xl text-center">
-            <span className="inline-flex rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-bold">Pricing</span>
+            <span className="inline-flex rounded-full border border-white/10 bg-surface/10 px-3 py-1 text-xs font-bold">Pricing</span>
             <h2 className="mt-4 text-4xl font-black tracking-tight">Choose your plan</h2>
             <p className="mt-3 text-[#A1A1AA]">Start small. Upgrade when your operation grows.</p>
             <div className="mx-auto mt-7 inline-flex rounded-full bg-[#1E1E1E] p-1">
@@ -419,7 +419,7 @@ export default function PublicHome() {
             <div className="border-b border-white/10 px-5 py-5"><h3 className="font-black">Compare plans</h3><p className="mt-1 text-xs text-[#757B81]">Everything important, side by side.</p></div>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[650px] text-sm">
-                <thead><tr className="border-b border-white/10 text-left text-[#757B81]"><th className="px-5 py-4 font-semibold">Feature</th><th className="px-5 py-4">Free</th><th className="px-5 py-4 text-white">Professional</th><th className="px-5 py-4">Enterprise</th></tr></thead>
+                <thead><tr className="border-b border-white/10 text-left text-[#757B81]"><th className="px-5 py-4 font-semibold">Feature</th><th className="px-5 py-4">Free</th><th className="px-5 py-4 text-foreground">Professional</th><th className="px-5 py-4">Enterprise</th></tr></thead>
                 <tbody>{comparison.map(row => <tr key={row[0]} className="border-b border-white/5 last:border-0"><td className="px-5 py-3.5 text-[#D6D6D6]">{row[0]}</td>{row.slice(1).map((v, i) => <td key={i} className={`px-5 py-3.5 ${v === '✓' ? 'font-black text-[#FFD300]' : 'text-[#757B81]'}`}>{v}</td>)}</tr>)}</tbody>
               </table>
             </div>
@@ -431,7 +431,7 @@ export default function PublicHome() {
             <div className="flex flex-col items-center justify-between gap-8 lg:flex-row">
               <div><p className="text-xs font-black uppercase tracking-[0.22em] text-[#FFD300]">Integrations</p><h2 className="mt-2 text-2xl font-black">Payments your guests already trust.</h2><p className="mt-2 text-sm text-[#A1A1AA]">M-Pesa, cards, cash and charge-to-room in one billing workflow.</p></div>
               <div className="flex flex-wrap gap-3">
-                {['M-PESA', 'CARD', 'CASH', 'KRA'].map(x => <div key={x} className="rounded-xl border border-white/10 bg-[#202020] px-5 py-3 text-xs font-black text-white">{x}</div>)}
+                {['M-PESA', 'CARD', 'CASH', 'KRA'].map(x => <div key={x} className="rounded-xl border border-white/10 bg-[#202020] px-5 py-3 text-xs font-black text-foreground">{x}</div>)}
               </div>
             </div>
           </div>
@@ -454,7 +454,7 @@ export default function PublicHome() {
                 ['Restaurant orders', 'Separate POS', 'POS + KOT'],
                 ['M-Pesa billing', 'Manual reconciliation', 'Connected payments'],
                 ['Management reports', 'Build your own', 'Ready-to-use reports'],
-              ].map(row => <div key={row[0]} className="grid grid-cols-[1.2fr_1fr_1fr] border-b border-white/5 px-5 py-4 text-sm last:border-0"><span className="text-[#D6D6D6]">{row[0]}</span><span className="text-[#757B81]">{row[1]}</span><span className="font-bold text-white">{row[2]}</span></div>)}
+              ].map(row => <div key={row[0]} className="grid grid-cols-[1.2fr_1fr_1fr] border-b border-white/5 px-5 py-4 text-sm last:border-0"><span className="text-[#D6D6D6]">{row[0]}</span><span className="text-[#757B81]">{row[1]}</span><span className="font-bold text-foreground">{row[2]}</span></div>)}
             </div>
           </div>
         </Reveal>
@@ -478,7 +478,7 @@ export default function PublicHome() {
                     <a href={c.href} target={c.external ? '_blank' : undefined} rel={c.external ? 'noreferrer' : undefined} className="block rounded-2xl border border-white/10 bg-[#161616] p-6 transition hover:border-[#FFD300]/40">
                       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FFD300] text-[#090C11]"><Icon className="h-5 w-5" /></div>
                       <p className="mt-5 text-xs font-black uppercase tracking-[0.15em] text-[#757B81]">{c.label}</p>
-                      <p className="mt-1 text-lg font-black text-white">{c.value}</p>
+                      <p className="mt-1 text-lg font-black text-foreground">{c.value}</p>
                     </a>
                   </Tilt>
                 </Reveal>
@@ -507,7 +507,7 @@ export default function PublicHome() {
             <Sparkles className="mx-auto h-7 w-7 text-[#090C11]" />
             <h2 className="mt-4 text-3xl font-black tracking-tight text-[#090C11] sm:text-4xl">Ready to run your hotel like a 5-star?</h2>
             <p className="mt-3 text-sm font-semibold text-[#262B32]">Built for hotels and lodges in Kenya.</p>
-            <Link to="/signup" className="mt-7 inline-flex items-center rounded-full bg-[#090C11] px-8 py-4 text-sm font-black text-white hover:bg-[#262B32]">Start Your 7-Day Free Trial <ArrowRight className="ml-2 h-4 w-4" /></Link>
+            <Link to="/signup" className="mt-7 inline-flex items-center rounded-full bg-[#090C11] px-8 py-4 text-sm font-black text-foreground hover:bg-[#262B32]">Start Your 7-Day Free Trial <ArrowRight className="ml-2 h-4 w-4" /></Link>
             <p className="mt-4 text-xs font-semibold text-[#333533]">No credit card · Cancel anytime · Setup in 5 mins</p>
           </div>
         </Reveal>
@@ -520,17 +520,17 @@ export default function PublicHome() {
             <p className="mt-4 max-w-xs text-sm leading-6 text-[#757B81]">The yellow/black operating system for modern African hospitality.</p>
             <div className="mt-5 flex items-center gap-2 text-xs text-[#757B81]"><ShieldCheck className="h-4 w-4 text-[#FFD300]" /> Built for hospitality operations</div>
           </div>
-          <div><h3 className="text-sm font-bold">Menu</h3><div className="mt-4 space-y-3 text-sm text-[#A1A1AA]"><a className="block hover:text-white" href="#features">Features</a><a className="block hover:text-white" href="#pricing">Pricing</a><a className="block hover:text-white" href="#how-it-works">How it works</a><a className="block hover:text-white" href="#faq">FAQ</a></div></div>
-          <div><h3 className="text-sm font-bold">Legal & Contact</h3><div className="mt-4 space-y-3 text-sm text-[#A1A1AA]"><a className="block hover:text-white" href="#">Terms</a><a className="block hover:text-white" href="#">Privacy</a><a className="block hover:text-white" href={CONTACT.phoneHref}>{CONTACT.phone}</a><a className="block hover:text-white" href={`mailto:${CONTACT.email}`}>{CONTACT.email}</a></div></div>
+          <div><h3 className="text-sm font-bold">Menu</h3><div className="mt-4 space-y-3 text-sm text-[#A1A1AA]"><a className="block hover:text-foreground" href="#features">Features</a><a className="block hover:text-foreground" href="#pricing">Pricing</a><a className="block hover:text-foreground" href="#how-it-works">How it works</a><a className="block hover:text-foreground" href="#faq">FAQ</a></div></div>
+          <div><h3 className="text-sm font-bold">Legal & Contact</h3><div className="mt-4 space-y-3 text-sm text-[#A1A1AA]"><a className="block hover:text-foreground" href="#">Terms</a><a className="block hover:text-foreground" href="#">Privacy</a><a className="block hover:text-foreground" href={CONTACT.phoneHref}>{CONTACT.phone}</a><a className="block hover:text-foreground" href={`mailto:${CONTACT.email}`}>{CONTACT.email}</a></div></div>
           <div>
             <h3 className="text-sm font-bold">Stay in the loop</h3><p className="mt-4 text-sm leading-6 text-[#757B81]">Product updates and hospitality tips. No spam.</p>
-            <form onSubmit={e => e.preventDefault()} className="mt-4 flex gap-2"><input aria-label="Email" type="email" placeholder="you@hotel.com" className="min-w-0 flex-1 rounded-full border border-white/10 bg-[#161616] px-4 py-2.5 text-sm text-white outline-none placeholder:text-[#757B81] focus:border-[#FFD300]" /><button className="shrink-0 rounded-full bg-[#FFD300] px-4 py-2.5 text-xs font-black text-[#090C11] hover:bg-[#FFD100]">Subscribe</button></form>
+            <form onSubmit={e => e.preventDefault()} className="mt-4 flex gap-2"><input aria-label="Email" type="email" placeholder="you@hotel.com" className="min-w-0 flex-1 rounded-full border border-white/10 bg-[#161616] px-4 py-2.5 text-sm text-foreground outline-none placeholder:text-[#757B81] focus:border-[#FFD300]" /><button className="shrink-0 rounded-full bg-[#FFD300] px-4 py-2.5 text-xs font-black text-[#090C11] hover:bg-[#FFD100]">Subscribe</button></form>
           </div>
         </div>
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 border-t border-white/10 px-5 py-6 text-center sm:px-6 md:flex-row md:text-left">
           <p className="text-xs text-[#757B81]">© 2026 OliTechs. All rights reserved.</p>
           <div className="flex flex-wrap items-center justify-center gap-4 text-xs">
-            <a href={CONTACT.whatsapp} target="_blank" rel="noreferrer" className="font-black text-[#FFD300] hover:text-white"><MessageCircle className="mr-1 inline h-4 w-4" />Designed by Shadrack — WhatsApp {CONTACT.phone}</a>
+            <a href={CONTACT.whatsapp} target="_blank" rel="noreferrer" className="font-black text-[#FFD300] hover:text-foreground"><MessageCircle className="mr-1 inline h-4 w-4" />Designed by Shadrack — WhatsApp {CONTACT.phone}</a>
           </div>
         </div>
       </footer>

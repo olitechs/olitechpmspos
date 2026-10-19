@@ -204,7 +204,7 @@ export default function PublicSignUp() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="flex h-11 w-full items-center justify-center rounded-xl bg-[var(--primary)] text-sm font-medium text-white shadow-none transition hover:bg-[var(--primary-hover)] disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2"
+                    className="flex h-11 w-full items-center justify-center rounded-xl bg-[var(--primary)] text-sm font-medium text-primary-foreground shadow-none transition hover:bg-[var(--primary-hover)] disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2"
                   >
                     {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating account...</> : 'Sign up'}
                   </button>
