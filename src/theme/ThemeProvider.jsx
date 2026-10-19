@@ -1,16 +1,36 @@
-import React,{createContext,useContext,useEffect,useMemo} from 'react';
+import React,{createContext,useCallback,useContext,useEffect,useMemo,useState} from 'react';
 
+const KEY='olitech_theme_mode';
 const ThemeContext=createContext(null);
+const readMode=()=>{try{const saved=localStorage.getItem(KEY);return ['light','dark','system'].includes(saved)?saved:'system'}catch{return 'system'}};
 
-/** Coastal Linen is the only supported application theme. */
 export function ThemeProvider({children}){
+  const [mode,setModeState]=useState(readMode);
+  const [systemDark,setSystemDark]=useState(()=>typeof window!=='undefined'&&window.matchMedia('(prefers-color-scheme: dark)').matches);
   useEffect(()=>{
-    document.documentElement.removeAttribute('data-theme');
-    document.documentElement.classList.remove('dark');
-    document.documentElement.style.colorScheme='light';
-    try{localStorage.setItem('olitech_theme_mode','light')}catch{}
+    if(typeof window==='undefined')return undefined;
+    const mq=window.matchMedia('(prefers-color-scheme: dark)');
+    const h=e=>setSystemDark(e.matches);
+    mq.addEventListener?.('change',h);
+    return()=>mq.removeEventListener?.('change',h);
   },[]);
-  const value=useMemo(()=>({mode:'light',resolvedTheme:'light',setMode:()=>{},isDark:false}),[]);
+  const resolvedTheme=mode==='system'?(systemDark?'dark':'light'):mode;
+  useEffect(()=>{
+    const r=document.documentElement;
+    r.setAttribute('data-theme',resolvedTheme);
+    r.classList.toggle('dark',resolvedTheme==='dark');
+    r.style.colorScheme=resolvedTheme;
+  },[resolvedTheme]);
+  const setMode=useCallback(m=>{
+    if(!['light','dark','system'].includes(m))return;
+    setModeState(m);
+    try{localStorage.setItem(KEY,m)}catch{}
+  },[]);
+  const value=useMemo(()=>({mode,resolvedTheme,setMode,isDark:resolvedTheme==='dark'}),[mode,resolvedTheme,setMode]);
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
-export function useTheme(){const value=useContext(ThemeContext);if(!value)throw new Error('useTheme must be used inside ThemeProvider');return value;}
+export function useTheme(){
+  const v=useContext(ThemeContext);
+  if(!v)throw new Error('useTheme must be used inside ThemeProvider');
+  return v;
+}

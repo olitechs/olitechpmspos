@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Printer, ReceiptText, FileText, ChevronRight, ShieldCheck } from 'lucide-react';
+import ThemeToggle from '@/components/ui/ThemeToggle';
 
 const ITEMS = [
   {
@@ -37,6 +38,11 @@ export default function PropertyAdminSettings() {
           </div>
         </div>
       </div>
+
+      <section className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div><h2 className="text-base font-medium text-foreground">Appearance</h2><p className="mt-1 text-sm text-muted-foreground">Choose light, dark or follow your device theme.</p></div>
+        <ThemeToggle />
+      </section>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {ITEMS.map(({ path, icon: Icon, title, description }) => (
