@@ -1,6 +1,6 @@
 # Phase 1 Reconciliation Register — 2026-10-19
 
-**State: OPEN / BLOCKED FOR DATABASE ROLLOUT**  
+**State: OPEN / BLOCKED FOR DATABASE ROLLOUT** (historical artifact recovery disposition recorded)  
 **Related PR:** https://github.com/olitechs/olitechpmspos/pull/48  
 **Source evidence:** 'docs/audits/PHASE-0-EXECUTION-20261019.md'
 
@@ -31,6 +31,10 @@ The existing Phase 0 evidence documents narrow the six ledger rows but do not re
 6. '20261008042951 20261008094500_phase3_reconciliation_security_fix' — current 'fn_pos_shift_reconciliation' is SECURITY INVOKER with property/shift checks and aligns behaviorally with tracked reconciliation candidates, but exact ledger mapping and related ACL changes remain unproven. **Strong behavioral match; provenance unresolved.**
 
 These assessments come from the existing Phase 0 evidence follow-up and artifact-recovery records. They are not claims that the historical SQL was recovered or applied. The original artifact-recovery record also corrects an earlier candidate mapping: '20261008104500_phase3_void_refund_reconciliation_correction.sql' concerns cashier adjustment/void/refund behavior and does not define 'fn_pos_shift_reconciliation'.
+
+## Owner-directed evidence disposition
+
+Following the instruction to proceed, the six original applied SQL artifacts are dispositioned as **unrecoverable from the currently connected evidence sources**: exact-name repository/history searches and the prior artifact-recovery record did not find the original scripts, and the live migration ledger retains only version/name metadata. This is an evidence-based disposition, not a claim that the SQL never existed or that its effects are absent. Preserve every ledger row unchanged. Do not fabricate replacement historical files, mark migrations as newly applied, or replay candidates. Any future recovery from a trusted external backup, operator transcript, or deployment archive may supersede this disposition only with verifiable provenance.
 
 ## Six unresolved migration-history entries
 
