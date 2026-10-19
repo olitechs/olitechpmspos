@@ -23,7 +23,7 @@ test('Phase 1 design documents fail-closed tenant authorization and server-side 
   ]) {
     assert.ok(design.toLowerCase().includes(required.toLowerCase()), `missing design contract: ${required}`);
   }
-  assert.match(design, /Current disposition:.*Design specified/s);
+  assert.match(design, /Current disposition:.*authorization design specified/s);
 });
 
 test('Phase 0 provenance and production security drift remain explicit blockers', () => {
