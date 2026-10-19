@@ -153,7 +153,7 @@ export default function RouteGuard({ module, children }) {
 
   return (
     <main className="flex min-h-full w-full flex-1 items-center justify-center bg-[#F5F3EF] px-4 py-8">
-      <section className="w-full max-w-xl rounded-3xl border border-[#E4E1D9] bg-white p-6 shadow-xl sm:p-9" aria-labelledby="pin-wall-title">
+      <section className="w-full max-w-xl rounded-3xl border border-[#E4E1D9] bg-surface p-6 shadow-xl sm:p-9" aria-labelledby="pin-wall-title">
         <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#090C11] text-lg font-black text-[#FFD300]">OT</div>
         <p className="text-center text-[10px] font-black uppercase tracking-[.25em] text-[#8B8B83]">OliTechs secure access</p>
         <h1 id="pin-wall-title" className="mt-2 text-center text-2xl font-black tracking-tight text-[#090C11]">ENTER PIN TO LOG IN</h1>
@@ -164,7 +164,7 @@ export default function RouteGuard({ module, children }) {
         <div className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-2">
           {visibleStaff.length ? visibleStaff.map((person) => (
             <button key={person.id} type="button" onClick={() => choose(person)}
-              className="flex min-h-[72px] items-center gap-3 rounded-2xl border border-[#E5E7EB] bg-white p-3 text-left transition hover:border-[#090C11] hover:bg-[#FFF8CC] focus:outline-none focus:ring-2 focus:ring-[#FFD300]">
+              className="flex min-h-[72px] items-center gap-3 rounded-2xl border border-[#E5E7EB] bg-surface p-3 text-left transition hover:border-[#090C11] hover:bg-[#FFF8CC] focus:outline-none focus:ring-2 focus:ring-[#FFD300]">
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#FFD300] font-black text-[#090C11]">{person.avatar || person.full_name?.slice(0, 2).toUpperCase()}</span>
               <span className="min-w-0 flex-1"><span className="block truncate text-sm font-black text-[#090C11]">{person.full_name}</span><span className="mt-1 block truncate text-[10px] font-bold uppercase tracking-wide text-[#6B7280]">{String(person.role || 'staff').replaceAll('_', ' ')}</span></span>
               <LockKeyhole size={16} className="shrink-0 text-[#6B7280]" />

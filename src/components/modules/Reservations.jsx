@@ -26,7 +26,7 @@ function todayIso() {
 function Field({ label, children }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</span>
+      <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
       {children}
     </label>
   );
@@ -105,8 +105,8 @@ export default function Reservations() {
       <div className="mx-auto max-w-[1500px] space-y-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-slate-950">Front Desk & Reservations</h1>
-            <p className="mt-1 text-sm text-slate-500">Manage arrivals, departures, room assignments and reservation status from one workspace.</p>
+            <h1 className="text-xl font-bold tracking-tight text-foreground">Front Desk & Reservations</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Manage arrivals, departures, room assignments and reservation status from one workspace.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button className={buttonClass + " border border-slate-200 bg-white text-slate-800"} onClick={refresh} disabled={busy}>
@@ -132,21 +132,21 @@ export default function Reservations() {
             ['In house', inHouse.length, 'checked-in'],
             ['Available today', availableRooms.length, 'available'],
           ].map(([label, value, tone]) => (
-            <div key={label} className="rounded-xl border border-slate-200 bg-white p-4">
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</div>
-              <div className="mt-1 text-2xl font-bold text-slate-950">{value}</div>
-              <div className="mt-2 h-1 rounded-full bg-slate-100">
+            <div key={label} className="rounded-xl border border-border bg-surface p-4">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
+              <div className="mt-1 text-2xl font-bold text-foreground">{value}</div>
+              <div className="mt-2 h-1 rounded-full bg-secondary">
                 <div className="h-1 rounded-full bg-slate-900" style={{ width: `${Math.min(100, value * 12 + 8)}%` }} />
               </div>
             </div>
           ))}
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white">
-          <div className="flex flex-col gap-3 border-b border-slate-200 p-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="rounded-xl border border-border bg-surface">
+          <div className="flex flex-col gap-3 border-b border-border p-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-1 flex-col gap-2 sm:flex-row">
               <div className="relative max-w-md flex-1">
-                <Search size={15} className="absolute left-3 top-3 text-slate-400" />
+                <Search size={15} className="absolute left-3 top-3 text-muted-foreground" />
                 <input className={inputClass + " pl-9"} placeholder="Search guest, phone, room or channel" value={search} onChange={(e) => setSearch(e.target.value)} />
               </div>
               <select className={inputClass + " sm:w-44"} value={filter} onChange={(e) => setFilter(e.target.value)}>
@@ -156,7 +156,7 @@ export default function Reservations() {
                 <option value="checked-out">Checked out</option>
               </select>
               <div className="relative sm:w-44">
-                <CalendarDays size={15} className="absolute left-3 top-3 text-slate-400" />
+                <CalendarDays size={15} className="absolute left-3 top-3 text-muted-foreground" />
                 <input type="date" className={inputClass + " pl-9"} value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} />
               </div>
             </div>
@@ -165,30 +165,30 @@ export default function Reservations() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px] text-sm">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50 text-left text-[11px] uppercase tracking-wide text-slate-500">
+                <tr className="border-b border-border bg-secondary text-left text-[11px] uppercase tracking-wide text-muted-foreground">
                   {['Guest', 'Room', 'Stay', 'Guests', 'Channel', 'Payment', 'Status', ''].map((h) => <th key={h} className="px-4 py-3 font-semibold">{h}</th>)}
                 </tr>
               </thead>
               <tbody>
                 {rows.map((r) => (
-                  <tr key={r.id} className="border-b border-slate-100 hover:bg-slate-50/70">
+                  <tr key={r.id} className="border-b border-border hover:bg-secondary/70">
                     <td className="px-4 py-3">
-                      <button className="text-left font-semibold text-slate-900 hover:underline" onClick={() => setSelected(r)}>{r.guestName}</button>
-                      <div className="text-xs text-slate-500">{r.phone || 'No phone'}</div>
+                      <button className="text-left font-semibold text-foreground hover:underline" onClick={() => setSelected(r)}>{r.guestName}</button>
+                      <div className="text-xs text-muted-foreground">{r.phone || 'No phone'}</div>
                     </td>
-                    <td className="px-4 py-3 font-mono font-semibold text-slate-800">{r.roomNumber || 'Unassigned'}</td>
-                    <td className="px-4 py-3 text-xs text-slate-600">{r.checkIn} → {r.checkOut}</td>
+                    <td className="px-4 py-3 font-mono font-semibold text-foreground">{r.roomNumber || 'Unassigned'}</td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">{r.checkIn} → {r.checkOut}</td>
                     <td className="px-4 py-3">{r.partySize}</td>
-                    <td className="px-4 py-3 capitalize text-slate-600">{r.channel}</td>
+                    <td className="px-4 py-3 capitalize text-muted-foreground">{r.channel}</td>
                     <td className="px-4 py-3">
-                      <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-700">{r.paymentStatus?.replace('_', ' ')}</span>
-                      <div className="mt-1 text-xs text-slate-500">{money(r.amountPaid)} / {money(r.totalAmount)}</div>
+                      <span className="rounded-full bg-secondary px-2 py-1 text-[11px] font-semibold text-foreground">{r.paymentStatus?.replace('_', ' ')}</span>
+                      <div className="mt-1 text-xs text-muted-foreground">{money(r.amountPaid)} / {money(r.totalAmount)}</div>
                     </td>
-                    <td className="px-4 py-3"><span className="rounded-full bg-slate-900 px-2 py-1 text-[11px] font-semibold text-white">{STATUS[r.status] || r.status}</span></td>
-                    <td className="px-4 py-3 text-right"><button className="text-slate-500 hover:text-slate-950" onClick={() => setSelected(r)}><ChevronRight size={17} /></button></td>
+                    <td className="px-4 py-3"><span className="rounded-full bg-slate-900 px-2 py-1 text-[11px] font-semibold text-foreground">{STATUS[r.status] || r.status}</span></td>
+                    <td className="px-4 py-3 text-right"><button className="text-muted-foreground hover:text-foreground" onClick={() => setSelected(r)}><ChevronRight size={17} /></button></td>
                   </tr>
                 ))}
-                {!rows.length && <tr><td colSpan={8} className="px-4 py-12 text-center text-sm text-slate-500">No reservations match the current filters.</td></tr>}
+                {!rows.length && <tr><td colSpan={8} className="px-4 py-12 text-center text-sm text-muted-foreground">No reservations match the current filters.</td></tr>}
               </tbody>
             </table>
           </div>
@@ -208,16 +208,16 @@ export default function Reservations() {
 
 function QueueCard({ title, items, actionLabel, onAction }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white">
-      <div className="border-b border-slate-200 px-4 py-3 text-sm font-bold text-slate-950">{title}</div>
+    <div className="rounded-xl border border-border bg-surface">
+      <div className="border-b border-border px-4 py-3 text-sm font-bold text-foreground">{title}</div>
       <div className="divide-y divide-slate-100">
         {items.slice(0, 6).map((r) => (
           <div key={r.id} className="flex items-center justify-between gap-3 px-4 py-3">
-            <div><div className="font-semibold text-slate-900">{r.guestName}</div><div className="text-xs text-slate-500">Room {r.roomNumber} · {r.partySize} guests</div></div>
+            <div><div className="font-semibold text-foreground">{r.guestName}</div><div className="text-xs text-muted-foreground">Room {r.roomNumber} · {r.partySize} guests</div></div>
             <button className={buttonClass + " border border-slate-200 bg-white text-slate-800"} onClick={() => onAction(r)}><CheckCircle2 size={14} /> {actionLabel}</button>
           </div>
         ))}
-        {!items.length && <div className="px-4 py-6 text-sm text-slate-500">Nothing queued for this date.</div>}
+        {!items.length && <div className="px-4 py-6 text-sm text-muted-foreground">Nothing queued for this date.</div>}
       </div>
     </div>
   );
@@ -247,14 +247,14 @@ function NewReservationModal({ rooms, onClose, onCreate, busy }) {
           <Field label="Guest name"><input className={inputClass} value={data.guest} onChange={(e) => setData({ ...data, guest: e.target.value })} /></Field>
           <Field label="Phone"><input className={inputClass} value={data.phone} onChange={(e) => setData({ ...data, phone: e.target.value })} /></Field>
           <Field label="Room"><select className={inputClass} value={data.roomId} onChange={(e) => setData({ ...data, roomId: e.target.value })}><option value="">Select room</option>{rooms.map((r) => <option key={r.id} value={r.id}>Room {r.number} · {r.roomTypeName || r.roomType || 'Room'}</option>)}</select></Field>
-          <Field label="Rate / night"><input type="number" min="0" step="0.01" className={inputClass} value={data.rate} onChange={(e) => setData({ ...data, rate: e.target.value })} /><span className="mt-1 block text-[11px] text-slate-400">Total is calculated from the number of nights.</span></Field>
+          <Field label="Rate / night"><input type="number" min="0" step="0.01" className={inputClass} value={data.rate} onChange={(e) => setData({ ...data, rate: e.target.value })} /><span className="mt-1 block text-[11px] text-muted-foreground">Total is calculated from the number of nights.</span></Field>
           <Field label="Arrival"><input type="date" className={inputClass} value={data.arrival} onChange={(e) => setData({ ...data, arrival: e.target.value })} /></Field>
           <Field label="Departure"><input type="date" className={inputClass} value={data.departure} onChange={(e) => setData({ ...data, departure: e.target.value })} /></Field>
           <Field label="Guests"><input type="number" min="1" className={inputClass} value={data.partySize} onChange={(e) => setData({ ...data, partySize: e.target.value })} /></Field>
           <Field label="Channel"><select className={inputClass} value={data.channel} onChange={(e) => setData({ ...data, channel: e.target.value })}><option value="direct">Direct</option><option value="booking_com">Booking.com</option><option value="unknown">Other / OTA</option></select></Field>
         </div>
         {error && <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
-        <div className="flex justify-end gap-2 border-t border-slate-200 pt-4"><button type="button" className={buttonClass + " border border-slate-200 bg-white"} onClick={onClose}>Cancel</button><button disabled={busy} className={buttonClass + " bg-[#FFD300] text-slate-950"} type="submit"><Plus size={15} /> Create reservation</button></div>
+        <div className="flex justify-end gap-2 border-t border-border pt-4"><button type="button" className={buttonClass + " border border-slate-200 bg-white"} onClick={onClose}>Cancel</button><button disabled={busy} className={buttonClass + " bg-[#FFD300] text-slate-950"} type="submit"><Plus size={15} /> Create reservation</button></div>
       </form>
     </Modal>
   );
@@ -312,9 +312,9 @@ function ReservationDrawer({ reservation: r, rooms, pms, propertyId, busy, onClo
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/30" role="dialog" aria-modal="true">
-      <div className="h-full w-full max-w-xl overflow-y-auto bg-white shadow-2xl">
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4">
-          <div><div className="text-lg font-bold text-slate-950">{r.guestName}</div><div className="text-xs text-slate-500">Reservation details</div></div>
+      <div className="h-full w-full max-w-xl overflow-y-auto bg-surface shadow-2xl">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-surface px-5 py-4">
+          <div><div className="text-lg font-bold text-foreground">{r.guestName}</div><div className="text-xs text-muted-foreground">Reservation details</div></div>
           <button onClick={onClose} aria-label="Close"><X size={19} /></button>
         </div>
         <div className="space-y-5 p-5">
@@ -325,16 +325,16 @@ function ReservationDrawer({ reservation: r, rooms, pms, propertyId, busy, onClo
             <Info label="Departure" value={r.checkOut} />
           </div>
 
-          <section className="rounded-xl border border-slate-200 p-4">
-            <h3 className="mb-3 text-sm font-bold text-slate-950">Stay dates</h3>
+          <section className="rounded-xl border border-border p-4">
+            <h3 className="mb-3 text-sm font-bold text-foreground">Stay dates</h3>
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Departure"><input type="date" className={inputClass} value={newDeparture} onChange={(e) => setNewDeparture(e.target.value)} /></Field>
               <div className="flex items-end"><button disabled={busy || newDeparture <= r.checkIn} className={buttonClass + " w-full bg-slate-950 text-white"} onClick={() => save({ checkOut: newDeparture })}>Save extension</button></div>
             </div>
           </section>
 
-          <section className="rounded-xl border border-slate-200 p-4">
-            <h3 className="mb-3 text-sm font-bold text-slate-950">Room assignment</h3>
+          <section className="rounded-xl border border-border p-4">
+            <h3 className="mb-3 text-sm font-bold text-foreground">Room assignment</h3>
             <div className="flex gap-2">
               <select className={inputClass} value={moveRoomId} onChange={(e) => setMoveRoomId(e.target.value)}>
                 <option value="">Select room</option>
@@ -344,31 +344,31 @@ function ReservationDrawer({ reservation: r, rooms, pms, propertyId, busy, onClo
             </div>
           </section>
 
-          <section className="rounded-xl border border-slate-200 p-4">
-            <h3 className="mb-2 text-sm font-bold text-slate-950">Booking payment metadata</h3>
+          <section className="rounded-xl border border-border p-4">
+            <h3 className="mb-2 text-sm font-bold text-foreground">Booking payment metadata</h3>
             <div className="grid gap-3 sm:grid-cols-2">
               <Info label="Booking total" value={money(r.totalAmount)} />
               <Info label="Booking payment status" value={(r.paymentStatus || 'not_paid').replace(/_/g, ' ')} />
             </div>
-            <p className="mt-3 text-xs leading-5 text-slate-500">Actual payments must be posted and reconciled in Guest Folio. This reservation screen does not create or edit payment transactions.</p>
+            <p className="mt-3 text-xs leading-5 text-muted-foreground">Actual payments must be posted and reconciled in Guest Folio. This reservation screen does not create or edit payment transactions.</p>
           </section>
 
-          <section className="rounded-xl border border-slate-200 p-4">
-            <div className="mb-3 flex items-center justify-between gap-3"><h3 className="text-sm font-bold text-slate-950">Reservation audit history</h3><span className="text-xs text-slate-500">{auditEvents.length} events</span></div>
-            {auditLoading ? <p className="text-sm text-slate-500">Loading audit history…</p> :
-              auditError ? <p className="text-xs leading-5 text-slate-500">{auditError} Audit visibility is restricted to property administrators.</p> :
+          <section className="rounded-xl border border-border p-4">
+            <div className="mb-3 flex items-center justify-between gap-3"><h3 className="text-sm font-bold text-foreground">Reservation audit history</h3><span className="text-xs text-muted-foreground">{auditEvents.length} events</span></div>
+            {auditLoading ? <p className="text-sm text-muted-foreground">Loading audit history…</p> :
+              auditError ? <p className="text-xs leading-5 text-muted-foreground">{auditError} Audit visibility is restricted to property administrators.</p> :
               auditEvents.length ? <ol className="space-y-3">{auditEvents.map((event) => {
                 const snapshot = event.new_value || event.old_value || {};
                 const room = rooms.find((item) => item.id === snapshot.room_id);
                 const details = [snapshot.guest_name || r.guestName, room ? `Room ${room.number}` : null, snapshot.arrival && snapshot.departure ? `${snapshot.arrival} → ${snapshot.departure}` : null, snapshot.status, snapshot.amount != null ? `KES ${Number(snapshot.amount).toLocaleString('en-KE')}` : null, snapshot.method, snapshot.source, snapshot.description].filter(Boolean).join(' · ');
-                return <li key={event.id} className="border-l-2 border-slate-300 pl-3">
-                  <div className="text-xs font-semibold capitalize text-slate-900">{String(event.action || 'reservation event').replace(/^pms_/, '').replace(/_/g, ' ')}</div>
-                  <div className="mt-0.5 text-[11px] text-slate-500">{new Date(event.created_at).toLocaleString('en-KE', { timeZone: 'Africa/Nairobi' })} · {event.actor_id ? `Staff ${event.actor_id.slice(0, 8)}` : 'System / integration'}</div>
-                  {details && <div className="mt-1 text-xs text-slate-600">{details}</div>}
+                return <li key={event.id} className="border-l-2 border-border pl-3">
+                  <div className="text-xs font-semibold capitalize text-foreground">{String(event.action || 'reservation event').replace(/^pms_/, '').replace(/_/g, ' ')}</div>
+                  <div className="mt-0.5 text-[11px] text-muted-foreground">{new Date(event.created_at).toLocaleString('en-KE', { timeZone: 'Africa/Nairobi' })} · {event.actor_id ? `Staff ${event.actor_id.slice(0, 8)}` : 'System / integration'}</div>
+                  {details && <div className="mt-1 text-xs text-muted-foreground">{details}</div>}
                 </li>;
-              })}</ol> : <p className="text-sm text-slate-500">No recorded changes for this reservation.</p>}
+              })}</ol> : <p className="text-sm text-muted-foreground">No recorded changes for this reservation.</p>}
           </section>
-          <div className="flex flex-wrap gap-2 border-t border-slate-200 pt-4">
+          <div className="flex flex-wrap gap-2 border-t border-border pt-4">
             {r.status === 'booked' && <button disabled={busy} className={buttonClass + " bg-[#FFD300] text-slate-950"} onClick={checkIn}><DoorOpen size={15} /> Check in</button>}
             {r.status === 'checked-in' && <button disabled={busy} className={buttonClass + " bg-slate-950 text-white"} onClick={checkOut}><LogOut size={15} /> Check out</button>}
             {r.status === 'booked' && <button disabled={busy} className={buttonClass + " border border-red-200 bg-red-50 text-red-700"} onClick={cancel}><Trash2 size={15} /> Remove reservation</button>}
@@ -380,14 +380,14 @@ function ReservationDrawer({ reservation: r, rooms, pms, propertyId, busy, onClo
 }
 
 function Info({ label, value }) {
-  return <div><div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{label}</div><div className="mt-1 text-sm font-semibold text-slate-900">{value}</div></div>;
+  return <div><div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</div><div className="mt-1 text-sm font-semibold text-foreground">{value}</div></div>;
 }
 
 function Modal({ title, children, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" role="dialog" aria-modal="true">
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4"><h2 className="font-bold text-slate-950">{title}</h2><button onClick={onClose} aria-label="Close"><X size={18} /></button></div>
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-surface shadow-2xl">
+        <div className="flex items-center justify-between border-b border-border px-5 py-4"><h2 className="font-bold text-foreground">{title}</h2><button onClick={onClose} aria-label="Close"><X size={18} /></button></div>
         <div className="p-5">{children}</div>
       </div>
     </div>

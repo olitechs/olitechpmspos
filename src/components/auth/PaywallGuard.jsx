@@ -82,7 +82,7 @@ export default function PaywallGuard({ module, children }) {
 
   return (
     <div className="flex h-full min-h-64 items-center justify-center bg-[#F8F8F7] p-6">
-      <div className="max-w-md rounded-2xl border border-[#E5E5E5] bg-white p-8 text-center shadow-sm">
+      <div className="max-w-md rounded-2xl border border-[#E5E5E5] bg-surface p-8 text-center shadow-sm">
         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#FFD300]">
           <CreditCard size={22} aria-hidden="true" />
         </div>

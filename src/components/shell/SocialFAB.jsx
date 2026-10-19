@@ -35,7 +35,7 @@ export default function SocialFAB() {
               transition={{ type: 'spring', stiffness: 380, damping: 22, delay: i * 0.05 }}
               whileHover={{ scale: 1.12, y: -2 }}
               whileTap={{ scale: 0.94 }}
-              className="group relative flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-[#161616] text-white shadow-[0_8px_24px_rgba(0,0,0,0.45)] transition-colors"
+              className="group relative flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-[#161616] text-foreground shadow-[0_8px_24px_rgba(0,0,0,0.45)] transition-colors"
               aria-label={s.label}
               style={{ '--brand': s.color }}
               onMouseEnter={(e) => (e.currentTarget.style.borderColor = s.color)}
@@ -48,7 +48,7 @@ export default function SocialFAB() {
                   {s.mono}
                 </span>
               )}
-              <span className="pointer-events-none absolute right-full mr-3 whitespace-nowrap rounded-md bg-[#161616] px-2.5 py-1 text-xs font-bold text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
+              <span className="pointer-events-none absolute right-full mr-3 whitespace-nowrap rounded-md bg-[#161616] px-2.5 py-1 text-xs font-bold text-foreground opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
                 {s.label}
               </span>
             </motion.a>
