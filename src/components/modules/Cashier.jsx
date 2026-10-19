@@ -7,7 +7,7 @@ import { printReceipt, getPrinters, getAssignments, printRefundSlip } from '@/se
 const money = (v) => `KES ${Number(v || 0).toLocaleString('en-KE', { maximumFractionDigits: 2 })}`;
 const dateTime = (v) => new Date(v).toLocaleString('en-KE', { dateStyle: 'short', timeStyle: 'short' });
 const btn = 'inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold disabled:opacity-50';
-const input = 'w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200';
+const input = 'w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20';
 
 export default function Cashier() {
   const { user } = useAuth();
@@ -148,7 +148,7 @@ export default function Cashier() {
           <h1 className="text-xl font-bold text-foreground">Cashier Control</h1>
           <p className="mt-1 text-sm text-muted-foreground">Manage the active till, transaction corrections and end-of-shift reconciliation.</p>
         </div>
-        <button className={btn + ' border border-slate-200 bg-white'} onClick={load} disabled={busy || loading}><RefreshCw size={15}/> Refresh</button>
+        <button className={btn + ' border border-border bg-surface'} onClick={load} disabled={busy || loading}><RefreshCw size={15}/> Refresh</button>
       </header>
 
       {error && <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
@@ -211,8 +211,8 @@ export default function Cashier() {
                 </select></label>}
                 <label className="block text-xs font-semibold text-muted-foreground">Amount<input className={input + ' mt-1'} type="number" min="0.01" max={selected.total} step="0.01" value={adjustmentAmount} onChange={(e) => setAdjustmentAmount(e.target.value)}/></label>
                 <label className="block text-xs font-semibold text-muted-foreground">Reason<textarea className={input + ' mt-1'} rows="3" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Explain the correction"/></label>
-                <button className={btn + ' w-full bg-red-600 text-white'} disabled={busy} onClick={postAdjustment}>Post {adjustmentType}</button>
-                <button className={btn + ' w-full border border-slate-200 bg-white'} onClick={() => setSelected(null)}><XCircle size={15}/> Cancel</button>
+                <button className={btn + ' w-full bg-danger text-destructive-foreground'} disabled={busy} onClick={postAdjustment}>Post {adjustmentType}</button>
+                <button className={btn + ' w-full border border-border bg-surface'} onClick={() => setSelected(null)}><XCircle size={15}/> Cancel</button>
               </div>}
             </section>
 
@@ -221,7 +221,7 @@ export default function Cashier() {
               <div className="mt-3 rounded-lg bg-secondary p-3 text-sm"><div className="flex justify-between"><span>Expected cash</span><strong>{money(summary.expected_cash)}</strong></div><div className="mt-2 flex justify-between"><span>Refunds</span><strong>{money(summary.refunds)}</strong></div><div className="mt-2 flex justify-between"><span>Voids</span><strong>{money(summary.voids)}</strong></div><div className="mt-2 flex justify-between"><span>Discounts</span><strong>{money(summary.discounts)}</strong></div></div>
               <label className="mt-4 block text-xs font-semibold text-muted-foreground">Closing cash count<input className={input + ' mt-1'} type="number" min="0" step="0.01" value={closingCash} onChange={(e) => setClosingCash(e.target.value)} placeholder="0.00"/></label>
               <label className="mt-3 block text-xs font-semibold text-muted-foreground">Closing notes<textarea className={input + ' mt-1'} rows="3" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Explain any variance"/></label>
-              <button className={btn + ' mt-3 w-full bg-slate-950 text-white'} disabled={busy || closingCash === ''} onClick={close}><CheckCircle2 size={15}/> Close shift</button>
+              <button className={btn + ' mt-3 w-full bg-primary text-primary-foreground'} disabled={busy || closingCash === ''} onClick={close}><CheckCircle2 size={15}/> Close shift</button>
               {variance !== null && <div className="mt-3 rounded-lg border border-border p-3 text-sm"><div className="flex justify-between"><span>Final variance</span><strong>{money(variance)}</strong></div></div>}
             </section>
           </aside>

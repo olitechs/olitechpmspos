@@ -236,7 +236,7 @@ export default function KitchenDisplay() {
         </>
       )}
       {refireOrder && (
-        <div className="fixed inset-0 z-[260] flex items-center justify-center bg-black/70 p-4">
+        <div className="fixed inset-0 z-[260] flex items-center justify-center bg-[var(--overlay-scrim)] p-4">
           <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[var(--surface)] p-5 shadow-2xl">
             <div className="text-lg font-black text-foreground">Re-fire kitchen ticket</div>
             <p className="mt-1 text-xs text-muted-foreground">

@@ -36,7 +36,7 @@ export default function AppHeader({ activeTab, onTabChange, activeTable, onClose
               className="px-4 py-2 rounded-t text-sm font-medium transition-all"
               style={{
                 background: isActive ? TEAL : 'transparent',
-                color: isActive ? '#FFFFFF' : isDisabled ? 'var(--text-muted)' : 'var(--primary)',
+                color: isActive ? 'var(--primary-foreground)' : isDisabled ? 'var(--text-muted)' : 'var(--primary)',
                 cursor: isDisabled ? 'not-allowed' : 'pointer',
                 marginBottom: isActive ? '-1px' : '0',
                 fontFamily: 'system-ui, sans-serif',

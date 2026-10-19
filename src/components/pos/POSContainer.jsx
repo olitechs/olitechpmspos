@@ -330,7 +330,7 @@ export default function POSContainer() {
 
 
 			{tableTransferOpen && activeTable && (
-				<div className="fixed inset-0 z-[220] flex items-center justify-center bg-black/65 p-4">
+				<div className="fixed inset-0 z-[220] flex items-center justify-center bg-[var(--overlay-scrim)] p-4">
 					<div className="w-full max-w-2xl overflow-hidden rounded-3xl bg-surface shadow-2xl">
 						<div className="flex items-center justify-between border-b border-border px-5 py-4">
 							<div>
