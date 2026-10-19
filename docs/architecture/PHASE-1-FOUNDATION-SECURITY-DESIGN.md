@@ -45,6 +45,7 @@ Keep platform roles, property membership roles, staff roles, module assignment, 
 - Maintain one canonical, versioned role-to-action matrix. Any compatibility aliases must be normalized at input boundaries and stored/returned in canonical form.
 - Fail closed for unknown roles, unknown modules, missing entitlements, inactive membership, expired sessions, and RPCs whose authorization context cannot be resolved.
 - A module list such as `assigned_modules` only allows entry to that module. Actions like refund, void, close shift, change price, manual stock adjustment, export financial reports, or manage staff need distinct action permissions.
+- A staff-session predicate must bind the selected staff member, property, module, and session expiry/revocation. A broad `current_staff_role(property_id) IS NOT NULL` predicate is not proof that the active session is authorized for POS.
 - Property Admin email/password access is separate from staff PIN access. A PIN session must not elevate the underlying Supabase user, impersonate another tenant, or grant admin actions not assigned to the staff operator.
 - Standard/Premium/Professional entitlement definitions must be aligned between the UI and database. The database must deny feature-specific RPCs and writes if subscription is inactive, suspended, expired, or lacks the feature.
 - Preserve current package/module business decisions unless a separate approved entitlement matrix explicitly changes them; this document does not silently change plan pricing or package semantics.
@@ -108,6 +109,7 @@ Audit events are server-derived and append-only. Minimum fields:
 - Clients may read audit events only when the role has the audit-view permission and entitlement. No client update/delete policy.
 - Critical actions include login/PIN verification failures and success, role/PIN changes, subscription/property status changes, reservation/folio/payment mutations, refunds/voids, stock adjustments, shift close, export, and failed cross-tenant authorization.
 - Avoid writing audit events from the client as the sole record of a successful business operation. Prefer the same database transaction as the operation or a database trigger.
+- Access-check functions must not silently create or mutate subscription/entitlement rows; split any compatibility repair into a separate audited mutation.
 
 ## 9. Offline-sync foundation
 
