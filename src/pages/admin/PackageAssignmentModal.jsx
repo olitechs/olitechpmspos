@@ -35,7 +35,7 @@ export default function PackageAssignmentModal({ property, mode = 'approve', bus
 	const isApproval = mode === 'approve';
 
 	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="package-dialog-title">
+		<div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--overlay-scrim)] p-4" role="dialog" aria-modal="true" aria-labelledby="package-dialog-title">
 			<div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl">
 				<div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-border bg-card px-6 py-5">
 					<div>
