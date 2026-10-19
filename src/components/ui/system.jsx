@@ -105,7 +105,7 @@ export function DataTable({ columns = [], rows = [], getRowKey, emptyTitle = 'No
 export function ConfirmDialog({ open, title = 'Are you sure?', description, confirmLabel = 'Confirm', cancelLabel = 'Cancel', onConfirm, onCancel, destructive = false, busy = false }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/45 p-4" onMouseDown={event => { if (event.target === event.currentTarget && !busy) onCancel?.(); }}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[var(--overlay-scrim)] p-4" onMouseDown={event => { if (event.target === event.currentTarget && !busy) onCancel?.(); }}>
       <section role="alertdialog" aria-modal="true" aria-labelledby="confirm-dialog-title" aria-describedby={description ? 'confirm-dialog-description' : undefined} className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-2xl">
         <h2 id="confirm-dialog-title" className="text-base font-semibold text-[var(--text)]">{title}</h2>
         {description && <p id="confirm-dialog-description" className="mt-2 text-sm text-[var(--muted)]">{description}</p>}
@@ -118,7 +118,7 @@ export function ConfirmDialog({ open, title = 'Are you sure?', description, conf
 export function Drawer({ open, title, description, onClose, children, footer, side = 'right', width = 'max-w-xl' }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[90] flex bg-black/40" onMouseDown={event => { if (event.target === event.currentTarget) onClose?.(); }}>
+    <div className="fixed inset-0 z-[90] flex bg-[var(--overlay-scrim)]" onMouseDown={event => { if (event.target === event.currentTarget) onClose?.(); }}>
       <aside role="dialog" aria-modal="true" aria-label={title} className={`flex h-full w-full flex-col bg-[var(--surface)] shadow-2xl ${width} ${side === 'left' ? 'mr-auto' : 'ml-auto'}`}>
         <header className="border-b border-[var(--border)] px-5 py-4"><div className="flex items-start justify-between gap-4"><div><h2 className="text-base font-semibold text-[var(--text)]">{title}</h2>{description && <p className="mt-1 text-sm text-[var(--muted)]">{description}</p>}</div><button type="button" onClick={onClose} aria-label="Close panel" className="rounded-md px-2 text-lg text-[var(--muted)] hover:bg-[var(--surface-2)]">×</button></div></header>
         <div className="min-h-0 flex-1 overflow-y-auto p-5">{children}</div>
