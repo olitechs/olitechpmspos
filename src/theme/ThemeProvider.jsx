@@ -3,16 +3,17 @@ import React,{createContext,useCallback,useContext,useEffect,useMemo,useState} f
 const KEY='olitech_theme_mode';
 const ThemeContext=createContext(null);
 const readMode=()=>{try{const saved=localStorage.getItem(KEY);return ['light','dark','system'].includes(saved)?saved:'system'}catch{return 'system'}};
+const prefersDark=()=>typeof window!=='undefined'&&typeof window.matchMedia==='function'&&window.matchMedia('(prefers-color-scheme: dark)').matches;
 
 export function ThemeProvider({children}){
   const [mode,setModeState]=useState(readMode);
-  const [systemDark,setSystemDark]=useState(()=>typeof window!=='undefined'&&window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const [systemDark,setSystemDark]=useState(prefersDark);
   useEffect(()=>{
-    if(typeof window==='undefined')return undefined;
+    if(typeof window==='undefined'||typeof window.matchMedia!=='function')return undefined;
     const mq=window.matchMedia('(prefers-color-scheme: dark)');
     const h=e=>setSystemDark(e.matches);
-    mq.addEventListener?.('change',h);
-    return()=>mq.removeEventListener?.('change',h);
+    if(mq.addEventListener)mq.addEventListener('change',h);else mq.addListener?.(h);
+    return()=>{if(mq.removeEventListener)mq.removeEventListener('change',h);else mq.removeListener?.(h)};
   },[]);
   const resolvedTheme=mode==='system'?(systemDark?'dark':'light'):mode;
   useEffect(()=>{
