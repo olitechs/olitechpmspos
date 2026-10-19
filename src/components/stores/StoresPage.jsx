@@ -117,10 +117,10 @@ export default function StoresPage() {
             <p className="text-sm text-[#757575]">Manage properties/outlets and their printer configuration.</p>
           </div>
           <div className="flex gap-2">
-            <button type="button" onClick={loadStores} disabled={loading} className="flex items-center gap-2 border border-[#D6D6D6] bg-white px-4 py-3 text-sm text-[#424242] disabled:opacity-50">
+            <button type="button" onClick={loadStores} disabled={loading} className="flex items-center gap-2 border border-[#D6D6D6] bg-surface px-4 py-3 text-sm text-[#424242] disabled:opacity-50">
               <RefreshCw size={15} className={loading ? 'animate-spin' : ''} /> Refresh
             </button>
-            <button type="button" onClick={() => { resetForm(); }} className="flex items-center gap-2 bg-[#4CAF50] px-5 py-3 text-sm font-medium uppercase text-white">
+            <button type="button" onClick={() => { resetForm(); }} className="flex items-center gap-2 bg-[#4CAF50] px-5 py-3 text-sm font-medium uppercase text-foreground">
               <Plus size={16} /> Add store
             </button>
           </div>
@@ -133,7 +133,7 @@ export default function StoresPage() {
         )}
 
         <div className="grid gap-4 md:grid-cols-[1fr_320px]">
-          <div className="bg-white shadow-sm">
+          <div className="bg-surface shadow-sm">
             {loading ? (
               <p className="p-8 text-sm text-[#757575]">Loading stores…</p>
             ) : stores.length ? stores.map(store => (
@@ -155,7 +155,7 @@ export default function StoresPage() {
             )}
           </div>
 
-          <form onSubmit={event => { event.preventDefault(); save(); }} className="bg-white p-5 shadow-sm">
+          <form onSubmit={event => { event.preventDefault(); save(); }} className="bg-surface p-5 shadow-sm">
             <h3 className="font-medium text-[#212121]">{editing ? 'Edit store' : 'New store'}</h3>
             <label className="mt-4 block text-xs text-[#757575]">
               Store name
@@ -165,7 +165,7 @@ export default function StoresPage() {
               Address
               <input maxLength={300} value={address} onChange={event => setAddress(event.target.value)} placeholder="Street, town (optional)" className="mt-1 w-full border-b border-[#BDBDBD] px-0 py-2 text-sm outline-none focus:border-[#4CAF50]" />
             </label>
-            <button type="submit" disabled={saving || !propertyId} className="mt-6 w-full bg-[#4CAF50] py-3 text-sm font-medium uppercase text-white disabled:cursor-not-allowed disabled:opacity-50">
+            <button type="submit" disabled={saving || !propertyId} className="mt-6 w-full bg-[#4CAF50] py-3 text-sm font-medium uppercase text-foreground disabled:cursor-not-allowed disabled:opacity-50">
               {saving ? 'Saving…' : editing ? 'Save changes' : 'Create store'}
             </button>
             {editing && <button type="button" onClick={resetForm} className="mt-2 w-full border border-[#D6D6D6] py-2 text-sm text-[#424242]">Cancel edit</button>}

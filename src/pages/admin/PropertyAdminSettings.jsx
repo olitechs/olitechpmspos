@@ -31,7 +31,7 @@ export default function PropertyAdminSettings() {
     <div className="space-y-6">
       <div>
         <div className="flex items-center gap-3">
-          <div className="rounded-2xl bg-[#090C11] p-3 text-[#FFD300]"><ShieldCheck size={20} /></div>
+          <div className="rounded-2xl bg-primary p-3 text-primary-foreground"><ShieldCheck size={20} /></div>
           <div>
             <h1 className="text-2xl font-black text-foreground">Property Settings</h1>
             <p className="mt-1 text-sm text-muted-foreground">Manage the operational settings available to your property administrator.</p>
@@ -53,7 +53,7 @@ export default function PropertyAdminSettings() {
             className="group rounded-2xl border border-border bg-card p-5 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lg"
           >
             <div className="flex items-start justify-between gap-4">
-              <div className="rounded-xl bg-[#FFF7D6] p-3 text-[#090C11]">
+              <div className="rounded-xl bg-secondary p-3 text-foreground">
                 <Icon size={20} />
               </div>
               <ChevronRight size={18} className="text-muted-foreground transition-transform group-hover:translate-x-1" />
