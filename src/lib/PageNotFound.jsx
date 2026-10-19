@@ -64,7 +64,7 @@ export default function PageNotFound() {
           align-items: center;
           justify-content: center;
           padding: 24px;
-          background: #F8F8F7;
+          background: var(--canvas);
           overflow: hidden;
         }
 
@@ -72,33 +72,33 @@ export default function PageNotFound() {
           position: relative;
           width: min(750px, 100%);
           height: 400px;
-          background-color: #004880;
-          background-image: linear-gradient(to left, #072e61, #004880);
+          background-color: var(--primary);
+          background-image: linear-gradient(to left, var(--primary-hover), var(--primary));
           overflow: hidden;
           box-shadow: 0 24px 60px rgba(9, 12, 17, .16);
         }
 
         .ot404-layer { position: absolute; }
         .ot404-shelf { position: absolute; top: 150px; left: 250px; z-index: 10; }
-        .ot404-shelf__side_left { position:absolute; top:0; left:0; width:500px; height:60px; background:#cdfffa; transform:skewY(-25deg); }
-        .ot404-shelf__side_front { position:absolute; top:137px; left:0; width:70px; height:60px; background:#9dfbf3; background-image:linear-gradient(160deg,#84fff2,#2f7fb2); border:1px solid rgba(47,127,178,.5); transform:skewY(30deg); }
-        .ot404-shelf__side_bottom { position:absolute; top:43px; left:36px; width:500px; height:73px; background:#7adbd5; transform:skewY(-25deg) skewX(44deg); }
-        .ot404-shelf__side_right { position:absolute; top:42px; left:70px; width:500px; height:60px; background:#0b2f6c; background-image:linear-gradient(0deg,#0b2f6c,#16598b); transform:skewY(-25deg); }
-        .ot404-shelf__handle_top { position:absolute; top:144px; left:17px; width:30px; height:7px; background:#5ac8d3; transform:skewY(30deg) skewX(-50deg); }
-        .ot404-shelf__handle_front { position:absolute; top:149px; left:13px; width:30px; height:10px; background:#71e7e4; border:1px solid rgba(47,127,178,.5); transform:skewY(30deg); }
-        .ot404-shelf__handle_right { position:absolute; top:155px; left:43px; width:6px; height:10px; background:#287caa; transform:skewY(-30deg); }
+        .ot404-shelf__side_left { position:absolute; top:0; left:0; width:500px; height:60px; background:var(--primary-soft); transform:skewY(-25deg); }
+        .ot404-shelf__side_front { position:absolute; top:137px; left:0; width:70px; height:60px; background:var(--primary-soft); background-image:linear-gradient(160deg,var(--primary-soft),var(--primary)); border:1px solid color-mix(in srgb, var(--primary) 50%, transparent); transform:skewY(30deg); }
+        .ot404-shelf__side_bottom { position:absolute; top:43px; left:36px; width:500px; height:73px; background:var(--primary-soft); transform:skewY(-25deg) skewX(44deg); }
+        .ot404-shelf__side_right { position:absolute; top:42px; left:70px; width:500px; height:60px; background:var(--primary-hover); background-image:linear-gradient(0deg,var(--primary-hover),var(--primary)); transform:skewY(-25deg); }
+        .ot404-shelf__handle_top { position:absolute; top:144px; left:17px; width:30px; height:7px; background:var(--primary); transform:skewY(30deg) skewX(-50deg); }
+        .ot404-shelf__handle_front { position:absolute; top:149px; left:13px; width:30px; height:10px; background:var(--primary-soft); border:1px solid color-mix(in srgb, var(--primary) 50%, transparent); transform:skewY(30deg); }
+        .ot404-shelf__handle_right { position:absolute; top:155px; left:43px; width:6px; height:10px; background:var(--primary); transform:skewY(-30deg); }
 
         .ot404-shadow { z-index:15; top:0; right:0; bottom:0; width:150px; height:100%; background-image:linear-gradient(to right,rgba(1,20,61,0),rgba(1,20,61,.8) 65%,rgba(1,20,61,1)); }
 
         .ot404-case { position:absolute; transform:translateY(0); transition:.3s transform ease-in; }
         .ot404-case:hover { transform:translateY(-5px); }
-        .ot404-case__front { position:absolute; top:3px; left:0; width:70px; height:55px; background:#9d7f63; transform:skewY(25deg); }
-        .ot404-case__label { position:absolute; top:-12px; left:5px; width:10px; height:7px; background:#9d7f63; transform:skewY(25deg); }
+        .ot404-case__front { position:absolute; top:3px; left:0; width:70px; height:55px; background:var(--accent); transform:skewY(25deg); }
+        .ot404-case__label { position:absolute; top:-12px; left:5px; width:10px; height:7px; background:var(--accent); transform:skewY(25deg); }
         .ot404-case__label_left { top:-12px; left:5px; }
         .ot404-case__label_right { top:12px; left:55px; }
-        .ot404-case__top { position:absolute; top:0; left:2px; width:70px; height:4px; background-image:linear-gradient(to top,#e9eceb,#a3bab4 50%,#e9eceb); transform:skewY(25deg) skewX(-45deg); }
-        .ot404-case__right { position:absolute; top:18px; left:69px; width:5px; height:55px; background-image:linear-gradient(to left,#e9eceb,#a3bab4 50%,#e9eceb); transform:skewY(-25deg); }
-        .ot404-case__number { position:absolute; top:41px; left:10px; color:#7c664e; font-size:8px; transform-origin:top left; transform:rotate(-66deg) skewY(-25deg); }
+        .ot404-case__top { position:absolute; top:0; left:2px; width:70px; height:4px; background-image:linear-gradient(to top,var(--border),var(--border) 50%,var(--border)); transform:skewY(25deg) skewX(-45deg); }
+        .ot404-case__right { position:absolute; top:18px; left:69px; width:5px; height:55px; background-image:linear-gradient(to left,var(--border),var(--border) 50%,var(--border)); transform:skewY(-25deg); }
+        .ot404-case__number { position:absolute; top:41px; left:10px; color:var(--accent); font-size:8px; transform-origin:top left; transform:rotate(-66deg) skewY(-25deg); }
 
         .ot404-case_1 { top:-85px; right:-470px; } .ot404-case_2 { top:-82px; right:-463px; } .ot404-case_3 { top:-79px; right:-456px; }
         .ot404-case_4 { top:-76px; right:-449px; } .ot404-case_5 { top:-73px; right:-442px; } .ot404-case_6 { top:-70px; right:-435px; }
@@ -120,7 +120,7 @@ export default function PageNotFound() {
         .ot404-glow { position:absolute; }
         .ot404-glow__bottom { position:absolute; top:60px; left:5px; width:135px; height:120px; background-image:linear-gradient(to top,rgba(132,255,242,1),rgba(132,255,242,1) 30%,rgba(132,255,242,0)); transform:perspective(120px) rotateX(-20deg); }
         .ot404-glow__top { position:absolute; top:-25px; left:7px; width:130px; height:180px; background-image:linear-gradient(to top,rgba(132,255,242,1),rgba(132,255,242,1) 20%,rgba(132,255,242,0)); transform:perspective(150px) rotateX(-20deg); }
-        .ot404-glow__ball { position:absolute; top:0; left:0; width:10px; height:10px; border-radius:10px; background:#83fff2; transform:translateY(160px); }
+        .ot404-glow__ball { position:absolute; top:0; left:0; width:10px; height:10px; border-radius:10px; background:var(--primary-soft); transform:translateY(160px); }
         .ot404-glow__ball_1 { animation:ot404-fadeUp 5s infinite; animation-delay:.5s; }
         .ot404-glow__ball_2 { left:10px; width:5px; height:5px; animation:ot404-fadeUp 4s infinite; animation-delay:.8s; }
         .ot404-glow__ball_3 { left:24px; width:15px; height:15px; animation:ot404-fadeUp 9s infinite; animation-delay:.65s; }
@@ -132,16 +132,16 @@ export default function PageNotFound() {
         .ot404-glow__ball_9 { left:113px; width:8px; height:8px; animation:ot404-fadeUp 4s infinite; animation-delay:.6s; }
         .ot404-glow__ball_10 { left:120px; width:4px; height:4px; animation:ot404-fadeUp 9s infinite; animation-delay:.92s; }
 
-        .ot404-numbers { z-index:20; top:0; left:122px; color:#fff; font-family:'Roboto',sans-serif; font-size:200px; display:flex; }
+        .ot404-numbers { z-index:20; top:0; left:122px; color:var(--surface); font-family:'Roboto',sans-serif; font-size:200px; display:flex; }
         .ot404-numbers__item { margin:0 10px; animation:ot404-bounceUpDown 5s infinite; }
         .ot404-numbers__item_1 { animation-delay:.3s; } .ot404-numbers__item_2 { animation-duration:5.4s; animation-delay:.5s; } .ot404-numbers__item_3 { animation-delay:.3s; }
 
-        .ot404-copy { position:absolute; z-index:30; left:50%; bottom:22px; width:min(620px,calc(100% - 40px)); transform:translateX(-50%); text-align:center; color:#fff; }
+        .ot404-copy { position:absolute; z-index:30; left:50%; bottom:22px; width:min(620px,calc(100% - 40px)); transform:translateX(-50%); text-align:center; color:var(--surface); }
         .ot404-copy__code { font:700 11px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.24em; opacity:.72; }
         .ot404-copy__title { margin-top:4px; font:700 24px/1.15 Roboto,ui-sans-serif,sans-serif; }
         .ot404-copy__text { margin-top:5px; font:500 12px/1.4 ui-sans-serif,system-ui,sans-serif; opacity:.82; }
-        .ot404-copy__link { display:inline-flex; margin-top:10px; padding:8px 13px; border-radius:8px; background:#FFD300; color:#090C11; text-decoration:none; font:700 12px/1 ui-sans-serif,system-ui,sans-serif; }
-        .ot404-copy__link:hover { background:#FFEE32; }
+        .ot404-copy__link { display:inline-flex; margin-top:10px; padding:8px 13px; border-radius:8px; background:var(--primary); color:var(--text); text-decoration:none; font:700 12px/1 ui-sans-serif,system-ui,sans-serif; }
+        .ot404-copy__link:hover { background:var(--primary-soft); }
 
         @keyframes ot404-fadeUp { 0% { transform:translateY(160px); opacity:1; } 60% { opacity:1; } 100% { transform:translateY(-10px); opacity:0; } }
         @keyframes ot404-bounceUpDown { 0%,100% { transform:translateY(0); } 50% { transform:translateY(50px); } }
