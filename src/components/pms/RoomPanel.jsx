@@ -95,7 +95,7 @@ export default function RoomPanel({ room, onClose }) {
 						<button
 							onClick={handleCheckOut}
 							className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold"
-							style={{ background: DESTRUCTIVE, color: '#fff' }}
+							style={{ background: DESTRUCTIVE, color: 'var(--surface)' }}
 						>
 							<LogOut size={16} /> {busy ? 'Processing…' : 'Check Out'}
 						</button>
@@ -106,7 +106,7 @@ export default function RoomPanel({ room, onClose }) {
 							disabled={busy}
 							onClick={async () => { setBusy(true); setError(''); try { await pms.checkInReservation(room.reservationId); onClose(); } catch (err) { setError(err.message || 'Unable to check in reservation.'); } finally { setBusy(false); } }}
 							className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold"
-							style={{ background: TEAL, color: '#090C11' }}
+							style={{ background: TEAL, color: 'var(--text)' }}
 						>
 							<DoorOpen size={16} /> {busy ? 'Processing…' : 'Check In Now'}
 						</button>
@@ -123,7 +123,7 @@ export default function RoomPanel({ room, onClose }) {
 								</button>
 							)}
 							{(room.status === 'dirty' || room.status === 'cleaning') && (
-								<button onClick={() => setStatus('available')} className="w-full py-2.5 rounded-xl text-sm font-bold" style={{ background: TEAL, color: '#090C11' }}>
+								<button onClick={() => setStatus('available')} className="w-full py-2.5 rounded-xl text-sm font-bold" style={{ background: TEAL, color: 'var(--text)' }}>
 									Mark Clean &amp; Available
 								</button>
 							)}
@@ -133,7 +133,7 @@ export default function RoomPanel({ room, onClose }) {
 								</button>
 							)}
 							{(room.status === 'maintenance' || room.status === 'out_of_service' || room.status === 'blocked') && (
-								<button onClick={() => setStatus('available')} className="w-full py-2.5 rounded-xl text-sm font-bold" style={{ background: TEAL, color: '#090C11' }}>
+								<button onClick={() => setStatus('available')} className="w-full py-2.5 rounded-xl text-sm font-bold" style={{ background: TEAL, color: 'var(--text)' }}>
 									Return to Service
 								</button>
 							)}
@@ -203,7 +203,7 @@ export default function RoomPanel({ room, onClose }) {
 								disabled={busy}
 								onClick={submitCheckIn}
 								className="w-full py-3 rounded-xl text-sm font-bold"
-								style={{ background: TEAL, color: '#090C11' }}
+								style={{ background: TEAL, color: 'var(--text)' }}
 							>
 								Check In
 							</button>

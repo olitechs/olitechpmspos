@@ -15,7 +15,7 @@ export const MUTED_DARK = 'var(--text-muted)';
 export const DESTRUCTIVE = 'var(--danger)';
 export const ERR = 'var(--warning)';
 export const STATUS = {
-  free: { fill: 'var(--surface)', border: BORDER, text: NAVY, dot: 'var(--text-muted)' },
-  occupied: { fill: 'var(--surface)', border: 'var(--room-occupied)', text: NAVY, dot: 'var(--room-occupied)' },
-  unsettled: { fill: 'var(--warning-soft)', border: 'var(--warning)', text: NAVY, dot: 'var(--warning)' },
+  free: { fill: 'var(--table-free-bg)', border: 'var(--table-free-border)', text: 'var(--table-free-fg)', dot: 'var(--table-free-border)' },
+  occupied: { fill: 'var(--table-occupied-bg)', border: 'var(--table-occupied-border)', text: 'var(--table-occupied-fg)', dot: 'var(--table-occupied-border)' },
+  unsettled: { fill: 'var(--table-bill-bg)', border: 'var(--table-bill-border)', text: 'var(--table-bill-fg)', dot: 'var(--table-bill-border)' },
 };

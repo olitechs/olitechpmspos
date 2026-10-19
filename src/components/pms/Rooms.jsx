@@ -59,9 +59,9 @@ export default function Rooms() {
                   <td className="px-4 py-3 text-xs" style={{ color: MUTED }}>{rv.arrival}</td>
                   <td className="px-4 py-3 text-xs" style={{ color: MUTED }}>{rv.departure}</td>
                   <td className="px-4 py-3 text-xs" style={{ color: MUTED }}>{rv.partySize}</td>
-                  <td className="px-4 py-3"><span className="rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: rv.status === 'booked' ? 'rgba(224,162,60,0.18)' : rv.status === 'checked-in' ? 'rgba(245,108,90,0.18)' : 'rgba(94,113,128,0.14)', color: rv.status === 'booked' ? '#9A6616' : rv.status === 'checked-in' ? '#C0492E' : MUTED }}>{rv.status === 'checked-in' ? 'Checked in' : rv.status === 'checked-out' ? 'Checked out' : 'Booked'}</span></td>
+                  <td className="px-4 py-3"><span className="rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: rv.status === 'booked' ? 'var(--warning-soft)' : rv.status === 'checked-in' ? 'var(--success-soft)' : 'var(--surface-2)', color: rv.status === 'booked' ? 'var(--warning-text)' : rv.status === 'checked-in' ? 'var(--success-text)' : MUTED }}>{rv.status === 'checked-in' ? 'Checked in' : rv.status === 'checked-out' ? 'Checked out' : 'Booked'}</span></td>
                   <td className="px-4 py-3">
-                    {rv.status === 'booked' && <button onClick={() => runAction(() => pms.checkInReservation(rv.id))} className="rounded-lg px-3 py-1.5 text-xs font-medium" style={{ background: TEAL, color: '#FFFFFF' }}>Check In</button>}
+                    {rv.status === 'booked' && <button onClick={() => runAction(() => pms.checkInReservation(rv.id))} className="rounded-lg px-3 py-1.5 text-xs font-medium" style={{ background: TEAL, color: 'var(--primary-foreground)' }}>Check In</button>}
                     {rv.status === 'booked' && <button onClick={() => runAction(() => pms.removeReservation(rv.id))} className="ml-1 rounded-lg px-3 py-1.5 text-xs font-medium" style={{ background: SURFACE, border: `1px solid ${BORDER}`, color: DESTRUCTIVE }}>Remove</button>}
                   </td>
                 </tr>
