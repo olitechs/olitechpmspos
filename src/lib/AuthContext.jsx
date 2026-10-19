@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { authService } from '@/services/authService';
 import { supabase } from '@/lib/supabaseClient';
@@ -14,11 +14,16 @@ export function AuthProvider({ children }) {
   const [authChecked, setAuthChecked] = useState(false);
   const [user, setUser] = useState(null);
   const [authError, setAuthError] = useState(null);
+  // Ignore stale auth lookups when sign-in, sign-out, or realtime refreshes
+  // overlap. The latest completed intent must remain the session authority.
+  const authRequestId = useRef(0);
 
   const checkUserAuth = useCallback(async () => {
+    const requestId = ++authRequestId.current;
     setIsLoadingAuth(true);
     try {
       const current = await authService.getCurrentUser();
+      if (requestId !== authRequestId.current) return;
       if (current) {
         setUser(current);
         setAuthError(null);
@@ -27,11 +32,14 @@ export function AuthProvider({ children }) {
         setAuthError({ type: 'auth_required' });
       }
     } catch (err) {
+      if (requestId !== authRequestId.current) return;
       setUser(null);
       setAuthError({ type: 'auth_required', message: err?.message });
     } finally {
-      setIsLoadingAuth(false);
-      setAuthChecked(true);
+      if (requestId === authRequestId.current) {
+        setIsLoadingAuth(false);
+        setAuthChecked(true);
+      }
     }
   }, []);
 
@@ -72,6 +80,7 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(async (email, password, options = {}) => {
     const loggedInUser = await authService.login({ email, password });
+    authRequestId.current += 1;
     setUser(loggedInUser);
     setAuthError(null);
     setAuthChecked(true);
@@ -89,6 +98,7 @@ export function AuthProvider({ children }) {
       setAuthChecked(true);
       return result;
     }
+    authRequestId.current += 1;
     setUser(result);
     setAuthError(null);
     setAuthChecked(true);
@@ -98,7 +108,10 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(async () => {
     await authService.logout();
+    authRequestId.current += 1;
     setUser(null);
+    setIsLoadingAuth(false);
+    setAuthChecked(true);
     try {
       sessionStorage.removeItem('olitech_module_access_v2');
       sessionStorage.removeItem('olitech_active_staff_v2');
