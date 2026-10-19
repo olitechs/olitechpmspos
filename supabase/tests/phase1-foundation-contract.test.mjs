@@ -42,18 +42,22 @@ test('Phase 0 provenance and production security drift remain explicit blockers'
 });
 
 test('tracked RPC remediation binds pending-property creation to the caller', () => {
-  assert.match(migration, /p_user_id IS DISTINCT FROM v_actor_id/);
-  assert.match(migration, /public.is_member_of_property(p_property_id)/);
-  assert.match(migration, /public.current_staff_role(p_property_id) IS NOT NULL/);
-  assert.match(migration, /s.enabled IS TRUE/);
-  assert.match(migration, /p.status = 'active'/);
-  assert.match(migration, /REVOKE ALL ON FUNCTION public.fn_list_pos_menu(uuid) FROM PUBLIC, anon/);
-  assert.match(migration, /REVOKE ALL ON FUNCTION public.create_pending_property_for_user(uuid, text, text, text) FROM PUBLIC, anon/);
+  for (const required of [
+    'p_user_id IS DISTINCT FROM v_actor_id',
+    'public.is_member_of_property(p_property_id)',
+    'public.current_staff_role(p_property_id) IS NOT NULL',
+    's.enabled IS TRUE',
+    "p.status = 'active'",
+    'REVOKE ALL ON FUNCTION public.fn_list_pos_menu(uuid) FROM PUBLIC, anon',
+    'REVOKE ALL ON FUNCTION public.create_pending_property_for_user(uuid, text, text, text) FROM PUBLIC, anon',
+  ]) {
+    assert.ok(migration.includes(required), `missing RPC security guard: ${required}`);
+  }
 });
 
 test('PIN helpers reject weak formats and do not use Math.random as a fallback', () => {
-  assert.match(authService, /PIN length must be between 4 and 6 digits/);
-  assert.match(authService, /Secure PIN generation is not available in this browser/);
-  assert.match(authService, /Secure PIN hashing is not available in this browser/);
+  assert.ok(authService.includes('PIN length must be between 4 and 6 digits'));
+  assert.ok(authService.includes('Secure PIN generation is not available in this browser'));
+  assert.ok(authService.includes('Secure PIN hashing is not available in this browser'));
   assert.equal(authService.includes('Math.random()'), false);
 });
