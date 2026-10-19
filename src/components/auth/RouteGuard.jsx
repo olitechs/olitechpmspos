@@ -152,30 +152,30 @@ export default function RouteGuard({ module, children }) {
     : staff.filter((row) => row.is_active && Array.isArray(row.assigned_modules) && row.assigned_modules.includes(moduleKey));
 
   return (
-    <main className="flex min-h-full w-full flex-1 items-center justify-center bg-[#F5F3EF] px-4 py-8">
-      <section className="w-full max-w-xl rounded-3xl border border-[#E4E1D9] bg-surface p-6 shadow-xl sm:p-9" aria-labelledby="pin-wall-title">
-        <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#090C11] text-lg font-black text-[#FFD300]">OT</div>
-        <p className="text-center text-[10px] font-black uppercase tracking-[.25em] text-[#8B8B83]">OliTechs secure access</p>
-        <h1 id="pin-wall-title" className="mt-2 text-center text-2xl font-black tracking-tight text-[#090C11]">ENTER PIN TO LOG IN</h1>
-        <p className="mt-2 text-center text-sm text-[#5F666D]">
+    <main className="flex min-h-full w-full flex-1 items-center justify-center bg-canvas px-4 py-8">
+      <section className="w-full max-w-xl rounded-3xl border border-border bg-surface p-6 shadow-xl sm:p-9" aria-labelledby="pin-wall-title">
+        <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-surface text-lg font-black text-primary">OT</div>
+        <p className="text-center text-[10px] font-black uppercase tracking-[.25em] text-muted-foreground">OliTechs secure access</p>
+        <h1 id="pin-wall-title" className="mt-2 text-center text-2xl font-black tracking-tight text-foreground">ENTER PIN TO LOG IN</h1>
+        <p className="mt-2 text-center text-sm text-muted-foreground">
           {moduleLabel[moduleKey] || 'Protected workspace'} · Select your staff profile, then enter your assigned 4–6 digit PIN.
         </p>
         {error && !pinOpen && <div role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
         <div className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-2">
           {visibleStaff.length ? visibleStaff.map((person) => (
             <button key={person.id} type="button" onClick={() => choose(person)}
-              className="flex min-h-[72px] items-center gap-3 rounded-2xl border border-[#E5E7EB] bg-surface p-3 text-left transition hover:border-[#090C11] hover:bg-[#FFF8CC] focus:outline-none focus:ring-2 focus:ring-[#FFD300]">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#FFD300] font-black text-[#090C11]">{person.avatar || person.full_name?.slice(0, 2).toUpperCase()}</span>
-              <span className="min-w-0 flex-1"><span className="block truncate text-sm font-black text-[#090C11]">{person.full_name}</span><span className="mt-1 block truncate text-[10px] font-bold uppercase tracking-wide text-[#6B7280]">{String(person.role || 'staff').replaceAll('_', ' ')}</span></span>
-              <LockKeyhole size={16} className="shrink-0 text-[#6B7280]" />
+              className="flex min-h-[72px] items-center gap-3 rounded-2xl border border-border bg-surface p-3 text-left transition hover:border-border hover:bg-primary-soft focus:outline-none focus:ring-2 focus:ring-[var(--primary)]">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary font-black text-foreground">{person.avatar || person.full_name?.slice(0, 2).toUpperCase()}</span>
+              <span className="min-w-0 flex-1"><span className="block truncate text-sm font-black text-foreground">{person.full_name}</span><span className="mt-1 block truncate text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{String(person.role || 'staff').replaceAll('_', ' ')}</span></span>
+              <LockKeyhole size={16} className="shrink-0 text-muted-foreground" />
             </button>
           )) : (
-            <div className="col-span-full rounded-2xl border border-dashed border-border bg-canvas p-5 text-center text-sm text-[#6B7280]">
+            <div className="col-span-full rounded-2xl border border-dashed border-border bg-canvas p-5 text-center text-sm text-muted-foreground">
               {staff.length ? 'No active staff member is assigned to this workspace.' : 'No staff profiles are available. Ask the Property Admin to create a staff profile and assign a PIN.'}
             </div>
           )}
         </div>
-        <p className="mt-6 text-center text-[10px] font-semibold uppercase tracking-[.16em] text-[#8B8B83]">Property-scoped access · PIN required</p>
+        <p className="mt-6 text-center text-[10px] font-semibold uppercase tracking-[.16em] text-muted-foreground">Property-scoped access · PIN required</p>
       </section>
       {pinOpen && selected && <PinPad fullscreen title="ENTER PIN TO LOG IN" staffName={selected.full_name} error={error} onSubmit={verify} onClose={() => { setPinOpen(false); setError(''); }} />}
     </main>
@@ -183,5 +183,5 @@ export default function RouteGuard({ module, children }) {
 }
 
 export function DeniedScreen({ message = 'Access Denied — Contact Property Admin.' }) {
-  return <div className="flex h-full flex-1 items-center justify-center bg-[#F5F3EF] p-6"><div className="text-center"><div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#090C11] text-xl font-black text-[#FFD300]">OT</div><ShieldAlert className="mx-auto h-8 w-8 text-red-600"/><h2 className="mt-3 text-xl font-black text-[#090C11]">Access Denied</h2><p className="mt-1 text-sm text-[#6B7280]">{message}</p></div></div>;
+  return <div className="flex h-full flex-1 items-center justify-center bg-canvas p-6"><div className="text-center"><div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-surface text-xl font-black text-primary">OT</div><ShieldAlert className="mx-auto h-8 w-8 text-red-600"/><h2 className="mt-3 text-xl font-black text-foreground">Access Denied</h2><p className="mt-1 text-sm text-muted-foreground">{message}</p></div></div>;
 }
