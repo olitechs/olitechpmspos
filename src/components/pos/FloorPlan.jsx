@@ -65,7 +65,7 @@ function Tile({ table, session, shape, designMode, onSelect, onMove }) {
       <span className="shrink-0" style={{width:8,height:8,borderRadius:'50%',background:'currentColor',border:'1px solid currentColor'}}/>
     </div>
     <div className="font-bold text-[12px] leading-tight mt-1">{statusMeta.label}</div>
-    <div className="font-bold text-[10px] leading-tight mt-1">{table.seats} seats</div>
+    <div className="font-bold text-[12px] leading-tight mt-1">{table.seats} seats</div>
     {status==='occupied'&&<div className="font-black text-[12px] leading-tight mt-1 truncate max-w-full">{guests}p • {elapsedLabel(session.openedAt)}</div>}
     {status==='bill'&&<span className="mt-1 max-w-full truncate rounded px-1.5 py-0.5 text-[8px] font-black uppercase leading-tight" style={{background:'var(--border)',color:'var(--text)'}}>BILL PRINTED</span>}
     {designMode&&<Move size={11} className="absolute bottom-1 opacity-60"/>}

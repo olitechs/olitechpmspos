@@ -211,6 +211,9 @@
   .app-shell { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 
+/* Keep floor status labels bold enough for the fixed occupied-state colour contrast. */
+.floor-table-tile .font-bold, .floor-table-tile .font-black { font-weight: 700 !important; }
+
 /* Enforce the light-theme typography contract across legacy utility classes. */
 .font-semibold, .font-bold, .font-extrabold, .font-black, strong, b { font-weight: 500 !important; }
 h1, h2, h3, h4 { text-transform: none; }
