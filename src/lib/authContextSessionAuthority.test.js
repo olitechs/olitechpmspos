@@ -11,3 +11,11 @@ test('Supabase Auth remains the session authority without a custom localStorage 
   assert.ok(source.includes('authService.register'));
   assert.ok(source.includes('supabase.auth.onAuthStateChange'));
 });
+
+
+test('stale auth refreshes cannot overwrite a newer session intent', () => {
+  assert.ok(source.includes('const authRequestId = useRef(0)'));
+  assert.ok(source.includes('if (requestId !== authRequestId.current) return;'));
+  assert.ok(source.includes('if (requestId === authRequestId.current)'));
+  assert.ok(source.includes('authRequestId.current += 1;'));
+});
