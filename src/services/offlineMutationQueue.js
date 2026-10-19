@@ -65,8 +65,10 @@ export function createOfflineMutationRecord(input, now = Date.now()) {
   if (!Number.isInteger(payloadVersion) || payloadVersion < 1) {
     throw new Error('Payload version must be a positive integer.');
   }
-  assertNoCredentials(payload);
   const serialized = JSON.stringify(payload);
+  if (typeof serialized !== 'string') throw new Error('Offline mutation payload must be serializable.');
+  const safePayload = JSON.parse(serialized);
+  assertNoCredentials(safePayload);
   if (serialized.length > 128_000) throw new Error('Offline mutation payload exceeds 128 KB.');
 
   return {
@@ -78,7 +80,7 @@ export function createOfflineMutationRecord(input, now = Date.now()) {
     staffSessionId,
     createdAt: new Date(now).toISOString(),
     payloadVersion,
-    payload: JSON.parse(serialized),
+    payload: safePayload,
     retryCount: 0,
     status: OFFLINE_MUTATION_STATUS.PENDING,
     lastErrorCode: null,
