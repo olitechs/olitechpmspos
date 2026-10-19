@@ -141,7 +141,7 @@ export default function Cashier() {
   const variance = shift && shift.closing_cash_count != null ? Number(shift.variance || 0) : null;
   const postedReceipts = receipts.filter((r) => r.status === 'posted');
 
-  return <div className="min-h-full bg-[#f8f8f7] p-4 lg:p-8">
+  return <div className="min-h-full bg-[var(--canvas)] p-4 lg:p-8">
     <div className="mx-auto max-w-[1500px] space-y-4">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -156,7 +156,7 @@ export default function Cashier() {
       {!shift ? <section className="mx-auto w-full max-w-xl rounded-xl border border-border bg-surface p-5 shadow-sm">
         <div className="flex items-center gap-3"><Banknote size={20}/><div><h2 className="font-bold">Open cashier shift</h2><p className="text-sm text-muted-foreground">Enter the physical cash float before taking payments.</p></div></div>
         <label className="mt-4 block text-xs font-semibold text-muted-foreground">Opening float<input className={input + ' mt-1'} type="number" min="0" step="0.01" value={openingFloat} onChange={(e) => setOpeningFloat(e.target.value)} placeholder="0.00"/></label>
-        <button className={btn + ' mt-4 w-full bg-[#FFD300] text-slate-950'} disabled={busy || openingFloat === ''} onClick={open}><CheckCircle2 size={15}/> Open shift</button>
+        <button className={btn + ' mt-4 w-full bg-primary text-slate-950'} disabled={busy || openingFloat === ''} onClick={open}><CheckCircle2 size={15}/> Open shift</button>
       </section> : <>
         <div className="grid gap-3 md:grid-cols-5">
           <Metric label="Opening float" value={money(summary.opening_float)}/>

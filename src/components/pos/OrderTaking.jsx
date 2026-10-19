@@ -237,7 +237,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
             className="w-full py-3 px-2 rounded-lg text-sm font-medium text-center"
             style={{
               background: activeCategory === cat ? TEAL : 'transparent',
-              color: activeCategory === cat ? '#fff' : MUTED_DARK,
+              color: activeCategory === cat ? 'var(--surface)' : MUTED_DARK,
             }}
           >
             {cat}
@@ -273,7 +273,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
                   </span>
                 )}
                 <div className="text-sm font-medium leading-tight" style={{ color: inOrder ? MUTED_DARK : NAVY }}>{item.name}</div>
-                <div className="mt-1 text-sm font-mono font-medium" style={{ color: inOrder ? TEAL_LIGHT : MUTED }}>{fmt(item.price)}</div>{menuItems.length > 0 && <div className="mt-1 text-[10px] font-medium" style={{ color: Number(item.stock) <= 0 ? '#EF4444' : MUTED }}>{Number(item.stock) <= 0 ? 'OUT OF STOCK' : `Stock ${item.stock} ${item.unit}`}</div>}
+                <div className="mt-1 text-sm font-mono font-medium" style={{ color: inOrder ? TEAL_LIGHT : MUTED }}>{fmt(item.price)}</div>{menuItems.length > 0 && <div className="mt-1 text-[10px] font-medium" style={{ color: Number(item.stock) <= 0 ? 'var(--danger)' : MUTED }}>{Number(item.stock) <= 0 ? 'OUT OF STOCK' : `Stock ${item.stock} ${item.unit}`}</div>}
               </button>
             );
           })}
@@ -303,7 +303,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
                   <button onClick={() => changeQty(line.id, 1)} className="w-6 h-6 rounded text-xs font-medium flex items-center justify-center" style={{ background: NAVY2, color: TEAL_LIGHT }}>+</button>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs leading-tight truncate" style={{ color: '#D8E2EC' }}>{line.name}</div>
+                  <div className="text-xs leading-tight truncate" style={{ color: 'var(--border)' }}>{line.name}</div>
                   {line.modifiers?.length > 0 && <div className="text-[10px] leading-tight" style={{ color: TEAL_LIGHT }}>{line.modifiers.map((m) => m.name).join(' · ')}</div>}
                   {line.center && <div className="text-xs" style={{ color: MUTED_DARK, fontSize: '10px' }}>{line.center}</div>}
                 </div>
@@ -331,7 +331,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
           <button
             onClick={onSendToKitchen} disabled={orderLines.length === 0}
             className="w-full py-3 rounded-xl text-sm font-medium transition-all active:scale-95"
-            style={{ background: orderLines.length > 0 ? TEAL : NAVY2, color: orderLines.length > 0 ? '#fff' : MUTED_DARK, cursor: orderLines.length > 0 ? 'pointer' : 'not-allowed' }}
+            style={{ background: orderLines.length > 0 ? TEAL : NAVY2, color: orderLines.length > 0 ? 'var(--surface)' : MUTED_DARK, cursor: orderLines.length > 0 ? 'pointer' : 'not-allowed' }}
           >
             Send & Print Ticket
           </button>
