@@ -139,9 +139,15 @@ export function createOfflineOutbox({ indexedDBApi = globalThis.indexedDB } = {}
     try {
       const transaction = db.transaction(STORE_NAME, mode);
       const store = transaction.objectStore(STORE_NAME);
-      const result = await callback(store, transaction);
-      await transactionDone(transaction);
-      return result;
+      const done = transactionDone(transaction);
+      try {
+        const result = await callback(store, transaction);
+        await done;
+        return result;
+      } catch (error) {
+        await done.catch(() => {});
+        throw error;
+      }
     } finally {
       db.close();
     }
