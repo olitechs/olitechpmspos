@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { pmsService } from '@/services/pmsService';
 
 const btn='inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold disabled:opacity-50';
-const input='w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200';
+const input='w-full rounded-lg border border-slate-200 bg-surface px-3 py-2.5 text-sm outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200';
 
 export default function Housekeeping(){
  const {user}=useAuth(); const propertyId=user?.property?.id;
@@ -23,8 +23,8 @@ export default function Housekeeping(){
  const cols=[
   ['pending','Pending'],['in_progress','Cleaning'],['completed','Ready for inspection'],['rejected','Re-clean required']
  ];
- return <div className="flex-1 overflow-y-auto bg-[#f8f8f7] p-4 lg:p-6"><div className="mx-auto max-w-[1500px] space-y-4">
-  <header className="flex items-center justify-between"><div><div className="flex items-center gap-2"><Sparkles size={18}/><h1 className="text-xl font-bold">Housekeeping 2.0</h1></div><p className="mt-1 text-sm text-muted-foreground">Live room readiness, cleaning tasks and supervisor inspection.</p></div><button className={btn+' border border-slate-200 bg-white'} onClick={load} disabled={busy}><RefreshCw size={15}/> Refresh</button></header>
+ return <div className="flex-1 overflow-y-auto bg-canvas p-4 lg:p-6"><div className="mx-auto max-w-[1500px] space-y-4">
+  <header className="flex items-center justify-between"><div><div className="flex items-center gap-2"><Sparkles size={18}/><h1 className="text-xl font-bold">Housekeeping 2.0</h1></div><p className="mt-1 text-sm text-muted-foreground">Live room readiness, cleaning tasks and supervisor inspection.</p></div><button className={btn+' border border-slate-200 bg-surface'} onClick={load} disabled={busy}><RefreshCw size={15}/> Refresh</button></header>
   {error&&<div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5"><Metric label="Dirty" value={dash.rooms?.dirty||0}/><Metric label="Cleaning" value={dash.rooms?.cleaning||0}/><Metric label="Available" value={dash.rooms?.available||0}/><Metric label="Pending tasks" value={dash.tasks?.pending||0}/><Metric label="Inspection queue" value={dash.tasks?.completed||0}/></div>
   <div className="grid gap-4 xl:grid-cols-4">{cols.map(([status,label])=><section key={status} className="min-h-[300px] rounded-xl border border-border bg-surface"><div className="border-b border-border p-4"><h2 className="font-bold">{label}</h2><p className="mt-1 text-xs text-muted-foreground">{tasks.filter(t=>t.status===status).length} task(s)</p></div><div className="space-y-2 p-3">

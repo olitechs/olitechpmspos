@@ -32,7 +32,7 @@ function Field({ label, children }) {
   );
 }
 
-const inputClass = "w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200";
+const inputClass = "w-full rounded-lg border border-slate-200 bg-surface px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200";
 const buttonClass = "inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50";
 
 export default function Reservations() {
@@ -101,7 +101,7 @@ export default function Reservations() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#f8f8f7] p-4 lg:p-6">
+    <div className="flex-1 overflow-y-auto bg-canvas p-4 lg:p-6">
       <div className="mx-auto max-w-[1500px] space-y-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -109,10 +109,10 @@ export default function Reservations() {
             <p className="mt-1 text-sm text-muted-foreground">Manage arrivals, departures, room assignments and reservation status from one workspace.</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button className={buttonClass + " border border-slate-200 bg-white text-slate-800"} onClick={refresh} disabled={busy}>
+            <button className={buttonClass + " border border-slate-200 bg-surface text-slate-800"} onClick={refresh} disabled={busy}>
               <RefreshCw size={15} /> Refresh
             </button>
-            <button className={buttonClass + " bg-[#FFD300] text-slate-950"} onClick={() => setShowNew(true)}>
+            <button className={buttonClass + " bg-primary text-foreground"} onClick={() => setShowNew(true)}>
               <Plus size={15} /> New reservation
             </button>
           </div>
@@ -214,7 +214,7 @@ function QueueCard({ title, items, actionLabel, onAction }) {
         {items.slice(0, 6).map((r) => (
           <div key={r.id} className="flex items-center justify-between gap-3 px-4 py-3">
             <div><div className="font-semibold text-foreground">{r.guestName}</div><div className="text-xs text-muted-foreground">Room {r.roomNumber} · {r.partySize} guests</div></div>
-            <button className={buttonClass + " border border-slate-200 bg-white text-slate-800"} onClick={() => onAction(r)}><CheckCircle2 size={14} /> {actionLabel}</button>
+            <button className={buttonClass + " border border-slate-200 bg-surface text-slate-800"} onClick={() => onAction(r)}><CheckCircle2 size={14} /> {actionLabel}</button>
           </div>
         ))}
         {!items.length && <div className="px-4 py-6 text-sm text-muted-foreground">Nothing queued for this date.</div>}
@@ -254,7 +254,7 @@ function NewReservationModal({ rooms, onClose, onCreate, busy }) {
           <Field label="Channel"><select className={inputClass} value={data.channel} onChange={(e) => setData({ ...data, channel: e.target.value })}><option value="direct">Direct</option><option value="booking_com">Booking.com</option><option value="unknown">Other / OTA</option></select></Field>
         </div>
         {error && <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
-        <div className="flex justify-end gap-2 border-t border-border pt-4"><button type="button" className={buttonClass + " border border-slate-200 bg-white"} onClick={onClose}>Cancel</button><button disabled={busy} className={buttonClass + " bg-[#FFD300] text-slate-950"} type="submit"><Plus size={15} /> Create reservation</button></div>
+        <div className="flex justify-end gap-2 border-t border-border pt-4"><button type="button" className={buttonClass + " border border-slate-200 bg-surface"} onClick={onClose}>Cancel</button><button disabled={busy} className={buttonClass + " bg-primary text-foreground"} type="submit"><Plus size={15} /> Create reservation</button></div>
       </form>
     </Modal>
   );
@@ -369,7 +369,7 @@ function ReservationDrawer({ reservation: r, rooms, pms, propertyId, busy, onClo
               })}</ol> : <p className="text-sm text-muted-foreground">No recorded changes for this reservation.</p>}
           </section>
           <div className="flex flex-wrap gap-2 border-t border-border pt-4">
-            {r.status === 'booked' && <button disabled={busy} className={buttonClass + " bg-[#FFD300] text-slate-950"} onClick={checkIn}><DoorOpen size={15} /> Check in</button>}
+            {r.status === 'booked' && <button disabled={busy} className={buttonClass + " bg-primary text-foreground"} onClick={checkIn}><DoorOpen size={15} /> Check in</button>}
             {r.status === 'checked-in' && <button disabled={busy} className={buttonClass + " bg-slate-950 text-white"} onClick={checkOut}><LogOut size={15} /> Check out</button>}
             {r.status === 'booked' && <button disabled={busy} className={buttonClass + " border border-red-200 bg-red-50 text-red-700"} onClick={cancel}><Trash2 size={15} /> Remove reservation</button>}
           </div>

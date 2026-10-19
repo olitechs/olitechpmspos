@@ -50,7 +50,7 @@ export default function UnsettledReceiptSettings() {
   return (
     <div className="max-w-3xl space-y-5">
       <div className="flex items-center gap-3">
-        <div className="rounded-xl bg-[#FFF7D6] p-3"><FileText size={20} /></div>
+        <div className="rounded-xl bg-primary-soft p-3"><FileText size={20} /></div>
         <div>
           <h1 className="text-xl font-black text-foreground">Unsettled Receipt Settings</h1>
           <p className="text-sm text-muted-foreground">Configure what is printed when staff use Print Bill before payment is settled.</p>
@@ -99,7 +99,7 @@ export default function UnsettledReceiptSettings() {
           </label>
         </div>
 
-        <div className="mt-5 rounded-xl bg-[#F8F8F7] p-4 text-xs leading-5 text-muted-foreground">
+        <div className="mt-5 rounded-xl bg-canvas p-4 text-xs leading-5 text-muted-foreground">
           Unsettled receipts are open bills. They do not include a payment method and do not mark the sale as paid. Final receipt settings remain separate.
         </div>
 
@@ -107,7 +107,7 @@ export default function UnsettledReceiptSettings() {
           type="button"
           onClick={save}
           disabled={saving}
-          className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#090C11] px-5 py-3 text-sm font-black text-[#FFD300] disabled:opacity-50"
+          className="mt-5 inline-flex items-center gap-2 rounded-xl bg-surface px-5 py-3 text-sm font-black text-primary disabled:opacity-50"
         >
           <Save size={16} /> {saving ? 'Saving…' : 'Save Unsettled Receipt Settings'}
         </button>

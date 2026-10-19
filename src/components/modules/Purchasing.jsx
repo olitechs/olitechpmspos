@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { pmsService } from '@/services/pmsService';
 import { inventoryService } from '@/services/inventoryService';
 
-const BORDER='#E5E5E5', SURFACE='#FFFFFF', SURFACE2='#F2F2F2', TEXT='#090C11', MUTED='#757B81', YELLOW='#FFD300';
+const BORDER='var(--border)', SURFACE='var(--surface)', SURFACE2='var(--sidebar)', TEXT='var(--text)', MUTED='var(--text-muted)', YELLOW='var(--primary)';
 
 export default function Purchasing() {
   const { user } = useAuth();
@@ -61,7 +61,7 @@ export default function Purchasing() {
     catch(e){setError(e.message||'Could not receive purchase order.');}
   };
 
-  return <div className="flex-1 overflow-y-auto p-4" style={{background:'#F8F8F7'}}>
+  return <div className="flex-1 overflow-y-auto p-4" style={{background:'var(--canvas)'}}>
     <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
       <section className="xl:col-span-1 rounded-2xl p-4" style={{background:SURFACE,border:`1px solid ${BORDER}`}}>
         <div className="flex items-center gap-2 mb-4"><PackagePlus size={18}/><h2 className="text-sm font-black uppercase tracking-widest">New Purchase Order</h2></div>
