@@ -25,7 +25,7 @@ export default function StaffAdmin() {
           />
           <button
             onClick={() => { if (name.trim()) { store.addStaff(name.trim()); setName(''); } }}
-            className="px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-1" style={{ background: TEAL, color: '#090C11' }}
+            className="px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-1" style={{ background: TEAL, color: 'var(--text)' }}
           >
             <Plus size={14} /> Add
           </button>
@@ -44,7 +44,7 @@ export default function StaffAdmin() {
                     className="flex-1 px-2 py-1.5 rounded-lg text-sm outline-none" style={{ background: SURFACE, border: `1px solid ${BORDER}`, color: NAVY }}
                   />
                   <button onClick={() => { if (editName.trim()) store.updateStaff(s.id, editName.trim()); setEditId(null); }}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: TEAL, color: '#090C11' }}>
+                    className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: TEAL, color: 'var(--text)' }}>
                     <Check size={14} />
                   </button>
                 </>

@@ -40,7 +40,7 @@ export class ErrorBoundary extends React.Component {
               <div className="mt-1 text-xs leading-5 text-red-800/80">
                 The rest of the system is unaffected. You can retry this section or return to the dashboard.
               </div>
-              <details className="mt-3 rounded-xl border border-red-200 bg-white/70 p-3 text-xs">
+              <details className="mt-3 rounded-xl border border-red-200 bg-surface/70 p-3 text-xs">
                 <summary className="cursor-pointer font-semibold">Technical details</summary>
                 <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words font-mono text-[11px]">{message}</pre>
               </details>
@@ -49,11 +49,11 @@ export class ErrorBoundary extends React.Component {
                   <RefreshCw size={14} aria-hidden="true" />
                   Try again
                 </button>
-                <button type="button" onClick={() => window.location.reload()} className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-900 hover:bg-red-50">
+                <button type="button" onClick={() => window.location.reload()} className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-surface px-3 py-2 text-xs font-semibold text-red-900 hover:bg-red-50">
                   <RefreshCw size={14} aria-hidden="true" />
                   Reload app
                 </button>
-                <a href="/" className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-900 hover:bg-red-50">
+                <a href="/" className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-surface px-3 py-2 text-xs font-semibold text-red-900 hover:bg-red-50">
                   <Home size={14} aria-hidden="true" />
                   Dashboard
                 </a>

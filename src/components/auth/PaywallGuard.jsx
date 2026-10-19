@@ -69,8 +69,8 @@ export default function PaywallGuard({ module, children }) {
 
   if (state.loading) {
     return (
-      <div className="flex h-full min-h-64 items-center justify-center bg-[#F8F8F7] p-6">
-        <div className="flex items-center gap-2 text-sm text-[#5F666D]">
+      <div className="flex h-full min-h-64 items-center justify-center bg-canvas p-6">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />
           Checking workspace access…
         </div>
@@ -81,23 +81,23 @@ export default function PaywallGuard({ module, children }) {
   if (state.allowed) return children;
 
   return (
-    <div className="flex h-full min-h-64 items-center justify-center bg-[#F8F8F7] p-6">
-      <div className="max-w-md rounded-2xl border border-[#E5E5E5] bg-white p-8 text-center shadow-sm">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#FFD300]">
+    <div className="flex h-full min-h-64 items-center justify-center bg-canvas p-6">
+      <div className="max-w-md rounded-2xl border border-border bg-surface p-8 text-center shadow-sm">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary">
           <CreditCard size={22} aria-hidden="true" />
         </div>
-        <h2 className="text-xl font-black text-[#090C11]">Workspace access unavailable</h2>
-        <p className="mt-2 text-sm text-[#757B81]">
+        <h2 className="text-xl font-black text-foreground">Workspace access unavailable</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
           This workspace is not currently enabled for this property or subscription.
         </p>
-        <div className="mt-4 rounded-xl bg-[#F2F2F2] p-3 text-left text-xs text-[#5F666D]">
+        <div className="mt-4 rounded-xl bg-secondary p-3 text-left text-xs text-muted-foreground">
           <div><strong>Workspace:</strong> {module || '—'}</div>
           <div className="mt-1"><strong>Reason:</strong> {state.reason || 'subscription_required'}</div>
         </div>
         <button
           type="button"
           onClick={() => setRetry((value) => value + 1)}
-          className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#FFD300] px-4 py-2 text-sm font-black text-[#090C11]"
+          className="mt-5 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-black text-foreground"
         >
           <RefreshCw size={15} aria-hidden="true" />
           Check again

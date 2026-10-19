@@ -45,12 +45,16 @@ test('sidebar has accessible mobile open/close controls and a scrollable navigat
   assert.match(sidebar, /aria-label="Search navigation"/);
 });
 
-test('theme foundation uses Coastal Linen light tokens and reduced-motion handling', () => {
-  assert.match(theme, /:root\s*\{[\s\S]*?--canvas: #F6F9F9/);
-  assert.match(theme, /--primary: #0F7C86/);
-  assert.match(theme, /--surface: #FFFFFF/);
-  assert.doesNotMatch(theme, /\[data-theme="dark"\]|\.dark\s*\{/);
-  assert.match(theme, /prefers-reduced-motion:\s*reduce/);
+test('theme foundation supports canonical light/dark tokens and reduced-motion handling', () => {
+  assert.ok(theme.includes('--canvas: #F4F7F8'));
+  assert.ok(theme.includes('--primary: #0F7C86'));
+  assert.ok(theme.includes('--surface: #FFFFFF'));
+  assert.ok(theme.includes(':root[data-theme="dark"]'));
+  assert.ok(theme.includes('--canvas:#0E1417'));
+  assert.ok(theme.includes('--table-free-bg: #74C365'));
+  assert.ok(theme.includes('--table-occupied-bg: #FA003F'));
+  assert.ok(theme.includes('--table-bill-bg: #FAFAFA'));
+  assert.ok(theme.includes('prefers-reduced-motion: reduce'));
   for (const token of ['--surface', '--surface-2', '--border', '--text', '--muted', '--focus']) {
     assert.match(theme, new RegExp(token + ':'));
   }

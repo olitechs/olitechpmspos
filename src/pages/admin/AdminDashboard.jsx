@@ -87,7 +87,7 @@ export default function AdminDashboard() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <div className="rounded-xl bg-[#090C11] p-2 text-[#FFD300]"><ShieldAlert className="h-5 w-5" /></div>
+            <div className="rounded-xl bg-surface p-2 text-primary"><ShieldAlert className="h-5 w-5" /></div>
             <h1 className="text-2xl font-bold text-foreground">Platform Dashboard</h1>
           </div>
           <p className="text-sm text-muted-foreground mt-1">Central control center for properties, access, subscriptions and platform activity.</p>

@@ -291,19 +291,19 @@ export default function SettingsPrinters() {
 
   return (
     <div className="min-h-full bg-[#F7F8FA]">
-      <div className="border-b border-slate-200 bg-white">
+      <div className="border-b border-border bg-surface">
         <div className="mx-auto max-w-7xl px-5 py-5 lg:px-7">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-slate-400">
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
                 <Network size={14}/> Property Operations / Printing
               </div>
-              <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Printer Management</h1>
-              <p className="mt-1 max-w-2xl text-sm text-slate-500">Manage physical thermal printers from OliTechs. Use automatic LAN discovery, Windows-installed drivers, USB, Bluetooth, or serial/COM devices. Every connection must pass a real hardware test before it is marked Connected.</p>
+              <h1 className="mt-1 text-2xl font-black tracking-tight text-foreground">Printer Management</h1>
+              <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Manage physical thermal printers from OliTechs. Use automatic LAN discovery, Windows-installed drivers, USB, Bluetooth, or serial/COM devices. Every connection must pass a real hardware test before it is marked Connected.</p>
             </div>
             <div className="flex gap-2">
-              <button onClick={discoverNetwork} disabled={discovering} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"><Network size={15}/>{discovering?'Scanning LAN…':'Find network printers'}</button>
-              <button onClick={()=>load()} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50"><RefreshCw size={15}/>Refresh</button>
+              <button onClick={discoverNetwork} disabled={discovering} className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm font-bold text-foreground hover:bg-secondary disabled:opacity-50"><Network size={15}/>{discovering?'Scanning LAN…':'Find network printers'}</button>
+              <button onClick={()=>load()} className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm font-bold text-foreground hover:bg-secondary"><RefreshCw size={15}/>Refresh</button>
               <button onClick={openNew} className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-black text-amber-300 shadow-sm hover:bg-slate-800"><Plus size={16}/>Add Printer</button>
             </div>
           </div>
@@ -319,13 +319,13 @@ export default function SettingsPrinters() {
       <div className="mx-auto max-w-7xl space-y-6 px-5 py-6 lg:px-7">
         {error && <Alert type="error" text={error}/>}
 {agentError && <Alert type="error" text={agentError}/>}
-{!!discovered.length && <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4"><div className="text-xs font-black uppercase tracking-wide text-blue-700">Network printers discovered</div><div className="mt-2 flex flex-wrap gap-2">{discovered.map(d=><button key={`${d.host}:${d.port}`} onClick={()=>{setEditing({...blank,connection_type:'network_ip',ip_address:d.host,port:d.port,assignmentTypes:[]});setDiscovered([]);}} className="rounded-xl border border-blue-200 bg-white px-3 py-2 text-xs font-bold text-blue-800 hover:bg-blue-50">{d.label}</button>)}</div></div>}
+{!!discovered.length && <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4"><div className="text-xs font-black uppercase tracking-wide text-blue-700">Network printers discovered</div><div className="mt-2 flex flex-wrap gap-2">{discovered.map(d=><button key={`${d.host}:${d.port}`} onClick={()=>{setEditing({...blank,connection_type:'network_ip',ip_address:d.host,port:d.port,assignmentTypes:[]});setDiscovered([]);}} className="rounded-xl border border-blue-200 bg-surface px-3 py-2 text-xs font-bold text-blue-800 hover:bg-blue-50">{d.label}</button>)}</div></div>}
         {notice && <Alert type="success" text={notice}/>}
-        {loading ? <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-500">Loading printer configuration…</div> :
+        {loading ? <div className="rounded-2xl border border-border bg-surface p-10 text-center text-sm text-muted-foreground">Loading printer configuration…</div> :
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(420px,0.9fr)]">
             <section>
               <div className="mb-3 flex items-end justify-between">
-                <div><h2 className="text-sm font-black uppercase tracking-wide text-slate-900">Physical Printers</h2><p className="mt-1 text-xs text-slate-500">Only a verified connection is shown as Connected.</p></div>
+                <div><h2 className="text-sm font-black uppercase tracking-wide text-foreground">Physical Printers</h2><p className="mt-1 text-xs text-muted-foreground">Only a verified connection is shown as Connected.</p></div>
               </div>
               <div className="space-y-3">
                 {printers.map(p=><PrinterCard key={p.id} printer={p} assignments={assignments.filter(a=>a.printer_id===p.id)} testing={testingId===p.id} onTest={()=>verify(p.id)} onEdit={()=>openEdit(p)} onDelete={()=>remove(p.id)} onRemoveAssignment={removeAssignment}/>)}
@@ -333,27 +333,27 @@ export default function SettingsPrinters() {
               </div>
             </section>
 
-            <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <div className="border-b border-slate-200 p-5">
-                <h2 className="font-black text-slate-950">Print Routing</h2>
-                <p className="mt-1 text-xs leading-5 text-slate-500">Choose where each operational job goes. One job can be routed to multiple physical printers.</p>
+            <section className="rounded-2xl border border-border bg-surface shadow-sm">
+              <div className="border-b border-border p-5">
+                <h2 className="font-black text-foreground">Print Routing</h2>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">Choose where each operational job goes. One job can be routed to multiple physical printers.</p>
               </div>
               <div className="divide-y divide-slate-100">
                 {Object.entries(grouped).map(([group,rows])=><div key={group} className="p-5">
-                  <div className="mb-3 text-[11px] font-black uppercase tracking-wider text-slate-400">{group}</div>
+                  <div className="mb-3 text-[11px] font-black uppercase tracking-wider text-muted-foreground">{group}</div>
                   <div className="space-y-3">
                     {rows.map(([type,label])=>{
                       const current=assignments.filter(a=>a.assignment_type===type);
-                      return <div key={type} className="rounded-xl border border-slate-100 bg-slate-50/70 p-3">
+                      return <div key={type} className="rounded-xl border border-border bg-secondary/70 p-3">
                         <div className="flex items-start justify-between gap-3">
-                          <div><div className="text-sm font-bold text-slate-800">{label}</div><div className="mt-0.5 text-[11px] text-slate-400">{current.length ? `${current.length} printer${current.length===1?'':'s'} assigned` : 'No printer assigned'}</div></div>
-                          <select value="" onChange={e=>addAssignment(e.target.value,type)} className="max-w-[150px] rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-semibold text-slate-600">
+                          <div><div className="text-sm font-bold text-foreground">{label}</div><div className="mt-0.5 text-[11px] text-muted-foreground">{current.length ? `${current.length} printer${current.length===1?'':'s'} assigned` : 'No printer assigned'}</div></div>
+                          <select value="" onChange={e=>addAssignment(e.target.value,type)} className="max-w-[150px] rounded-lg border border-border bg-surface px-2 py-1.5 text-xs font-semibold text-muted-foreground">
                             <option value="">Add printer</option>
                             {printers.filter(p=>!current.some(a=>a.printer_id===p.id)).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
                           </select>
                         </div>
                         <div className="mt-2 flex flex-wrap gap-1.5">
-                          {current.map(a=>{const p=printers.find(x=>x.id===a.printer_id); return <span key={a.id} className="inline-flex items-center gap-1 rounded-lg bg-white px-2 py-1 text-xs font-semibold text-slate-600 shadow-sm ring-1 ring-slate-200">{p?.name || 'Unknown printer'}<button onClick={()=>removeAssignment(a)} className="rounded p-0.5 text-slate-400 hover:bg-red-50 hover:text-red-600" title="Remove routing"><X size={12}/></button></span>})}
+                          {current.map(a=>{const p=printers.find(x=>x.id===a.printer_id); return <span key={a.id} className="inline-flex items-center gap-1 rounded-lg bg-surface px-2 py-1 text-xs font-semibold text-muted-foreground shadow-sm ring-1 ring-slate-200">{p?.name || 'Unknown printer'}<button onClick={()=>removeAssignment(a)} className="rounded p-0.5 text-muted-foreground hover:bg-red-50 hover:text-red-600" title="Remove routing"><X size={12}/></button></span>})}
                         </div>
                       </div>;
                     })}
@@ -370,7 +370,7 @@ export default function SettingsPrinters() {
 }
 
 function Stat({label,value,icon:Icon,className=''}) {
-  return <div className={`flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3.5 ${className}`}><div className="rounded-lg bg-slate-100 p-2 text-slate-700"><Icon size={15}/></div><div><div className="text-lg font-black text-slate-950">{value}</div><div className="text-[11px] font-semibold text-slate-400">{label}</div></div></div>;
+  return <div className={`flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3.5 ${className}`}><div className="rounded-lg bg-secondary p-2 text-foreground"><Icon size={15}/></div><div><div className="text-lg font-black text-foreground">{value}</div><div className="text-[11px] font-semibold text-muted-foreground">{label}</div></div></div>;
 }
 
 function Alert({type,text}) {
@@ -380,13 +380,13 @@ function Alert({type,text}) {
 function PrinterCard({printer,assignments,testing,onTest,onEdit,onDelete,onRemoveAssignment}) {
   const meta=statusMeta(printer);
   const Icon=meta.Icon;
-  return <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+  return <article className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
     <div className="flex items-start justify-between gap-4">
       <div className="flex min-w-0 gap-3">
         <div className="rounded-xl bg-slate-950 p-3 text-amber-300"><Printer size={19}/></div>
         <div className="min-w-0">
-          <h3 className="truncate font-black text-slate-950">{printer.name}</h3>
-          <div className="mt-1 text-xs font-semibold text-slate-500">{TYPES.find(x=>x[0]===printer.type)?.[1] || printer.type}</div>
+          <h3 className="truncate font-black text-foreground">{printer.name}</h3>
+          <div className="mt-1 text-xs font-semibold text-muted-foreground">{TYPES.find(x=>x[0]===printer.type)?.[1] || printer.type}</div>
         </div>
       </div>
       <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-black ${meta.cls}`}><span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`}/><Icon size={12}/>{meta.label}</span>
@@ -394,51 +394,51 @@ function PrinterCard({printer,assignments,testing,onTest,onEdit,onDelete,onRemov
 
     <div className="mt-4 grid grid-cols-2 gap-2">
       {printer.connection_type === 'network_ip' && <>
-        <div className="rounded-xl bg-slate-50 p-3"><div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Network</div><div className="mt-1 font-mono text-xs font-bold text-slate-700">{printer.ip_address || 'IP not set'}</div></div>
-        <div className="rounded-xl bg-slate-50 p-3"><div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">TCP Port</div><div className="mt-1 font-mono text-xs font-bold text-slate-700">{printer.port || 9100}</div></div>
+        <div className="rounded-xl bg-secondary p-3"><div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Network</div><div className="mt-1 font-mono text-xs font-bold text-foreground">{printer.ip_address || 'IP not set'}</div></div>
+        <div className="rounded-xl bg-secondary p-3"><div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">TCP Port</div><div className="mt-1 font-mono text-xs font-bold text-foreground">{printer.port || 9100}</div></div>
       </>}
       {printer.connection_type === 'windows_printer' && <>
-        <div className="col-span-2 rounded-xl bg-slate-50 p-3"><div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Windows printer</div><div className="mt-1 text-xs font-bold text-slate-700">{printer.windows_printer_name || 'Printer not selected'}</div></div>
+        <div className="col-span-2 rounded-xl bg-secondary p-3"><div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Windows printer</div><div className="mt-1 text-xs font-bold text-foreground">{printer.windows_printer_name || 'Printer not selected'}</div></div>
       </>}
-      {printer.connection_type === 'usb' && <div className="col-span-2 rounded-xl bg-slate-50 p-3"><div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Transport</div><div className="mt-1 text-xs font-bold text-slate-700">Direct USB / WebUSB</div></div>}
-      {printer.connection_type === 'bluetooth' && <div className="col-span-2 rounded-xl bg-slate-50 p-3"><div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Transport</div><div className="mt-1 text-xs font-bold text-slate-700">Bluetooth / Web Bluetooth</div></div>}
-      {printer.connection_type === 'serial' && <div className="col-span-2 rounded-xl bg-slate-50 p-3"><div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Serial</div><div className="mt-1 text-xs font-bold text-slate-700">{printer.baud_rate || 9600} baud</div></div>}
+      {printer.connection_type === 'usb' && <div className="col-span-2 rounded-xl bg-secondary p-3"><div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Transport</div><div className="mt-1 text-xs font-bold text-foreground">Direct USB / WebUSB</div></div>}
+      {printer.connection_type === 'bluetooth' && <div className="col-span-2 rounded-xl bg-secondary p-3"><div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Transport</div><div className="mt-1 text-xs font-bold text-foreground">Bluetooth / Web Bluetooth</div></div>}
+      {printer.connection_type === 'serial' && <div className="col-span-2 rounded-xl bg-secondary p-3"><div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Serial</div><div className="mt-1 text-xs font-bold text-foreground">{printer.baud_rate || 9600} baud</div></div>}
     </div>
 
     {printer.last_error && <div className="mt-3 rounded-xl border border-red-100 bg-red-50 p-3 text-xs font-semibold leading-5 text-red-700">{printer.last_error}</div>}
 
     <div className="mt-3 flex flex-wrap gap-1.5">
-      {assignments.length ? assignments.map(a=><span key={a.id} className="rounded-md bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-600">{ASSIGNMENTS.find(x=>x[0]===a.assignment_type)?.[1] || a.assignment_type}</span>) : <span className="text-[11px] text-slate-400">No routing assigned</span>}
+      {assignments.length ? assignments.map(a=><span key={a.id} className="rounded-md bg-secondary px-2 py-1 text-[10px] font-bold text-muted-foreground">{ASSIGNMENTS.find(x=>x[0]===a.assignment_type)?.[1] || a.assignment_type}</span>) : <span className="text-[11px] text-muted-foreground">No routing assigned</span>}
     </div>
 
-    <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
+    <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
       <button disabled={testing} onClick={onTest} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-950 px-3 py-2 text-xs font-black text-amber-300 disabled:opacity-50"><Play size={13}/>{testing?'Testing…':'Test & Print'}</button>
-      <button onClick={onEdit} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"><Pencil size={13}/>Edit</button>
+      <button onClick={onEdit} className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-bold text-foreground hover:bg-secondary"><Pencil size={13}/>Edit</button>
       <button onClick={onDelete} className="inline-flex items-center gap-1.5 rounded-lg border border-red-100 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50"><Trash2 size={13}/>Delete</button>
-      {printer.last_tested_at && <span className="ml-auto self-center text-[10px] text-slate-400">Tested {new Date(printer.last_tested_at).toLocaleString('en-KE')}</span>}
+      {printer.last_tested_at && <span className="ml-auto self-center text-[10px] text-muted-foreground">Tested {new Date(printer.last_tested_at).toLocaleString('en-KE')}</span>}
     </div>
   </article>;
 }
 
 function Empty({onAdd}) {
-  return <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center"><div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100"><Printer size={20} className="text-slate-500"/></div><h3 className="mt-3 font-black text-slate-900">No printers configured</h3><p className="mx-auto mt-1 max-w-sm text-sm text-slate-500">Add a network thermal printer with its LAN IP. OliTechs will verify the connection and print a test ticket before marking it connected.</p><button onClick={onAdd} className="mt-4 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-black text-amber-300">Add your first printer</button></div>;
+  return <div className="rounded-2xl border border-dashed border-border bg-surface p-10 text-center"><div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary"><Printer size={20} className="text-muted-foreground"/></div><h3 className="mt-3 font-black text-foreground">No printers configured</h3><p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">Add a network thermal printer with its LAN IP. OliTechs will verify the connection and print a test ticket before marking it connected.</p><button onClick={onAdd} className="mt-4 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-black text-amber-300">Add your first printer</button></div>;
 }
 
 function PrinterModal({form,setForm,onClose,onSave,windowsPrinters=[],refreshLocalDevices=()=>{}}) {
   const selected=form.assignmentTypes||[];
   const toggle=type=>setForm({...form,assignmentTypes:selected.includes(type)?selected.filter(x=>x!==type):[...selected,type]});
   return <div className="fixed inset-0 z-[80] overflow-y-auto bg-slate-950/55 p-4 backdrop-blur-sm">
-    <div className="mx-auto my-6 w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl">
-      <div className="flex items-start justify-between border-b border-slate-200 p-5">
-        <div><div className="flex items-center gap-2"><div className="rounded-lg bg-slate-950 p-2 text-amber-300"><Printer size={16}/></div><h3 className="text-lg font-black text-slate-950">{form.id?'Edit printer':'Add printer'}</h3></div><p className="mt-2 text-xs leading-5 text-slate-500">LAN and Windows-driver printers use the OliTechs Local Print Agent. USB, Bluetooth and serial printers use browser device APIs. Every connection is tested before it is marked Connected.</p></div>
-        <button onClick={onClose} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"><X size={18}/></button>
+    <div className="mx-auto my-6 w-full max-w-2xl overflow-hidden rounded-3xl bg-surface shadow-2xl">
+      <div className="flex items-start justify-between border-b border-border p-5">
+        <div><div className="flex items-center gap-2"><div className="rounded-lg bg-slate-950 p-2 text-amber-300"><Printer size={16}/></div><h3 className="text-lg font-black text-foreground">{form.id?'Edit printer':'Add printer'}</h3></div><p className="mt-2 text-xs leading-5 text-muted-foreground">LAN and Windows-driver printers use the OliTechs Local Print Agent. USB, Bluetooth and serial printers use browser device APIs. Every connection is tested before it is marked Connected.</p></div>
+        <button onClick={onClose} className="rounded-lg p-2 text-muted-foreground hover:bg-secondary hover:text-foreground"><X size={18}/></button>
       </div>
       <div className="grid gap-5 p-5 md:grid-cols-2">
         <div className="space-y-3">
-          <label className="block text-xs font-black uppercase tracking-wide text-slate-500">Printer name<input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Kitchen Epson 01" className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-slate-900"/></label>
-          <label className="block text-xs font-black uppercase tracking-wide text-slate-500">Printer type<select value={form.type} onChange={e=>setForm({...form,type:e.target.value})} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm">{TYPES.map(x=><option key={x[0]} value={x[0]}>{x[1]}</option>)}</select></label>
-          <label className="block text-xs font-black uppercase tracking-wide text-slate-500">Connection type
-            <select value={form.connection_type || 'network_ip'} onChange={e=>setForm({...form,connection_type:e.target.value})} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm">
+          <label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">Printer name<input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Kitchen Epson 01" className="mt-1.5 w-full rounded-xl border border-border px-3 py-2.5 text-sm outline-none focus:border-slate-900"/></label>
+          <label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">Printer type<select value={form.type} onChange={e=>setForm({...form,type:e.target.value})} className="mt-1.5 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm">{TYPES.map(x=><option key={x[0]} value={x[0]}>{x[1]}</option>)}</select></label>
+          <label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">Connection type
+            <select value={form.connection_type || 'network_ip'} onChange={e=>setForm({...form,connection_type:e.target.value})} className="mt-1.5 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm">
               <option value="network_ip">LAN / Network IP</option>
               <option value="windows_printer">Windows installed printer (USB / Bluetooth driver)</option>
               <option value="usb">USB direct (WebUSB)</option>
@@ -446,25 +446,25 @@ function PrinterModal({form,setForm,onClose,onSave,windowsPrinters=[],refreshLoc
               <option value="serial">USB / Bluetooth Serial (COM)</option>
             </select>
           </label>
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3"><div className="text-[10px] font-black uppercase tracking-wide text-slate-400">Transport</div><p className="mt-1 text-[11px] leading-5 text-slate-500">LAN and Windows-driver printers use the OliTechs Print Agent. USB, Bluetooth and serial printers use the browser's native device connection.</p></div>
+          <div className="rounded-xl border border-border bg-secondary p-3"><div className="text-[10px] font-black uppercase tracking-wide text-muted-foreground">Transport</div><p className="mt-1 text-[11px] leading-5 text-muted-foreground">LAN and Windows-driver printers use the OliTechs Print Agent. USB, Bluetooth and serial printers use the browser's native device connection.</p></div>
           {form.connection_type === 'network_ip' && <>
-            <label className="block text-xs font-black uppercase tracking-wide text-slate-500">Printer IP address<input value={form.ip_address||''} onChange={e=>setForm({...form,ip_address:e.target.value})} placeholder="192.168.1.50" className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-mono text-sm outline-none focus:border-slate-900"/></label>
-            <label className="block text-xs font-black uppercase tracking-wide text-slate-500">TCP port<input type="number" value={form.port||9100} onChange={e=>setForm({...form,port:e.target.value})} className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 font-mono text-sm"/><span className="mt-1 block text-[11px] font-normal normal-case tracking-normal text-slate-400">9100 is the standard raw ESC/POS port for many network thermal printers.</span></label>
+            <label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">Printer IP address<input value={form.ip_address||''} onChange={e=>setForm({...form,ip_address:e.target.value})} placeholder="192.168.1.50" className="mt-1.5 w-full rounded-xl border border-border px-3 py-2.5 font-mono text-sm outline-none focus:border-slate-900"/></label>
+            <label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">TCP port<input type="number" value={form.port||9100} onChange={e=>setForm({...form,port:e.target.value})} className="mt-1.5 w-full rounded-xl border border-border px-3 py-2.5 font-mono text-sm"/><span className="mt-1 block text-[11px] font-normal normal-case tracking-normal text-muted-foreground">9100 is the standard raw ESC/POS port for many network thermal printers.</span></label>
           </>}
-          {form.connection_type === 'windows_printer' && <div className="space-y-2"><label className="block text-xs font-black uppercase tracking-wide text-slate-500">Windows installed printer<select value={form.windows_printer_name||''} onChange={e=>setForm({...form,windows_printer_name:e.target.value})} onFocus={()=>refreshLocalDevices(form.agent_url)} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="">Select installed printer</option>{windowsPrinters.map(p=><option key={p.Name} value={p.Name}>{p.Name}{p.DriverName ? ` — ${p.DriverName}` : ''}</option>)}</select></label><p className="text-[11px] text-slate-400">The printer must first be installed and visible in Windows Printers & scanners. OliTechs sends the thermal data through the local print agent.</p></div>}
-          {form.connection_type === 'serial' && <label className="block text-xs font-black uppercase tracking-wide text-slate-500">Baud rate<select value={form.baud_rate||9600} onChange={e=>setForm({...form,baud_rate:Number(e.target.value)})} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm">{[9600,19200,38400,57600,115200].map(rate=><option key={rate} value={rate}>{rate} baud</option>)}</select></label>}
-          <label className="block text-xs font-black uppercase tracking-wide text-slate-500">Paper width<select value={form.paper_width||'80mm'} onChange={e=>setForm({...form,paper_width:e.target.value})} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"><option>80mm</option><option>58mm</option></select></label>
+          {form.connection_type === 'windows_printer' && <div className="space-y-2"><label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">Windows installed printer<select value={form.windows_printer_name||''} onChange={e=>setForm({...form,windows_printer_name:e.target.value})} onFocus={()=>refreshLocalDevices(form.agent_url)} className="mt-1.5 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm"><option value="">Select installed printer</option>{windowsPrinters.map(p=><option key={p.Name} value={p.Name}>{p.Name}{p.DriverName ? ` — ${p.DriverName}` : ''}</option>)}</select></label><p className="text-[11px] text-muted-foreground">The printer must first be installed and visible in Windows Printers & scanners. OliTechs sends the thermal data through the local print agent.</p></div>}
+          {form.connection_type === 'serial' && <label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">Baud rate<select value={form.baud_rate||9600} onChange={e=>setForm({...form,baud_rate:Number(e.target.value)})} className="mt-1.5 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm">{[9600,19200,38400,57600,115200].map(rate=><option key={rate} value={rate}>{rate} baud</option>)}</select></label>}
+          <label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">Paper width<select value={form.paper_width||'80mm'} onChange={e=>setForm({...form,paper_width:e.target.value})} className="mt-1.5 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm"><option>80mm</option><option>58mm</option></select></label>
         </div>
         <div>
-          <div className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">Print routing</div>
-          <p className="mb-3 text-xs leading-5 text-slate-500">Select every job this physical printer should receive. You can also change routing later without editing the printer.</p>
+          <div className="mb-2 text-xs font-black uppercase tracking-wide text-muted-foreground">Print routing</div>
+          <p className="mb-3 text-xs leading-5 text-muted-foreground">Select every job this physical printer should receive. You can also change routing later without editing the printer.</p>
           <div className="space-y-2">
-            {ASSIGNMENTS.map(([type,label,group])=><label key={type} className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-3 hover:bg-slate-50"><input type="checkbox" checked={selected.includes(type)} onChange={()=>toggle(type)} className="mt-0.5 h-4 w-4"/><span><span className="block text-sm font-bold text-slate-800">{label}</span><span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{group}</span></span></label>)}
+            {ASSIGNMENTS.map(([type,label,group])=><label key={type} className="flex cursor-pointer items-start gap-3 rounded-xl border border-border p-3 hover:bg-secondary"><input type="checkbox" checked={selected.includes(type)} onChange={()=>toggle(type)} className="mt-0.5 h-4 w-4"/><span><span className="block text-sm font-bold text-foreground">{label}</span><span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{group}</span></span></label>)}
           </div>
         </div>
       </div>
-      <div className="flex flex-col-reverse gap-2 border-t border-slate-200 bg-slate-50 p-5 sm:flex-row sm:justify-end">
-        <button onClick={onClose} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700">Cancel</button>
+      <div className="flex flex-col-reverse gap-2 border-t border-border bg-secondary p-5 sm:flex-row sm:justify-end">
+        <button onClick={onClose} className="rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-bold text-foreground">Cancel</button>
         <button onClick={onSave} className="rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-black text-amber-300">Save & verify connection</button>
       </div>
     </div>

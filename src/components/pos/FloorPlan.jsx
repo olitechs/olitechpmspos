@@ -25,12 +25,12 @@ function Tile({ table, session, shape, designMode, onSelect, onMove }) {
   const rawStatus = session?.status || table.status || 'free';
   const status = rawStatus === 'unsettled' ? 'bill' : rawStatus;
   const statusMeta = {
-    free: { color:'#74C365', label:'Open / Available' },
-    occupied: { color:'#FA003F', label:'Occupied' },
-    bill: { color:'#FAFAFA', label:'Printed / Unsettled' },
-    reserved: { color:'var(--table-reserved)', label:'Reserved' },
-    paid: { color:'var(--table-paid)', label:'Paid / closing' },
-  }[status] || { color:'var(--table-free)', label:'Free' };
+    free: { bg:'var(--table-free-bg)', fg:'var(--table-free-fg)', border:'var(--table-free-border)', label:'Open' },
+    occupied: { bg:'var(--table-occupied-bg)', fg:'var(--table-occupied-fg)', border:'var(--table-occupied-border)', label:'Occupied' },
+    bill: { bg:'var(--table-bill-bg)', fg:'var(--table-bill-fg)', border:'var(--table-bill-border)', label:'Bill printed' },
+    reserved: { bg:'var(--room-checkout)', fg:'var(--primary-foreground)', border:'var(--room-checkout)', label:'Reserved' },
+    paid: { bg:'var(--success)', fg:'var(--primary-foreground)', border:'var(--success)', label:'Paid / closing' },
+  }[status] || { bg:'var(--table-free-bg)', fg:'var(--table-free-fg)', border:'var(--table-free-border)', label:'Open' };
   const geometry = SHAPES[shape];
   const orderCount = Number(session?.orderCount || 0);
   const guests = Number(session?.guests || 0);
@@ -55,19 +55,19 @@ function Tile({ table, session, shape, designMode, onSelect, onMove }) {
     onClick={()=>{if(!designMode||!movedRef.current)onSelect(table)}}
     title={designMode?`Drag ${tableLabel(table)}`:`Open ${tableLabel(table)} — ${statusMeta.label}`}
     aria-label={`${tableLabel(table)}, ${statusMeta.label}`}
-    className="absolute flex flex-col items-center justify-center select-none overflow-hidden transition-shadow min-h-12"
+    className="floor-table-tile absolute flex flex-col items-center justify-center select-none overflow-hidden transition-shadow min-h-12"
     style={{left:designMode?table.x:undefined,top:designMode?table.y:undefined,width:geometry.width,height:geometry.height,borderRadius:geometry.radius,
-      background:statusMeta.color,color:status==='free'||status==='bill'?'#223039':status==='occupied'?'#FFFFFF':'var(--action-text)',
-      border:`2px solid ${statusMeta.color}`,boxShadow:table.selected?'0 0 0 3px var(--focus), var(--shadow)':'none',
+      background:statusMeta.bg,color:statusMeta.fg,
+      border:`2px solid ${statusMeta.border}`,boxShadow:table.selected?'0 0 0 3px var(--focus), var(--shadow)':'none',
       position:designMode?'absolute':'relative',cursor:designMode?'grab':'pointer',padding:8,touchAction:'none'}}>
     <div className="flex items-center justify-center gap-2 w-full min-w-0">
       <span className="font-black text-[13px] leading-none truncate max-w-[72px]">{tableLabel(table)}</span>
-      <span className="shrink-0" style={{width:8,height:8,borderRadius:'50%',background:statusMeta.color,border:'1px solid var(--surface)'}}/>
+      <span className="shrink-0" style={{width:8,height:8,borderRadius:'50%',background:'currentColor',border:'1px solid currentColor'}}/>
     </div>
-    <div className="font-bold text-[10px] leading-tight mt-1">{statusMeta.label}</div>
-    <div className="font-bold text-[10px] leading-tight mt-1">{table.seats} seats</div>
-    {status==='occupied'&&<div className="font-black text-[10px] leading-tight mt-1 truncate max-w-full">{guests}p • {elapsedLabel(session.openedAt)}</div>}
-    {status==='bill'&&<span className="mt-1 max-w-full truncate rounded px-1.5 py-0.5 text-[8px] font-black uppercase leading-tight" style={{background:'var(--warning-soft)',color:'var(--warning-text)'}}>BILL PRINTED</span>}
+    <div className="font-bold text-[12px] leading-tight mt-1">{statusMeta.label}</div>
+    <div className="font-bold text-[12px] leading-tight mt-1">{table.seats} seats</div>
+    {status==='occupied'&&<div className="font-black text-[12px] leading-tight mt-1 truncate max-w-full">{guests}p • {elapsedLabel(session.openedAt)}</div>}
+    {status==='bill'&&<span className="mt-1 max-w-full truncate rounded px-1.5 py-0.5 text-[8px] font-black uppercase leading-tight" style={{background:'var(--border)',color:'var(--text)'}}>BILL PRINTED</span>}
     {designMode&&<Move size={11} className="absolute bottom-1 opacity-60"/>}
     {status==='occupied'&&orderCount>0&&<span className="absolute top-1 right-1 min-w-5 h-5 px-1 rounded-full text-[8px] font-black flex items-center justify-center" style={{background:'var(--primary-soft)',color:'var(--primary)'}}>{orderCount}</span>}
   </button>;
@@ -116,7 +116,7 @@ export default function FloorPlan({ onTableSelect }) {
   }));
 
   return (
-    <div className="flex flex-col h-full overflow-hidden" style={{ background:'#D7D7D7' }}>
+    <div className="flex flex-col h-full overflow-hidden" style={{ background:'var(--floor-bg)' }}>
       <div className="flex items-center gap-2 px-4 pt-3 pb-2 shrink-0 overflow-x-auto">
         {store.zones.map((z) => (
           <button key={z.id} onClick={() => setActiveZoneId(z.id)} className="px-5 py-2 rounded-full text-sm font-semibold whitespace-nowrap shrink-0" style={{ background:z.id===zone.id?'var(--action)':'transparent',color:z.id===zone.id?'var(--action-text)':'var(--text)',border:`1.5px solid ${z.id===zone.id?'var(--action)': 'var(--border)'}` }}>{z.name}</button>
@@ -133,7 +133,7 @@ export default function FloorPlan({ onTableSelect }) {
       {designMode && <div className="mx-4 mb-2 rounded-lg px-3 py-2 text-xs font-bold bg-[var(--text)] text-[var(--action)] shrink-0">Design Layout ON — drag tables to rearrange them. Amounts are intentionally hidden from the floor.</div>}
 
       <div className="flex flex-1 gap-4 px-4 pb-4 min-h-0">
-        <div className="flex-1 overflow-auto rounded-xl" style={{ background:'#D7D7D7', border: `1px solid ${BORDER}` }}>
+        <div className="flex-1 overflow-auto rounded-xl" style={{ background:'var(--floor-bg)', border: `1px solid ${BORDER}` }}>
           {designMode ? (
             <div className="relative" style={{ width: canvasW, height: canvasH, minWidth: '100%' }}>
               {displayTables.map((t) => <Tile key={t.id} table={{ ...t, selected: selectedTableId === t.id }} session={store.getSession(t.id)} shape={shape} designMode={designMode} onSelect={(table) => { setSelectedTableId(table.id); onTableSelect(table); }} onMove={moveTable} />)}
@@ -153,9 +153,9 @@ export default function FloorPlan({ onTableSelect }) {
           <SummaryRow label="Reservations Tonight" value={RESERVATIONS_TONIGHT} />
           <div className="mt-2 pt-3" style={{ borderTop:'1px solid var(--border)' }}>
             <h4 className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color:'var(--action)' }}>Legend</h4>
-            <Legend label="Open / Available" fill="#74C365" border="#74C365" />
-            <Legend label="Occupied / Ongoing order" fill="#FA003F" border="#FA003F" />
-            <Legend label="Printed / Unsettled bill" fill="#FAFAFA" border="#FAFAFA" />
+            <Legend label="Open / Available" fill="var(--table-free-bg)" border="var(--table-free-border)" />
+            <Legend label="Occupied" fill="var(--table-occupied-bg)" border="var(--table-occupied-border)" />
+            <Legend label="Printed / Unsettled" fill="var(--table-bill-bg)" border="var(--table-bill-border)" />
           </div>
         </div>
       </div>
@@ -164,4 +164,4 @@ export default function FloorPlan({ onTableSelect }) {
 }
 
 function Legend({ label, fill, border }) { return <div className="flex items-center gap-2 mb-1.5"><span className="w-3.5 h-3.5 rounded shrink-0" style={{ background: fill, border: `2px solid ${border}` }} /><span className="text-xs" style={{ color: MUTED_DARK }}>{label}</span></div>; }
-function SummaryRow({ label, value }) { return <div className="flex flex-col"><span className="text-2xl font-mono font-bold text-white">{value}</span><span className="text-xs leading-tight" style={{ color: MUTED_DARK }}>{label}</span></div>; }
+function SummaryRow({ label, value }) { return <div className="flex flex-col"><span className="text-2xl font-mono font-bold" style={{ color:'var(--text)' }}>{value}</span><span className="text-xs leading-tight" style={{ color: MUTED_DARK }}>{label}</span></div>; }

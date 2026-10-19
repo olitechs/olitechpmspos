@@ -87,7 +87,7 @@ export default function AppShell({ workspace = 'backoffice' }) {
     <div className="flex h-screen min-h-0 flex-col overflow-hidden bg-[var(--bg)] text-[var(--text)]">
       <TopAppNav />
       <div className="flex min-h-0 flex-1">
-        {workspace !== 'pos' && mobileOpen && <button type="button" aria-label="Close navigation" onClick={() => setMobileOpen(false)} className="fixed inset-0 z-40 bg-black/40 md:hidden" />}
+        {workspace !== 'pos' && mobileOpen && <button type="button" aria-label="Close navigation" onClick={() => setMobileOpen(false)} className="fixed inset-0 z-40 bg-[var(--overlay-scrim)] md:hidden" />}
         {workspace !== 'pos' && <aside className={[
           'fixed inset-y-0 left-0 z-50 flex min-h-0 flex-col border-r border-[var(--border)] bg-[var(--surface)] transition-[width,transform] duration-150 md:static md:z-auto md:translate-x-0',
           collapsed ? 'w-16' : 'w-60',
