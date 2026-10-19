@@ -27,7 +27,7 @@ module.exports = {
         destructive: { DEFAULT: 'var(--destructive)', foreground: 'var(--destructive-foreground)' },
         border: 'var(--border)', input: 'var(--input)', ring: 'var(--ring)',
         chart: { '1': 'var(--primary)', '2': 'var(--success)', '3': 'var(--accent)', '4': 'var(--danger)', '5': 'var(--primary-soft)' },
-        sidebar: { DEFAULT: 'var(--sidebar)', foreground: 'var(--text)', primary: 'var(--primary)', 'primary-foreground': '#FFFFFF', accent: 'var(--primary-soft)', 'accent-foreground': 'var(--primary)', border: 'var(--border)', ring: 'var(--primary)' },
+        sidebar: { DEFAULT: 'var(--sidebar)', foreground: 'var(--text)', primary: 'var(--primary)', 'primary-foreground': 'var(--primary-foreground)', accent: 'var(--primary-soft)', 'accent-foreground': 'var(--primary)', border: 'var(--border)', ring: 'var(--primary)' },
       },
       fontFamily: { heading: ['var(--font-heading)'], body: ['var(--font-body)'], display: ['var(--font-display)'], mono: ['var(--font-mono)'] },
       fontSize: {
