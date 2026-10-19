@@ -1,5 +1,6 @@
 import React from 'react';
 import ThemeToggle from '@/components/ui/ThemeToggle';
+import { Settings } from 'lucide-react';
 import { SURFACE, TEAL, TEAL_LIGHT } from '@/data/themePalette';
 
 const TABS = [
@@ -8,7 +9,7 @@ const TABS = [
   { id: 'bill', label: 'Bill & Payment', icon: '🧾' },
 ];
 
-export default function AppHeader({ activeTab, onTabChange, activeTable, onCloseShift, shift, onManageMenu }) {
+export default function AppHeader({ activeTab, onTabChange, activeTable, onCloseShift, shift, onManageMenu, onOpenSettings }) {
   const now = new Date();
   const timeStr = now.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' });
   const dateStr = now.toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'short' });
@@ -52,7 +53,8 @@ export default function AppHeader({ activeTab, onTabChange, activeTable, onClose
       </nav>
 
       <div className="flex items-center gap-3">
-        {onManageMenu && <button onClick={onManageMenu} className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--primary-soft)] px-3 py-2 text-xs font-black text-[var(--primary)] hover:bg-[var(--sidebar)]">Menu</button>}
+        {onManageMenu && <button onClick={onManageMenu} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--primary-soft)] px-3 py-2 text-xs font-bold text-[var(--primary)] hover:bg-[var(--sidebar)]">Menu</button>}
+        {onOpenSettings && <button type="button" onClick={onOpenSettings} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-bold text-[var(--text)] hover:bg-[var(--sidebar)]" aria-label="Open POS settings"><Settings size={16} /> Settings</button>}
         {shift?.status === 'open' && onCloseShift && (
           <button onClick={onCloseShift} className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--primary-soft)] px-3 py-2 text-xs font-black text-[var(--primary)] hover:bg-[var(--sidebar)]">
             Close Shift
