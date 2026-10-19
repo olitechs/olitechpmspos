@@ -40,6 +40,8 @@
     --table-occupied-bg: #FA003F; --table-occupied-fg: #FFFFFF; --table-occupied-border: #C70032;
     --table-bill-bg: #FAFAFA; --table-bill-fg: #14232B; --table-bill-border: #9AA3A8;
     --payment-deposit-foreground: #5A4310;
+    --payment-status-foreground: #14232B;
+    --stay-optioned-foreground: #FFFFFF;
 
 
     --planner-ice: var(--primary-soft);
@@ -121,6 +123,8 @@
     --overlay-scrim: rgba(0,0,0,.65);
     --floor-bg:#1B2327;
     --payment-deposit-foreground: #5A4310;
+    --payment-status-foreground: #0E1417;
+    --stay-optioned-foreground: #0E1417;
   }
 
   * { box-sizing: border-box; }
@@ -158,7 +162,7 @@
   .legend-checked_out { color: var(--room-occupied); opacity: .5; }
   .legend-closed { color: var(--room-out-of-order); background: repeating-linear-gradient(45deg, var(--room-out-of-order) 0 6px, var(--border) 6px 12px); }
   .payment-chip { width: 18px; height: 5px; border-radius: 999px; display: inline-block; }
-  .room-planner { --pay-paid: #3FA77A; --pay-deposit: #F2C14E; --pay-unpaid: #EE8A3C; --payment-text: var(--text); --payment-deposit-text: var(--payment-deposit-foreground); }
+  .room-planner { --pay-paid: #3FA77A; --pay-deposit: #F2C14E; --pay-unpaid: #EE8A3C; --payment-text: var(--payment-status-foreground); --payment-deposit-text: var(--payment-deposit-foreground); }
   .room-planner .payment-none { background: var(--pay-unpaid); color: var(--payment-text); }
   .room-planner .payment-partial { background: var(--pay-deposit); color: var(--payment-deposit-text); }
   .room-planner .payment-total { background: var(--pay-paid); color: var(--payment-text); }
