@@ -46,15 +46,15 @@ test('sidebar has accessible mobile open/close controls and a scrollable navigat
 });
 
 test('theme foundation supports canonical light/dark tokens and reduced-motion handling', () => {
-  assert.match(theme, /:root\\s*\\{[\\s\\S]*?--canvas: #F4F7F8/);
-  assert.match(theme, /--primary: #0F7C86/);
-  assert.match(theme, /--surface: #FFFFFF/);
-  assert.match(theme, /:root\\[data-theme="dark"\\]/);
-  assert.match(theme, /--canvas:#0E1417/);
-  assert.match(theme, /--table-free-bg: #74C365/);
-  assert.match(theme, /--table-occupied-bg: #FA003F/);
-  assert.match(theme, /--table-bill-bg: #FAFAFA/);
-  assert.match(theme, /prefers-reduced-motion:\\s*reduce/);
+  assert.ok(theme.includes('--canvas: #F4F7F8'));
+  assert.ok(theme.includes('--primary: #0F7C86'));
+  assert.ok(theme.includes('--surface: #FFFFFF'));
+  assert.ok(theme.includes(':root[data-theme="dark"]'));
+  assert.ok(theme.includes('--canvas:#0E1417'));
+  assert.ok(theme.includes('--table-free-bg: #74C365'));
+  assert.ok(theme.includes('--table-occupied-bg: #FA003F'));
+  assert.ok(theme.includes('--table-bill-bg: #FAFAFA'));
+  assert.ok(theme.includes('prefers-reduced-motion: reduce'));
   for (const token of ['--surface', '--surface-2', '--border', '--text', '--muted', '--focus']) {
     assert.match(theme, new RegExp(token + ':'));
   }
