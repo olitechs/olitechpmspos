@@ -128,7 +128,7 @@ export default function KitchenDisplay() {
         <div className="flex items-center gap-2">
           <button onClick={()=>setTab('orders')} className="rounded-xl px-4 py-2 text-xs font-black" style={{background:tab==='orders'?'#FFD100':NAVY2,color:tab==='orders'?NAVY:MUTED_DARK}}>KDS Orders</button>
           <button onClick={()=>setTab('voids')} className="rounded-xl px-4 py-2 text-xs font-black" style={{background:tab==='voids'?'#DC2626':NAVY2,color:tab==='voids'?'#fff':MUTED_DARK}}>Void Controls</button>
-          {tab==='voids' && <span className="rounded-full bg-white/10 px-2 py-1 text-[10px] font-black text-white">{voids.length}</span>}
+          {tab==='voids' && <span className="rounded-full bg-surface/10 px-2 py-1 text-[10px] font-black text-foreground">{voids.length}</span>}
         </div>
         <div className="flex gap-4">
           {['new', 'preparing', 'ready'].map((s) => {
@@ -151,25 +151,25 @@ export default function KitchenDisplay() {
       {tab === 'voids' ? (
         <div className="rounded-2xl border border-white/10 bg-[#11161C] p-4">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div><div className="text-sm font-black text-white">Today's Void / Cancellation Controls</div><div className="mt-1 text-xs text-slate-400">Every controlled removal is retained for manager review and printer reprint.</div></div>
-            <input value={voidFilter} onChange={e=>setVoidFilter(e.target.value)} placeholder="Filter table, item, reason…" className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white outline-none"/>
+            <div><div className="text-sm font-black text-foreground">Today's Void / Cancellation Controls</div><div className="mt-1 text-xs text-muted-foreground">Every controlled removal is retained for manager review and printer reprint.</div></div>
+            <input value={voidFilter} onChange={e=>setVoidFilter(e.target.value)} placeholder="Filter table, item, reason…" className="rounded-xl border border-white/10 bg-surface/5 px-3 py-2 text-xs text-foreground outline-none"/>
           </div>
           {voidError && <div className="mb-3 rounded-xl bg-red-500/10 p-3 text-xs font-bold text-red-300">{voidError}</div>}
           <div className="overflow-x-auto"><table className="w-full min-w-[850px] text-left text-xs">
-            <thead className="border-b border-white/10 text-[10px] uppercase tracking-wider text-slate-500"><tr><th className="p-3">Time</th><th className="p-3">Table</th><th className="p-3">Item</th><th className="p-3">Removed</th><th className="p-3">Reason</th><th className="p-3">Removed By</th><th className="p-3">Status</th><th className="p-3">Control</th></tr></thead>
-            <tbody>{visibleVoids.map(v=><tr key={v.id} className="border-b border-white/5 text-slate-300">
-              <td className="p-3 font-mono">{formatTime(v.created_at)}</td><td className="p-3 font-black text-white">{v.table_number}</td><td className="p-3"><div className="font-bold text-white">{v.item_name}</div><div className="text-[10px] uppercase text-slate-500">{v.category}</div></td><td className="p-3 font-black text-red-300">{v.removed_qty}</td><td className="p-3">{v.reason}</td><td className="p-3">{v.removed_by_name||'—'}</td><td className="p-3"><span className="rounded-full bg-white/10 px-2 py-1 text-[10px] font-black uppercase">{v.status === 'printed' ? 'Void Printed' : v.status}</span></td>
-              <td className="p-3"><div className="flex flex-wrap gap-2"><button disabled={voidBusy} onClick={()=>reprintVoid(v)} className="rounded-lg bg-white/10 px-2.5 py-1.5 font-bold text-white">Re-print Void</button>{canApproveVoid&&v.status!=='approved'&&<button onClick={()=>approveVoid(v)} className="rounded-lg bg-[#FFD100] px-2.5 py-1.5 font-black text-[#090C11]">Approve</button>}</div></td>
+            <thead className="border-b border-white/10 text-[10px] uppercase tracking-wider text-muted-foreground"><tr><th className="p-3">Time</th><th className="p-3">Table</th><th className="p-3">Item</th><th className="p-3">Removed</th><th className="p-3">Reason</th><th className="p-3">Removed By</th><th className="p-3">Status</th><th className="p-3">Control</th></tr></thead>
+            <tbody>{visibleVoids.map(v=><tr key={v.id} className="border-b border-white/5 text-muted-foreground">
+              <td className="p-3 font-mono">{formatTime(v.created_at)}</td><td className="p-3 font-black text-foreground">{v.table_number}</td><td className="p-3"><div className="font-bold text-foreground">{v.item_name}</div><div className="text-[10px] uppercase text-muted-foreground">{v.category}</div></td><td className="p-3 font-black text-red-300">{v.removed_qty}</td><td className="p-3">{v.reason}</td><td className="p-3">{v.removed_by_name||'—'}</td><td className="p-3"><span className="rounded-full bg-surface/10 px-2 py-1 text-[10px] font-black uppercase">{v.status === 'printed' ? 'Void Printed' : v.status}</span></td>
+              <td className="p-3"><div className="flex flex-wrap gap-2"><button disabled={voidBusy} onClick={()=>reprintVoid(v)} className="rounded-lg bg-surface/10 px-2.5 py-1.5 font-bold text-foreground">Re-print Void</button>{canApproveVoid&&v.status!=='approved'&&<button onClick={()=>approveVoid(v)} className="rounded-lg bg-[#FFD100] px-2.5 py-1.5 font-black text-[#090C11]">Approve</button>}</div></td>
             </tr>)}</tbody>
           </table></div>
-          {visibleVoids.length===0&&<div className="py-10 text-center text-xs text-slate-500">No voids found today.</div>}
-          {canApproveVoid && <div className="mt-4 flex items-center gap-2 border-t border-white/10 pt-4"><input value={signature} onChange={e=>setSignature(e.target.value)} placeholder="Manager signature / name for approval" className="flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white outline-none"/><span className="text-[10px] text-slate-500">Signature required before Approve.</span></div>}
+          {visibleVoids.length===0&&<div className="py-10 text-center text-xs text-muted-foreground">No voids found today.</div>}
+          {canApproveVoid && <div className="mt-4 flex items-center gap-2 border-t border-white/10 pt-4"><input value={signature} onChange={e=>setSignature(e.target.value)} placeholder="Manager signature / name for approval" className="flex-1 rounded-xl border border-white/10 bg-surface/5 px-3 py-2 text-xs text-foreground outline-none"/><span className="text-[10px] text-muted-foreground">Signature required before Approve.</span></div>}
         </div>
       ) : (
         <>
       {orders.length === 0 && (
         <div className="rounded-2xl border p-8 text-center" style={{ borderColor: BORDER_DARK, background: NAVY2 }}>
-          <div className="text-sm font-bold text-white">No active kitchen orders</div>
+          <div className="text-sm font-bold text-foreground">No active kitchen orders</div>
           <div className="text-xs mt-1" style={{ color: MUTED_DARK }}>
             Orders fired from POS will appear here after the persistent KDS migration is applied.
           </div>
@@ -186,9 +186,9 @@ export default function KitchenDisplay() {
               <div className="px-4 py-3" style={{ background: st.bg, borderBottom: `1px dashed ${st.color}55` }}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-sm font-bold text-white">{order.orderNumber || order.id}</div>
+                    <div className="text-sm font-bold text-foreground">{order.orderNumber || order.id}</div>
                     <div className="text-xs" style={{ color: MUTED_DARK }}>
-                      {areas.join(' · ') || 'Kitchen'} · <span className="font-bold text-white">Table {order.tableNumber || '—'}</span>
+                      {areas.join(' · ') || 'Kitchen'} · <span className="font-bold text-foreground">Table {order.tableNumber || '—'}</span>
                     </div>
                   </div>
                   <span className="px-2 py-0.5 rounded text-xs font-bold" style={{ background: st.bg, color: st.color, border: `1px solid ${st.color}` }}>{st.label}</span>
@@ -238,14 +238,14 @@ export default function KitchenDisplay() {
       {refireOrder && (
         <div className="fixed inset-0 z-[260] flex items-center justify-center bg-black/70 p-4">
           <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#11161C] p-5 shadow-2xl">
-            <div className="text-lg font-black text-white">Re-fire kitchen ticket</div>
-            <p className="mt-1 text-xs text-slate-400">
+            <div className="text-lg font-black text-foreground">Re-fire kitchen ticket</div>
+            <p className="mt-1 text-xs text-muted-foreground">
               This creates an audit event and prints the complete ticket again. It does not create a new sale.
             </p>
             {refireError && <div className="mt-3 rounded-xl bg-red-500/10 p-3 text-xs font-bold text-red-300">{refireError}</div>}
-            <textarea value={refireReason} onChange={e=>setRefireReason(e.target.value)} placeholder="Reason, e.g. printer jam or ticket lost" className="mt-4 min-h-24 w-full rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-white outline-none" />
+            <textarea value={refireReason} onChange={e=>setRefireReason(e.target.value)} placeholder="Reason, e.g. printer jam or ticket lost" className="mt-4 min-h-24 w-full rounded-xl border border-white/10 bg-surface/5 p-3 text-xs text-foreground outline-none" />
             <div className="mt-4 flex justify-end gap-2">
-              <button onClick={()=>setRefireOrder(null)} disabled={refireBusy} className="rounded-xl bg-white/10 px-4 py-2 text-xs font-bold text-white">Cancel</button>
+              <button onClick={()=>setRefireOrder(null)} disabled={refireBusy} className="rounded-xl bg-surface/10 px-4 py-2 text-xs font-bold text-foreground">Cancel</button>
               <button onClick={performRefire} disabled={refireBusy||!refireReason.trim()} className="rounded-xl bg-[#FFD100] px-4 py-2 text-xs font-black text-[#090C11]">{refireBusy?'Re-firing…':'Authorize & Re-fire'}</button>
             </div>
           </div>

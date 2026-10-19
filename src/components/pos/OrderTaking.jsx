@@ -286,8 +286,8 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
           <div className="text-xs uppercase tracking-widest mb-1" style={{ color: TEAL_LIGHT }}>Visiwa Beach Resort</div>
           <div className="text-xs" style={{ color: MUTED_DARK }}>{orderNumber}</div>
           <div className="flex justify-center gap-4 mt-2 text-xs" style={{ color: MUTED_DARK }}>
-            <span>Table <b className="text-white">{tableLabel(table)}</b></span>
-            <span>Covers <b className="text-white">{table.seats}</b></span>
+            <span>Table <b className="text-foreground">{tableLabel(table)}</b></span>
+            <span>Covers <b className="text-foreground">{table.seats}</b></span>
           </div>
         </div>
 
@@ -299,7 +299,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
               <div key={line.id} className="flex items-center gap-1 py-1.5" style={{ borderBottom: `1px solid ${BORDER_DARK}` }}>
                 <div className="flex items-center gap-0.5">
                   <button onClick={() => changeQty(line.id, -1)} className="w-6 h-6 rounded text-xs font-medium flex items-center justify-center" style={{ background: NAVY2, color: MUTED_DARK }}>−</button>
-                  <span className="w-5 text-center text-xs font-medium font-mono text-white">{line.qty}</span>
+                  <span className="w-5 text-center text-xs font-medium font-mono text-foreground">{line.qty}</span>
                   <button onClick={() => changeQty(line.id, 1)} className="w-6 h-6 rounded text-xs font-medium flex items-center justify-center" style={{ background: NAVY2, color: TEAL_LIGHT }}>+</button>
                 </div>
                 <div className="flex-1 min-w-0">
@@ -321,7 +321,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
             <div className="flex justify-between text-xs mb-2" style={{ color: MUTED_DARK }}>
               <span>VAT 16%</span><span className="font-mono">{vat.toLocaleString()}</span>
             </div>
-            <div className="flex justify-between text-sm font-medium mb-3 text-white">
+            <div className="flex justify-between text-sm font-medium mb-3 text-foreground">
               <span>TOTAL KES</span><span className="font-mono">{total.toLocaleString()}</span>
             </div>
           </div>
@@ -354,10 +354,10 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
       </div>
       {modifierTarget && (
         <div className="fixed inset-0 z-[240] flex items-center justify-center bg-[rgba(34,48,57,0.25)] p-4">
-          <div className="w-full max-w-lg rounded-3xl bg-white p-5 shadow-2xl">
+          <div className="w-full max-w-lg rounded-3xl bg-surface p-5 shadow-2xl">
             <div className="flex items-start justify-between gap-3">
               <div><div className="text-lg font-medium text-[var(--text)]">Customize {modifierTarget.name}</div><p className="mt-1 text-xs text-[var(--text-muted)]">Choose the available options before adding it to the order.</p></div>
-              <button onClick={() => setModifierTarget(null)} className="rounded-lg p-2 text-[var(--text-muted)] hover:bg-slate-100"><X size={18}/></button>
+              <button onClick={() => setModifierTarget(null)} className="rounded-lg p-2 text-[var(--text-muted)] hover:bg-secondary"><X size={18}/></button>
             </div>
             <div className="mt-4 space-y-4">
               {modifierGroups.map((group) => {
@@ -368,27 +368,27 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
                 </div>
               })}
             </div>
-            <div className="mt-5 flex justify-end gap-2"><button onClick={() => setModifierTarget(null)} className="rounded-xl border border-[var(--border)] px-4 py-2.5 text-sm font-medium">Cancel</button><button disabled={modifierLoading} onClick={confirmModifiers} className="rounded-xl px-5 py-2.5 text-sm font-medium text-white" style={{background:TEAL}}>Add to Order</button></div>
+            <div className="mt-5 flex justify-end gap-2"><button onClick={() => setModifierTarget(null)} className="rounded-xl border border-[var(--border)] px-4 py-2.5 text-sm font-medium">Cancel</button><button disabled={modifierLoading} onClick={confirmModifiers} className="rounded-xl px-5 py-2.5 text-sm font-medium text-foreground" style={{background:TEAL}}>Add to Order</button></div>
           </div>
         </div>
       )}
       {removeTarget && (
         <div className="fixed inset-0 z-[250] flex items-center justify-center bg-[rgba(34,48,57,0.25)] p-4">
-          <div className="w-full max-w-md rounded-3xl bg-white p-5 shadow-2xl">
+          <div className="w-full max-w-md rounded-3xl bg-surface p-5 shadow-2xl">
             <div className="flex items-start justify-between gap-3">
               <div><div className="flex items-center gap-2 text-base font-medium text-[var(--text)]"><AlertTriangle size={18} className="text-[var(--danger-text)]"/>Cancel sent item</div><p className="mt-1 text-xs text-[var(--text-muted)]">This item was already sent to production or the bill was printed. A control void will be recorded.</p></div>
-              <button onClick={()=>setRemoveTarget(null)} className="rounded-lg p-2 text-[var(--text-muted)] hover:bg-slate-100"><X size={18}/></button>
+              <button onClick={()=>setRemoveTarget(null)} className="rounded-lg p-2 text-[var(--text-muted)] hover:bg-secondary"><X size={18}/></button>
             </div>
             <div className="mt-4 rounded-2xl border border-red-100 bg-red-50 p-4">
               <div className="font-medium text-[var(--text)]">{removeTarget.line.name}</div>
-              <div className="mt-1 text-xs text-slate-600">Original quantity: {removeTarget.line.qty} · Removing: {removeTarget.removeQty} · Remaining: {Math.max(0, removeTarget.line.qty-removeTarget.removeQty)}</div>
+              <div className="mt-1 text-xs text-muted-foreground">Original quantity: {removeTarget.line.qty} · Removing: {removeTarget.removeQty} · Remaining: {Math.max(0, removeTarget.line.qty-removeTarget.removeQty)}</div>
             </div>
             <label className="mt-4 block text-xs font-medium  text-[var(--text-muted)]">Reason required
-              <textarea value={removeReason} onChange={e=>setRemoveReason(e.target.value)} rows={3} placeholder="Wrong order, guest cancellation, duplicate item…" className="mt-2 w-full resize-none rounded-xl border border-[var(--border)] bg-slate-50 p-3 text-sm outline-none focus:border-red-400"/>
+              <textarea value={removeReason} onChange={e=>setRemoveReason(e.target.value)} rows={3} placeholder="Wrong order, guest cancellation, duplicate item…" className="mt-2 w-full resize-none rounded-xl border border-[var(--border)] bg-secondary p-3 text-sm outline-none focus:border-red-400"/>
             </label>
             {removeError && <div className="mt-3 rounded-xl bg-red-50 p-3 text-xs font-medium text-red-700">{removeError}</div>}
             <div className="mt-4 flex items-center gap-2 text-[11px] font-medium text-[var(--text-muted)]"><ShieldCheck size={15}/>Kitchen/Bar control slip will be printed when enabled.</div>
-            <div className="mt-4 flex justify-end gap-2"><button onClick={()=>setRemoveTarget(null)} className="rounded-xl border border-[var(--border)] px-4 py-2.5 text-sm font-medium">Keep Item</button><button disabled={removeBusy} onClick={requestRemoval} className="rounded-xl bg-[var(--danger)] px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50">{removeBusy?'Removing…':needsManagerPin?'Request Manager PIN':'Confirm Void'}</button></div>
+            <div className="mt-4 flex justify-end gap-2"><button onClick={()=>setRemoveTarget(null)} className="rounded-xl border border-[var(--border)] px-4 py-2.5 text-sm font-medium">Keep Item</button><button disabled={removeBusy} onClick={requestRemoval} className="rounded-xl bg-[var(--danger)] px-4 py-2.5 text-sm font-medium text-foreground disabled:opacity-50">{removeBusy?'Removing…':needsManagerPin?'Request Manager PIN':'Confirm Void'}</button></div>
           </div>
         </div>
       )}
