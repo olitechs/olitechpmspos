@@ -129,7 +129,7 @@ export default function PublicSignUp() {
                         value={form.name}
                         onChange={(e) => update('name', e.target.value)}
                         placeholder="Enter your full name"
-                        className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-11 pr-4 text-sm text-[#1A1D21] outline-none transition placeholder:text-[#A1A7AF] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                        className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-11 pr-4 text-sm text-[var(--text)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
                       />
                     </div>
                   </div>
@@ -147,7 +147,7 @@ export default function PublicSignUp() {
                         value={form.email}
                         onChange={(e) => update('email', e.target.value)}
                         placeholder="Enter your email"
-                        className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-11 pr-4 text-sm text-[#1A1D21] outline-none transition placeholder:text-[#A1A7AF] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                        className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-11 pr-4 text-sm text-[var(--text)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
                       />
                     </div>
                   </div>
@@ -166,7 +166,7 @@ export default function PublicSignUp() {
                         value={form.password}
                         onChange={(e) => update('password', e.target.value)}
                         placeholder="Create a password"
-                        className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-11 pr-14 text-sm text-[#1A1D21] outline-none transition placeholder:text-[#A1A7AF] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                        className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-11 pr-14 text-sm text-[var(--text)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
                       />
                       <button type="button" onClick={() => setShowPassword((value) => !value)} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-[var(--text-muted)] hover:text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]" aria-label={showPassword ? 'Hide password' : 'Show password'}>
                         {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -188,7 +188,7 @@ export default function PublicSignUp() {
                         value={form.confirm}
                         onChange={(e) => update('confirm', e.target.value)}
                         placeholder="Confirm your password"
-                        className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-11 pr-14 text-sm text-[#1A1D21] outline-none transition placeholder:text-[#A1A7AF] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                        className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-11 pr-14 text-sm text-[var(--text)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
                       />
                       <button type="button" onClick={() => setShowConfirm((value) => !value)} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-[var(--text-muted)] hover:text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]" aria-label={showConfirm ? 'Hide confirm password' : 'Show confirm password'}>
                         {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}

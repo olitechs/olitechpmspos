@@ -95,7 +95,7 @@ export default function PublicSignIn() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="Enter your email"
-                        className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-11 pr-4 text-sm text-[#1A1D21] outline-none transition placeholder:text-[#A1A7AF] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                        className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-11 pr-4 text-sm text-[var(--text)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
                       />
                     </div>
                   </div>
@@ -113,7 +113,7 @@ export default function PublicSignIn() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="Enter your password"
-                        className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-11 pr-14 text-sm text-[#1A1D21] outline-none transition placeholder:text-[#A1A7AF] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                        className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-11 pr-14 text-sm text-[var(--text)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
                       />
                       <button
                         type="button"
