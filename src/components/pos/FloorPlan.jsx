@@ -25,9 +25,9 @@ function Tile({ table, session, shape, designMode, onSelect, onMove }) {
   const rawStatus = session?.status || table.status || 'free';
   const status = rawStatus === 'unsettled' ? 'bill' : rawStatus;
   const statusMeta = {
-    free: { color:'var(--table-free)', label:'Free' },
-    occupied: { color:'var(--table-occupied)', label:'Occupied' },
-    bill: { color:'var(--table-bill)', label:'Awaiting payment' },
+    free: { color:'#74C365', label:'Open / Available' },
+    occupied: { color:'#FA003F', label:'Occupied' },
+    bill: { color:'#FAFAFA', label:'Printed / Unsettled' },
     reserved: { color:'var(--table-reserved)', label:'Reserved' },
     paid: { color:'var(--table-paid)', label:'Paid / closing' },
   }[status] || { color:'var(--table-free)', label:'Free' };
@@ -57,7 +57,7 @@ function Tile({ table, session, shape, designMode, onSelect, onMove }) {
     aria-label={`${tableLabel(table)}, ${statusMeta.label}`}
     className="absolute flex flex-col items-center justify-center select-none overflow-hidden transition-shadow min-h-12"
     style={{left:designMode?table.x:undefined,top:designMode?table.y:undefined,width:geometry.width,height:geometry.height,borderRadius:geometry.radius,
-      background:status==='free'?'var(--surface)':statusMeta.color,color:status==='free'?'var(--text)':'var(--action-text)',
+      background:statusMeta.color,color:status==='free'||status==='bill'?'#223039':status==='occupied'?'#FFFFFF':'var(--action-text)',
       border:`2px solid ${statusMeta.color}`,boxShadow:table.selected?'0 0 0 3px var(--focus), var(--shadow)':'none',
       position:designMode?'absolute':'relative',cursor:designMode?'grab':'pointer',padding:8,touchAction:'none'}}>
     <div className="flex items-center justify-center gap-2 w-full min-w-0">
@@ -116,7 +116,7 @@ export default function FloorPlan({ onTableSelect }) {
   }));
 
   return (
-    <div className="flex flex-col h-full overflow-hidden" style={{ background:'var(--bg)' }}>
+    <div className="flex flex-col h-full overflow-hidden" style={{ background:'#D7D7D7' }}>
       <div className="flex items-center gap-2 px-4 pt-3 pb-2 shrink-0 overflow-x-auto">
         {store.zones.map((z) => (
           <button key={z.id} onClick={() => setActiveZoneId(z.id)} className="px-5 py-2 rounded-full text-sm font-semibold whitespace-nowrap shrink-0" style={{ background:z.id===zone.id?'var(--action)':'transparent',color:z.id===zone.id?'var(--action-text)':'var(--text)',border:`1.5px solid ${z.id===zone.id?'var(--action)': 'var(--border)'}` }}>{z.name}</button>
@@ -133,7 +133,7 @@ export default function FloorPlan({ onTableSelect }) {
       {designMode && <div className="mx-4 mb-2 rounded-lg px-3 py-2 text-xs font-bold bg-[var(--text)] text-[var(--action)] shrink-0">Design Layout ON — drag tables to rearrange them. Amounts are intentionally hidden from the floor.</div>}
 
       <div className="flex flex-1 gap-4 px-4 pb-4 min-h-0">
-        <div className="flex-1 overflow-auto rounded-xl" style={{ background:'var(--surface)', border: `1px solid ${BORDER}` }}>
+        <div className="flex-1 overflow-auto rounded-xl" style={{ background:'#D7D7D7', border: `1px solid ${BORDER}` }}>
           {designMode ? (
             <div className="relative" style={{ width: canvasW, height: canvasH, minWidth: '100%' }}>
               {displayTables.map((t) => <Tile key={t.id} table={{ ...t, selected: selectedTableId === t.id }} session={store.getSession(t.id)} shape={shape} designMode={designMode} onSelect={(table) => { setSelectedTableId(table.id); onTableSelect(table); }} onMove={moveTable} />)}
@@ -153,9 +153,9 @@ export default function FloorPlan({ onTableSelect }) {
           <SummaryRow label="Reservations Tonight" value={RESERVATIONS_TONIGHT} />
           <div className="mt-2 pt-3" style={{ borderTop:'1px solid var(--border)' }}>
             <h4 className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color:'var(--action)' }}>Legend</h4>
-            <Legend label="Open / Available" fill="#EAB308" border="#CA8A04" />
-            <Legend label="Occupied" fill="#EF4444" border="#DC2626" />
-            <Legend label="Printed / Unsettled" fill="#FFFFFF" border="#D1D5DB" />
+            <Legend label="Open / Available" fill="#74C365" border="#74C365" />
+            <Legend label="Occupied / Ongoing order" fill="#FA003F" border="#FA003F" />
+            <Legend label="Printed / Unsettled bill" fill="#FAFAFA" border="#FAFAFA" />
           </div>
         </div>
       </div>
