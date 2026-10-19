@@ -7,12 +7,15 @@ import { BORDER, MUTED_DARK } from '@/data/themePalette';
 const SHAPE_KEY = 'tableShapeMode';
 const POSITION_KEY = 'tableLayoutPositions';
 const SHAPES = {
-  square: { width: 112, height: 84, radius: 12 },
-  circle: { width: 88, height: 88, radius: '50%' },
+  square: { width: 124, height: 112, radius: 12 },
+  circle: { width: 124, height: 124, radius: '50%' },
 };
 
-function elapsedLabel(openedAt) {
-  const mins = Math.max(0, Math.floor((Date.now() - openedAt) / 60000));
+function elapsedLabel(openedAt, now) {
+  if (!openedAt) return '—';
+  const openedAtMs = typeof openedAt === 'number' ? openedAt : new Date(openedAt).getTime();
+  if (!Number.isFinite(openedAtMs) || openedAtMs <= 0 || openedAtMs > now) return '—';
+  const mins = Math.max(0, Math.floor((now - openedAtMs) / 60000));
   if (mins < 60) return `${mins}m`;
   return `${Math.floor(mins / 60)}h ${mins % 60}m`;
 }
@@ -21,7 +24,7 @@ function safeRead(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key) || 'null') ?? fallback; } catch { return fallback; }
 }
 
-function Tile({ table, session, shape, designMode, onSelect, onMove }) {
+function Tile({ table, session, shape, designMode, onSelect, onMove, now }) {
   const rawStatus = session?.status || table.status || 'free';
   const status = rawStatus === 'unsettled' ? 'bill' : rawStatus;
   const statusMeta = {
@@ -31,9 +34,12 @@ function Tile({ table, session, shape, designMode, onSelect, onMove }) {
     reserved: { bg:'var(--room-checkout)', fg:'var(--primary-foreground)', border:'var(--room-checkout)', label:'Reserved' },
     paid: { bg:'var(--success)', fg:'var(--primary-foreground)', border:'var(--success)', label:'Paid / closing' },
   }[status] || { bg:'var(--table-free-bg)', fg:'var(--table-free-fg)', border:'var(--table-free-border)', label:'Open' };
-  const geometry = SHAPES[shape];
+  const geometry = SHAPES[shape] || SHAPES.square;
   const orderCount = Number(session?.orderCount || 0);
   const guests = Number(session?.guests || 0);
+  const waiterName = status === 'free'
+    ? (table.assignedWaiterName || table.assigned_waiter_name || '')
+    : (session?.waiterName || session?.waiter || table.assignedWaiterName || '');
   const dragRef = useRef(null);
   const movedRef = useRef(false);
 
@@ -55,21 +61,21 @@ function Tile({ table, session, shape, designMode, onSelect, onMove }) {
     onClick={()=>{if(!designMode||!movedRef.current)onSelect(table)}}
     title={designMode?`Drag ${tableLabel(table)}`:`Open ${tableLabel(table)} — ${statusMeta.label}`}
     aria-label={`${tableLabel(table)}, ${statusMeta.label}`}
-    className="floor-table-tile absolute flex flex-col items-center justify-center select-none overflow-hidden transition-shadow min-h-12"
-    style={{left:designMode?table.x:undefined,top:designMode?table.y:undefined,width:geometry.width,height:geometry.height,borderRadius:geometry.radius,
+    className="floor-table-tile absolute flex flex-col items-stretch justify-start select-none transition-shadow min-h-28"
+    style={{left:designMode?table.x:undefined,top:designMode?table.y:undefined,width:geometry.width,minHeight:geometry.height,borderRadius:geometry.radius,
       background:statusMeta.bg,color:statusMeta.fg,
       border:`2px solid ${statusMeta.border}`,boxShadow:table.selected?'0 0 0 3px var(--focus), var(--shadow)':'none',
       position:designMode?'absolute':'relative',cursor:designMode?'grab':'pointer',padding:8,touchAction:'none'}}>
-    <div className="flex items-center justify-center gap-2 w-full min-w-0">
-      <span className="font-black text-[13px] leading-none truncate max-w-[72px]">{tableLabel(table)}</span>
-      <span className="shrink-0" style={{width:8,height:8,borderRadius:'50%',background:'currentColor',border:'1px solid currentColor'}}/>
+    <div className="flex w-full min-w-0 items-center justify-between gap-1">
+      <span className="truncate text-[15px] font-bold leading-tight">{tableLabel(table)}</span>
+      <span className="shrink-0 text-[11px] font-medium">{table.seats} seats</span>
     </div>
-    <div className="font-bold text-[12px] leading-tight mt-1">{statusMeta.label}</div>
-    <div className="font-bold text-[12px] leading-tight mt-1">{table.seats} seats</div>
-    {status==='occupied'&&<div className="font-black text-[12px] leading-tight mt-1 truncate max-w-full">{guests}p • {elapsedLabel(session.openedAt)}</div>}
-    {status==='bill'&&<span className="mt-1 max-w-full truncate rounded px-1.5 py-0.5 text-[8px] font-black uppercase leading-tight" style={{background:'var(--border)',color:'var(--text)'}}>BILL PRINTED</span>}
-    {designMode&&<Move size={11} className="absolute bottom-1 opacity-60"/>}
-    {status==='occupied'&&orderCount>0&&<span className="absolute top-1 right-1 min-w-5 h-5 px-1 rounded-full text-[8px] font-black flex items-center justify-center" style={{background:'var(--primary-soft)',color:'var(--primary)'}}>{orderCount}</span>}
+    <div className="mt-1 text-[12px] font-semibold leading-tight">{statusMeta.label}</div>
+    {waiterName && <div className="mt-1 max-w-full truncate text-[12px] leading-tight" title={waiterName}>{waiterName}</div>}
+    {status === 'occupied' && <div className="mt-1 text-[12px] font-medium leading-tight">{guests}p • {elapsedLabel(session?.openedAt, now)}</div>}
+    {status === 'bill' && <span className="mt-1 max-w-full truncate rounded px-1.5 py-0.5 text-[12px] font-bold uppercase leading-tight" style={{background:'var(--border)',color:'var(--text)'}}>Bill printed</span>}
+    {designMode&&<Move size={14} className="absolute bottom-1 right-1 opacity-70"/>}
+    {status==='occupied'&&orderCount>0&&<span className="absolute top-1 right-1 min-w-5 h-5 px-1 rounded-full text-[12px] font-bold flex items-center justify-center" style={{background:'var(--primary-soft)',color:'var(--primary)'}}>{orderCount}</span>}
   </button>;
 }
 export default function FloorPlan({ onTableSelect }) {
@@ -79,10 +85,15 @@ export default function FloorPlan({ onTableSelect }) {
   const [shape, setShape] = useState(() => safeRead(SHAPE_KEY, 'square'));
   const [designMode, setDesignMode] = useState(false);
   const [positions, setPositions] = useState(() => safeRead(POSITION_KEY, {}));
+  const [now, setNow] = useState(() => Date.now());
   const zone = store.zones.find((z) => z.id === activeZoneId) || store.zones[0];
 
   useEffect(() => { localStorage.setItem(SHAPE_KEY, shape); }, [shape]);
   useEffect(() => { localStorage.setItem(POSITION_KEY, JSON.stringify(positions)); }, [positions]);
+  useEffect(() => {
+    const ticker = window.setInterval(() => setNow(Date.now()), 30000);
+    return () => window.clearInterval(ticker);
+  }, []);
 
   const displayTables = useMemo(() => (zone?.tables || []).map((t) => ({
     ...t,
@@ -104,7 +115,7 @@ export default function FloorPlan({ onTableSelect }) {
 
   if (!zone) return null;
 
-  const geometry = SHAPES[shape];
+  const geometry = SHAPES[shape] || SHAPES.square;
   const canvasW = Math.max(620, ...displayTables.map((t) => t.x + geometry.width + 24));
   const canvasH = Math.max(430, ...displayTables.map((t) => t.y + geometry.height + 24));
   let covers = 0, occupied = 0, openChecks = 0;
@@ -122,10 +133,10 @@ export default function FloorPlan({ onTableSelect }) {
           <button key={z.id} onClick={() => setActiveZoneId(z.id)} className="px-5 py-2 rounded-full text-sm font-semibold whitespace-nowrap shrink-0" style={{ background:z.id===zone.id?'var(--action)':'transparent',color:z.id===zone.id?'var(--action-text)':'var(--text)',border:`1.5px solid ${z.id===zone.id?'var(--action)': 'var(--border)'}` }}>{z.name}</button>
         ))}
         <div className="ml-auto flex items-center gap-1 shrink-0 rounded-xl p-1 bg-[var(--surface)] border-2 border-[var(--border)]">
-          <button type="button" onClick={() => setShape('square')} className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-black" style={{background:shape==='square'?'var(--action)':'var(--surface)',color:shape==='square'?'var(--action-text)':'var(--text)'}}><Grid2X2 size={14} /> Square</button>
-          <button type="button" onClick={() => setShape('circle')} className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-black" style={{background:shape==='circle'?'var(--action)':'var(--surface)',color:shape==='circle'?'var(--action-text)':'var(--text)'}}><Circle size={14} /> Circle</button>
-          <button type="button" onClick={() => setDesignMode((v) => !v)} className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-black border-l-2 border-[var(--border)]" style={{ background:designMode?'var(--primary-soft)':'var(--surface)',color:designMode?'var(--primary)':'var(--text)' }}><Pencil size={14} /> Design Layout</button>
-          {designMode && <button type="button" onClick={saveLayout} className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-black" style={{ background:'var(--action)',color:'var(--action-text)' }}><Save size={14} /> Save</button>}
+          <button type="button" onClick={() => setShape('square')} className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-bold" style={{background:shape==='square'?'var(--action)':'var(--surface)',color:shape==='square'?'var(--action-text)':'var(--text)'}}><Grid2X2 size={14} /> Square</button>
+          <button type="button" onClick={() => setShape('circle')} className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-bold" style={{background:shape==='circle'?'var(--action)':'var(--surface)',color:shape==='circle'?'var(--action-text)':'var(--text)'}}><Circle size={14} /> Circle</button>
+          <button type="button" onClick={() => setDesignMode((v) => !v)} className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-bold border-l-2 border-[var(--border)]" style={{ background:designMode?'var(--primary-soft)':'var(--surface)',color:designMode?'var(--primary)':'var(--text)' }}><Pencil size={14} /> Design Layout</button>
+          {designMode && <button type="button" onClick={saveLayout} className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-bold" style={{ background:'var(--action)',color:'var(--action-text)' }}><Save size={14} /> Save</button>}
           {designMode && <button type="button" onClick={() => setDesignMode(false)} className="p-2 rounded-lg text-[var(--text)]" title="Close design mode"><X size={14} /></button>}
         </div>
       </div>
@@ -136,11 +147,11 @@ export default function FloorPlan({ onTableSelect }) {
         <div className="flex-1 overflow-auto rounded-xl" style={{ background:'var(--floor-bg)', border: `1px solid ${BORDER}` }}>
           {designMode ? (
             <div className="relative" style={{ width: canvasW, height: canvasH, minWidth: '100%' }}>
-              {displayTables.map((t) => <Tile key={t.id} table={{ ...t, selected: selectedTableId === t.id }} session={store.getSession(t.id)} shape={shape} designMode={designMode} onSelect={(table) => { setSelectedTableId(table.id); onTableSelect(table); }} onMove={moveTable} />)}
+              {displayTables.map((t) => <Tile key={t.id} table={{ ...t, selected: selectedTableId === t.id }} session={store.getSession(t.id)} shape={shape} designMode={designMode} onSelect={(table) => { setSelectedTableId(table.id); onTableSelect(table); }} onMove={moveTable} now={now} />)}
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 p-5 items-center justify-items-center">
-              {displayTables.map((t) => <Tile key={t.id} table={{ ...t, selected: selectedTableId === t.id }} session={store.getSession(t.id)} shape={shape} designMode={false} onSelect={(table) => { setSelectedTableId(table.id); onTableSelect(table); }} onMove={moveTable} />)}
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 p-5 items-start justify-items-center">
+              {displayTables.map((t) => <Tile key={t.id} table={{ ...t, selected: selectedTableId === t.id }} session={store.getSession(t.id)} shape={shape} designMode={false} onSelect={(table) => { setSelectedTableId(table.id); onTableSelect(table); }} onMove={moveTable} now={now} />)}
             </div>
           )}
         </div>

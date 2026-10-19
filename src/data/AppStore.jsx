@@ -181,8 +181,8 @@ export function StoreProvider({ children }) {
   const getSession = useCallback((id) => sessions[id] || null, [sessions]);
 
   const persistSession = useCallback((id, session) => {
-    if (!propertyId || !session) return;
-    posService.saveSession({
+    if (!propertyId || !session) return Promise.resolve(null);
+    return posService.saveSession({
       propertyId,
       tableKey: id,
       tableNumber: session.tableNumber || id,
@@ -192,13 +192,23 @@ export function StoreProvider({ children }) {
       waiter: session.waiter || null,
       orderNumber: session.orderNumber || null,
       orderLines: session.orderLines || [],
-    }).catch((error) => console.error('[POS] failed to persist table session', error));
+    }).catch((error) => {
+      console.error('[POS] failed to persist table session', error);
+      return null;
+    });
   }, [propertyId]);
 
   const openTable = useCallback((id, { guests, waiter, tableNumber, zoneId, orderNumber = null }) => {
     const next = { status: 'occupied', guests: Number(guests) || 1, waiter: waiter || '', openedAt: Date.now(), total: 0, orderCount: 0, tableNumber: String(tableNumber ?? ''), zoneId: zoneId || null, orderNumber, orderLines: [] };
     setSessions((prev) => ({ ...prev, [id]: next }));
-    persistSession(id, next);
+    persistSession(id, next).then((row) => {
+      const serverOpenedAt = row?.opened_at ? new Date(row.opened_at).getTime() : null;
+      if (!Number.isFinite(serverOpenedAt) || serverOpenedAt <= 0) return;
+      setSessions((prev) => prev[id] ? {
+        ...prev,
+        [id]: { ...prev[id], openedAt: serverOpenedAt },
+      } : prev);
+    });
   }, [persistSession]);
 
   const updateSessionTotals = useCallback((id, { total = 0, orderCount = 0 } = {}) => {
