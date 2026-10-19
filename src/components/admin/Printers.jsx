@@ -101,7 +101,7 @@ export default function Printers() {
           <div className="text-sm font-bold" style={{ color: NAVY }}>Receipt & Kitchen Printers</div>
           <div className="text-xs" style={{ color: MUTED }}>Assign each printer one or more purposes: order, bill, receipt.</div>
         </div>
-        <button onClick={() => setAdding((s) => !s)} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold" style={{ background: TEAL, color: '#090C11' }}>
+        <button onClick={() => setAdding((s) => !s)} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold" style={{ background: TEAL, color: 'var(--text)' }}>
           <Plus size={14} /> Add Printer
         </button>
       </div>
@@ -183,7 +183,7 @@ export default function Printers() {
               return (
                 <button key={p.id} onClick={() => toggleFormPurpose(p.id)} title={p.desc}
                   className="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1"
-                  style={{ background: active ? TEAL : SURFACE2, color: active ? '#fff' : NAVY, border: `1.5px solid ${active ? TEAL : BORDER}` }}>
+                  style={{ background: active ? TEAL : SURFACE2, color: active ? 'var(--surface)' : NAVY, border: `1.5px solid ${active ? TEAL : BORDER}` }}>
                   {active && <Check size={12} />}{p.label}
                 </button>
               );
@@ -201,7 +201,7 @@ export default function Printers() {
 
           <div className="flex gap-2">
             <button onClick={() => { setAdding(false); setFormErrors({}); }} className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ background: SURFACE, border: `1px solid ${BORDER}`, color: NAVY }}>Cancel</button>
-            <button onClick={save} className="px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-1" style={{ background: TEAL, color: '#090C11' }}>
+            <button onClick={save} className="px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-1" style={{ background: TEAL, color: 'var(--text)' }}>
               <Check size={14} /> Save Printer
             </button>
           </div>
@@ -263,7 +263,7 @@ export default function Printers() {
                     return (
                       <button key={p2.id} onClick={() => store.togglePurpose(p.id, p2.id)}
                         className="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1"
-                        style={{ background: active ? TEAL : SURFACE2, color: active ? '#fff' : NAVY, border: `1.5px solid ${active ? TEAL : BORDER}` }}>
+                        style={{ background: active ? TEAL : SURFACE2, color: active ? 'var(--surface)' : NAVY, border: `1.5px solid ${active ? TEAL : BORDER}` }}>
                         {active && <Check size={12} />}{p2.label}
                       </button>
                     );
@@ -287,7 +287,7 @@ export default function Printers() {
                 ) : (
                   <button onClick={() => runConnect(p)} disabled={isBusy}
                     className="px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1"
-                    style={{ background: TEAL, color: '#090C11', opacity: isBusy ? 0.6 : 1, cursor: isBusy ? 'not-allowed' : 'pointer' }}>
+                    style={{ background: TEAL, color: 'var(--text)', opacity: isBusy ? 0.6 : 1, cursor: isBusy ? 'not-allowed' : 'pointer' }}>
                     {isBusy ? <Loader2 size={12} className="animate-spin" /> : (isFailure ? <RefreshCw size={12} /> : null)}
                     {isBusy ? 'Testing…' : isFailure ? 'Retry' : CONNECT_LABEL[p.connectionType]}
                   </button>
