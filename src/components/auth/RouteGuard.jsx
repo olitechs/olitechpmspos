@@ -170,7 +170,7 @@ export default function RouteGuard({ module, children }) {
               <LockKeyhole size={16} className="shrink-0 text-[#6B7280]" />
             </button>
           )) : (
-            <div className="col-span-full rounded-2xl border border-dashed border-[#D1D5DB] bg-[#FAFAF8] p-5 text-center text-sm text-[#6B7280]">
+            <div className="col-span-full rounded-2xl border border-dashed border-border bg-canvas p-5 text-center text-sm text-[#6B7280]">
               {staff.length ? 'No active staff member is assigned to this workspace.' : 'No staff profiles are available. Ask the Property Admin to create a staff profile and assign a PIN.'}
             </div>
           )}

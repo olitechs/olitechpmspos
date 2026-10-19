@@ -48,6 +48,7 @@
     --grid-today: var(--primary-soft);
     --shadow: none;
     --shadow-overlay: 0 8px 24px rgba(20,35,43,.08);
+    --overlay-scrim: rgba(20,35,43,.65);
 
     /* shadcn semantic mappings */
     --background: var(--canvas);
@@ -115,6 +116,7 @@
     --room-clean:#4FBF8E; --room-dirty:#E39580; --room-occupied:#6B96F0;
     --room-checkout:#8B84E8; --room-out-of-order:#5A6670;
     --shadow-overlay:0 8px 24px rgba(0,0,0,.45);
+    --overlay-scrim: rgba(0,0,0,.65);
     --floor-bg:#1B2327;
   }
 
