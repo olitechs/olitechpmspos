@@ -46,6 +46,34 @@ export const posService = {
     return data;
   },
 
+
+  async listFloorConfiguration(propertyId) {
+    const { data, error } = await supabase.rpc('fn_list_pos_floor_configuration', { p_property_id: propertyId });
+    if (error) throw new Error(error.message);
+    return Array.isArray(data) ? data : [];
+  },
+  async listFloorWaiters(propertyId) {
+    const { data, error } = await supabase.rpc('fn_list_pos_floor_waiters', { p_property_id: propertyId });
+    if (error) throw new Error(error.message);
+    return data || [];
+  },
+  async saveFloorConfiguration({ propertyId, zones }) {
+    if (!propertyId) throw new Error('A property must be selected before saving the POS floor.');
+    const payload = (Array.isArray(zones) ? zones : []).map((zone) => ({
+      id: String(zone.id || ''), name: String(zone.name || '').trim(),
+      tables: (Array.isArray(zone.tables) ? zone.tables : []).map((table) => ({
+        id: String(table.id || ''), number: Number(table.number), seats: Number(table.seats) || 4,
+        x: Math.max(0, Math.round(Number(table.x) || 0)), y: Math.max(0, Math.round(Number(table.y) || 0)),
+        w: Math.max(48, Math.round(Number(table.w || table.width) || 86)),
+        h: Math.max(48, Math.round(Number(table.h || table.height) || 64)),
+        assignedWaiterId: table.assignedWaiterId || table.assigned_waiter_id || null,
+      })),
+    }));
+    const { data, error } = await supabase.rpc('fn_save_pos_floor_configuration', { p_property_id: propertyId, p_zones: payload });
+    if (error) throw new Error(error.message);
+    return Array.isArray(data) ? data : payload;
+  },
+
   async listActiveSessions(propertyId) {
     const { data, error } = await supabase.rpc('fn_list_active_pos_table_sessions', {
       p_property_id: propertyId,
