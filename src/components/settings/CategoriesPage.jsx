@@ -129,7 +129,7 @@ export default function CategoriesPage() {
         </div>
 
         {editing && (
-          <div className="fixed inset-0 z-50 grid place-items-center bg-black/30 p-4">
+          <div className="fixed inset-0 z-50 grid place-items-center bg-[var(--overlay-scrim)] p-4">
             <div className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-xl">
               <h2 className="text-lg font-black text-[var(--text)]">Rename category</h2>
               <input

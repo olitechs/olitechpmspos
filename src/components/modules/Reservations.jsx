@@ -311,7 +311,7 @@ function ReservationDrawer({ reservation: r, rooms, pms, propertyId, busy, onClo
   const cancel = () => onRun(() => pms.removeReservation(r.id));
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/30" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-50 flex justify-end bg-[var(--overlay-scrim)]" role="dialog" aria-modal="true">
       <div className="h-full w-full max-w-xl overflow-y-auto bg-surface shadow-2xl">
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-surface px-5 py-4">
           <div><div className="text-lg font-bold text-foreground">{r.guestName}</div><div className="text-xs text-muted-foreground">Reservation details</div></div>
@@ -385,7 +385,7 @@ function Info({ label, value }) {
 
 function Modal({ title, children, onClose }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--overlay-scrim)] p-4" role="dialog" aria-modal="true">
       <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-surface shadow-2xl">
         <div className="flex items-center justify-between border-b border-border px-5 py-4"><h2 className="font-bold text-foreground">{title}</h2><button onClick={onClose} aria-label="Close"><X size={18} /></button></div>
         <div className="p-5">{children}</div>
