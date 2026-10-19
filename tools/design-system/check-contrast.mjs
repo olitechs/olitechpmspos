@@ -24,7 +24,7 @@ function contrast(a, b) {
   return (light + 0.05) / (dark + 0.05);
 }
 const light = tokensFrom(blockFor(':root {'));
-const dark = tokensFrom(blockFor(':root[data-theme="dark"]'));
+const dark = { ...light, ...tokensFrom(blockFor(':root[data-theme="dark"]')) };
 const checks = [
   ['light body text on canvas', light.text, light.canvas, 4.5],
   ['light body text on surface', light.text, light.surface, 4.5],
@@ -39,6 +39,10 @@ const checks = [
   ['dark muted text on canvas', dark['text-muted'], dark.canvas, 4.5],
   ['dark muted text on surface', dark['text-muted'], dark.surface, 4.5],
   ['dark primary-action text', dark['primary-foreground'], dark.primary, 4.5],
+  ['dark success semantic text', dark['success-text'], dark['success-soft'], 4.5],
+  ['dark danger semantic text', dark['danger-text'], dark['danger-soft'], 4.5],
+  ['dark warning semantic text', dark['warning-text'], dark['warning-soft'], 4.5],
+  ['dark open table label', dark['table-free-fg'], dark['table-free-bg'], 4.5],
   ['open table label', light['table-free-fg'], light['table-free-bg'], 4.5],
   ['unsettled bill label', light['table-bill-fg'], light['table-bill-bg'], 4.5],
   ['dark unsettled bill label', dark['table-bill-fg'], dark['table-bill-bg'], 4.5],
