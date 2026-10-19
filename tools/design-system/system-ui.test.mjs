@@ -45,12 +45,16 @@ test('sidebar has accessible mobile open/close controls and a scrollable navigat
   assert.match(sidebar, /aria-label="Search navigation"/);
 });
 
-test('theme foundation uses Coastal Linen light tokens and reduced-motion handling', () => {
-  assert.match(theme, /:root\s*\{[\s\S]*?--canvas: #F6F9F9/);
+test('theme foundation supports canonical light/dark tokens and reduced-motion handling', () => {
+  assert.match(theme, /:root\\s*\\{[\\s\\S]*?--canvas: #F4F7F8/);
   assert.match(theme, /--primary: #0F7C86/);
   assert.match(theme, /--surface: #FFFFFF/);
-  assert.doesNotMatch(theme, /\[data-theme="dark"\]|\.dark\s*\{/);
-  assert.match(theme, /prefers-reduced-motion:\s*reduce/);
+  assert.match(theme, /:root\\[data-theme="dark"\\]/);
+  assert.match(theme, /--canvas:#0E1417/);
+  assert.match(theme, /--table-free-bg: #74C365/);
+  assert.match(theme, /--table-occupied-bg: #FA003F/);
+  assert.match(theme, /--table-bill-bg: #FAFAFA/);
+  assert.match(theme, /prefers-reduced-motion:\\s*reduce/);
   for (const token of ['--surface', '--surface-2', '--border', '--text', '--muted', '--focus']) {
     assert.match(theme, new RegExp(token + ':'));
   }
