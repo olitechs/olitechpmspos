@@ -20,6 +20,6 @@ export default function ThemeToggle({compact=false}){
       aria-pressed={mode===option}
       title={label}
       onClick={()=>setMode(option)}
-    ><Icon size={15} aria-hidden="true"/>{!compact&&<span>{label}</span>}</button>)}
+    ><Icon size={15} aria-hidden="true"/><span className={compact ? 'hidden md:inline' : undefined}>{label}</span></button>)}
   </div>;
 }
