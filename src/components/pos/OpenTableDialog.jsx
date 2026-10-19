@@ -77,7 +77,7 @@ export default function OpenTableDialog({ open, table, staff, onCancel, onStart 
             <button
               onClick={submit} disabled={!valid}
               className="flex-1 py-3 rounded-xl text-sm font-bold"
-              style={{ background: valid ? TEAL : '#C2CCD3', color: '#fff', cursor: valid ? 'pointer' : 'not-allowed' }}
+              style={{ background: valid ? TEAL : 'var(--border)', color: 'var(--primary-foreground)', cursor: valid ? 'pointer' : 'not-allowed' }}
             >
               Start Order
             </button>
