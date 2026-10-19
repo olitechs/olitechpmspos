@@ -66,7 +66,7 @@ export default function MenuManager({ open, onClose }) {
   const exportFile=async()=>{try{await inventoryService.exportPosMenu(menu);toast.success('POS menu exported.');}catch(e){toast.error(e.message);}};
 
   return <div className="fixed inset-0 z-[400] flex items-center justify-center bg-[rgba(34,48,57,0.25)] p-3 md:p-6">
-    <div className="flex max-h-[94vh] w-full max-w-7xl flex-col overflow-hidden rounded-3xl bg-[#F8FAFC] shadow-2xl">
+    <div className="flex max-h-[94vh] w-full max-w-7xl flex-col overflow-hidden rounded-3xl bg-canvas shadow-2xl">
       <div className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface)] px-5 py-4">
         <div><div className="flex items-center gap-2 text-lg font-medium text-[var(--text)]"><Settings2 size={20}/> POS Menu & Product Catalogue</div><div className="mt-1 text-xs text-[var(--text-muted)]">Managers and cashiers can create menu products, categories and POS pricing. Stock remains linked to the product ledger.</div></div>
         <button onClick={onClose} className="rounded-xl p-2 text-[var(--text-muted)] hover:bg-[var(--sidebar)]"><X size={20}/></button>

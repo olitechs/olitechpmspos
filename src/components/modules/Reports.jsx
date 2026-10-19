@@ -120,7 +120,7 @@ export default function Reports() {
         <div className="flex flex-wrap gap-2">
           <label className="flex min-h-11 items-center gap-2 rounded-xl border bg-surface px-3" style={{ borderColor: BORDER }}><CalendarDays size={15} style={{ color: TEAL_DARK }} /><input aria-label="From date" type="date" value={from} onChange={e=>setFrom(e.target.value)} className="bg-transparent text-sm font-medium outline-none" /></label>
           <label className="flex min-h-11 items-center gap-2 rounded-xl border bg-surface px-3" style={{ borderColor: BORDER }}><span className="text-xs font-medium" style={{ color: MUTED }}>TO</span><input aria-label="To date" type="date" value={to} onChange={e=>setTo(e.target.value)} className="bg-transparent text-sm font-medium outline-none" /></label>
-          <button type="button" onClick={load} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium disabled:opacity-50" style={{ background: NAVY, color: '#fff' }}><RefreshCw size={15} className={loading?'animate-spin':''}/>Refresh</button>
+          <button type="button" onClick={load} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium disabled:opacity-50" style={{ background: 'var(--primary)', color: 'var(--primary-foreground)' }}><RefreshCw size={15} className={loading?'animate-spin':''}/>Refresh</button>
           <button type="button" onClick={exportCsv} disabled={!report || loading} className="inline-flex min-h-11 items-center gap-2 rounded-xl border bg-surface px-3 text-sm font-medium disabled:opacity-50" style={{ borderColor: BORDER, color: NAVY }}><Download size={15}/>CSV</button>
           <button type="button" onClick={printReport} className="inline-flex min-h-11 items-center gap-2 rounded-xl border bg-surface px-3 text-sm font-medium" style={{ borderColor: BORDER, color: NAVY }}><Printer size={15}/>Print</button>
         </div>
@@ -128,7 +128,7 @@ export default function Reports() {
 
       {error && <div role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
-      <div className="mb-4 flex flex-wrap gap-2">{tabs.map(([key,label,Icon])=><button key={key} type="button" onClick={()=>setTab(key)} className="inline-flex min-h-10 items-center gap-2 rounded-xl px-3 text-xs font-medium" style={{ background: tab===key ? NAVY : SURFACE, color: tab===key ? '#fff' : NAVY, border: `1px solid ${tab===key ? NAVY : BORDER}` }}><Icon size={14}/>{label}</button>)}</div>
+      <div className="mb-4 flex flex-wrap gap-2">{tabs.map(([key,label,Icon])=><button key={key} type="button" onClick={()=>setTab(key)} className="inline-flex min-h-10 items-center gap-2 rounded-xl px-3 text-xs font-medium" style={{ background: tab===key ? 'var(--primary)' : SURFACE, color: tab===key ? 'var(--primary-foreground)' : NAVY, border: `1px solid ${tab===key ? NAVY : BORDER}` }}><Icon size={14}/>{label}</button>)}</div>
 
       {loading && !report ? <div className="rounded-xl p-10 text-center text-sm" style={{ background:SURFACE,color:MUTED,border:`1px solid ${BORDER}` }}>Loading live transactional data…</div> : report && <>
         {tab==='overview' && <div className="space-y-4">

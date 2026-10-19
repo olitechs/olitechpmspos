@@ -109,18 +109,18 @@ export default function StoresPage() {
   };
 
   return (
-    <div className="min-h-full bg-[#F5F5F5] p-6">
+    <div className="min-h-full bg-canvas p-6">
       <div className="mx-auto max-w-5xl">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-2xl font-normal text-[#212121]">Stores</h2>
-            <p className="text-sm text-[#757575]">Manage properties/outlets and their printer configuration.</p>
+            <h2 className="text-2xl font-normal text-foreground">Stores</h2>
+            <p className="text-sm text-muted-foreground">Manage properties/outlets and their printer configuration.</p>
           </div>
           <div className="flex gap-2">
-            <button type="button" onClick={loadStores} disabled={loading} className="flex items-center gap-2 border border-[#D6D6D6] bg-surface px-4 py-3 text-sm text-[#424242] disabled:opacity-50">
+            <button type="button" onClick={loadStores} disabled={loading} className="flex items-center gap-2 border border-border bg-surface px-4 py-3 text-sm text-foreground disabled:opacity-50">
               <RefreshCw size={15} className={loading ? 'animate-spin' : ''} /> Refresh
             </button>
-            <button type="button" onClick={() => { resetForm(); }} className="flex items-center gap-2 bg-[#4CAF50] px-5 py-3 text-sm font-medium uppercase text-foreground">
+            <button type="button" onClick={() => { resetForm(); }} className="flex items-center gap-2 bg-primary px-5 py-3 text-sm font-medium uppercase text-foreground">
               <Plus size={16} /> Add store
             </button>
           </div>
@@ -135,40 +135,40 @@ export default function StoresPage() {
         <div className="grid gap-4 md:grid-cols-[1fr_320px]">
           <div className="bg-surface shadow-sm">
             {loading ? (
-              <p className="p-8 text-sm text-[#757575]">Loading stores…</p>
+              <p className="p-8 text-sm text-muted-foreground">Loading stores…</p>
             ) : stores.length ? stores.map(store => (
               <div key={store.id} className="flex items-center gap-4 border-b p-5 last:border-0">
-                <Building2 className="shrink-0 text-[#78909C]" />
+                <Building2 className="shrink-0 text-muted-foreground" />
                 <div className="min-w-0 flex-1">
-                  <div className="font-medium text-[#212121]">
-                    {store.name}{store.is_default && <span className="ml-2 text-xs text-[#2E7D32]">Default</span>}
+                  <div className="font-medium text-foreground">
+                    {store.name}{store.is_default && <span className="ml-2 text-xs text-success">Default</span>}
                   </div>
-                  <div className="break-words text-xs text-[#757575]">{store.address || 'No address'}</div>
+                  <div className="break-words text-xs text-muted-foreground">{store.address || 'No address'}</div>
                 </div>
-                <button type="button" onClick={() => { setEditing(store.id); setName(store.name); setAddress(store.address || ''); }} className="text-sm text-[#2E7D32]">Edit</button>
-                <button type="button" disabled={deletingId === store.id} onClick={() => remove(store)} aria-label={`Delete ${store.name}`} className="text-[#D32F2F] disabled:opacity-50">
+                <button type="button" onClick={() => { setEditing(store.id); setName(store.name); setAddress(store.address || ''); }} className="text-sm text-success">Edit</button>
+                <button type="button" disabled={deletingId === store.id} onClick={() => remove(store)} aria-label={`Delete ${store.name}`} className="text-danger disabled:opacity-50">
                   <Trash2 size={17} />
                 </button>
               </div>
             )) : (
-              <p className="p-8 text-sm text-[#757575]">No stores configured. Create your first store using the form.</p>
+              <p className="p-8 text-sm text-muted-foreground">No stores configured. Create your first store using the form.</p>
             )}
           </div>
 
           <form onSubmit={event => { event.preventDefault(); save(); }} className="bg-surface p-5 shadow-sm">
-            <h3 className="font-medium text-[#212121]">{editing ? 'Edit store' : 'New store'}</h3>
-            <label className="mt-4 block text-xs text-[#757575]">
+            <h3 className="font-medium text-foreground">{editing ? 'Edit store' : 'New store'}</h3>
+            <label className="mt-4 block text-xs text-muted-foreground">
               Store name
-              <input required maxLength={100} value={name} onChange={event => setName(event.target.value)} placeholder="e.g. Main Restaurant" className="mt-1 w-full border-b border-[#BDBDBD] px-0 py-2 text-sm outline-none focus:border-[#4CAF50]" />
+              <input required maxLength={100} value={name} onChange={event => setName(event.target.value)} placeholder="e.g. Main Restaurant" className="mt-1 w-full border-b border-border px-0 py-2 text-sm outline-none focus:border-primary" />
             </label>
-            <label className="mt-4 block text-xs text-[#757575]">
+            <label className="mt-4 block text-xs text-muted-foreground">
               Address
-              <input maxLength={300} value={address} onChange={event => setAddress(event.target.value)} placeholder="Street, town (optional)" className="mt-1 w-full border-b border-[#BDBDBD] px-0 py-2 text-sm outline-none focus:border-[#4CAF50]" />
+              <input maxLength={300} value={address} onChange={event => setAddress(event.target.value)} placeholder="Street, town (optional)" className="mt-1 w-full border-b border-border px-0 py-2 text-sm outline-none focus:border-primary" />
             </label>
-            <button type="submit" disabled={saving || !propertyId} className="mt-6 w-full bg-[#4CAF50] py-3 text-sm font-medium uppercase text-foreground disabled:cursor-not-allowed disabled:opacity-50">
+            <button type="submit" disabled={saving || !propertyId} className="mt-6 w-full bg-primary py-3 text-sm font-medium uppercase text-foreground disabled:cursor-not-allowed disabled:opacity-50">
               {saving ? 'Saving…' : editing ? 'Save changes' : 'Create store'}
             </button>
-            {editing && <button type="button" onClick={resetForm} className="mt-2 w-full border border-[#D6D6D6] py-2 text-sm text-[#424242]">Cancel edit</button>}
+            {editing && <button type="button" onClick={resetForm} className="mt-2 w-full border border-border py-2 text-sm text-foreground">Cancel edit</button>}
           </form>
         </div>
       </div>
