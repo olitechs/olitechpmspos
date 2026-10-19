@@ -86,6 +86,8 @@ The six unmatched historical ledger entries listed in the Phase 0 execution reco
 
 ## 7. Service/query boundaries
 
+**Foundation utilities now present on the Phase 1 branch:** `src/lib/propertyQueryKeys.js` provides property-first query keys and property-ID/mutation scope guards. `src/services/offlineMutationQueue.js` provides a bounded IndexedDB outbox for explicitly provisional draft operations and rejects credentials in queued payloads. These are not a claim that all components have been migrated to the service layer or that offline replay is production-ready.
+
 Target flow:
 
 `Page/component → feature query/mutation hook → domain service → Supabase table/RPC → TanStack Query cache`
@@ -113,6 +115,8 @@ Audit events are server-derived and append-only. Minimum fields:
 
 ## 9. Offline-sync foundation
 
+**Implemented local foundation:** `src/services/offlineMutationQueue.js` defines a versioned IndexedDB outbox, stable idempotency-key uniqueness, property-scoped listing, credential-field rejection, payload size/version checks, and constrained status transitions. Only `pos.order.draft`, `reservation.draft`, and `inventory.count.draft` are queueable; final payments/refunds/voids/admin actions are deliberately excluded. The module is not yet wired to operational mutations and has no replay worker. Tests cover the pure validation contract; browser IndexedDB transaction and cross-tab behavior still require browser integration tests.
+
 Offline mode is a local queue, not a second authoritative database.
 
 Each queued mutation must include a UUID idempotency key, operation name/version, property ID, actor/session context reference (not credentials), created time, payload schema version, retry count, and status (`pending`, `in_flight`, `synced`, `conflict`, `rejected`). Keep payloads minimal and avoid storing PINs, auth tokens, or unnecessary guest PII.
@@ -136,9 +140,9 @@ Before this design is marked implemented:
 - [ ] Role/action and subscription matrices have positive and negative tests.
 - [ ] PIN brute-force throttling, session expiry/revocation, module binding, and cross-property replay tests pass.
 - [ ] Audit rows are transactionally emitted for critical operations and immutable to clients.
-- [ ] Offline idempotency, conflict, tenant-switch, expired-session, and permission-revocation tests pass.
+- [ ] Offline idempotency, conflict, tenant-switch, expired-session, and permission-revocation integration tests pass; current tests cover only record validation and tenant query-key contracts.
 - [ ] `npm run build`, `npm run lint`, `npm run typecheck`, and relevant regression suites pass on the final branch commit.
 - [ ] Browser smoke tests pass without removing existing PMS/POS workflows.
 - [ ] Owner approves Phase 1 before merge/release.
 
-**Current disposition:** Design specified; database rollout and full Phase 1 completion remain blocked by unresolved Phase 0 evidence and test prerequisites.
+**Current disposition:** Authorization design specified; tenant query-key and local offline-outbox foundations implemented on the branch. Database rollout, end-to-end role/session enforcement, transactional audit coverage, offline replay, and full Phase 1 completion remain blocked by unresolved Phase 0 security evidence and integration-test prerequisites.
