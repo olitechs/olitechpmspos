@@ -40,7 +40,7 @@ The source file `supabase/migrations/20261013210000_harden_booking_and_tenant_se
 
 ## Disposable authorization regression check
 
-The existing disposable database was tested in a transaction with simulated authenticated JWT claims and `SET LOCAL ROLE authenticated`. The SQL completed without an assertion error, and the transaction was rolled back.
+The exact tracked source migration `20261013210000_harden_booking_and_tenant_sensitive_rpcs.sql` was executed transactionally against the existing disposable database with its outer `BEGIN`/`COMMIT` removed so the test harness could roll back the entire operation. The migration and assertions completed without an SQL assertion error; the transaction was rolled back, so no function/grant changes persisted. The same authenticated-role checks were also run against the disposable project's already-guarded implementation. This is syntax/behavior evidence for that schema only, not proof of production-equivalent compatibility.
 
 Assertions covered:
 
