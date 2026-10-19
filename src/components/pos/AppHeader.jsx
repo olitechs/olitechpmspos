@@ -1,6 +1,6 @@
 import React from 'react';
-import { SURFACE } from '@/data/themePalette';
-import { TEAL } from '@/data/themePalette';
+import ThemeToggle from '@/components/ui/ThemeToggle';
+import { SURFACE, TEAL, TEAL_LIGHT } from '@/data/themePalette';
 
 const TABS = [
   { id: 'floor', label: 'Floor Plan', icon: '⬛' },
@@ -15,7 +15,6 @@ export default function AppHeader({ activeTab, onTabChange, activeTable, onClose
 
   return (
     <header className="flex items-center justify-between px-4 py-0 shrink-0" style={{ background: SURFACE, height: '56px', borderBottom: '1px solid var(--border)' }}>
-      {/* Brand */}
       <div className="flex items-center gap-2">
         <div className="flex flex-col leading-none">
           <span className="font-bold text-[var(--primary)] tracking-wide text-base font-mono tracking-[0.05em]">
@@ -25,7 +24,6 @@ export default function AppHeader({ activeTab, onTabChange, activeTable, onClose
         </div>
       </div>
 
-      {/* Tabs */}
       <nav className="flex gap-1">
         {TABS.map(tab => {
           const isActive = activeTab === tab.id;
@@ -65,7 +63,7 @@ export default function AppHeader({ activeTab, onTabChange, activeTable, onClose
           <div className="text-xs" style={{ color: TEAL_LIGHT }}>{dateStr}</div>
         </div>
       </div>
-    <ThemeToggle compact />
+      <ThemeToggle compact />
     </header>
   );
 }
