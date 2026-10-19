@@ -15,7 +15,7 @@ const QUEUEABLE_DRAFT_OPERATIONS = new Set([
   'reservation.draft',
   'inventory.count.draft',
 ]);
-const SENSITIVE_KEY = /(?:^|_)(?:pin|password|passwd|secret|token|authorization|access_key|refresh_key|card_number|cvv|cvc)(?:$|_)/i;
+const SENSITIVE_KEY = /pin|password|passwd|secret|token|authorization|access.?key|refresh.?key|card.?number|cvv|cvc/i;
 const TERMINAL_STATES = new Set(['synced', 'conflict', 'rejected']);
 const ALLOWED_TRANSITIONS = {
   pending: new Set(['in_flight', 'rejected']),
