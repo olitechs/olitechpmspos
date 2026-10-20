@@ -32,6 +32,8 @@ Production `audit_logs` currently has `id`, `actor_id`, `action`, `property_id`,
 
 Production `staff_pin_attempts` has RLS enabled but no policy reported by the advisor. Direct grants and all alternate access paths must be verified before concluding whether a no-policy table is safely RPC-only.
 
+The expanded effective-privilege query also shows that `anon` has effective SELECT/INSERT/UPDATE/DELETE table privileges on many RLS-enabled public relations, including `audit_logs`, guest/reservation/payment/POS/inventory tables, `properties`, `property_users`, `property_subscriptions`, `staff_sessions`, and `staff_logs`. This is **not by itself proof of row exposure** because RLS predicates still apply, but it materially increases the blast radius of any permissive/mis-scoped policy and makes policy-by-policy anonymous negative tests and least-privilege grant review mandatory. Do not mass-revoke privileges until public booking flows and policy dependencies are mapped.
+
 The production security advisor also reports **Leaked Password Protection Disabled** for Supabase Auth. This is an account/auth configuration finding separate from SQL remediation; enablement requires a deliberate Auth configuration change and should be tracked in the release security checklist.
 
 ## Review of the tracked source migration
