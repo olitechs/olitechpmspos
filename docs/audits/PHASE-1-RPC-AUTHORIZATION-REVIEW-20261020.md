@@ -32,6 +32,8 @@ Production `audit_logs` currently has `id`, `actor_id`, `action`, `property_id`,
 
 Production `staff_pin_attempts` has RLS enabled but no policy reported by the advisor. Direct grants and all alternate access paths must be verified before concluding whether a no-policy table is safely RPC-only.
 
+The production security advisor also reports **Leaked Password Protection Disabled** for Supabase Auth. This is an account/auth configuration finding separate from SQL remediation; enablement requires a deliberate Auth configuration change and should be tracked in the release security checklist.
+
 ## Review of the tracked source migration
 
 The existing migration improves four known gaps, but is **not sufficient as the final authorization layer**:
