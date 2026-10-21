@@ -386,6 +386,9 @@ BEGIN
      OR v_access->>'reason' <> 'subscription_not_configured' THEN
     RAISE EXCEPTION 'FAIL: missing subscription did not fail closed: %', v_access;
   END IF;
+  IF public.fn_staff_module_access(current_setting('app.phase1.property_b')::uuid, 'pos') THEN
+    RAISE EXCEPTION 'FAIL: module access bypassed a missing subscription';
+  END IF;
   RAISE NOTICE 'PASS: missing subscription denies access without provisioning';
 END
 $subscription_missing$;
