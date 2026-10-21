@@ -116,8 +116,52 @@ begin
 end;
 $$;
 
+
+-- Bulk import is the UI's actual entry point. Keep the authorization check here
+-- and route each row through the SKU-aware single-item upsert above.
+create or replace function public.fn_bulk_upsert_pos_menu(
+  p_property_id uuid,
+  p_rows jsonb
+) returns integer
+language plpgsql
+security definer
+set search_path = public
+as $
+declare
+  r jsonb;
+  v_count integer := 0;
+begin
+  if not public.can_manage_pos_menu(p_property_id) then
+    raise exception 'Only an authorised manager or cashier can manage the POS menu.';
+  end if;
+
+  for r in select value from jsonb_array_elements(coalesce(p_rows, '[]'::jsonb)) loop
+    perform public.fn_upsert_pos_menu_item(
+      p_property_id,
+      nullif(r->>'id', '')::uuid,
+      r->>'sku',
+      r->>'name',
+      coalesce(r->>'category', 'General'),
+      coalesce(r->>'unit', 'pcs'),
+      coalesce(nullif(r->>'selling_price', '')::numeric, 0),
+      coalesce(nullif(r->>'current_stock', '')::numeric, 0),
+      coalesce(nullif(r->>'min_stock', '')::numeric, 0),
+      coalesce(nullif(r->>'max_stock', '')::numeric, 0),
+      coalesce(r->>'production_center', 'Kitchen'),
+      coalesce(nullif(r->>'pos_sort', '')::integer, 0),
+      coalesce(nullif(r->>'pos_active', '')::boolean, true)
+    );
+    v_count := v_count + 1;
+  end loop;
+
+  return v_count;
+end;
+$;
+
 -- Keep the authenticated-only execute boundary established by the catalogue migration.
 revoke all on function public.fn_upsert_pos_menu_item(uuid,uuid,text,text,text,text,numeric,numeric,numeric,numeric,text,integer,boolean) from public, anon;
 grant execute on function public.fn_upsert_pos_menu_item(uuid,uuid,text,text,text,text,numeric,numeric,numeric,numeric,text,integer,boolean) to authenticated;
+revoke all on function public.fn_bulk_upsert_pos_menu(uuid,jsonb) from public, anon;
+grant execute on function public.fn_bulk_upsert_pos_menu(uuid,jsonb) to authenticated;
 
 notify pgrst, 'reload schema';
