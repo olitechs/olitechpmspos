@@ -16,7 +16,7 @@
 
 ## Phase 1 candidate status
 
-The forward-only candidate migration is `supabase/migrations/20261022180000_phase1_staff_session_expiry_scope.sql`. Its current CI passes against the repository's minimal PostgreSQL fixture, but the fixture is not a production-equivalent schema. No production migration has been applied.
+The forward-only candidate migration is `supabase/migrations/20261022180000_phase1_staff_session_expiry_scope.sql`. It now covers staff-session expiry/module scope, read-only subscription evaluation, POS menu/shift tenant guards, active/enabled public booking configuration, and least-privilege execution for the low-level pending-property helper. CI passes against the repository's minimal PostgreSQL fixture, but that fixture is not production-equivalent. No production migration has been applied.
 
 ## Required next gates
 
