@@ -9,6 +9,7 @@ const design = await read('docs/architecture/PHASE-1-FOUNDATION-SECURITY-DESIGN.
 const reconciliation = await read('docs/audits/PHASE-1-RECONCILIATION-REGISTER-20261019.md');
 const migration = await read('supabase/migrations/20261013210000_harden_booking_and_tenant_sensitive_rpcs.sql');
 const authService = await read('src/services/authService.js');
+const tenantNegativeHarness = await read('supabase/tests/phase1_rpc_tenant_negative_regression.sql');
 
 test('Phase 1 design documents fail-closed tenant authorization and server-side enforcement', () => {
   for (const required of [
@@ -53,6 +54,23 @@ test('tracked RPC remediation binds pending-property creation to the caller', ()
   ]) {
     assert.ok(migration.includes(required), `missing RPC security guard: ${required}`);
   }
+});
+
+test('two-property RPC negative harness covers cross-tenant and public-booking denials with rollback', () => {
+  for (const required of [
+    'two distinct users',
+    'cross-user pending-property creation was allowed',
+    'cross-property POS menu returns zero rows',
+    'cross-property current POS shift returns no row',
+    'inactive property exposed public booking config',
+    'disabled booking engine exposed public config',
+    'ROLLBACK;',
+  ]) {
+    assert.ok(tenantNegativeHarness.includes(required), `missing negative regression case: ${required}`);
+  }
+  assert.match(tenantNegativeHarness, /NEVER run on production/i);
+  assert.match(tenantNegativeHarness, /SET LOCAL ROLE authenticated/);
+  assert.match(tenantNegativeHarness, /SET LOCAL ROLE anon/);
 });
 
 test('PIN helpers reject weak formats and do not use Math.random as a fallback', () => {
