@@ -90,6 +90,10 @@ BEGIN
   SELECT EXISTS (
     SELECT 1 FROM public.staff_sessions ss
     WHERE ss.user_id = auth.uid()
+      AND ss.module IS NOT NULL
+      AND ss.revoked_at IS NULL
+      AND ss.expires_at > now()
+      AND ss.hard_expires_at > now()
   ) INTO v_has_session;
 
   IF v_has_session THEN
