@@ -80,3 +80,32 @@ The request to reuse an existing isolated environment was attempted before creat
 
 **Disposition remains BLOCKED.** No production writes were performed. Do not use the unrelated Supabase project or the production `main` branch as a substitute test environment. Continue safe source review and test authoring, but do not claim runtime security remediation is validated until the existing disposable project is granted access or an appropriately isolated, schema-equivalent environment is available.
 - Creating a new $0/month isolated project was also attempted after the existing disposable project proved inaccessible. Supabase blocked creation because the organization owner has reached the free-plan limit of two active projects. No project was created, and no existing project was paused or deleted.
+
+## Additional read-only production confirmation — 2026-10-22
+
+The following definitions and columns were re-read from production using catalog-only SELECT queries. No DDL/DML was executed.
+
+### Staff session contract is insufficient for module/action authorization
+
+- Production `staff_sessions` has only `user_id`, `staff_id`, `property_id`, and `verified_at`; it has no explicit `expires_at`, `revoked_at`, or module scope.
+- `verify_staff_pin(p_property_id, p_module, p_pin_hash)` checks that the staff member is active and that `p_module` is in `staff.assigned_modules`, then upserts one session per `user_id`. It records the property and timestamp, but not the verified module.
+- `current_staff_role(p_property_id)` only checks the authenticated user, property, active staff row, and `verified_at > now() - interval '30 minutes'`. It does not validate requested module/action or subscription entitlement.
+- Therefore the current staff session can establish recent staff identity for a property, but it is not sufficient evidence that the same session was authorized for a particular module/action. The tracked RPC migration's use of `current_staff_role(...) IS NOT NULL` is an improvement over the observed unguarded production RPCs, but it is **not the final authorization contract**.
+
+### Other confirmed live function behavior
+
+- `fn_list_pos_menu(uuid)` and `fn_current_pos_shift(uuid)` currently have no caller/property guard in their live bodies.
+- `fn_public_booking_engine_config(uuid)` currently LEFT JOINs booking settings and filters only by property ID. It can return public booking configuration without checking active property status or `booking_engine_settings.enabled`.
+- `create_pending_property_for_user(uuid,text,text,text)` currently trusts the caller-supplied `p_user_id`; its live body does not compare that value with `auth.uid()`.
+- `fn_subscription_access(uuid,text)` checks property membership/platform-owner status and evaluates the existing plan/status/module alias rules, but inserts a `property_subscriptions` row when one is missing for an active, packaged property. Access evaluation therefore has a database side effect and must be separated from any compatibility/backfill operation without changing trial/grace behavior.
+
+### Required next implementation design
+
+1. Introduce an explicit staff-session contract with server-generated expiry and revocation semantics; preserve the current one-session-per-user behavior unless call-site analysis proves a different model is required.
+2. Ensure module/action authorization checks the active staff record, session identity/property, expiry/revocation, staff assigned module, property status, and current subscription entitlement at the server boundary.
+3. Rework callers and tests together. Do not make `current_staff_role` alone stand in for module authorization.
+4. Split subscription compatibility provisioning from read-only access evaluation. Backfill/provision only through a separately authorized and audited operation, after confirming the exact package/trial/grace semantics and dependencies.
+5. Execute all candidate SQL and two-property negative cases in a schema-equivalent isolated database before considering deployment.
+
+**Safety disposition remains unchanged:** these findings refine the source-level design; they do not authorize a production migration. The runtime security matrix remains blocked until an appropriate isolated database is accessible.
+
