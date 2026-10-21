@@ -109,3 +109,11 @@ The following definitions and columns were re-read from production using catalog
 
 **Safety disposition remains unchanged:** these findings refine the source-level design; they do not authorize a production migration. The runtime security matrix remains blocked until an appropriate isolated database is accessible.
 
+### Session refresh and existing module helper — additional production evidence
+
+- `touch_active_staff_session()` currently updates `verified_at = now()` for any `staff_sessions` row matching `auth.uid()`, then returns `true`. It does not verify that a row was actually updated, check the active staff record, validate the requested module/action, or consult the current subscription entitlement. Because `current_staff_role` treats a verification timestamp within 30 minutes as current, repeated calls can keep the session fresh without a hard maximum lifetime.
+- `clear_active_staff_session()` deletes the current user's session row. That is a useful revocation mechanism, but it does not compensate for an over-permissive refresh function.
+- `fn_staff_module_access(property,module)` does check property membership, active property/package, staff activity and assigned-module/role mappings. However, its live body does not validate the selected `staff_sessions` row and does not consult `fn_subscription_access`; platform owners bypass its checks. This helper cannot be assumed to provide the complete session-plus-entitlement contract without mapping all callers and preserving intended platform-admin behavior.
+
+The implementation plan must therefore test session creation, property switch, explicit clear/revocation, staff deactivation, wrong-module use, missing subscription, and repeated refresh attempts. Add a server-verified maximum lifetime or equivalent re-authentication boundary, and make refresh fail closed when there is no valid session. Do not silently change platform-owner or existing package/trial/grace behavior without regression tests.
+
