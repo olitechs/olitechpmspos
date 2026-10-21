@@ -138,20 +138,16 @@ BEGIN
     END;
   END IF;
 
-  -- A staff account without a current PIN session must not inherit permissions
-  -- from the legacy staff.user_id mapping. Property membership remains a
-  -- separate authority for non-staff property users.
-  IF EXISTS (
-    SELECT 1 FROM public.staff s
-    WHERE s.user_id = auth.uid()
-      AND s.property_id = p_property_id
-      AND s.is_active IS TRUE
-  ) THEN
-    RETURN false;
-  END IF;
-
-  RETURN v_module IN ('backoffice', 'frontoffice', 'pos', 'store')
-    AND public.property_role(p_property_id) IN ('owner', 'admin', 'manager', 'reception', 'housekeeping');
+  -- Email/password property membership remains a separate authority from a
+  -- PIN-selected staff identity. Apply the property role's own module boundary.
+  RETURN CASE public.property_role(p_property_id)
+    WHEN 'owner' THEN v_module IN ('backoffice', 'frontoffice', 'pos', 'store')
+    WHEN 'admin' THEN v_module IN ('backoffice', 'frontoffice', 'pos', 'store')
+    WHEN 'manager' THEN v_module IN ('backoffice', 'frontoffice', 'pos', 'store')
+    WHEN 'reception' THEN v_module IN ('frontoffice', 'pos')
+    WHEN 'housekeeping' THEN v_module = 'frontoffice'
+    ELSE false
+  END;
 END;
 $function$;
 
