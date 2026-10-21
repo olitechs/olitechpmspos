@@ -102,17 +102,13 @@ BEGIN
     AND NOT EXISTS (
       SELECT 1
       FROM public.staff_sessions ss
-      JOIN public.staff s ON s.id = ss.staff_id
       WHERE ss.user_id = auth.uid()
-        AND lower(candidate) = ANY (
-          SELECT lower(trim(x))
-          FROM unnest(coalesce(s.assigned_modules, ARRAY[]::text[])) AS assigned(x)
-        )
+        AND lower(ss.module) = lower(candidate)
     )
   LIMIT 1;
 
   IF v_other_module IS NOT NULL
-     AND public.fn_staff_module_access(v_property, v_other_module) THEN
+     AND public.fn_staff_session_allows_module(v_property, v_other_module) THEN
     RAISE EXCEPTION 'FAIL: staff session was accepted for wrong module %', v_other_module;
   END IF;
   RAISE NOTICE 'PASS: session is bound to its assigned module';
