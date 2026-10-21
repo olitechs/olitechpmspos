@@ -73,6 +73,8 @@ test('SQL regression covers session and subscription denial cases with rollback'
   for (const phrase of [
     'valid session was rejected for its assigned module',
     'staff session was accepted for wrong module',
+    'staff session crossed into another property',
+    'changed staff module assignment invalidates the session',
     'expired session still authorizes module access',
     'hard-expired session was refreshed',
     'revoked session still authorizes module access',
