@@ -41,33 +41,6 @@ test('module authorization checks the selected active staff session and assigned
 
 test('direct RLS staff-role policies are rewritten with module-specific guards', () => {
   assert.ok(migration.includes('DO $module_guard_policies$'));
-  for (const table of ['pos_shifts', 'pos_table_sessions', 'pos_kitchen_orders', 'stores', 'payments', 'folio_charges']) {
-    assert.ok(migration.includes(`'${table}'`), `missing module policy mapping: ${table}`);
-  }
-  assert.match(regression, /direct staff-role RLS predicates are module guarded/);
-});
-
-test('PIN verification sets session module and bounded lifetime; clear revokes session', () => {
-  assert.match(migration, /INSERT INTO public\.staff_sessions\s*\(user_id, staff_id, property_id, verified_at, module, expires_at, hard_expires_at, revoked_at\)/);
-  assert.match(migration, /module = EXCLUDED\.module/);
-  assert.match(migration, /revoked_at = NULL/);
-  assert.match(migration, /SET revoked_at = COALESCE\(revoked_at, now\(\)\)/);
-});
-
-test('SQL regression covers valid module, wrong module, expired, hard-expired, revoked, and no-session cases', () => {
-  for (const phrase of [
-    'valid session was rejected for its assigned module',
-    'staff session was accepted for wrong module',
-    'expired session still authorizes module access',
-    'hard-expired session was refreshed',
-    'revoked session still authorizes module access',
-    'caller without a session received successful refresh',
-    'ROLLBACK;',
-  ]) {
-    assert.ok(regression.includes(phrase), `missing SQL regression assertion: ${phrase}`);
-  }
-});
-));
   assert.ok(migration.includes('regexp_replace('));
   for (const table of ['pos_shifts', 'pos_table_sessions', 'pos_kitchen_orders', 'stores', 'payments', 'folio_charges']) {
     assert.ok(migration.includes(`'${table}'`), `missing module policy mapping: ${table}`);
@@ -90,6 +63,7 @@ test('SQL regression covers valid module, wrong module, expired, hard-expired, r
     'hard-expired session was refreshed',
     'revoked session still authorizes module access',
     'caller without a session received successful refresh',
+    'direct staff-role RLS predicates are module guarded',
     'ROLLBACK;',
   ]) {
     assert.ok(regression.includes(phrase), `missing SQL regression assertion: ${phrase}`);
