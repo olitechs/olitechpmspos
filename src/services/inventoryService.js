@@ -335,6 +335,10 @@ export const inventoryService = {
         Papa.parse(file, { header: true, skipEmptyLines: true, complete: (result) => resolve(normalizeImportRows(result.data)), error: reject });
         return;
       }
+      if (name.endsWith('.xml')) {
+        file.text().then((xml) => resolve(parseXmlImportRows(xml))).catch(reject);
+        return;
+      }
       const reader = new FileReader();
       reader.onload = () => {
         try {
@@ -375,6 +379,51 @@ export const inventoryService = {
   },
 };
 
+
+function parseXmlImportRows(xmlText) {
+  if (typeof DOMParser === 'undefined') {
+    throw new Error('XML import is only available in a browser.');
+  }
+  const document = new DOMParser().parseFromString(String(xmlText || ''), 'application/xml');
+  if (document.querySelector('parsererror')) {
+    throw new Error('The XML file is not well formed. Export it again as XML or use the provided CSV/Excel template.');
+  }
+
+  const recordNames = new Set(['product', 'item', 'menuitem', 'menu_item', 'menu-item']);
+  const allElements = Array.from(document.getElementsByTagName('*'));
+  const records = allElements.filter((element) => {
+    const tag = String(element.localName || element.tagName).toLowerCase();
+    if (!recordNames.has(tag)) return false;
+    return !Array.from(element.children).some((child) =>
+      recordNames.has(String(child.localName || child.tagName).toLowerCase())
+    );
+  });
+
+  if (!records.length) {
+    throw new Error('No product or menu item records were found in this XML. Use product/item elements with fields such as SKU, Name, Category and Selling_Price, or import CSV/Excel.');
+  }
+
+  const rows = records.map((record) => {
+    const row = {};
+    Array.from(record.attributes || []).forEach((attribute) => {
+      row[attribute.localName || attribute.name] = attribute.value;
+    });
+    Array.from(record.children || []).forEach((field) => {
+      const key = String(field.localName || field.tagName).trim();
+      const nestedValue = field.textContent?.trim() || '';
+      row[key] = nestedValue;
+    });
+    return row;
+  }).filter((row) => Object.keys(row).length > 0);
+
+  const normalized = normalizeImportRows(rows);
+  const usable = normalized.filter((row) => row.name);
+  if (!usable.length) {
+    throw new Error('XML product records must include a name field. Recognized aliases include name, product_name, and menu_item_name.');
+  }
+  return usable;
+}
+
 function normalizeImportRows(rows) {
   const numberValue = (value, fallback = 0) => {
     if (value === null || value === undefined || value === '') return fallback;
@@ -392,15 +441,15 @@ function normalizeImportRows(rows) {
     });
     return normalized;
   }).map((row) => ({
-    name: textValue(row.name),
-    sku: textValue(row.sku) || null,
+    name: textValue(row.name ?? row.product_name ?? row.menu_item_name ?? row.item_name),
+    sku: textValue(row.sku ?? row.product_sku ?? row.item_sku ?? row.code) || null,
     category: textValue(row.category, 'General') || 'General',
     unit: textValue(row.unit, 'pcs') || 'pcs',
     current_stock: numberValue(row.current_stock ?? row.quantity, 0),
     min_stock: numberValue(row.min_stock ?? row.low_stock_threshold, 5),
     max_stock: numberValue(row.max_stock, 0),
     cost_price: numberValue(row.cost_price, 0),
-    selling_price: numberValue(row.selling_price, 0),
+    selling_price: numberValue(row.selling_price ?? row.price ?? row.sale_price, 0),
     supplier: textValue(row.supplier),
     location: textValue(row.location, 'Main Store') || 'Main Store',
     expiry_date: row.expiry_date || null,
