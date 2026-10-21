@@ -87,3 +87,27 @@ INSERT INTO public.property_users(property_id,user_id,role) VALUES
 INSERT INTO public.staff(id,property_id,user_id,is_active,assigned_modules,pin_hash,role,full_name,email,avatar) VALUES
   ('30000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001',NULL,true,ARRAY['pos'],'fixture-hash','cashier','Fixture Cashier','cashier@example.invalid',NULL),
   ('30000000-0000-4000-8000-000000000002','20000000-0000-4000-8000-000000000002',NULL,true,ARRAY['frontoffice'],'fixture-hash','receptionist','Fixture Receptionist','reception@example.invalid',NULL);
+
+CREATE OR REPLACE FUNCTION public.current_staff_role(p_property_id uuid)
+RETURNS text LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
+  SELECT NULL::text
+$$;
+
+-- Representative existing policies used to assert that the candidate migration
+-- binds staff-role branches to the correct module without rewriting membership branches.
+CREATE TABLE public.pos_shifts (id uuid PRIMARY KEY, property_id uuid NOT NULL);
+CREATE TABLE public.stores (id uuid PRIMARY KEY, property_id uuid NOT NULL);
+CREATE TABLE public.payments (id uuid PRIMARY KEY, property_id uuid NOT NULL);
+ALTER TABLE public.pos_shifts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.stores ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY fixture_pos_shifts_update ON public.pos_shifts
+  FOR UPDATE USING (public.current_staff_role(property_id) = 'cashier')
+  WITH CHECK (public.current_staff_role(property_id) = 'cashier');
+CREATE POLICY fixture_stores_update ON public.stores
+  FOR UPDATE USING (public.current_staff_role(property_id) = 'store_manager')
+  WITH CHECK (public.current_staff_role(property_id) = 'store_manager');
+CREATE POLICY fixture_payments_insert ON public.payments
+  FOR INSERT WITH CHECK (public.current_staff_role(property_id) = 'cashier');
+
