@@ -77,6 +77,40 @@ BEGIN
 END
 $seed$;
 
+
+DO $policy_module_guards$
+DECLARE
+  v_pos text;
+  v_store text;
+  v_payments text;
+BEGIN
+  SELECT qual INTO v_pos FROM pg_policies
+  WHERE schemaname = 'public' AND tablename = 'pos_shifts'
+    AND policyname = 'fixture_pos_shifts_update';
+  SELECT qual INTO v_store FROM pg_policies
+  WHERE schemaname = 'public' AND tablename = 'stores'
+    AND policyname = 'fixture_stores_update';
+  SELECT with_check INTO v_payments FROM pg_policies
+  WHERE schemaname = 'public' AND tablename = 'payments'
+    AND policyname = 'fixture_payments_insert';
+
+  IF v_pos IS NULL OR v_pos NOT ILIKE '%fn_staff_module_access%'
+     OR v_pos NOT ILIKE '%pos%' THEN
+    RAISE EXCEPTION 'FAIL: POS RLS staff-role branch lacks POS module guard: %', v_pos;
+  END IF;
+  IF v_store IS NULL OR v_store NOT ILIKE '%fn_staff_module_access%'
+     OR v_store NOT ILIKE '%store%' THEN
+    RAISE EXCEPTION 'FAIL: store RLS staff-role branch lacks store module guard: %', v_store;
+  END IF;
+  IF v_payments IS NULL OR v_payments NOT ILIKE '%fn_staff_module_access%'
+     OR v_payments NOT ILIKE '%pos%'
+     OR v_payments NOT ILIKE '%backoffice%' THEN
+    RAISE EXCEPTION 'FAIL: payment RLS staff-role branch lacks POS/back-office module guard: %', v_payments;
+  END IF;
+  RAISE NOTICE 'PASS: direct staff-role RLS predicates are module guarded';
+END
+$policy_module_guards$;
+
 SELECT set_config('request.jwt.claim.sub', current_setting('app.phase1.user_a'), true);
 SELECT set_config('request.jwt.claim.role', 'authenticated', true);
 SELECT set_config('request.jwt.claims',
