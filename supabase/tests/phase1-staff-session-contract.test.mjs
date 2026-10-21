@@ -81,6 +81,11 @@ test('SQL regression covers session and subscription denial cases with rollback'
     'caller without a session received successful refresh',
     'direct staff-role RLS predicates are module guarded',
     'subscription access evaluation has no provisioning side effect',
+    'valid trial access preserved',
+    'expired trial remains denied',
+    'past-due grace period preserved',
+    'suspended grace period preserved',
+    'cancelled subscription remains denied',
     'ROLLBACK;',
   ]) {
     assert.ok(regression.includes(phrase), 'missing SQL regression assertion: ' + phrase);
