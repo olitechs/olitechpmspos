@@ -63,6 +63,20 @@ test('subscription access evaluation is read-only and preserves status/module ru
   assert.match(regression, /subscription access evaluation has no provisioning side effect/);
 });
 
+test('high-risk RPCs enforce tenant, module, booking-state, and least-privilege guards', () => {
+  assert.match(migration, /CREATE OR REPLACE FUNCTION public\\.fn_public_booking_engine_config/);
+  assert.match(migration, /s\\.enabled IS TRUE/);
+  assert.match(migration, /p\\.status = 'active'/);
+  assert.match(migration, /CREATE OR REPLACE FUNCTION public\\.fn_list_pos_menu/);
+  assert.match(migration, /public\\.fn_staff_module_access\\(p_property_id, 'pos'\\) IS TRUE/);
+  assert.match(migration, /CREATE OR REPLACE FUNCTION public\\.fn_current_pos_shift/);
+  assert.match(migration, /REVOKE ALL ON FUNCTION public\\.create_pending_property_for_user\\(uuid, text, text, text\\)\\s+FROM PUBLIC, anon, authenticated/s);
+  assert.match(regression, /POS menu and shift RPCs enforce property\\/module authorization/);
+  assert.match(regression, /low-level property creation helper is not directly executable/);
+  assert.match(regression, /public booking config requires enabled engine/);
+  assert.match(regression, /inactive property booking config denied/);
+});
+
 test('PIN verification sets session module and bounded lifetime; clear revokes session', () => {
   assert.match(migration, /INSERT INTO public\.staff_sessions\s*\(user_id, staff_id, property_id, verified_at, module, expires_at, hard_expires_at, revoked_at\)/);
   assert.match(migration, /module = EXCLUDED\.module/);
@@ -83,6 +97,10 @@ test('SQL regression covers session and subscription denial cases with rollback'
     'caller without a session received successful refresh',
     'direct staff-role RLS predicates are module guarded',
     'subscription access evaluation has no provisioning side effect',
+    'POS menu and shift RPCs enforce property/module authorization',
+    'low-level property creation helper is not directly executable',
+    'public booking config requires enabled engine',
+    'inactive property booking config denied',
     'valid trial access preserved',
     'expired trial remains denied',
     'past-due grace period preserved',
