@@ -10,9 +10,13 @@ RETURNS uuid LANGUAGE sql STABLE AS $$
   SELECT NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid
 $$;
 CREATE OR REPLACE FUNCTION auth.role()
-RETURNS text LANGUAGE sql STABLE AS $$
+RETURNS text LANGUAGE sql STABLE AS $
   SELECT NULLIF(current_setting('request.jwt.claim.role', true), '')
-$$;
+$;
+
+GRANT USAGE ON SCHEMA auth TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION auth.uid() TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION auth.role() TO anon, authenticated, service_role;
 
 CREATE TABLE public.profiles (id uuid PRIMARY KEY);
 CREATE TABLE public.properties (
