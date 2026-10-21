@@ -133,12 +133,6 @@ BEGIN
   SELECT candidate INTO v_other_module
   FROM unnest(ARRAY['frontoffice','pos','backoffice','store']) AS modules(candidate)
   WHERE candidate <> v_module
-    AND NOT EXISTS (
-      SELECT 1
-      FROM public.staff_sessions ss
-      WHERE ss.user_id = auth.uid()
-        AND lower(ss.module) = lower(candidate)
-    )
   LIMIT 1;
 
   IF v_other_module IS NOT NULL
