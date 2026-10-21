@@ -97,7 +97,7 @@ BEGIN
   END IF;
 
   SELECT candidate INTO v_other_module
-  FROM unnest(ARRAY['frontoffice','pos','backoffice','store']) AS candidate
+  FROM unnest(ARRAY['frontoffice','pos','backoffice','store']) AS modules(candidate)
   WHERE candidate <> v_module
     AND NOT EXISTS (
       SELECT 1
