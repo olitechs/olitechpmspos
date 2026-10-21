@@ -131,6 +131,9 @@ BEGIN
   IF NOT public.fn_staff_module_access(v_property, v_module) THEN
     RAISE EXCEPTION 'FAIL: module access rejected for a valid assigned staff session';
   END IF;
+  IF public.fn_staff_session_allows_module(current_setting('app.phase1.property_b')::uuid, v_module) THEN
+    RAISE EXCEPTION 'FAIL: staff session crossed into another property';
+  END IF;
 
   SELECT candidate INTO v_other_module
   FROM unnest(ARRAY['frontoffice','pos','backoffice','store']) AS modules(candidate)
@@ -144,6 +147,36 @@ BEGIN
   RAISE NOTICE 'PASS: session is bound to its assigned module';
 END
 $valid_session$;
+
+
+RESET ROLE;
+UPDATE public.staff
+SET assigned_modules = ARRAY['frontoffice']::text[]
+WHERE id = current_setting('app.phase1.staff_id')::uuid;
+
+SET LOCAL ROLE authenticated;
+DO $module_assignment_changed$
+BEGIN
+  IF public.fn_staff_session_allows_module(
+    current_setting('app.phase1.property_a')::uuid,
+    current_setting('app.phase1.module')
+  ) THEN
+    RAISE EXCEPTION 'FAIL: session retained access after its module assignment was removed';
+  END IF;
+  IF public.current_staff_role(current_setting('app.phase1.property_a')::uuid) IS NOT NULL THEN
+    RAISE EXCEPTION 'FAIL: current_staff_role returned a role after module assignment changed';
+  END IF;
+  IF public.touch_active_staff_session() THEN
+    RAISE EXCEPTION 'FAIL: session refreshed after module assignment changed';
+  END IF;
+  RAISE NOTICE 'PASS: changed staff module assignment invalidates the session';
+END
+$module_assignment_changed$;
+
+RESET ROLE;
+UPDATE public.staff
+SET assigned_modules = ARRAY[current_setting('app.phase1.module')]::text[]
+WHERE id = current_setting('app.phase1.staff_id')::uuid;
 
 RESET ROLE;
 UPDATE public.staff_sessions
