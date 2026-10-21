@@ -29,8 +29,8 @@ BEGIN
   );
   SELECT count(*) INTO v_count FROM public.products WHERE property_id = v_property_a AND sku = 'MENU-001';
   IF v_count <> 1 THEN RAISE EXCEPTION 'FAIL: import created duplicate product row(s): %', v_count; END IF;
-  IF v_row.name <> 'Updated Menu Name' OR v_row.selling_price <> 150 OR v_row.current_stock <> 8 THEN
-    RAISE EXCEPTION 'FAIL: existing SKU was not updated correctly';
+  IF v_row.name <> 'Updated Menu Name' OR v_row.selling_price <> 150 OR v_row.current_stock <> 4 THEN
+    RAISE EXCEPTION 'FAIL: existing SKU update changed identity, price, or ledger-owned stock incorrectly';
   END IF;
   RAISE NOTICE 'PASS: importing an existing SKU updates the same product';
 END
