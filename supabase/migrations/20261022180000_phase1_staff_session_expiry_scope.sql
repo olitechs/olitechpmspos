@@ -616,7 +616,7 @@ AS $pos_menu$
     AND p.pos_enabled IS TRUE
     AND p.pos_active IS TRUE
     AND (
-      auth.role() = 'service_role'
+      current_setting('request.jwt.claim.role', true) = 'service_role'
       OR public.fn_staff_module_access(p_property_id, 'pos') IS TRUE
     )
   ORDER BY COALESCE(NULLIF(p.pos_category, ''), p.category), p.pos_sort, p.name;
@@ -635,7 +635,7 @@ AS $pos_shift$
     AND s.status = 'open'
     AND s.date = (now() AT TIME ZONE 'Africa/Nairobi')::date
     AND (
-      auth.role() = 'service_role'
+      current_setting('request.jwt.claim.role', true) = 'service_role'
       OR public.fn_staff_module_access(p_property_id, 'pos') IS TRUE
     )
   ORDER BY s.opened_at DESC
