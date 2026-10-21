@@ -40,7 +40,7 @@ test('module authorization checks the selected active staff session and assigned
 });
 
 test('direct RLS staff-role policies are rewritten with module-specific guards', () => {
-  assert.ok(migration.includes('DO $module_guard_policies
+  assert.ok(migration.includes('DO $module_guard_policies$'));
   for (const table of ['pos_shifts', 'pos_table_sessions', 'pos_kitchen_orders', 'stores', 'payments', 'folio_charges']) {
     assert.ok(migration.includes(`'${table}'`), `missing module policy mapping: ${table}`);
   }
