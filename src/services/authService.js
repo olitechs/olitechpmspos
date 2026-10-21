@@ -58,10 +58,25 @@ export function canRoleUseModule(user, module) {
 export function canUseModule(user, module) { return hasSubscriptionModule(user, module) && canRoleUseModule(user, module); }
 
 export function generatePin(length = 4) {
+  if (!Number.isInteger(length) || length < 4 || length > 6) {
+    throw new Error('PIN length must be between 4 and 6 digits.');
+  }
+  if (!globalThis.crypto?.getRandomValues) {
+    throw new Error('Secure PIN generation is not available in this browser.');
+  }
+
+  // Rejection sampling avoids the modulo bias from mapping 256 byte values
+  // directly to ten decimal digits. Never fall back to Math.random for a PIN.
   const digits = [];
-  const bytes = new Uint32Array(length);
-  globalThis.crypto?.getRandomValues?.(bytes);
-  for (let i = 0; i < length; i += 1) digits.push(String((bytes[i] || Math.floor(Math.random() * 10)) % 10));
+  while (digits.length < length) {
+    const bytes = new Uint8Array(Math.max(16, (length - digits.length) * 2));
+    globalThis.crypto.getRandomValues(bytes);
+    for (const byte of bytes) {
+      if (byte >= 250) continue;
+      digits.push(String(byte % 10));
+      if (digits.length === length) break;
+    }
+  }
   if (digits[0] === '0') digits[0] = '1';
   return digits.join('');
 }
