@@ -67,3 +67,16 @@ Added `supabase/tests/phase1_rpc_tenant_negative_regression.sql`. It requires tw
 ## Decision
 
 Keep PR #48 draft. Do not merge or release Phase 1, do not apply the tracked migration to production, and do not claim complete tenant isolation until the schema-equivalent test prerequisite and negative-test matrix pass. No production writes were made in this review.
+
+## Environment access attempt — 2026-10-22
+
+The request to reuse an existing isolated environment was attempted before creating any new project:
+
+- The known disposable project reference `rmkcwminrizloosvegzp` is not accessible through either currently connected Supabase account; the API returns a permission error.
+- The primary connected organization lists only the production project `mszogmazldxjsiytrlxr` and an unrelated project `ipctvjtmuafhuhqjatvt`. The unrelated project was not accessed for testing.
+- The production project exposes only its default `main` branch. Attempting to create a development branch returned `Branching is supported only on the Pro plan or above`. No branch was created and no branch compute charge was incurred.
+- A separate-project cost quote returned $0/month, but a separate project was not created because the request was to reuse an existing environment.
+- The GitHub Actions PostgreSQL service can run isolated regression tests, but its current fixture is deliberately minimal and does not reconstruct production's 79 tables, policies, 136 functions, ACLs, triggers, and migration drift. It cannot certify the Phase 1 security matrix.
+
+**Disposition remains BLOCKED.** No production writes were performed. Do not use the unrelated Supabase project or the production `main` branch as a substitute test environment. Continue safe source review and test authoring, but do not claim runtime security remediation is validated until the existing disposable project is granted access or an appropriately isolated, schema-equivalent environment is available.
+
