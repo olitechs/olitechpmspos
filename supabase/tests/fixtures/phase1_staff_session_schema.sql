@@ -102,7 +102,7 @@ INSERT INTO public.properties(id,status,package) VALUES
   ('20000000-0000-4000-8000-000000000002','active','professional');
 INSERT INTO public.property_users(property_id,user_id,role) VALUES
   ('20000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001','owner'),
-  ('20000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000002','owner');
+  ('20000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000002','reception');
 INSERT INTO public.property_subscriptions(property_id,plan_code,status,enabled_modules) VALUES
   ('20000000-0000-4000-8000-000000000001','professional','active',ARRAY['frontoffice','pos','backoffice','store']),
   ('20000000-0000-4000-8000-000000000002','professional','active',ARRAY['frontoffice','pos','backoffice','store']);
