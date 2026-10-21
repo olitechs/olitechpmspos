@@ -327,6 +327,69 @@ BEGIN
 END;
 $function$;
 
+
+-- Guard every existing RLS policy that branches on the selected staff role.
+-- Keep membership-role branches unchanged; only the staff-session branch gains
+-- an explicit module check. This avoids treating a recent PIN in one module as
+-- authorization for another module.
+DO $module_guard_policies$
+DECLARE
+  v_policy record;
+  v_guard text;
+  v_using text;
+  v_check text;
+  v_sql text;
+BEGIN
+  FOR v_policy IN
+    SELECT schemaname, tablename, policyname, qual, with_check
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = ANY (ARRAY[
+        'cashier_adjustments','cashier_shifts','folio_charges','payments',
+        'pos_devices','pos_kitchen_orders','pos_printers','pos_receipts',
+        'pos_shift_payments','pos_shifts','pos_table_sessions','pos_void_items',
+        'printer_assignments','property_printers','property_settings','stores'
+      ])
+      AND (coalesce(qual, '') ILIKE '%current_staff_role%'
+           OR coalesce(with_check, '') ILIKE '%current_staff_role%')
+  LOOP
+    v_guard := CASE
+      WHEN v_policy.tablename IN ('folio_charges', 'payments')
+        THEN 'public.fn_staff_module_access(\1, ''pos'') OR public.fn_staff_module_access(\1, ''backoffice'')'
+      WHEN v_policy.tablename = 'stores'
+        THEN 'public.fn_staff_module_access(\1, ''store'')'
+      WHEN v_policy.tablename = 'property_settings'
+        THEN 'public.fn_staff_module_access(\1, ''backoffice'')'
+      ELSE 'public.fn_staff_module_access(\1, ''pos'')'
+    END;
+
+    v_using := CASE WHEN v_policy.qual IS NULL THEN NULL ELSE
+      regexp_replace(
+        v_policy.qual,
+        'current_staff_role\(([^()]*)\)',
+        '(CASE WHEN (' || v_guard || ') THEN current_staff_role(\1) ELSE NULL END)',
+        'g'
+      ) END;
+    v_check := CASE WHEN v_policy.with_check IS NULL THEN NULL ELSE
+      regexp_replace(
+        v_policy.with_check,
+        'current_staff_role\(([^()]*)\)',
+        '(CASE WHEN (' || v_guard || ') THEN current_staff_role(\1) ELSE NULL END)',
+        'g'
+      ) END;
+
+    v_sql := format('ALTER POLICY %I ON public.%I', v_policy.policyname, v_policy.tablename);
+    IF v_policy.qual IS NOT NULL THEN
+      v_sql := v_sql || format(' USING (%s)', v_using);
+    END IF;
+    IF v_policy.with_check IS NOT NULL THEN
+      v_sql := v_sql || format(' WITH CHECK (%s)', v_check);
+    END IF;
+    EXECUTE v_sql;
+  END LOOP;
+END;
+$module_guard_policies$;
+
 -- Ensure only authenticated callers can establish, refresh, or revoke their
 -- own staff session. Internal helpers are callable by authenticated policies.
 REVOKE ALL ON FUNCTION public.verify_staff_pin(uuid, text, text) FROM PUBLIC, anon;
@@ -335,13 +398,13 @@ REVOKE ALL ON FUNCTION public.touch_active_staff_session() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.touch_active_staff_session() TO authenticated;
 REVOKE ALL ON FUNCTION public.clear_active_staff_session() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.clear_active_staff_session() TO authenticated;
-REVOKE ALL ON FUNCTION public.fn_staff_session_allows_module(uuid, text) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.fn_staff_session_allows_module(uuid, text) TO authenticated;
-REVOKE ALL ON FUNCTION public.fn_staff_module_access(uuid, text) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.fn_staff_module_access(uuid, text) TO authenticated;
-REVOKE ALL ON FUNCTION public.current_staff_role(uuid) FROM PUBLIC, anon;
-REVOKE ALL ON FUNCTION public.current_staff_id(uuid) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.current_staff_role(uuid) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.current_staff_id(uuid) TO authenticated;
+REVOKE ALL ON FUNCTION public.fn_staff_session_allows_module(uuid, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.fn_staff_session_allows_module(uuid, text) TO anon, authenticated;
+REVOKE ALL ON FUNCTION public.fn_staff_module_access(uuid, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.fn_staff_module_access(uuid, text) TO anon, authenticated;
+REVOKE ALL ON FUNCTION public.current_staff_role(uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.current_staff_id(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.current_staff_role(uuid) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.current_staff_id(uuid) TO anon, authenticated;
 
 COMMIT;
