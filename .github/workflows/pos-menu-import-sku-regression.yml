@@ -13,6 +13,11 @@ on:
       - "package.json"
       - "package-lock.json"
       - ".github/workflows/pos-menu-import-sku-regression.yml"
+      - "supabase/migrations/20261022180000_phase1_staff_session_expiry_scope.sql"
+      - "supabase/tests/phase1_staff_session_security_regression.sql"
+      - "supabase/tests/fixtures/phase1_staff_session_schema.sql"
+      - "supabase/tests/phase1-staff-session-contract.test.mjs"
+      - ".github/workflows/phase1-staff-session-regression.yml"
   workflow_dispatch:
 
 jobs:
@@ -62,3 +67,33 @@ jobs:
         run: npm run typecheck
       - name: Architecture and import contract tests
         run: npm run test:architecture
+
+
+  staff-session-postgres-regression:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: staff_session_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d staff_session_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5433/staff_session_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Load isolated staff-session fixture
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/tests/fixtures/phase1_staff_session_schema.sql
+      - name: Apply candidate staff-session migration
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20261022180000_phase1_staff_session_expiry_scope.sql
+      - name: Run staff-session and RLS module guard regression
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/tests/phase1_staff_session_security_regression.sql
