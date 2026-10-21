@@ -46,6 +46,12 @@ The existing migration improves four known gaps, but is **not sufficient as the 
 - The migration must be tested against a schema-equivalent isolated database. The existing disposable database is known to be non-equivalent.
 - The migration must not be applied to production until function signatures/return types, all callers, ACL effects, and regression gates have been reviewed.
 
+## Negative-test harness added (execution still blocked)
+
+Added `supabase/tests/phase1_rpc_tenant_negative_regression.sql`. It requires two distinct users with separate active properties, sets authenticated/anonymous JWT claims, checks cross-user property creation, cross-property POS menu/shift access, and inactive/disabled public booking configuration. Its fixture mutations are wrapped in a transaction and end in `ROLLBACK`. A static architecture assertion ensures these cases and rollback remain present.
+
+**This harness has not been executed against a schema-equivalent isolated database.** The connected disposable project is not available for this run under the current connector permissions, and its previously inventoried schema is materially different from production. The SQL file is a test harness, not a passed runtime test. It does not yet cover the complete table-level CRUD matrix, module/action authorization, PIN/session expiry/revocation, transactional audit behavior, or browser regressions.
+
 ## Required tests before Phase 1 sign-off
 
 1. Two distinct users and two properties with separate memberships; do not simulate two tenants using one owner account.
