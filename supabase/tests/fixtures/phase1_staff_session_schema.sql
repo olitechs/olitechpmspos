@@ -184,9 +184,7 @@ INSERT INTO public.booking_engine_settings(id,property_id,enabled,currency,terms
 INSERT INTO public.products(id,property_id,sku,name,category,unit,current_stock,min_stock,selling_price,pos_enabled,pos_active) VALUES
   ('50000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001','A-001','Property A Item','Food','portion',10,2,100,true,true),
   ('50000000-0000-4000-8000-000000000002','20000000-0000-4000-8000-000000000002','B-001','Property B Item','Food','portion',10,2,120,true,true);
-INSERT INTO public.pos_shifts(id,property_id,status,date,opened_at) VALUES
-  ('60000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001','open',(now() AT TIME ZONE 'Africa/Nairobi')::date,now()),
-  ('60000000-0000-4000-8000-000000000002','20000000-0000-4000-8000-000000000002','open',(now() AT TIME ZONE 'Africa/Nairobi')::date,now());
+
 INSERT INTO public.property_users(property_id,user_id,role) VALUES
   ('20000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001','owner'),
   ('20000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000002','reception');
@@ -211,6 +209,9 @@ CREATE TABLE public.pos_shifts (
   date date NOT NULL DEFAULT (now() AT TIME ZONE 'Africa/Nairobi')::date,
   opened_at timestamptz NOT NULL DEFAULT now()
 );
+INSERT INTO public.pos_shifts(id,property_id,status,date,opened_at) VALUES
+  ('60000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001','open',(now() AT TIME ZONE 'Africa/Nairobi')::date,now()),
+  ('60000000-0000-4000-8000-000000000002','20000000-0000-4000-8000-000000000002','open',(now() AT TIME ZONE 'Africa/Nairobi')::date,now());
 CREATE OR REPLACE FUNCTION public.fn_current_pos_shift(p_property_id uuid)
 RETURNS public.pos_shifts LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $shift_stub$
   SELECT NULL::public.pos_shifts WHERE false
