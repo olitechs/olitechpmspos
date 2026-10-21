@@ -408,4 +408,95 @@ BEGIN
 END
 $subscription_no_side_effect$;
 
+
+-- Restore an active subscription for property B before exercising the POS RPCs.
+RESET ROLE;
+INSERT INTO public.property_subscriptions(property_id,plan_code,status,enabled_modules)
+VALUES (current_setting('app.phase1.property_b')::uuid,'professional','active',
+        ARRAY['frontoffice','pos','backoffice','store']::text[])
+ON CONFLICT (property_id) DO UPDATE
+SET status='active', trial_ends_at=NULL, current_period_ends_at=NULL,
+    grace_ends_at=NULL, enabled_modules=EXCLUDED.enabled_modules;
+
+SELECT set_config('request.jwt.claim.sub', current_setting('app.phase1.user_b'), true);
+SELECT set_config('request.jwt.claim.role', 'authenticated', true);
+SELECT set_config('request.jwt.claims',
+  json_build_object('sub', current_setting('app.phase1.user_b'), 'role', 'authenticated')::text, true);
+SET LOCAL ROLE authenticated;
+
+DO $pos_rpc_tenant_guards$
+DECLARE
+  v_property_a uuid := current_setting('app.phase1.property_a')::uuid;
+  v_property_b uuid := current_setting('app.phase1.property_b')::uuid;
+  v_count integer;
+  v_shift public.pos_shifts;
+BEGIN
+  SELECT count(*) INTO v_count FROM public.fn_list_pos_menu(v_property_b);
+  IF v_count <> 1 THEN
+    RAISE EXCEPTION 'FAIL: authorized property B receptionist could not read own POS menu; rows=%', v_count;
+  END IF;
+  SELECT count(*) INTO v_count FROM public.fn_list_pos_menu(v_property_a);
+  IF v_count <> 0 THEN
+    RAISE EXCEPTION 'FAIL: property B user read property A POS menu; rows=%', v_count;
+  END IF;
+
+  v_shift := public.fn_current_pos_shift(v_property_b);
+  IF v_shift IS NULL THEN
+    RAISE EXCEPTION 'FAIL: authorized property B user could not read own open POS shift';
+  END IF;
+  v_shift := public.fn_current_pos_shift(v_property_a);
+  IF v_shift IS NOT NULL THEN
+    RAISE EXCEPTION 'FAIL: property B user read property A POS shift';
+  END IF;
+
+  IF has_function_privilege('authenticated',
+       'public.create_pending_property_for_user(uuid,text,text,text)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'FAIL: authenticated role can call low-level pending-property helper directly';
+  END IF;
+  IF NOT has_function_privilege('service_role',
+       'public.create_pending_property_for_user(uuid,text,text,text)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'FAIL: trusted service role lost low-level pending-property helper access';
+  END IF;
+
+  RAISE NOTICE 'PASS: POS menu and shift RPCs enforce property/module authorization';
+  RAISE NOTICE 'PASS: low-level property creation helper is not directly executable by authenticated clients';
+END
+$pos_rpc_tenant_guards$;
+
+RESET ROLE;
+SELECT set_config('request.jwt.claim.role', 'anon', true);
+SELECT set_config('request.jwt.claims', json_build_object('role', 'anon')::text, true);
+SET LOCAL ROLE anon;
+
+DO $public_booking_guards$
+DECLARE
+  v_enabled jsonb;
+  v_disabled jsonb;
+BEGIN
+  v_enabled := public.fn_public_booking_engine_config(current_setting('app.phase1.property_a')::uuid);
+  v_disabled := public.fn_public_booking_engine_config(current_setting('app.phase1.property_b')::uuid);
+  IF v_enabled IS NULL OR v_enabled->>'name' <> 'Fixture Property A' THEN
+    RAISE EXCEPTION 'FAIL: active enabled public booking config was not returned: %', v_enabled;
+  END IF;
+  IF v_disabled IS NOT NULL THEN
+    RAISE EXCEPTION 'FAIL: disabled booking engine leaked public config: %', v_disabled;
+  END IF;
+  RAISE NOTICE 'PASS: public booking config requires enabled engine';
+END
+$public_booking_guards$;
+
+RESET ROLE;
+UPDATE public.properties SET status='pending'
+WHERE id = current_setting('app.phase1.property_a')::uuid;
+SET LOCAL ROLE anon;
+DO $inactive_booking_guard$
+BEGIN
+  IF public.fn_public_booking_engine_config(current_setting('app.phase1.property_a')::uuid) IS NOT NULL THEN
+    RAISE EXCEPTION 'FAIL: inactive property booking config was exposed';
+  END IF;
+  RAISE NOTICE 'PASS: inactive property booking config denied';
+END
+$inactive_booking_guard$;
+
+
 ROLLBACK;
