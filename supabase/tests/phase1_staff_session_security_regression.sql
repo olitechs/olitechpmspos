@@ -255,6 +255,24 @@ END
 $no_session$;
 
 
+
+DO $membership_role_scope$
+DECLARE
+  v_property uuid := current_setting('app.phase1.property_b')::uuid;
+BEGIN
+  IF NOT public.fn_staff_module_access(v_property, 'pos') THEN
+    RAISE EXCEPTION 'FAIL: receptionist membership lost permitted POS access';
+  END IF;
+  IF public.fn_staff_module_access(v_property, 'store') THEN
+    RAISE EXCEPTION 'FAIL: receptionist membership gained store access';
+  END IF;
+  IF public.fn_staff_module_access(v_property, 'backoffice') THEN
+    RAISE EXCEPTION 'FAIL: receptionist membership gained back-office access';
+  END IF;
+  RAISE NOTICE 'PASS: email/property membership retains only its assigned module scope';
+END
+$membership_role_scope$;
+
 DO $subscription_existing$
 DECLARE
   v_access jsonb;
