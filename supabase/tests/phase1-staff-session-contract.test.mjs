@@ -13,7 +13,7 @@ const regression = await readFile(
 
 test('staff sessions use additive expiry, hard expiry, module scope, and revocation fields', () => {
   for (const column of ['module text', 'expires_at timestamptz', 'hard_expires_at timestamptz', 'revoked_at timestamptz']) {
-    assert.ok(migration.includes(column), `missing session field: ${column}`);
+    assert.ok(migration.includes(column), 'missing session field: ' + column);
   }
   assert.match(migration, /ADD COLUMN IF NOT EXISTS module text/);
   assert.match(migration, /now\(\) \+ interval '30 minutes'/);
@@ -43,36 +43,14 @@ test('direct RLS staff-role policies are rewritten with module-specific guards',
   assert.ok(migration.includes('DO $module_guard_policies$'));
   assert.ok(migration.includes('regexp_replace('));
   for (const table of ['pos_shifts', 'pos_table_sessions', 'pos_kitchen_orders', 'stores', 'payments', 'folio_charges']) {
-    assert.ok(migration.includes(`'${table}'`), `missing module policy mapping: ${table}`);
+    assert.ok(migration.includes("'" + table + "'"), 'missing module policy mapping: ' + table);
   }
   assert.match(regression, /direct staff-role RLS predicates are module guarded/);
 });
 
-
 test('subscription access evaluation is read-only and preserves status/module rules', () => {
   const start = migration.indexOf('create or replace function public.fn_subscription_access');
-  const end = migration.indexOf('DO $module_guard_policies
-  assert.match(migration, /INSERT INTO public\.staff_sessions\s*\(user_id, staff_id, property_id, verified_at, module, expires_at, hard_expires_at, revoked_at\)/);
-  assert.match(migration, /module = EXCLUDED\.module/);
-  assert.match(migration, /revoked_at = NULL/);
-  assert.match(migration, /SET revoked_at = COALESCE\(revoked_at, now\(\)\)/);
-});
-
-test('SQL regression covers valid module, wrong module, expired, hard-expired, revoked, and no-session cases', () => {
-  for (const phrase of [
-    'valid session was rejected for its assigned module',
-    'staff session was accepted for wrong module',
-    'expired session still authorizes module access',
-    'hard-expired session was refreshed',
-    'revoked session still authorizes module access',
-    'caller without a session received successful refresh',
-    'direct staff-role RLS predicates are module guarded',
-    'ROLLBACK;',
-  ]) {
-    assert.ok(regression.includes(phrase), `missing SQL regression assertion: ${phrase}`);
-  }
-});
-, start);
+  const end = migration.indexOf('DO $module_guard_policies$', start);
   assert.ok(start >= 0 && end > start, 'subscription access function must be present before RLS policy guards');
   const subscriptionFunction = migration.slice(start, end);
   assert.equal(subscriptionFunction.includes('insert into public.property_subscriptions'), false);
@@ -91,7 +69,7 @@ test('PIN verification sets session module and bounded lifetime; clear revokes s
   assert.match(migration, /SET revoked_at = COALESCE\(revoked_at, now\(\)\)/);
 });
 
-test('SQL regression covers valid module, wrong module, expired, hard-expired, revoked, and no-session cases', () => {
+test('SQL regression covers session and subscription denial cases with rollback', () => {
   for (const phrase of [
     'valid session was rejected for its assigned module',
     'staff session was accepted for wrong module',
@@ -100,8 +78,9 @@ test('SQL regression covers valid module, wrong module, expired, hard-expired, r
     'revoked session still authorizes module access',
     'caller without a session received successful refresh',
     'direct staff-role RLS predicates are module guarded',
+    'subscription access evaluation has no provisioning side effect',
     'ROLLBACK;',
   ]) {
-    assert.ok(regression.includes(phrase), `missing SQL regression assertion: ${phrase}`);
+    assert.ok(regression.includes(phrase), 'missing SQL regression assertion: ' + phrase);
   }
 });
