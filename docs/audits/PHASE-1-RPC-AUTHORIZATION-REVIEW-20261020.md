@@ -117,3 +117,18 @@ The following definitions and columns were re-read from production using catalog
 
 The implementation plan must therefore test session creation, property switch, explicit clear/revocation, staff deactivation, wrong-module use, missing subscription, and repeated refresh attempts. Add a server-verified maximum lifetime or equivalent re-authentication boundary, and make refresh fail closed when there is no valid session. Do not silently change platform-owner or existing package/trial/grace behavior without regression tests.
 
+## Candidate staff-session remediation added — 2026-10-22
+
+Candidate migration: `supabase/migrations/20261022180000_phase1_staff_session_expiry_scope.sql`.
+
+- Adds `module`, sliding `expires_at`, absolute `hard_expires_at` (8 hours), and `revoked_at` fields. Existing rows without reliable module scope are revoked rather than guessing a module; staff may need to PIN in again after deployment.
+- PIN verification binds the selected module to the server-side session and initializes the 30-minute inactivity timeout plus 8-hour absolute lifetime.
+- Session refresh now fails closed without a valid, active staff session; checks staff/property/module assignment and cannot refresh past the absolute lifetime.
+- Session clearing revokes the session. `current_staff_role` and `current_staff_id` ignore expired, revoked, module-less, inactive-staff, or inactive-property sessions.
+- `fn_staff_module_access` uses the selected active session and module when one is active; otherwise it preserves the separate property-membership path for non-staff property access.
+- Added rollback-only SQL regression coverage for correct/wrong module, expired session, absolute expiry, revocation, and refresh without a session, plus a PostgreSQL 17 GitHub Actions workflow and a minimal isolated schema fixture.
+
+### Important validation boundary
+
+The GitHub fixture is deliberately minimal; it is **not** schema-equivalent to production and does not validate every direct RLS policy or SECURITY DEFINER RPC that calls `current_staff_role(property_id)` without a requested module parameter. Those legacy call paths still need a complete effective-policy/caller audit and two-property runtime tests against a reconciled schema. The migration is a candidate only and must not be applied to production until SQL CI and the full isolated security matrix pass. No production DDL/DML was run.
+
