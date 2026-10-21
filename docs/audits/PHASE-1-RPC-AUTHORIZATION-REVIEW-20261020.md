@@ -79,4 +79,4 @@ The request to reuse an existing isolated environment was attempted before creat
 - The GitHub Actions PostgreSQL service can run isolated regression tests, but its current fixture is deliberately minimal and does not reconstruct production's 79 tables, policies, 136 functions, ACLs, triggers, and migration drift. It cannot certify the Phase 1 security matrix.
 
 **Disposition remains BLOCKED.** No production writes were performed. Do not use the unrelated Supabase project or the production `main` branch as a substitute test environment. Continue safe source review and test authoring, but do not claim runtime security remediation is validated until the existing disposable project is granted access or an appropriately isolated, schema-equivalent environment is available.
-
+- Creating a new $0/month isolated project was also attempted after the existing disposable project proved inaccessible. Supabase blocked creation because the organization owner has reached the free-plan limit of two active projects. No project was created, and no existing project was paused or deleted.
