@@ -9,7 +9,7 @@ on:
       - 'supabase/tests/fixtures/phase1_staff_session_schema.sql'
       - '.github/workflows/phase1-staff-session-regression.yml'
   push:
-    branches: [phase1/security-reconciliation-refresh-20261022]
+    branches: [phase1/security-reconciliation-verified-20261022]
     paths:
       - 'supabase/migrations/20261022180000_phase1_staff_session_expiry_scope.sql'
       - 'supabase/tests/phase1_staff_session_security_regression.sql'
