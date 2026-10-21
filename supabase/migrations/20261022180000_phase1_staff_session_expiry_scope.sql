@@ -173,6 +173,10 @@ AS $function$
     AND ss.expires_at > now()
     AND ss.hard_expires_at > now()
     AND s.is_active IS TRUE
+    AND lower(ss.module) = ANY (
+      SELECT lower(trim(module_name))
+      FROM unnest(coalesce(s.assigned_modules, ARRAY[]::text[])) AS assigned(module_name)
+    )
     AND p.status = 'active'
   LIMIT 1;
 $function$;
@@ -195,6 +199,10 @@ AS $function$
     AND ss.expires_at > now()
     AND ss.hard_expires_at > now()
     AND s.is_active IS TRUE
+    AND lower(ss.module) = ANY (
+      SELECT lower(trim(module_name))
+      FROM unnest(coalesce(s.assigned_modules, ARRAY[]::text[])) AS assigned(module_name)
+    )
     AND p.status = 'active'
   LIMIT 1;
 $function$;
