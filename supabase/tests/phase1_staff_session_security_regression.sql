@@ -269,6 +269,89 @@ BEGIN
 END
 $subscription_existing$;
 
+
+RESET ROLE;
+UPDATE public.property_subscriptions
+SET status = 'trial', trial_ends_at = now() + interval '1 day',
+    current_period_ends_at = NULL, grace_ends_at = NULL
+WHERE property_id = current_setting('app.phase1.property_b')::uuid;
+SET LOCAL ROLE authenticated;
+DO $subscription_trial$
+DECLARE v_access jsonb;
+BEGIN
+  v_access := public.fn_subscription_access(current_setting('app.phase1.property_b')::uuid, 'pos');
+  IF coalesce((v_access->>'allowed')::boolean, false) IS NOT TRUE THEN
+    RAISE EXCEPTION 'FAIL: valid trial access changed: %', v_access;
+  END IF;
+  RAISE NOTICE 'PASS: valid trial access preserved';
+END
+$subscription_trial$;
+
+RESET ROLE;
+UPDATE public.property_subscriptions
+SET trial_ends_at = now() - interval '1 day'
+WHERE property_id = current_setting('app.phase1.property_b')::uuid;
+SET LOCAL ROLE authenticated;
+DO $subscription_expired_trial$
+DECLARE v_access jsonb;
+BEGIN
+  v_access := public.fn_subscription_access(current_setting('app.phase1.property_b')::uuid, 'pos');
+  IF coalesce((v_access->>'allowed')::boolean, false) IS NOT FALSE THEN
+    RAISE EXCEPTION 'FAIL: expired trial was allowed: %', v_access;
+  END IF;
+  RAISE NOTICE 'PASS: expired trial remains denied';
+END
+$subscription_expired_trial$;
+
+RESET ROLE;
+UPDATE public.property_subscriptions
+SET status = 'past_due', current_period_ends_at = now() - interval '1 day',
+    grace_ends_at = now() + interval '1 day'
+WHERE property_id = current_setting('app.phase1.property_b')::uuid;
+SET LOCAL ROLE authenticated;
+DO $subscription_past_due_grace$
+DECLARE v_access jsonb;
+BEGIN
+  v_access := public.fn_subscription_access(current_setting('app.phase1.property_b')::uuid, 'pos');
+  IF coalesce((v_access->>'allowed')::boolean, false) IS NOT TRUE THEN
+    RAISE EXCEPTION 'FAIL: active grace period was denied: %', v_access;
+  END IF;
+  RAISE NOTICE 'PASS: past-due grace period preserved';
+END
+$subscription_past_due_grace$;
+
+RESET ROLE;
+UPDATE public.property_subscriptions
+SET status = 'suspended', grace_ends_at = now() + interval '1 day'
+WHERE property_id = current_setting('app.phase1.property_b')::uuid;
+SET LOCAL ROLE authenticated;
+DO $subscription_suspended_grace$
+DECLARE v_access jsonb;
+BEGIN
+  v_access := public.fn_subscription_access(current_setting('app.phase1.property_b')::uuid, 'pos');
+  IF coalesce((v_access->>'allowed')::boolean, false) IS NOT TRUE THEN
+    RAISE EXCEPTION 'FAIL: suspended subscription inside grace period was denied: %', v_access;
+  END IF;
+  RAISE NOTICE 'PASS: suspended grace period preserved';
+END
+$subscription_suspended_grace$;
+
+RESET ROLE;
+UPDATE public.property_subscriptions
+SET status = 'cancelled', grace_ends_at = NULL
+WHERE property_id = current_setting('app.phase1.property_b')::uuid;
+SET LOCAL ROLE authenticated;
+DO $subscription_cancelled$
+DECLARE v_access jsonb;
+BEGIN
+  v_access := public.fn_subscription_access(current_setting('app.phase1.property_b')::uuid, 'pos');
+  IF coalesce((v_access->>'allowed')::boolean, false) IS NOT FALSE THEN
+    RAISE EXCEPTION 'FAIL: cancelled subscription was allowed: %', v_access;
+  END IF;
+  RAISE NOTICE 'PASS: cancelled subscription remains denied';
+END
+$subscription_cancelled$;
+
 RESET ROLE;
 DELETE FROM public.property_subscriptions
 WHERE property_id = current_setting('app.phase1.property_b')::uuid;
