@@ -37,6 +37,7 @@ test('module authorization checks the selected active staff session and assigned
   assert.match(migration, /IF NOT public\.fn_staff_session_allows_module\(p_property_id, v_module\) THEN\s+RETURN false/s);
   assert.match(migration, /s\.is_active IS TRUE/);
   assert.match(migration, /p\.status = 'active'/);
+  assert.match(migration, /IF NOT public\.fn_subscription_module_allowed\(p_property_id, v_module\) THEN\s+RETURN false/s);
 });
 
 test('direct RLS staff-role policies are rewritten with module-specific guards', () => {
