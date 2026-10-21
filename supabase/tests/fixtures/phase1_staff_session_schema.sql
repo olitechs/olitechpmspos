@@ -31,6 +31,21 @@ CREATE TABLE public.property_users (
   created_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (property_id, user_id)
 );
+CREATE TABLE public.property_subscriptions (
+  property_id uuid PRIMARY KEY REFERENCES public.properties(id),
+  plan_code text NOT NULL,
+  status text NOT NULL,
+  trial_ends_at timestamptz,
+  current_period_ends_at timestamptz,
+  grace_ends_at timestamptz,
+  enabled_modules text[] NOT NULL DEFAULT ARRAY[]::text[],
+  updated_by uuid
+);
+CREATE OR REPLACE FUNCTION public.platform_package_modules(p_package text)
+RETURNS text[] LANGUAGE sql IMMUTABLE AS $package_modules$
+  SELECT ARRAY['frontoffice','pos','backoffice','store']::text[]
+$package_modules$;
+
 CREATE TABLE public.staff (
   id uuid PRIMARY KEY,
   property_id uuid NOT NULL REFERENCES public.properties(id),
@@ -88,6 +103,9 @@ INSERT INTO public.properties(id,status,package) VALUES
 INSERT INTO public.property_users(property_id,user_id,role) VALUES
   ('20000000-0000-4000-8000-000000000001','10000000-0000-4000-8000-000000000001','owner'),
   ('20000000-0000-4000-8000-000000000002','10000000-0000-4000-8000-000000000002','owner');
+INSERT INTO public.property_subscriptions(property_id,plan_code,status,enabled_modules) VALUES
+  ('20000000-0000-4000-8000-000000000001','professional','active',ARRAY['frontoffice','pos','backoffice','store']),
+  ('20000000-0000-4000-8000-000000000002','professional','active',ARRAY['frontoffice','pos','backoffice','store']);
 INSERT INTO public.staff(id,property_id,user_id,is_active,assigned_modules,pin_hash,role,full_name,email,avatar) VALUES
   ('30000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001',NULL,true,ARRAY['pos'],'fixture-hash','cashier','Fixture Cashier','cashier@example.invalid',NULL),
   ('30000000-0000-4000-8000-000000000002','20000000-0000-4000-8000-000000000002',NULL,true,ARRAY['frontoffice'],'fixture-hash','receptionist','Fixture Receptionist','reception@example.invalid',NULL);
