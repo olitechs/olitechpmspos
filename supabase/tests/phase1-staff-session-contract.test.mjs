@@ -39,6 +39,15 @@ test('module authorization checks the selected active staff session and assigned
   assert.match(migration, /p\.status = 'active'/);
 });
 
+test('direct RLS staff-role policies are rewritten with module-specific guards', () => {
+  assert.match(migration, /DO \\$module_guard_policies\\$/);
+  assert.match(migration, /regexp_replace\\(/);
+  for (const table of ['pos_shifts', 'pos_table_sessions', 'pos_kitchen_orders', 'stores', 'payments', 'folio_charges']) {
+    assert.ok(migration.includes(`'${table}'`), `missing module policy mapping: ${table}`);
+  }
+  assert.match(regression, /direct staff-role RLS predicates are module guarded/);
+});
+
 test('PIN verification sets session module and bounded lifetime; clear revokes session', () => {
   assert.match(migration, /INSERT INTO public\.staff_sessions\s*\(user_id, staff_id, property_id, verified_at, module, expires_at, hard_expires_at, revoked_at\)/);
   assert.match(migration, /module = EXCLUDED\.module/);
