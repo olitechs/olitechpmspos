@@ -441,15 +441,15 @@ function normalizeImportRows(rows) {
     });
     return normalized;
   }).map((row) => ({
-    name: textValue(row.name),
-    sku: textValue(row.sku) || null,
+    name: textValue(row.name ?? row.product_name ?? row.menu_item_name ?? row.item_name),
+    sku: textValue(row.sku ?? row.product_sku ?? row.item_sku ?? row.code) || null,
     category: textValue(row.category, 'General') || 'General',
     unit: textValue(row.unit, 'pcs') || 'pcs',
     current_stock: numberValue(row.current_stock ?? row.quantity, 0),
     min_stock: numberValue(row.min_stock ?? row.low_stock_threshold, 5),
     max_stock: numberValue(row.max_stock, 0),
     cost_price: numberValue(row.cost_price, 0),
-    selling_price: numberValue(row.selling_price, 0),
+    selling_price: numberValue(row.selling_price ?? row.price ?? row.sale_price, 0),
     supplier: textValue(row.supplier),
     location: textValue(row.location, 'Main Store') || 'Main Store',
     expiry_date: row.expiry_date || null,
