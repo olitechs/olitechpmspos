@@ -86,6 +86,9 @@ BEGIN
   ) THEN
     RETURN false;
   END IF;
+  IF NOT public.fn_subscription_module_allowed(p_property_id, v_module) THEN
+    RETURN false;
+  END IF;
 
   SELECT EXISTS (
     SELECT 1 FROM public.staff_sessions ss
