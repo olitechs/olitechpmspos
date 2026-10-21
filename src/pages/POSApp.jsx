@@ -1,4 +1,5 @@
-import React, { lazy, Suspense, useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
+import { lazyWithRetry } from '@/lib/lazyWithRetry';
 import { useLocation } from 'react-router-dom';
 import { StoreProvider } from '@/data/AppStore';
 import { PmsProvider } from '@/data/PmsStore';
@@ -31,11 +32,11 @@ import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import RouteGuard from '@/components/auth/RouteGuard';
 import PaywallGuard from '@/components/auth/PaywallGuard';
 
-const POSContainer = lazy(() => import('@/components/pos/POSContainer'));
-const Rooms = lazy(() => import('@/components/pms/Rooms'));
-const Reports = lazy(() => import('@/components/modules/Reports'));
-const Store = lazy(() => import('@/pages/Store'));
-const KitchenDisplay = lazy(() => import('@/components/modules/KitchenDisplay'));
+const POSContainer = lazyWithRetry(() => import('@/components/pos/POSContainer'), 'posapp-pos-container');
+const Rooms = lazyWithRetry(() => import('@/components/pms/Rooms'), 'posapp-rooms');
+const Reports = lazyWithRetry(() => import('@/components/modules/Reports'), 'posapp-reports');
+const Store = lazyWithRetry(() => import('@/pages/Store'), 'posapp-store');
+const KitchenDisplay = lazyWithRetry(() => import('@/components/modules/KitchenDisplay'), 'posapp-kitchen-display');
 
 const COMING_SOON_IDS = new Set(MODULES.filter((module) => module.comingSoon).map((module) => module.id));
 

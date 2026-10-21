@@ -1,4 +1,5 @@
-import { lazy, Suspense } from 'react';
+import { Suspense } from 'react';
+import { lazyWithRetry } from '@/lib/lazyWithRetry';
 import Purchasing from '@/components/modules/Purchasing';
 import InventoryReports from '@/components/modules/InventoryReports';
 import InventoryOperations from '@/components/modules/InventoryOperations';
@@ -55,10 +56,10 @@ import CategoriesPage from "@/components/settings/CategoriesPage";
 import TimecardsPage from "@/components/settings/TimecardsPage";
 import EmployeeListPage from "@/components/settings/EmployeeListPage";
 
-const POSApp = lazy(() => import('@/pages/POSApp'));
-const Reports = lazy(() => import('@/components/modules/Reports'));
-const Store = lazy(() => import('@/pages/Store'));
-const StoresPage = lazy(() => import('@/components/stores/StoresPage'));
+const POSApp = lazyWithRetry(() => import('@/pages/POSApp'), 'app-pos-app');
+const Reports = lazyWithRetry(() => import('@/components/modules/Reports'), 'app-reports');
+const Store = lazyWithRetry(() => import('@/pages/Store'), 'app-store');
+const StoresPage = lazyWithRetry(() => import('@/components/stores/StoresPage'), 'app-stores-page');
 
 function AuthLoading(){return <div role="status" aria-live="polite" className="fixed inset-0 flex items-center justify-center bg-[var(--canvas)]"><div className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--border)] border-t-[var(--brand-primary)]"/></div>;}
 function appRole(user){const s=getSessionStaff();const raw=s?.role||user?.staff?.role||user?.propertyRole||user?.role;return normalizeAppRole(normalizeStaffRole(raw));}
