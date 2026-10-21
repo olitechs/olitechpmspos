@@ -49,9 +49,106 @@ AS $function$
       AND s.property_id = ss.property_id
       AND p.status = 'active'
       AND lower(trim(coalesce(p_module, ''))) = ANY (
-        SELECT lower(trim(m)) FROM unnest(coalesce(s.assigned_modules, ARRAY[]::text[])) AS m
+        SELECT lower(trim(module_name)) FROM unnest(coalesce(s.assigned_modules, ARRAY[]::text[])) AS assigned(module_name)
       )
   );
+$function$;
+
+
+-- Module authorization must bind a PIN-selected staff identity to the module
+-- stored in that same server-side session. Keep membership-only property-admin
+-- access separate from staff-PIN access.
+CREATE OR REPLACE FUNCTION public.fn_staff_module_access(
+  p_property_id uuid,
+  p_module text
+)
+RETURNS boolean
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_role text;
+  v_assigned text[];
+  v_module text := lower(trim(coalesce(p_module, '')));
+  v_has_session boolean;
+BEGIN
+  IF public.is_platform_owner() THEN
+    RETURN true;
+  END IF;
+  IF auth.uid() IS NULL OR NOT public.is_member_of_property(p_property_id) THEN
+    RETURN false;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.properties p
+    WHERE p.id = p_property_id AND p.status = 'active' AND p.package <> 'none'
+  ) THEN
+    RETURN false;
+  END IF;
+
+  SELECT EXISTS (
+    SELECT 1 FROM public.staff_sessions ss
+    WHERE ss.user_id = auth.uid()
+  ) INTO v_has_session;
+
+  IF v_has_session THEN
+    IF NOT public.fn_staff_session_allows_module(p_property_id, v_module) THEN
+      RETURN false;
+    END IF;
+    SELECT s.role, s.assigned_modules
+      INTO v_role, v_assigned
+    FROM public.staff_sessions ss
+    JOIN public.staff s ON s.id = ss.staff_id
+    WHERE ss.user_id = auth.uid()
+      AND ss.property_id = p_property_id
+      AND ss.revoked_at IS NULL
+      AND ss.expires_at > now()
+      AND ss.hard_expires_at > now()
+      AND s.is_active IS TRUE
+      AND s.property_id = p_property_id
+    LIMIT 1;
+    IF v_role IS NULL THEN
+      RETURN false;
+    END IF;
+    IF v_role IN ('super_admin', 'hotel_admin') THEN
+      RETURN true;
+    END IF;
+    IF coalesce(array_length(v_assigned, 1), 0) > 0 THEN
+      RETURN v_module = ANY (
+        SELECT lower(trim(module_name))
+        FROM unnest(v_assigned) AS assigned(module_name)
+      );
+    END IF;
+    RETURN CASE v_role
+      WHEN 'front_office_manager' THEN v_module = 'frontoffice'
+      WHEN 'receptionist' THEN v_module IN ('frontoffice', 'pos')
+      WHEN 'front_desk' THEN v_module IN ('frontoffice', 'pos')
+      WHEN 'pos_staff' THEN v_module = 'pos'
+      WHEN 'waiter' THEN v_module = 'pos'
+      WHEN 'cashier' THEN v_module = 'pos'
+      WHEN 'store_manager' THEN v_module = 'store'
+      WHEN 'fb_manager' THEN v_module IN ('pos', 'store')
+      WHEN 'housekeeping_supervisor' THEN v_module = 'frontoffice'
+      ELSE false
+    END;
+  END IF;
+
+  -- A staff account without a current PIN session must not inherit permissions
+  -- from the legacy staff.user_id mapping. Property membership remains a
+  -- separate authority for non-staff property users.
+  IF EXISTS (
+    SELECT 1 FROM public.staff s
+    WHERE s.user_id = auth.uid()
+      AND s.property_id = p_property_id
+      AND s.is_active IS TRUE
+  ) THEN
+    RETURN false;
+  END IF;
+
+  RETURN v_module IN ('backoffice', 'frontoffice', 'pos', 'store')
+    AND public.property_role(p_property_id) IN ('owner', 'admin', 'manager', 'reception', 'housekeeping');
+END;
 $function$;
 
 CREATE OR REPLACE FUNCTION public.current_staff_role(p_property_id uuid)
@@ -127,8 +224,8 @@ BEGIN
   WHERE st.property_id = p_property_id
     AND st.is_active IS TRUE
     AND lower(v_module) = ANY (
-      SELECT lower(trim(m))
-      FROM unnest(coalesce(st.assigned_modules, ARRAY[]::text[])) AS m
+      SELECT lower(trim(module_name))
+      FROM unnest(coalesce(st.assigned_modules, ARRAY[]::text[])) AS assigned(module_name)
     )
     AND st.pin_hash = p_pin_hash
   ORDER BY st.id
@@ -197,8 +294,8 @@ BEGIN
     AND s.property_id = ss.property_id
     AND p.status = 'active'
     AND lower(ss.module) = ANY (
-      SELECT lower(trim(m))
-      FROM unnest(coalesce(s.assigned_modules, ARRAY[]::text[])) AS m
+      SELECT lower(trim(module_name))
+      FROM unnest(coalesce(s.assigned_modules, ARRAY[]::text[])) AS assigned(module_name)
     );
 
   GET DIAGNOSTICS v_rows = ROW_COUNT;
@@ -236,6 +333,10 @@ REVOKE ALL ON FUNCTION public.clear_active_staff_session() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.clear_active_staff_session() TO authenticated;
 REVOKE ALL ON FUNCTION public.fn_staff_session_allows_module(uuid, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.fn_staff_session_allows_module(uuid, text) TO authenticated;
+REVOKE ALL ON FUNCTION public.fn_staff_module_access(uuid, text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.fn_staff_module_access(uuid, text) TO authenticated;
+REVOKE ALL ON FUNCTION public.current_staff_role(uuid) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.current_staff_id(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.current_staff_role(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.current_staff_id(uuid) TO authenticated;
 
