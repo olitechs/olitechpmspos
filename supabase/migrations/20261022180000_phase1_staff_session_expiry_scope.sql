@@ -567,6 +567,98 @@ BEGIN
 END;
 $module_guard_policies$;
 
+-- Close the remaining high-risk RPC tenant gaps identified in the live audit.
+-- Public booking configuration is intentionally anonymous, but only for active
+-- properties whose booking engine is explicitly enabled.
+CREATE OR REPLACE FUNCTION public.fn_public_booking_engine_config(p_property_id uuid)
+RETURNS jsonb
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $booking_config$
+  SELECT jsonb_build_object(
+    'property_id', p.id,
+    'name', p.name,
+    'currency', COALESCE(s.currency, p.currency, 'USD'),
+    'terms', s.terms,
+    'cancellation_policy', s.cancellation_policy,
+    'payment_instructions', s.payment_instructions
+  )
+  FROM public.properties p
+  JOIN public.booking_engine_settings s
+    ON s.property_id = p.id
+   AND s.enabled IS TRUE
+  WHERE p.id = p_property_id
+    AND p.status = 'active';
+$booking_config$;
+
+-- Never trust a caller-supplied property UUID by itself. Staff PIN access must
+-- pass the selected module/session/entitlement check; email property membership
+-- is evaluated by the same server-side module authorization helper.
+CREATE OR REPLACE FUNCTION public.fn_list_pos_menu(p_property_id uuid)
+RETURNS TABLE(
+  id uuid, sku text, name text, category text, unit text,
+  current_stock numeric, min_stock numeric, selling_price numeric,
+  production_center text, pos_sort integer
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $pos_menu$
+  SELECT p.id, p.sku, p.name,
+         COALESCE(NULLIF(p.pos_category, ''), p.category),
+         p.unit, p.current_stock, p.min_stock, p.selling_price,
+         p.production_center, p.pos_sort
+  FROM public.products p
+  WHERE p.property_id = p_property_id
+    AND p.pos_enabled IS TRUE
+    AND p.pos_active IS TRUE
+    AND (
+      auth.role() = 'service_role'
+      OR public.fn_staff_module_access(p_property_id, 'pos') IS TRUE
+    )
+  ORDER BY COALESCE(NULLIF(p.pos_category, ''), p.category), p.pos_sort, p.name;
+$pos_menu$;
+
+CREATE OR REPLACE FUNCTION public.fn_current_pos_shift(p_property_id uuid)
+RETURNS public.pos_shifts
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $pos_shift$
+  SELECT s.*
+  FROM public.pos_shifts s
+  WHERE s.property_id = p_property_id
+    AND s.status = 'open'
+    AND s.date = (now() AT TIME ZONE 'Africa/Nairobi')::date
+    AND (
+      auth.role() = 'service_role'
+      OR public.fn_staff_module_access(p_property_id, 'pos') IS TRUE
+    )
+  ORDER BY s.opened_at DESC
+  LIMIT 1;
+$pos_shift$;
+
+-- Property registration uses ensure_my_pending_property() and trusted
+-- SECURITY DEFINER signup/admin routines as its entry points. Direct client
+-- execution of this low-level helper is unnecessary and allowed cross-user
+-- disclosure in the live audit; nested owner-context calls remain available.
+REVOKE ALL ON FUNCTION public.create_pending_property_for_user(uuid, text, text, text)
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.create_pending_property_for_user(uuid, text, text, text)
+  TO service_role;
+
+REVOKE ALL ON FUNCTION public.fn_public_booking_engine_config(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.fn_public_booking_engine_config(uuid)
+  TO anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION public.fn_list_pos_menu(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.fn_list_pos_menu(uuid) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.fn_current_pos_shift(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.fn_current_pos_shift(uuid) TO authenticated, service_role;
+
 -- Ensure only authenticated callers can establish, refresh, or revoke their
 -- own staff session. Internal helpers are callable by authenticated policies.
 REVOKE ALL ON FUNCTION public.verify_staff_pin(uuid, text, text) FROM PUBLIC, anon;
