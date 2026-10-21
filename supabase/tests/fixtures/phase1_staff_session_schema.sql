@@ -1,8 +1,20 @@
 -- Minimal disposable schema fixture for the staff-session migration contract.
 -- This fixture is not a production schema dump and does not validate unrelated RPCs.
-CREATE ROLE authenticated NOLOGIN;
-CREATE ROLE anon NOLOGIN;
-CREATE ROLE service_role NOLOGIN;
+-- PostgreSQL roles are cluster-wide, so the combined CI workflow may have
+-- created these roles already while preparing its other isolated database.
+DO $roles$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    CREATE ROLE authenticated NOLOGIN;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+    CREATE ROLE anon NOLOGIN;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+    CREATE ROLE service_role NOLOGIN;
+  END IF;
+END
+$roles$;
 
 CREATE SCHEMA auth;
 CREATE OR REPLACE FUNCTION auth.uid()
