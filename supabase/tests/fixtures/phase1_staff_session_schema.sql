@@ -46,6 +46,15 @@ RETURNS text[] LANGUAGE sql IMMUTABLE AS $package_modules$
   SELECT ARRAY['frontoffice','pos','backoffice','store']::text[]
 $package_modules$;
 
+CREATE OR REPLACE FUNCTION public.fn_subscription_access(p_property_id uuid, p_module text)
+RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $subscription_stub$
+  SELECT jsonb_build_object('allowed', true)
+$subscription_stub$;
+CREATE OR REPLACE FUNCTION public.fn_subscription_module_allowed(p_property_id uuid, p_module text)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $subscription_module_stub$
+  SELECT coalesce((public.fn_subscription_access(p_property_id, p_module)->>'allowed')::boolean, false)
+$subscription_module_stub$;
+
 CREATE TABLE public.staff (
   id uuid PRIMARY KEY,
   property_id uuid NOT NULL REFERENCES public.properties(id),
