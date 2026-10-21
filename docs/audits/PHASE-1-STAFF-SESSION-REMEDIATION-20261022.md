@@ -1,7 +1,7 @@
 # Phase 1 staff-session remediation — candidate review
 
 **Status:** Draft candidate. Not approved for production deployment.  
-**Branch:** `phase1/staff-session-remediation-20261022`  
+**Branch:** `phase1/security-reconciliation-refresh-20261022`  
 **Production changes:** None.
 
 ## Changes proposed
