@@ -219,4 +219,54 @@ BEGIN
 END
 $no_session$;
 
+
+DO $subscription_existing$
+DECLARE
+  v_access jsonb;
+BEGIN
+  v_access := public.fn_subscription_access(
+    current_setting('app.phase1.property_b')::uuid, 'pos'
+  );
+  IF coalesce((v_access->>'allowed')::boolean, false) IS NOT TRUE THEN
+    RAISE EXCEPTION 'FAIL: existing active subscription was not evaluated as allowed: %', v_access;
+  END IF;
+  RAISE NOTICE 'PASS: existing active subscription access remains allowed';
+END
+$subscription_existing$;
+
+RESET ROLE;
+DELETE FROM public.property_subscriptions
+WHERE property_id = current_setting('app.phase1.property_b')::uuid;
+
+SET LOCAL ROLE authenticated;
+DO $subscription_missing$
+DECLARE
+  v_access jsonb;
+BEGIN
+  v_access := public.fn_subscription_access(
+    current_setting('app.phase1.property_b')::uuid, 'pos'
+  );
+  IF coalesce((v_access->>'allowed')::boolean, false) IS NOT FALSE
+     OR v_access->>'reason' <> 'subscription_not_configured' THEN
+    RAISE EXCEPTION 'FAIL: missing subscription did not fail closed: %', v_access;
+  END IF;
+  RAISE NOTICE 'PASS: missing subscription denies access without provisioning';
+END
+$subscription_missing$;
+
+RESET ROLE;
+DO $subscription_no_side_effect$
+DECLARE
+  v_count integer;
+BEGIN
+  SELECT count(*) INTO v_count
+  FROM public.property_subscriptions
+  WHERE property_id = current_setting('app.phase1.property_b')::uuid;
+  IF v_count <> 0 THEN
+    RAISE EXCEPTION 'FAIL: access evaluation inserted a missing subscription';
+  END IF;
+  RAISE NOTICE 'PASS: subscription access evaluation has no provisioning side effect';
+END
+$subscription_no_side_effect$;
+
 ROLLBACK;
