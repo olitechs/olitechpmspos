@@ -126,7 +126,7 @@ create or replace function public.fn_bulk_upsert_pos_menu(
 language plpgsql
 security definer
 set search_path = public
-as $
+as $bulk$
 declare
   r jsonb;
   v_count integer := 0;
@@ -156,7 +156,7 @@ begin
 
   return v_count;
 end;
-$;
+$bulk$;
 
 -- Keep the authenticated-only execute boundary established by the catalogue migration.
 revoke all on function public.fn_upsert_pos_menu_item(uuid,uuid,text,text,text,text,numeric,numeric,numeric,numeric,text,integer,boolean) from public, anon;
