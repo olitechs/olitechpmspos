@@ -75,6 +75,7 @@ test('SQL regression covers session and subscription denial cases with rollback'
     'staff session was accepted for wrong module',
     'staff session crossed into another property',
     'changed staff module assignment invalidates the session',
+    'email/property membership retains only its assigned module scope',
     'expired session still authorizes module access',
     'hard-expired session was refreshed',
     'revoked session still authorizes module access',
