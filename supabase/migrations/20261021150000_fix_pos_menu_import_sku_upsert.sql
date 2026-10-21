@@ -1,5 +1,6 @@
 -- Fix POS menu imports that collide with products_property_id_sku_key.
 -- Existing menu rows are updated by property + SKU when the import has no id.
+-- Existing stock balances remain ledger-owned and are not overwritten by a menu import.
 -- Serialize menu mutations per property so concurrent imports cannot race the
 -- lookup/insert path. This migration is forward-only; do not apply to production
 -- until tested against a schema-equivalent isolated database.
@@ -94,7 +95,6 @@ begin
       category = v_category,
       unit = v_unit,
       selling_price = coalesce(p_selling_price, 0),
-      current_stock = coalesce(p_current_stock, 0),
       min_stock = coalesce(p_min_stock, 0),
       max_stock = coalesce(p_max_stock, 0),
       pos_enabled = true,
