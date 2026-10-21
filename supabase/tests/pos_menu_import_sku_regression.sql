@@ -24,10 +24,14 @@ DECLARE
   v_row public.products;
   v_count integer;
 BEGIN
-  v_row := public.fn_upsert_pos_menu_item(
-    v_property_a, NULL, 'MENU-001', 'Updated Menu Name', 'Drinks', 'bottle', 150, 8, 1, 20, 'Bar', 4, true
-  );
+  v_count := public.fn_bulk_upsert_pos_menu(v_property_a, jsonb_build_array(jsonb_build_object(
+    'id', NULL, 'sku', 'MENU-001', 'name', 'Updated Menu Name', 'category', 'Drinks',
+    'unit', 'bottle', 'selling_price', 150, 'current_stock', 8, 'min_stock', 1,
+    'max_stock', 20, 'production_center', 'Bar', 'pos_sort', 4, 'pos_active', true
+  )));
+  IF v_count <> 1 THEN RAISE EXCEPTION 'FAIL: bulk import did not report one processed row: %', v_count; END IF;
   SELECT count(*) INTO v_count FROM public.products WHERE property_id = v_property_a AND sku = 'MENU-001';
+  SELECT * INTO v_row FROM public.products WHERE property_id = v_property_a AND sku = 'MENU-001';
   IF v_count <> 1 THEN RAISE EXCEPTION 'FAIL: import created duplicate product row(s): %', v_count; END IF;
   IF v_row.name <> 'Updated Menu Name' OR v_row.selling_price <> 150 OR v_row.current_stock <> 4 THEN
     RAISE EXCEPTION 'FAIL: existing SKU update changed identity, price, or ledger-owned stock incorrectly';
