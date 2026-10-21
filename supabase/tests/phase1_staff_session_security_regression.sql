@@ -10,6 +10,7 @@ DECLARE
   v_staff_id uuid;
   v_module text;
   v_user_b uuid;
+  v_property_b uuid;
 BEGIN
   SELECT pu.user_id, pu.property_id
     INTO v_user_a, v_property_a
@@ -22,8 +23,8 @@ BEGIN
   ORDER BY pu.created_at
   LIMIT 1;
 
-  SELECT pu.user_id
-    INTO v_user_b
+  SELECT pu.user_id, pu.property_id
+    INTO v_user_b, v_property_b
   FROM public.property_users pu
   JOIN public.properties p ON p.id = pu.property_id
   WHERE p.status = 'active'
@@ -47,7 +48,7 @@ BEGIN
   LIMIT 1;
 
   IF v_user_a IS NULL OR v_property_a IS NULL OR v_staff_id IS NULL
-     OR v_module IS NULL OR v_user_b IS NULL THEN
+     OR v_module IS NULL OR v_user_b IS NULL OR v_property_b IS NULL THEN
     RAISE EXCEPTION
       'PRECONDITION_FAILED: seed two active properties/users and an active staff member with an assigned supported module';
   END IF;
@@ -57,6 +58,7 @@ BEGIN
   PERFORM set_config('app.phase1.staff_id', v_staff_id::text, true);
   PERFORM set_config('app.phase1.module', v_module, true);
   PERFORM set_config('app.phase1.user_b', v_user_b::text, true);
+  PERFORM set_config('app.phase1.property_b', v_property_b::text, true);
 
   -- The test fixture is transactional. Replace the user's current session and
   -- ensure user B has no session; rollback restores both original rows.
