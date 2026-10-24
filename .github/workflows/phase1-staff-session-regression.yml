@@ -1,0 +1,49 @@
+name: Phase 1 Staff Session SQL Regression
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/20261022180000_phase1_staff_session_expiry_scope.sql'
+      - 'supabase/tests/phase1_staff_session_security_regression.sql'
+      - 'supabase/tests/fixtures/phase1_staff_session_schema.sql'
+      - '.github/workflows/phase1-staff-session-regression.yml'
+  push:
+    branches: [phase1/security-reconciliation-verified-20261022]
+    paths:
+      - 'supabase/migrations/20261022180000_phase1_staff_session_expiry_scope.sql'
+      - 'supabase/tests/phase1_staff_session_security_regression.sql'
+      - 'supabase/tests/fixtures/phase1_staff_session_schema.sql'
+      - '.github/workflows/phase1-staff-session-regression.yml'
+
+jobs:
+  staff-session-regression:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: staff_session_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d staff_session_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/staff_session_test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Load minimal isolated fixture
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/tests/fixtures/phase1_staff_session_schema.sql
+
+      - name: Apply candidate migration in isolated PostgreSQL
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20261022180000_phase1_staff_session_expiry_scope.sql
+
+      - name: Run bounded-session negative regression
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/tests/phase1_staff_session_security_regression.sql
