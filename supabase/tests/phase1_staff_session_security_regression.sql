@@ -150,6 +150,12 @@ $valid_session$;
 
 
 -- Verify failed PIN attempts remain throttled after the session migration.
+RESET ROLE;
+DELETE FROM public.staff_pin_attempts
+WHERE user_id = current_setting('app.phase1.user_a')::uuid
+  AND property_id = current_setting('app.phase1.property_a')::uuid;
+SET LOCAL ROLE authenticated;
+
 DO $pin_lockout$
 DECLARE
   v_property uuid := current_setting('app.phase1.property_a')::uuid;
@@ -158,10 +164,6 @@ DECLARE
   v_count integer;
   i integer;
 BEGIN
-  DELETE FROM public.staff_pin_attempts
-  WHERE user_id = current_setting('app.phase1.user_a')::uuid
-    AND property_id = v_property;
-
   FOR i IN 1..5 LOOP
     v_result := public.verify_staff_pin(v_property, v_module, 'definitely-not-a-valid-pin-hash');
   END LOOP;
