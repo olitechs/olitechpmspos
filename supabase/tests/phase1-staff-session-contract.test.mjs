@@ -111,3 +111,20 @@ test('SQL regression covers session and subscription denial cases with rollback'
     assert.ok(regression.includes(phrase), 'missing SQL regression assertion: ' + phrase);
   }
 });
+
+test('PIN verification preserves failed-attempt lockout and clears failures on success', () => {
+  const start = migration.indexOf('CREATE OR REPLACE FUNCTION public.verify_staff_pin(');
+  const end = migration.indexOf('$function$;', start);
+  assert.ok(start >= 0 && end > start, 'verify_staff_pin function must be present');
+  const pinFunction = migration.slice(start, end);
+  assert.match(pinFunction, /public\.staff_pin_attempts/);
+  assert.match(pinFunction, /FOR UPDATE/);
+  assert.match(pinFunction, /c_max constant integer := 5/);
+  assert.match(pinFunction, /c_window constant interval := interval '10 minutes'/);
+  assert.match(pinFunction, /c_lock constant interval := interval '5 minutes'/);
+  assert.match(pinFunction, /failed_count >= c_max/);
+  assert.match(pinFunction, /'reason', 'locked'/);
+  assert.match(pinFunction, /'wrong_pin'/);
+  assert.match(pinFunction, /DELETE FROM public\.staff_pin_attempts/);
+  assert.match(pinFunction, /INSERT INTO public\.staff_logs/);
+});
