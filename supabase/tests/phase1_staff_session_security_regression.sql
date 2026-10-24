@@ -161,7 +161,6 @@ DECLARE
   v_property uuid := current_setting('app.phase1.property_a')::uuid;
   v_module text := current_setting('app.phase1.module');
   v_result jsonb;
-  v_count integer;
   i integer;
 BEGIN
   FOR i IN 1..5 LOOP
@@ -171,22 +170,31 @@ BEGIN
   IF v_result->>'reason' <> 'locked' THEN
     RAISE EXCEPTION 'FAIL: fifth failed PIN attempt did not trigger lockout: %', v_result;
   END IF;
+  RAISE NOTICE 'PASS: five failed PIN attempts trigger timed lockout';
+END
+$pin_lockout$;
 
+-- The attempts table intentionally has no client-facing grants or policies.
+-- Inspect persisted throttle state only after resetting the authenticated role.
+RESET ROLE;
+DO $pin_lockout_persisted$
+DECLARE
+  v_count integer;
+BEGIN
   SELECT count(*) INTO v_count
   FROM public.staff_pin_attempts
   WHERE user_id = current_setting('app.phase1.user_a')::uuid
-    AND property_id = v_property
+    AND property_id = current_setting('app.phase1.property_a')::uuid
     AND failed_count >= 5
     AND locked_until > now();
 
   IF v_count <> 1 THEN
     RAISE EXCEPTION 'FAIL: failed PIN attempts were not persisted with active lockout';
   END IF;
-  RAISE NOTICE 'PASS: five failed PIN attempts trigger timed lockout';
+  RAISE NOTICE 'PASS: PIN lockout state persisted without direct client table access';
 END
-$pin_lockout$;
+$pin_lockout_persisted$;
 
-RESET ROLE;
 UPDATE public.staff_pin_attempts
 SET locked_until = now() - interval '1 second'
 WHERE user_id = current_setting('app.phase1.user_a')::uuid
@@ -199,7 +207,6 @@ DECLARE
   v_module text := current_setting('app.phase1.module');
   v_pin_hash text;
   v_result jsonb;
-  v_count integer;
 BEGIN
   SELECT pin_hash INTO v_pin_hash
   FROM public.staff
@@ -209,17 +216,25 @@ BEGIN
   IF coalesce((v_result->>'ok')::boolean, false) IS NOT TRUE THEN
     RAISE EXCEPTION 'FAIL: valid PIN did not establish a scoped session after lock expiry: %', v_result;
   END IF;
+  RAISE NOTICE 'PASS: valid PIN accepted after lock expiry';
+END
+$pin_success_clears_attempts$;
 
+RESET ROLE;
+DO $pin_attempts_cleared$
+DECLARE
+  v_count integer;
+BEGIN
   SELECT count(*) INTO v_count
   FROM public.staff_pin_attempts
   WHERE user_id = current_setting('app.phase1.user_a')::uuid
-    AND property_id = v_property;
+    AND property_id = current_setting('app.phase1.property_a')::uuid;
   IF v_count <> 0 THEN
     RAISE EXCEPTION 'FAIL: successful PIN verification did not clear failed attempts';
   END IF;
   RAISE NOTICE 'PASS: successful PIN verification clears failed attempts';
 END
-$pin_success_clears_attempts$;
+$pin_attempts_cleared$;
 
 
 RESET ROLE;
