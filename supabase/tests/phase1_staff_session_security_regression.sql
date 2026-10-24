@@ -195,6 +195,14 @@ BEGIN
 END
 $pin_lockout_persisted$;
 
+-- Read the fixture PIN hash as owner before switching to the restricted client role.
+SELECT set_config(
+  'app.phase1.pin_hash',
+  (SELECT pin_hash FROM public.staff
+   WHERE id = current_setting('app.phase1.staff_id')::uuid),
+  true
+);
+
 UPDATE public.staff_pin_attempts
 SET locked_until = now() - interval '1 second'
 WHERE user_id = current_setting('app.phase1.user_a')::uuid
@@ -205,13 +213,9 @@ DO $pin_success_clears_attempts$
 DECLARE
   v_property uuid := current_setting('app.phase1.property_a')::uuid;
   v_module text := current_setting('app.phase1.module');
-  v_pin_hash text;
+  v_pin_hash text := current_setting('app.phase1.pin_hash');
   v_result jsonb;
 BEGIN
-  SELECT pin_hash INTO v_pin_hash
-  FROM public.staff
-  WHERE id = current_setting('app.phase1.staff_id')::uuid;
-
   v_result := public.verify_staff_pin(v_property, v_module, v_pin_hash);
   IF coalesce((v_result->>'ok')::boolean, false) IS NOT TRUE THEN
     RAISE EXCEPTION 'FAIL: valid PIN did not establish a scoped session after lock expiry: %', v_result;
