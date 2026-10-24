@@ -149,6 +149,77 @@ END
 $valid_session$;
 
 
+-- Verify failed PIN attempts remain throttled after the session migration.
+DO $pin_lockout$
+DECLARE
+  v_property uuid := current_setting('app.phase1.property_a')::uuid;
+  v_module text := current_setting('app.phase1.module');
+  v_result jsonb;
+  v_count integer;
+  i integer;
+BEGIN
+  DELETE FROM public.staff_pin_attempts
+  WHERE user_id = current_setting('app.phase1.user_a')::uuid
+    AND property_id = v_property;
+
+  FOR i IN 1..5 LOOP
+    v_result := public.verify_staff_pin(v_property, v_module, 'definitely-not-a-valid-pin-hash');
+  END LOOP;
+
+  IF v_result->>'reason' <> 'locked' THEN
+    RAISE EXCEPTION 'FAIL: fifth failed PIN attempt did not trigger lockout: %', v_result;
+  END IF;
+
+  SELECT count(*) INTO v_count
+  FROM public.staff_pin_attempts
+  WHERE user_id = current_setting('app.phase1.user_a')::uuid
+    AND property_id = v_property
+    AND failed_count >= 5
+    AND locked_until > now();
+
+  IF v_count <> 1 THEN
+    RAISE EXCEPTION 'FAIL: failed PIN attempts were not persisted with active lockout';
+  END IF;
+  RAISE NOTICE 'PASS: five failed PIN attempts trigger timed lockout';
+END
+$pin_lockout$;
+
+RESET ROLE;
+UPDATE public.staff_pin_attempts
+SET locked_until = now() - interval '1 second'
+WHERE user_id = current_setting('app.phase1.user_a')::uuid
+  AND property_id = current_setting('app.phase1.property_a')::uuid;
+SET LOCAL ROLE authenticated;
+
+DO $pin_success_clears_attempts$
+DECLARE
+  v_property uuid := current_setting('app.phase1.property_a')::uuid;
+  v_module text := current_setting('app.phase1.module');
+  v_pin_hash text;
+  v_result jsonb;
+  v_count integer;
+BEGIN
+  SELECT pin_hash INTO v_pin_hash
+  FROM public.staff
+  WHERE id = current_setting('app.phase1.staff_id')::uuid;
+
+  v_result := public.verify_staff_pin(v_property, v_module, v_pin_hash);
+  IF coalesce((v_result->>'ok')::boolean, false) IS NOT TRUE THEN
+    RAISE EXCEPTION 'FAIL: valid PIN did not establish a scoped session after lock expiry: %', v_result;
+  END IF;
+
+  SELECT count(*) INTO v_count
+  FROM public.staff_pin_attempts
+  WHERE user_id = current_setting('app.phase1.user_a')::uuid
+    AND property_id = v_property;
+  IF v_count <> 0 THEN
+    RAISE EXCEPTION 'FAIL: successful PIN verification did not clear failed attempts';
+  END IF;
+  RAISE NOTICE 'PASS: successful PIN verification clears failed attempts';
+END
+$pin_success_clears_attempts$;
+
+
 RESET ROLE;
 UPDATE public.staff
 SET assigned_modules = ARRAY['frontoffice']::text[]
