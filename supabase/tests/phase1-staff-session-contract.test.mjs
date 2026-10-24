@@ -128,3 +128,13 @@ test('PIN verification preserves failed-attempt lockout and clears failures on s
   assert.match(pinFunction, /DELETE FROM public\.staff_pin_attempts/);
   assert.match(pinFunction, /INSERT INTO public\.staff_logs/);
 });
+
+test('isolated fixture models PIN throttling storage without exposing direct table access', async () => {
+  const fixture = await readFile(
+    new URL('./fixtures/phase1_staff_session_schema.sql', import.meta.url),
+    'utf8',
+  );
+  assert.match(fixture, /CREATE TABLE public\.staff_pin_attempts/);
+  assert.match(fixture, /PRIMARY KEY \(user_id, property_id\)/);
+  assert.match(fixture, /ALTER TABLE public\.staff_pin_attempts ENABLE ROW LEVEL SECURITY/);
+});
