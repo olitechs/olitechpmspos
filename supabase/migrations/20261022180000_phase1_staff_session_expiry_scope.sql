@@ -218,10 +218,18 @@ SET search_path = public
 AS $function$
 DECLARE
   s public.staff;
+  a public.staff_pin_attempts;
+  v_locked timestamptz;
   v_module text := lower(trim(coalesce(p_module, '')));
+  c_max constant integer := 5;
+  c_window constant interval := interval '10 minutes';
+  c_lock constant interval := interval '5 minutes';
 BEGIN
   IF auth.uid() IS NULL THEN
     RAISE EXCEPTION 'Authentication required.' USING ERRCODE = '42501';
+  END IF;
+  IF p_property_id IS NULL OR v_module = '' OR p_pin_hash IS NULL THEN
+    RAISE EXCEPTION 'Invalid PIN verification request.' USING ERRCODE = '22023';
   END IF;
   IF NOT (public.is_member_of_property(p_property_id) OR public.is_platform_owner()) THEN
     RAISE EXCEPTION 'Not allowed.' USING ERRCODE = '42501';
@@ -230,50 +238,74 @@ BEGIN
     RAISE EXCEPTION 'Invalid module.' USING ERRCODE = '22023';
   END IF;
 
+  SELECT * INTO a FROM public.staff_pin_attempts
+  WHERE user_id = auth.uid() AND property_id = p_property_id FOR UPDATE;
+  IF FOUND AND a.locked_until IS NOT NULL AND a.locked_until > now() THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'locked',
+      'retry_after_seconds', ceil(extract(epoch FROM (a.locked_until - now())))::integer);
+  END IF;
+
   SELECT st.* INTO s
   FROM public.staff st
-  WHERE st.property_id = p_property_id
-    AND st.is_active IS TRUE
+  WHERE st.property_id = p_property_id AND st.is_active IS TRUE
     AND lower(v_module) = ANY (
       SELECT lower(trim(module_name))
       FROM unnest(coalesce(st.assigned_modules, ARRAY[]::text[])) AS assigned(module_name)
     )
     AND st.pin_hash = p_pin_hash
-  ORDER BY st.id
-  LIMIT 1;
+  ORDER BY st.id LIMIT 1;
 
   IF s.id IS NULL THEN
+    INSERT INTO public.staff_pin_attempts
+      (user_id, property_id, failed_count, window_started_at, locked_until)
+    VALUES (auth.uid(), p_property_id, 1, now(), NULL)
+    ON CONFLICT (user_id, property_id) DO UPDATE
+      SET failed_count = CASE
+        WHEN public.staff_pin_attempts.window_started_at < now() - c_window
+          OR (public.staff_pin_attempts.locked_until IS NOT NULL
+              AND public.staff_pin_attempts.locked_until <= now())
+        THEN 1 ELSE public.staff_pin_attempts.failed_count + 1 END,
+      window_started_at = CASE
+        WHEN public.staff_pin_attempts.window_started_at < now() - c_window
+          OR (public.staff_pin_attempts.locked_until IS NOT NULL
+              AND public.staff_pin_attempts.locked_until <= now())
+        THEN now() ELSE public.staff_pin_attempts.window_started_at END,
+      locked_until = NULL;
+
+    UPDATE public.staff_pin_attempts SET locked_until = now() + c_lock
+    WHERE user_id = auth.uid() AND property_id = p_property_id AND failed_count >= c_max
+    RETURNING locked_until INTO v_locked;
+
+    INSERT INTO public.staff_logs(property_id, staff_id, staff_name, module, action)
+    VALUES (p_property_id, NULL, NULL, v_module, 'wrong_pin');
+
+    IF v_locked IS NOT NULL THEN
+      RETURN jsonb_build_object('ok', false, 'reason', 'locked',
+        'retry_after_seconds', ceil(extract(epoch FROM (v_locked - now())))::integer);
+    END IF;
     RETURN jsonb_build_object('ok', false, 'reason', 'wrong_pin');
   END IF;
 
-  UPDATE public.staff
-  SET last_login = now(), updated_at = now()
-  WHERE id = s.id;
+  DELETE FROM public.staff_pin_attempts
+  WHERE user_id = auth.uid() AND property_id = p_property_id;
+  UPDATE public.staff SET last_login = now(), updated_at = now() WHERE id = s.id;
 
   INSERT INTO public.staff_sessions
     (user_id, staff_id, property_id, verified_at, module, expires_at, hard_expires_at, revoked_at)
-  VALUES
-    (auth.uid(), s.id, s.property_id, now(), v_module, now() + interval '30 minutes',
-     now() + interval '8 hours', NULL)
+  VALUES (auth.uid(), s.id, s.property_id, now(), v_module,
+    now() + interval '30 minutes', now() + interval '8 hours', NULL)
   ON CONFLICT (user_id) DO UPDATE
-  SET staff_id = EXCLUDED.staff_id,
-      property_id = EXCLUDED.property_id,
-      verified_at = EXCLUDED.verified_at,
-      module = EXCLUDED.module,
-      expires_at = EXCLUDED.expires_at,
-      hard_expires_at = EXCLUDED.hard_expires_at,
+  SET staff_id = EXCLUDED.staff_id, property_id = EXCLUDED.property_id,
+      verified_at = EXCLUDED.verified_at, module = EXCLUDED.module,
+      expires_at = EXCLUDED.expires_at, hard_expires_at = EXCLUDED.hard_expires_at,
       revoked_at = NULL;
 
   INSERT INTO public.staff_logs(property_id, staff_id, staff_name, module, action)
   VALUES (s.property_id, s.id, s.full_name, v_module, 'module_entry');
 
-  RETURN jsonb_build_object(
-    'ok', true,
-    'staff', jsonb_build_object(
-      'id', s.id, 'full_name', s.full_name, 'email', s.email,
-      'role', s.role, 'assigned_modules', s.assigned_modules, 'avatar', s.avatar
-    )
-  );
+  RETURN jsonb_build_object('ok', true, 'staff', jsonb_build_object(
+    'id', s.id, 'full_name', s.full_name, 'email', s.email,
+    'role', s.role, 'assigned_modules', s.assigned_modules, 'avatar', s.avatar));
 END;
 $function$;
 
