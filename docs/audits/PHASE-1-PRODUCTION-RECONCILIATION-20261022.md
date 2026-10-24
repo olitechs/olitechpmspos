@@ -1,6 +1,7 @@
 # Phase 1 production security reconciliation — read-only snapshot
 
-**Captured:** 2026-10-22  
+**Initial snapshot:** 2026-10-22  
+**Revalidated read-only:** 2026-10-24  
 **Environment:** production Supabase project `mszogmazldxjsiytrlxr`  
 **Change policy:** this document was prepared from SELECT-only catalog queries and Supabase advisory output. No production writes, migrations, data edits, or project setting changes were made.
 
@@ -13,6 +14,19 @@
 - The current production grants still allow `anon` to execute `public.fn_public_booking_engine_config(uuid)` as SECURITY DEFINER.
 - Current Supabase security advisors report: one RLS-enabled table with no policies (`staff_pin_attempts`); one anon-executable SECURITY DEFINER function (`fn_public_booking_engine_config`); 96 authenticated-executable SECURITY DEFINER functions requiring function-by-function authorization review; and leaked-password protection disabled in Auth.
 - The broad SECURITY DEFINER advisor is an inventory, not proof that every listed RPC is exploitable. Review the actual body, grants, callers, tenant checks, and intended exposure before changing EXECUTE grants.
+
+## Revalidation on 2026-10-24 (read-only)
+
+The latest catalog and advisory queries confirmed the following:
+
+- **79 public base tables**, all 79 with RLS enabled; **217 public RLS policies** and **5 public views**.
+- **38 live migration ledger rows**.
+- **100 SECURITY DEFINER functions** in `public`.
+- **96 SECURITY DEFINER functions executable by `authenticated`** and **1 executable by `anon`**. The anon-executable function is the intentionally public booking config RPC, but its current live grant still makes it a high-priority reviewed exposure.
+- Supabase security advisors still flag `staff_pin_attempts` as RLS-enabled without policies, the anonymous booking config SECURITY DEFINER endpoint, the 96 authenticated-callable SECURITY DEFINER functions for individual review, and leaked-password protection disabled in Auth.
+- The connected organization is on the **Free** plan. Its project list contains the production `olitechs-pms-pos` project and the unrelated `mingleza-social` project; neither is an approved isolated security test target. The branch API reports only the existing `main` entry for the PMS/POS project. I did not create a project/branch, use the unrelated project, or modify production.
+
+This revalidation was SELECT-only. It did not change database data, schema, grants, Auth settings, project configuration, or migration history.
 
 ## Phase 1 candidate status
 
