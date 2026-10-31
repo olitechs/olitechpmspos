@@ -61,6 +61,7 @@ const blank = {
   is_online:false,
   is_default:false,
   last_status:'disconnected',
+  open_drawer_after_sale:false,
 };
 
 const statusMeta = printer => {
@@ -454,6 +455,10 @@ function PrinterModal({form,setForm,onClose,onSave,windowsPrinters=[],refreshLoc
           {form.connection_type === 'windows_printer' && <div className="space-y-2"><label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">Windows installed printer<select value={form.windows_printer_name||''} onChange={e=>setForm({...form,windows_printer_name:e.target.value})} onFocus={()=>refreshLocalDevices(form.agent_url)} className="mt-1.5 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm"><option value="">Select installed printer</option>{windowsPrinters.map(p=><option key={p.Name} value={p.Name}>{p.Name}{p.DriverName ? ` — ${p.DriverName}` : ''}</option>)}</select></label><p className="text-[11px] text-muted-foreground">The printer must first be installed and visible in Windows Printers & scanners. OliTechs sends the thermal data through the local print agent.</p></div>}
           {form.connection_type === 'serial' && <label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">Baud rate<select value={form.baud_rate||9600} onChange={e=>setForm({...form,baud_rate:Number(e.target.value)})} className="mt-1.5 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm">{[9600,19200,38400,57600,115200].map(rate=><option key={rate} value={rate}>{rate} baud</option>)}</select></label>}
           <label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">Paper width<select value={form.paper_width||'80mm'} onChange={e=>setForm({...form,paper_width:e.target.value})} className="mt-1.5 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm"><option>80mm</option><option>58mm</option></select></label>
+          {form.connection_type === 'network_ip' && <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-secondary/60 p-3">
+            <input type="checkbox" checked={!!form.open_drawer_after_sale} onChange={e=>setForm({...form,open_drawer_after_sale:e.target.checked})} className="mt-0.5 h-4 w-4"/>
+            <span><span className="block text-xs font-black uppercase tracking-wide text-foreground">Open cash drawer after cash sale</span><span className="mt-1 block text-[11px] font-normal normal-case leading-5 tracking-normal text-muted-foreground">Sends an ESC/POS drawer pulse after a completed Cash or cash-containing Split Payment. Requires a drawer connected to this printer's kick port. Disabled by default.</span></span>
+          </label>}
         </div>
         <div>
           <div className="mb-2 text-xs font-black uppercase tracking-wide text-muted-foreground">Print routing</div>
