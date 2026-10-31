@@ -315,8 +315,14 @@ const server = http.createServer(async (req, res) => {
   const routeAliases = {
     '/api/health': '/health',
     '/print-agent/health': '/health',
+    '/status': '/health',
+    '/api/status': '/health',
+    '/print-agent/status': '/health',
     '/api/discover': '/discover',
     '/print-agent/discover': '/discover',
+    '/scan-network': '/discover',
+    '/api/scan-network': '/discover',
+    '/print-agent/scan-network': '/discover',
     '/api/windows-printers': '/windows-printers',
     '/print-agent/windows-printers': '/windows-printers',
     '/api/print': '/print',
@@ -327,6 +333,8 @@ const server = http.createServer(async (req, res) => {
     '/print-agent/windows-print': '/windows-print',
     '/api/windows-test': '/windows-test',
     '/print-agent/windows-test': '/windows-test',
+    '/api/open-drawer': '/open-drawer',
+    '/print-agent/open-drawer': '/open-drawer',
   };
   const route = routeAliases[url.pathname] || url.pathname;
 
@@ -353,7 +361,12 @@ const server = http.createServer(async (req, res) => {
     catch(error) { return json(res, 500, { ok:false, code:error?.code||'WINDOWS_PRINTERS_UNAVAILABLE', message:error?.message||'Unable to enumerate Windows printers.' }); }
   }
 
-  if (req.method !== 'POST' || !['/print','/test','/windows-print','/windows-test'].includes(route)) {
+  if (req.method === 'GET' && route === '/printers/list') {
+    try { return json(res, 200, { ok:true, printers:await discoverNetworkPrinters(), transport:'network_ip' }); }
+    catch(error) { return json(res, 500, { ok:false, code:error?.code||'NETWORK_DISCOVERY_FAILED', message:error?.message||'Unable to list network printers.' }); }
+  }
+
+  if (req.method !== 'POST' || !['/print','/test','/windows-print','/windows-test','/open-drawer'].includes(route)) {
     return json(res, 404, { ok: false, code: 'NOT_FOUND', message: 'OliTechs print agent endpoint not found.' });
   }
 
@@ -366,7 +379,7 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { ok:true, status:'connected', printed:true, transport:'windows_spooler', printerName });
     }
 
-    const endpoint = normalizeEndpoint(body.host, body.port);
+    const endpoint = normalizeEndpoint(body.host || body.ip_address, body.port);
     const host = endpoint.host;
     const port = endpoint.port;
 
@@ -378,7 +391,28 @@ const server = http.createServer(async (req, res) => {
       });
     }
 
-    const payload = escPosPayload(body.text, route === '/test');
+    if (route === '/open-drawer') {
+      await writeTcp(host, port, Buffer.from([0x1b, 0x70, 0x00, 0x19, 0xff]));
+      return json(res, 200, {
+        ok: true,
+        status: 'connected',
+        drawerCommandSent: true,
+        transport: 'local_agent',
+        endpoint: `${host}:${port}`,
+      });
+    }
+
+    let payload;
+    const rawBase64 = body.escposBase64 || body.content_escpos_base64;
+    if (rawBase64 && route === '/print') {
+      if (typeof rawBase64 !== 'string' || rawBase64.length > 700000 || !/^[A-Za-z0-9+/]*={0,2}$/.test(rawBase64)) {
+        return json(res, 400, { ok:false, code:'INVALID_ESCPOS_PAYLOAD', message:'ESC/POS payload must be valid base64 under 512 KB.' });
+      }
+      payload = Buffer.from(rawBase64, 'base64');
+      if (!payload.length) return json(res, 400, { ok:false, code:'EMPTY_ESCPOS_PAYLOAD', message:'ESC/POS payload is empty.' });
+    } else {
+      payload = escPosPayload(body.text, route === '/test');
+    }
     await writeTcp(host, port, payload);
 
     return json(res, 200, {
