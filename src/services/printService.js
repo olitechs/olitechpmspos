@@ -182,6 +182,29 @@ async function directAgentPrint(printer, propertyId, text, path) {
   return { ok:true, status:'connected', direct:true, transport:'local_agent' };
 }
 
+/**
+ * Send the ESC/POS drawer pulse through the local agent. Only raw network
+ * printers are eligible: a drawer command must never be sent to an arbitrary
+ * browser device or guessed Windows printer.
+ */
+export async function openCashDrawer(printer, propertyId) {
+  if (!printer || printer.connection_type !== 'network_ip') {
+    return { ok:false, friendlyError:'Automatic cash drawer opening requires a configured LAN thermal printer.' };
+  }
+  const endpoint = normalizeNetworkEndpoint(printer.ip_address || printer.host, printer.port || 9100);
+  if (!endpoint.host || !Number.isInteger(endpoint.port) || ![9100,9101,9102].includes(endpoint.port)) {
+    return { ok:false, friendlyError:'The cash drawer printer IP address or TCP port is invalid.' };
+  }
+  const result = await localAgentRequest(printer, propertyId, '/open-drawer');
+  if (!result.ok) {
+    const message = result.message || 'The cash drawer command could not be sent.';
+    await logPrint(propertyId, printer.id, 'cash_drawer', 'after_sale', 'failed', message);
+    return { ok:false, code:result.code, friendlyError:message };
+  }
+  await logPrint(propertyId, printer.id, 'cash_drawer', 'after_sale', 'sent', null);
+  return { ok:true, transport:'local_agent', printerId:printer.id || null };
+}
+
 async function directTcpPrint(printer, propertyId, text, action = 'print') {
   const endpoint = normalizeNetworkEndpoint(printer?.ip_address || printer?.host, printer?.port || 9100);
   const host = endpoint.host;
