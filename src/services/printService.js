@@ -46,13 +46,21 @@ async function resolveRetryPrinter(job, propertyId) {
   const printers = await getPrinters(propertyId);
   const assignments = await getAssignments(propertyId);
   const original = job?.printer_id ? printers.find((printer) => printer.id === job.printer_id) : null;
-  if (original) return original;
   const fallbackIds = assignments
     .filter((assignment) => assignment.assignment_type === job?.assignment_type)
     .map((assignment) => assignment.printer_id);
-  return fallbackIds
+  const assignedPrinters = fallbackIds
     .map((id) => printers.find((printer) => printer.id === id))
-    .find((printer) => printer && printer.is_online !== false) || null;
+    .filter(Boolean);
+  // Prefer the original target when it has a verified live connection. If it
+  // is offline, fail over to another assigned printer that has been verified
+  // connected; only retry the original as a last resort when no fallback is
+  // known to be online.
+  if (original && original.is_online !== false && original.last_status === 'connected') return original;
+  const fallback = assignedPrinters.find((printer) =>
+    printer.id !== original?.id && printer.is_online === true && printer.last_status === 'connected'
+  );
+  return fallback || original || assignedPrinters.find((printer) => printer.is_online !== false) || null;
 }
 
 async function createFnbPrintJob({propertyId,printerId,assignmentType,jobType,copyType=null,title='',contentHtml='',payload={},retryOf=null}) {
