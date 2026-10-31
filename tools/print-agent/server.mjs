@@ -249,13 +249,33 @@ function startHeartbeat() {
 
 function json(res, status, body) {
   res.writeHead(status, {
-    'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'content-type',
     'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
     'Content-Type': 'application/json; charset=utf-8',
     'Cache-Control': 'no-store',
+    Vary: 'Origin',
   });
   res.end(JSON.stringify(body));
+}
+
+const TRUSTED_ORIGINS = new Set([
+  'https://olitechpmspos.vercel.app',
+  ...(process.env.PRINT_AGENT_ALLOWED_ORIGINS || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean),
+]);
+
+function isAllowedOrigin(origin) {
+  if (!origin) return true; // CLI / native local clients do not use browser CORS.
+  if (TRUSTED_ORIGINS.has(origin)) return true;
+  try {
+    const parsed = new URL(origin);
+    return ['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname) &&
+      ['http:', 'https:'].includes(parsed.protocol);
+  } catch (_) {
+    return false;
+  }
 }
 
 function readBody(req) {
@@ -277,6 +297,15 @@ function readBody(req) {
 }
 
 const server = http.createServer(async (req, res) => {
+  const origin = String(req.headers.origin || '');
+  if (!isAllowedOrigin(origin)) {
+    return json(res, 403, {
+      ok: false,
+      code: 'ORIGIN_NOT_ALLOWED',
+      message: 'This local Print Agent only accepts browser requests from the Olitech app or localhost.',
+    });
+  }
+  if (origin) res.setHeader('Access-Control-Allow-Origin', origin);
   if (req.method === 'OPTIONS') return json(res, 204, { ok: true });
 
   const url = new URL(req.url || '/', `http://${HOST}:${PORT}`);
