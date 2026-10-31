@@ -46,14 +46,13 @@ function escPosPayload(text, test = false) {
 
   const body = test
     ? [
-        'OLITECHS PMS + POS',
+        'OLITECH PMS TEST PRINT OK',
         '',
-        '          PRINTER TEST',
-        '',
+        'OliTechs PMS + POS',
         'Connection: LOCAL PRINT AGENT',
         `Date: ${new Date().toLocaleString('en-KE')}`,
         '',
-        'Printer connection verified.',
+        'If this receipt printed, the network connection is working.',
         '',
       ].join('\n')
     : clean;
