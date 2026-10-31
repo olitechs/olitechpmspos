@@ -6,7 +6,7 @@ import{useStore}from'@/data/AppStore';
 import{useAuth}from'@/lib/AuthContext';
 import{pmsService}from'@/services/pmsService';
 import{getSessionStaff}from'@/services/authService';
-import{printReceipt}from'@/services/printService';
+import{printReceipt,getPrinters,getAssignments,openCashDrawer}from'@/services/printService';
 import{shiftService}from'@/services/shiftService';
 import{posPhase3Service}from'@/services/posPhase3Service';
 
@@ -52,6 +52,24 @@ export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrde
    // Payment is already recorded in PMS at this point. A printer failure must
    // never leave the table occupied or prevent the next guest/waiter using it.
    onConfirmPayment();
+   // Drawer opening is a post-payment convenience only. It must never roll
+   // back a recorded sale or prevent the table from being released.
+   const cashWasTaken = paymentMethod === 'cash' ||
+    (paymentMethod === 'split' && splitPayments.some(p => p.method === 'cash' && Number(p.amount) > 0));
+   if (cashWasTaken) {
+    try {
+     const [configuredPrinters, printerAssignments] = await Promise.all([getPrinters(propertyId), getAssignments(propertyId)]);
+     const receiptPrinterIds = new Set(printerAssignments.filter(a => a.assignment_type === 'final_receipts').map(a => a.printer_id));
+     const drawerPrinter = configuredPrinters.find(p => receiptPrinterIds.has(p.id) && p.open_drawer_after_sale === true && p.connection_type === 'network_ip');
+     if (drawerPrinter) {
+      const drawerResult = await openCashDrawer(drawerPrinter, propertyId);
+      if (!drawerResult.ok) toast.warning('Payment completed, but the cash drawer did not open. Check the drawer cable and printer connection.');
+     }
+    } catch (drawerError) {
+     console.warn('[BillPayment] cash drawer pulse failed after completed sale', drawerError);
+     toast.warning('Payment completed, but automatic cash drawer opening could not be verified.');
+    }
+   }
    if(result.ok){
     toast.success(`Payment completed and receipt printed via ${methodLabel}.`);
    }else{
