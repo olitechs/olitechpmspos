@@ -28,6 +28,14 @@ The local agent supports the existing endpoints and compatibility aliases:
 
 For `POST /print`, send `host` and `port` plus either `text` or `escposBase64` (base64-encoded raw ESC/POS bytes). For `POST /open-drawer`, send `host` and `port`. The drawer must be physically connected to the printer's drawer port, and the printer must support the ESC/POS pulse command.
 
+### Automatic drawer opening after cash sales
+
+1. Apply migration `0066_printer_cash_drawer_configuration.sql` through the project's reviewed migration workflow before enabling the setting. The migration is additive and has **not** been applied to production as part of this code change.
+2. In **Settings → Printer Management**, edit the LAN receipt printer assigned to **Final Receipts**.
+3. Enable **Open cash drawer after cash sale**, then save and run **Test & Print** to verify the printer first.
+4. The POS sends the drawer pulse after a completed Cash sale or a Split Payment that includes cash. Card, M-Pesa, bank-transfer, and room-charge-only sales do not trigger it. The setting is off by default.
+5. This only sends a pulse; it cannot prove that a drawer physically opened. Confirm the drawer cable is connected to the printer's kick port and verify behavior with the actual hardware.
+
 ## Browser origin security
 
 The agent is bound to loopback and now rejects browser requests from untrusted origins. The production app origin `https://olitechpmspos.vercel.app` is allowed, as are localhost origins for development. If using another trusted deployment domain, set `PRINT_AGENT_ALLOWED_ORIGINS` to a comma-separated list of exact origins before starting the agent, for example:
