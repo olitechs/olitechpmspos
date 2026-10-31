@@ -1,0 +1,49 @@
+name: Export production schema snapshot
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  schema-only-export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Capture schema-only dump
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_DB_URL:-}" ]; then
+            echo "::error::Repository secret SUPABASE_DB_URL is not configured."
+            exit 1
+          fi
+          supabase --version | tee "$RUNNER_TEMP/supabase-cli-version.txt"
+          supabase db dump \
+            --db-url "$SUPABASE_DB_URL" \
+            --schema public \
+            --file "$RUNNER_TEMP/olitechs-public-schema.sql"
+          test -s "$RUNNER_TEMP/olitechs-public-schema.sql"
+          sha256sum "$RUNNER_TEMP/olitechs-public-schema.sql" \
+            | tee "$RUNNER_TEMP/olitechs-public-schema.sha256"
+
+      - name: Upload restricted schema artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: olitechs-public-schema-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/olitechs-public-schema.sql
+            ${{ runner.temp }}/olitechs-public-schema.sha256
+            ${{ runner.temp }}/supabase-cli-version.txt
+          if-no-files-found: error
+          retention-days: 1
