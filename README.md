@@ -258,6 +258,12 @@ OLITECH_EMAIL=you@example.com OLITECH_PASSWORD=secret node scripts/capture-scree
 
 <br/>
 
+## Printer setup
+
+- [Local Print Agent setup, endpoints, network discovery and origin security](docs/PRINT_AGENT_SETUP.md)
+- Start the agent on the POS workstation with `npm run print-agent`; the current application uses `127.0.0.1:8631`.
+- Network thermal printers require the local agent because browser JavaScript cannot open raw TCP sockets to port 9100.
+
 ## Engineering audit notes
 
 - [Phase 0 repository audit and stock-control roadmap](docs/PHASED_REPO_AUDIT_AND_STOCK_CONTROL_ROADMAP.md)
