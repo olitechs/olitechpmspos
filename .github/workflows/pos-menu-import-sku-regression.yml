@@ -10,6 +10,11 @@ on:
       - "supabase/migrations/20261021150000_fix_pos_menu_import_sku_upsert.sql"
       - "supabase/tests/pos_menu_import_sku_regression.sql"
       - "supabase/tests/fixtures/pos_menu_import_sku_setup.sql"
+      - "supabase/migrations/20261022180000_phase1_staff_session_expiry_scope.sql"
+      - "supabase/tests/phase1_staff_session_security_regression.sql"
+      - "supabase/tests/fixtures/phase1_staff_session_schema.sql"
+      - "supabase/tests/phase1-staff-session-contract.test.mjs"
+      - ".github/workflows/phase1-staff-session-regression.yml"
       - "package.json"
       - "package-lock.json"
       - ".github/workflows/pos-menu-import-sku-regression.yml"
@@ -52,6 +57,14 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261021150000_fix_pos_menu_import_sku_upsert.sql
       - name: Run duplicate-SKU and tenant-scope regression
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/pos_menu_import_sku_regression.sql
+      - name: Create isolated Phase 1 security database
+        run: createdb phase1_staff_session_test
+      - name: Load Phase 1 minimal isolated fixture
+        run: psql "postgres://postgres:postgres@localhost:5432/phase1_staff_session_test" -v ON_ERROR_STOP=1 -f supabase/tests/fixtures/phase1_staff_session_schema.sql
+      - name: Apply Phase 1 candidate migration in isolated database
+        run: psql "postgres://postgres:postgres@localhost:5432/phase1_staff_session_test" -v ON_ERROR_STOP=1 -f supabase/migrations/20261022180000_phase1_staff_session_expiry_scope.sql
+      - name: Run Phase 1 session and tenant security regression
+        run: psql "postgres://postgres:postgres@localhost:5432/phase1_staff_session_test" -v ON_ERROR_STOP=1 -f supabase/tests/phase1_staff_session_security_regression.sql
       - name: Install dependencies
         run: npm ci
       - name: Build

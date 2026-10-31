@@ -78,3 +78,37 @@ The migration reconciliation is **not yet fully closed**. To close it without a 
 5. Preserve production history: no migration replay, rename, reorder, deletion, or ledger repair as part of this audit.
 
 No branch or additional Supabase cost was incurred for this reconciliation.
+
+
+---
+
+## Fresh read-only revalidation — 2026-10-24
+
+**Scope:** current PR security branch versus the live production migration ledger and selected live catalog metadata. This section supersedes the earlier 34-row *count* only; it does not retroactively prove source equivalence for any earlier ledger entry. No DDL, DML, grants, Auth settings, migration history, or deployment changes were made.
+
+### Current ledger and source inventory
+
+- Live Supabase migration ledger: **38 rows**, latest version `20261013194854`.
+- Tracked `supabase/migrations/` inventory on `phase1/security-reconciliation-verified-20261022`: **129 SQL files**.
+- The six historical entries listed above remain unresolved. The ledger provides version/name metadata, not applied SQL bodies or hashes; no original deployment artifacts were recovered in this pass.
+- Several ledger entries map to source candidates whose filenames use a different timestamp or a combined migration. A name/feature resemblance is not proof of exact SQL equivalence. Do not rename, replay, or repair the ledger to make the names align.
+- The repo's candidate Phase 1 migration is not applied in production.
+
+### Read-only production catalog checks relevant to the current candidate
+
+| Object | Live result | Consequence |
+|---|---|---|
+| `public.staff_pin_attempts` | Columns are `user_id uuid NOT NULL`, `property_id uuid NOT NULL`, `failed_count integer NOT NULL`, `window_started_at timestamptz NOT NULL`, `locked_until timestamptz NULL`. | Existing throttle storage matches the core column names used by the candidate. This does not validate the complete candidate against the production schema. |
+| `public.staff_sessions` | Live columns remain `user_id`, `staff_id`, `property_id`, `verified_at`; module, inactivity expiry, hard expiry, and revocation fields are not present in this live snapshot. | The candidate's session-scope migration is still unapplied and would change schema. Production must remain unchanged until the full migration is reviewed and tested against an equivalent database. |
+| `public.verify_staff_pin(uuid,text,text)` | Exists as SECURITY DEFINER with `search_path=public`; anon EXECUTE is false and authenticated EXECUTE is true. | Confirms the live entry point and observed ACL only. It does not prove the candidate function body is production-safe or that every caller has the right module/property scope. |
+| `supabase_migrations.schema_migrations` | 38 rows; latest version `20261013194854`. | The six source-provenance gaps remain a release blocker. |
+
+### Release decision
+
+**Not cleared for merge to `main` or production migration.** Current-head isolated CI has passed the minimal fixture/regression suite, app validation, production QA build, POS SKU regression, and Vercel preview check. Those checks are valuable but are not a schema-equivalent two-property authorization/RLS/RPC/entitlement matrix.
+
+To close this gate:
+1. Recover trusted applied-SQL/deployment artifacts for the six unresolved ledger entries, or record an approved evidence-based disposition for each without fabricating source history.
+2. Reconcile all 38 ledger entries and every tracked migration against live catalog objects, including function bodies/ACLs, RLS predicates, triggers, indexes, constraints, and publication membership.
+3. Run the complete positive and negative two-property security matrix on a schema-equivalent disposable database. Production and unrelated projects are not acceptable substitutes; no paid branch is created without explicit cost approval.
+4. Only then request review and consider merging PR #53. No direct push to `main`, migration replay, or production changes are authorized by this audit note.
