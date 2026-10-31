@@ -92,3 +92,33 @@ Advisor findings are a live snapshot and may change as the schema changes. This 
 - [ ] Explicit release plan approved before any production migration action.
 
 **Current status: BLOCKED — audit recorded; no baseline has been generated or applied.**
+
+
+## Follow-up work — controlled schema export path (2026-10-31)
+
+A second read-only check was performed against the connected Supabase project after this audit was first committed:
+
+- Supabase's migration-history endpoint again returned **38 applied migration entries**. This confirms the count, but does not reconcile each entry to a repository file or prove that the migration effects are identical.
+- The verbose table catalog confirms that the connected database exposes detailed columns, defaults, primary keys, foreign keys and RLS-enabled flags. This remains an inventory, not replayable DDL.
+- No production schema or data was changed.
+
+To remove the tooling/access blocker, the repository now contains a manual GitHub Actions workflow:
+
+- `.github/workflows/export-production-schema.yml`
+- Run it from **Actions → Export production schema snapshot → Run workflow**.
+- Before running, add a repository Actions secret named `SUPABASE_DB_URL` containing the database connection URI for the configured Supabase project. Do not put this URI in workflow inputs, source files, logs, or chat.
+- The workflow exports only the `public` schema using the Supabase CLI, calculates a SHA-256 checksum, and uploads the SQL, checksum and CLI version as a one-day workflow artifact. It does not run migrations or write to the database.
+- Download the artifact from the completed workflow run and retain it in an access-controlled backup location. Share the schema SQL artifact here (not the connection URI) so the migration-to-schema reconciliation can continue.
+
+The workflow has been committed but **has not been executed** in this environment. Therefore no schema dump or checksum is yet available, and the baseline cannot yet be generated or tested.
+
+## Updated Phase 0 status
+
+**Still BLOCKED.** The manual export path is now prepared, but the following evidence is still missing:
+
+1. A successfully generated and reviewed schema-only artifact.
+2. A complete migration-by-migration reconciliation of the 38 live entries against repository SQL and actual schema effects.
+3. A deterministic candidate baseline and clean local replay.
+4. A schema comparison with no unexplained drift.
+
+Do not treat the new workflow commit as Phase 0 completion. Do not delete, rename, squash, or reapply existing production migrations as part of this work.
