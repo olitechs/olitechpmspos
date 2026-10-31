@@ -54,7 +54,16 @@ Interpretation:
 
 These figures are catalog metadata, not a full schema dump. No row contents were exported.
 
-### 3. Baseline blockers
+### 3. Supabase Advisor snapshot (2026-10-31)
+
+The connected project's advisors returned the following findings:
+
+- **Security:** one `anon`-executable `SECURITY DEFINER` function (`public.fn_public_booking_engine_config(uuid)`), 96 `authenticated`-executable `SECURITY DEFINER` function findings, and one RLS-enabled table with no policies (`public.staff_pin_attempts`). Some authenticated RPCs may intentionally be callable, but each function needs an explicit caller/authorization contract and least-privilege EXECUTE grants. The anonymous booking config function needs a documented public-data justification or its grant must be narrowed. The staff PIN attempts table needs a reviewed access design; do not add a broad policy just to silence the advisor.
+- **Performance:** 45 foreign-key constraints were reported without covering indexes. These should be reviewed against actual query patterns and existing composite indexes before adding indexes; blindly indexing every foreign key can increase write cost.
+
+Advisor findings are a live snapshot and may change as the schema changes. This audit does not treat all findings as confirmed exploits; it records concrete items requiring review before the security and performance acceptance gates can pass.
+
+### 4. Baseline blockers
 
 1. **No verified schema-only dump in the repository.** The MCP catalog inventory is not a replacement for `supabase db dump` / `pg_dump --schema-only`; it does not reconstruct every DDL statement, trigger body, grant, extension, sequence, type, or policy definition in a replayable baseline.
 2. **No clean local rebuild/diff evidence.** This environment has not run the repository's Supabase CLI, `supabase db reset`, `supabase db diff`, or `supabase migration list` locally.
