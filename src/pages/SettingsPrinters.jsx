@@ -209,7 +209,7 @@ export default function SettingsPrinters() {
 
     setEditing(null);
     await load(true);
-    await verify(printerId,result.data);
+    await verify(savedPrinter.id,savedPrinter);
   };
 
   const verify = async (id, printerOverride=null) => {
@@ -222,8 +222,9 @@ export default function SettingsPrinters() {
 
     // Never leave the card/button stuck in "Testing…" if a transport,
     // Supabase request, browser fetch, or unexpected exception fails.
+    let timeoutId;
     const timeout = new Promise((_, reject) => {
-      window.setTimeout(() => reject(new Error('Printer verification timed out. Check the local OliTechs Print Agent and printer network connection.')), 12000);
+      timeoutId = window.setTimeout(() => reject(new Error('Printer verification timed out. Check the local OliTechs Print Agent and printer network connection.')), 12000);
     });
 
     try {
@@ -243,6 +244,7 @@ export default function SettingsPrinters() {
     } catch (e) {
       setError(e?.message || 'Printer verification failed.');
     } finally {
+      window.clearTimeout(timeoutId);
       setTestingId(null);
       // Always refresh the persisted status after the test, including failures.
       await load(true).catch(() => {});
