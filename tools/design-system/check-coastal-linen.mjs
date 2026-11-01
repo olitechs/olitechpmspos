@@ -17,25 +17,25 @@ const forbiddenDarkTokens = [
 ];
 const errors = [];
 for (const token of required) if (!css.includes(token)) errors.push('Missing canonical light-only token: ' + token);
-if (!/:root\\[data-theme="dark"\\]\\s*\\{/.test(css)) errors.push('Dark preference compatibility block is missing.');
+if (!css.includes(':root[data-theme="dark"] {')) errors.push('Dark preference compatibility block is missing.');
 for (const token of forbiddenDarkTokens) if (css.includes(token)) errors.push('Forbidden dark-surface token remains: ' + token);
-if (!/color-scheme:\\s*light/.test(css)) errors.push('The application must force light color-scheme controls.');
-if (!/body\\s*\\{[^}]*background:\\s*var\\(--canvas\\)[^}]*color:\\s*var\\(--text\\)/s.test(css)) errors.push('Body must use the canonical light canvas and text tokens.');
-if (!/\\[class~="bg-slate-950"\\][^{]*\\{[^}]*background-color:\\s*var\\(--sidebar\\)/s.test(css)) errors.push('Legacy dark surfaces must be mapped to a light palette surface.');
-if (!/\\.room-planner\\s*\\{[^}]*--pay-paid/.test(css)) errors.push('Room Planner payment tokens are not scoped under .room-planner.');
+if (!css.includes('color-scheme: light')) errors.push('The application must force light color-scheme controls.');
+if (!css.includes('body { margin: 0; background: var(--canvas); color: var(--text);')) errors.push('Body must use the canonical light canvas and text tokens.');
+if (!css.includes('[class~="bg-slate-950"]') || !css.includes('background-color: var(--sidebar) !important')) errors.push('Legacy dark surfaces must be mapped to a light palette surface.');
+if (!/\.room-planner\s*\{[^}]*--pay-paid/.test(css)) errors.push('Room Planner payment tokens are not scoped under .room-planner.');
 
 function walk(dir) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
     if (entry.isDirectory()) { walk(path); continue; }
-    if (!/\\.(jsx?|tsx?)$/.test(entry.name)) continue;
-    const rel = relative(root, path).replaceAll('\\\\', '/');
+    if (!/\.(jsx?|tsx?)$/.test(entry.name)) continue;
+    const rel = relative(root, path).replaceAll('\\', '/');
     if (rel.startsWith('src/components/pms/RoomPlanner') || /Receipt|Print|Thermal/i.test(rel)) continue;
     if (readFileSync(path, 'utf8').includes('var(--pay-')) errors.push('Payment token outside Room Planner: ' + rel);
   }
 }
 walk(join(root, 'src'));
 if (errors.length) {
-  console.error('Light-only Coastal Linen contract failed:\\n' + errors.map((e) => '- ' + e).join('\\n'));
+  console.error('Light-only Coastal Linen contract failed:\n' + errors.map((e) => '- ' + e).join('\n'));
   process.exitCode = 1;
 } else console.log('Light-only Coastal Linen tokens, legacy surface mapping and Room Planner payment scope passed.');
