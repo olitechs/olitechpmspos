@@ -107,24 +107,24 @@
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   }
 
+  /* Light-only Coastal Linen contract: dark mode selectors must never introduce dark surfaces. */
   :root[data-theme="dark"] {
-    color-scheme: dark;
-    --canvas:#0E1417; --surface:#151D21; --sidebar:#11191C;
-    --primary:#2BB3BF; --primary-hover:#4CC7D1; --primary-soft:#12343A;
-    --primary-foreground:#062226;
-    --accent:#D9A06B;
-    --text:#E6EEF0; --text-muted:#93A5AD; --border:#26343A;
-    --success:#3DBE95; --success-text:#7BDDBC; --success-soft:#12302A;
-    --danger:#F0645F; --danger-foreground:#0E1417; --danger-text:#FF9A96; --danger-soft:#3A1B1B;
-    --warning:#F0906F; --warning-text:#FFB59B; --warning-soft:#38231B;
-    --room-clean:#4FBF8E; --room-dirty:#E39580; --room-occupied:#6B96F0;
-    --room-checkout:#8B84E8; --room-out-of-order:#5A6670;
-    --shadow-overlay:0 8px 24px rgba(0,0,0,.45);
-    --overlay-scrim: rgba(0,0,0,.65);
-    --floor-bg:#1B2327;
+    color-scheme: light;
+    --canvas: #F4F7F8; --surface: #FFFFFF; --sidebar: #E6EFF0;
+    --primary: #0F7C86; --primary-hover: #0B6169; --primary-soft: #DDF0F1;
+    --primary-foreground: #FFFFFF; --accent: #C98A52;
+    --text: #14232B; --text-muted: #566A73; --border: #DCE5E8;
+    --success: #2F9E7A; --success-text: #236F58; --success-soft: #E3F4EE;
+    --danger: #D9534F; --danger-foreground: #FFFFFF; --danger-text: #B42318; --danger-soft: #FBE9E8;
+    --warning: #E07A5F; --warning-text: #9A4B36; --warning-soft: #FCEDE8;
+    --room-clean: #3FA77A; --room-dirty: #D9826B; --room-occupied: #4B7BE5;
+    --room-checkout: #6C63D9; --room-out-of-order: #B8BEC6;
+    --floor-bg: #D7D7D7;
+    --shadow-overlay: 0 8px 24px rgba(20,35,43,.08);
+    --overlay-scrim: rgba(20,35,43,.35);
     --payment-deposit-foreground: #5A4310;
-    --payment-status-foreground: #0E1417;
-    --stay-optioned-foreground: #0E1417;
+    --payment-status-foreground: #14232B;
+    --stay-optioned-foreground: #FFFFFF;
   }
 
   * { box-sizing: border-box; }
@@ -226,3 +226,8 @@
 /* Enforce the light-theme typography contract across legacy utility classes. */
 .font-semibold, .font-bold, .font-extrabold, .font-black, strong, b { font-weight: 500 !important; }
 h1, h2, h3, h4 { text-transform: none; }
+
+
+/* App-wide guard: prevent legacy dark utilities and theme classes from painting dark page surfaces. */
+html, body, #root, [data-theme="dark"] { color-scheme: light; }
+:root[data-theme="dark"] body, [data-theme="dark"] .app-shell { background-color: var(--canvas); color: var(--text); }
