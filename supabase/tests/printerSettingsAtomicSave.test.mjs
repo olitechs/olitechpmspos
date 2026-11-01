@@ -11,8 +11,8 @@ test('printer settings save uses one property-scoped transaction for printer and
   assert.match(page, /p_assignment_types:/);
   const saveHandler = page.match(/const save = async \\(\\) => \\{[\\s\\S]*?\\n  \\};/)?.[0] || '';
   assert.ok(saveHandler, 'printer save handler should be present');
-  assert.doesNotMatch(saveHandler, /from\\('printer_assignments'\\)\\.delete\\(\\)/);
-  assert.doesNotMatch(saveHandler, /from\\('printer_assignments'\\)\\.insert\\(/);
+  assert.ok(!saveHandler.includes("from('printer_assignments').delete()"));
+  assert.ok(!saveHandler.includes("from('printer_assignments').insert("));
   assert.match(page, /verify\(savedPrinter\.id,savedPrinter\)/);
 });
 
