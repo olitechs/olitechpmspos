@@ -65,6 +65,13 @@ const mealLabel = { bed_only: 'Bed Only', bb: 'BB', half_board: 'HB', full_board
 const paymentLabel = { fully_paid: 'Fully Paid', partially_paid: 'Deposit / Partially Paid', not_paid: 'Not Paid' };
 
 const dateKey = (d) => format(d, 'yyyy-MM-dd');
+
+// The rolling planner is a 15-day window: two days before today plus today and
+// twelve following days, keeping today visible immediately beside the room column.
+export const getRollingPlannerRange = (today) => ({
+  from: dateKey(subDays(today, 2)),
+  to: dateKey(addDays(today, 12)),
+});
 const parseDate = (v) => { if (!v) return null; const [y, m, d] = String(v).slice(0, 10).split('-').map(Number); return new Date(y, m - 1, d); };
 const normalizeBookingStatus = (status) => ({ 'checked-in': 'checked_in', 'checked-out': 'checked_out', booked: 'booked' }[status] || status || 'booked');
 const normalizeReservation = (r) => ({
@@ -104,10 +111,10 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   const propertyId = user?.property?.id;
   const todayDate = useMemo(() => getPmsTodayDate(), []);
   const today = dateKey(todayDate);
-    const initialRange = useMemo(() => ({ from: dateKey(subDays(todayDate, 9)), to: dateKey(addDays(todayDate, 19)) }), [todayDate]);
+    const initialRange = useMemo(() => getRollingPlannerRange(todayDate), [todayDate]);
   const [month, setMonth] = useState(startOfMonth(todayDate));
   const [viewMode, setViewMode] = useState('rolling');
-  const [windowStart, setWindowStart] = useState(subDays(todayDate, 9));
+  const [windowStart, setWindowStart] = useState(subDays(todayDate, 2));
   const [range, setRange] = useState(initialRange);
   const [fromInput, setFromInput] = useState(initialRange.from);
   const [toInput, setToInput] = useState(initialRange.to);
@@ -267,9 +274,9 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   const addClosure = () => { const room=plannerRooms[0]; if(!room) return; const start=addDays(todayDate,2); const end=addDays(start,2); setClosures(prev=>[...prev,{id:`closure-${Date.now()}`,roomId:room.id,start:dateKey(start),end:dateKey(end),label:'Out of order'}]); toast.success(`Closure added to Room ${room.number}`); };
   const clearRange = () => { setRange(null); setRangeError(''); setFromInput(''); setToInput(''); setMonth(startOfMonth(todayDate)); setWindowStart(todayDate); setFocusToday(true); };
   const goToday = () => {
-    const from = dateKey(subDays(todayDate, 9)), to = dateKey(addDays(todayDate, 19));
+    const { from, to } = getRollingPlannerRange(todayDate);
     setRange({ from, to }); setFromInput(from); setToInput(to); setMonth(startOfMonth(todayDate));
-    setWindowStart(subDays(todayDate, 9)); setViewMode('rolling'); setRangeError(''); setFocusToday(true);
+    setWindowStart(subDays(todayDate, 2)); setViewMode('rolling'); setRangeError(''); setFocusToday(true);
   };
   const shiftMonth = (delta) => { setRange(null); setFromInput(''); setToInput(''); setFocusToday(false); setMonth((d) => new Date(d.getFullYear(), d.getMonth() + delta, 1)); };
   const shiftWindow = (delta) => { setRange(null); setFromInput(''); setToInput(''); setFocusToday(false); setWindowStart((d) => addDays(parseDate(dateKey(d)), delta)); };
