@@ -329,7 +329,7 @@ function ReservationDrawer({ reservation: r, rooms, pms, propertyId, busy, onClo
             <h3 className="mb-3 text-sm font-bold text-foreground">Stay dates</h3>
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Departure"><input type="date" className={inputClass} value={newDeparture} onChange={(e) => setNewDeparture(e.target.value)} /></Field>
-              <div className="flex items-end"><button disabled={busy || newDeparture <= r.checkIn} className={buttonClass + " w-full bg-slate-950 text-white"} onClick={() => save({ checkOut: newDeparture })}>Save extension</button></div>
+              <div className="flex items-end"><button disabled={busy || newDeparture <= r.checkIn} className={buttonClass + " w-full bg-primary text-primary-foreground"} onClick={() => save({ checkOut: newDeparture })}>Save extension</button></div>
             </div>
           </section>
 
@@ -340,7 +340,7 @@ function ReservationDrawer({ reservation: r, rooms, pms, propertyId, busy, onClo
                 <option value="">Select room</option>
                 {rooms.filter((room) => room.id === r.roomId || room.status !== 'maintenance' && room.status !== 'out_of_service').map((room) => <option key={room.id} value={room.id}>Room {room.number} · {room.roomTypeName || room.roomType || 'Room'}</option>)}
               </select>
-              <button disabled={busy || moveRoomId === r.roomId} className={buttonClass + " bg-slate-950 text-white"} onClick={move}><MoveRight size={15} /> Move</button>
+              <button disabled={busy || moveRoomId === r.roomId} className={buttonClass + " bg-primary text-primary-foreground"} onClick={move}><MoveRight size={15} /> Move</button>
             </div>
           </section>
 
@@ -370,7 +370,7 @@ function ReservationDrawer({ reservation: r, rooms, pms, propertyId, busy, onClo
           </section>
           <div className="flex flex-wrap gap-2 border-t border-border pt-4">
             {r.status === 'booked' && <button disabled={busy} className={buttonClass + " bg-primary text-primary-foreground"} onClick={checkIn}><DoorOpen size={15} /> Check in</button>}
-            {r.status === 'checked-in' && <button disabled={busy} className={buttonClass + " bg-slate-950 text-white"} onClick={checkOut}><LogOut size={15} /> Check out</button>}
+            {r.status === 'checked-in' && <button disabled={busy} className={buttonClass + " bg-primary text-primary-foreground"} onClick={checkOut}><LogOut size={15} /> Check out</button>}
             {r.status === 'booked' && <button disabled={busy} className={buttonClass + " border border-red-200 bg-red-50 text-red-700"} onClick={cancel}><Trash2 size={15} /> Remove reservation</button>}
           </div>
         </div>
