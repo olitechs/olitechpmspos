@@ -240,9 +240,9 @@ function PricingCard({ plan, annual }) {
   const isFeatured = plan.style === 'featured';
   return (
     <Tilt max={isFeatured ? 6 : 4} glare={isFeatured}>
-      <div className={`relative flex flex-col rounded-2xl p-6 ${isFeatured ? 'scale-[1.02] border border-white bg-[var(--surface)] shadow-[0_0_50px_rgba(255,211,0,0.08)]' : 'border border-border bg-surface'}`}>
+      <div className={`relative flex flex-col rounded-2xl p-6 ${isFeatured ? 'scale-[1.02] border border-border bg-[var(--surface)] shadow-[0_0_50px_rgba(255,211,0,0.08)]' : 'border border-border bg-surface'}`}>
         {plan.eyebrow && (
-          <span className={`self-start rounded-full px-3 py-1 text-[10px] font-black tracking-wide ${isFeatured ? 'bg-primary text-primary-foreground' : 'bg-white/10 text-white'}`}>
+          <span className={`self-start rounded-full px-3 py-1 text-[10px] font-black tracking-wide ${isFeatured ? 'bg-primary text-primary-foreground' : 'bg-secondary text-foreground'}`}>
             {plan.eyebrow}
           </span>
         )}
