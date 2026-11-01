@@ -21,19 +21,19 @@ CHECKOUT_RES='70000000-0000-0000-0000-000000000002'
 
 psql -v ON_ERROR_STOP=1 <<'SQL'
 insert into rooms(id,property_id,number,status) values
- ('$ROOM','$PROPERTY',101,'available'),
- ('$CHECKOUT_ROOM','$PROPERTY',102,'occupied');
+ ('60000000-0000-0000-0000-000000000001','50000000-0000-0000-0000-000000000001',101,'available'),
+ ('60000000-0000-0000-0000-000000000002','50000000-0000-0000-0000-000000000001',102,'occupied');
 
 insert into reservations(id,property_id,room_id,guest_name,arrival,departure,status,rate,payment_status,total_amount,amount_paid,channel,meal_plan)
 values
- ('$RES','$PROPERTY','$ROOM','Test Guest','2026-12-01','2026-12-05','booked',250,'not_paid',1000,0,'direct','bed_only'),
- ('$CHECKOUT_RES','$PROPERTY','$CHECKOUT_ROOM','Checkout Guest','2026-12-01','2026-12-02','checked-in',300,'fully_paid',300,300,'direct','bed_only'),
- ('70000000-0000-0000-0000-000000000003','$PROPERTY','$ROOM','Deposit Test','2026-12-01','2026-12-02','booked',200,'not_paid',200,0,'direct','bed_only');
+ ('70000000-0000-0000-0000-000000000001','50000000-0000-0000-0000-000000000001','60000000-0000-0000-0000-000000000001','Test Guest','2026-12-01','2026-12-05','booked',250,'not_paid',1000,0,'direct','bed_only'),
+ ('70000000-0000-0000-0000-000000000002','50000000-0000-0000-0000-000000000001','60000000-0000-0000-0000-000000000002','Checkout Guest','2026-12-01','2026-12-02','checked-in',300,'fully_paid',300,300,'direct','bed_only'),
+ ('70000000-0000-0000-0000-000000000003','50000000-0000-0000-0000-000000000001','60000000-0000-0000-0000-000000000001','Deposit Test','2026-12-01','2026-12-02','booked',200,'not_paid',200,0,'direct','bed_only');
 
 -- First deposit must meet the 50% threshold; subsequent tender reconciles
 -- against the remaining booking total.
-select public.fn_record_front_desk_payment('$PROPERTY','$RES',500,'cash',null);
-select public.fn_record_front_desk_payment('$PROPERTY','$RES',500,'mpesa',null);
+select public.fn_record_front_desk_payment('50000000-0000-0000-0000-000000000001','70000000-0000-0000-0000-000000000001',500,'cash',null);
+select public.fn_record_front_desk_payment('50000000-0000-0000-0000-000000000001','70000000-0000-0000-0000-000000000001',500,'mpesa',null);
 
 do $assert$
 declare v_paid numeric; v_balance numeric; v_events integer;
@@ -51,7 +51,7 @@ $assert$;
 do $reject$
 begin
   begin
-    perform public.fn_record_front_desk_payment('$PROPERTY',
+    perform public.fn_record_front_desk_payment('50000000-0000-0000-0000-000000000001',
       '70000000-0000-0000-0000-000000000003',99,'cash',null);
     raise exception 'Expected low initial deposit to be rejected';
   exception when others then
