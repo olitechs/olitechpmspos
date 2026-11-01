@@ -14,13 +14,14 @@ declare
   v_conflict_id uuid;
   v_closure_id uuid;
 begin
-  if tg_op = 'UPDATE'
-     and new.property_id is not distinct from old.property_id
-     and new.room_id is not distinct from old.room_id
-     and new.arrival is not distinct from old.arrival
-     and new.departure is not distinct from old.departure
-     and new.status is not distinct from old.status then
-    return new;
+  if tg_op = 'UPDATE' then
+    if new.property_id is not distinct from old.property_id
+       and new.room_id is not distinct from old.room_id
+       and new.arrival is not distinct from old.arrival
+       and new.departure is not distinct from old.departure
+       and new.status is not distinct from old.status then
+      return new;
+    end if;
   end if;
 
   if new.status::text not in ('booked', 'checked-in') then
@@ -85,12 +86,13 @@ as $function$
 declare
   v_conflict_id uuid;
 begin
-  if tg_op = 'UPDATE'
-     and new.property_id is not distinct from old.property_id
-     and new.room_id is not distinct from old.room_id
-     and new.start_date is not distinct from old.start_date
-     and new.end_date is not distinct from old.end_date then
-    return new;
+  if tg_op = 'UPDATE' then
+    if new.property_id is not distinct from old.property_id
+       and new.room_id is not distinct from old.room_id
+       and new.start_date is not distinct from old.start_date
+       and new.end_date is not distinct from old.end_date then
+      return new;
+    end if;
   end if;
 
   if new.start_date is null or new.end_date is null or new.end_date <= new.start_date then
