@@ -1,6 +1,14 @@
 -- Minimal PostgreSQL fixture for the two Phase 2 audit/folio migrations.
 -- It models the required columns from the repository's ordered schema history.
 -- This is not a substitute for checking the live Supabase catalog and RLS.
+do $roles$
+begin
+  if not exists (select 1 from pg_roles where rolname='anon') then create role anon nologin; end if;
+  if not exists (select 1 from pg_roles where rolname='authenticated') then create role authenticated nologin; end if;
+  if not exists (select 1 from pg_roles where rolname='service_role') then create role service_role nologin; end if;
+end;
+$roles$;
+
 create schema if not exists auth;
 create or replace function auth.uid() returns uuid
 language sql stable
