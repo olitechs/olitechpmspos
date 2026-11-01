@@ -14,6 +14,7 @@ declare
   v_config public.property_printers;
   v_saved public.property_printers;
   v_assignment text;
+  v_assignment_types text[] := ARRAY(SELECT DISTINCT x FROM unnest(coalesce(p_assignment_types,'{}')) x);
   v_allowed constant text[] := array[
     'food_orders','drinks_orders','void_food_orders','void_drinks_orders',
     'unsettled_bills','final_receipts','reports','shift_reports','refund_slips'
@@ -36,7 +37,7 @@ begin
     raise exception 'Printer name is required.' using errcode = '22023';
   end if;
   if exists (
-    select 1 from unnest(coalesce(p_assignment_types,'{}')) a
+    select 1 from unnest(v_assignment_types) a
     where not (a = any(v_allowed))
   ) then
     raise exception 'One or more printer routing types are invalid.' using errcode = '22023';
@@ -44,9 +45,11 @@ begin
 
   v_config := jsonb_populate_record(null::public.property_printers, p_config);
   if v_config.connection_type = 'network_ip' and (
-    coalesce(v_config.ip_address,'') = '' or v_config.port not in (9100,9101,9102)
+    coalesce(v_config.ip_address,'') = ''
+    or coalesce(v_config.port,9100) < 1
+    or coalesce(v_config.port,9100) > 65535
   ) then
-    raise exception 'A valid printer IP and TCP port (9100–9102) are required.' using errcode = '22023';
+    raise exception 'A network printer host and valid TCP port (1–65535) are required.' using errcode = '22023';
   end if;
   if v_config.connection_type = 'windows_printer' and coalesce(v_config.windows_printer_name,'') = '' then
     raise exception 'Select an installed Windows printer.' using errcode = '22023';
@@ -84,7 +87,7 @@ begin
 
   delete from public.printer_assignments
   where printer_id=v_saved.id and property_id=p_property_id;
-  foreach v_assignment in array coalesce(p_assignment_types,'{}') loop
+  foreach v_assignment in array v_assignment_types loop
     insert into public.printer_assignments(property_id,printer_id,assignment_type)
     values(p_property_id,v_saved.id,v_assignment);
   end loop;
