@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 const source = readFileSync(new URL('../../src/components/ui/system.jsx', import.meta.url), 'utf8');
 const sidebar = readFileSync(new URL('../../src/components/shell/Sidebar.jsx', import.meta.url), 'utf8');
 const theme = readFileSync(new URL('../../src/index.css', import.meta.url), 'utf8');
+const roomPlanner = readFileSync(new URL('../../src/components/pms/RoomPlanner.jsx', import.meta.url), 'utf8');
 
 test('shared operational UI exports the Phase 1 primitives', () => {
   for (const component of [
@@ -67,4 +68,23 @@ test('theme foundation defines canonical light and dark palettes with reduced-mo
 test('mobile sidebar exposes expanded state and closes with Escape', () => {
   assert.match(sidebar, /aria-expanded=\{mobileOpen\}/);
   assert.match(sidebar, /event\.key===\"Escape\"/);
+});
+
+
+test('Room Planner toolbar exposes the approved controls and responsive dimensions', () => {
+  for (const label of ['Add Closures', 'New reservation', 'Today', 'Start date', 'End date', 'Select month']) {
+    assert.ok(roomPlanner.includes(label), 'missing toolbar control: ' + label);
+  }
+  assert.match(roomPlanner, /width:141/);
+  assert.match(roomPlanner, /width:131/);
+  assert.match(roomPlanner, /width:267/);
+  assert.match(roomPlanner, /width:130/);
+  assert.match(roomPlanner, /height:38px/);
+  assert.match(roomPlanner, /@media\(max-width:1099px\)/);
+  assert.match(roomPlanner, /shiftVisibleRange\(-15\)/);
+  assert.match(roomPlanner, /shiftVisibleRange\(15\)/);
+  assert.match(roomPlanner, /dateKey\(subDays\(todayDate, 9\)\)/);
+  assert.match(roomPlanner, /dateKey\(addDays\(todayDate, 19\)\)/);
+  assert.match(roomPlanner, /onClick=\{addClosure\}/);
+  assert.match(roomPlanner, /onClick=\{\(\) => openCreate/);
 });
