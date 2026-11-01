@@ -39,7 +39,7 @@ test('inventory guards are installed as triggers and are not exposed as client R
 });
 
 test('migration blocks inventory writes during preflight and trigger installation', () => {
-  assert.match(migration, /lock table public\\.reservations, public\\.room_closures in share row exclusive mode/i);
+  assert.match(migration, /lock table public\.reservations, public\.room_closures in share row exclusive mode/i);
 });
 
 test('migration fails closed when historical overlaps exist', () => {
