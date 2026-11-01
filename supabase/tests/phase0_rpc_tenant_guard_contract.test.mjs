@@ -92,13 +92,19 @@ const dashboard = await readFile(
   'utf8',
 );
 
-test('printer hydration treats missing optional printer tables as an unavailable setup state', () => {
+test('kitchen printer route uses the production property-scoped printer schema', () => {
+  assert.match(kitchenPrintersPage, /@\/pages\/SettingsPrinters/);
+  assert.match(kitchenPrintersPage, /listFnbPrintJobs\(propertyId, \{ status: 'failed', limit: 25 \}\)/);
+  assert.match(kitchenPrintersPage, /table: 'fnb_print_jobs'/);
+  assert.match(kitchenPrintersPage, /retryFnbPrintJob\(job\.id, propertyId\)/);
+  assert.doesNotMatch(kitchenPrintersPage, /printer_groups|printer_group_categories|print_agents|from\('printers'\)/);
+});
+
+test('legacy workspace printer store remains fail-soft when optional relations are absent', () => {
   assert.match(printerStore, /const isMissingRelation = \(error\) => \['PGRST205', '42P01'\]/);
   assert.match(printerStore, /const printerGroupsUnavailable = isMissingRelation\(groupsError\)/);
   assert.match(printerStore, /const printAgentsUnavailable = isMissingRelation\(agentsError\)/);
   assert.match(printerStore, /printerGroupsUnavailable, printAgentsUnavailable/);
-  assert.match(kitchenPrintersPage, /Printer groups not set up/);
-  assert.match(kitchenPrintersPage, /printAgentsUnavailable\?'Not set up'/);
 });
 
 test('dashboard retries a failed POS summary once and waits for manual refresh after failure', () => {
