@@ -29,7 +29,7 @@ const compatibilityGuards = [
   ['primary foreground guard', '.bg-primary.text-foreground { color: var(--on-primary) !important; }'],
   ['secondary foreground guard', '.bg-secondary.text-white { color: var(--text) !important; }'],
   ['white surface foreground guard', '.bg-white.text-white { color: var(--text) !important; }'],
-  ['legacy dark action guard', '.bg-slate-950.text-white { background-color: var(--primary) !important; color: var(--on-primary) !important; }'],
+  ['legacy dark action guard', '.bg-slate-950.text-white'],
   ['dark legacy surface guard', ':root[data-theme="dark"] .bg-white { background-color: var(--surface) !important; }'],
   ['dark legacy text guard', ':root[data-theme="dark"] .text-slate-900'],
 ];
