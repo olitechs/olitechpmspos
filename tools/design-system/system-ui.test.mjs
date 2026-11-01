@@ -45,12 +45,14 @@ test('sidebar has accessible mobile open/close controls and a scrollable navigat
   assert.match(sidebar, /aria-label="Search navigation"/);
 });
 
-test('theme foundation supports canonical light/dark tokens and reduced-motion handling', () => {
+test('theme foundation enforces light-only Coastal Linen tokens and reduced-motion handling', () => {
   assert.ok(theme.includes('--canvas: #F4F7F8'));
   assert.ok(theme.includes('--primary: #0F7C86'));
   assert.ok(theme.includes('--surface: #FFFFFF'));
   assert.ok(theme.includes(':root[data-theme="dark"]'));
-  assert.ok(theme.includes('--canvas:#0E1417'));
+  assert.ok(theme.includes('color-scheme: light'));
+  assert.ok(!theme.includes('--canvas:#0E1417'));
+  assert.ok(theme.includes('[class~="bg-slate-950"]'));
   assert.ok(theme.includes('--table-free-bg: #74C365'));
   assert.ok(theme.includes('--table-occupied-bg: #FA003F'));
   assert.ok(theme.includes('--table-bill-bg: #FAFAFA'));
