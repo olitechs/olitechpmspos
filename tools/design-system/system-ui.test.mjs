@@ -45,18 +45,20 @@ test('sidebar has accessible mobile open/close controls and a scrollable navigat
   assert.match(sidebar, /aria-label="Search navigation"/);
 });
 
-test('theme foundation enforces light-only Coastal Linen tokens and reduced-motion handling', () => {
-  assert.ok(theme.includes('--canvas: #F4F7F8'));
-  assert.ok(theme.includes('--primary: #0F7C86'));
-  assert.ok(theme.includes('--surface: #FFFFFF'));
+test('theme foundation defines canonical light and dark palettes with reduced-motion handling', () => {
+  for (const token of [
+    '--canvas:#F4F7F8', '--surface:#FFFFFF', '--primary:#0F7C86',
+    '--on-primary:#FFFFFF', '--text:#14232B', '--text-muted:#4F646D',
+    '--table-free-bg:#74C365', '--table-occupied-bg:#FA003F', '--table-bill-bg:#FAFAFA',
+  ]) assert.ok(theme.includes(token), 'missing light token ' + token);
   assert.ok(theme.includes(':root[data-theme="dark"]'));
+  for (const token of [
+    '--canvas:#10171A', '--surface:#172126', '--primary:#137682',
+    '--on-primary:#F2F8F9', '--text:#E3EBED', '--text-muted:#9DB0B8',
+  ]) assert.ok(theme.includes(token), 'missing dark token ' + token);
   assert.ok(theme.includes('color-scheme: light'));
-  assert.ok(!theme.includes('--canvas:#0E1417'));
-  assert.ok(theme.includes('[class~="bg-slate-950"]'));
-  assert.ok(theme.includes('--table-free-bg: #74C365'));
-  assert.ok(theme.includes('--table-occupied-bg: #FA003F'));
-  assert.ok(theme.includes('--table-bill-bg: #FAFAFA'));
-  assert.ok(theme.includes('prefers-reduced-motion: reduce'));
+  assert.ok(theme.includes('color-scheme:dark'));
+  assert.ok(theme.includes('prefers-reduced-motion:reduce'));
   for (const token of ['--surface', '--surface-2', '--border', '--text', '--muted', '--focus']) {
     assert.match(theme, new RegExp(token + ':'));
   }
