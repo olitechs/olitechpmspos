@@ -32,7 +32,7 @@ function Field({ label, children }) {
   );
 }
 
-const inputClass = "w-full rounded-lg border border-slate-200 bg-surface px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200";
+const inputClass = "w-full rounded-lg border border-slate-200 bg-surface px-3 py-2.5 text-sm text-foreground outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200";
 const buttonClass = "inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50";
 
 export default function Reservations() {
@@ -112,7 +112,7 @@ export default function Reservations() {
             <button className={buttonClass + " border border-slate-200 bg-surface text-slate-800"} onClick={refresh} disabled={busy}>
               <RefreshCw size={15} /> Refresh
             </button>
-            <button className={buttonClass + " bg-primary text-foreground"} onClick={() => setShowNew(true)}>
+            <button className={buttonClass + " bg-primary text-primary-foreground"} onClick={() => setShowNew(true)}>
               <Plus size={15} /> New reservation
             </button>
           </div>
@@ -136,7 +136,7 @@ export default function Reservations() {
               <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
               <div className="mt-1 text-2xl font-bold text-foreground">{value}</div>
               <div className="mt-2 h-1 rounded-full bg-secondary">
-                <div className="h-1 rounded-full bg-slate-900" style={{ width: `${Math.min(100, value * 12 + 8)}%` }} />
+                <div className="h-1 rounded-full bg-primary" style={{ width: `${Math.min(100, value * 12 + 8)}%` }} />
               </div>
             </div>
           ))}
@@ -184,7 +184,7 @@ export default function Reservations() {
                       <span className="rounded-full bg-secondary px-2 py-1 text-[11px] font-semibold text-foreground">{r.paymentStatus?.replace('_', ' ')}</span>
                       <div className="mt-1 text-xs text-muted-foreground">{money(r.amountPaid)} / {money(r.totalAmount)}</div>
                     </td>
-                    <td className="px-4 py-3"><span className="rounded-full bg-slate-900 px-2 py-1 text-[11px] font-semibold text-foreground">{STATUS[r.status] || r.status}</span></td>
+                    <td className="px-4 py-3"><span className="rounded-full bg-primary px-2 py-1 text-[11px] font-semibold text-foreground">{STATUS[r.status] || r.status}</span></td>
                     <td className="px-4 py-3 text-right"><button className="text-muted-foreground hover:text-foreground" onClick={() => setSelected(r)}><ChevronRight size={17} /></button></td>
                   </tr>
                 ))}
@@ -254,7 +254,7 @@ function NewReservationModal({ rooms, onClose, onCreate, busy }) {
           <Field label="Channel"><select className={inputClass} value={data.channel} onChange={(e) => setData({ ...data, channel: e.target.value })}><option value="direct">Direct</option><option value="booking_com">Booking.com</option><option value="unknown">Other / OTA</option></select></Field>
         </div>
         {error && <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
-        <div className="flex justify-end gap-2 border-t border-border pt-4"><button type="button" className={buttonClass + " border border-slate-200 bg-surface"} onClick={onClose}>Cancel</button><button disabled={busy} className={buttonClass + " bg-primary text-foreground"} type="submit"><Plus size={15} /> Create reservation</button></div>
+        <div className="flex justify-end gap-2 border-t border-border pt-4"><button type="button" className={buttonClass + " border border-slate-200 bg-surface"} onClick={onClose}>Cancel</button><button disabled={busy} className={buttonClass + " bg-primary text-primary-foreground"} type="submit"><Plus size={15} /> Create reservation</button></div>
       </form>
     </Modal>
   );
@@ -369,7 +369,7 @@ function ReservationDrawer({ reservation: r, rooms, pms, propertyId, busy, onClo
               })}</ol> : <p className="text-sm text-muted-foreground">No recorded changes for this reservation.</p>}
           </section>
           <div className="flex flex-wrap gap-2 border-t border-border pt-4">
-            {r.status === 'booked' && <button disabled={busy} className={buttonClass + " bg-primary text-foreground"} onClick={checkIn}><DoorOpen size={15} /> Check in</button>}
+            {r.status === 'booked' && <button disabled={busy} className={buttonClass + " bg-primary text-primary-foreground"} onClick={checkIn}><DoorOpen size={15} /> Check in</button>}
             {r.status === 'checked-in' && <button disabled={busy} className={buttonClass + " bg-slate-950 text-white"} onClick={checkOut}><LogOut size={15} /> Check out</button>}
             {r.status === 'booked' && <button disabled={busy} className={buttonClass + " border border-red-200 bg-red-50 text-red-700"} onClick={cancel}><Trash2 size={15} /> Remove reservation</button>}
           </div>
