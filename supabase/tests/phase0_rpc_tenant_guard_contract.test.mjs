@@ -58,7 +58,7 @@ const pmsService = await readFile(
 );
 
 test('printer foundation migration has valid idempotent realtime publication block', () => {
-  assert.match(printerFoundation, /do \$\$[\s\S]*?alter publication supabase_realtime add table public\.print_jobs;[\s\S]*?when duplicate_object then null;[\s\S]*?when undefined_object then null;[\s\S]*?end\s*\$\$;/i);
+  assert.match(printerFoundation, /do \$printer_realtime\$[\s\S]*?alter publication supabase_realtime add table public\.print_jobs;[\s\S]*?when duplicate_object then null;[\s\S]*?when undefined_object then null;[\s\S]*?end\s*\$printer_realtime\$;/i);
   assert.doesNotMatch(printerFoundation, /do \$\s+begin[\s\S]*?end \$;/i);
 });
 
