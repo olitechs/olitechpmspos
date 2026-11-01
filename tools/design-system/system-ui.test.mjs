@@ -83,8 +83,8 @@ test('Room Planner toolbar exposes the approved controls and responsive dimensio
   assert.match(roomPlanner, /@media\(max-width:1099px\)/);
   assert.match(roomPlanner, /shiftVisibleRange\(-15\)/);
   assert.match(roomPlanner, /shiftVisibleRange\(15\)/);
-  assert.match(roomPlanner, /dateKey\(subDays\(todayDate, 9\)\)/);
-  assert.match(roomPlanner, /dateKey\(addDays\(todayDate, 19\)\)/);
+  assert.match(roomPlanner, /subDays\(today, 2\)/);
+  assert.match(roomPlanner, /addDays\(today, 12\)/);
   assert.match(roomPlanner, /onClick=\{addClosure\}/);
   assert.match(roomPlanner, /onClick=\{\(\) => openCreate/);
 });
