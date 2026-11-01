@@ -22,8 +22,9 @@ test('pending property RPC binds caller identity unless using service role', () 
 test('tenant guard migration keeps RPC grants narrow and revokes public/anonymous execution', () => {
   assert.match(migration, /revoke all on function public\.fn_list_pos_menu\(uuid\) from public, anon/i);
   assert.match(migration, /grant execute on function public\.fn_list_pos_menu\(uuid\) to authenticated/i);
-  assert.match(migration, /revoke all on function public\.create_pending_property_for_user\(uuid, text, text, text\) from public, anon/i);
-  assert.match(migration, /grant execute on function public\.create_pending_property_for_user\(uuid, text, text, text\) to authenticated, service_role/i);
+  assert.match(migration, /revoke all on function public\.create_pending_property_for_user\(uuid, text, text, text\) from public, anon, authenticated/i);
+  assert.match(migration, /grant execute on function public\.create_pending_property_for_user\(uuid, text, text, text\) to service_role/i);
+  assert.doesNotMatch(migration, /grant execute on function public\.create_pending_property_for_user\([^;]+ to authenticated/i);
 });
 
 test('tenant guard migration is forward-only and transaction-bounded', () => {
