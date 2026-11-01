@@ -200,12 +200,20 @@ export default function SettingsPrinters() {
       ip_address: endpoint.host,
       port: endpoint.port,
     };
-    const { data: savedPrinter, error: saveError } = await supabase.rpc('fn_save_property_printer_config', {
-      p_property_id: propertyId,
-      p_config: config,
-      p_assignment_types: [...new Set(assignmentTypes)],
-    });
-    if (saveError) return setError(saveError.message);
+    let savedPrinter;
+    try {
+      const { data, error: saveError } = await supabase.rpc('fn_save_property_printer_config', {
+        p_property_id: propertyId,
+        p_config: config,
+        p_assignment_types: [...new Set(assignmentTypes)],
+      });
+      if (saveError) throw saveError;
+      savedPrinter = data;
+      if (!savedPrinter?.id) throw new Error('The printer save did not return a saved printer record.');
+    } catch (saveError) {
+      setError(saveError?.message || 'Unable to save printer settings.');
+      return;
+    }
 
     setEditing(null);
     await load(true);
@@ -348,7 +356,7 @@ export default function SettingsPrinters() {
                           </select>
                         </div>
                         <div className="mt-2 flex flex-wrap gap-1.5">
-                          {current.map(a=>{const p=printers.find(x=>x.id===a.printer_id); return <span key={a.id} className="inline-flex items-center gap-1 rounded-lg bg-surface px-2 py-1 text-xs font-semibold text-muted-foreground shadow-sm ring-1 ring-[var(--border)]">{p?.name || 'Unknown printer'}<button onClick={()=>removeAssignment(a)} className="rounded p-0.5 text-muted-foreground hover:bg-red-50 hover:text-red-600" title="Remove routing"><X size={12}/></button></span>})}
+                          {current.map(a=>{const p=printers.find(x=>x.id===a.printer_id); return <span key={a.id} className="inline-flex items-center gap-1 rounded-lg bg-surface px-2 py-1 text-xs font-semibold text-muted-foreground shadow-sm ring-1 ring-[var(--border)]">{p?.name || 'Unknown printer'}<button onClick={()=>removeAssignment(a)} className="rounded p-0.5 text-muted-foreground hover:bg-[var(--danger-soft)] hover:text-[var(--danger-text)]" title="Remove routing"><X size={12}/></button></span>})}
                         </div>
                       </div>;
                     })}
@@ -365,7 +373,7 @@ export default function SettingsPrinters() {
 }
 
 function Stat({label,value,icon:Icon,className=''}) {
-  return <div className={`flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3.5 ${className}`}><div className="rounded-lg bg-secondary p-2 text-foreground"><Icon size={15}/></div><div><div className="text-lg font-black text-foreground">{value}</div><div className="text-[11px] font-semibold text-muted-foreground">{label}</div></div></div>;
+  return <div className={`flex items-center gap-3 rounded-xl border border-[var(--border)] bg-white p-3.5 ${className}`}><div className="rounded-lg bg-secondary p-2 text-foreground"><Icon size={15}/></div><div><div className="text-lg font-black text-foreground">{value}</div><div className="text-[11px] font-semibold text-muted-foreground">{label}</div></div></div>;
 }
 
 function Alert({type,text}) {
@@ -400,7 +408,7 @@ function PrinterCard({printer,assignments,testing,onTest,onEdit,onDelete,onRemov
       {printer.connection_type === 'serial' && <div className="col-span-2 rounded-xl bg-secondary p-3"><div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Serial</div><div className="mt-1 text-xs font-bold text-foreground">{printer.baud_rate || 9600} baud</div></div>}
     </div>
 
-    {printer.last_error && <div className="mt-3 rounded-xl border border-red-100 bg-red-50 p-3 text-xs font-semibold leading-5 text-red-700">{printer.last_error}</div>}
+    {printer.last_error && <div className="mt-3 rounded-xl border border-[var(--danger)]/30 bg-[var(--danger-soft)] p-3 text-xs font-semibold leading-5 text-[var(--danger-text)]">{printer.last_error}</div>}
 
     <div className="mt-3 flex flex-wrap gap-1.5">
       {assignments.length ? assignments.map(a=><span key={a.id} className="rounded-md bg-secondary px-2 py-1 text-[10px] font-bold text-muted-foreground">{ASSIGNMENTS.find(x=>x[0]===a.assignment_type)?.[1] || a.assignment_type}</span>) : <span className="text-[11px] text-muted-foreground">No routing assigned</span>}
@@ -409,7 +417,7 @@ function PrinterCard({printer,assignments,testing,onTest,onEdit,onDelete,onRemov
     <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
       <button disabled={testing} onClick={onTest} className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--primary)] px-3 py-2 text-xs font-semibold text-[var(--on-primary)] disabled:opacity-50"><Play size={13}/>{testing?'Testing…':'Test & Print'}</button>
       <button onClick={onEdit} className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-bold text-foreground hover:bg-secondary"><Pencil size={13}/>Edit</button>
-      <button onClick={onDelete} className="inline-flex items-center gap-1.5 rounded-lg border border-red-100 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50"><Trash2 size={13}/>Delete</button>
+      <button onClick={onDelete} className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--danger)]/30 px-3 py-2 text-xs font-bold text-[var(--danger-text)] hover:bg-[var(--danger-soft)]"><Trash2 size={13}/>Delete</button>
       {printer.last_tested_at && <span className="ml-auto self-center text-[10px] text-muted-foreground">Tested {new Date(printer.last_tested_at).toLocaleString('en-KE')}</span>}
     </div>
   </article>;
@@ -443,7 +451,7 @@ function PrinterModal({form,setForm,onClose,onSave,windowsPrinters=[],refreshLoc
           </label>
           <div className="rounded-xl border border-border bg-secondary p-3"><div className="text-[10px] font-black uppercase tracking-wide text-muted-foreground">Transport</div><p className="mt-1 text-[11px] leading-5 text-muted-foreground">LAN and Windows-driver printers use the OliTechs Print Agent. USB, Bluetooth and serial printers use the browser's native device connection.</p></div>
           {form.connection_type === 'network_ip' && <>
-            <label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">Printer IP address<input value={form.ip_address||''} onChange={e=>setForm({...form,ip_address:e.target.value})} placeholder="192.168.1.50" className="mt-1.5 w-full rounded-xl border border-border px-3 py-2.5 font-mono text-sm outline-none focus:border-slate-900"/></label>
+            <label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">Printer IP address<input value={form.ip_address||''} onChange={e=>setForm({...form,ip_address:e.target.value})} placeholder="192.168.1.50" className="mt-1.5 w-full rounded-xl border border-border px-3 py-2.5 font-mono text-sm outline-none focus:border-[var(--primary)]"/></label>
             <label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">TCP port<input type="number" value={form.port||9100} onChange={e=>setForm({...form,port:e.target.value})} className="mt-1.5 w-full rounded-xl border border-border px-3 py-2.5 font-mono text-sm"/><span className="mt-1 block text-[11px] font-normal normal-case tracking-normal text-muted-foreground">9100 is the standard raw ESC/POS port for many network thermal printers.</span></label>
           </>}
           {form.connection_type === 'windows_printer' && <div className="space-y-2"><label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">Windows installed printer<select value={form.windows_printer_name||''} onChange={e=>setForm({...form,windows_printer_name:e.target.value})} onFocus={()=>refreshLocalDevices(form.agent_url)} className="mt-1.5 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm"><option value="">Select installed printer</option>{windowsPrinters.map(p=><option key={p.Name} value={p.Name}>{p.Name}{p.DriverName ? ` — ${p.DriverName}` : ''}</option>)}</select></label><p className="text-[11px] text-muted-foreground">The printer must first be installed and visible in Windows Printers & scanners. OliTechs sends the thermal data through the local print agent.</p></div>}
