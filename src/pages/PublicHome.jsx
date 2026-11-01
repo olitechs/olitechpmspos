@@ -187,12 +187,12 @@ function FloatOrb({ className, duration = 10, x = 20, y = 24 }) {
 /* ---------- building blocks ---------- */
 
 function IconBox({ icon: Icon, className = '' }) {
-  return <div className={`w-10 h-10 shrink-0 rounded-xl bg-primary text-foreground flex items-center justify-center ${className}`}><Icon className="w-5 h-5" /></div>;
+  return <div className={`w-10 h-10 shrink-0 rounded-xl bg-primary text-primary-foreground flex items-center justify-center ${className}`}><Icon className="w-5 h-5" /></div>;
 }
 
 function FactChip({ icon: Icon, label }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-surface p-4">
+    <div className="flex items-center gap-3 rounded-xl border border-border bg-surface p-4">
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icon className="h-4.5 w-4.5" /></div>
       <div className="text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground">{label}</div>
     </div>
@@ -204,8 +204,8 @@ function ProductMock() {
   return (
     <div className="relative" style={{ transform: 'translateZ(30px)' }}>
       <div className="absolute -inset-8 rounded-[40px] bg-primary/10 blur-3xl" />
-      <div className="relative rounded-[24px] border border-white/15 bg-surface p-2 shadow-2xl">
-        <div className="flex items-center gap-2 border-b border-white/10 px-3 py-2">
+      <div className="relative rounded-[24px] border border-border bg-surface p-2 shadow-2xl">
+        <div className="flex items-center gap-2 border-b border-border px-3 py-2">
           <span className="h-2.5 w-2.5 rounded-full bg-border" />
           <span className="h-2.5 w-2.5 rounded-full bg-border" />
           <span className="h-2.5 w-2.5 rounded-full bg-border" />
@@ -240,9 +240,9 @@ function PricingCard({ plan, annual }) {
   const isFeatured = plan.style === 'featured';
   return (
     <Tilt max={isFeatured ? 6 : 4} glare={isFeatured}>
-      <div className={`relative flex flex-col rounded-2xl p-6 ${isFeatured ? 'scale-[1.02] border border-white bg-[var(--surface)] shadow-[0_0_50px_rgba(255,211,0,0.08)]' : 'border border-white/10 bg-surface'}`}>
+      <div className={`relative flex flex-col rounded-2xl p-6 ${isFeatured ? 'scale-[1.02] border border-white bg-[var(--surface)] shadow-[0_0_50px_rgba(255,211,0,0.08)]' : 'border border-border bg-surface'}`}>
         {plan.eyebrow && (
-          <span className={`self-start rounded-full px-3 py-1 text-[10px] font-black tracking-wide ${isFeatured ? 'bg-primary text-foreground' : 'bg-white/10 text-white'}`}>
+          <span className={`self-start rounded-full px-3 py-1 text-[10px] font-black tracking-wide ${isFeatured ? 'bg-primary text-primary-foreground' : 'bg-white/10 text-white'}`}>
             {plan.eyebrow}
           </span>
         )}
@@ -256,7 +256,7 @@ function PricingCard({ plan, annual }) {
         <ul className="mt-6 flex-1 space-y-3">
           {plan.features.map(item => <li key={item} className="flex gap-2 text-sm text-muted-foreground"><Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />{item}</li>)}
         </ul>
-        <Link to="/signup" className={`mt-7 block rounded-full py-3 text-center text-sm font-bold ${isFeatured ? 'bg-primary text-foreground hover:bg-primary' : 'bg-secondary text-white hover:bg-[var(--text)]'}`}>
+        <Link to="/signup" className={`mt-7 block rounded-full py-3 text-center text-sm font-bold ${isFeatured ? 'bg-primary text-primary-foreground hover:bg-primary' : 'bg-secondary text-foreground hover:bg-[var(--text)]'}`}>
           {plan.button}
         </Link>
       </div>
@@ -279,7 +279,7 @@ export default function PublicHome() {
 
   return (
     <div id="top" className="min-h-screen overflow-x-hidden bg-surface text-foreground selection:bg-primary selection:text-foreground">
-      <nav className="sticky top-0 z-50 border-b border-white/10 bg-surface/80 backdrop-blur-xl">
+      <nav className="sticky top-0 z-50 border-b border-border bg-surface/80 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-6 px-5 sm:px-6">
           <a href="#top" className="flex shrink-0 items-center gap-3">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-xs font-black text-foreground">OT</span>
@@ -294,7 +294,7 @@ export default function PublicHome() {
             <button onClick={() => setMobileOpen(!mobileOpen)} className="rounded-lg p-2 text-foreground lg:hidden" aria-label="Menu">{mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}</button>
           </div>
         </div>
-        {mobileOpen && <div className="border-t border-white/10 bg-surface px-5 py-4 lg:hidden">
+        {mobileOpen && <div className="border-t border-border bg-surface px-5 py-4 lg:hidden">
           <div className="flex flex-col gap-1">
             {scrollLinks.map(([label, href]) => <a key={label} href={href} onClick={() => setMobileOpen(false)} className="rounded-lg px-3 py-3 text-sm text-muted-foreground hover:bg-secondary">{label}</a>)}
             <Link to="/signin" className="px-3 py-3 text-sm text-foreground">Sign In</Link>
@@ -308,7 +308,7 @@ export default function PublicHome() {
           <FloatOrb className="pointer-events-none absolute -right-16 top-32 h-64 w-64 rounded-full bg-primary/5 blur-3xl" duration={14} x={-18} y={22} />
 
           <motion.div initial="hidden" animate="show" variants={{ show: { transition: { staggerChildren: 0.08 } } }} className="relative">
-            <motion.div variants={fadeUp} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[var(--surface)] px-3 py-1.5 text-xs font-bold text-foreground">
+            <motion.div variants={fadeUp} className="inline-flex items-center gap-2 rounded-full border border-border bg-[var(--surface)] px-3 py-1.5 text-xs font-bold text-foreground">
               <ShieldCheck className="h-3.5 w-3.5 text-primary" /> Kenyan-built hospitality software
             </motion.div>
             <motion.h1 variants={fadeUp} className="mt-6 max-w-3xl text-5xl font-black leading-[0.94] tracking-[-0.045em] sm:text-6xl lg:text-[64px]">
@@ -337,13 +337,13 @@ export default function PublicHome() {
         </section>
 
         <Reveal as="section" className="mx-auto max-w-7xl px-5 pb-8 sm:px-6">
-          <div className="rounded-2xl border border-white/10 bg-surface p-5 sm:p-6">
+          <div className="rounded-2xl border border-border bg-surface p-5 sm:p-6">
             <div className="flex flex-col items-center justify-between gap-5 sm:flex-row">
               <p className="text-sm font-bold text-foreground">Talk to the team directly — no ticket queue.</p>
               <div className="flex flex-wrap items-center justify-center gap-3">
-                <a href={CONTACT.whatsapp} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-full border border-white/10 bg-surface px-4 py-2 text-xs font-black text-foreground hover:border-[var(--primary)]"><MessageCircle className="h-4 w-4 text-primary" /> WhatsApp</a>
-                <a href={CONTACT.phoneHref} className="flex items-center gap-2 rounded-full border border-white/10 bg-surface px-4 py-2 text-xs font-black text-foreground hover:border-[var(--primary)]"><Phone className="h-4 w-4 text-primary" /> {CONTACT.phone}</a>
-                <a href={`mailto:${CONTACT.email}`} className="flex items-center gap-2 rounded-full border border-white/10 bg-surface px-4 py-2 text-xs font-black text-foreground hover:border-[var(--primary)]"><Mail className="h-4 w-4 text-primary" /> {CONTACT.email}</a>
+                <a href={CONTACT.whatsapp} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2 text-xs font-black text-foreground hover:border-[var(--primary)]"><MessageCircle className="h-4 w-4 text-primary" /> WhatsApp</a>
+                <a href={CONTACT.phoneHref} className="flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2 text-xs font-black text-foreground hover:border-[var(--primary)]"><Phone className="h-4 w-4 text-primary" /> {CONTACT.phone}</a>
+                <a href={`mailto:${CONTACT.email}`} className="flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2 text-xs font-black text-foreground hover:border-[var(--primary)]"><Mail className="h-4 w-4 text-primary" /> {CONTACT.email}</a>
               </div>
             </div>
           </div>
@@ -361,7 +361,7 @@ export default function PublicHome() {
               return (
                 <Reveal as="article" delay={(i % 3) * 0.06} id={title === 'Room Planner' ? 'planner' : title === 'POS' ? 'pos' : undefined} key={title} className={large ? 'lg:col-span-2' : ''}>
                   <Tilt max={5}>
-                    <div className="rounded-2xl border border-white/10 bg-surface p-6 transition hover:border-white/20">
+                    <div className="rounded-2xl border border-border bg-surface p-6 transition hover:border-white/20">
                       <IconBox icon={Icon} />
                       <h3 className="mt-5 text-xl font-black">{title}</h3>
                       <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-muted)]">{desc}</p>
@@ -390,7 +390,7 @@ export default function PublicHome() {
                 ['02', 'Add Rooms & Tables', 'Import rooms, create room types and set up your POS floor plan.'],
                 ['03', 'Start Selling', 'Check in guests, take orders, post room charges and collect M-Pesa.'],
               ].map(([n, t, d], i) => (
-                <Reveal key={n} delay={i * 0.08} className="rounded-2xl border border-white/10 bg-surface p-6">
+                <Reveal key={n} delay={i * 0.08} className="rounded-2xl border border-border bg-surface p-6">
                   <div className="text-4xl font-black text-primary">{n}</div>
                   <h3 className="mt-5 text-lg font-black">{t}</h3>
                   <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">{d}</p>
@@ -402,7 +402,7 @@ export default function PublicHome() {
 
         <Reveal as="section" id="pricing" className="mx-auto max-w-7xl px-5 py-24 sm:px-6">
           <div className="mx-auto max-w-2xl text-center">
-            <span className="inline-flex rounded-full border border-white/10 bg-surface/10 px-3 py-1 text-xs font-bold">Pricing</span>
+            <span className="inline-flex rounded-full border border-border bg-surface/10 px-3 py-1 text-xs font-bold">Pricing</span>
             <h2 className="mt-4 text-4xl font-black tracking-tight">Choose your plan</h2>
             <p className="mt-3 text-[var(--text-muted)]">Start small. Upgrade when your operation grows.</p>
             <div className="mx-auto mt-7 inline-flex rounded-full bg-[var(--surface)] p-1">
@@ -415,11 +415,11 @@ export default function PublicHome() {
           </div>
           <p className="mt-8 text-center text-xs text-muted-foreground">No credit card required · Cancel anytime</p>
 
-          <div className="mt-16 overflow-hidden rounded-2xl border border-white/10 bg-surface">
-            <div className="border-b border-white/10 px-5 py-5"><h3 className="font-black">Compare plans</h3><p className="mt-1 text-xs text-muted-foreground">Everything important, side by side.</p></div>
+          <div className="mt-16 overflow-hidden rounded-2xl border border-border bg-surface">
+            <div className="border-b border-border px-5 py-5"><h3 className="font-black">Compare plans</h3><p className="mt-1 text-xs text-muted-foreground">Everything important, side by side.</p></div>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[650px] text-sm">
-                <thead><tr className="border-b border-white/10 text-left text-muted-foreground"><th className="px-5 py-4 font-semibold">Feature</th><th className="px-5 py-4">Free</th><th className="px-5 py-4 text-foreground">Professional</th><th className="px-5 py-4">Enterprise</th></tr></thead>
+                <thead><tr className="border-b border-border text-left text-muted-foreground"><th className="px-5 py-4 font-semibold">Feature</th><th className="px-5 py-4">Free</th><th className="px-5 py-4 text-foreground">Professional</th><th className="px-5 py-4">Enterprise</th></tr></thead>
                 <tbody>{comparison.map(row => <tr key={row[0]} className="border-b border-white/5 last:border-0"><td className="px-5 py-3.5 text-muted-foreground">{row[0]}</td>{row.slice(1).map((v, i) => <td key={i} className={`px-5 py-3.5 ${v === '✓' ? 'font-black text-primary' : 'text-muted-foreground'}`}>{v}</td>)}</tr>)}</tbody>
               </table>
             </div>
@@ -427,11 +427,11 @@ export default function PublicHome() {
         </Reveal>
 
         <Reveal as="section" className="mx-auto max-w-7xl px-5 pb-24 sm:px-6">
-          <div className="rounded-2xl border border-white/10 bg-surface p-8 sm:p-10">
+          <div className="rounded-2xl border border-border bg-surface p-8 sm:p-10">
             <div className="flex flex-col items-center justify-between gap-8 lg:flex-row">
               <div><p className="text-xs font-black uppercase tracking-[0.22em] text-primary">Integrations</p><h2 className="mt-2 text-2xl font-black">Payments your guests already trust.</h2><p className="mt-2 text-sm text-[var(--text-muted)]">M-Pesa, cards, cash and charge-to-room in one billing workflow.</p></div>
               <div className="flex flex-wrap gap-3">
-                {['M-PESA', 'CARD', 'CASH', 'KRA'].map(x => <div key={x} className="rounded-xl border border-white/10 bg-surface px-5 py-3 text-xs font-black text-foreground">{x}</div>)}
+                {['M-PESA', 'CARD', 'CASH', 'KRA'].map(x => <div key={x} className="rounded-xl border border-border bg-surface px-5 py-3 text-xs font-black text-foreground">{x}</div>)}
               </div>
             </div>
           </div>
@@ -444,8 +444,8 @@ export default function PublicHome() {
               <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Stop stitching your hotel together with spreadsheets.</h2>
               <p className="mt-4 text-sm leading-6 text-[var(--text-muted)]">Excel can store information. OliTechs connects the operation — rooms, guests, tables, payments and management — so your team can act on the same live picture.</p>
             </div>
-            <div className="overflow-hidden rounded-2xl border border-white/10 bg-surface">
-              <div className="grid grid-cols-[1.2fr_1fr_1fr] border-b border-white/10 bg-surface px-5 py-4 text-xs font-black uppercase tracking-wide">
+            <div className="overflow-hidden rounded-2xl border border-border bg-surface">
+              <div className="grid grid-cols-[1.2fr_1fr_1fr] border-b border-border bg-surface px-5 py-4 text-xs font-black uppercase tracking-wide">
                 <span>Operation</span><span className="text-muted-foreground">Excel + tools</span><span className="text-primary">OliTechs</span>
               </div>
               {[
@@ -475,8 +475,8 @@ export default function PublicHome() {
               return (
                 <Reveal key={c.label} delay={i * 0.08}>
                   <Tilt max={6}>
-                    <a href={c.href} target={c.external ? '_blank' : undefined} rel={c.external ? 'noreferrer' : undefined} className="block rounded-2xl border border-white/10 bg-surface p-6 transition hover:border-[var(--primary)]/40">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-foreground"><Icon className="h-5 w-5" /></div>
+                    <a href={c.href} target={c.external ? '_blank' : undefined} rel={c.external ? 'noreferrer' : undefined} className="block rounded-2xl border border-border bg-surface p-6 transition hover:border-[var(--primary)]/40">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground"><Icon className="h-5 w-5" /></div>
                       <p className="mt-5 text-xs font-black uppercase tracking-[0.15em] text-muted-foreground">{c.label}</p>
                       <p className="mt-1 text-lg font-black text-foreground">{c.value}</p>
                     </a>
@@ -493,11 +493,11 @@ export default function PublicHome() {
         <Reveal as="section" id="faq" className="mx-auto max-w-3xl px-5 pb-24 sm:px-6">
           <div className="text-center"><p className="text-xs font-black uppercase tracking-[0.22em] text-primary">FAQ</p><h2 className="mt-3 text-3xl font-black">Frequently Asked Questions</h2></div>
           <div className="mt-9 space-y-3">
-            {faqs.map(([q, a], i) => <div key={q} className="rounded-xl border border-white/10 bg-surface">
+            {faqs.map(([q, a], i) => <div key={q} className="rounded-xl border border-border bg-surface">
               <button className="flex w-full items-center justify-between gap-5 px-5 py-4 text-left text-sm font-bold" onClick={() => setOpenFaq(openFaq === i ? null : i)}>
                 <span>{q}</span><ChevronDown className={`h-4 w-4 shrink-0 text-primary transition-transform ${openFaq === i ? 'rotate-180' : ''}`} />
               </button>
-              {openFaq === i && <div className="border-t border-white/10 px-5 pb-5 pt-4 text-sm leading-6 text-[var(--text-muted)]">{a}</div>}
+              {openFaq === i && <div className="border-t border-border px-5 pb-5 pt-4 text-sm leading-6 text-[var(--text-muted)]">{a}</div>}
             </div>)}
           </div>
         </Reveal>
@@ -513,7 +513,7 @@ export default function PublicHome() {
         </Reveal>
       </main>
 
-      <footer className="border-t border-white/10 bg-surface">
+      <footer className="border-t border-border bg-surface">
         <div className="mx-auto grid max-w-7xl gap-10 px-5 py-14 sm:px-6 md:grid-cols-2 lg:grid-cols-4">
           <div>
             <div className="flex items-center gap-3"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-xs font-black text-foreground">OT</span><span className="font-black">OliTechs Grand</span></div>
@@ -524,10 +524,10 @@ export default function PublicHome() {
           <div><h3 className="text-sm font-bold">Legal & Contact</h3><div className="mt-4 space-y-3 text-sm text-[var(--text-muted)]"><a className="block hover:text-foreground" href="#">Terms</a><a className="block hover:text-foreground" href="#">Privacy</a><a className="block hover:text-foreground" href={CONTACT.phoneHref}>{CONTACT.phone}</a><a className="block hover:text-foreground" href={`mailto:${CONTACT.email}`}>{CONTACT.email}</a></div></div>
           <div>
             <h3 className="text-sm font-bold">Stay in the loop</h3><p className="mt-4 text-sm leading-6 text-muted-foreground">Product updates and hospitality tips. No spam.</p>
-            <form onSubmit={e => e.preventDefault()} className="mt-4 flex gap-2"><input aria-label="Email" type="email" placeholder="you@hotel.com" className="min-w-0 flex-1 rounded-full border border-white/10 bg-surface px-4 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-[var(--primary)]" /><button className="shrink-0 rounded-full bg-primary px-4 py-2.5 text-xs font-black text-foreground hover:bg-primary">Subscribe</button></form>
+            <form onSubmit={e => e.preventDefault()} className="mt-4 flex gap-2"><input aria-label="Email" type="email" placeholder="you@hotel.com" className="min-w-0 flex-1 rounded-full border border-border bg-surface px-4 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-[var(--primary)]" /><button className="shrink-0 rounded-full bg-primary px-4 py-2.5 text-xs font-black text-foreground hover:bg-primary">Subscribe</button></form>
           </div>
         </div>
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 border-t border-white/10 px-5 py-6 text-center sm:px-6 md:flex-row md:text-left">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 border-t border-border px-5 py-6 text-center sm:px-6 md:flex-row md:text-left">
           <p className="text-xs text-muted-foreground">© 2026 OliTechs. All rights reserved.</p>
           <div className="flex flex-wrap items-center justify-center gap-4 text-xs">
             <a href={CONTACT.whatsapp} target="_blank" rel="noreferrer" className="font-black text-primary hover:text-foreground"><MessageCircle className="mr-1 inline h-4 w-4" />Designed by Shadrack — WhatsApp {CONTACT.phone}</a>
