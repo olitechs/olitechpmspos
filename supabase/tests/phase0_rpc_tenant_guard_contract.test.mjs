@@ -27,7 +27,7 @@ test('tenant guard migration keeps RPC grants narrow and revokes public/anonymou
 });
 
 test('tenant guard migration is forward-only and transaction-bounded', () => {
-  assert.match(migration, /\\bbegin;/i);
+  assert.match(migration, /\bbegin;/i);
   assert.match(migration, /notify pgrst, 'reload schema'/i);
   assert.match(migration, /commit;\s*$/i);
   assert.doesNotMatch(migration, /drop table|truncate table|delete from public\.properties/i);
