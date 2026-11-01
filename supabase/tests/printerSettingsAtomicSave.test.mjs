@@ -15,7 +15,7 @@ test('printer settings save uses one property-scoped transaction for printer and
   assert.ok(saveHandler, 'printer save handler should be present');
   assert.ok(!saveHandler.includes("from('printer_assignments').delete()"));
   assert.ok(!saveHandler.includes("from('printer_assignments').insert("));
-  assert.match(page, /verify\\(savedPrinter\\.id,savedPrinter,assignmentTypes\\)/);
+  assert.match(page, /verify\(savedPrinter\.id,savedPrinter,assignmentTypes\)/);
 });
 
 test('atomic printer RPC validates tenant authority and allowed routing types', () => {
