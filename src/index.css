@@ -132,6 +132,23 @@
 @layer components {
   .app-shell { background: var(--canvas); color: var(--text); }
   .global-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: none; }
+  /* Legacy utility-class guardrails: keep foregrounds paired with their surfaces. */
+  .bg-primary.text-foreground { color: var(--on-primary) !important; }
+  .bg-secondary.text-white { color: var(--text) !important; }
+  .bg-white.text-white { color: var(--text) !important; }
+  .bg-slate-900.text-foreground { background-color: var(--primary) !important; color: var(--on-primary) !important; }
+  .bg-surface.text-black { color: var(--text) !important; }
+
+  /* Older screens still contain fixed light/dark utility classes. Rebind them
+     to the active theme so dark text never sits on dark surfaces and white
+     panels do not remain blinding white in the dark appearance. */
+  :root[data-theme="dark"] .bg-white { background-color: var(--surface) !important; }
+  :root[data-theme="dark"] .text-black,
+  :root[data-theme="dark"] .text-slate-900,
+  :root[data-theme="dark"] .text-slate-800,
+  :root[data-theme="dark"] .text-gray-900 { color: var(--text) !important; }
+  :root[data-theme="dark"] .border-slate-200,
+  :root[data-theme="dark"] .border-gray-200 { border-color: var(--border) !important; }
   .global-primary-button { background: var(--primary); color: var(--primary-foreground); min-height: 40px; border: 1px solid var(--primary); border-radius: var(--radius-control); font-weight: 500; }
   .global-primary-button:hover { background: var(--primary-hover); }
   .global-secondary-button { background: var(--surface); border: 1px solid var(--border); color: var(--primary); min-height: 40px; border-radius: var(--radius-control); font-weight: 500; }
