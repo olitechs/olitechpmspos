@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import {
-  CalendarDays, ChevronLeft, ChevronRight, Link2, Plus, RefreshCw, X, Save, Trash2,
+  CalendarDays, ChevronLeft, ChevronRight, Link2, Plus, RefreshCw, X, Save, Trash2, Ban,
   Printer, BedDouble, Download, AlertTriangle, Settings2,
 } from 'lucide-react';
 import {
@@ -104,12 +104,13 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   const propertyId = user?.property?.id;
   const todayDate = useMemo(() => getPmsTodayDate(), []);
   const today = dateKey(todayDate);
-    const [month, setMonth] = useState(startOfMonth(todayDate));
-  const [viewMode, setViewMode] = useState('month');
-  const [windowStart, setWindowStart] = useState(todayDate);
-  const [range, setRange] = useState(null);
-  const [fromInput, setFromInput] = useState('');
-  const [toInput, setToInput] = useState('');
+    const initialRange = useMemo(() => ({ from: dateKey(subDays(todayDate, 9)), to: dateKey(addDays(todayDate, 19)) }), [todayDate]);
+  const [month, setMonth] = useState(startOfMonth(todayDate));
+  const [viewMode, setViewMode] = useState('rolling');
+  const [windowStart, setWindowStart] = useState(subDays(todayDate, 9));
+  const [range, setRange] = useState(initialRange);
+  const [fromInput, setFromInput] = useState(initialRange.from);
+  const [toInput, setToInput] = useState(initialRange.to);
   const [rangeError, setRangeError] = useState('');
   const [focusToday, setFocusToday] = useState(true);
   const [modal, setModal] = useState(null);
@@ -161,7 +162,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   }, [modal?.reservationId, modal?.groupId, normalizedReservations]);
 
   useEffect(() => {
-    if (!focusToday || range || viewMode !== 'month' || !scrollRef.current || !todayRef.current) return;
+    if (!focusToday || !scrollRef.current || !todayRef.current) return;
     const timer = setTimeout(() => {
       // Keep two dates before today visible: today becomes the third date beside Rooms.
       const todayIndex = columns.findIndex(day => dateKey(day) === today);
@@ -169,7 +170,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
       setFocusToday(false);
     }, 50);
     return () => clearTimeout(timer);
-  }, [columns, focusToday, range, viewMode]);
+  }, [columns, focusToday, range, viewMode, dayWidth]);
 
   useEffect(() => {
     if (!printNow) return;
@@ -239,18 +240,37 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   };
   const performGroupMove = async (all) => { const { reservation, target } = groupMoveConfirmation; try { if (!all) await pmsService.movePlannerReservation({ reservationId: reservation.id, roomId: target.roomId, checkIn: target.checkIn, checkOut: target.checkOut }); else await pmsService.moveReservationGroup({ groupId: reservation.groupId, movedReservationId: reservation.id, roomId: target.roomId, checkIn: target.checkIn, checkOut: target.checkOut }); toast.success('Reservation moved'); setGroupMoveConfirmation(null); onRefresh?.(); } catch (e) { toast.error(e.message); setGroupMoveConfirmation(null); onRefresh?.(); } };
 
-  const applyRange = () => {
+  const applyRange = (from = fromInput, to = toInput) => {
     setRangeError('');
-    if (!fromInput || !toInput) { setRangeError('Select both From and To dates.'); return; }
-    if (toInput < fromInput) { setRangeError('To date must be on or after From date.'); return; }
-    const days = differenceInCalendarDays(parseDate(toInput), parseDate(fromInput)) + 1;
-    if (days > 31) { setRangeError('Max 31 days allowed'); return; }
+    if (!from || !to) { setRangeError('Select both start and end dates.'); return; }
+    if (to < from) { setRangeError('End date must be on or after start date.'); return; }
+    const days = differenceInCalendarDays(parseDate(to), parseDate(from)) + 1;
+    if (days > 31) { setRangeError('Maximum visible range is 31 days.'); return; }
     if (days < 1) { setRangeError('Minimum range is 1 day.'); return; }
-    setRange({ from: fromInput, to: toInput }); setFocusToday(false);
+    setRange({ from, to }); setFocusToday(false); setViewMode('rolling');
+  };
+  const updateRangeDate = (field, value) => {
+    const nextFrom = field === 'from' ? value : fromInput;
+    const nextTo = field === 'to' ? value : toInput;
+    if (field === 'from') setFromInput(value); else setToInput(value);
+    if (nextFrom && nextTo && nextTo >= nextFrom) applyRange(nextFrom, nextTo);
+    else if (nextFrom && nextTo) setRangeError('End date must be on or after start date.');
+  };
+  const shiftVisibleRange = (delta) => {
+    const from = range?.from || dateKey(columns[0] || todayDate);
+    const to = range?.to || dateKey(columns[columns.length - 1] || todayDate);
+    const nextFrom = dateKey(addDays(parseDate(from), delta));
+    const nextTo = dateKey(addDays(parseDate(to), delta));
+    setFromInput(nextFrom); setToInput(nextTo); setRange({ from: nextFrom, to: nextTo });
+    setRangeError(''); setFocusToday(false); setViewMode('rolling');
   };
   const addClosure = () => { const room=plannerRooms[0]; if(!room) return; const start=addDays(todayDate,2); const end=addDays(start,2); setClosures(prev=>[...prev,{id:`closure-${Date.now()}`,roomId:room.id,start:dateKey(start),end:dateKey(end),label:'Out of order'}]); toast.success(`Closure added to Room ${room.number}`); };
   const clearRange = () => { setRange(null); setRangeError(''); setFromInput(''); setToInput(''); setMonth(startOfMonth(todayDate)); setWindowStart(todayDate); setFocusToday(true); };
-  const goToday = () => { setRange(null); setFromInput(''); setToInput(''); setMonth(startOfMonth(todayDate)); setWindowStart(todayDate); setFocusToday(viewMode === 'month'); };
+  const goToday = () => {
+    const from = dateKey(subDays(todayDate, 9)), to = dateKey(addDays(todayDate, 19));
+    setRange({ from, to }); setFromInput(from); setToInput(to); setMonth(startOfMonth(todayDate));
+    setWindowStart(subDays(todayDate, 9)); setViewMode('rolling'); setRangeError(''); setFocusToday(true);
+  };
   const shiftMonth = (delta) => { setRange(null); setFromInput(''); setToInput(''); setFocusToday(false); setMonth((d) => new Date(d.getFullYear(), d.getMonth() + delta, 1)); };
   const shiftWindow = (delta) => { setRange(null); setFromInput(''); setToInput(''); setFocusToday(false); setWindowStart((d) => addDays(parseDate(dateKey(d)), delta)); };
   const switchView = (mode) => { setViewMode(mode); setRange(null); setFromInput(''); setToInput(''); setFocusToday(mode === 'month'); if (mode === 'rolling') setWindowStart(todayDate); else setMonth(startOfMonth(todayDate)); };
@@ -293,35 +313,52 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     .room-planner-grid-frame { position: relative; overflow: visible; border-radius: 12px; }
     .room-planner-scroll { position: relative; min-width: 0; }
     .room-planner-room-cell { box-shadow: 5px 0 8px -6px rgba(15,23,42,.5); }
-    .room-planner-room-cell::after { content: ''; position: absolute; top: 0; right: -1px; bottom: 0; width: 1px; background: var(--border); pointer-events: none; } .room-planner-date-cell { scroll-margin-left: 2px; transition: background-color 120ms ease; } .room-planner-date-cell:hover { filter: brightness(.97); } .room-planner-date-cell.room-planner-today { box-shadow: inset 0 -3px 0 var(--primary); }  .room-planner-day-cell { transition: background-color 100ms ease; } .room-planner-day-cell:hover { background-color: color-mix(in srgb, var(--primary) 9%, var(--surface)); } .room-planner-day-cell.room-planner-weekend { background-color: color-mix(in srgb, var(--grid-weekend) 78%, var(--surface)); } .room-planner-day-cell.room-planner-today-cell { box-shadow: inset 1px 0 0 color-mix(in srgb, var(--primary) 40%, transparent), inset -1px 0 0 color-mix(in srgb, var(--primary) 40%, transparent); } .reservation-bar { display:flex; align-items:center; padding:0 9px; font-size:11px; font-weight:700; border-radius:7px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-height:26px; box-shadow: 0 2px 4px rgba(15,23,42,.14); transition: box-shadow 120ms ease, filter 120ms ease; } .reservation-bar:hover { box-shadow: 0 4px 9px rgba(15,23,42,.2); filter: saturate(1.04); } .room-planner-grid-row { min-height: 48px; } @media (prefers-reduced-motion: reduce) { .room-planner-date-cell, .room-planner-day-cell, .reservation-bar { transition: none; } }`}</style>
-    <div className="room-planner-toolbar px-3 pt-3 pb-2 shrink-0 print-hidden">
-      <div className="room-planner-toolbar-main flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-2 px-3 py-2 rounded-md" style={{background:'var(--planner-navy)',color:'var(--surface)'}}><CalendarDays size={17}/><span className="font-medium text-sm">Room Planner</span></div>
-        <button onClick={goToday} className="room-planner-tool-button px-4 py-2 rounded-md text-xs font-medium" style={{background:'var(--planner-blue)',color:'var(--primary-foreground)',border:'1px solid var(--planner-blue)'}}>Today</button>
-        <button onClick={() => viewMode === 'rolling' ? shiftWindow(-15) : shiftMonth(-1)} aria-label={viewMode === 'rolling' ? 'Previous 15 days' : 'Previous month'} className="room-planner-tool-button px-3 py-2 rounded-md font-medium" style={{background:'var(--surface-2)',border:'1px solid var(--border-strong)',color:'var(--text)'}}><ChevronLeft size={17}/></button>
-        <button onClick={() => switchView('rolling')} aria-pressed={viewMode === 'rolling'} className="room-planner-tool-button px-4 py-2 rounded-md text-xs font-medium" style={{background:viewMode === 'rolling'?'var(--planner-blue)':'var(--surface-2)',color:viewMode === 'rolling'?'#FFFFFF':'var(--text)',border:'1px solid var(--border-strong)'}}>15 GG</button>
-        <button onClick={() => switchView('month')} aria-pressed={viewMode === 'month'} className="room-planner-tool-button px-4 py-2 rounded-md text-xs font-medium" style={{background:viewMode === 'month'?'var(--planner-blue)':'var(--surface-2)',color:viewMode === 'month'?'#FFFFFF':'var(--text)',border:'1px solid var(--border-strong)'}}>Month</button>
-        <button onClick={() => viewMode === 'rolling' ? shiftWindow(15) : shiftMonth(1)} aria-label={viewMode === 'rolling' ? 'Next 15 days' : 'Next month'} className="room-planner-tool-button px-3 py-2 rounded-md font-medium" style={{background:'var(--surface-2)',border:'1px solid var(--border-strong)',color:'var(--text)'}}><ChevronRight size={17}/></button>
-        <select aria-label="Select month" value={format(month,'yyyy-MM')} onChange={e=>{const [year,mo]=e.target.value.split('-').map(Number);setRange(null);setFromInput('');setToInput('');setFocusToday(false);setViewMode('month');setMonth(new Date(year,mo-1,1));}} className="room-planner-tool-button min-w-[155px] px-3 py-2 rounded-md text-xs font-semibold" style={{background:'var(--surface)',border:'1px solid var(--border-strong)',color:'var(--text)'}}>
+    .room-planner-room-cell::after { content: ''; position: absolute; top: 0; right: -1px; bottom: 0; width: 1px; background: var(--border); pointer-events: none; } .room-planner-date-cell { scroll-margin-left: 2px; transition: background-color 120ms ease; } .room-planner-date-cell:hover { filter: brightness(.97); } .room-planner-date-cell.room-planner-today { box-shadow: inset 0 -3px 0 var(--primary); }  .room-planner-day-cell { transition: background-color 100ms ease; } .room-planner-day-cell:hover { background-color: color-mix(in srgb, var(--primary) 9%, var(--surface)); } .room-planner-day-cell.room-planner-weekend { background-color: color-mix(in srgb, var(--grid-weekend) 78%, var(--surface)); } .room-planner-day-cell.room-planner-today-cell { box-shadow: inset 1px 0 0 color-mix(in srgb, var(--primary) 40%, transparent), inset -1px 0 0 color-mix(in srgb, var(--primary) 40%, transparent); } .reservation-bar { display:flex; align-items:center; padding:0 9px; font-size:11px; font-weight:700; border-radius:7px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-height:26px; box-shadow: 0 2px 4px rgba(15,23,42,.14); transition: box-shadow 120ms ease, filter 120ms ease; } .reservation-bar:hover { box-shadow: 0 4px 9px rgba(15,23,42,.2); filter: saturate(1.04); } .room-planner-grid-row { min-height: 48px; } @media (prefers-reduced-motion: reduce) { .room-planner-date-cell, .room-planner-day-cell, .reservation-bar { transition: none; } }`}
+    .room-planner-toolbar{background:var(--cal-page);padding:6px 7px 8px;display:flex;flex-direction:column;gap:12px}
+    .room-planner-toolbar-top,.room-planner-toolbar-date-row{display:flex;align-items:center;gap:6px;min-width:0}
+    .room-planner-toolbar-top{min-height:38px}
+    .room-planner-toolbar-button{height:38px;min-height:38px;max-width:100%;flex:0 0 auto;border-radius:3px;padding:0 10px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font-size:16px;font-weight:500;line-height:1;white-space:nowrap}
+    .room-planner-neutral{background:var(--btn-neutral-bg);color:var(--btn-neutral-fg);border:1px solid var(--btn-neutral-bd)}
+    .room-planner-danger{background:var(--btn-danger-bg);color:var(--btn-danger-fg);border:1px solid var(--btn-danger-bg)}
+    .room-planner-today{background:var(--btn-today-bg);color:var(--btn-today-fg);border:1px solid var(--btn-today-bg)}
+    .room-planner-action{background:var(--btn-action-bg);color:var(--btn-action-fg);border:1px solid var(--btn-action-bg)}
+    .room-planner-primary{background:var(--primary);color:var(--on-primary);border:1px solid var(--primary);padding:0 16px}
+    .room-planner-date-input{height:38px;min-height:38px;flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:0 10px;background:var(--btn-neutral-bg);color:var(--btn-neutral-fg);border:1px solid var(--btn-neutral-bd);border-radius:3px}
+    .room-planner-date-input input{min-width:0;width:100%;height:34px;background:transparent;border:0;outline:0;color:var(--btn-neutral-fg);font-size:16px;font-family:inherit}
+    .room-planner-month-select{font-family:inherit;font-weight:500}
+    .room-planner-settings-panel{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 0;color:var(--cal-text);font-size:13px}
+    @media(max-width:1099px){.room-planner-toolbar-date-row{flex-wrap:wrap}.room-planner-toolbar-date-row>*{flex:0 0 auto}}
+    @media(max-width:600px){.room-planner-toolbar-date-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.room-planner-toolbar-date-row>*{width:100%!important;min-width:0}.room-planner-date-input{width:100%!important}.room-planner-month-select{grid-column:span 2}.room-planner-toolbar-top>*{flex:1 1 0}.room-planner-toolbar-button{font-size:14px}}
+</style>
+    <div className="room-planner-toolbar shrink-0 print-hidden">
+      <div className="room-planner-toolbar-top">
+        <button onClick={addClosure} className="room-planner-toolbar-button room-planner-danger" style={{width:141}}><Ban size={16}/>Add Closures</button>
+        <button onClick={() => openCreate(plannerRooms[0], range ? parseDate(range.from) : todayDate)} className="room-planner-toolbar-button room-planner-primary"><Plus size={16}/>New reservation</button>
+      </div>
+      <div className="room-planner-toolbar-date-row">
+        <button onClick={goToday} className="room-planner-toolbar-button room-planner-today" style={{width:131}}>Today</button>
+        <label className="room-planner-date-input" style={{width:267}}>
+          <CalendarDays size={17} aria-hidden="true"/>
+          <input lang="en-GB" type="date" aria-label="Start date" value={fromInput} onChange={e=>updateRangeDate('from',e.target.value)}/>
+        </label>
+        <label className="room-planner-date-input" style={{width:267}}>
+          <CalendarDays size={17} aria-hidden="true"/>
+          <input lang="en-GB" type="date" aria-label="End date" value={toInput} onChange={e=>updateRangeDate('to',e.target.value)}/>
+        </label>
+        <button onClick={()=>shiftVisibleRange(-15)} className="room-planner-toolbar-button room-planner-neutral" style={{width:131}}><ChevronLeft size={16}/><span>15 days</span></button>
+        <button onClick={()=>shiftVisibleRange(15)} className="room-planner-toolbar-button room-planner-neutral" style={{width:131}}><span>15 days</span><ChevronRight size={16}/></button>
+        <select aria-label="Select month" value={format(month,'yyyy-MM')} onChange={e=>{const [year,mo]=e.target.value.split('-').map(Number);setRange(null);setFromInput('');setToInput('');setRangeError('');setFocusToday(false);setViewMode('month');setMonth(new Date(year,mo-1,1));}} className="room-planner-toolbar-button room-planner-neutral room-planner-month-select" style={{width:267}}>
           {Array.from({length:25},(_,i)=>{const d=new Date(todayDate.getFullYear(),todayDate.getMonth()-12+i,1);return <option key={format(d,'yyyy-MM')} value={format(d,'yyyy-MM')}>{format(d,'MMMM yyyy')}</option>})}
         </select>
-        <div className="room-planner-date-range text-sm font-medium px-2" style={{color:'var(--text)'}}>{range ? `${format(parseDate(range.from),'d MMM yyyy')} – ${format(parseDate(range.to),'d MMM yyyy')}` : viewMode === 'rolling' ? `${format(columns[0],'d MMM yyyy')} – ${format(columns[columns.length - 1],'d MMM yyyy')}` : format(month,'MMMM yyyy')}</div>
-        <div className="room-planner-toolbar-actions ml-auto flex items-center gap-2">
-          <button title="Print calendar" aria-label="Print calendar" onClick={()=>setPrintPreview(true)} className="room-planner-tool-button p-2.5 rounded-md" style={{background:'var(--surface-2)',border:'1px solid var(--border-strong)',color:'var(--text)'}}><Printer size={17}/></button>
-          <button title="Planner settings and date range" aria-label="Planner settings and date range" onClick={()=>setPlannerToolsOpen(v=>!v)} className="room-planner-tool-button p-2.5 rounded-md" style={{background:'var(--planner-blue)',border:'1px solid var(--planner-blue)',color:'var(--primary-foreground)'}}><Settings2 size={17}/></button>
-          {onRefresh && <button title="Refresh" aria-label="Refresh reservations" onClick={onRefresh} className="room-planner-tool-button p-2.5 rounded-md" style={{background:'var(--surface-2)',border:'1px solid var(--border-strong)',color:'var(--text)'}}><RefreshCw size={16}/></button>}
-          <button onClick={() => openCreate(plannerRooms[0], range ? parseDate(range.from) : todayDate)} className="room-planner-tool-button flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium" style={{background:'var(--planner-navy)',color:'var(--primary-foreground)',border:'1px solid var(--planner-navy)'}}><Plus size={15}/> Add Booking</button>
-        </div>
+        <button title="Print calendar" aria-label="Print calendar" onClick={()=>setPrintPreview(true)} className="room-planner-toolbar-button room-planner-neutral room-planner-icon-button" style={{width:131}}><Printer size={18}/></button>
+        <button title="Planner settings and date range" aria-label="Planner settings and date range" aria-expanded={plannerToolsOpen} onClick={()=>setPlannerToolsOpen(v=>!v)} className="room-planner-toolbar-button room-planner-action" style={{width:130}}><Settings2 size={18}/></button>
       </div>
-      {plannerToolsOpen && <div className="room-planner-settings-panel mt-3 p-3 rounded-md flex flex-wrap items-end gap-2" style={{background:'var(--surface-2)',border:'1px solid var(--border)'}}>
-        <div className="text-xs font-medium w-full" style={{color:'var(--text)'}}>Custom date range</div>
-        <label className="flex items-center gap-2 text-xs font-semibold" style={{color:'var(--text)'}}>From <InputField type="date" value={fromInput} onChange={e=>setFromInput(e.target.value)} className="w-[145px] h-9"/></label>
-        <label className="flex items-center gap-2 text-xs font-semibold" style={{color:'var(--text)'}}>To <InputField type="date" value={toInput} onChange={e=>setToInput(e.target.value)} className="w-[145px] h-9"/></label>
-        <button onClick={applyRange} className="px-4 h-9 rounded-md text-xs font-medium" style={{background:'var(--planner-blue)',color:'var(--primary-foreground)'}}>Apply range</button>
-        <button onClick={clearRange} className="px-4 h-9 rounded-md text-xs font-medium" style={{background:'var(--surface)',border:'1px solid var(--border-strong)',color:'var(--text)'}}>Clear</button>
-        <span className="text-xs ml-auto" style={{color:'var(--muted)'}}>{plannerRooms.length} rooms · {normalizedReservations.length} active stays</span>
+      {plannerToolsOpen && <div className="room-planner-settings-panel">
+        <span>{plannerRooms.length} rooms · {normalizedReservations.length} active stays</span>
+        {onRefresh && <button onClick={onRefresh} className="room-planner-toolbar-button room-planner-neutral"><RefreshCw size={15}/>Refresh reservations</button>}
+        <button onClick={clearRange} className="room-planner-toolbar-button room-planner-neutral">Clear date range</button>
       </div>}
-      {rangeError && <div className="mt-2 flex items-center gap-2 text-xs font-semibold" style={{color:DESTRUCTIVE}}><AlertTriangle size={14}/>{rangeError}</div>}
+      {rangeError && <div className="mt-2 flex items-center gap-2 text-xs font-semibold" style={{color:'var(--danger-text)'}}><AlertTriangle size={14}/>{rangeError}</div>}
     </div>
 
     <div ref={scrollRef} tabIndex={0} role="region" aria-label="Room availability timeline. Scroll horizontally to change dates and vertically to change rooms." className="room-planner-scroll flex-1 min-h-0 overflow-auto px-4 pb-4 print-hidden">
