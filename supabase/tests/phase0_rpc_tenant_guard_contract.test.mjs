@@ -43,3 +43,38 @@ test('tenant guard SECURITY DEFINER RPCs pin search_path and scope reads to the 
   assert.match(propertyRpc, /security definer[\s\S]*?set search_path = public[\s\S]*?set row_security = off/i);
   assert.ok(propertyRpc.indexOf('auth.uid() is distinct from p_user_id') < propertyRpc.indexOf('insert into public.properties'));
 });
+
+const printerFoundation = await readFile(
+  new URL('../migrations/0061_printer_recode_settings.sql', import.meta.url),
+  'utf8',
+);
+const printerGroups = await readFile(
+  new URL('../migrations/0057_printer_groups.sql', import.meta.url),
+  'utf8',
+);
+const pmsService = await readFile(
+  new URL('../../src/services/pmsService.js', import.meta.url),
+  'utf8',
+);
+
+test('printer foundation migration has valid idempotent realtime publication block', () => {
+  assert.match(printerFoundation, /do \$\$[\s\S]*?alter publication supabase_realtime add table public\.print_jobs;[\s\S]*?when duplicate_object then null;[\s\S]*?when undefined_object then null;[\s\S]*?end\s*\$\$;/i);
+  assert.doesNotMatch(printerFoundation, /do \$\s+begin[\s\S]*?end \$;/i);
+});
+
+test('printer tables used by the app are created by tracked Supabase migrations', () => {
+  assert.match(printerGroups, /create table if not exists public\.printer_groups/i);
+  assert.match(printerFoundation, /create table if not exists public\.print_agents/i);
+  assert.match(printerFoundation, /create table if not exists public\.printers/i);
+  assert.match(printerFoundation, /create table if not exists public\.printer_group_printers/i);
+  assert.match(printerFoundation, /create table if not exists public\.print_jobs/i);
+});
+
+test('daily POS summary app RPC arguments match the reporting function contract', async () => {
+  const reporting = await readFile(
+    new URL('../migrations/0060_pos_phase4b_reporting.sql', import.meta.url),
+    'utf8',
+  );
+  assert.match(pmsService, /rpc\('fn_daily_pos_summary',\s*\{\s*p_property_id:\s*propertyId,\s*p_business_date:/s);
+  assert.match(reporting, /function public\.fn_daily_pos_summary\(\s*p_property_id uuid,\s*p_business_date date/i);
+});
