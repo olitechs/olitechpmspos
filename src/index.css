@@ -143,8 +143,8 @@
   /* Older screens still contain fixed light/dark utility classes. Rebind them
      to the active theme so dark text never sits on dark surfaces and white
      panels do not remain blinding white in the dark appearance. */
-  :root[data-theme="dark"] .bg-white { background-color: var(--surface) !important; }
-  :root[data-theme="dark"] .text-black,
+  :root[data-theme="dark"] .bg-white:not(.receipt-preview-paper) { background-color: var(--surface) !important; }
+  :root[data-theme="dark"] :not(.receipt-preview-paper).text-black,
   :root[data-theme="dark"] .text-slate-900,
   :root[data-theme="dark"] .text-slate-800,
   :root[data-theme="dark"] .text-gray-900 { color: var(--text) !important; }
