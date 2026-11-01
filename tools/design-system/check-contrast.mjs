@@ -46,7 +46,8 @@ const checks = [
   ['open table label', light['table-free-fg'], light['table-free-bg'], 4.5],
   ['unsettled bill label', light['table-bill-fg'], light['table-bill-bg'], 4.5],
   ['dark unsettled bill label', dark['table-bill-fg'], dark['table-bill-bg'], 4.5],
-  ['light planner deposit text', light['pay-part-fg'], light['pay-part'], 4.5],\n  ['dark planner deposit text', dark['pay-part-fg'], dark['pay-part'], 4.5],
+  ['light planner deposit text', light['pay-part-fg'], light['pay-part'], 4.5],
+  ['dark planner deposit text', dark['pay-part-fg'], dark['pay-part'], 4.5],
 ];
 let failures = 0;
 for (const [label, foreground, background, minimum] of checks) {
