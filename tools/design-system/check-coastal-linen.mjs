@@ -10,28 +10,25 @@ const required = [
   '--text-muted: #566A73', '--border: #DCE5E8', '--floor-bg: #D7D7D7',
   '--table-free-bg: #74C365', '--table-occupied-bg: #FA003F', '--table-bill-bg: #FAFAFA',
 ];
-const darkRequired = [
+const forbiddenDarkTokens = [
   '--canvas:#0E1417', '--surface:#151D21', '--sidebar:#11191C',
   '--primary:#2BB3BF', '--primary-hover:#4CC7D1', '--primary-soft:#12343A',
   '--text:#E6EEF0', '--text-muted:#93A5AD', '--border:#26343A', '--floor-bg:#1B2327',
 ];
 const errors = [];
-for (const token of required) if (!css.includes(token)) errors.push('Missing canonical token: ' + token);
-if (!/:root\[data-theme="dark"\]\s*\{/.test(css)) errors.push('Dark theme token block is missing.');
-for (const token of darkRequired) if (!css.includes(token)) errors.push('Missing dark token: ' + token);
-const lightRootStart = css.indexOf(':root {');
-const darkRootStart = css.indexOf(':root[data-theme="dark"]');
-const componentsStart = css.indexOf('@layer components');
-const globalTokens = css.slice(lightRootStart, darkRootStart);
-if (/--pay-(?:paid|deposit|unpaid|none|partial|total)\s*:/.test(globalTokens)) errors.push('Payment token is global; it must be scoped to .room-planner.');
-if (!/\.room-planner\s*\{[^}]*--pay-paid/.test(css)) errors.push('Room Planner payment tokens are not scoped under .room-planner.');
-if (componentsStart < 0) errors.push('CSS component layer is missing.');
+for (const token of required) if (!css.includes(token)) errors.push('Missing canonical light-only token: ' + token);
+if (!/:root\\[data-theme="dark"\\]\\s*\\{/.test(css)) errors.push('Dark preference compatibility block is missing.');
+for (const token of forbiddenDarkTokens) if (css.includes(token)) errors.push('Forbidden dark-surface token remains: ' + token);
+if (!/color-scheme:\\s*light/.test(css)) errors.push('The application must force light color-scheme controls.');
+if (!/body\\s*\\{[^}]*background:\\s*var\\(--canvas\\)[^}]*color:\\s*var\\(--text\\)/s.test(css)) errors.push('Body must use the canonical light canvas and text tokens.');
+if (!/\\[class~="bg-slate-950"\\][^{]*\\{[^}]*background-color:\\s*var\\(--sidebar\\)/s.test(css)) errors.push('Legacy dark surfaces must be mapped to a light palette surface.');
+if (!/\\.room-planner\\s*\\{[^}]*--pay-paid/.test(css)) errors.push('Room Planner payment tokens are not scoped under .room-planner.');
 
 function walk(dir) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
     if (entry.isDirectory()) { walk(path); continue; }
-    if (!/\.(jsx?|tsx?)$/.test(entry.name)) continue;
+    if (!/\\.(jsx?|tsx?)$/.test(entry.name)) continue;
     const rel = relative(root, path).replaceAll('\\\\', '/');
     if (rel.startsWith('src/components/pms/RoomPlanner') || /Receipt|Print|Thermal/i.test(rel)) continue;
     if (readFileSync(path, 'utf8').includes('var(--pay-')) errors.push('Payment token outside Room Planner: ' + rel);
@@ -39,6 +36,6 @@ function walk(dir) {
 }
 walk(join(root, 'src'));
 if (errors.length) {
-  console.error('Theme token contract failed:\\n' + errors.map((e) => '- ' + e).join('\\n'));
+  console.error('Light-only Coastal Linen contract failed:\\n' + errors.map((e) => '- ' + e).join('\\n'));
   process.exitCode = 1;
-} else console.log('Light/dark token contract, floor colours and Room Planner payment scope passed.');
+} else console.log('Light-only Coastal Linen tokens, legacy surface mapping and Room Planner payment scope passed.');
