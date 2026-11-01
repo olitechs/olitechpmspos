@@ -5,142 +5,127 @@
 @layer base {
   :root {
     color-scheme: light;
-    /* Coastal Linen: canonical colour tokens. Define colours here only. */
-    --canvas: #F4F7F8;
-    --surface: #FFFFFF;
-    --sidebar: #E6EFF0;
-    --primary: #0F7C86;
-    --primary-foreground: #FFFFFF;
-    --primary-hover: #0B6169;
-    --primary-soft: #DDF0F1;
-    --accent: #C98A52;
-    --text: #14232B;
-    /* Darkened slightly to meet WCAG AA on canvas and white surfaces. */
-    --text-muted: #566A73;
-    --border: #DCE5E8;
-    --success: #2F9E7A;
-    --success-text: #236F58;
-    --success-soft: #E3F4EE;
-    --danger: #D9534F;
-    --danger-foreground: #FFFFFF;
-    --danger-text: #B42318;
-    --danger-soft: #FBE9E8;
-    --warning: #E07A5F;
-    --warning-text: #9A4B36;
-    --warning-soft: #FCEDE8;
-    --info: var(--primary);
-    --info-soft: var(--primary-soft);
-    --room-clean: #3FA77A;
-    --room-dirty: #D9826B;
-    --room-occupied: #4B7BE5;
-    --room-checkout: #6C63D9;
-    --room-out-of-order: #B8BEC6;
-    --floor-bg: #D7D7D7;
-    --table-free-bg: #74C365; --table-free-fg: #10260A; --table-free-border: #5CA84E;
-    --table-occupied-bg: #FA003F; --table-occupied-fg: #FFFFFF; --table-occupied-border: #C70032;
-    --table-bill-bg: #FAFAFA; --table-bill-fg: #14232B; --table-bill-border: #9AA3A8;
-    --payment-deposit-foreground: #5A4310;
-    --payment-status-foreground: #14232B;
-    --stay-optioned-foreground: #FFFFFF;
+    /* Canonical light palette — keep all colour literals in this token layer. */
+    --canvas:#F4F7F8; --surface:#FFFFFF; --sidebar:#E6EFF0; --border:#C9D6DA; --input-border:#7C9199;
+    --panel-head:#E6EFF0;
+    --text:#14232B; --text-muted:#4F646D;
+    --primary:#0F7C86; --on-primary:#FFFFFF; --primary-foreground:var(--on-primary);
+    --primary-hover:#0B6169; --primary-text:#0B6169; --primary-soft:#DDF0F1;
+    --accent:#9A5F2B;
+    --success:#1B7A57; --success-soft:#E3F3EC;
+    --danger:#B42318; --danger-foreground:#FFFFFF; --danger-text:#B42318; --danger-soft:#FBE8E6;
+    --warning:#8F5400; --warning-text:#8F5400; --warning-soft:#FBEFD9;
+    --info:#2A5AA7; --info-soft:#E4EDF9;
+    --chip-bg:#4F646D; --chip-fg:#FFFFFF;
+    --tooltip-shadow:0 8px 24px rgba(20,35,43,.18);
+    --btn-neutral-bg:#E8E8E8; --btn-neutral-fg:#333333; --btn-neutral-bd:#CFCFCF;
+    --btn-danger-bg:#C3312D; --btn-danger-fg:#FFFFFF;
+    --btn-today-bg:#2F7A33; --btn-today-fg:#FFFFFF;
+    --btn-action-bg:#3072AB; --btn-action-fg:#FFFFFF;
+    --cal-page:#F9FBFD; --cal-head:#FFFFFF; --cal-grid:#E0E0E0; --cal-group:#F3F3F3;
+    --cal-weekend:#D9EDF7; --cal-today:#DFF0D8;
+    --cal-text:#4F646D; --cal-room:#3F4F56; --cal-scroll:#8B8B8B;
+    --pay-none:#FC7F2C; --pay-none-fg:#2B1200; --pay-none-bd:rgba(0,0,0,.20);
+    --pay-part:#E0CD29; --pay-part-fg:#2E2900; --pay-part-bd:rgba(0,0,0,.20);
+    --pay-paid:#79AB3E; --pay-paid-fg:#14230A; --pay-paid-bd:rgba(0,0,0,.20);
+    --pay-opt:#3CB5AE; --pay-opt-fg:#06201E; --pay-opt-bd:rgba(0,0,0,.20);
+    --st-cancel:#990000; --st-cancel-fg:#FFFFFF; --st-cancel-bd:rgba(0,0,0,.20);
 
-
-    --planner-ice: var(--primary-soft);
-    --planner-blue-soft: var(--primary-soft);
-    --planner-blue: var(--primary);
-    --planner-navy: var(--text);
-    --grid-weekend: var(--canvas);
-    --grid-today: var(--primary-soft);
-    --shadow: none;
-    --shadow-overlay: 0 8px 24px rgba(20,35,43,.08);
-    --overlay-scrim: rgba(20,35,43,.65);
+    /* Existing application semantic tokens, now aliases of the canonical palette. */
+    --room-clean:var(--success); --room-dirty:#D9826B; --room-occupied:#2A5AA7;
+    --room-checkout:#6C63D9; --room-out-of-order:#8B969C;
+    --floor-bg:#D7D7D7;
+    --table-free-bg:#74C365; --table-free-fg:#10260A; --table-free-border:#5CA84E;
+    --table-occupied-bg:#FA003F; --table-occupied-fg:#FFFFFF; --table-occupied-border:#C70032;
+    --table-bill-bg:#FAFAFA; --table-bill-fg:#14232B; --table-bill-border:#9AA3A8;
+    --payment-deposit-foreground:var(--pay-part-fg); --payment-status-foreground:var(--text);
+    --stay-optioned-foreground:var(--pay-opt-fg);
+    --planner-ice:var(--primary-soft); --planner-blue-soft:var(--primary-soft);
+    --planner-blue:var(--primary); --planner-navy:var(--text);
+    --grid-weekend:var(--cal-weekend); --grid-today:var(--cal-today);
+    --shadow:none; --shadow-overlay:var(--tooltip-shadow); --overlay-scrim:rgba(20,35,43,.55);
 
     /* shadcn semantic mappings */
-    --background: var(--canvas);
-    --foreground: var(--text);
-    --card: var(--surface);
-    --card-foreground: var(--text);
-    --popover: var(--surface);
-    --popover-foreground: var(--text);
-    --secondary: var(--sidebar);
-    --secondary-foreground: var(--text);
-    --muted: var(--text-muted);
-    --muted-foreground: var(--text-muted);
-    --accent-foreground: var(--text);
-    --destructive: var(--danger);
-    --destructive-foreground: var(--danger-foreground);
-    --input: var(--border);
-    --ring: var(--primary);
-    --radius: 12px;
-    --radius-control: 8px;
-    --control-border: var(--border);
+    --background:var(--canvas); --foreground:var(--text);
+    --card:var(--surface); --card-foreground:var(--text);
+    --popover:var(--surface); --popover-foreground:var(--text);
+    --secondary:var(--sidebar); --secondary-foreground:var(--text);
+    --muted:var(--sidebar); --muted-foreground:var(--text-muted);
+    --accent-foreground:var(--text); --destructive:var(--danger);
+    --destructive-foreground:var(--danger-foreground);
+    --input:var(--input-border); --ring:var(--primary-text);
+    --radius:12px; --radius-control:8px; --control-border:var(--border);
 
     /* Backward-compatible names mapped to canonical tokens. */
-    --bg: var(--canvas);
-    --surface-2: var(--sidebar);
-    --border-strong: var(--border);
-    --brand-dark: var(--text);
-    --brand-charcoal: var(--sidebar);
-    --action: var(--primary);
-    --action-hover: var(--primary-hover);
-    --action-text: var(--primary-foreground);
-    --brand-primary: var(--primary);
-    --brand-surface: var(--surface);
-    --on-dark: var(--text);
-    --stay-text: var(--text);
-    --brand-soft: var(--primary-soft);
-
-    --warning-text-legacy: var(--warning-text);
-    --room-charge: var(--primary);
-    --focus: var(--primary);
-    --table-free: var(--table-free-bg);
-    --table-occupied: var(--table-occupied-bg);
-    --table-bill: var(--table-bill-bg);
-    --table-reserved: var(--room-checkout);
-    --table-paid: var(--success);
-    --stay-occupied: var(--room-occupied);
-    --stay-checkout: var(--room-checkout);
-    --stay-optioned: var(--primary);
-    --stay-closed: var(--room-out-of-order);
-    --font-body: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    --font-heading: var(--font-body);
-    --font-display: var(--font-body);
-    --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --bg:var(--canvas); --surface-2:var(--sidebar); --border-strong:var(--border);
+    --brand-dark:var(--text); --brand-charcoal:var(--sidebar); --action:var(--primary);
+    --action-hover:var(--primary-hover); --action-text:var(--on-primary);
+    --brand-primary:var(--primary); --brand-surface:var(--surface); --on-dark:var(--text);
+    --stay-text:var(--text); --brand-soft:var(--primary-soft);
+    --warning-text-legacy:var(--warning-text); --room-charge:var(--primary); --focus:var(--primary-text);
+    --table-free:var(--table-free-bg); --table-occupied:var(--table-occupied-bg); --table-bill:var(--table-bill-bg);
+    --table-reserved:var(--room-checkout); --table-paid:var(--success);
+    --stay-occupied:var(--room-occupied); --stay-checkout:var(--room-checkout);
+    --stay-optioned:var(--pay-opt); --stay-closed:var(--room-out-of-order);
+    --font-body:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    --font-heading:var(--font-body); --font-display:var(--font-body);
+    --font-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
   }
 
-  /* Light-only Coastal Linen contract: dark mode selectors must never introduce dark surfaces. */
   :root[data-theme="dark"] {
-    color-scheme: light;
-    --canvas: #F4F7F8; --surface: #FFFFFF; --sidebar: #E6EFF0;
-    --primary: #0F7C86; --primary-hover: #0B6169; --primary-soft: #DDF0F1;
-    --primary-foreground: #FFFFFF; --accent: #C98A52;
-    --text: #14232B; --text-muted: #566A73; --border: #DCE5E8;
-    --success: #2F9E7A; --success-text: #236F58; --success-soft: #E3F4EE;
-    --danger: #D9534F; --danger-foreground: #FFFFFF; --danger-text: #B42318; --danger-soft: #FBE9E8;
-    --warning: #E07A5F; --warning-text: #9A4B36; --warning-soft: #FCEDE8;
-    --room-clean: #3FA77A; --room-dirty: #D9826B; --room-occupied: #4B7BE5;
-    --room-checkout: #6C63D9; --room-out-of-order: #B8BEC6;
-    --floor-bg: #D7D7D7;
-    --shadow-overlay: 0 8px 24px rgba(20,35,43,.08);
-    --overlay-scrim: rgba(20,35,43,.35);
-    --payment-deposit-foreground: #5A4310;
-    --payment-status-foreground: #14232B;
-    --stay-optioned-foreground: #FFFFFF;
+    color-scheme:dark;
+    --canvas:#10171A; --surface:#172126; --sidebar:#131C20; --border:#2C3B42; --input-border:#5A6F77;
+    --panel-head:#1E2B31;
+    --text:#E3EBED; --text-muted:#9DB0B8;
+    --primary:#137682; --on-primary:#F2F8F9; --primary-foreground:var(--on-primary);
+    --primary-hover:#0E6A75; --primary-text:#5CC6D0; --primary-soft:#17353B;
+    --accent:#D4A06E;
+    --success:#4CC39A; --success-soft:#143A2D;
+    --danger:#FF8A84; --danger-foreground:#3E1E1E; --danger-text:#FF8A84; --danger-soft:#3E1E1E;
+    --warning:#F0A56F; --warning-text:#F0A56F; --warning-soft:#3F2318;
+    --info:#8DB4F0; --info-soft:#1A2E52;
+    --chip-bg:#34464F; --chip-fg:#E3EBED;
+    --tooltip-shadow:0 8px 24px rgba(0,0,0,.45);
+    --btn-neutral-bg:#22313A; --btn-neutral-fg:#E3EBED; --btn-neutral-bd:#34464F;
+    --btn-danger-bg:#B3302B; --btn-danger-fg:#FBEDEC;
+    --btn-today-bg:#2F7A33; --btn-today-fg:#F2F8F9;
+    --btn-action-bg:#2A6496; --btn-action-fg:#F2F8F9;
+    --cal-page:#10171A; --cal-head:#172126; --cal-grid:#2C3B42; --cal-group:#1E2B31;
+    --cal-weekend:#1B2D38; --cal-today:#1C3326;
+    --cal-text:#9DB0B8; --cal-room:#C9D6DA; --cal-scroll:#4A5C64;
+    --pay-none:#8F4118; --pay-none-fg:#FFEBDD; --pay-none-bd:#F08A55;
+    --pay-part:#7A5A10; --pay-part-fg:#FFF3D6; --pay-part-bd:#D9B53F;
+    --pay-paid:#33591C; --pay-paid-fg:#EAF5DC; --pay-paid-bd:#8CC152;
+    --pay-opt:#17524F; --pay-opt-fg:#DDF5F3; --pay-opt-bd:#4FC9C0;
+    --st-cancel:#7A1F1F; --st-cancel-fg:#FFD9D6; --st-cancel-bd:#E0605A;
+    --room-clean:var(--success); --room-dirty:#D9826B; --room-occupied:#8DB4F0;
+    --room-checkout:#A69CF5; --room-out-of-order:#667780;
+    --floor-bg:#1B2327;
+    --table-free-bg:#33591C; --table-free-fg:#EAF5DC; --table-free-border:#8CC152;
+    --table-occupied-bg:#8F263F; --table-occupied-fg:#FFF0F1; --table-occupied-border:#FF8A9D;
+    --table-bill-bg:#26343A; --table-bill-fg:#E3EBED; --table-bill-border:#8A9BA2;
+    --payment-deposit-foreground:var(--pay-part-fg); --payment-status-foreground:var(--text);
+    --stay-optioned-foreground:var(--pay-opt-fg);
+    --planner-ice:var(--primary-soft); --planner-blue-soft:var(--primary-soft);
+    --planner-blue:var(--primary); --planner-navy:var(--text);
+    --grid-weekend:var(--cal-weekend); --grid-today:var(--cal-today);
+    --shadow-overlay:var(--tooltip-shadow); --overlay-scrim:rgba(0,0,0,.62);
   }
 
-  * { box-sizing: border-box; }
-  html, body, #root { min-height: 100%; }
-  html { font-family: var(--font-body); font-synthesis: none; text-rendering: optimizeLegibility; }
-  body { margin: 0; background: var(--canvas); color: var(--text); font-family: var(--font-body); font-size: 14px; font-weight: 400; }
-  h1, h2, h3, h4, .font-heading { font-family: var(--font-heading); font-weight: 500; }
-  :where(*):not(svg):not(path) { font-synthesis: none; }
-  button, a, input, select, textarea { transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease, opacity 150ms ease, transform 150ms ease; }
-  button { min-height: 36px; font-weight: 500; }
-  input, select, textarea { border-color: var(--border); }
-  input::placeholder, textarea::placeholder { color: var(--text-muted); opacity: 1; }
-  :focus-visible { outline: 2px solid color-mix(in srgb, var(--primary) 30%, transparent); outline-offset: 2px; }
-  ::selection { background: var(--primary-soft); color: var(--text); }
-  @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  * { box-sizing:border-box; }
+  html,body,#root { min-height:100%; }
+  html { font-family:var(--font-body); font-synthesis:none; text-rendering:optimizeLegibility; }
+  body { margin:0; background:var(--canvas); color:var(--text); font-family:var(--font-body); font-size:14px; font-weight:400; }
+  h1,h2,h3,h4,.font-heading { font-family:var(--font-heading); font-weight:500; }
+  :where(*):not(svg):not(path) { font-synthesis:none; }
+  button,a,input,select,textarea { transition:background-color 150ms ease,border-color 150ms ease,color 150ms ease,box-shadow 150ms ease,opacity 150ms ease,transform 150ms ease; }
+  button { min-height:36px; font-weight:500; }
+  input,select,textarea { border-color:var(--input-border); }
+  input::placeholder,textarea::placeholder { color:var(--text-muted); opacity:1; }
+  :focus-visible { outline:2px solid var(--primary-text); outline-offset:2px; }
+  ::selection { background:var(--primary-soft); color:var(--text); }
+  @media (prefers-reduced-motion:reduce) {
+    *,*::before,*::after { scroll-behavior:auto!important; animation-duration:.01ms!important; animation-iteration-count:1!important; transition-duration:.01ms!important; }
   }
 }
 
@@ -162,19 +147,21 @@
   .legend-checked_out { color: var(--room-occupied); opacity: .5; }
   .legend-closed { color: var(--room-out-of-order); background: repeating-linear-gradient(45deg, var(--room-out-of-order) 0 6px, var(--border) 6px 12px); }
   .payment-chip { width: 18px; height: 5px; border-radius: 999px; display: inline-block; }
-  .room-planner { --pay-paid: #3FA77A; --pay-deposit: #F2C14E; --pay-unpaid: #EE8A3C; --payment-text: var(--payment-status-foreground); --payment-deposit-text: var(--payment-deposit-foreground); }
-  .room-planner .payment-none { background: var(--pay-unpaid); color: var(--payment-text); }
-  .room-planner .payment-partial { background: var(--pay-deposit); color: var(--payment-deposit-text); }
-  .room-planner .payment-total { background: var(--pay-paid); color: var(--payment-text); }
+  .room-planner { --pay-unpaid:var(--pay-none); --pay-deposit:var(--pay-part); --payment-text:var(--text); --payment-deposit-text:var(--pay-part-fg); }
+  .room-planner .payment-none { background:var(--pay-none); color:var(--pay-none-fg); border:1px solid var(--pay-none-bd); }
+  .room-planner .payment-partial { background:var(--pay-part); color:var(--pay-part-fg); border:1px solid var(--pay-part-bd); }
+  .room-planner .payment-total { background:var(--pay-paid); color:var(--pay-paid-fg); border:1px solid var(--pay-paid-bd); }
   .room-planner .stay { background: var(--stay-color); color: var(--stay-text, var(--primary-foreground)); border-radius: 4px; padding: 2px 8px; border-left: 4px solid var(--pay-color, transparent); transition: opacity 150ms ease; }
   .room-planner .stay[data-status="occupied"] { --stay-color: var(--room-occupied); }
   .room-planner .stay[data-status="checkout"] { --stay-color: var(--room-checkout); }
-  .room-planner .stay[data-status="optioned"] { --stay-color: var(--primary); border-style: dashed; }
-  .room-planner .stay[data-status="confirmed"] { background: transparent; color: var(--text); border: 2px solid var(--room-occupied); }
-  .room-planner .stay[data-status="checked_out"] { opacity: .5; }
-  .room-planner .stay[data-pay="none"] { --pay-color: var(--pay-unpaid); }
-  .room-planner .stay[data-pay="partial"] { --pay-color: var(--pay-deposit); }
-  .room-planner .stay[data-pay="total"] { --pay-color: var(--pay-paid); }
+  .room-planner .stay[data-status="optioned"] { --stay-color:var(--pay-opt); color:var(--pay-opt-fg); border:1px solid var(--pay-opt-bd); border-style:dashed; }
+  .room-planner .stay[data-status="confirmed"] { background:var(--pay-paid); color:var(--pay-paid-fg); border:1px solid var(--pay-paid-bd); }
+  .room-planner .stay[data-status="checked_out"] { opacity:.5; }
+  .room-planner .stay[data-pay="none"] { --pay-color:var(--pay-none); }
+  .room-planner .stay[data-pay="partial"] { --pay-color:var(--pay-part); }
+  .room-planner .stay[data-pay="total"] { --pay-color:var(--pay-paid); color:var(--pay-paid-fg); border-color:var(--pay-paid-bd); }
+  .room-planner .stay[data-pay="partial"] { color:var(--pay-part-fg); border-color:var(--pay-part-bd); }
+  .room-planner .stay[data-pay="none"] { color:var(--pay-none-fg); border-color:var(--pay-none-bd); }
   .closure { background: repeating-linear-gradient(45deg, var(--room-out-of-order), var(--room-out-of-order) 6px, var(--border) 6px, var(--border) 12px); color: var(--text); }
   .room-dot { width: 9px; height: 9px; border-radius: 999px; display: inline-block; flex: none; }
   .room-dot[data-hk="clean"] { background: var(--room-clean); }
@@ -223,31 +210,4 @@
 /* Keep floor status labels bold enough for the fixed occupied-state colour contrast. */
 .floor-table-tile .font-bold, .floor-table-tile .font-black { font-weight: 700 !important; }
 
-/* Enforce the light-theme typography contract across legacy utility classes. */
-.font-semibold, .font-bold, .font-extrabold, .font-black, strong, b { font-weight: 500 !important; }
-h1, h2, h3, h4 { text-transform: none; }
 
-
-/* App-wide guard: prevent legacy dark utilities and theme classes from painting dark page surfaces. */
-html, body, #root, [data-theme="dark"] { color-scheme: light; }
-:root[data-theme="dark"] body, [data-theme="dark"] .app-shell { background-color: var(--canvas); color: var(--text); }
-
-
-/* Normalize legacy dark utility classes in the active app to Coastal Linen surfaces. */
-[class~="bg-slate-950"], [class~="bg-slate-900"], [class~="bg-gray-950"], [class~="bg-gray-900"], [class~="bg-zinc-950"], [class~="bg-zinc-900"], [class~="bg-neutral-950"], [class~="bg-neutral-900"] {
-  background-color: var(--sidebar) !important;
-  color: var(--text) !important;
-}
-[class~="bg-slate-800"], [class~="bg-gray-800"], [class~="bg-zinc-800"], [class~="bg-neutral-800"] {
-  background-color: var(--primary-soft) !important;
-  color: var(--text) !important;
-}
-[class~="bg-slate-950/55"], [class~="bg-slate-900/60"], [class~="bg-black/40"], [class~="bg-black/50"], [class~="bg-black/60"] {
-  background-color: var(--overlay-scrim) !important;
-}
-[class~="bg-slate-950"] [class~="text-white"], [class~="bg-slate-900"] [class~="text-white"], [class~="bg-gray-950"] [class~="text-white"], [class~="bg-gray-900"] [class~="text-white"], [class~="bg-zinc-950"] [class~="text-white"], [class~="bg-zinc-900"] [class~="text-white"], [class~="bg-neutral-950"] [class~="text-white"], [class~="bg-neutral-900"] [class~="text-white"], [class~="bg-slate-800"] [class~="text-white"], [class~="bg-gray-800"] [class~="text-white"], [class~="bg-zinc-800"] [class~="text-white"], [class~="bg-neutral-800"] [class~="text-white"] {
-  color: var(--text) !important;
-}
-[class~="bg-slate-950"] [class~="text-amber-300"], [class~="bg-slate-900"] [class~="text-amber-300"], [class~="bg-gray-950"] [class~="text-amber-300"], [class~="bg-gray-900"] [class~="text-amber-300"], [class~="bg-zinc-950"] [class~="text-amber-300"], [class~="bg-zinc-900"] [class~="text-amber-300"], [class~="bg-neutral-950"] [class~="text-amber-300"], [class~="bg-neutral-900"] [class~="text-amber-300"] {
-  color: var(--text) !important;
-}
