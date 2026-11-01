@@ -78,3 +78,32 @@ test('daily POS summary app RPC arguments match the reporting function contract'
   assert.match(pmsService, /rpc\('fn_daily_pos_summary',\s*\{\s*p_property_id:\s*propertyId,\s*p_business_date:/s);
   assert.match(reporting, /function public\.fn_daily_pos_summary\(\s*p_property_id uuid,\s*p_business_date date/i);
 });
+
+const printerStore = await readFile(
+  new URL('../../src/data/modules/printerStore.js', import.meta.url),
+  'utf8',
+);
+const kitchenPrintersPage = await readFile(
+  new URL('../../src/components/settings/KitchenPrintersPage.jsx', import.meta.url),
+  'utf8',
+);
+const dashboard = await readFile(
+  new URL('../../src/components/modules/Dashboard.jsx', import.meta.url),
+  'utf8',
+);
+
+test('printer hydration treats missing optional printer tables as an unavailable setup state', () => {
+  assert.match(printerStore, /const isMissingRelation = \(error\) => \['PGRST205', '42P01'\]/);
+  assert.match(printerStore, /const printerGroupsUnavailable = isMissingRelation\(groupsError\)/);
+  assert.match(printerStore, /const printAgentsUnavailable = isMissingRelation\(agentsError\)/);
+  assert.match(printerStore, /printerGroupsUnavailable, printAgentsUnavailable/);
+  assert.match(kitchenPrintersPage, /Printer groups not set up/);
+  assert.match(kitchenPrintersPage, /printAgentsUnavailable\?'Not set up'/);
+});
+
+test('dashboard retries a failed POS summary once and waits for manual refresh after failure', () => {
+  assert.match(dashboard, /summaryFailureRef\.current/);
+  assert.match(dashboard, /setTimeout\(resolve, 700\)/);
+  assert.match(dashboard, /load\(\{ force: true \}\)/);
+  assert.match(dashboard, /Summary unavailable\. Select Refresh to retry\./);
+});
