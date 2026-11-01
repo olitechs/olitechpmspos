@@ -136,7 +136,8 @@
   .bg-primary.text-foreground { color: var(--on-primary) !important; }
   .bg-secondary.text-white { color: var(--text) !important; }
   .bg-white.text-white { color: var(--text) !important; }
-  .bg-slate-900.text-foreground { background-color: var(--primary) !important; color: var(--on-primary) !important; }
+  .bg-slate-900.text-foreground,
+  .bg-slate-950.text-white { background-color: var(--primary) !important; color: var(--on-primary) !important; }
   .bg-surface.text-black { color: var(--text) !important; }
 
   /* Older screens still contain fixed light/dark utility classes. Rebind them
