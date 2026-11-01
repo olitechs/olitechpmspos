@@ -37,3 +37,8 @@ test('inventory guards are installed as triggers and are not exposed as client R
   assert.match(migration, /notify pgrst, 'reload schema'[\s\S]*?commit;\s*$/i);
   assert.doesNotMatch(migration, /drop table|truncate table|delete from public\./i);
 });
+
+test('migration fails closed when historical overlaps exist', () => {
+  assert.match(migration, /do \$room_inventory_preflight\$[\s\S]*?a\.arrival < b\.departure[\s\S]*?b\.arrival < a\.departure[\s\S]*?raise exception 'Room inventory migration blocked/i);
+  assert.match(migration, /active reservation overlaps a room closure/i);
+});
