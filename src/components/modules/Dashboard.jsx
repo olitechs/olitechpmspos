@@ -152,15 +152,31 @@ export default function Dashboard({ onNavigateToPOS, onNavigateToRooms, onNaviga
   const [liveActivity, setLiveActivity] = useState([]);
   const [reportLoading, setReportLoading] = useState(true);
   const [updatedAt, setUpdatedAt] = useState(null);
+  const [summaryUnavailable, setSummaryUnavailable] = useState(false);
+  const summaryFailureRef = React.useRef(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async ({ force = false } = {}) => {
     if (!propertyId) return;
+    if (force) summaryFailureRef.current = false;
     setReportLoading(true);
+    const summaryTask = summaryFailureRef.current
+      ? Promise.reject(new Error('Daily POS summary is unavailable until manually refreshed.'))
+      : (async () => {
+        try {
+          return await pmsService.getDailyPosSummary(propertyId);
+        } catch (firstError) {
+          await new Promise((resolve) => window.setTimeout(resolve, 700));
+          return pmsService.getDailyPosSummary(propertyId);
+        }
+      })();
     const [summaryResult, activityResult] = await Promise.allSettled([
-      pmsService.getDailyPosSummary(propertyId),
+      summaryTask,
       pmsService.getRecentDashboardActivity(propertyId, 8),
     ]);
+    if (summaryResult.status === 'rejected') summaryFailureRef.current = true;
+    else summaryFailureRef.current = false;
     setSummary(summaryResult.status === 'fulfilled' ? summaryResult.value : null);
+    setSummaryUnavailable(summaryResult.status === 'rejected');
     setLiveActivity(activityResult.status === 'fulfilled' ? (activityResult.value || []) : []);
     setUpdatedAt(new Date());
     setReportLoading(false);
@@ -212,7 +228,7 @@ export default function Dashboard({ onNavigateToPOS, onNavigateToRooms, onNaviga
   const goPOS = onNavigateToPOS || (() => navigate('/pos'));
 
   const dash = (v) => (pmsLoading ? '—' : v);
-  const posDash = (v) => (reportLoading && !summary ? '—' : v);
+  const posDash = (v) => (summaryUnavailable ? 'Unavailable' : (reportLoading && !summary ? '—' : v));
   const dateLabel = new Intl.DateTimeFormat('en-KE', { timeZone: TZ, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
 
   return (
@@ -232,7 +248,7 @@ export default function Dashboard({ onNavigateToPOS, onNavigateToRooms, onNaviga
             )}
             <button
               type="button"
-              onClick={load}
+              onClick={() => load({ force: true })}
               disabled={reportLoading}
               className="global-secondary-button inline-flex min-h-10 items-center gap-2 rounded-lg px-3 text-sm font-medium disabled:opacity-50"
             >
@@ -357,7 +373,7 @@ export default function Dashboard({ onNavigateToPOS, onNavigateToRooms, onNaviga
           <Card>
             <CardHeader title="Top sellers" icon={TrendingUp} />
             {topItems.length === 0 ? (
-              <EmptyState>{reportLoading ? 'Loading…' : 'No completed POS sales today.'}</EmptyState>
+              <EmptyState>{reportLoading ? 'Loading…' : summaryUnavailable ? 'Summary unavailable. Select Refresh to retry.' : 'No completed POS sales today.'}</EmptyState>
             ) : (
               <ul className="divide-y divide-[var(--border)]">
                 {topItems.slice(0, 5).map((item, i) => (
@@ -377,7 +393,7 @@ export default function Dashboard({ onNavigateToPOS, onNavigateToRooms, onNaviga
           <Card>
             <CardHeader title="Payment methods" icon={Receipt} />
             {payments.length === 0 ? (
-              <EmptyState>{reportLoading ? 'Loading…' : 'No completed POS payments today.'}</EmptyState>
+              <EmptyState>{reportLoading ? 'Loading…' : summaryUnavailable ? 'Summary unavailable. Select Refresh to retry.' : 'No completed POS payments today.'}</EmptyState>
             ) : (
               <ul className="space-y-4 p-4">
                 {payments.map((p, i) => {
