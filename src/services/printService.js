@@ -36,7 +36,7 @@ export async function getPrinters(propertyId) {
 
 export async function getAssignments(propertyId) {
   if (!propertyId) return [];
-  const { data, error } = await supabase.from('printer_assignments').select('*, property_printers(*)').eq('property_id', propertyId).order('created_at');
+  const { data, error } = await supabase.from('printer_assignments').select('*').eq('property_id', propertyId).order('created_at');
   if (error) throw error;
   return data || [];
 }

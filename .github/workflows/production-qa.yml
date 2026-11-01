@@ -29,5 +29,8 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Architecture and regression tests
+        run: npm run test:architecture
+
       - name: Production build
         run: npm run build
