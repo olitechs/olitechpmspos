@@ -60,3 +60,12 @@ test('POS group-routing failures do not silently fall back to the legacy printer
   assert.match(pos, /if \(isPrinterGroupRoutingEnabled\(\)\)/);
   assert.doesNotMatch(pos, /catch\(\(\) => printOrder\(\)\)/);
 });
+
+test('printer assignment embedding explicitly selects the property-scoped foreign key', () => {
+  const service = read('./printService.js');
+  assert.match(
+    service,
+    /from\(['"]printer_assignments['"]\)\.select\(['"]\*,\s*printer:property_printers!printer_assignments_property_printer_fk\(\*\)['"]\)/,
+    'the embed must name the composite property/printer FK to avoid PostgREST relationship ambiguity'
+  );
+});
