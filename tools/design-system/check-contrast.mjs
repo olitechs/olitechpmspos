@@ -25,6 +25,22 @@ function contrast(a, b) {
 }
 const light = tokensFrom(blockFor(':root {'));
 const dark = { ...light, ...tokensFrom(blockFor(':root[data-theme="dark"]')) };
+const compatibilityGuards = [
+  ['primary foreground guard', '.bg-primary.text-foreground { color: var(--on-primary) !important; }'],
+  ['secondary foreground guard', '.bg-secondary.text-white { color: var(--text) !important; }'],
+  ['white surface foreground guard', '.bg-white.text-white { color: var(--text) !important; }'],
+  ['legacy dark action guard', '.bg-slate-950.text-white { background-color: var(--primary) !important; color: var(--on-primary) !important; }'],
+  ['dark legacy surface guard', ':root[data-theme="dark"] .bg-white { background-color: var(--surface) !important; }'],
+  ['dark legacy text guard', ':root[data-theme="dark"] .text-slate-900'],
+];
+for (const [label, required] of compatibilityGuards) {
+  if (!css.includes(required)) {
+    console.error('FAIL ' + label + ': missing utility contrast guard');
+    process.exitCode = 1;
+  } else {
+    console.log('PASS ' + label);
+  }
+}
 const checks = [
   ['light body text on canvas', light.text, light.canvas, 4.5],
   ['light body text on surface', light.text, light.surface, 4.5],
