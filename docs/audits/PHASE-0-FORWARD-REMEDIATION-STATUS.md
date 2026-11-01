@@ -12,7 +12,7 @@ This is a **new forward migration draft**, not a reconstruction or replacement f
 1. `public.fn_list_pos_menu(uuid)` now checks platform-owner/property membership before returning rows for the supplied property ID.
 2. `public.create_pending_property_for_user(uuid,text,text,text)` now requires the authenticated user ID to match `p_user_id`, except for trusted service-role JWT calls.
 
-The migration retains authenticated access for these workflows, explicitly removes the anonymous/public EXECUTE grants, and does not apply blanket grant revocations to unrelated SECURITY DEFINER functions.
+The POS menu RPC remains available to authenticated property members after its tenant guard. The low-level pending-property creator is revoked from `public`, `anon`, and `authenticated`; only `service_role` retains direct EXECUTE. Normal authenticated signup uses the existing `ensure_my_pending_property()` / `claim_owner_property()` SECURITY DEFINER wrappers, preserving the intended browser boundary. No unrelated SECURITY DEFINER grants are changed.
 
 ## Deployment status and required gates
 
@@ -29,6 +29,6 @@ Before deployment, validate in a local/disposable database with two property use
 - authenticated user cannot create or retrieve a pending property for another user ID;
 - own-user signup remains idempotent;
 - trusted service-role signup workflow remains functional;
-- grants are correct for `anon`, `authenticated`, and `service_role`.
+- grants are correct for `anon`, `authenticated`, and `service_role`; direct authenticated EXECUTE on the low-level creator is denied while the authenticated wrapper remains functional.
 
 After those tests pass, review the diff and apply only through the normal migration process with an approved backup/rollback plan. Do not use this new file to edit or falsify the historical migration ledger.
