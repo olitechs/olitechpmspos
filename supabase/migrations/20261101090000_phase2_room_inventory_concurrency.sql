@@ -1,5 +1,40 @@
 begin;
 
+-- Fail closed if historical data already violates the invariant. This check
+-- performs no writes; resolve any returned conflicts before retrying migration.
+do $room_inventory_preflight$
+begin
+  if exists (
+    select 1
+    from public.reservations a
+    join public.reservations b
+      on a.property_id = b.property_id
+     and a.room_id = b.room_id
+     and a.id < b.id
+    where a.status::text in ('booked', 'checked-in')
+      and b.status::text in ('booked', 'checked-in')
+      and a.arrival < b.departure
+      and b.arrival < a.departure
+  ) then
+    raise exception 'Room inventory migration blocked: overlapping active reservations already exist. Resolve them before applying this migration.';
+  end if;
+
+  if exists (
+    select 1
+    from public.reservations r
+    join public.room_closures c
+      on c.property_id = r.property_id
+     and c.room_id = r.room_id
+    where r.status::text in ('booked', 'checked-in')
+      and r.arrival < c.end_date
+      and c.start_date < r.departure
+  ) then
+    raise exception 'Room inventory migration blocked: an active reservation overlaps a room closure. Resolve it before applying this migration.';
+  end if;
+end;
+$room_inventory_preflight$;
+
+
 -- Serialize room-inventory writes per property. A property-level advisory lock
 -- avoids lock-order deadlocks for multi-room/group reservations and closures.
 -- The trigger checks are the final authority; UI availability checks are advisory.
