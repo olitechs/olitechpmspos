@@ -5,7 +5,7 @@ export default function ReceiptPreview({ settings, data = {}, type = 'RECEIPT' }
   const items = data.items || [];
   const drink = (i) => ['drinks','drink','bibite'].includes(String(i.category||'').toLowerCase()) || String(i.center||'').toLowerCase()==='bar';
   const food = items.filter(i=>!drink(i)), drinks = items.filter(drink);
-  return <div className="mx-auto w-[302px] rounded-lg bg-white p-4 font-mono text-[11px] leading-[1.35] text-black shadow-xl">
+  return <div className="mx-auto w-[302px] receipt-preview-paper rounded-lg bg-white p-4 font-mono text-[11px] leading-[1.35] text-black shadow-xl">
     {settings.logo_url && <img src={settings.logo_url} alt="" className="mx-auto mb-2 max-h-16 max-w-[170px] object-contain" />}
     <div className="text-center font-black">{settings.property_name || 'PROPERTY NAME'}</div>
     <div className="text-center">{settings.address_line1 || 'Address line 1'}<br/>{settings.address_line2 || 'Address line 2'}<br/>{settings.phone || '+254...'}<br/>{settings.email || 'email@example.com'}<br/>{settings.website || 'website'}<br/>KRA PIN: {settings.kra_pin || 'PIN'}</div>
