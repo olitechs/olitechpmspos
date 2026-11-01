@@ -18,6 +18,6 @@ test('today action restores the same 15-day window and month mode clears custom 
 });
 
 test('custom date ranges remain bounded to 31 days and reject reversed dates', () => {
-  assert.match(source, /if \\(to < from\\) \\{ setRangeError\\('End date must be on or after start date\\.'/);
-  assert.match(source, /if \\(days > 31\\) \\{ setRangeError\\('Maximum visible range is 31 days\\.'/);
+  assert.ok(source.includes("if (to < from) { setRangeError('End date must be on or after start date.');"));
+  assert.ok(source.includes("if (days > 31) { setRangeError('Maximum visible range is 31 days.');"));
 });
