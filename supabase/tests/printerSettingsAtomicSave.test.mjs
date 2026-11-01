@@ -10,7 +10,7 @@ test('printer settings save uses one property-scoped transaction for printer and
   assert.match(page, /p_property_id:\s*propertyId/);
   assert.match(page, /p_assignment_types:/);
   const saveStart = page.indexOf('const save = async () => {');
-  const saveEnd = page.indexOf('\\n  };', saveStart);
+  const saveEnd = page.indexOf('const verify = async', saveStart);
   const saveHandler = saveStart >= 0 && saveEnd > saveStart ? page.slice(saveStart, saveEnd) : '';
   assert.ok(saveHandler, 'printer save handler should be present');
   assert.ok(!saveHandler.includes("from('printer_assignments').delete()"));
