@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Plus, Pencil, Trash2, Printer, Wifi, Play, X, RefreshCw, CheckCircle2, AlertCircle, CircleOff, Network, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
-import { getPrinters, getAssignments, testPrint, connectPrinter } from '@/services/printService';
+import { getPrinters, getAssignments, testPrint, connectPrinter, printToPrinter } from '@/services/printService';
 import { supabase } from '@/lib/supabaseClient';
 
 const normalizeNetworkEndpoint = (value, fallbackPort = 9100) => {
@@ -62,6 +62,38 @@ const blank = {
   is_default:false,
   last_status:'disconnected',
   open_drawer_after_sale:false,
+};
+
+const receiptEscape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+const buildPrinterSetupReceipt = (property, printer, assignments) => {
+  const propertyName = property?.name || property?.property_name || 'Property';
+  const address = property?.address || property?.physical_address || '';
+  const phone = property?.phone || property?.phone_number || '';
+  const email = property?.email || '';
+  const routeLabels = assignments.map(type => ASSIGNMENTS.find(row => row[0] === type)?.[1] || type);
+  const rows = [
+    '<div style="text-align:center;font-weight:bold;font-size:18px;">' + receiptEscape(propertyName) + '</div>',
+    address ? '<div style="text-align:center;">' + receiptEscape(address) + '</div>' : '',
+    phone ? '<div style="text-align:center;">Tel: ' + receiptEscape(phone) + '</div>' : '',
+    email ? '<div style="text-align:center;">' + receiptEscape(email) + '</div>' : '',
+    '<div style="text-align:center;font-weight:bold;margin-top:8px;">PRINTER CONFIGURATION</div>',
+    '<div>--------------------------------</div>',
+    '<div>Printer: ' + receiptEscape(printer.name) + '</div>',
+    '<div>Type: ' + receiptEscape(TYPES.find(row => row[0] === printer.type)?.[1] || printer.type || '') + '</div>',
+    '<div>Connection: ' + receiptEscape(printer.connection_type || '') + '</div>',
+    printer.connection_type === 'network_ip' ? '<div>Address: ' + receiptEscape(printer.ip_address || '') + ':' + receiptEscape(printer.port || 9100) + '</div>' : '',
+    printer.connection_type === 'windows_printer' ? '<div>Windows device: ' + receiptEscape(printer.windows_printer_name || '') + '</div>' : '',
+    '<div>Paper: ' + receiptEscape(printer.paper_width || '80mm') + '</div>',
+    '<div>Routing:</div>',
+    ...(routeLabels.length ? routeLabels.map(label => '<div> - ' + receiptEscape(label) + '</div>') : ['<div> - No routing assigned</div>']),
+    '<div>--------------------------------</div>',
+    '<div>Status: CONFIGURED &amp; VERIFIED</div>',
+    '<div>Configured: ' + receiptEscape(new Date().toLocaleString('en-KE')) + '</div>',
+    '<div style="text-align:center;margin-top:8px;">Powered by OliTechs PMS &amp; POS</div>',
+    '<div style="text-align:center;">Keep this receipt for your records</div>'
+  ];
+  return '<div class="receipt">' + rows.filter(Boolean).join('') + '</div>';
 };
 
 const statusMeta = printer => {
@@ -245,7 +277,22 @@ export default function SettingsPrinters() {
       }
 
       if (result?.ok) {
-        setNotice(`Connection verified. Test ticket sent directly to ${printer.name}.`);
+        setNotice(`Connection verified. Printing the property configuration receipt on ${printer.name}…`);
+        const receipt = buildPrinterSetupReceipt(user?.property, printer, assignments.filter(a => a.printer_id === id).map(a => a.assignment_type));
+        const receiptResult = await printToPrinter(printer, receipt, {
+          propertyId,
+          jobType: 'printer_setup_receipt',
+          copyType: 'configuration',
+          title: 'Printer Configuration Receipt',
+          assignmentType: 'final_receipts',
+          payload: { printerId: id, propertyName: user?.property?.name || user?.property?.property_name || 'Property' },
+          persistJob: false,
+        });
+        if (receiptResult?.ok) {
+          setNotice(`Printer connected and property configuration receipt printed on ${printer.name}.`);
+        } else {
+          setNotice(`Printer connection verified, but the configuration receipt could not print: ${receiptResult?.friendlyError || 'Unknown print error'}`);
+        }
       } else {
         setError(result?.friendlyError || 'The printer is offline or unreachable.');
       }
