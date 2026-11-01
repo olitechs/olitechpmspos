@@ -33,7 +33,7 @@ export default function ReceiptDetailModal({ receipt, onClose }) {
 	};
 
 	return (
-		<div className="fixed inset-0 z-[110] bg-black/40 flex items-center justify-center p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+		<div className="fixed inset-0 z-[110] bg-[var(--overlay-scrim)] flex items-center justify-center p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
 			<div className="w-full max-w-md max-h-[92vh] overflow-y-auto rounded-2xl shadow-2xl" style={{ background: SURFACE }}>
 				<div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4" style={{ background: SURFACE, borderBottom: `1px solid ${BORDER}` }}>
 					<h2 className="text-base font-bold" style={{ color: NAVY }}>Receipt {receipt.order_number || ''}</h2>
@@ -61,7 +61,7 @@ export default function ReceiptDetailModal({ receipt, onClose }) {
 					</div>
 					<div className="flex justify-end gap-2 pt-2">
 						<button onClick={onClose} className="px-4 py-2 rounded-lg text-sm" style={{ border: `1px solid ${BORDER}`, color: MUTED }}>Close</button>
-						<button onClick={printReceipt} className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold" style={{ background: TEAL, color: '#090C11' }}><Printer size={14} /> Print Receipt</button>
+						<button onClick={printReceipt} className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold" style={{ background: TEAL, color: 'var(--on-primary)' }}><Printer size={14} /> Print Receipt</button>
 					</div>
 				</div>
 			</div>
