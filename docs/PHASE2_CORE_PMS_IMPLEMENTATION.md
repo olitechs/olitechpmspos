@@ -63,6 +63,16 @@ Both triggers preserve half-open stay semantics: `[arrival, departure)`. A depar
 
 ### Regression coverage
 
+The migration was applied successfully to a fresh PostgreSQL 17 service database in GitHub Actions. The ephemeral integration harness (`supabase/tests/phase2_room_inventory_integration.sh`) ran independent PostgreSQL sessions and passed the following checks:
+- same-day turnover is accepted;
+- overlapping reservation insert is rejected;
+- reservation overlapping a room closure is rejected;
+- closure overlapping an active reservation is rejected;
+- concurrent overlapping reservation transactions serialize and the second is rejected;
+- concurrent reservation-versus-closure transactions serialize and the second is rejected.
+
+The CI run is linked from PR #54 under **Phase 2 PostgreSQL integration**. This fixture proves the new trigger logic against PostgreSQL 17, but is intentionally minimal and does not establish compatibility with every production column, policy, RPC, or historical migration.
+
 `supabase/tests/phase2_room_inventory_concurrency.test.mjs` checks that the migration retains:
 - property-scoped transaction locks;
 - pinned SECURITY DEFINER search paths;
@@ -72,6 +82,16 @@ Both triggers preserve half-open stay semantics: `[arrival, departure)`. A depar
 - forward-only, non-destructive migration structure.
 
 The test is included in `npm run test:architecture`.
+
+## Audit/folio migration reconciliation status
+
+A source-level compatibility review against the repository's schema history found:
+- `audit_logs` is initially defined with `actor_id`, `action`, `property_id`, `old_value`, `new_value`, and `created_at`; the audit migration adds the three entity-reference columns and indexes without changing those base fields.
+- `payments.status` and `payments.shift_id` are introduced by the existing cashier migration; `reservations.total_amount` is introduced by the Room Planner migration.
+- The folio migration's replacement `folio_totals` keeps the original view's five-column shape (`reservation_id`, `property_id`, `subtotal`, `paid`, `balance`) and numeric aggregate outputs.
+- The existing folio checkout migration drops/recreates `fn_check_out_room` with the `public.reservations` return type, so the later `CREATE OR REPLACE` uses the same declared return type in the repository's ordered migration history.
+
+This is source-history compatibility only. The production migration ledger previously inspected does not contain `20261009100000` or `20261009103000`, and production function bodies are older. The current Supabase connector could not authenticate to the PMS production project during this execution; the other available Supabase connection resolves to a different project and was not used. Therefore the live catalog, view dependencies, constraints, RLS policies, function grants, and exact migration ledger have **not** been re-read or reconciled in this run. Neither migration has been applied.
 
 ## Deployment and acceptance gates
 
@@ -91,7 +111,7 @@ Before production rollout:
 ## Not yet claimed as complete
 
 - No migration was applied to production.
-- No disposable database runtime test or two-session concurrency test was run.
+- PostgreSQL 17 disposable integration tests passed for the new room-inventory migration, including real two-session concurrency tests; this fixture is not production-schema-equivalent.
 - No authenticated browser end-to-end test was run.
 - No lint, typecheck or Vite production build was run in this execution environment.
 - No PR merge or deployment is authorized by this implementation record.
