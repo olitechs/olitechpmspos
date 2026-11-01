@@ -81,7 +81,7 @@
     --primary-hover:#0E6A75; --primary-text:#5CC6D0; --primary-soft:#17353B;
     --accent:#D4A06E;
     --success:#4CC39A; --success-soft:#143A2D;
-    --danger:#FF8A84; --danger-foreground:#3E1E1E; --danger-text:#FF8A84; --danger-soft:#3E1E1E;
+    --danger:#FF8A84; --danger-foreground:#FBEDEC; --danger-text:#FF8A84; --danger-soft:#3E1E1E;
     --warning:#F0A56F; --warning-text:#F0A56F; --warning-soft:#3F2318;
     --info:#8DB4F0; --info-soft:#1A2E52;
     --chip-bg:#34464F; --chip-fg:#E3EBED;
