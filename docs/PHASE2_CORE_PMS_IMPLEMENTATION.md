@@ -71,7 +71,7 @@ The migration was applied successfully to a fresh PostgreSQL 17 service database
 - concurrent overlapping reservation transactions serialize and the second is rejected;
 - concurrent reservation-versus-closure transactions serialize and the second is rejected.
 
-The CI run is linked from PR #54 under **Phase 2 PostgreSQL integration**. This fixture proves the new trigger logic against PostgreSQL 17, but is intentionally minimal and does not establish compatibility with every production column, policy, RPC, or historical migration.
+The CI run is linked from PR #54 under **Phase 2 PostgreSQL integration**. The first audit/folio execution exposed two SQL defects: PostgreSQL interpreted the literal percent in the 50% deposit error as a RAISE placeholder, and the checkout function attempted to return a multi-column scalar subquery. Both were corrected and the latest PostgreSQL 17 run passed. These fixtures prove targeted SQL behavior but are intentionally minimal and do not establish compatibility with every production column, policy, RPC, or historical migration.
 
 `supabase/tests/phase2_room_inventory_concurrency.test.mjs` checks that the migration retains:
 - property-scoped transaction locks;
