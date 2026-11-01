@@ -93,6 +93,21 @@ A source-level compatibility review against the repository's schema history foun
 
 This is source-history compatibility only. The production migration ledger previously inspected does not contain `20261009100000` or `20261009103000`, and production function bodies are older. The current Supabase connector could not authenticate to the PMS production project during this execution; the other available Supabase connection resolves to a different project and was not used. Therefore the live catalog, view dependencies, constraints, RLS policies, function grants, and exact migration ledger have **not** been re-read or reconciled in this run. Neither migration has been applied.
 
+
+### Production catalog comparison (read-only; 1 Nov 2026)
+
+The Supabase Primary connection was briefly available and the live PostgreSQL catalog was queried without writes. It confirmed the following:
+
+- The migration-ledger lookup returned no rows for `20261009100000` or `20261009103000`; the two audit/folio migrations are not recorded as applied.
+- `audit_logs` currently has its base columns but does not yet have `entity_type`, `entity_id`, or `related_reservation_id`. The audit migration adds these columns with `IF NOT EXISTS`, matching the observed gap.
+- The live `folio_totals` view has the same five output columns as the replacement, but its `paid` calculation currently sums all payment rows without filtering `status = 'posted'`; its balance is not clamped at zero. The proposed migration corrects both and sets `security_invoker = true`.
+- The live `fn_record_front_desk_payment(uuid,uuid,numeric,text,uuid)` is an older implementation that only checks posted folio charges, does not enforce the booking-total deposit rule, and does not reconcile `reservations.amount_paid` / `payment_status`. The proposed replacement addresses these cases.
+- The live `fn_check_out_room(uuid)` is also older. It writes `payment_status = 'paid'`, while the current reservation constraint permits only `fully_paid`, `not_paid`, and `partially_paid`. The proposed replacement writes the permitted `fully_paid` value and uses the booking total.
+- The live schema has the required payment fields (`status`, `shift_id`), reservation amount fields (`total_amount`, `amount_paid`), and housekeeping fields used by the migration.
+- Existing RLS policies were visible for audit logs, reservations, rooms, folio charges, payments, housekeeping tasks and room closures. The audit insert policy requires `actor_id = auth.uid()`; the audit triggers use `auth.uid()` and remain `SECURITY INVOKER`. The room inventory guards are intentionally `SECURITY DEFINER` trigger-only functions with direct execution revoked.
+
+The Primary connection subsequently became ineligible again during the same review, so I could not complete the remaining read-only checks for view dependencies, exact function grants, RLS-enabled/forced flags, live data reconciliation (`amount_paid` versus payment ledger), or re-run the conflict preflight at the end of review. These are still required before the PR can be marked ready or merged. No production SQL or data was changed.
+
 ## Deployment and acceptance gates
 
 No production SQL has been run and no production data has been modified.
