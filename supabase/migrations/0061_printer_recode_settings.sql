@@ -185,12 +185,12 @@ drop policy if exists print_jobs_access on public.print_jobs;
 create policy print_jobs_access on public.print_jobs for all using(public.is_workspace_member(workspace_id)) with check(public.is_workspace_member(workspace_id));
 drop policy if exists print_agents_access on public.print_agents;
 create policy print_agents_access on public.print_agents for all using(public.is_workspace_member(workspace_id)) with check(public.is_workspace_member(workspace_id));
-do $
+do $printer_realtime$
 begin
   alter publication supabase_realtime add table public.print_jobs;
 exception
   when duplicate_object then null;
   when undefined_object then null;
 end
-$;
+$printer_realtime$;
 notify pgrst,'reload schema';
