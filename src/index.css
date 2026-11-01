@@ -245,6 +245,9 @@ html, body, #root, [data-theme="dark"] { color-scheme: light; }
 [class~="bg-slate-950/55"], [class~="bg-slate-900/60"], [class~="bg-black/40"], [class~="bg-black/50"], [class~="bg-black/60"] {
   background-color: var(--overlay-scrim) !important;
 }
-[class~="text-white"], [class~="text-amber-300"] {
+[class~="bg-slate-950"] [class~="text-white"], [class~="bg-slate-900"] [class~="text-white"], [class~="bg-gray-950"] [class~="text-white"], [class~="bg-gray-900"] [class~="text-white"], [class~="bg-zinc-950"] [class~="text-white"], [class~="bg-zinc-900"] [class~="text-white"], [class~="bg-neutral-950"] [class~="text-white"], [class~="bg-neutral-900"] [class~="text-white"], [class~="bg-slate-800"] [class~="text-white"], [class~="bg-gray-800"] [class~="text-white"], [class~="bg-zinc-800"] [class~="text-white"], [class~="bg-neutral-800"] [class~="text-white"] {
+  color: var(--text) !important;
+}
+[class~="bg-slate-950"] [class~="text-amber-300"], [class~="bg-slate-900"] [class~="text-amber-300"], [class~="bg-gray-950"] [class~="text-amber-300"], [class~="bg-gray-900"] [class~="text-amber-300"], [class~="bg-zinc-950"] [class~="text-amber-300"], [class~="bg-zinc-900"] [class~="text-amber-300"], [class~="bg-neutral-950"] [class~="text-amber-300"], [class~="bg-neutral-900"] [class~="text-amber-300"] {
   color: var(--text) !important;
 }
