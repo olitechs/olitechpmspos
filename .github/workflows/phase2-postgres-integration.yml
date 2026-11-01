@@ -44,3 +44,7 @@ jobs:
           sudo apt-get install --yes postgresql-client
       - name: Apply migration and run real multi-session tests
         run: bash supabase/tests/phase2_room_inventory_integration.sh
+      - name: Reconcile audit and folio migrations in a separate ephemeral database
+        run: |
+          createdb pms_folio_test
+          PGDATABASE=pms_folio_test bash supabase/tests/phase2_audit_folio_integration.sh
