@@ -1,3 +1,8 @@
+-- Ensure the optional cash-drawer preference exists before the RPC references it.
+-- This is additive and safe for existing property printer records.
+alter table public.property_printers
+  add column if not exists open_drawer_after_sale boolean not null default false;
+
 -- Atomic, property-scoped printer configuration save.
 -- Replaces the UI's multi-request save sequence so a failed routing update
 -- cannot leave printer settings half-saved.
