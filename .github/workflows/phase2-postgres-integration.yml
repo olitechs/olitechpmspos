@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - "supabase/migrations/20261101090000_phase2_room_inventory_concurrency.sql"
+      - "supabase/migrations/20261009100000_phase2_pms_audit_trail.sql"
+      - "supabase/migrations/20261009103000_phase2_folio_payment_reconciliation.sql"
       - "supabase/tests/**"
       - ".github/workflows/phase2-postgres-integration.yml"
   push:
