@@ -39,3 +39,17 @@ test('printer settings no longer contains the retired navy/amber design palette'
   assert.match(page, /bg-\[var\(--canvas\)\]/);
   assert.match(page, /bg-\[var\(--primary\)\]/);
 });
+
+
+test('printer setup prints a property-branded configuration receipt only after connection verification', () => {
+  assert.match(page, /buildPrinterSetupReceipt/);
+  assert.match(page, /Connection verified\. Printing the property configuration receipt/);
+  assert.match(page, /jobType: 'printer_setup_receipt'/);
+  assert.match(page, /persistJob: false/);
+  assert.match(page, /receiptResult\?\.ok/);
+});
+
+test('printer RPC migration adds the optional drawer setting before referencing it', () => {
+  assert.match(migration, /alter table public\.property_printers[\\s\\S]*add column if not exists open_drawer_after_sale boolean not null default false/i);
+  assert.ok(migration.indexOf('add column if not exists open_drawer_after_sale') < migration.indexOf('create or replace function'));
+});
