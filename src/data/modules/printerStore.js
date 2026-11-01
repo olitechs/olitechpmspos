@@ -3,22 +3,31 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { supabase } from '@/lib/supabaseClient';
 
 const id = () => globalThis.crypto?.randomUUID?.() || String(Date.now());
+const isMissingRelation = (error) => ['PGRST205', '42P01'].includes(error?.code)
+  || /could not find (the )?(table|relation)|schema cache.*(table|relation)/i.test(error?.message || '');
 
 export const usePrinterStore = create(persist((set, get) => ({
   stores: [], storeId: null, propertyId: null, workspaceId: null,
-  printers: [], printAgents: [], printerGroups: [], categories: [], loading: false, error: null,
+  printers: [], printAgents: [], printerGroups: [], categories: [], printerGroupsUnavailable: false, printAgentsUnavailable: false, loading: false, error: null,
 
   async hydrate(storeId) {
     if (!storeId) return;
     set({ storeId, loading: true, error: null });
     try {
-      const [{ data: stores, error: storesError }, { data: groups, error: groupsError }, { data: printers, error: printersError }, { data: agents, error: agentsError }] = await Promise.all([
+      const [{ data: stores, error: storesError }, { data: groupsData, error: groupsError }, { data: printers, error: printersError }, { data: agentsData, error: agentsError }] = await Promise.all([
         supabase.from('stores').select('*').order('is_default', { ascending: false }).order('name'),
         supabase.from('printer_groups').select('*').eq('store_id', storeId).order('name'),
         supabase.from('printers').select('*').eq('store_id', storeId).order('name'),
         supabase.from('print_agents').select('*').order('last_seen', { ascending: false })
       ]);
-      for (const error of [storesError, groupsError, printersError, agentsError]) if (error) throw error;
+      if (storesError) throw storesError;
+      if (printersError) throw printersError;
+      const printerGroupsUnavailable = isMissingRelation(groupsError);
+      const printAgentsUnavailable = isMissingRelation(agentsError);
+      if (groupsError && !printerGroupsUnavailable) throw groupsError;
+      if (agentsError && !printAgentsUnavailable) throw agentsError;
+      const groups = printerGroupsUnavailable ? [] : (groupsData || []);
+      const agents = printAgentsUnavailable ? [] : (agentsData || []);
 
       const store = (stores || []).find(s => s.id === storeId);
       let categories = [];
@@ -44,7 +53,7 @@ export const usePrinterStore = create(persist((set, get) => ({
       set({
         stores: stores || [], propertyId: store?.property_id || null,
         workspaceId: store?.workspace_id || null, printers: printers || [],
-        printAgents: agents || [], categories,
+        printAgents: agents, printerGroupsUnavailable, printAgentsUnavailable, categories,
         printerGroups: (groups || []).map(g => ({
           ...g,
           productionCenter: g.production_center || g.productionCenter || '',
