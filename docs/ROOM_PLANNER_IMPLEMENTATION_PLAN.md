@@ -44,5 +44,11 @@ Use the Phase 0 inventory to migrate Login, Dashboard, Front Office, Room Rack, 
 ## Phase 9 — Verification and documentation
 Compare planner screenshots at 1440x900 in both themes against the references; report/fix deviations >2px. Run contrast checks for all required token pairs, search build output for forbidden hard-coded black/white utilities outside print exceptions, exercise 0/1/200+ reservations and clipped/long/short stays, validate create/edit/child-age/payment/hover interactions, run lint/tests/build, and update `Design.md`.
 
+## Delivery status (updated 2026-11-01)
+- Phase 0 — audit completed and committed.
+- Phase 1 — canonical light/dark colour tokens and Tailwind/shadcn mappings completed and pushed to `main`.
+- Phase 2 — Room Planner toolbar and date-range navigation completed and pushed to `main`.
+- Phase 3 onward — not started; wait for explicit **continue** before proceeding.
+
 ## Phase gate
-Current status: Phase 0 audit only. Do not begin Phase 1 or change application code until the owner reviews the audit and says **continue**.
+Stop after each phase. Phase 2 is the current completed phase; do not begin Phase 3 until the owner says **continue**.
