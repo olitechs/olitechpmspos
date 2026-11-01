@@ -249,10 +249,10 @@ export default function SettingsPrinters() {
 
     setEditing(null);
     await load(true);
-    await verify(savedPrinter.id,savedPrinter);
+    await verify(savedPrinter.id,savedPrinter,assignmentTypes);
   };
 
-  const verify = async (id, printerOverride=null) => {
+  const verify = async (id, printerOverride=null, configuredAssignments=null) => {
     const printer=printerOverride || printers.find(p=>p.id===id);
     if (!printer) return;
 
@@ -278,7 +278,7 @@ export default function SettingsPrinters() {
 
       if (result?.ok) {
         setNotice(`Connection verified. Printing the property configuration receipt on ${printer.name}…`);
-        const receipt = buildPrinterSetupReceipt(user?.property, printer, assignments.filter(a => a.printer_id === id).map(a => a.assignment_type));
+        const receipt = buildPrinterSetupReceipt(user?.property, printer, (configuredAssignments || assignments.filter(a => a.printer_id === id).map(a => a.assignment_type)));
         const receiptResult = await printToPrinter(printer, receipt, {
           propertyId,
           jobType: 'printer_setup_receipt',
