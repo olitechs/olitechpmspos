@@ -1,38 +1,124 @@
-import React,{useEffect,useMemo,useState} from 'react';
-import {Plus,Search,Printer,RefreshCw} from 'lucide-react';
-import {toast} from 'sonner';
-import {Dialog,DialogContent,DialogFooter,DialogHeader,DialogTitle} from '@/components/ui/dialog';
-import {Checkbox} from '@/components/ui/checkbox';
-import {usePrinterStore} from '@/data/modules/printerStore';
-import {supabase} from '@/lib/supabaseClient';
-import {inventoryService} from '@/services/inventoryService';
-import {listFnbPrintJobs,retryFnbPrintJob} from '@/services/printService';
-import {useAuth} from '@/lib/AuthContext';
+import React, { useCallback, useEffect, useState } from 'react';
+import { RefreshCw, RotateCw, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { useAuth } from '@/lib/AuthContext';
+import SettingsPrinters from '@/pages/SettingsPrinters';
+import { supabase } from '@/lib/supabaseClient';
+import { listFnbPrintJobs, retryFnbPrintJob } from '@/services/printService';
 
-export default function KitchenPrintersPage(){
- const {user}=useAuth(); const {stores,printerGroups,printers,printAgents,printerGroupsUnavailable,printAgentsUnavailable,hydrate,addPrinterGroup,updatePrinterGroup,deletePrinterGroup,addPrinter,pairPrinter}=usePrinterStore();
- const [storeId,setStoreId]=useState(''),[categories,setCategories]=useState([]),[modal,setModal]=useState(null),[name,setName]=useState(''),[selectedCats,setSelectedCats]=useState([]),[selectedPrinters,setSelectedPrinters]=useState([]),[query,setQuery]=useState(''),[ip,setIp]=useState(''),[port,setPort]=useState('9100'),[busy,setBusy]=useState(false),[failedJobs,setFailedJobs]=useState([]),[retryingJob,setRetryingJob]=useState(null);
- useEffect(()=>{supabase.from('stores').select('*').order('is_default',{ascending:false}).order('name').then(({data,error})=>{if(error)toast.error(error.message);else if(data?.length){usePrinterStore.setState({stores:data});setStoreId(data.find(x=>x.is_default)?.id||data[0].id)}})},[]);
- const store=stores.find(s=>s.id===storeId);
- useEffect(()=>{if(storeId)hydrate(storeId).catch(error=>toast.error(error?.message||'Unable to load printer configuration.'))},[storeId,hydrate]);
- useEffect(()=>{if(!store?.property_id){setCategories([]);return}let cancelled=false;(async()=>{try{const [posRows,productResult]=await Promise.all([inventoryService.listPosCategories(store.property_id),supabase.from('products').select('category').eq('property_id',store.property_id).not('category','is',null).order('category')]);if(productResult.error)throw new Error(productResult.error.message);const byName=new Map();for(const row of [...(posRows||[]),...(productResult.data||[])]){const name=String(row?.name||row?.category||'').trim();if(!name)continue;const key=name.toLocaleLowerCase();if(!byName.has(key))byName.set(key,{id:row.id||'product-category:'+key,name})}if(!cancelled)setCategories([...byName.values()].sort((a,b)=>a.name.localeCompare(b.name)))}catch(error){if(!cancelled){setCategories([]);toast.error('Could not load product categories: '+(error.message||'Unknown error'))}}})();return()=>{cancelled=true}},[store?.property_id]);
- const openNew=()=>{setModal({mode:'new'});setName('');setSelectedCats([]);setSelectedPrinters([])};
- const openEdit=g=>{setModal({mode:'edit',id:g.id});setName(g.name);setSelectedCats(g.categoryIds||[]);setSelectedPrinters(g.printerIds||[])};
- const save=async()=>{if(!name.trim())return;setBusy(true);try{if(modal.mode==='new')await addPrinterGroup({name,categoryIds:selectedCats,printerIds:selectedPrinters});else await updatePrinterGroup({id:modal.id,name,categoryIds:selectedCats,printerIds:selectedPrinters});toast.success('Printer group saved');setModal(null)}catch(e){toast.error(e.message)}finally{setBusy(false)}};
- const addManual=async()=>{if(!ip.trim())return;try{await addPrinter({name:'Network Printer '+ip,ipAddress:ip.trim(),port:Number(port)||9100,isKitchen:true});toast.success('Printer added');setIp('')}catch(e){toast.error(e.message)}};
- const testPrint=async(p)=>{try{const res=await fetch('http://127.0.0.1:8631/test',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({host:p.ip_address,port:p.port||9100})});const data=await res.json();if(!data.ok)throw new Error(data.message||'Test print failed');toast.success('Test print sent')}catch(e){toast.error('Print Agent Offline — '+(e.message||'unable to print'))}};
- const discover=async()=>{try{const res=await fetch('http://127.0.0.1:8631/discover');const data=await res.json();if(!data.ok)throw new Error(data.message);for(const p of data.printers||[])await addPrinter({name:p.label||p.host,ipAddress:p.host,port:p.port,isKitchen:true});toast.success(`${data.printers?.length||0} printer(s) discovered`)}catch(e){toast.error('Print Agent Offline — '+(e.message||''))}};
- const visibleCats=useMemo(()=>{const q=query.toLowerCase().trim();return q?categories.filter(c=>c.name.toLowerCase().includes(q)):categories},[categories,query]);
- useEffect(()=>{const propertyId=user?.property?.id;if(!propertyId)return;let active=true;const load=async()=>{try{const rows=await listFnbPrintJobs(propertyId,{status:'failed',limit:25});if(active)setFailedJobs(rows)}catch(e){console.warn('[KitchenPrintersPage] print recovery load failed',e)}};load();const ch=supabase.channel('fnb-print-recovery-'+propertyId).on('postgres_changes',{event:'*',schema:'public',table:'fnb_print_jobs',filter:'property_id=eq.'+propertyId},()=>load()).subscribe();return()=>{active=false;supabase.removeChannel(ch)}},[user?.property?.id]);
- const retryFailed=async(job)=>{const propertyId=user?.property?.id;if(!propertyId)return;setRetryingJob(job.id);try{const result=await retryFnbPrintJob(job.id,propertyId);if(!result.ok)throw new Error(result.friendlyError||'Retry failed');toast.success('Print job sent again');setFailedJobs(await listFnbPrintJobs(propertyId,{status:'failed',limit:25}))}catch(e){toast.error(e.message||'Retry failed')}finally{setRetryingJob(null)}};
+/**
+ * The production schema uses property_printers, printer_assignments and
+ * fnb_print_jobs. Keep this route on that property-scoped implementation;
+ * do not hydrate the obsolete workspace/store printerGroups schema here.
+ */
+export default function KitchenPrintersPage() {
+  const { user } = useAuth();
+  const propertyId = user?.property?.id;
+  const [failedJobs, setFailedJobs] = useState([]);
+  const [loadingJobs, setLoadingJobs] = useState(false);
+  const [retryingJob, setRetryingJob] = useState(null);
 
- return <div className="bg-white shadow-[0_1px_3px_rgba(0,0,0,.2)]">
-  <div className="border-b border-[var(--border)] px-6 py-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-normal text-[var(--text)]">Kitchen printers</h2><p className="mt-1 text-sm text-[var(--text-muted)]">Route menu categories to physical printers by store.</p></div><button onClick={openNew} className="h-11 bg-[var(--success)] px-5 text-sm font-medium uppercase text-white shadow-sm">+ Add printer group</button></div><div className="mt-5 flex items-center gap-3"><label className="text-xs font-medium uppercase text-[var(--text-muted)]">Store</label><select value={storeId} onChange={e=>setStoreId(e.target.value)} className="h-10 min-w-[260px] border border-[var(--border)] bg-white px-3 text-sm outline-none focus:border-[var(--success)]">{stores.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></div></div>
-  <table className="w-full border-collapse"><thead><tr className="h-14 border-b border-[var(--border)] text-left text-sm text-[var(--text-muted)]"><th className="w-14 pl-6"><Checkbox aria-label="Select all"/></th><th>Name</th><th className="pr-8 text-right">Categories</th></tr></thead><tbody>{printerGroups.map(g=><tr key={g.id} onClick={()=>openEdit(g)} className="h-[68px] cursor-pointer border-b border-[var(--border)] hover:bg-[var(--surface)]"><td className="pl-6"><Checkbox onClick={e=>e.stopPropagation()} aria-label={`Select ${g.name}`}/></td><td className="text-[15px] text-[var(--text)]">{g.name}</td><td className="pr-8 text-right text-[15px] text-[var(--text)]">{g.categoryCount||0}</td></tr>)}</tbody></table>{!printerGroups.length&&<div className="p-8 text-sm text-[var(--text-muted)]">{printerGroupsUnavailable?'Printer groups not set up. Apply the reviewed printer schema migration, then refresh.':'No printer groups for this store.'}</div>}
-  <section className="border-t-8 border-[var(--canvas)] p-6"><div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="text-lg font-normal text-[var(--text)]">Physical Printers</h3><p className="text-xs text-[var(--text-muted)]">Print Agent status and physical printer endpoints.</p></div><div className="flex gap-2"><button onClick={discover} className="flex items-center gap-2 border border-[var(--border)] px-4 py-2 text-sm"><RefreshCw size={15}/>Discover printers</button><button onClick={addManual} className="flex items-center gap-2 border border-[var(--border)] px-4 py-2 text-sm"><Plus size={15}/>Add manual IP</button></div></div>
-  <div className="mt-4 grid gap-3 md:grid-cols-3"><div className="border border-[var(--border)] p-4"><div className="text-xs uppercase text-[var(--text-muted)]">Print Agent</div><div className="mt-2 font-medium text-[var(--text)]">{printAgentsUnavailable?'Not set up':printAgents.some(a=>a.status==='online')?'Online':'Offline'}</div><div className="text-xs text-[var(--text-muted)]">{printAgents[0]?.discovered_printers||0} discovered</div></div><div className="md:col-span-2 border border-[var(--border)] p-4"><div className="mb-2 text-xs uppercase text-[var(--text-muted)]">Add manual IP</div><div className="flex gap-2"><input value={ip} onChange={e=>setIp(e.target.value)} placeholder="192.168.1.50" className="flex-1 border px-3 py-2 text-sm"/><input value={port} onChange={e=>setPort(e.target.value)} className="w-24 border px-3 py-2 text-sm"/><button onClick={addManual} className="bg-[var(--success)] px-4 text-sm font-medium text-white">Add</button></div></div></div>
-  <div className="mt-4 divide-y border border-[var(--border)]">{printers.map(p=><div key={p.id} className="flex items-center gap-4 p-4"><Printer size={19} className="text-[var(--text-muted)]"/><div className="flex-1"><div className="font-medium">{p.name}</div><div className="text-xs text-[var(--text-muted)]">{p.ip_address||p.mac_address||p.connection_type} · {p.status}</div></div><button onClick={()=>testPrint(p)} className="border px-3 py-2 text-xs">Test print</button></div>)}{!printers.length&&<div className="p-6 text-sm text-[var(--text-muted)]">No physical printers configured.</div>}</div></section>
-  <section className="border-t-8 border-[var(--canvas)] p-6"><div className="flex items-center justify-between gap-3"><div><h3 className="text-lg font-normal text-[var(--text)]">Failed Print Recovery</h3><p className="text-xs text-[var(--text-muted)]">KOT, BOT, void, receipt, refund and shift-report jobs that failed at the transport layer remain here for controlled reprint.</p></div><button onClick={async()=>{try{setFailedJobs(await listFnbPrintJobs(user?.property?.id,{status:'failed',limit:25}))}catch(e){toast.error(e.message)}}} className="border border-[var(--border)] px-3 py-2 text-xs"><RefreshCw size={14}/></button></div><div className="mt-4 divide-y border border-[var(--border)]">{failedJobs.map(job=><div key={job.id} className="flex flex-wrap items-center gap-3 p-4"><div className="min-w-0 flex-1"><div className="font-medium">{job.title||job.job_type}</div><div className="text-xs text-[var(--text-muted)]">{job.assignment_type} · {job.copy_type||'control'} · {new Date(job.created_at).toLocaleString('en-KE')}</div><div className="mt-1 truncate text-xs text-red-600">{job.error_message||'Printer failure'}</div></div><button disabled={retryingJob===job.id} onClick={()=>retryFailed(job)} className="border border-[var(--border)] px-3 py-2 text-xs font-medium">{retryingJob===job.id?'Retrying…':'Retry print'}</button></div>)}{!failedJobs.length&&<div className="p-6 text-sm text-[var(--text-muted)]">No failed F&B print jobs.</div>}</div></section>
-  <Dialog open={!!modal} onOpenChange={o=>!o&&!busy&&setModal(null)}><DialogContent className="max-w-xl rounded-none"><DialogHeader><DialogTitle className="font-normal">{modal?.mode==='edit'?'Edit printer group':'Add printer group'}</DialogTitle></DialogHeader><div className="space-y-5"><input value={name} onChange={e=>setName(e.target.value)} placeholder="BAR POS" className="w-full border-b border-[var(--border)] px-0 py-3 outline-none focus:border-[var(--success)]"/><div><div className="mb-2 flex items-center justify-between text-xs text-[var(--text-muted)]"><span>Categories</span><span>{selectedCats.length}</span></div><div className="mb-2 flex items-center gap-2 border px-2"><Search size={15}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search categories" className="w-full py-2 text-sm outline-none"/></div><div className="max-h-52 overflow-y-auto border">{visibleCats.map(c=><label key={c.id} className="flex items-center gap-3 border-b px-3 py-2 text-sm"><Checkbox checked={selectedCats.includes(c.id)} onCheckedChange={v=>setSelectedCats(v?[...selectedCats,c.id]:selectedCats.filter(x=>x!==c.id))}/>{c.name}</label>)}</div></div><div><div className="mb-2 text-xs text-[var(--text-muted)]">Physical printers</div>{printers.map(p=><label key={p.id} className="flex items-center gap-3 py-2 text-sm"><Checkbox checked={selectedPrinters.includes(p.id)} onCheckedChange={v=>setSelectedPrinters(v?[...selectedPrinters,p.id]:selectedPrinters.filter(x=>x!==p.id))}/>{p.name}</label>)}</div></div><DialogFooter><button onClick={()=>setModal(null)} className="px-4 py-2 text-sm text-[var(--text-muted)]">Cancel</button><button disabled={busy} onClick={save} className="bg-[var(--success)] px-5 py-2 text-sm text-white">{busy?'Saving…':'Save'}</button></DialogFooter></DialogContent></Dialog>
- </div>;
+  const loadFailedJobs = useCallback(async () => {
+    if (!propertyId) {
+      setFailedJobs([]);
+      return;
+    }
+    setLoadingJobs(true);
+    try {
+      const rows = await listFnbPrintJobs(propertyId, { status: 'failed', limit: 25 });
+      setFailedJobs(Array.isArray(rows) ? rows : []);
+    } catch (error) {
+      toast.error(error?.message || 'Unable to load failed print jobs.');
+    } finally {
+      setLoadingJobs(false);
+    }
+  }, [propertyId]);
+
+  useEffect(() => {
+    loadFailedJobs();
+    if (!propertyId) return undefined;
+    let active = true;
+    const refresh = async () => {
+      try {
+        const rows = await listFnbPrintJobs(propertyId, { status: 'failed', limit: 25 });
+        if (active) setFailedJobs(Array.isArray(rows) ? rows : []);
+      } catch (error) {
+        console.warn('[KitchenPrintersPage] print recovery refresh failed', error);
+      }
+    };
+    const channel = supabase
+      .channel('fnb-print-recovery-' + propertyId)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'fnb_print_jobs',
+        filter: 'property_id=eq.' + propertyId,
+      }, refresh)
+      .subscribe();
+    return () => {
+      active = false;
+      supabase.removeChannel(channel);
+    };
+  }, [propertyId, loadFailedJobs]);
+
+  const retry = async (job) => {
+    if (!propertyId || !job?.id) return;
+    setRetryingJob(job.id);
+    try {
+      const result = await retryFnbPrintJob(job.id, propertyId);
+      if (!result?.ok) throw new Error(result?.friendlyError || 'Print retry failed.');
+      toast.success('Print job queued for retry.');
+      await loadFailedJobs();
+    } catch (error) {
+      toast.error(error?.message || 'Unable to retry print job.');
+    } finally {
+      setRetryingJob(null);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <SettingsPrinters />
+      <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-5 py-4">
+          <div>
+            <h2 className="text-base font-medium text-[var(--text)]">Failed kitchen print jobs</h2>
+            <p className="mt-1 text-sm text-[var(--text-muted)]">Review and retry failed F&B print jobs for this property.</p>
+          </div>
+          <button type="button" onClick={loadFailedJobs} disabled={loadingJobs}
+            className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[var(--border)] px-3 text-sm text-[var(--text)] disabled:opacity-50">
+            <RefreshCw size={14} className={loadingJobs ? 'animate-spin' : ''} /> Refresh
+          </button>
+        </header>
+        {failedJobs.length ? (
+          <ul className="divide-y divide-[var(--border)]">
+            {failedJobs.map((job) => (
+              <li key={job.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 text-sm font-medium text-[var(--text)]">
+                    <AlertCircle size={15} className="shrink-0 text-[var(--danger)]" />
+                    <span className="truncate">{job.title || job.job_type || 'Kitchen print job'}</span>
+                  </div>
+                  <p className="mt-1 text-xs text-[var(--text-muted)]">
+                    {job.error_message || 'The previous print attempt failed.'}
+                    {job.created_at ? ' · ' + new Date(job.created_at).toLocaleString() : ''}
+                  </p>
+                </div>
+                <button type="button" onClick={() => retry(job)} disabled={retryingJob === job.id}
+                  className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[var(--border)] px-3 text-sm font-medium text-[var(--text)] disabled:opacity-50">
+                  {retryingJob === job.id ? <RefreshCw size={14} className="animate-spin" /> : <RotateCw size={14} />}
+                  Retry
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="flex items-center gap-2 px-5 py-8 text-sm text-[var(--text-muted)]">
+            <CheckCircle2 size={16} className="text-[var(--success)]" />
+            {loadingJobs ? 'Loading failed print jobs…' : 'No failed kitchen print jobs.'}
+          </div>
+        )}
+      </section>
+    </div>
+  );
 }
