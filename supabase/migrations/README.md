@@ -122,6 +122,24 @@ Adds server-side fired kitchen/bar orders and KDS status transitions (`new` → 
 Persists property-level printer definitions, routing purposes, centers, and connection settings. Live connection state is intentionally reset to `Not Configured` on reload because USB/Bluetooth/network connectivity is device-specific.
 
 
+## Phase 2 room-inventory concurrency guard — 2026-11-01
+
+After the existing Phase 2 PMS integrity migrations, apply
+`20261101090000_phase2_room_inventory_concurrency.sql`.
+
+This forward-only migration installs transaction-scoped, property-level advisory locks on active reservation and room-closure writes. Database triggers then reject overlapping booked/checked-in stays and reject closures that overlap active stays. The half-open date rule remains `[arrival, departure)`, so same-day turnover is valid. The property-level lock is intentionally coarse to avoid deadlocks when a grouped reservation writes multiple rooms in different input orders.
+
+Before production rollout:
+
+1. Take and verify a restorable database backup.
+2. Confirm `reservations` and `room_closures` match the expected property/room/date columns.
+3. Reconcile the live migration ledger with the committed Phase 2 SQL files; do not mark old migrations as applied manually.
+4. Run the migration and concurrent-session tests against a disposable database first.
+5. Apply only after an explicit production deployment approval.
+6. Verify that a second concurrent overlapping reservation is rejected, same-day turnover is accepted, closures cannot overlap active stays, and non-overlapping reservations remain bookable.
+
+This migration does not change reservation data, folio/payment logic, existing RPC signatures, or the POS. It does not replace UI availability checks; it makes the database the final concurrency authority.
+
 ## Phase 2 PMS integrity migrations — 2026-10-09
 
 After the existing `20261008084000_phase2_folio_checkout_housekeeping.sql` migration, apply the Phase 2 migrations in timestamp order:
@@ -129,4 +147,4 @@ After the existing `20261008084000_phase2_folio_checkout_housekeeping.sql` migra
 1. `20261009100000_phase2_pms_audit_trail.sql` — adds indexed reservation/room entity references to audit events and records reservation lifecycle plus room-status changes.
 2. `20261009103000_phase2_folio_payment_reconciliation.sql` — allows qualifying booking deposits to be posted through the front-desk payment RPC, keeps folio balances non-negative before the first room charge, and ensures checkout writes a valid reservation payment status while enforcing the outstanding-balance check.
 
-Both migrations are additive/re-runnable. Test them on a non-production Supabase project before production rollout. The repository CI build does not execute these SQL functions against a live Supabase database, so database workflow acceptance remains pending until migration application and end-to-end testing.
+Both migrations are additive/re-runnable. Test them on a non-production Supabase project before production rollout. The repository now runs targeted PostgreSQL 17 integration fixtures for these migrations in GitHub Actions, including deposit reconciliation, audit events, checkout/housekeeping, and concurrent room-inventory writes. Those minimal fixtures do not reproduce the complete live Supabase schema, RLS policies, or tenant roles. A read-only live-catalog compatibility review and authenticated end-to-end testing are still required before production rollout.

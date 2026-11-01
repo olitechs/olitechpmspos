@@ -55,7 +55,7 @@ begin
     raise exception 'Payment exceeds the current outstanding amount of %.', round(v_outstanding, 2);
   end if;
   if v_paid_before <= 0.005 and v_booking_total > 0 and v_paid_before + round(p_amount, 2) < v_booking_total * 0.5 - 0.005 then
-    raise exception 'The initial payment must be at least 50% of the booking total.';
+    raise exception 'The initial payment must be at least 50%% of the booking total.';
   end if;
 
   insert into public.payments(property_id, reservation_id, amount, method, status, shift_id)
@@ -160,7 +160,8 @@ begin
     values(v_res.property_id, p_room_id, 'checkout_clean', 'high', 'pending', v_res.id, 'Checkout cleaning required', now());
   end if;
 
-  return (select * from public.reservations where id = v_res.id);
+  select * into v_res from public.reservations where id = v_res.id;
+  return v_res;
 end;
 $$;
 
