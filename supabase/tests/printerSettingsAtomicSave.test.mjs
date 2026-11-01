@@ -53,3 +53,9 @@ test('printer RPC migration adds the optional drawer setting before referencing 
   assert.match(migration, /add column if not exists open_drawer_after_sale boolean not null default false/i);
   assert.ok(migration.indexOf('add column if not exists open_drawer_after_sale') < migration.indexOf('create or replace function'));
 });
+
+test('printer assignments are loaded without an ambiguous property_printers relationship embed', () => {
+  const service = readFileSync(new URL('../../src/services/printService.js', import.meta.url), 'utf8');
+  assert.match(service, /from\('printer_assignments'\)\.select\('\*'\)\.eq\('property_id', propertyId\)/);
+  assert.doesNotMatch(service, /select\('\*,\s*property_printers\(\*\)'\)/);
+});
