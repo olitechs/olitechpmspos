@@ -231,3 +231,20 @@ h1, h2, h3, h4 { text-transform: none; }
 /* App-wide guard: prevent legacy dark utilities and theme classes from painting dark page surfaces. */
 html, body, #root, [data-theme="dark"] { color-scheme: light; }
 :root[data-theme="dark"] body, [data-theme="dark"] .app-shell { background-color: var(--canvas); color: var(--text); }
+
+
+/* Normalize legacy dark utility classes in the active app to Coastal Linen surfaces. */
+[class~="bg-slate-950"], [class~="bg-slate-900"], [class~="bg-gray-950"], [class~="bg-gray-900"], [class~="bg-zinc-950"], [class~="bg-zinc-900"], [class~="bg-neutral-950"], [class~="bg-neutral-900"] {
+  background-color: var(--sidebar) !important;
+  color: var(--text) !important;
+}
+[class~="bg-slate-800"], [class~="bg-gray-800"], [class~="bg-zinc-800"], [class~="bg-neutral-800"] {
+  background-color: var(--primary-soft) !important;
+  color: var(--text) !important;
+}
+[class~="bg-slate-950/55"], [class~="bg-slate-900/60"], [class~="bg-black/40"], [class~="bg-black/50"], [class~="bg-black/60"] {
+  background-color: var(--overlay-scrim) !important;
+}
+[class~="text-white"], [class~="text-amber-300"] {
+  color: var(--text) !important;
+}
