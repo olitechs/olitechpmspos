@@ -30,7 +30,7 @@ const checks = [
   ['light body text on surface', light.text, light.surface, 4.5],
   ['light muted text on canvas', light['text-muted'], light.canvas, 4.5],
   ['light muted text on surface', light['text-muted'], light.surface, 4.5],
-  ['light primary-action text', light['primary-foreground'], light.primary, 4.5],
+  ['light primary-action text', light['on-primary'], light.primary, 4.5],
   ['light success semantic text', light['success-text'], light['success-soft'], 4.5],
   ['light danger semantic text', light['danger-text'], light['danger-soft'], 4.5],
   ['light warning semantic text', light['warning-text'], light['warning-soft'], 4.5],
@@ -38,7 +38,7 @@ const checks = [
   ['dark body text on surface', dark.text, dark.surface, 4.5],
   ['dark muted text on canvas', dark['text-muted'], dark.canvas, 4.5],
   ['dark muted text on surface', dark['text-muted'], dark.surface, 4.5],
-  ['dark primary-action text', dark['primary-foreground'], dark.primary, 4.5],
+  ['dark primary-action text', dark['on-primary'], dark.primary, 4.5],
   ['dark success semantic text', dark['success-text'], dark['success-soft'], 4.5],
   ['dark danger semantic text', dark['danger-text'], dark['danger-soft'], 4.5],
   ['dark warning semantic text', dark['warning-text'], dark['warning-soft'], 4.5],
@@ -46,7 +46,7 @@ const checks = [
   ['open table label', light['table-free-fg'], light['table-free-bg'], 4.5],
   ['unsettled bill label', light['table-bill-fg'], light['table-bill-bg'], 4.5],
   ['dark unsettled bill label', dark['table-bill-fg'], dark['table-bill-bg'], 4.5],
-  ['planner deposit text', '#5A4310', '#F2C14E', 4.5],
+  ['light planner deposit text', light['pay-part-fg'], light['pay-part'], 4.5],\n  ['dark planner deposit text', dark['pay-part-fg'], dark['pay-part'], 4.5],
 ];
 let failures = 0;
 for (const [label, foreground, background, minimum] of checks) {
