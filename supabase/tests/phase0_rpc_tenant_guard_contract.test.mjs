@@ -32,3 +32,13 @@ test('tenant guard migration is forward-only and transaction-bounded', () => {
   assert.match(migration, /commit;\s*$/i);
   assert.doesNotMatch(migration, /drop table|truncate table|delete from public\.properties/i);
 });
+
+test('tenant guard SECURITY DEFINER RPCs pin search_path and scope reads to the requested tenant', () => {
+  const menuRpc = migration.match(/create or replace function public\.fn_list_pos_menu\(p_property_id uuid\)([\s\S]*?)\$function\$;/i)?.[1] || '';
+  const propertyRpc = migration.match(/create or replace function public\.create_pending_property_for_user\(([\s\S]*?)\$function\$;/i)?.[1] || '';
+
+  assert.match(menuRpc, /security definer[\s\S]*?set search_path = public/i);
+  assert.match(menuRpc, /where p\.property_id = p_property_id/i);
+  assert.match(propertyRpc, /security definer[\s\S]*?set search_path = public[\s\S]*?set row_security = off/i);
+  assert.ok(propertyRpc.indexOf('auth.uid() is distinct from p_user_id') < propertyRpc.indexOf('insert into public.properties'));
+});
