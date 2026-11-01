@@ -32,6 +32,7 @@ The connected production project was inspected without executing DDL or DML.
 - `fn_create_reservation_bundle`, `fn_update_planner_reservation`, and `fn_move_planner_reservation` call the availability check before writing.
 - The production `reservations` table has no exclusion constraint preventing overlapping room/date ranges.
 - The production `reservations` and `room_closures` tables have no non-internal triggers.
+- A read-only preflight found zero existing active-reservation overlaps and zero active-reservation/closure overlaps at inspection time.
 - Therefore two concurrent transactions can both observe availability before either commits and both insert an overlapping reservation. The UI check cannot close this race.
 
 ### P1 — Folio deposit and checkout migration drift
