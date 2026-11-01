@@ -1,5 +1,9 @@
 begin;
 
+-- Freeze inventory writes while the historical conflict preflight runs and
+-- both guards are installed. The lock is released with this transaction.
+lock table public.reservations, public.room_closures in share row exclusive mode;
+
 -- Fail closed if historical data already violates the invariant. This check
 -- performs no writes; resolve any returned conflicts before retrying migration.
 do $room_inventory_preflight$
