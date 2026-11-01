@@ -59,8 +59,8 @@ begin
 end;
 $function$;
 
--- Ensure pending-property creation cannot be invoked for an arbitrary user's ID
--- by an ordinary authenticated caller. Preserve trusted service-role workflows.
+-- Keep the low-level creator private to trusted SECURITY DEFINER callers.
+-- Authenticated clients must use ensure_my_pending_property()/claim_owner_property().
 create or replace function public.create_pending_property_for_user(
   p_user_id uuid,
   p_email text,
@@ -140,8 +140,8 @@ $function$;
 revoke all on function public.fn_list_pos_menu(uuid) from public, anon;
 grant execute on function public.fn_list_pos_menu(uuid) to authenticated;
 
-revoke all on function public.create_pending_property_for_user(uuid, text, text, text) from public, anon;
-grant execute on function public.create_pending_property_for_user(uuid, text, text, text) to authenticated, service_role;
+revoke all on function public.create_pending_property_for_user(uuid, text, text, text) from public, anon, authenticated;
+grant execute on function public.create_pending_property_for_user(uuid, text, text, text) to service_role;
 
 notify pgrst, 'reload schema';
 
