@@ -374,7 +374,7 @@ const server = http.createServer(async (req, res) => {
     const body = await readBody(req);
     if (['/windows-print','/windows-test'].includes(route)) {
       const printerName = String(body.windowsPrinterName || '').trim();
-      const payload = escPosPayload(body.text, url.pathname === '/windows-test');
+      const payload = escPosPayload(body.text, route === '/windows-test');
       await printWindowsRaw(printerName, payload);
       return json(res, 200, { ok:true, status:'connected', printed:true, transport:'windows_spooler', printerName });
     }
