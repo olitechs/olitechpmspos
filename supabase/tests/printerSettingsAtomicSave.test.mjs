@@ -25,6 +25,9 @@ test('atomic printer RPC validates tenant authority and allowed routing types', 
   assert.match(migration, /printer not found in the selected property/i);
   assert.match(migration, /not authorized to manage printers/i);
   assert.match(migration, /v_allowed/);
+  assert.match(migration, /coalesce\(v_config\.port,9100\) < 1/);
+  assert.match(migration, /coalesce\(v_config\.port,9100\) > 65535/);
+  assert.match(migration, /v_assignment_types text\[\] := ARRAY\(SELECT DISTINCT/);
   assert.match(migration, /delete from public\.printer_assignments[\s\S]*?foreach v_assignment[\s\S]*?insert into public\.printer_assignments/i);
   assert.match(migration, /revoke all on function[\s\S]*?from public,anon/i);
 });
