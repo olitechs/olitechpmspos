@@ -160,7 +160,8 @@ begin
     values(v_res.property_id, p_room_id, 'checkout_clean', 'high', 'pending', v_res.id, 'Checkout cleaning required', now());
   end if;
 
-  return (select * from public.reservations where id = v_res.id);
+  select * into v_res from public.reservations where id = v_res.id;
+  return v_res;
 end;
 $$;
 
