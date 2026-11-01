@@ -65,7 +65,7 @@ test('printer assignment embedding explicitly selects the property-scoped foreig
   const service = read('./printService.js');
   assert.match(
     service,
-    /from\(['"]printer_assignments['"]\)\.select\(['"]\*,\s*printer:property_printers!printer_assignments_property_printer_fk\(\*\)['"]\)/,
+    /from\(['"]printer_assignments['"]\)\.select\(['"]\*,\s*property_printers!printer_assignments_property_printer_fk\(\*\)['"]\)/,
     'the embed must name the composite property/printer FK to avoid PostgREST relationship ambiguity'
   );
 });
