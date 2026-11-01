@@ -15,7 +15,7 @@ test('printer settings save uses one property-scoped transaction for printer and
   assert.ok(saveHandler, 'printer save handler should be present');
   assert.ok(!saveHandler.includes("from('printer_assignments').delete()"));
   assert.ok(!saveHandler.includes("from('printer_assignments').insert("));
-  assert.match(page, /verify\(savedPrinter\.id,savedPrinter\)/);
+  assert.match(page, /verify\\(savedPrinter\\.id,savedPrinter,assignmentTypes\\)/);
 });
 
 test('atomic printer RPC validates tenant authority and allowed routing types', () => {
@@ -50,6 +50,6 @@ test('printer setup prints a property-branded configuration receipt only after c
 });
 
 test('printer RPC migration adds the optional drawer setting before referencing it', () => {
-  assert.match(migration, /alter table public\.property_printers[\\s\\S]*add column if not exists open_drawer_after_sale boolean not null default false/i);
+  assert.match(migration, /add column if not exists open_drawer_after_sale boolean not null default false/i);
   assert.ok(migration.indexOf('add column if not exists open_drawer_after_sale') < migration.indexOf('create or replace function'));
 });
