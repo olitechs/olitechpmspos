@@ -4,8 +4,8 @@
   "description": "Hotel Property Management System and Point of Sale",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0E2A3A",
-  "theme_color": "#0E2A3A",
+  "background_color": "#F4F7F8",
+  "theme_color": "#F4F7F8",
   "icons": [
     { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
   ]
