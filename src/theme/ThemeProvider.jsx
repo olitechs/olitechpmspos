@@ -1,6 +1,7 @@
 import React,{createContext,useCallback,useContext,useEffect,useMemo,useState} from 'react';
 
 const KEY='olitech_theme_mode';
+const THEME_COLORS={light:'#F4F7F8',dark:'#10171A'};
 const ThemeContext=createContext(null);
 const readMode=()=>{try{const saved=localStorage.getItem(KEY);return ['light','dark','system'].includes(saved)?saved:'system'}catch{return 'system'}};
 const prefersDark=()=>typeof window!=='undefined'&&typeof window.matchMedia==='function'&&window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -21,6 +22,8 @@ export function ThemeProvider({children}){
     r.setAttribute('data-theme',resolvedTheme);
     r.classList.toggle('dark',resolvedTheme==='dark');
     r.style.colorScheme=resolvedTheme;
+    const meta=document.querySelector('meta[name="theme-color"]');
+    if(meta)meta.setAttribute('content',THEME_COLORS[resolvedTheme]);
   },[resolvedTheme]);
   const setMode=useCallback(m=>{
     if(!['light','dark','system'].includes(m))return;
