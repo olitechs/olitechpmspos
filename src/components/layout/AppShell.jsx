@@ -95,18 +95,18 @@ export default function AppShell({ workspace = 'backoffice' }) {
         ].join(' ')}>
           <div className="flex h-14 shrink-0 items-center gap-2 border-b border-[var(--border)] px-3">
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[var(--brand-dark)] text-xs font-bold text-[var(--action)]">OT</span>
-            {!collapsed && <div className="min-w-0 flex-1"><div className="truncate text-sm font-semibold">OliTechs</div><div className="text-[11px] text-[var(--muted)]">PMS &amp; POS</div></div>}
-            <button type="button" onClick={() => setCollapsed(value => !value)} className="hidden rounded-md p-1.5 text-[var(--muted)] hover:bg-[var(--surface-2)] md:inline-flex" aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>{collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}</button>
-            <button type="button" onClick={() => setMobileOpen(false)} className="ml-auto rounded-md p-1.5 text-[var(--muted)] md:hidden" aria-label="Close sidebar"><X size={17} /></button>
+            {!collapsed && <div className="min-w-0 flex-1"><div className="truncate text-sm font-semibold">OliTechs</div><div className="text-[11px] text-[var(--text-muted)]">PMS &amp; POS</div></div>}
+            <button type="button" onClick={() => setCollapsed(value => !value)} className="hidden rounded-md p-1.5 text-[var(--text-muted)] hover:bg-[var(--surface-2)] md:inline-flex" aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>{collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}</button>
+            <button type="button" onClick={() => setMobileOpen(false)} className="ml-auto rounded-md p-1.5 text-[var(--text-muted)] md:hidden" aria-label="Close sidebar"><X size={17} /></button>
           </div>
           <div className="border-b border-[var(--border)] px-3 py-3">
-            {!collapsed && <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]">Property</div>}
+            {!collapsed && <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Property</div>}
             <div className="flex min-w-0 items-center gap-2 rounded-md bg-[var(--surface-2)] px-2 py-2" title={hotelName}>
-              <Building2 size={16} className="shrink-0 text-[var(--muted)]" />
+              <Building2 size={16} className="shrink-0 text-[var(--text-muted)]" />
               {!collapsed && <span className="truncate text-xs font-medium">{hotelName}</span>}
             </div>
           </div>
-          {workspace === 'backoffice' && !collapsed && <div className="px-3 pt-3"><label className="relative block"><Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--muted)]" /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Filter navigation" aria-label="Filter navigation" className="h-9 w-full rounded-md border border-[var(--border)] bg-[var(--surface)] pl-8 pr-2 text-xs text-[var(--text)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus)]" /></label></div>}
+          {workspace === 'backoffice' && !collapsed && <div className="px-3 pt-3"><label className="relative block"><Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Filter navigation" aria-label="Filter navigation" className="h-9 w-full rounded-md border border-[var(--border)] bg-[var(--surface)] pl-8 pr-2 text-xs text-[var(--text)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus)]" /></label></div>}
           <nav className="min-h-0 flex-1 overflow-y-auto px-2 py-3" aria-label={`${workspace} navigation`}>
             {nav.map(item => {
               const Icon = item.icon || ROLE_ICON[item.id] || LayoutDashboard;
@@ -116,11 +116,11 @@ export default function AppShell({ workspace = 'backoffice' }) {
                 {item.path || item.id === 'customers' || item.id === 'integrations' || item.id === 'help'
                   ? <NavLink to={item.path || children[0]?.[1] || '#'} end={workspace === 'frontoffice' && item.path === '/frontoffice'} onClick={() => setMobileOpen(false)} title={collapsed ? item.label : undefined} className={({ isActive }) => [
                     'flex min-h-9 items-center gap-2 rounded-md px-2 text-[13px] transition-colors',
-                    (isActive || active) ? 'bg-[var(--brand-soft)] font-semibold text-[var(--text)]' : 'text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]',
+                    (isActive || active) ? 'bg-[var(--brand-soft)] font-semibold text-[var(--text)]' : 'text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]',
                     collapsed ? 'justify-center' : '',
                   ].join(' ')}><Icon size={17} className="shrink-0" />{!collapsed && <span className="min-w-0 flex-1 truncate">{item.label}</span>}</NavLink>
-                  : <div className={['flex min-h-9 items-center gap-2 rounded-md px-2 text-[13px]', active ? 'text-[var(--text)]' : 'text-[var(--muted)]', collapsed ? 'justify-center' : ''].join(' ')} title={collapsed ? item.label : undefined}><Icon size={17} className="shrink-0" />{!collapsed && <span className="truncate font-medium">{item.label}</span>}</div>}
-                {!collapsed && children.length > 0 && <div className="ml-7 border-l border-[var(--border)] py-1 pl-2">{children.map(([label, path]) => <NavLink key={path} to={path} onClick={() => setMobileOpen(false)} className={({ isActive }) => ['block rounded px-2 py-1.5 text-xs', isActive ? 'bg-[var(--surface-2)] font-medium text-[var(--text)]' : 'text-[var(--muted)] hover:text-[var(--text)]'].join(' ')}>{label}</NavLink>)}</div>}
+                  : <div className={['flex min-h-9 items-center gap-2 rounded-md px-2 text-[13px]', active ? 'text-[var(--text)]' : 'text-[var(--text-muted)]', collapsed ? 'justify-center' : ''].join(' ')} title={collapsed ? item.label : undefined}><Icon size={17} className="shrink-0" />{!collapsed && <span className="truncate font-medium">{item.label}</span>}</div>}
+                {!collapsed && children.length > 0 && <div className="ml-7 border-l border-[var(--border)] py-1 pl-2">{children.map(([label, path]) => <NavLink key={path} to={path} onClick={() => setMobileOpen(false)} className={({ isActive }) => ['block rounded px-2 py-1.5 text-xs', isActive ? 'bg-[var(--surface-2)] font-medium text-[var(--text)]' : 'text-[var(--text-muted)] hover:text-[var(--text)]'].join(' ')}>{label}</NavLink>)}</div>}
               </div>;
             })}
           </nav>
@@ -128,7 +128,7 @@ export default function AppShell({ workspace = 'backoffice' }) {
             <button type="button" onClick={() => setOwnerOpen(value => !value)} className="flex min-h-10 w-full items-center gap-2 rounded-md px-2 text-left hover:bg-[var(--surface-2)]">
               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--brand-soft)] text-[10px] font-semibold text-[var(--text)]">{(user?.name || email || 'OT').slice(0, 2).toUpperCase()}</span>
               {!collapsed && <span className="min-w-0 flex-1 truncate text-xs">{user?.name || email || 'Account'}</span>}
-              {!collapsed && <ChevronDown size={14} className="text-[var(--muted)]" />}
+              {!collapsed && <ChevronDown size={14} className="text-[var(--text-muted)]" />}
             </button>
             {ownerOpen && <button type="button" onClick={logout} className="flex min-h-9 w-full items-center gap-2 rounded-md px-2 text-xs text-[var(--danger)] hover:bg-[var(--surface-2)]"><LogOut size={14} />{!collapsed && 'Sign out'}</button>}
           </div>
