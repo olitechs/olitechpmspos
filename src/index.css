@@ -32,8 +32,8 @@
     --st-cancel:#990000; --st-cancel-fg:#FFFFFF; --st-cancel-bd:rgba(0,0,0,.20);
 
     /* Existing application semantic tokens, now aliases of the canonical palette. */
-    --room-clean:var(--success); --room-dirty:#D9826B; --room-occupied:#2A5AA7;
-    --room-checkout:#6C63D9; --room-out-of-order:#8B969C;
+    --room-clean:#1F7A57; --room-dirty:#B4532F; --room-occupied:#2F5FC4;
+    --room-checkout:#5148BE; --room-out-of-order:#5E6E76;
     --floor-bg:#D7D7D7;
     --table-free-bg:#74C365; --table-free-fg:#10260A; --table-free-border:#5CA84E;
     --table-occupied-bg:#FA003F; --table-occupied-fg:#FFFFFF; --table-occupied-border:#C70032;
@@ -50,7 +50,7 @@
     --card:var(--surface); --card-foreground:var(--text);
     --popover:var(--surface); --popover-foreground:var(--text);
     --secondary:var(--sidebar); --secondary-foreground:var(--text);
-    --muted:var(--sidebar); --muted-foreground:var(--text-muted);
+    --muted:var(--text-muted); --muted-foreground:var(--text-muted);
     --accent-foreground:var(--text); --destructive:var(--danger);
     --destructive-foreground:var(--danger-foreground);
     --input:var(--input-border); --ring:var(--primary-text);
@@ -98,8 +98,8 @@
     --pay-paid:#33591C; --pay-paid-fg:#EAF5DC; --pay-paid-bd:#8CC152;
     --pay-opt:#17524F; --pay-opt-fg:#DDF5F3; --pay-opt-bd:#4FC9C0;
     --st-cancel:#7A1F1F; --st-cancel-fg:#FFD9D6; --st-cancel-bd:#E0605A;
-    --room-clean:var(--success); --room-dirty:#D9826B; --room-occupied:#8DB4F0;
-    --room-checkout:#A69CF5; --room-out-of-order:#667780;
+    --room-clean:#4CC39A; --room-dirty:#E58A66; --room-occupied:#6E9BEA;
+    --room-checkout:#8F88E6; --room-out-of-order:#8A9AA2;
     --floor-bg:#1B2327;
     --table-free-bg:#33591C; --table-free-fg:#EAF5DC; --table-free-border:#8CC152;
     --table-occupied-bg:#8F263F; --table-occupied-fg:#FFF0F1; --table-occupied-border:#FF8A9D;
