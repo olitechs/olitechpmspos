@@ -6,7 +6,11 @@ const sourceRoot = join(root, 'src');
 const excludedFiles = new Set([
   'src/index.css', // canonical theme token definitions
   'src/components/settings/ReceiptPreview.jsx', // preserve printed receipt appearance
+  'src/components/settings/ReceiptSettings.jsx', // receipt formatting and printer output controls
+  'src/components/modules/Receipts.jsx', // receipt output surface
   'src/components/pos/PrintWarn.jsx', // printer/print warning output
+  'src/pages/SettingsPrinters.jsx', // printer test/receipt output controls
+  'src/services/printService.js', // generated print documents
   'src/components/ui/GoogleIcon.jsx', // third-party brand glyph colours
 ]);
 const excludedDirectories = new Set([
