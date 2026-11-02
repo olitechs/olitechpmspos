@@ -20,7 +20,7 @@ const patterns = [
   ['rgb/rgba/hsl/hsla colour literal', /\b(?:rgba?|hsla?)\(\s*[-\d.]+/i],
   ['Tailwind palette colour class', /(?:^|[\s"'\x60])(?:bg|text|border|ring|fill|stroke|divide|outline|from|via|to)-(?:black|white|slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)(?:-[\w/.[\]%-]+)?(?=$|[\s"'\x60])/],
   ['black/white utility class', /(?:^|[\s"'\x60])(?:text|bg)-(?:black|white)(?:\s|$|["'\x60])/],
-  ['opacity-based text muting', /text-[\\w:[\\]%-]+(?:\\s+[\\w:[\\]%-]+){0,8}\\s+opacity-[0-9]{1,3}/],
+  ['opacity-based text muting', /text-[\w:[\]%-]+(?:\s+[\w:[\]%-]+){0,8}\s+opacity-[0-9]{1,3}/],
 ];
 
 function collectFiles(directory) {
@@ -47,7 +47,7 @@ for (const { path, absolute } of collectFiles(sourceRoot)) {
 }
 
 if (errors.length) {
-  console.error('Colour-token guard failed (' + errors.length + ' finding(s)):\\n' + errors.map((e) => '- ' + e).join('\\n'));
+  console.error('Colour-token guard failed (' + errors.length + ' finding(s)):\n' + errors.map((e) => '- ' + e).join('\n'));
   process.exitCode = 1;
 } else {
   console.log('Colour-token guard passed for active src files.');
