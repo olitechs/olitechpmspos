@@ -1,19 +1,19 @@
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readdirSync, readFileSync } from 'node:fs';
+import { extname, join, relative, sep } from 'node:path';
 
 const root = process.cwd();
-const files = [
-  'src/components/layout/TopAppNav.jsx',
-  'src/components/shell/Sidebar.jsx',
-  'src/components/layout/AppShell.jsx',
-  'src/components/shell/TopBar.jsx',
-];
-const excluded = [
-  'src/index.css',
-  'src/components/settings/ReceiptPreview.jsx',
-  'src/components/pos/PrintWarn.jsx',
-  'src/components/ui/GoogleIcon.jsx',
-];
+const sourceRoot = join(root, 'src');
+const excludedFiles = new Set([
+  'src/index.css', // canonical theme token definitions
+  'src/components/settings/ReceiptPreview.jsx', // preserve printed receipt appearance
+  'src/components/pos/PrintWarn.jsx', // printer/print warning output
+  'src/components/ui/GoogleIcon.jsx', // third-party brand glyph colours
+]);
+const excludedDirectories = new Set([
+  'src/assets',
+  'src/generated',
+]);
+const extensions = new Set(['.js', '.jsx', '.ts', '.tsx', '.css']);
 const errors = [];
 const patterns = [
   ['hex colour literal', /#[0-9a-fA-F]{3,8}\b/],
@@ -22,16 +22,33 @@ const patterns = [
   ['black/white utility class', /(?:^|[\s"'\x60])(?:text|bg)-(?:black|white)(?:\s|$|["'\x60])/],
   ['opacity-based text muting', /(?:text-[\w:[\]%-]+\s+)?opacity-(?:[0-9]{1,3})(?=\s|$|["'\x60])/],
 ];
-for (const file of files) {
-  if (excluded.includes(file) || !existsSync(join(root, file))) continue;
-  const content = readFileSync(join(root, file), 'utf8');
+
+function collectFiles(directory) {
+  const results = [];
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const absolute = join(directory, entry.name);
+    const path = relative(root, absolute).split(sep).join('/');
+    if (entry.isDirectory()) {
+      if (!excludedDirectories.has(path)) results.push(...collectFiles(absolute));
+      continue;
+    }
+    if (entry.isFile() && extensions.has(extname(entry.name)) && !excludedFiles.has(path)) {
+      results.push({ path, absolute });
+    }
+  }
+  return results;
+}
+
+for (const { path, absolute } of collectFiles(sourceRoot)) {
+  const content = readFileSync(absolute, 'utf8');
   for (const [label, pattern] of patterns) {
-    if (pattern.test(content)) errors.push(file + ': ' + label);
+    if (pattern.test(content)) errors.push(path + ': ' + label);
   }
 }
+
 if (errors.length) {
-  console.error('Colour-token guard failed:\n' + errors.map((e) => '- ' + e).join('\n'));
+  console.error('Colour-token guard failed (' + errors.length + ' finding(s)):\\n' + errors.map((e) => '- ' + e).join('\\n'));
   process.exitCode = 1;
 } else {
-  console.log('Colour-token guard passed for shared navigation and shell components.');
+  console.log('Colour-token guard passed for active src files.');
 }
