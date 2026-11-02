@@ -35,7 +35,7 @@ export default function TopAppNav() {
                 'flex min-w-[142px] shrink-0 items-center justify-center gap-2 rounded-md px-5 text-[13px] font-semibold transition-colors',
                 isActive ? 'bg-[var(--bg)] text-[var(--text)] shadow-[inset_0_-3px_0_var(--brand-primary)]' : 'text-[var(--text-muted)] hover:bg-[var(--bg)] hover:text-[var(--text)]',
               ].join(' ')}>
-              <I size={17}/><span>{a.label}</span><ExternalLink size={13} className="opacity-45" aria-hidden="true"/>
+              <I size={17}/><span>{a.label}</span><ExternalLink size={13} className="text-[var(--text-muted)]" aria-hidden="true"/>
             </NavLink>
           );
         })}
