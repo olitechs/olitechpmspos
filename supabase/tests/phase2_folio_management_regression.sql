@@ -44,6 +44,18 @@ begin
  exception when others then
    if sqlerrm='Reception role unexpectedly refunded a payment.' then raise; end if;
  end;
+ begin
+   perform public.fn_reverse_folio_charge(p,c3.id,'Unauthorised reversal');
+   raise exception 'Reception role unexpectedly reversed a charge.';
+ exception when others then
+   if sqlerrm='Reception role unexpectedly reversed a charge.' then raise; end if;
+ end;
+ begin
+   perform public.fn_transfer_folio_charges(p,array[c3.id],r2,'Unauthorised transfer');
+   raise exception 'Reception role unexpectedly transferred a charge.';
+ exception when others then
+   if sqlerrm='Reception role unexpectedly transferred a charge.' then raise; end if;
+ end;
  perform set_config('test.member','false',true);
  begin
    perform public.fn_post_folio_payment(p,r1,1,'cash',null,'tenant-denied');
