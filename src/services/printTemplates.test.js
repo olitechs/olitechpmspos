@@ -146,7 +146,7 @@ test('long item names and amount fields are wrapped, never sliced off', () => {
     subtotal: 987654321,
     total: 987654321,
   }, { printer: { paper_width: '58mm' } }));
-  assert.ok(output.includes('Supercalifragilisticexpialidocious'));
+  assert.ok(output.replace(/\\s/g, '').includes(longName.replace(/\\s/g, '')));
   assert.ok(output.includes('987,654,321.00'));
   assert.ok(output.split('\\n').every(line => line.length <= 32));
 });
