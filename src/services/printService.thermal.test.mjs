@@ -27,6 +27,9 @@ test('order and unsettled print paths use shared width-aware templates', async (
   assert.match(service, /buildLogoEscPosBase64/);
   assert.match(service, /thermalBase64/);
   assert.match(service, /thermalText/);
+  const browserTransport = await read('./printerService.js');
+  assert.match(browserTransport, /writeValueWithResponse/);
+  assert.match(browserTransport, /setTimeout\(resolve, 15\)/);
   assert.match(routing, /buildOrderTicketText/);
   assert.match(routing, /property_settings/);
   assert.match(routing, /settings: receiptSettings/);
