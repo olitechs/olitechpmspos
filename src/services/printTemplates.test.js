@@ -47,7 +47,7 @@ test('order ticket includes station metadata, modifiers and prep notes without p
     }],
   }, { center: 'KITCHEN', printer: { paper_width: '80mm' }, settings: { property_name: 'Coastal Hotel', address_line1: 'Watamu', footer_line1: 'Thank you for visiting' } }));
   assert.match(output, /KITCHEN ORDER TICKET/);
-  assert.match(output, /Coastal Hotel/);
+  assert.match(output, /COASTAL HOTEL/);
   assert.match(output, /Thank you for visiting/);
   assert.ok(output.includes(String.fromCharCode(29) + '!' + String.fromCharCode(17)), 'order item names use double-size ESC/POS mode');
   assert.match(output, /ORD-001/);
