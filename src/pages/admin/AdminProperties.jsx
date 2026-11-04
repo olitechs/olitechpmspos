@@ -9,13 +9,13 @@ import PackageAssignmentModal from './PackageAssignmentModal';
 const STATUS_STYLES = {
 	pending: 'bg-amber-100 text-amber-800',
 	active: 'bg-emerald-100 text-emerald-800',
-	suspended: 'bg-red-100 text-red-800',
-	rejected: 'bg-slate-200 text-slate-700',
-	inactive: 'bg-slate-200 text-slate-700',
-	trial: 'bg-blue-100 text-blue-800',
+	suspended: 'bg-[var(--danger-soft)] text-[var(--danger-text)]',
+	rejected: 'bg-secondary text-foreground',
+	inactive: 'bg-secondary text-foreground',
+	trial: 'bg-primary-soft text-primary-text',
 	past_due: 'bg-orange-100 text-orange-800',
-	cancelled: 'bg-slate-200 text-slate-700',
-	'not configured': 'bg-slate-100 text-slate-600',
+	cancelled: 'bg-secondary text-foreground',
+	'not configured': 'bg-secondary text-muted-foreground',
 };
 
 function StatusBadge({ status }) {
