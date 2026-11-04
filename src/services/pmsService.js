@@ -272,10 +272,11 @@ export const pmsService = {
 		return data;
 	},
 
-	async postFolioPayment({ propertyId, reservationId, amount, method, reference, idempotencyKey }) {
+	async postFolioPayment({ propertyId, reservationId, amount, method, reference, idempotencyKey, chargeId = null }) {
 		const { data, error } = await supabase.rpc('fn_post_folio_payment', {
 			p_property_id: propertyId, p_reservation_id: reservationId, p_amount: Number(amount || 0),
 			p_method: method, p_reference: reference || null, p_idempotency_key: idempotencyKey,
+			p_folio_charge_id: chargeId || null,
 		});
 		if (error) throw new Error(error.message);
 		return data;
