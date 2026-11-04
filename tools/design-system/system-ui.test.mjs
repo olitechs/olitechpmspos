@@ -73,6 +73,23 @@ test('theme foundation defines canonical light and dark palettes with reduced-mo
   }
 });
 
+test('legacy palette fallbacks preserve readable foregrounds and surfaces in both themes', () => {
+  for (const selector of [
+    ':root:not([data-theme="dark"])',
+    ':root[data-theme="dark"]',
+    '.bg-gray-900',
+    '.bg-slate-900',
+    '.text-gray-900',
+    '.text-slate-900',
+    '.text-gray-500',
+    'background-color: var(--surface)',
+    'background-color: var(--sidebar)',
+    'color: var(--text-muted)',
+    'color: #FFFFFF',
+  ]) assert.ok(theme.includes(selector), 'missing contrast fallback: ' + selector);
+  assert.match(theme, /:not\(\.room-planner\):not\(\.floor-table-tile\)/);
+});
+
 test('mobile sidebar exposes expanded state and closes with Escape', () => {
   assert.match(sidebar, /aria-expanded=\{mobileOpen\}/);
   assert.match(sidebar, /event\.key===\"Escape\"/);
