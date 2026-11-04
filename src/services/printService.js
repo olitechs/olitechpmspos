@@ -1,6 +1,6 @@
 import { testConnection as testBrowserPrinterConnection, pairUsbDevice, pairBluetoothDevice, pairSerialDevice, sendPrintJob as sendBrowserPrintJob, buildTestPageText, PrinterStatus } from '@/services/printerService';
 import { supabase } from '@/lib/supabaseClient';
-import { buildOrderTicketText, buildUnsettledReceiptText, thermalTextToHtml } from '@/services/printTemplates';
+import { buildOrderTicketText, buildUnsettledReceiptText, buildFinalReceiptText, toEscPosPayload, thermalTextToHtml } from '@/services/printTemplates';
 
 const normalizeNetworkEndpoint = (value, fallbackPort = 9100) => {
   let host = String(value || '').trim();
@@ -124,7 +124,7 @@ async function updatePrinterTransportStatus(printer, propertyId, status, errorMe
   }
 }
 
-async function localAgentRequest(printer, propertyId, path, text = '') {
+async function localAgentRequest(printer, propertyId, path, text = '', escposBase64 = null) {
   const base = normalizeAgentUrl(printer.agent_url || printer.agentUrl);
   const endpoint = normalizeNetworkEndpoint(printer.ip_address || printer.host, printer.port || 9100);
   const payload = {
@@ -133,6 +133,7 @@ async function localAgentRequest(printer, propertyId, path, text = '') {
     propertyId: propertyId || null,
     windowsPrinterName: printer.windows_printer_name || null,
     text,
+    ...(escposBase64 ? { escposBase64 } : {}),
   };
 
   const paths = [path, '/api' + path, '/print-agent' + path];
@@ -179,8 +180,8 @@ async function localAgentRequest(printer, propertyId, path, text = '') {
   };
 }
 
-async function directAgentPrint(printer, propertyId, text, path) {
-  const result = await localAgentRequest(printer, propertyId, path, text);
+async function directAgentPrint(printer, propertyId, text, path, escposBase64 = null) {
+  const result = await localAgentRequest(printer, propertyId, path, text, escposBase64);
   if (!result.ok) {
     const code = result.code || 'LOCAL_AGENT_ERROR';
     const friendly = `[${code}] ${result.message}`;
@@ -214,7 +215,7 @@ export async function openCashDrawer(printer, propertyId) {
   return { ok:true, transport:'local_agent', printerId:printer.id || null };
 }
 
-async function directTcpPrint(printer, propertyId, text, action = 'print') {
+async function directTcpPrint(printer, propertyId, text, action = 'print', escposBase64 = null) {
   const endpoint = normalizeNetworkEndpoint(printer?.ip_address || printer?.host, printer?.port || 9100);
   const host = endpoint.host;
   if (!host) return { ok:false, friendlyError:'Printer IP address is not configured.' };
@@ -222,7 +223,7 @@ async function directTcpPrint(printer, propertyId, text, action = 'print') {
   if (!Number.isInteger(port) || ![9100,9101,9102].includes(port)) {
     return { ok:false, friendlyError:'Unsupported thermal printer port. Use TCP 9100, 9101 or 9102.' };
   }
-  return directAgentPrint(printer, propertyId, text, action === 'test' ? '/test' : '/print');
+  return directAgentPrint(printer, propertyId, text, action === 'test' ? '/test' : '/print', escposBase64);
 }
 
 async function directWindowsPrint(printer, propertyId, text, action = 'print') {
@@ -302,14 +303,14 @@ export async function testPrinterConnection(printer, propertyId) {
   }
 }
 
-export async function printToPrinter(printer, contentHtml, { propertyId, jobType = 'document', copyType = null, title = 'OliTechs Print', assignmentType = 'document', payload = {}, retryOf = null, persistJob = true, thermalText = null } = {}) {
+export async function printToPrinter(printer, contentHtml, { propertyId, jobType = 'document', copyType = null, title = 'OliTechs Print', assignmentType = 'document', payload = {}, retryOf = null, persistJob = true, thermalText = null, thermalBase64 = null } = {}) {
   if (!printer) return { ok: false, friendlyError: 'Printer not configured.' };
   const text = typeof thermalText === 'string' ? thermalText : htmlToThermalText(contentHtml);
   let job = null;
   if (persistJob && propertyId) { job = await createFnbPrintJob({propertyId,printerId:printer.id,assignmentType,jobType,copyType,title,contentHtml,payload,retryOf}); await updateFnbPrintJob(job.id,propertyId,'printing',null,printer.id); }
   let result;
   if (printer.connection_type === 'network_ip') {
-    result = await directTcpPrint(printer, propertyId, text, 'print');
+    result = await directTcpPrint(printer, propertyId, text, 'print', thermalBase64);
   } else if (printer.connection_type === 'windows_printer') {
     result = await directWindowsPrint(printer, propertyId, text, 'print');
   } else if (['usb','bluetooth','serial'].includes(printer.connection_type)) {
@@ -514,6 +515,57 @@ function receiptHtml(settings, type, data, copyType) {
   return `<div class="receipt"><div class="copy">${esc(copyType)}</div>${logo}<div class="center bold">${esc(settings.property_name)}</div><div class="center">${esc(settings.address_line1)}<br>${esc(settings.address_line2)}<br>${esc(settings.phone)}<br>${esc(settings.email)}<br>${esc(settings.website)}<br>KRA PIN: ${esc(settings.kra_pin)}${settings.extra_header_line ? `<br>${esc(settings.extra_header_line)}` : ''}</div><div class="divider"></div><div class="center bold">${esc(title)}</div><div>Waiter: ${esc(data.waiter || 'Unassigned')} &nbsp; Table: ${esc(data.table || '')}</div><div>Covers: ${esc(data.covers ?? '—')} &nbsp; Date: ${esc(new Date(data.createdAt || Date.now()).toLocaleString('en-KE'))}</div>${itemMarkup}<div class="total">TOTAL ${esc(data.currency || '')} ${total}</div>${payment}<div class="footer">${esc(settings.footer_line1)}<br>${esc(settings.footer_line2)}</div><div class="right bold">Check No: ${esc(data.checkNo || data.orderNumber || '')}</div>${data.voidedCount ? `<div class="divider"></div><div class="center bold" style="font-size:9px">${esc(data.voidedCount)} item${Number(data.voidedCount)===1?'':'s'} voided - See void slip #${esc(data.voidSlipNumber || '—')}</div>` : ''} </div>`;
 }
 
+async function buildLogoEscPosBase64(logoUrl, printer = {}, text = '') {
+  if (!logoUrl || typeof Image === 'undefined' || typeof document === 'undefined') return null;
+  try {
+    const image = new Image();
+    image.crossOrigin = 'anonymous';
+    image.src = logoUrl;
+    await new Promise((resolve, reject) => {
+      image.onload = resolve;
+      image.onerror = () => reject(new Error('Logo could not be loaded for thermal printing.'));
+    });
+    const maxWidth = String(printer.paper_width || '80mm').toLowerCase() === '58mm' ? 360 : 540;
+    const scale = Math.min(1, maxWidth / image.naturalWidth, 180 / image.naturalHeight);
+    const width = Math.max(1, Math.floor(image.naturalWidth * scale));
+    const height = Math.max(1, Math.floor(image.naturalHeight * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    if (!context) return null;
+    context.fillStyle = '#fff';
+    context.fillRect(0, 0, width, height);
+    context.drawImage(image, 0, 0, width, height);
+    const pixels = context.getImageData(0, 0, width, height).data;
+    const rowBytes = Math.ceil(width / 8);
+    const raster = new Uint8Array(8 + rowBytes * height);
+    raster.set([0x1b,0x61,0x01,0x1d,0x76,0x30,0x00,rowBytes & 0xff,(rowBytes >> 8) & 0xff,height & 0xff,(height >> 8) & 0xff].slice(0,8));
+    // ESC/POS GS v 0 header is 8 bytes after command; dimensions are little-endian.
+    const payload = new Uint8Array(11 + rowBytes * height);
+    payload.set([0x1b,0x61,0x01,0x1d,0x76,0x30,0x00,rowBytes & 0xff,(rowBytes >> 8) & 0xff,height & 0xff,(height >> 8) & 0xff]);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const index = (y * width + x) * 4;
+        const luminance = (pixels[index] * 299 + pixels[index + 1] * 587 + pixels[index + 2] * 114) / 1000;
+        if (luminance < 160) payload[11 + y * rowBytes + (x >> 3)] |= (0x80 >> (x & 7));
+      }
+    }
+    const textBytes = new TextEncoder().encode(toEscPosPayload(text));
+    const combined = new Uint8Array(payload.length + textBytes.length);
+    combined.set(payload, 0);
+    combined.set(textBytes, payload.length);
+    let binary = '';
+    for (let offset = 0; offset < combined.length; offset += 0x8000) {
+      binary += String.fromCharCode(...combined.subarray(offset, Math.min(offset + 0x8000, combined.length)));
+    }
+    return btoa(binary);
+  } catch (error) {
+    console.warn('[printService] thermal logo rendering skipped', error);
+    return null;
+  }
+}
+
 export async function printTestOrder(printer, assignmentTypes = []) {
   const isBar = printer?.type === 'bar' || assignmentTypes.includes('drinks_orders') || assignmentTypes.includes('void_drinks_orders');
   const center = isBar ? 'BAR' : 'KITCHEN';
@@ -608,6 +660,7 @@ export async function printReceipt(type, data) {
     for (const printer of targets) {
       const copyTexts = copies.map(copy => buildUnsettledReceiptText(settings, data, { printer, copyLabel: copy }));
       const thermalText = copyTexts.join('\n\n\x1D\x56\x01\n\n');
+      const thermalBase64 = await buildLogoEscPosBase64(settings.logo_url, printer, thermalText);
       results.push(await printToPrinter(printer, thermalTextToHtml(thermalText), {
         propertyId,
         jobType: type,
@@ -616,6 +669,7 @@ export async function printReceipt(type, data) {
         payload: { orderNumber: data.orderNumber || data.checkNo || null, total: data.total || 0 },
         title: 'Unsettled Bill',
         thermalText,
+        thermalBase64,
       }));
     }
     return { ok: results.every(result => result.ok), results };
