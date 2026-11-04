@@ -331,8 +331,8 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   const openRoomFolio = async (rv, entireGroup = false) => {
     if (entireGroup && rv.groupId) { setActionModal(null); setFolio({ reservation: rv, group: normalizedReservations.filter(x => x.groupId === rv.groupId) }); setActionModal({ type: 'groupFolio', reservation: rv }); return; }
     try {
-      const [data, receipts] = await Promise.all([pmsService.getFolio(rv.id), pmsService.listReceiptsForReservation(rv.id)]);
-      setFolio({ reservation: rv, ...data, posReceipts: receipts || [] });
+      const [data, receipts, payments] = await Promise.all([pmsService.getFolio(rv.id), pmsService.listReceiptsForReservation(rv.id), pmsService.listPayments(rv.id)]);
+      setFolio({ reservation: rv, ...data, posReceipts: receipts || [], payments: payments || [] });
       setActionModal({ type: 'folio', reservation: rv });
     } catch (e) { toast.error(e.message); }
   };
