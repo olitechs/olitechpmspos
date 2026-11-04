@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Plus, Pencil, Trash2, Printer, Wifi, Play, X, RefreshCw, CheckCircle2, AlertCircle, CircleOff, Network, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
-import { getPrinters, getAssignments, testPrint, connectPrinter } from '@/services/printService';
+import { getPrinters, getAssignments, testPrint, connectPrinter, printTestOrder, printTestReceipt } from '@/services/printService';
 import { supabase } from '@/lib/supabaseClient';
 
 const normalizeNetworkEndpoint = (value, fallbackPort = 9100) => {
@@ -58,6 +58,7 @@ const blank = {
   device_name:'',
   device_address:'',
   paper_width:'80mm',
+  character_width:null,
   is_online:false,
   is_default:false,
   last_status:'disconnected',
@@ -91,6 +92,7 @@ export default function SettingsPrinters() {
   const [discovered,setDiscovered] = useState([]);
   const [agentError,setAgentError] = useState('');
   const [windowsPrinters,setWindowsPrinters] = useState([]);
+  const [templateTests,setTemplateTests] = useState({});
 
   const load = async (silent=false) => {
     if (!propertyId) return;
@@ -169,6 +171,7 @@ export default function SettingsPrinters() {
       baud_rate:printer.baud_rate || 9600,
       device_name:printer.device_name || '',
       device_address:printer.device_address || '',
+      character_width:printer.character_width ?? null,
       assignmentTypes:assignments.filter(a=>a.printer_id===printer.id).map(a=>a.assignment_type),
     });
   };
@@ -183,6 +186,8 @@ export default function SettingsPrinters() {
     }
     if (type === 'windows_printer' && !editing.windows_printer_name?.trim()) return setError('Enter the Windows installed printer name.');
     if (type === 'serial' && ![9600,19200,38400,57600,115200].includes(Number(editing.baud_rate || 9600))) return setError('Select a supported serial baud rate.');
+    const characterWidth = editing.character_width === '' || editing.character_width == null ? null : Number(editing.character_width);
+    if (characterWidth != null && (!Number.isInteger(characterWidth) || characterWidth < 24 || characterWidth > 64)) return setError('Character override must be a whole number from 24 to 64.');
 
     setError(''); setNotice('');
     const {assignmentTypes=[],...printerFields} = editing;
@@ -192,6 +197,7 @@ export default function SettingsPrinters() {
     if (type === 'network_ip' && !endpoint.host) return setError('Enter the printer IPv4 address.');
     const payload = {
       ...printerFields,
+      character_width: characterWidth,
       ip_address: endpoint.host,
       property_id:propertyId,
       connection_type:type,
@@ -254,6 +260,26 @@ export default function SettingsPrinters() {
       setTestingId(null);
       // Always refresh the persisted status after the test, including failures.
       await load(true).catch(() => {});
+    }
+  };
+
+  const runTemplateTest = async (printer, kind) => {
+    const key = printer.id + ':' + kind;
+    setTemplateTests(prev => ({ ...prev, [key]: { pending: true, text: 'Sending test print…' } }));
+    try {
+      const result = kind === 'order'
+        ? await printTestOrder(printer)
+        : await printTestReceipt(printer, propertyId);
+      setTemplateTests(prev => ({
+        ...prev,
+        [key]: {
+          pending: false,
+          ok: !!result?.ok,
+          text: result?.ok ? 'Test template sent to printer.' : (result?.friendlyError || 'Test print failed.'),
+        },
+      }));
+    } catch (error) {
+      setTemplateTests(prev => ({ ...prev, [key]: { pending: false, ok: false, text: error?.message || 'Test print failed.' } }));
     }
   };
 
@@ -329,7 +355,7 @@ export default function SettingsPrinters() {
                 <div><h2 className="text-sm font-black uppercase tracking-wide text-foreground">Physical Printers</h2><p className="mt-1 text-xs text-muted-foreground">Only a verified connection is shown as Connected.</p></div>
               </div>
               <div className="space-y-3">
-                {printers.map(p=><PrinterCard key={p.id} printer={p} assignments={assignments.filter(a=>a.printer_id===p.id)} testing={testingId===p.id} onTest={()=>verify(p.id)} onEdit={()=>openEdit(p)} onDelete={()=>remove(p.id)} onRemoveAssignment={removeAssignment}/>)}
+                {printers.map(p=><PrinterCard key={p.id} printer={p} assignments={assignments.filter(a=>a.printer_id===p.id)} testing={testingId===p.id} onTest={()=>verify(p.id)} onTestOrder={()=>runTemplateTest(p,'order')} onTestReceipt={()=>runTemplateTest(p,'receipt')} orderTest={templateTests[p.id+':order']} receiptTest={templateTests[p.id+':receipt']} onEdit={()=>openEdit(p)} onDelete={()=>remove(p.id)} onRemoveAssignment={removeAssignment}/>)}
                 {!printers.length && <Empty onAdd={openNew}/>}
               </div>
             </section>
@@ -378,7 +404,7 @@ function Alert({type,text}) {
   return <div className={`flex items-start gap-2 rounded-xl border p-3 text-sm font-semibold ${type==='error'?'border-[var(--danger)] bg-[var(--danger-soft)] text-[var(--danger-text)]':'border-[var(--success)] bg-[var(--success-soft)] text-[var(--success-text)]'}`}>{type==='error'?<AlertCircle size={17}/>:<CheckCircle2 size={17}/>}<span>{text}</span></div>;
 }
 
-function PrinterCard({printer,assignments,testing,onTest,onEdit,onDelete,onRemoveAssignment}) {
+function PrinterCard({printer,assignments,testing,onTest,onTestOrder,onTestReceipt,orderTest,receiptTest,onEdit,onDelete,onRemoveAssignment}) {
   const meta=statusMeta(printer);
   const Icon=meta.Icon;
   return <article className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
@@ -413,11 +439,17 @@ function PrinterCard({printer,assignments,testing,onTest,onEdit,onDelete,onRemov
     </div>
 
     <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
-      <button disabled={testing} onClick={onTest} className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-black text-primary-foreground disabled:opacity-50"><Play size={13}/>{testing?'Testing…':'Test & Print'}</button>
+      <button disabled={testing} onClick={onTest} className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-black text-primary-foreground disabled:opacity-50"><Play size={13}/>{testing?'Testing…':'Test Connection'}</button>
+      <button disabled={orderTest?.pending} onClick={onTestOrder} className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-xs font-bold text-foreground disabled:opacity-50"><Printer size={13}/>{orderTest?.pending?'Printing…':'Test Print – Order'}</button>
+      <button disabled={receiptTest?.pending} onClick={onTestReceipt} className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-xs font-bold text-foreground disabled:opacity-50"><Printer size={13}/>{receiptTest?.pending?'Printing…':'Test Print – Receipt'}</button>
       <button onClick={onEdit} className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-bold text-foreground hover:bg-secondary"><Pencil size={13}/>Edit</button>
       <button onClick={onDelete} className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--danger)] px-3 py-2 text-xs font-bold text-[var(--danger-text)] hover:bg-[var(--danger-soft)]"><Trash2 size={13}/>Delete</button>
       {printer.last_tested_at && <span className="ml-auto self-center text-[10px] text-muted-foreground">Tested {new Date(printer.last_tested_at).toLocaleString('en-KE')}</span>}
     </div>
+    {(orderTest && !orderTest.pending || receiptTest && !receiptTest.pending) && <div className="mt-3 space-y-1 text-[11px] font-semibold">
+      {orderTest && !orderTest.pending && <div className={orderTest.ok?'text-[var(--success-text)]':'text-[var(--danger-text)]'}>Order test: {orderTest.text}</div>}
+      {receiptTest && !receiptTest.pending && <div className={receiptTest.ok?'text-[var(--success-text)]':'text-[var(--danger-text)]'}>Receipt test: {receiptTest.text}</div>}
+    </div>}
   </article>;
 }
 
@@ -455,6 +487,7 @@ function PrinterModal({form,setForm,onClose,onSave,windowsPrinters=[],refreshLoc
           {form.connection_type === 'windows_printer' && <div className="space-y-2"><label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">Windows installed printer<select value={form.windows_printer_name||''} onChange={e=>setForm({...form,windows_printer_name:e.target.value})} onFocus={()=>refreshLocalDevices(form.agent_url)} className="mt-1.5 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm"><option value="">Select installed printer</option>{windowsPrinters.map(p=><option key={p.Name} value={p.Name}>{p.Name}{p.DriverName ? ` — ${p.DriverName}` : ''}</option>)}</select></label><p className="text-[11px] text-muted-foreground">The printer must first be installed and visible in Windows Printers & scanners. OliTechs sends the thermal data through the local print agent.</p></div>}
           {form.connection_type === 'serial' && <label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">Baud rate<select value={form.baud_rate||9600} onChange={e=>setForm({...form,baud_rate:Number(e.target.value)})} className="mt-1.5 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm">{[9600,19200,38400,57600,115200].map(rate=><option key={rate} value={rate}>{rate} baud</option>)}</select></label>}
           <label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">Paper width<select value={form.paper_width||'80mm'} onChange={e=>setForm({...form,paper_width:e.target.value})} className="mt-1.5 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm"><option>80mm</option><option>58mm</option></select></label>
+          <label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">Characters per line (optional)<input type="number" min="24" max="64" step="1" value={form.character_width ?? ''} onChange={e=>setForm({...form,character_width:e.target.value===''?null:Number(e.target.value)})} placeholder={form.paper_width==='58mm'?'Auto: 32':'Auto: 48'} className="mt-1.5 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm"/><span className="mt-1 block text-[10px] font-normal normal-case tracking-normal text-muted-foreground">Leave blank to use the paper-width default. Set 24–64 to override.</span></label>
           {form.connection_type === 'network_ip' && <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-secondary/60 p-3">
             <input type="checkbox" checked={!!form.open_drawer_after_sale} onChange={e=>setForm({...form,open_drawer_after_sale:e.target.checked})} className="mt-0.5 h-4 w-4"/>
             <span><span className="block text-xs font-black uppercase tracking-wide text-foreground">Open cash drawer after cash sale</span><span className="mt-1 block text-[11px] font-normal normal-case leading-5 tracking-normal text-muted-foreground">Sends an ESC/POS drawer pulse after a completed Cash or cash-containing Split Payment. Requires a drawer connected to this printer's kick port. Disabled by default.</span></span>

@@ -1,5 +1,6 @@
 import { testConnection as testBrowserPrinterConnection, pairUsbDevice, pairBluetoothDevice, pairSerialDevice, sendPrintJob as sendBrowserPrintJob, buildTestPageText, PrinterStatus } from '@/services/printerService';
 import { supabase } from '@/lib/supabaseClient';
+import { buildOrderTicketText, buildUnsettledReceiptText, thermalTextToHtml } from '@/services/printTemplates';
 
 const normalizeNetworkEndpoint = (value, fallbackPort = 9100) => {
   let host = String(value || '').trim();
@@ -301,9 +302,9 @@ export async function testPrinterConnection(printer, propertyId) {
   }
 }
 
-export async function printToPrinter(printer, contentHtml, { propertyId, jobType = 'document', copyType = null, title = 'OliTechs Print', assignmentType = 'document', payload = {}, retryOf = null, persistJob = true } = {}) {
+export async function printToPrinter(printer, contentHtml, { propertyId, jobType = 'document', copyType = null, title = 'OliTechs Print', assignmentType = 'document', payload = {}, retryOf = null, persistJob = true, thermalText = null } = {}) {
   if (!printer) return { ok: false, friendlyError: 'Printer not configured.' };
-  const text = htmlToThermalText(contentHtml);
+  const text = typeof thermalText === 'string' ? thermalText : htmlToThermalText(contentHtml);
   let job = null;
   if (persistJob && propertyId) { job = await createFnbPrintJob({propertyId,printerId:printer.id,assignmentType,jobType,copyType,title,contentHtml,payload,retryOf}); await updateFnbPrintJob(job.id,propertyId,'printing',null,printer.id); }
   let result;
@@ -365,10 +366,13 @@ const itemIsDrink = (item) => {
   return category === 'drinks' || category === 'drink' || category === 'bibite' || String(item?.center || '').toLowerCase() === 'bar';
 };
 
-function orderTicketHtml(order, kind, items) {
-  const title = kind === 'food' ? 'KITCHEN ORDER' : 'BAR ORDER';
-  const rows = items.map((item) => `<tr><td class="qty">${esc(item.qty)}x</td><td>${esc(item.name)}</td></tr>`).join('');
-  return `<div class="receipt"><div class="copy">${title}</div><div class="bold">Table: ${esc(order.table || order.tableNumber || '')}</div><div>Waiter: ${esc(order.waiter || 'Unassigned')}</div><div>Time: ${esc(new Date(order.createdAt || Date.now()).toLocaleString('en-KE'))}</div><div class="divider"></div><table class="items">${rows}</table><div class="divider"></div><div class="muted">Check No: ${esc(order.checkNo || order.orderNumber || '')}</div></div>`;
+function orderTicketHtml(order, kind, items, printer = {}) {
+  const thermalText = buildOrderTicketText(order, {
+    printer,
+    center: kind === 'food' ? 'KITCHEN' : 'BAR',
+    items,
+  });
+  return thermalTextToHtml(thermalText);
 }
 
 export async function printOrderByCategory(order) {
@@ -394,7 +398,21 @@ export async function printOrderByCategory(order) {
       results.push({ ok:false, assignmentType:group.type, jobId:queued.id, printerId:null, printerName:null, friendlyError:`No printer assigned to ${group.type}.` });
       continue;
     }
-    for (const printer of targets) results.push(await printToPrinter(printer, orderTicketHtml(order, group.kind, group.items), { propertyId, jobType: group.kind === 'food' ? 'KOT' : 'BOT', assignmentType: group.type, payload: {orderNumber:order.orderNumber||order.checkNo||null,table:order.table||order.tableNumber||null}, title: group.kind === 'food' ? 'Kitchen Order' : 'Bar Order' }));
+    for (const printer of targets) {
+      const thermalText = buildOrderTicketText(order, {
+        printer,
+        center: group.kind === 'food' ? 'KITCHEN' : 'BAR',
+        items: group.items,
+      });
+      results.push(await printToPrinter(printer, thermalTextToHtml(thermalText), {
+        propertyId,
+        jobType: group.kind === 'food' ? 'KOT' : 'BOT',
+        assignmentType: group.type,
+        payload: { orderNumber: order.orderNumber || order.checkNo || null, table: order.table || order.tableNumber || null },
+        title: group.kind === 'food' ? 'Kitchen Order' : 'Bar Order',
+        thermalText,
+      }));
+    }
   }
   return { ok: results.every((r) => r.ok), results };
 }
@@ -489,6 +507,69 @@ function receiptHtml(settings, type, data, copyType) {
   return `<div class="receipt"><div class="copy">${esc(copyType)}</div>${logo}<div class="center bold">${esc(settings.property_name)}</div><div class="center">${esc(settings.address_line1)}<br>${esc(settings.address_line2)}<br>${esc(settings.phone)}<br>${esc(settings.email)}<br>${esc(settings.website)}<br>KRA PIN: ${esc(settings.kra_pin)}${settings.extra_header_line ? `<br>${esc(settings.extra_header_line)}` : ''}</div><div class="divider"></div><div class="center bold">${esc(title)}</div><div>Waiter: ${esc(data.waiter || 'Unassigned')} &nbsp; Table: ${esc(data.table || '')}</div><div>Covers: ${esc(data.covers ?? '—')} &nbsp; Date: ${esc(new Date(data.createdAt || Date.now()).toLocaleString('en-KE'))}</div>${itemMarkup}<div class="total">TOTAL ${esc(data.currency || '')} ${total}</div>${payment}<div class="footer">${esc(settings.footer_line1)}<br>${esc(settings.footer_line2)}</div><div class="right bold">Check No: ${esc(data.checkNo || data.orderNumber || '')}</div>${data.voidedCount ? `<div class="divider"></div><div class="center bold" style="font-size:9px">${esc(data.voidedCount)} item${Number(data.voidedCount)===1?'':'s'} voided - See void slip #${esc(data.voidSlipNumber || '—')}</div>` : ''} </div>`;
 }
 
+export async function printTestOrder(printer) {
+  const order = {
+    propertyName: 'OLITECHS PMS + POS',
+    orderNumber: 'TEST-ORDER-001',
+    table: 'TEST-01',
+    waiter: 'Print Test',
+    diningOption: 'Dine In',
+    covers: 2,
+    createdAt: new Date().toISOString(),
+    items: [{
+      qty: 2,
+      name: 'Thermal Test Burger',
+      modifiers: [{ name: 'Extra Cheese' }, { name: 'No Onion' }],
+      prepNote: 'TEST ONLY - no kitchen action',
+    }],
+  };
+  const thermalText = buildOrderTicketText(order, { printer, center: 'KITCHEN' });
+  return printToPrinter(printer, thermalTextToHtml(thermalText), {
+    propertyId: null,
+    jobType: 'test_order',
+    copyType: 'test',
+    assignmentType: 'food_orders',
+    title: 'Test Print - Order',
+    payload: { test: true, template: 'order' },
+    persistJob: false,
+    thermalText,
+  });
+}
+
+export async function printTestReceipt(printer, propertyId) {
+  let settings = {};
+  if (propertyId) {
+    const { data, error } = await supabase.from('property_settings').select('*').eq('property_id', propertyId).maybeSingle();
+    if (error) throw error;
+    settings = data || {};
+  }
+  const data = {
+    orderNumber: 'TEST-RECEIPT-001',
+    checkNo: 'TEST-RECEIPT-001',
+    table: 'TEST-01',
+    waiter: 'Print Test',
+    diningOption: 'Dine In',
+    covers: 2,
+    currency: 'KES',
+    items: [{ qty: 2, name: 'Thermal Test Burger', price: 450, modifiers: [{ name: 'Extra Cheese' }] }],
+    subtotal: 900,
+    vat: 144,
+    total: 1044,
+    createdAt: new Date().toISOString(),
+  };
+  const thermalText = buildUnsettledReceiptText(settings, data, { printer, copyLabel: 'TEST PRINT' });
+  return printToPrinter(printer, thermalTextToHtml(thermalText), {
+    propertyId: null,
+    jobType: 'test_receipt',
+    copyType: 'test',
+    assignmentType: 'unsettled_bills',
+    title: 'Test Print - Receipt',
+    payload: { test: true, template: 'unsettled_receipt' },
+    persistJob: false,
+    thermalText,
+  });
+}
+
 export async function printReceipt(type, data) {
   const propertyId = data.propertyId;
   const settings = data.settings || await (async () => { const { data: row, error } = await supabase.from('property_settings').select('*').eq('property_id', propertyId).maybeSingle(); if(error) throw error; return row; })();
@@ -513,10 +594,27 @@ export async function printReceipt(type, data) {
   const copies = type === 'UNSETTLED'
     ? (copyCount === 1 ? ['CUSTOMER COPY'] : ['CUSTOMER COPY', settings.unsettled_receipt_front_office_copy === false ? 'SECOND COPY' : 'FRONT OFFICE COPY'])
     : ['CUSTOMER COPY', 'CASHIER COPY'];
-  const receiptCopies = copies.map((copy) => receiptHtml(settings, type, data, copy));
-  const content = `<div class="receipt">${receiptCopies.join('<div class="cut">✂ CUT HERE</div>')}</div>`;
   const results = [];
-  for (const printer of targets) results.push(await printToPrinter(printer, content, { propertyId, jobType: type, copyType:'duplicate', assignmentType, payload:{orderNumber:data.orderNumber||data.checkNo||null,total:data.total||0}, title:type === 'UNSETTLED' ? 'Unsettled Bill' : 'Final Receipt' }));
+  if (type === 'UNSETTLED') {
+    for (const printer of targets) {
+      const copyTexts = copies.map(copy => buildUnsettledReceiptText(settings, data, { printer, copyLabel: copy }));
+      const thermalText = copyTexts.join('\n\n\x1D\x56\x01\n\n');
+      results.push(await printToPrinter(printer, thermalTextToHtml(thermalText), {
+        propertyId,
+        jobType: type,
+        copyType: 'duplicate',
+        assignmentType,
+        payload: { orderNumber: data.orderNumber || data.checkNo || null, total: data.total || 0 },
+        title: 'Unsettled Bill',
+        thermalText,
+      }));
+    }
+    return { ok: results.every(result => result.ok), results };
+  }
+
+  const receiptCopies = copies.map(copy => receiptHtml(settings, type, data, copy));
+  const content = `<div class="receipt">${receiptCopies.join('<div class="cut">✂ CUT HERE</div>')}</div>`;
+  for (const printer of targets) results.push(await printToPrinter(printer, content, { propertyId, jobType: type, copyType:'duplicate', assignmentType, payload:{orderNumber:data.orderNumber||data.checkNo||null,total:data.total||0}, title:'Final Receipt' }));
   return { ok: results.every((r) => r.ok), results };
 }
 

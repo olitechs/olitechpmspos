@@ -2,6 +2,7 @@ import { usePrinterStore } from '@/data/modules/printerStore';
 import { isFeatureEnabled } from '@/lib/featureFlags';
 import { supabase } from '@/lib/supabaseClient';
 import { groupCenter, resolveCategoryId } from '@/services/printRoutingCore';
+import { buildOrderTicketText } from '@/services/printTemplates';
 
 export { groupCenter, resolveCategoryId };
 export function isPrinterGroupRoutingEnabled() {
@@ -57,24 +58,6 @@ const encode = value => {
   return btoa(unescape(encodeURIComponent(String(value ?? ''))));
 };
 
-const ticket = (items, { orderNumber, table, waiter, center }) => [
-  'OLITECHS PMS + POS',
-  '--------------------------------',
-  `${String(center || 'KITCHEN').toUpperCase()} ORDER TICKET`,
-  `ORDER: ${orderNumber || '—'}`,
-  `TABLE: ${table || '—'}`,
-  `WAITER: ${waiter || '—'}`,
-  `TIME: ${new Date().toLocaleString('en-KE')}`,
-  '--------------------------------',
-  ...(items || []).map(item => {
-    const modifiers = Array.isArray(item.modifiers) ? item.modifiers.map(m => m.name || m.label || m).filter(Boolean).join(', ') : '';
-    const note = item.notes || item.note || '';
-    return [`${Number(item.qty || item.quantity || 1)} x ${item.name || item.item_name || 'Item'}`, modifiers ? `  + ${modifiers}` : '', note ? `  NOTE: ${note}` : ''].filter(Boolean).join('\n');
-  }),
-  '--------------------------------',
-  '',
-].join('\n');
-
 async function ensureStoreHydrated(propertyId) {
   const current = usePrinterStore.getState();
   if (current.storeId && current.propertyId === propertyId && current.workspaceId) return current;
@@ -121,10 +104,14 @@ export async function printOrder(order = {}) {
     printer_id: printer.id,
     printer_group_id: plan.groupId,
     order_id: /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(order.orderId || '')) ? order.orderId : null,
-    content_escpos_base64: encode(ticket(plan.lines, {
+    content_escpos_base64: encode(buildOrderTicketText({
+      ...order,
       orderNumber: order.orderNumber || order.checkNo || order.id,
       table: order.table || order.tableNumber,
       waiter: order.waiter,
+    }, {
+      printer,
+      items: plan.lines,
       center: plan.center || plan.groupName,
     })),
     status: 'pending',
