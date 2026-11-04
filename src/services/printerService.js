@@ -402,11 +402,22 @@ async function sendToBluetooth(printer, text) {
 		const service = await handle.gatt.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb');
 		const characteristic = await service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb');
 		const data = escPosBytes(text);
-		// Thermal printers over BLE typically need chunked writes.
-		const CHUNK = 180;
-		for (let i = 0; i < data.length; i += CHUNK) {
-			await characteristic.writeValueWithoutResponse(data.slice(i, i + CHUNK));
-		}
+    // BLE printer buffers are small. Prefer acknowledged writes where the
+    // characteristic supports them; otherwise pace no-response chunks so
+    // long receipts cannot overrun the device buffer before the cut command.
+    const CHUNK = 180;
+    const acknowledgedWrites = typeof characteristic.writeValueWithResponse === 'function';
+    for (let i = 0; i < data.length; i += CHUNK) {
+      const chunk = data.slice(i, i + CHUNK);
+      if (acknowledgedWrites) {
+        await characteristic.writeValueWithResponse(chunk);
+      } else {
+        await characteristic.writeValueWithoutResponse(chunk);
+        if (i + CHUNK < data.length) {
+          await new Promise(resolve => setTimeout(resolve, 15));
+        }
+      }
+    }
 		return { ok: true };
 	} catch (err) {
 		return { ok: false, friendlyError: toFriendlyError(err), rawError: String(err?.message || err) };
