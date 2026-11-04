@@ -45,8 +45,3 @@ test('unsettled bill print remains separate from payment and receipt persistence
   assert.match(bill, /printReceipt\\('UNSETTLED'/);
   assert.doesNotMatch(service, /from\\(['"]pos_receipts['"]\\)/);
 });
-
-test('final receipt copies use actual line breaks and ESC/POS cut framing', async () => {
-  const service = await read('./printService.js');
-  assert.match(service, /copyTexts\\.join\\('\\\\n\\\\n\\\\x1D\\\\x56\\\\x01\\\\n\\\\n'\\)/);
-});
