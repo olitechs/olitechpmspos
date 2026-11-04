@@ -22,6 +22,7 @@ const adminProperties = readFileSync(new URL('../../src/pages/admin/AdminPropert
 const kitchenDisplay = readFileSync(new URL('../../src/components/modules/KitchenDisplay.jsx', import.meta.url), 'utf8');
 const laundry = readFileSync(new URL('../../src/components/modules/Laundry.jsx', import.meta.url), 'utf8');
 const transfers = readFileSync(new URL('../../src/components/modules/Transfers.jsx', import.meta.url), 'utf8');
+const recipes = readFileSync(new URL('../../src/components/modules/Recipes.jsx', import.meta.url), 'utf8');
 const roomsPage = readFileSync(new URL('../../src/components/pms/Rooms.jsx', import.meta.url), 'utf8');
 const billPayment = readFileSync(new URL('../../src/components/pos/BillPayment.jsx', import.meta.url), 'utf8');
 const orderTaking = readFileSync(new URL('../../src/components/pos/OrderTaking.jsx', import.meta.url), 'utf8');
@@ -193,7 +194,7 @@ test('operational screens use semantic theme tokens for text, surfaces, focus an
 });
 
 test('timecards, stock movements and store operations use semantic theme colours', () => {
-  for (const [name, source] of Object.entries({timecards, stockMovements, storesPage, shiftReport, storePage, inventoryOperations, inventoryReports, purchasing, reports, channelManager, distributionOps, bookingEngine, pinPad, routeGuard, errorBoundary, login, adminCreateProperty, adminRoles, unsettledReceiptSettings, adminProperties, kitchenDisplay, laundry, transfers, roomsPage, billPayment, orderTaking})) {
+  for (const [name, source] of Object.entries({timecards, stockMovements, storesPage, shiftReport, storePage, inventoryOperations, inventoryReports, purchasing, reports, channelManager, distributionOps, bookingEngine, pinPad, routeGuard, errorBoundary, login, adminCreateProperty, adminRoles, unsettledReceiptSettings, adminProperties, kitchenDisplay, laundry, transfers, recipes, roomsPage, billPayment, orderTaking})) {
     assert.doesNotMatch(source, /\b(?:text|bg|border)-(?:slate|gray|zinc|neutral|red|amber|emerald|teal|blue|rose|green|yellow|orange)-(?:50|100|200|300|400|500|600|700|800|900|950)\b/, name + ' should not use fixed palette utilities');
   }
   assert.match(timecards, /bg-canvas/);
@@ -223,6 +224,7 @@ test('timecards, stock movements and store operations use semantic theme colours
   assert.match(kitchenDisplay, /var\(--danger-soft\)/);
   assert.match(laundry, /var\(--danger-text\)/);
   assert.match(transfers, /var\(--danger-text\)/);
+  assert.match(recipes, /var\(--danger-text\)/);
   assert.match(roomsPage, /var\(--danger-soft\)/);
   assert.match(billPayment, /var\(--danger-soft\)/);
   assert.match(orderTaking, /var\(--danger-soft\)/);
