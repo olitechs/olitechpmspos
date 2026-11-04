@@ -4,8 +4,8 @@ import{useAuth}from'@/lib/AuthContext';
 import{pmsService}from'@/services/pmsService';
 
 const STATUS={
- trial:{label:'Trial',className:'bg-amber-50 text-amber-700 border-amber-200'},
- active:{label:'Active',className:'bg-emerald-50 text-emerald-700 border-emerald-200'},
+ trial:{label:'Trial',className:'bg-[var(--warning-soft)] text-[var(--warning-text)] border-[var(--warning)]'},
+ active:{label:'Active',className:'bg-[var(--success-soft)] text-[var(--success-text)] border-[var(--success)]'},
  past_due:{label:'Past due',className:'bg-orange-50 text-orange-700 border-orange-200'},
  suspended:{label:'Suspended',className:'bg-[var(--danger-soft)] text-[var(--danger-text)] border-[var(--danger)]'},
  cancelled:{label:'Cancelled',className:'bg-secondary text-muted-foreground border-border'},
@@ -119,7 +119,7 @@ export default function SubscriptionPanel(){
 
      <section className="rounded-3xl border border-border bg-surface p-5">
        <div className="flex items-center justify-between gap-3"><div><h2 className="font-black text-foreground">Enabled modules</h2><p className="mt-1 text-xs text-muted-foreground">Modules explicitly enabled for this property.</p></div><span className="rounded-full bg-secondary px-3 py-1 text-xs font-bold">{modules.length} enabled</span></div>
-       {modules.length?<div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{modules.map(module=><div key={module} className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2.5 text-sm font-semibold"><CheckCircle2 size={15} className="text-emerald-600"/>{MODULE_LABELS[module]||String(module).replaceAll('_',' ')}</div>)}</div>:<div className="mt-4 rounded-2xl bg-canvas p-4 text-sm text-muted-foreground">No explicit module overrides are recorded. Access follows the package configuration controlled by the Platform Admin.</div>}
+       {modules.length?<div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{modules.map(module=><div key={module} className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2.5 text-sm font-semibold"><CheckCircle2 size={15} className="text-[var(--success-text)]"/>{MODULE_LABELS[module]||String(module).replaceAll('_',' ')}</div>)}</div>:<div className="mt-4 rounded-2xl bg-canvas p-4 text-sm text-muted-foreground">No explicit module overrides are recorded. Access follows the package configuration controlled by the Platform Admin.</div>}
      </section>
 
      <div className="flex justify-end"><button onClick={load} className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-4 py-2 text-xs font-bold text-foreground"><RefreshCw size={14}/> Refresh subscription</button></div>
