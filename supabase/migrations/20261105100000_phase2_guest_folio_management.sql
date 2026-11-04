@@ -101,6 +101,7 @@ as $
 declare original public.payments; refund_payment public.payments; adjustment public.cashier_adjustments;
  manager boolean; key text; already numeric; remaining numeric; reservation_property uuid;
 begin
+ if not(public.is_platform_owner() or public.is_member_of_property(p_property_id)) then raise exception 'Access denied.'; end if;
  manager:=public.is_platform_owner() or public.property_role(p_property_id) in ('owner','admin','manager') or public.current_staff_role(p_property_id) in ('hotel_admin','super_admin','fb_manager','general_manager','front_office_manager');
  if not manager then raise exception 'Manager approval is required to refund a guest payment.'; end if;
  key:=nullif(trim(p_idempotency_key),''); if key is null then raise exception 'An idempotency key is required.'; end if;
@@ -136,6 +137,7 @@ language plpgsql security invoker set search_path=public
 as $$
 declare c public.folio_charges; rev public.folio_charges; manager boolean;
 begin
+ if not(public.is_platform_owner() or public.is_member_of_property(p_property_id)) then raise exception 'Access denied.'; end if;
  select * into c from public.folio_charges where id=p_charge_id and property_id=p_property_id for update;
  if c.id is null then raise exception 'Folio charge not found.'; end if;
  manager:=public.is_platform_owner() or public.property_role(p_property_id) in ('owner','admin','manager') or public.current_staff_role(p_property_id) in ('hotel_admin','super_admin','fb_manager','general_manager','front_office_manager');
@@ -156,6 +158,7 @@ language plpgsql security invoker set search_path=public
 as $$
 declare r public.reservations; c public.folio_charges; manager boolean; key text; charges numeric; paid numeric; prior numeric;
 begin
+ if not(public.is_platform_owner() or public.is_member_of_property(p_property_id)) then raise exception 'Access denied.'; end if;
  manager:=public.is_platform_owner() or public.property_role(p_property_id) in ('owner','admin','manager') or public.current_staff_role(p_property_id) in ('hotel_admin','super_admin','fb_manager','general_manager','front_office_manager');
  if not manager then raise exception 'Manager approval is required to apply a folio discount.'; end if;
  key:=nullif(trim(p_idempotency_key),''); if key is null then raise exception 'An idempotency key is required.'; end if;
@@ -180,6 +183,7 @@ language plpgsql security invoker set search_path=public
 as $$
 declare target public.reservations; charge public.folio_charges; moved integer:=0; source_reservation uuid;
 begin
+ if not(public.is_platform_owner() or public.is_member_of_property(p_property_id)) then raise exception 'Access denied.'; end if;
  if not(public.is_platform_owner() or public.property_role(p_property_id) in ('owner','admin','manager') or public.current_staff_role(p_property_id) in ('hotel_admin','super_admin','fb_manager','general_manager','front_office_manager')) then raise exception 'Manager permission is required to transfer folio charges.'; end if;
  if coalesce(array_length(p_charge_ids,1),0)=0 or nullif(trim(p_reason),'') is null then raise exception 'Select charges and provide a transfer reason.'; end if;
  select * into target from public.reservations where id=p_target_reservation_id and property_id=p_property_id for update;
