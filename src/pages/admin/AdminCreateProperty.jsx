@@ -64,7 +64,7 @@ export default function AdminCreateProperty() {
     return (
       <div className="max-w-2xl mx-auto space-y-6">
         <div className="bg-card border border-border rounded-2xl p-8 text-center">
-          <CheckCircle2 className="w-14 h-14 mx-auto text-emerald-600" />
+          <CheckCircle2 className="w-14 h-14 mx-auto text-[var(--success)]" />
           <h1 className="text-2xl font-bold mt-4">Property Created</h1>
           <p className="text-muted-foreground mt-2">{created.name} is now available in the platform.</p>
           <div className="flex justify-center gap-2 mt-6">
@@ -161,8 +161,8 @@ export default function AdminCreateProperty() {
             <input type="email" value={form.owner_email} onChange={e=>{set('owner_email',e.target.value);setOwner(null);setOwnerChecked(false)}} placeholder="owner@example.com" className="flex-1 h-10 rounded-lg border border-input px-3 bg-background" />
             <Button type="button" variant="outline" onClick={findOwner} disabled={loadingOwner}>{loadingOwner?'Checking…':'Find User'}</Button>
           </div>
-          {ownerChecked && owner && <div className="rounded-lg bg-emerald-50 text-emerald-800 p-3 text-sm">Owner found: <strong>{owner.full_name || owner.email}</strong> · {owner.email}</div>}
-          {ownerChecked && !owner && <div className="rounded-lg bg-amber-50 text-amber-800 p-3 text-sm">No matching registered user.</div>}
+          {ownerChecked && owner && <div className="rounded-lg bg-[var(--success-soft)] text-[var(--success-text)] p-3 text-sm">Owner found: <strong>{owner.full_name || owner.email}</strong> · {owner.email}</div>}
+          {ownerChecked && !owner && <div className="rounded-lg bg-[var(--warning-soft)] text-[var(--warning-text)] p-3 text-sm">No matching registered user.</div>}
         </section>
 
         <div className="flex justify-end gap-2">
