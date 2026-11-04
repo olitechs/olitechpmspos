@@ -115,7 +115,7 @@ test('final receipt uses centered company header/footer and a paid receipt layou
   assert.match(output, /Thank you for dining with us/);
   assert.match(output, /Visit again/);
   assert.doesNotMatch(output, /PAYMENT PENDING/);
-  assert.ok(output.split('\\n').every(line => line.length <= 32));
+  assert.ok(output.split('\n').every(line => line.length <= 32));
 });
 
 test('HTML fallback renders fixed-width plain text on white paper', () => {
