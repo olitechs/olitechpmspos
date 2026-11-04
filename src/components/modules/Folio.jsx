@@ -25,6 +25,7 @@ export default function Folio() {
   const [folio, setFolio] = useState(null);
   const [payments, setPayments] = useState([]);
   const [refunds, setRefunds] = useState([]);
+  const [posReceipts, setPosReceipts] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -48,10 +49,10 @@ export default function Folio() {
   const loadFolio = async (reservation) => {
     setSelected(reservation); setError(''); setNotice(''); setSelectedChargeIds([]);
     try {
-      const [f, p, r] = await Promise.all([
-        pmsService.getFolio(reservation.id), pmsService.listPayments(reservation.id), pmsService.listFolioRefunds(reservation.id),
+      const [f, p, r, receipts] = await Promise.all([
+        pmsService.getFolio(reservation.id), pmsService.listPayments(reservation.id), pmsService.listFolioRefunds(reservation.id), pmsService.listReceiptsForReservation(reservation.id),
       ]);
-      setFolio(f); setPayments(p); setRefunds(r);
+      setFolio(f); setPayments(p); setRefunds(r); setPosReceipts(receipts || []);
     } catch (e) { setError(e.message || 'Guest folio could not be loaded.'); }
   };
 
@@ -165,7 +166,7 @@ export default function Folio() {
                 {grouped.length ? grouped.map(({category,rows})=><div key={category} className="mb-5 last:mb-0">
                   <div className="mb-2 flex items-center justify-between"><h4 className="text-sm font-semibold text-[var(--text)]">{categoryLabels[category]}</h4><span className="text-xs text-[var(--text-muted)]">{rows.length} transactions</span></div>
                   <div className="overflow-x-auto"><table className="w-full min-w-[900px] text-xs"><thead><tr className="border-b border-[var(--border)] text-left text-[10px] uppercase text-[var(--text-muted)]">{['Date & time','Reference','Source','Description','Qty','Unit price','Total','Employee','Status','Action'].map(h=><th key={h} className="px-2 py-2">{h}</th>)}</tr></thead><tbody>
-                    {rows.map((c)=><tr key={c.id} className="border-b border-[var(--border)]"><td className="px-2 py-2 text-[var(--text-muted)]">{new Date(c.created_at).toLocaleString('en-KE')}</td><td className="px-2 py-2 font-mono">{c.reference || c.id.slice(0,8)}</td><td className="px-2 py-2 capitalize">{c.source_module || c.source}</td><td className="px-2 py-2 font-medium">{c.description}</td><td className="px-2 py-2 text-right">{c.quantity ?? 1}</td><td className="px-2 py-2 text-right">{money(c.unit_price ?? c.amount)}</td><td className="px-2 py-2 text-right font-semibold">{money(c.amount)}</td><td className="px-2 py-2 font-mono">{employeeName(c.created_by)}</td><td className="px-2 py-2">{c.reversal_of_id ? 'Reversal' : 'Posted'}</td><td className="px-2 py-2 print:hidden">{canManage && Number(c.amount)>0 && !c.reversal_of_id && !charges.some((x)=>x.reversal_of_id===c.id) ? <button className="text-xs font-semibold text-[var(--danger)]" disabled={busy} onClick={()=>{const reason=window.prompt('Reason for reversing this charge:');if(reason?.trim())run(()=>pmsService.reverseFolioCharge({propertyId,chargeId:c.id,reason}), 'Charge reversal posted.')}}>Reverse</button> : '—'}</td></tr>)}
+                    {rows.map((c)=><tr key={c.id} className="border-b border-[var(--border)]"><td className="px-2 py-2 text-[var(--text-muted)]">{new Date(c.created_at).toLocaleString('en-KE')}</td><td className="px-2 py-2 font-mono">{c.reference || c.id.slice(0,8)}</td><td className="px-2 py-2 capitalize">{c.source_module || c.source}</td><td className="px-2 py-2 font-medium">{c.description}{posReceipts.filter((receipt)=>receipt.folio_charge_id===c.id).map((receipt)=><details key={receipt.id} className="mt-2 rounded-md border border-[var(--border)] p-2 font-normal"><summary className="cursor-pointer text-[11px] font-semibold">Open POS receipt · Order {receipt.order_number||receipt.id.slice(0,8)}</summary><div className="mt-2 space-y-1 text-[11px]">{(Array.isArray(receipt.items)?receipt.items:[]).map((item,index)=><div key={item.id||item.product_id||index} className="flex justify-between gap-2"><span>{item.name||item.item_name||'Item'} × {item.qty??item.quantity??1}{Array.isArray(item.modifiers)&&item.modifiers.length?' · '+item.modifiers.map((modifier)=>modifier.name||modifier.label||modifier).join(', '):''}</span><span>{money(item.total??item.line_total??(Number(item.price??item.unit_price??0)*Number(item.qty??item.quantity??1)))}</span></div>)}<div className="border-t border-[var(--border)] pt-1">Subtotal {money(receipt.subtotal)} · Discount {money(receipt.discount_amount)} · Tax {money(receipt.vat)} · Total {money(receipt.total)}</div><div>Receipt {receipt.id} · {new Date(receipt.created_at).toLocaleString('en-KE')}</div><div>Cashier ID: {receipt.created_by||'—'} · Waiter: {receipt.waiter||'—'} · Payment: {receipt.payment_method}</div></div></details>)}</td><td className="px-2 py-2 text-right">{c.quantity ?? 1}</td><td className="px-2 py-2 text-right">{money(c.unit_price ?? c.amount)}</td><td className="px-2 py-2 text-right font-semibold">{money(c.amount)}</td><td className="px-2 py-2 font-mono">{employeeName(c.created_by)}</td><td className="px-2 py-2">{c.reversal_of_id ? 'Reversal' : 'Posted'}</td><td className="px-2 py-2 print:hidden">{canManage && Number(c.amount)>0 && !c.reversal_of_id && !charges.some((x)=>x.reversal_of_id===c.id) ? <button className="text-xs font-semibold text-[var(--danger)]" disabled={busy} onClick={()=>{const reason=window.prompt('Reason for reversing this charge:');if(reason?.trim())run(()=>pmsService.reverseFolioCharge({propertyId,chargeId:c.id,reason}), 'Charge reversal posted.')}}>Reverse</button> : '—'}</td></tr>)}
                   </tbody></table></div>
                 </div>) : <div className="rounded-lg bg-[var(--canvas)] p-6 text-center text-sm text-[var(--text-muted)]">No charge transactions have been posted to this folio.</div>}
               </section>
