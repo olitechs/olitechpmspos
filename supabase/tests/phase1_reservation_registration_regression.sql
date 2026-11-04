@@ -91,6 +91,44 @@ begin
     raise exception 'Required deposit metadata was not persisted for every room';
   end if;
 
+  -- Server-side deposit requirement validation must reject amounts above the booking total.
+  v_error := null;
+  begin
+    perform * from public.fn_create_reservation_bundle(
+      v_property,array[v_room_two],null,'Invalid Required Deposit','+254700000007',
+      date '2026-12-20',date '2026-12-21','not_paid','direct','bed_only',1,0,'[]'::jsonb,10000,0,'Invalid required deposit',
+      jsonb_build_object('guest',jsonb_build_object('email','invalid-deposit@example.com'),
+        'booking',jsonb_build_object('submissionId','phase1-invalid-required-004','depositRequired',15000))
+    );
+  exception when others then get stacked diagnostics v_error = message_text;
+  end;
+  if v_error is null or v_error not ilike '%Required deposit must be between zero and the reservation total%' then
+    raise exception 'Required-deposit validation failed or returned an unexpected error: %',v_error;
+  end if;
+  if exists(select 1 from public.reservations where booking_details->>'submissionId'='phase1-invalid-required-004') then
+    raise exception 'Invalid required-deposit request left a reservation behind';
+  end if;
+
+  -- An initial payment below the existing 50% threshold must roll back the
+  -- reservation as well as the payment attempt.
+  v_error := null;
+  begin
+    perform * from public.fn_create_reservation_bundle(
+      v_property,array[v_room_two],null,'Small Deposit Guest','+254700000008',
+      date '2026-12-22',date '2026-12-23','partially_paid','direct','bed_only',1,0,'[]'::jsonb,10000,1000,'Small deposit',
+      jsonb_build_object('guest',jsonb_build_object('email','small-deposit@example.com'),
+        'booking',jsonb_build_object('submissionId','phase1-small-deposit-005','depositMethod','cash'))
+    );
+  exception when others then get stacked diagnostics v_error = message_text;
+  end;
+  if v_error is null or v_error not ilike '%initial payment must be at least 50%' then
+    raise exception 'Initial deposit threshold failed or returned an unexpected error: %',v_error;
+  end if;
+  if exists(select 1 from public.reservations where booking_details->>'submissionId'='phase1-small-deposit-005')
+     or exists(select 1 from public.payments p join public.reservations r on r.id=p.reservation_id where r.booking_details->>'submissionId'='phase1-small-deposit-005') then
+    raise exception 'Rejected initial deposit did not roll back the reservation/payment';
+  end if;
+
   -- Invalid capacity and unavailable operational status must fail closed.
   v_error := null;
   begin
