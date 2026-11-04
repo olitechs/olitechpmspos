@@ -564,7 +564,13 @@ async function buildLogoEscPosBase64(logoUrl, printer = {}, text = '') {
   }
 }
 
-export async function printTestOrder(printer, assignmentTypes = []) {
+export async function printTestOrder(printer, assignmentTypes = [], propertyId = null) {
+  let settings = {};
+  if (propertyId) {
+    const { data, error } = await supabase.from('property_settings').select('*').eq('property_id', propertyId).maybeSingle();
+    if (error) throw error;
+    settings = data || {};
+  }
   const isBar = printer?.type === 'bar' || assignmentTypes.includes('drinks_orders') || assignmentTypes.includes('void_drinks_orders');
   const center = isBar ? 'BAR' : 'KITCHEN';
   const order = {
@@ -582,7 +588,7 @@ export async function printTestOrder(printer, assignmentTypes = []) {
       prepNote: 'TEST ONLY - no kitchen action',
     }],
   };
-  const thermalText = buildOrderTicketText(order, { printer, center });
+  const thermalText = buildOrderTicketText(order, { printer, settings, center });
   return printToPrinter(printer, thermalTextToHtml(thermalText), {
     propertyId: null,
     jobType: 'test_order',
@@ -617,6 +623,7 @@ export async function printTestReceipt(printer, propertyId) {
     createdAt: new Date().toISOString(),
   };
   const thermalText = buildUnsettledReceiptText(settings, data, { printer, copyLabel: 'TEST PRINT' });
+  const thermalBase64 = await buildLogoEscPosBase64(settings.logo_url, printer, thermalText);
   return printToPrinter(printer, thermalTextToHtml(thermalText), {
     propertyId: null,
     jobType: 'test_receipt',
@@ -626,6 +633,7 @@ export async function printTestReceipt(printer, propertyId) {
     payload: { test: true, template: 'unsettled_receipt' },
     persistJob: false,
     thermalText,
+    thermalBase64,
   });
 }
 
