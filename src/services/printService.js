@@ -539,8 +539,6 @@ async function buildLogoEscPosBase64(logoUrl, printer = {}, text = '') {
     context.drawImage(image, 0, 0, width, height);
     const pixels = context.getImageData(0, 0, width, height).data;
     const rowBytes = Math.ceil(width / 8);
-    const raster = new Uint8Array(8 + rowBytes * height);
-    raster.set([0x1b,0x61,0x01,0x1d,0x76,0x30,0x00,rowBytes & 0xff,(rowBytes >> 8) & 0xff,height & 0xff,(height >> 8) & 0xff].slice(0,8));
     // ESC/POS GS v 0 header is 8 bytes after command; dimensions are little-endian.
     const payload = new Uint8Array(11 + rowBytes * height);
     payload.set([0x1b,0x61,0x01,0x1d,0x76,0x30,0x00,rowBytes & 0xff,(rowBytes >> 8) & 0xff,height & 0xff,(height >> 8) & 0xff]);
@@ -675,9 +673,16 @@ export async function printReceipt(type, data) {
     return { ok: results.every(result => result.ok), results };
   }
 
-  const receiptCopies = copies.map(copy => receiptHtml(settings, type, data, copy));
-  const content = `<div class="receipt">${receiptCopies.join('<div class="cut">✂ CUT HERE</div>')}</div>`;
-  for (const printer of targets) results.push(await printToPrinter(printer, content, { propertyId, jobType: type, copyType:'duplicate', assignmentType, payload:{orderNumber:data.orderNumber||data.checkNo||null,total:data.total||0}, title:'Final Receipt' }));
+  for (const printer of targets) {
+    const copyTexts = copies.map(copy => buildFinalReceiptText(settings, data, { printer, copyLabel: copy }));
+    const thermalText = copyTexts.join('\\n\\n\\x1D\\x56\\x01\\n\\n');
+    const thermalBase64 = await buildLogoEscPosBase64(settings.logo_url, printer, thermalText);
+    results.push(await printToPrinter(printer, receiptHtml(settings, type, data, copies[0]), {
+      propertyId, jobType: type, copyType:'duplicate', assignmentType,
+      payload:{orderNumber:data.orderNumber||data.checkNo||null,total:data.total||0},
+      title:'Final Receipt', thermalText, thermalBase64,
+    }));
+  }
   return { ok: results.every((r) => r.ok), results };
 }
 
