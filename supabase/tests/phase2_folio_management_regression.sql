@@ -12,7 +12,7 @@ begin
  if c1.id<>(public.fn_post_folio_charge(p,r1,'accommodation','Room 101 accommodation',2,500,'ROOM-101','charge-key-room')).id then raise exception 'Charge idempotency failed.'; end if;
  pay1:=public.fn_post_folio_payment(p,r1,250,'cash','CASH-001','pay-key-1',c1.id);
  if pay1.folio_charge_id<>c1.id then raise exception 'Payment allocation to accommodation charge was not persisted.'; end if;
- if pay1.id<>(public.fn_post_folio_payment(p,r1,250,'cash','CASH-001','pay-key-1')).id then raise exception 'Payment idempotency failed.'; end if;
+ if pay1.id<>(public.fn_post_folio_payment(p,r1,250,'cash','CASH-001','pay-key-1',c1.id)).id then raise exception 'Payment idempotency failed.'; end if;
  pay2:=public.fn_post_folio_payment(p,r1,750,'mpesa','MPESA-002','pay-key-2');
  select count(*) into duplicate_count from public.payments where reservation_id=r1 and idempotency_key in ('pay-key-1','pay-key-2');
  if duplicate_count<>2 then raise exception 'Duplicate payments were posted.'; end if;
