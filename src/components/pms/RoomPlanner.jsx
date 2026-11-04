@@ -202,19 +202,28 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     setFormError(''); setAddGroupRoomId(''); setModal({ mode: 'edit', reservationId: r.id, groupId: r.groupId });
   };
 
+  const calculatedReservationTotal = Math.max(0, Number(form.rate || 0) * Math.max(0, differenceInCalendarDays(parseDate(form.checkOut), parseDate(form.checkIn))) * (form.joint ? form.selectedRoomIds.length : 1) + Number(form.services || 0) + Number(form.tax || 0) - Number(form.discount || 0));
+
   const validateForm = () => {
-    if (!form.firstName.trim() || !form.lastName.trim()) return 'Guest first and last names are required.';
-    if (!form.phone.trim()) return 'A primary contact phone number is required.';
+    if (modal?.mode === 'create' && (!form.firstName.trim() || !form.lastName.trim())) return 'Guest first and last names are required.';
+    if (modal?.mode === 'create' && !form.phone.trim()) return 'A primary contact phone number is required.';
     if (!form.guestName.trim()) return 'Guest name is required.';
     if (!form.checkIn || !form.checkOut || form.checkOut <= form.checkIn) return 'Check-out must be after check-in.';
     if (!form.adults || form.adults < 1 || form.adults > 10) return 'Adults must be between 1 and 10.';
     if (form.kidsCount < 0 || form.kidsCount > 6) return 'Kids must be between 0 and 6.';
     if (form.kidsAges.length !== Number(form.kidsCount) || form.kidsAges.some(a => a === '' || a === null || a === undefined || !Number.isInteger(Number(a)) || Number(a) < 0 || Number(a) > 17)) return 'Select a valid age between 0 and 17 for every child.';
-    if (Number(form.amountPaid) < 0 || Number(form.amountPaid) > Number(form.totalAmount)) return 'Deposit received cannot exceed the booking total.';
-    if (Number(form.depositRequired || 0) < 0 || Number(form.depositRequired || 0) > Number(form.totalAmount || 0)) return 'Required deposit must be between zero and the booking total.';
-    if (Number(form.amountPaid || 0) > 0 && Number(form.amountPaid) < Number(form.totalAmount || 0) * 0.5) return 'The current reservation workflow requires at least 50% for an initial deposit. Use Guest Folio for smaller advance payments.';
+    const totalForValidation = modal?.mode === 'create' ? calculatedReservationTotal : Number(form.totalAmount || 0);
+    if (Number(form.amountPaid) < 0 || Number(form.amountPaid) > totalForValidation) return 'Deposit received cannot exceed the booking total.';
+    if (modal?.mode === 'create' && (Number(form.depositRequired || 0) < 0 || Number(form.depositRequired || 0) > totalForValidation)) return 'Required deposit must be between zero and the booking total.';
+    if (modal?.mode === 'create' && Number(form.amountPaid || 0) > 0 && Number(form.amountPaid) < totalForValidation * 0.5) return 'The current reservation workflow requires at least 50% for an initial deposit. Use Guest Folio for smaller advance payments.';
     const ids = form.joint ? form.selectedRoomIds : [form.roomId];
     if (!ids.length || ids.some(Boolean) === false) return 'Select at least one room.';
+    const guestCount = Number(form.adults || 0) + Number(form.kidsCount || 0);
+    const selectedRoomRows = plannerRooms.filter(room => ids.includes(room.id));
+    if (selectedRoomRows.length !== ids.length) return 'One or more selected rooms are no longer available.';
+    if (selectedRoomRows.some(room => room.active === false || ['maintenance','out_of_service','blocked'].includes(room.status))) return 'A selected room is inactive, blocked or out of service.';
+    const totalCapacity = selectedRoomRows.reduce((sum, room) => sum + Number(room.capacity || 2), 0);
+    if (guestCount > totalCapacity) return `Selected rooms accommodate ${totalCapacity} guests, but ${guestCount} guests are entered.`;
     for (const roomId of ids) {
       const hit = checkOverlap(normalizedReservations, roomId, form.checkIn, form.checkOut, modal?.mode === 'edit' ? modal.reservationId : undefined);
       if (hit) { const room = plannerRooms.find(x => x.id === roomId); return `Room ${room?.number || roomId} is already booked from ${hit.checkIn} to ${hit.checkOut} by ${hit.guestName}.`; }
@@ -228,7 +237,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     try {
       if (modal.mode === 'create') {
         const roomIds = form.joint ? form.selectedRoomIds : [form.roomId];
-        const totalAmount = Number(form.totalAmount || 0); const amountPaid = Number(form.amountPaid || 0); const paymentStatus = getPaymentStatusFromAmounts(amountPaid, totalAmount);
+        const totalAmount = calculatedReservationTotal; const amountPaid = Number(form.amountPaid || 0); const paymentStatus = getPaymentStatusFromAmounts(amountPaid, totalAmount);
         const nights = differenceInCalendarDays(parseDate(form.checkOut), parseDate(form.checkIn));
         const details = {
           guest: { firstName: form.firstName.trim(), lastName: form.lastName.trim(), email: form.email.trim(), alternativePhone: form.alternativePhone.trim(), nationality: form.nationality.trim(), residenceCountry: form.residenceCountry.trim(), address: form.address.trim(), idType: form.idType, idNumber: form.idNumber.trim(), notes: form.guestNotes.trim() },
@@ -450,8 +459,8 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
           <div className="grid md:grid-cols-2 gap-3"><Field label="Nightly room rate (KES)"><InputField type="number" min="0" step="0.01" value={form.rate} onChange={e=>setForm({...form,rate:e.target.value})}/></Field><Field label="Additional services (KES)"><InputField type="number" min="0" step="0.01" value={form.services} onChange={e=>setForm({...form,services:e.target.value})}/></Field></div>
           <div className="grid md:grid-cols-2 gap-3"><Field label="Discount (KES)"><InputField type="number" min="0" step="0.01" value={form.discount} onChange={e=>setForm({...form,discount:e.target.value})}/></Field><Field label="Tax / levies (KES)"><InputField type="number" min="0" step="0.01" value={form.tax} onChange={e=>setForm({...form,tax:e.target.value})}/></Field></div>
           <div className="grid md:grid-cols-2 gap-3"><Field label="Required deposit (KES)"><InputField type="number" min="0" step="0.01" value={form.depositRequired} onChange={e=>setForm({...form,depositRequired:e.target.value})}/></Field><Field label="Deposit received (KES)"><InputField type="number" min="0" step="0.01" value={form.amountPaid} onChange={e=>setForm({...form,amountPaid:e.target.value})}/></Field></div>
-          <div className="grid md:grid-cols-2 gap-3"><Field label="Deposit payment method"><SelectField value={form.depositMethod} onChange={v=>setForm({...form,depositMethod:v})}><option value="cash">Cash</option><option value="mpesa">M-Pesa</option><option value="card">Card</option><option value="bank_transfer">Bank transfer</option><option value="other">Other</option></SelectField></Field><Field label="Total amount (KES)"><InputField type="number" min="0" step="0.01" value={form.totalAmount} onChange={e=>setForm({...form,totalAmount:e.target.value})}/></Field></div>
-          <div className="rounded-xl p-3 text-sm grid grid-cols-2 md:grid-cols-4 gap-3" style={{background:'var(--surface-2)',border:`1px solid ${BORDER}`,color:NAVY}}><div><span className="block text-[10px] uppercase">Nights</span><b>{Math.max(0,differenceInCalendarDays(parseDate(form.checkOut),parseDate(form.checkIn)))}</b></div><div><span className="block text-[10px] uppercase">Room subtotal</span><b>KES {(Number(form.rate||0)*Math.max(0,differenceInCalendarDays(parseDate(form.checkOut),parseDate(form.checkIn)))*(form.joint?form.selectedRoomIds.length:1)).toLocaleString()}</b></div><div><span className="block text-[10px] uppercase">Balance due</span><b>KES {Math.max(0,Number(form.totalAmount||0)-Number(form.amountPaid||0)).toLocaleString()}</b></div><div><span className="block text-[10px] uppercase">Payment status</span><b>{paymentLabel[getPaymentStatusFromAmounts(form.amountPaid,form.totalAmount)]}</b></div></div>
+          <div className="grid md:grid-cols-2 gap-3"><Field label="Deposit payment method"><SelectField value={form.depositMethod} onChange={v=>setForm({...form,depositMethod:v})}><option value="cash">Cash</option><option value="mpesa">M-Pesa</option><option value="card">Card</option><option value="bank_transfer">Bank transfer</option><option value="other">Other</option></SelectField></Field><Field label="Calculated total amount (KES)"><InputField type="number" value={calculatedReservationTotal.toFixed(2)} readOnly aria-readonly="true"/></Field></div>
+          <div className="rounded-xl p-3 text-sm grid grid-cols-2 md:grid-cols-4 gap-3" style={{background:'var(--surface-2)',border:`1px solid ${BORDER}`,color:NAVY}}><div><span className="block text-[10px] uppercase">Nights</span><b>{Math.max(0,differenceInCalendarDays(parseDate(form.checkOut),parseDate(form.checkIn)))}</b></div><div><span className="block text-[10px] uppercase">Room subtotal</span><b>KES {(Number(form.rate||0)*Math.max(0,differenceInCalendarDays(parseDate(form.checkOut),parseDate(form.checkIn)))*(form.joint?form.selectedRoomIds.length:1)).toLocaleString()}</b></div><div><span className="block text-[10px] uppercase">Balance due</span><b>KES {Math.max(0,calculatedReservationTotal-Number(form.amountPaid||0)).toLocaleString()}</b></div><div><span className="block text-[10px] uppercase">Payment status</span><b>{paymentLabel[getPaymentStatusFromAmounts(form.amountPaid,form.totalAmount)]}</b></div></div>
           <p className="text-xs leading-5" style={{color:MUTED}}>Deposits are posted to the payment ledger as part of the reservation transaction. Subsequent payments, refunds and adjustments must be recorded from Guest Folio.</p>
         </section>
         <section className="space-y-3"><h3 className="text-sm font-bold" style={{color:NAVY}}>Guest requests & internal notes</h3>
