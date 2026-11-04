@@ -6,7 +6,7 @@ import { pmsService } from '@/services/pmsService';
 import FeatureGate from '@/lib/FeatureGate';
 import { NAVY, TEAL, SAND, SURFACE, SURFACE2, BORDER, MUTED, DESTRUCTIVE } from '@/data/themePalette';
 
-const PRIORITY_COLOR = { low: MUTED, medium: '#D9A441', high: DESTRUCTIVE };
+const PRIORITY_COLOR = { low: MUTED, medium: 'var(--warning-text)', high: DESTRUCTIVE };
 const STATUS_FLOW = { open: 'assigned', assigned: 'in_progress', in_progress: 'resolved', resolved: 'closed' };
 const STATUS_LABEL = { open: 'Open', assigned: 'Assigned', in_progress: 'In Progress', resolved: 'Resolved', closed: 'Closed' };
 
@@ -106,7 +106,7 @@ function MaintenanceInner() {
 
 					{error && <div className="text-xs mb-3" style={{ color: DESTRUCTIVE }}>{error}</div>}
 
-					<button onClick={submit} className="w-full flex items-center justify-center gap-1.5 py-3 rounded-xl text-sm font-bold" style={{ background: TEAL, color: '#090C11' }}>
+					<button onClick={submit} className="w-full flex items-center justify-center gap-1.5 py-3 rounded-xl text-sm font-bold" style={{ background: TEAL, color: 'var(--primary-foreground)' }}>
 						<Plus size={14} /> Create Ticket
 					</button>
 				</div>
