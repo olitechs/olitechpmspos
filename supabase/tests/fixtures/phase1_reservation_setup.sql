@@ -42,6 +42,17 @@ create table public.reservations (
   special_requests text, rate_plan_id uuid
 );
 
+create table public.folio_charges (
+  id uuid primary key default gen_random_uuid(), property_id uuid not null references public.properties(id),
+  reservation_id uuid not null references public.reservations(id), source text not null default 'room',
+  description text not null default 'Test charge', amount numeric(12,2) not null default 0
+);
+create table public.payments (
+  id uuid primary key default gen_random_uuid(), property_id uuid not null references public.properties(id),
+  reservation_id uuid not null references public.reservations(id), amount numeric(12,2) not null,
+  method text not null, status text not null default 'posted', shift_id uuid, created_at timestamptz not null default now()
+);
+
 create or replace function public.is_member_of_property(p_property_id uuid)
 returns boolean language sql stable as $$ select true $$;
 create or replace function public.is_platform_owner()
