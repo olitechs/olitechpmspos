@@ -508,7 +508,7 @@ function receiptHtml(settings, type, data, copyType) {
   const itemMarkup = food.length && drinks.length
     ? `<div class="section">--- FOOD ---</div><table class="items">${rows(food)}</table><div class="section">--- DRINKS ---</div><table class="items">${rows(drinks)}</table>`
     : `<table class="items">${rows(food.length ? food : drinks)}</table>`;
-  const logo = settings.logo_url ? `<img class="logo" src="${esc(settings.logo_url)}" alt="">` : '';
+  const logo = settings.logo_url ? `<img class="logo" src="${esc(settings.logo_url)}" alt="" style="display:block;max-width:160px;max-height:70px;margin:0 auto 8px;filter:grayscale(1) contrast(2)">` : '';
   const title = type === 'UNSETTLED' ? (settings.unsettled_receipt_title || 'UNSETTLED RECEIPT') : 'FINAL RECEIPT';
   const payment = type === 'RECEIPT' ? `<div class="divider"></div><div>Payment Method: <b>${esc(data.paymentMethod || '—')}</b></div>` : '';
   const total = Number(data.total || 0).toFixed(2);
