@@ -130,3 +130,8 @@ After the existing `20261008084000_phase2_folio_checkout_housekeeping.sql` migra
 2. `20261009103000_phase2_folio_payment_reconciliation.sql` — allows qualifying booking deposits to be posted through the front-desk payment RPC, keeps folio balances non-negative before the first room charge, and ensures checkout writes a valid reservation payment status while enforcing the outstanding-balance check.
 
 Both migrations are additive/re-runnable. Test them on a non-production Supabase project before production rollout. The repository CI build does not execute these SQL functions against a live Supabase database, so database workflow acceptance remains pending until migration application and end-to-end testing.
+
+### 20261104150000 — Phase 1 reservation registration
+Adds guest profile metadata (alternative contact, residence country, identity type and structured guest details) and reservation booking metadata without removing or renaming existing columns. The new 17-argument `fn_create_reservation_bundle` overload persists the extended metadata in the same transaction by delegating to the established 16-argument bundle RPC. The legacy signature remains available for existing clients.
+
+The migration also retains the property/room advisory transaction lock in `fn_check_room_availability` and rejects room assignments while a room is `maintenance`, `out_of_service`, or `blocked`. Reservation creation continues to use the existing overlap and closure checks. Apply and validate on a disposable PostgreSQL/Supabase environment before production; do not apply directly to production as part of the frontend deployment.

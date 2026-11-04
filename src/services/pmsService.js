@@ -150,7 +150,7 @@ export const pmsService = {
 	},
 
 	async listRatePlans(propertyId) {
-		const { data, error } = await supabase.from('rate_plans').select('*').eq('property_id', propertyId).order('name');
+		const { data, error } = await supabase.from('rate_plans').select('*').eq('property_id', propertyId).eq('active', true).order('name');
 		if (error) throw new Error(error.message);
 		return data || [];
 	},
@@ -261,11 +261,11 @@ export const pmsService = {
 		return data;
 	},
 
-	async createReservationBundle({ propertyId, roomIds, groupId, guestName, phone, checkIn, checkOut, paymentStatus, channel, mealPlan, adults, kidsCount, kidsAges, totalAmount, amountPaid, notes }) {
+	async createReservationBundle({ propertyId, roomIds, groupId, guestName, phone, checkIn, checkOut, paymentStatus, channel, mealPlan, adults, kidsCount, kidsAges, totalAmount, amountPaid, notes, details = {} }) {
 		const { data, error } = await supabase.rpc('fn_create_reservation_bundle', {
 			p_property_id: propertyId, p_room_ids: roomIds, p_group_id: groupId, p_guest_name: guestName, p_phone: phone || null,
 			p_arrival: checkIn, p_departure: checkOut, p_payment_status: paymentStatus, p_channel: channel, p_meal_plan: mealPlan,
-			p_adults: adults, p_kids_count: kidsCount, p_kids_ages: kidsAges || [], p_total_amount: totalAmount, p_amount_paid: amountPaid, p_notes: notes || null,
+			p_adults: adults, p_kids_count: kidsCount, p_kids_ages: kidsAges || [], p_total_amount: totalAmount, p_amount_paid: amountPaid, p_notes: notes || null, p_details: details || {},
 		});
 		if (error) throw new Error(error.message);
 		return data || [];

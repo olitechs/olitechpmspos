@@ -38,6 +38,8 @@ function buildRoomsView(rooms, reservations) {
 			floor: room.floor,
 			room_type_id: room.room_type_id,
 			room_type: room.room_type,
+			capacity: Number(room.capacity || 2),
+			active: room.active !== false,
 			status: room.status,
 			reservationId: res ? res.id : null,
 			guest: res
@@ -94,6 +96,7 @@ export function PmsProvider({ children }) {
 
 	const [rawRooms, setRawRooms] = useState([]);
 	const [roomTypes, setRoomTypes] = useState([]);
+	const [ratePlans, setRatePlans] = useState([]);
 	const [rawReservations, setRawReservations] = useState([]);
 	const [guests, setGuests] = useState([]);
 	const [loading, setLoading] = useState(true);
@@ -105,13 +108,15 @@ export function PmsProvider({ children }) {
 			const results = await Promise.allSettled([
 				pmsService.listRooms(propertyId),
 				pmsService.listRoomTypes(propertyId),
+				pmsService.listRatePlans(propertyId),
 				pmsService.listReservations(propertyId),
 				pmsService.listGuests(propertyId),
 			]);
-			const [roomRows, typeRows, resRows, guestRows] = results;
+			const [roomRows, typeRows, ratePlanRows, resRows, guestRows] = results;
 			if (roomRows.status === 'rejected') throw roomRows.reason;
 			setRawRooms(roomRows.value || []);
 			setRoomTypes(typeRows.status === 'fulfilled' ? (typeRows.value || []) : []);
+			setRatePlans(ratePlanRows.status === 'fulfilled' ? (ratePlanRows.value || []) : []);
 			setRawReservations(resRows.status === 'fulfilled' ? (resRows.value || []) : []);
 			setGuests(guestRows.status === 'fulfilled' ? (guestRows.value || []) : []);
 			setError(typeRows.status === 'rejected' ? 'Room type setup is unavailable. Run the latest Supabase room setup migration.' : '');
@@ -205,10 +210,10 @@ export function PmsProvider({ children }) {
 				const amountPaid = Number(data.amountPaid ?? 0);
 				const paymentStatus = data.paymentStatus || (amountPaid >= totalAmount && totalAmount > 0 ? 'fully_paid' : amountPaid > 0 ? 'partially_paid' : 'not_paid');
 				await pmsService.createReservationBundle({
-					propertyId, roomIds: [data.roomId], groupId: null, guestName: data.guest, phone: data.phone,
+					propertyId, roomIds: data.roomIds?.length ? data.roomIds : [data.roomId], groupId: (data.roomIds?.length || 0) > 1 ? crypto.randomUUID() : null, guestName: data.guest, phone: data.phone,
 					checkIn: data.arrival, checkOut: data.departure, paymentStatus, channel: data.channel || 'direct',
 					mealPlan: data.mealPlan || 'bed_only', adults: Number(data.adults || data.partySize || 1), kidsCount: Number(data.kidsCount || 0),
-					kidsAges: data.kidsAges || [], totalAmount, amountPaid, notes: data.notes || '',
+					kidsAges: data.kidsAges || [], totalAmount, amountPaid, notes: data.notes || '', details: data.details || {},
 				});
 				await reload();
 			} catch (err) { setError(err.message); throw err; }
@@ -266,6 +271,7 @@ export function PmsProvider({ children }) {
 	const value = {
 		rooms,
 		roomTypes,
+		ratePlans,
 		reservations,
 		guests,
 		loading,

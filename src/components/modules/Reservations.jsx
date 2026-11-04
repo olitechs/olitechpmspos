@@ -61,7 +61,7 @@ export default function Reservations() {
     return ids;
   }, [reservations, selectedDate]);
 
-  const availableRooms = rooms.filter((room) => room.status !== 'maintenance' && room.status !== 'out_of_service' && !occupiedRoomIds.has(room.id));
+  const availableRooms = rooms.filter((room) => room.active !== false && !['maintenance', 'out_of_service', 'blocked'].includes(room.status) && !occupiedRoomIds.has(room.id));
 
   const rows = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -94,10 +94,18 @@ export default function Reservations() {
   };
 
   const createReservation = async (data) => {
-    await run(async () => {
-      await pms.addReservation(data);
-      setShowNew(false);
-    });
+    const { keepOpen, ...reservation } = data;
+    setBusy(true);
+    setError('');
+    try {
+      await pms.addReservation(reservation);
+      if (!keepOpen) setShowNew(false);
+    } catch (e) {
+      setError(e.message || 'Could not create reservation.');
+      throw e;
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -200,7 +208,7 @@ export default function Reservations() {
         </div>
       </div>
 
-      {showNew && <NewReservationModal rooms={availableRooms} onClose={() => setShowNew(false)} onCreate={createReservation} busy={busy} />}
+      {showNew && <NewReservationModal rooms={rooms} reservations={reservations} ratePlans={pms.ratePlans || []} onClose={() => setShowNew(false)} onCreate={createReservation} busy={busy} />}
       {selected && <ReservationDrawer reservation={selected} rooms={rooms} pms={pms} propertyId={propertyId} busy={busy} onClose={() => setSelected(null)} onRun={run} />}
     </div>
   );
@@ -223,41 +231,132 @@ function QueueCard({ title, items, actionLabel, onAction }) {
   );
 }
 
-function NewReservationModal({ rooms, onClose, onCreate, busy }) {
-  const [data, setData] = useState({ guest: '', phone: '', roomId: rooms[0]?.id || '', arrival: todayIso(), departure: todayIso(), partySize: 1, rate: '', channel: 'direct', mealPlan: 'bed_only' });
-  const [error, setError] = useState('');
+function dateNights(arrival, departure) {
+  if (!arrival || !departure) return 0;
+  const start = new Date(`${arrival}T00:00:00Z`);
+  const end = new Date(`${departure}T00:00:00Z`);
+  return Math.max(0, Math.round((end - start) / 86400000));
+}
 
-  const submit = async (e) => {
-    e.preventDefault();
-    if (!data.guest || !data.roomId || !data.arrival || !data.departure || data.arrival >= data.departure) {
-      setError('Guest, room and a valid arrival/departure range are required.');
-      return;
-    }
+function NewReservationModal({ rooms, reservations, ratePlans, onClose, onCreate, busy }) {
+  const [data, setData] = useState({
+    firstName: '', lastName: '', email: '', phone: '', alternativePhone: '', nationality: '', residenceCountry: '',
+    address: '', idType: 'passport', idNumber: '', guestNotes: '',
+    roomIds: [], arrival: todayIso(), arrivalTime: '14:00', departure: '', departureTime: '10:00', adults: '1', kidsCount: '0', kidsAges: [],
+    rate: '', ratePlanId: '', mealPlan: 'bed_only', channel: 'direct', company: '', agent: '', externalReference: '', groupReference: '',
+    bookingNotes: '', specialRequests: '', services: '0', discount: '0', tax: '0', deposit: '0', depositMethod: 'cash',
+  });
+  const [error, setError] = useState('');
+  const [activeSection, setActiveSection] = useState('guest');
+  const [submitting, setSubmitting] = useState(false);
+  const [submissionId, setSubmissionId] = useState(() => crypto.randomUUID());
+  const nights = dateNights(data.arrival, data.departure);
+  const selectedRooms = rooms.filter((room) => data.roomIds.includes(room.id));
+  const selectableRooms = rooms.filter((room) => room.active !== false && !['maintenance', 'out_of_service', 'blocked'].includes(room.status) && !reservations.some((reservation) => reservation.roomId === room.id && !['cancelled', 'checked-out'].includes(reservation.status) && reservation.checkIn < data.departure && data.arrival < reservation.checkOut));
+  const conflictingSelectedRooms = selectedRooms.filter((room) => !selectableRooms.some((candidate) => candidate.id === room.id));
+  const nightlyRate = Math.max(0, Number(data.rate) || 0);
+  const accommodation = nightlyRate * nights * Math.max(1, selectedRooms.length);
+  const services = Math.max(0, Number(data.services) || 0);
+  const discount = Math.max(0, Number(data.discount) || 0);
+  const tax = Math.max(0, Number(data.tax) || 0);
+  const total = Math.max(0, accommodation + services + tax - discount);
+  const deposit = Math.max(0, Number(data.deposit) || 0);
+  const balance = Math.max(0, total - deposit);
+  const guestCount = (Number(data.adults) || 0) + (Number(data.kidsCount) || 0);
+  const capacity = selectedRooms.reduce((sum, room) => sum + Number(room.capacity || 2), 0);
+  const set = (key, value) => setData((current) => ({ ...current, [key]: value }));
+  const toggleRoom = (id) => set('roomIds', data.roomIds.includes(id) ? data.roomIds.filter((item) => item !== id) : [...data.roomIds, id]);
+  const sections = [
+    ['guest', 'Guest details'], ['stay', 'Stay & rooms'], ['booking', 'Booking details'], ['rates', 'Rates & deposit'], ['requests', 'Requests'],
+  ];
+
+  const submit = async (e, createAnother = false) => {
+    e?.preventDefault();
+    if (busy || submitting) return;
+    setError('');
+    const guest = `${data.firstName.trim()} ${data.lastName.trim()}`.trim();
+    if (!data.firstName.trim() || !data.lastName.trim() || !data.phone.trim()) return setError('First name, last name and primary phone are required.');
+    if (!data.roomIds.length) return setError('Select at least one room.');
+    if (conflictingSelectedRooms.length) return setError(`These selected rooms are not available for the full stay: ${conflictingSelectedRooms.map((room) => room.number).join(', ')}.`);
+    if (!data.arrival || !data.departure || data.arrival >= data.departure) return setError('Departure must be after arrival.');
+    if (Number(data.adults) < 1 || Number(data.adults) > 10 || Number(data.kidsCount) < 0 || Number(data.kidsCount) > 6) return setError('Enter 1–10 adults and 0–6 children.');
+    if (data.kidsAges.length !== Number(data.kidsCount) || data.kidsAges.some((age) => age === '' || Number(age) < 0 || Number(age) > 17)) return setError('Enter a valid age for every child.');
+    if (guestCount > capacity) return setError(`Selected rooms accommodate ${capacity} guests, but ${guestCount} guests are entered. Add rooms or reduce occupancy.`);
+    if (nightlyRate <= 0) return setError('Enter a nightly room rate greater than zero.');
+    if (discount > accommodation + services + tax) return setError('Discount cannot exceed the booking subtotal.');
+    if (deposit > total) return setError('Deposit cannot exceed the reservation total.');
+    if (deposit > 0 && deposit < total * 0.5) return setError('The current reservation workflow requires a deposit of at least 50% for partially-paid bookings. Use the cashier workflow for a smaller advance payment.');
+    const paymentStatus = deposit >= total && total > 0 ? 'fully_paid' : deposit > 0 ? 'partially_paid' : 'not_paid';
+    const rpcChannel = ['direct', 'booking_com'].includes(data.channel) ? data.channel : 'unknown';
+    setSubmitting(true);
     try {
-      await onCreate({ ...data, rate: Number(data.rate) || 0, partySize: Number(data.partySize) || 1 });
-    } catch (err) {
-      setError(err.message || 'Could not create reservation.');
-    }
+      await onCreate({
+        guest, phone: data.phone.trim(), roomIds: data.roomIds, arrival: data.arrival, departure: data.departure,
+        adults: Number(data.adults), kidsCount: Number(data.kidsCount), kidsAges: data.kidsAges.map(Number),
+        rate: nightlyRate, totalAmount: total, amountPaid: deposit, paymentStatus, channel: rpcChannel, mealPlan: data.mealPlan,
+        notes: data.bookingNotes, keepOpen: createAnother, details: {
+          guest: { firstName: data.firstName.trim(), lastName: data.lastName.trim(), email: data.email.trim(), alternativePhone: data.alternativePhone.trim(), nationality: data.nationality.trim(), residenceCountry: data.residenceCountry.trim(), address: data.address.trim(), idType: data.idType, idNumber: data.idNumber.trim(), notes: data.guestNotes.trim() },
+          booking: { submissionId, ratePlanId: data.ratePlanId || null, source: data.channel, company: data.company.trim(), agent: data.agent.trim(), externalReference: data.externalReference.trim(), groupReference: data.groupReference.trim(), accommodationSubtotal: accommodation, services, discount, tax, depositMethod: data.depositMethod, specialRequests: data.specialRequests.trim(), arrivalTime: data.arrivalTime, departureTime: data.departureTime, roomCount: data.roomIds.length },
+        },
+      });
+      if (createAnother) {
+        setData((current) => ({ ...current, firstName: '', lastName: '', email: '', phone: '', alternativePhone: '', address: '', idNumber: '', guestNotes: '', roomIds: [], deposit: '0', externalReference: '', groupReference: '', bookingNotes: '', specialRequests: '' }));
+        setActiveSection('guest');
+        setSubmissionId(crypto.randomUUID());
+      } else onClose();
+    } catch (err) { setError(err.message || 'Could not create reservation.'); }
+    finally { setSubmitting(false); }
   };
 
-  return (
-    <Modal title="New reservation" onClose={onClose}>
-      <form onSubmit={submit} className="space-y-4">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Guest name"><input className={inputClass} value={data.guest} onChange={(e) => setData({ ...data, guest: e.target.value })} /></Field>
-          <Field label="Phone"><input className={inputClass} value={data.phone} onChange={(e) => setData({ ...data, phone: e.target.value })} /></Field>
-          <Field label="Room"><select className={inputClass} value={data.roomId} onChange={(e) => setData({ ...data, roomId: e.target.value })}><option value="">Select room</option>{rooms.map((r) => <option key={r.id} value={r.id}>Room {r.number} · {r.roomTypeName || r.roomType || 'Room'}</option>)}</select></Field>
-          <Field label="Rate / night"><input type="number" min="0" step="0.01" className={inputClass} value={data.rate} onChange={(e) => setData({ ...data, rate: e.target.value })} /><span className="mt-1 block text-[11px] text-muted-foreground">Total is calculated from the number of nights.</span></Field>
-          <Field label="Arrival"><input type="date" className={inputClass} value={data.arrival} onChange={(e) => setData({ ...data, arrival: e.target.value })} /></Field>
-          <Field label="Departure"><input type="date" className={inputClass} value={data.departure} onChange={(e) => setData({ ...data, departure: e.target.value })} /></Field>
-          <Field label="Guests"><input type="number" min="1" className={inputClass} value={data.partySize} onChange={(e) => setData({ ...data, partySize: e.target.value })} /></Field>
-          <Field label="Channel"><select className={inputClass} value={data.channel} onChange={(e) => setData({ ...data, channel: e.target.value })}><option value="direct">Direct</option><option value="booking_com">Booking.com</option><option value="unknown">Other / OTA</option></select></Field>
-        </div>
-        {error && <div className="rounded-lg border border-[var(--danger)] bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger-text)]">{error}</div>}
-        <div className="flex justify-end gap-2 border-t border-border pt-4"><button type="button" className={buttonClass + " border border-[var(--border)] bg-surface"} onClick={onClose}>Cancel</button><button disabled={busy} className={buttonClass + " bg-primary text-primary-foreground"} type="submit"><Plus size={15} /> Create reservation</button></div>
-      </form>
-    </Modal>
-  );
+  const sectionContent = () => {
+    if (activeSection === 'guest') return <div className="grid gap-3 sm:grid-cols-2">
+      <Field label="First name *"><input required className={inputClass} value={data.firstName} onChange={(e) => set('firstName', e.target.value)} /></Field>
+      <Field label="Last name *"><input required className={inputClass} value={data.lastName} onChange={(e) => set('lastName', e.target.value)} /></Field>
+      <Field label="Primary phone *"><input required type="tel" className={inputClass} value={data.phone} onChange={(e) => set('phone', e.target.value)} /></Field>
+      <Field label="Alternative phone"><input type="tel" className={inputClass} value={data.alternativePhone} onChange={(e) => set('alternativePhone', e.target.value)} /></Field>
+      <Field label="Email"><input type="email" className={inputClass} value={data.email} onChange={(e) => set('email', e.target.value)} /></Field>
+      <Field label="Nationality"><input className={inputClass} value={data.nationality} onChange={(e) => set('nationality', e.target.value)} /></Field>
+      <Field label="Country of residence"><input className={inputClass} value={data.residenceCountry} onChange={(e) => set('residenceCountry', e.target.value)} /></Field>
+      <Field label="ID / passport type"><select className={inputClass} value={data.idType} onChange={(e) => set('idType', e.target.value)}><option value="passport">Passport</option><option value="national_id">National ID</option><option value="other">Other</option></select></Field>
+      <Field label="ID / passport number"><input className={inputClass} value={data.idNumber} onChange={(e) => set('idNumber', e.target.value)} /></Field>
+      <Field label="Address"><input className={inputClass} value={data.address} onChange={(e) => set('address', e.target.value)} /></Field>
+      <div className="sm:col-span-2"><Field label="Guest profile notes"><textarea rows={2} className={inputClass} value={data.guestNotes} onChange={(e) => set('guestNotes', e.target.value)} /></Field></div>
+    </div>;
+    if (activeSection === 'stay') return <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-2"><Field label="Arrival date *"><input type="date" required className={inputClass} value={data.arrival} onChange={(e) => set('arrival', e.target.value)} /></Field><Field label="Arrival time"><input type="time" className={inputClass} value={data.arrivalTime} onChange={(e) => set('arrivalTime', e.target.value)} /></Field><Field label="Departure date *"><input type="date" required min={data.arrival || undefined} className={inputClass} value={data.departure} onChange={(e) => set('departure', e.target.value)} /></Field><Field label="Departure time"><input type="time" className={inputClass} value={data.departureTime} onChange={(e) => set('departureTime', e.target.value)} /></Field><Field label="Adults *"><input type="number" min="1" max="10" className={inputClass} value={data.adults} onChange={(e) => set('adults', e.target.value)} /></Field><Field label="Children"><input type="number" min="0" max="6" className={inputClass} value={data.kidsCount} onChange={(e) => { const count = Math.max(0, Math.min(6, Number(e.target.value) || 0)); setData((current) => ({ ...current, kidsCount: String(count), kidsAges: Array.from({ length: count }, (_, i) => current.kidsAges[i] ?? '') })); }} /></Field></div>
+      {Number(data.kidsCount) > 0 && <div className="grid grid-cols-2 gap-3">{data.kidsAges.map((age, index) => <Field key={index} label={`Child ${index + 1} age`}><input type="number" min="0" max="17" className={inputClass} value={age} onChange={(e) => setData((current) => ({ ...current, kidsAges: current.kidsAges.map((item, i) => i === index ? e.target.value : item) }))} /></Field>)}</div>}
+      <div><div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Select rooms · {selectedRooms.length} selected</div><div className="grid gap-2 sm:grid-cols-2">{selectableRooms.map((room) => <label key={room.id} className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 ${data.roomIds.includes(room.id) ? 'border-[var(--primary)] bg-[var(--primary-soft)]' : 'border-border bg-surface'}`}><input type="checkbox" checked={data.roomIds.includes(room.id)} onChange={() => toggleRoom(room.id)} /><span className="min-w-0"><span className="block text-sm font-semibold text-foreground">Room {room.number}</span><span className="block text-xs text-muted-foreground">{room.roomTypeName || room.roomType || 'Room'} · Capacity {room.capacity || 2}</span></span></label>)}</div>{conflictingSelectedRooms.length > 0 && <p className="mt-2 text-xs text-[var(--danger-text)]">One or more selected rooms conflict with these dates. Change the dates or room selection.</p>}</div>
+      <div className="rounded-lg bg-secondary px-3 py-2 text-sm text-foreground">{nights} night(s) · {guestCount} guest(s) · room capacity {capacity}</div>
+    </div>;
+    if (activeSection === 'booking') return <div className="grid gap-3 sm:grid-cols-2">
+      <Field label="Booking source"><select className={inputClass} value={data.channel} onChange={(e) => set('channel', e.target.value)}><option value="direct">Direct</option><option value="website">Website</option><option value="booking_com">Booking.com</option><option value="expedia">Expedia</option><option value="travel_agent">Travel agent</option><option value="corporate">Corporate</option><option value="walk_in">Walk-in</option><option value="other">Other</option></select></Field>
+      <Field label="Configured rate plan"><select className={inputClass} value={data.ratePlanId} onChange={(e) => { const plan = ratePlans.find((item) => item.id === e.target.value); const planMeal = plan?.meal_plan === 'room_only' ? 'bed_only' : ['bb', 'half_board', 'full_board'].includes(plan?.meal_plan) ? plan.meal_plan : data.mealPlan; setData((current) => ({ ...current, ratePlanId: e.target.value, rate: plan?.default_rate > 0 ? String(plan.default_rate) : current.rate, mealPlan: planMeal })); }}><option value="">Select configured rate plan (optional)</option>{ratePlans.map((plan) => <option key={plan.id} value={plan.id}>{plan.name} · {money(plan.default_rate)} / night</option>)}</select></Field>
+      <Field label="Meal plan"><select className={inputClass} value={data.mealPlan} onChange={(e) => set('mealPlan', e.target.value)}><option value="bed_only">Room only</option><option value="bb">Bed & breakfast</option><option value="half_board">Half board</option><option value="full_board">Full board</option></select></Field>
+      <Field label="Company"><input className={inputClass} value={data.company} onChange={(e) => set('company', e.target.value)} /></Field>
+      <Field label="Travel agent"><input className={inputClass} value={data.agent} onChange={(e) => set('agent', e.target.value)} /></Field>
+      <Field label="External booking reference"><input className={inputClass} value={data.externalReference} onChange={(e) => set('externalReference', e.target.value)} /></Field>
+      <Field label="Group reference"><input className={inputClass} value={data.groupReference} onChange={(e) => set('groupReference', e.target.value)} /></Field>
+      <div className="sm:col-span-2"><Field label="Internal booking notes"><textarea rows={3} className={inputClass} value={data.bookingNotes} onChange={(e) => set('bookingNotes', e.target.value)} /></Field></div>
+    </div>;
+    if (activeSection === 'rates') return <div className="space-y-3">
+      <div className="grid gap-3 sm:grid-cols-2"><Field label="Nightly rate per room (KES) *"><input type="number" min="0" step="0.01" className={inputClass} value={data.rate} onChange={(e) => set('rate', e.target.value)} /></Field><Field label="Additional services (KES)"><input type="number" min="0" step="0.01" className={inputClass} value={data.services} onChange={(e) => set('services', e.target.value)} /></Field><Field label="Discount (KES)"><input type="number" min="0" step="0.01" className={inputClass} value={data.discount} onChange={(e) => set('discount', e.target.value)} /></Field><Field label="Taxes (KES)"><input type="number" min="0" step="0.01" className={inputClass} value={data.tax} onChange={(e) => set('tax', e.target.value)} /></Field><Field label="Deposit received (KES)"><input type="number" min="0" step="0.01" className={inputClass} value={data.deposit} onChange={(e) => set('deposit', e.target.value)} /></Field><Field label="Deposit method"><select className={inputClass} value={data.depositMethod} onChange={(e) => set('depositMethod', e.target.value)}><option value="cash">Cash</option><option value="mpesa">M-Pesa</option><option value="card">Card</option><option value="bank_transfer">Bank transfer</option><option value="other">Other</option></select></Field></div>
+      <div className="rounded-xl border border-border bg-secondary/60 p-4"><div className="mb-3 text-sm font-bold text-foreground">Live booking summary</div><div className="space-y-2 text-sm"><SummaryLine label={`Accommodation · ${nights} nights × ${selectedRooms.length} room(s)`} value={money(accommodation)} /><SummaryLine label="Additional services" value={money(services)} /><SummaryLine label="Discount" value={`− ${money(discount)}`} /><SummaryLine label="Taxes" value={money(tax)} /><div className="border-t border-border pt-2"><SummaryLine label="Total" value={money(total)} strong /></div><SummaryLine label="Deposit entered" value={money(deposit)} /><SummaryLine label="Balance" value={money(balance)} strong /></div><p className="mt-3 text-xs text-muted-foreground">The deposit amount is stored on the reservation and follows the existing payment rules. This does not create a cashier receipt or payment-ledger entry; record and reconcile the actual payment through the cashier workflow. Smaller advances must also be posted there.</p></div>
+    </div>;
+    return <div className="space-y-3"><Field label="Special requests"><textarea rows={5} className={inputClass} placeholder="Airport transfer, dietary needs, arrival time, accessibility requests…" value={data.specialRequests} onChange={(e) => set('specialRequests', e.target.value)} /></Field><div className="rounded-lg bg-secondary p-3 text-sm text-muted-foreground">Requests are saved with the reservation for front-desk reference.</div></div>;
+  };
+
+  return <Modal title="Register reservation" onClose={onClose}>
+    <form onSubmit={(e) => submit(e)} className="space-y-4">
+      <div className="flex flex-wrap gap-1 border-b border-border pb-3">{sections.map(([id, label], index) => <button key={id} type="button" onClick={() => setActiveSection(id)} className={`rounded-lg px-3 py-2 text-xs font-semibold ${activeSection === id ? 'bg-primary text-primary-foreground' : 'bg-secondary text-foreground'}`}><span className="mr-1 opacity-70">{index + 1}.</span>{label}</button>)}</div>
+      {sectionContent()}
+      {error && <div role="alert" className="rounded-lg border border-[var(--danger)] bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger-text)]">{error}</div>}
+      <div className="flex flex-wrap justify-between gap-2 border-t border-border pt-4"><button type="button" className={buttonClass + ' border border-[var(--border)] bg-surface'} onClick={onClose}>Cancel</button><div className="flex flex-wrap gap-2"><button type="button" disabled={busy || submitting} className={buttonClass + ' border border-[var(--border)] bg-surface text-foreground'} onClick={() => submit(null, true)}>Save & register another</button><button disabled={busy || submitting} className={buttonClass + ' bg-primary text-primary-foreground'} type="submit"><Plus size={15} /> {busy || submitting ? 'Saving…' : 'Save reservation'}</button></div></div>
+    </form>
+  </Modal>;
+}
+
+function SummaryLine({ label, value, strong = false }) {
+  return <div className={`flex items-center justify-between gap-3 ${strong ? 'font-bold text-foreground' : 'text-muted-foreground'}`}><span>{label}</span><span className="tabular-nums">{value}</span></div>;
 }
 
 function ReservationDrawer({ reservation: r, rooms, pms, propertyId, busy, onClose, onRun }) {
@@ -338,7 +437,7 @@ function ReservationDrawer({ reservation: r, rooms, pms, propertyId, busy, onClo
             <div className="flex gap-2">
               <select className={inputClass} value={moveRoomId} onChange={(e) => setMoveRoomId(e.target.value)}>
                 <option value="">Select room</option>
-                {rooms.filter((room) => room.id === r.roomId || room.status !== 'maintenance' && room.status !== 'out_of_service').map((room) => <option key={room.id} value={room.id}>Room {room.number} · {room.roomTypeName || room.roomType || 'Room'}</option>)}
+                {rooms.filter((room) => room.id === r.roomId || !['maintenance', 'out_of_service', 'blocked'].includes(room.status)).map((room) => <option key={room.id} value={room.id}>Room {room.number} · {room.roomTypeName || room.roomType || 'Room'}</option>)}
               </select>
               <button disabled={busy || moveRoomId === r.roomId} className={buttonClass + " bg-primary text-primary-foreground"} onClick={move}><MoveRight size={15} /> Move</button>
             </div>
@@ -386,7 +485,7 @@ function Info({ label, value }) {
 function Modal({ title, children, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--overlay-scrim)] p-4" role="dialog" aria-modal="true">
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-surface shadow-2xl">
+      <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-2xl bg-surface shadow-2xl">
         <div className="flex items-center justify-between border-b border-border px-5 py-4"><h2 className="font-bold text-foreground">{title}</h2><button onClick={onClose} aria-label="Close"><X size={18} /></button></div>
         <div className="p-5">{children}</div>
       </div>
