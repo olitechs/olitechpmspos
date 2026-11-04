@@ -91,6 +91,42 @@ begin
  return p;
 end; $$;
 
+create or replace function public.fn_post_folio_refund(
+ p_property_id uuid,p_payment_id uuid,p_amount numeric,p_refund_method text,p_reason text,p_idempotency_key text
+) returns public.payments
+language plpgsql security invoker set search_path=public
+as $
+declare original public.payments; refund_payment public.payments; adjustment public.cashier_adjustments;
+ manager boolean; key text; already numeric; remaining numeric; reservation_property uuid;
+begin
+ manager:=public.is_platform_owner() or public.property_role(p_property_id) in ('owner','admin','manager') or public.current_staff_role(p_property_id) in ('hotel_admin','super_admin','fb_manager','general_manager','front_office_manager');
+ if not manager then raise exception 'Manager approval is required to refund a guest payment.'; end if;
+ key:=nullif(trim(p_idempotency_key),''); if key is null then raise exception 'An idempotency key is required.'; end if;
+ select * into refund_payment from public.payments where property_id=p_property_id and idempotency_key='refund:'||key;
+ if refund_payment.id is not null then return refund_payment; end if;
+ if p_amount<=0 or nullif(trim(p_reason),'') is null then raise exception 'Refund amount and reason are required.'; end if;
+ if p_refund_method not in ('cash','mpesa','card','bank_transfer','other') then raise exception 'Unsupported refund method.'; end if;
+ select * into original from public.payments where id=p_payment_id and property_id=p_property_id and status='posted' and amount>0 for update;
+ if original.id is null then raise exception 'A posted positive payment is required.'; end if;
+ select coalesce(sum(cr.amount),0) into already from public.cashier_refunds cr where cr.target_type='payment' and cr.target_id=original.id;
+ remaining:=original.amount-already;
+ if p_amount>remaining+0.005 then raise exception 'Refund exceeds the remaining refundable payment amount of %.',round(remaining,2); end if;
+ select property_id into reservation_property from public.reservations where id=original.reservation_id;
+ if reservation_property is distinct from p_property_id then raise exception 'Payment reservation does not belong to this property.'; end if;
+ insert into public.cashier_adjustments(property_id,shift_id,adjustment_type,target_type,target_id,amount,reason,created_by,approved_by,status,refund_method)
+ values(p_property_id,original.shift_id,'refund','payment',original.id,round(p_amount,2),trim(p_reason),auth.uid(),auth.uid(),'approved',p_refund_method)
+ returning * into adjustment;
+ insert into public.payments(property_id,reservation_id,amount,method,status,shift_id,reference,idempotency_key,created_by,refund_of_id)
+ values(p_property_id,original.reservation_id,-round(p_amount,2),p_refund_method,'posted',original.shift_id,
+ 'REF-'||upper(substr(gen_random_uuid()::text,1,8)),'refund:'||key,auth.uid(),original.id)
+ returning * into refund_payment;
+ insert into public.cashier_refunds(property_id,adjustment_id,target_type,target_id,original_payment_id,refund_payment_id,amount,method,reservation_id,approved_by,settlement_method)
+ values(p_property_id,adjustment.id,'payment',original.id,original.id,refund_payment.id,round(p_amount,2),p_refund_method,original.reservation_id,auth.uid(),p_refund_method);
+ insert into public.audit_logs(actor_id,property_id,action,old_value,new_value,entity_type,entity_id,related_reservation_id)
+ values(auth.uid(),p_property_id,'folio_payment_refunded',to_jsonb(original),jsonb_build_object('refund_payment_id',refund_payment.id,'amount',p_amount,'method',p_refund_method,'reason',trim(p_reason)),'payment',original.id,original.reservation_id);
+ return refund_payment;
+end; $;
+
 create or replace function public.fn_reverse_folio_charge(p_property_id uuid,p_charge_id uuid,p_reason text)
 returns public.folio_charges
 language plpgsql security invoker set search_path=public
@@ -162,11 +198,13 @@ end; $$;
 revoke all on function public.fn_post_folio_charge(uuid,uuid,text,text,numeric,numeric,text,text) from public,anon;
 revoke all on function public.fn_post_folio_payment(uuid,uuid,numeric,text,text,text) from public,anon;
 revoke all on function public.fn_reverse_folio_charge(uuid,uuid,text) from public,anon;
+revoke all on function public.fn_post_folio_refund(uuid,uuid,numeric,text,text,text) from public,anon;
 revoke all on function public.fn_apply_folio_discount(uuid,uuid,numeric,text,text) from public,anon;
 revoke all on function public.fn_transfer_folio_charges(uuid,uuid[],uuid,text) from public,anon;
 grant execute on function public.fn_post_folio_charge(uuid,uuid,text,text,numeric,numeric,text,text) to authenticated,service_role;
 grant execute on function public.fn_post_folio_payment(uuid,uuid,numeric,text,text,text) to authenticated,service_role;
 grant execute on function public.fn_reverse_folio_charge(uuid,uuid,text) to authenticated,service_role;
+grant execute on function public.fn_post_folio_refund(uuid,uuid,numeric,text,text,text) to authenticated,service_role;
 grant execute on function public.fn_apply_folio_discount(uuid,uuid,numeric,text,text) to authenticated,service_role;
 grant execute on function public.fn_transfer_folio_charges(uuid,uuid[],uuid,text) to authenticated,service_role;
 
