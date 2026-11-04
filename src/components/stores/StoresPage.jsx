@@ -127,7 +127,7 @@ export default function StoresPage() {
         </div>
 
         {!propertyId && !loading && (
-          <div role="alert" className="mb-4 border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+          <div role="alert" className="mb-4 border border-[var(--warning)] bg-[var(--warning-soft)] p-4 text-sm text-[var(--warning-text)]">
             Your account is not linked to a property. Select or assign a property before creating a store.
           </div>
         )}
