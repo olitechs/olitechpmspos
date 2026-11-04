@@ -99,7 +99,7 @@ export default function Folio() {
     const rows = [
       ['Date','Category','Description','Reference','Source','Quantity','Unit price','Amount','Employee','Status'],
       ...charges.map((c) => [c.created_at, categoryLabels[c.category] || c.category || c.source, c.description, c.reference || '', c.source_module || c.source, c.quantity ?? 1, c.unit_price ?? c.amount, c.amount, employeeName(c.created_by), c.reversal_of_id ? 'Reversal' : 'Posted']),
-      ...payments.map((p) => [p.created_at, Number(p.amount) < 0 ? 'Refund' : 'Payment', p.method, p.reference || '', 'Cashier', 1, Math.abs(p.amount), p.amount, p.status]),
+      ...payments.map((p) => [p.created_at, Number(p.amount) < 0 ? 'Refund' : 'Payment', p.method, p.reference || '', 'Cashier', 1, Math.abs(p.amount), p.amount, employeeName(p.created_by), p.status]),
     ];
     const csv = rows.map((row) => row.map((v) => `"${String(v ?? '').replaceAll('"','""')}"`).join(',')).join('\r\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
