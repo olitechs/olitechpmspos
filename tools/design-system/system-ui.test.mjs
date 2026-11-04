@@ -41,6 +41,11 @@ const bookingEngine = readFileSync(new URL('../../src/components/modules/Booking
 const pinPad = readFileSync(new URL('../../src/components/auth/PinPad.jsx', import.meta.url), 'utf8');
 const routeGuard = readFileSync(new URL('../../src/components/auth/RouteGuard.jsx', import.meta.url), 'utf8');
 const errorBoundary = readFileSync(new URL('../../src/components/ui/ErrorBoundary.jsx', import.meta.url), 'utf8');
+const login = readFileSync(new URL('../../src/pages/Login.jsx', import.meta.url), 'utf8');
+const adminCreateProperty = readFileSync(new URL('../../src/pages/admin/AdminCreateProperty.jsx', import.meta.url), 'utf8');
+const adminRoles = readFileSync(new URL('../../src/pages/admin/Roles.jsx', import.meta.url), 'utf8');
+const unsettledReceiptSettings = readFileSync(new URL('../../src/pages/admin/UnsettledReceiptSettings.jsx', import.meta.url), 'utf8');
+const adminProperties = readFileSync(new URL('../../src/pages/admin/AdminProperties.jsx', import.meta.url), 'utf8');
 
 
 test('shared operational UI exports the Phase 1 primitives', () => {
@@ -182,7 +187,7 @@ test('operational screens use semantic theme tokens for text, surfaces, focus an
 });
 
 test('timecards, stock movements and store operations use semantic theme colours', () => {
-  for (const [name, source] of Object.entries({timecards, stockMovements, storesPage, shiftReport, storePage, inventoryOperations, inventoryReports, purchasing, reports, channelManager, distributionOps, bookingEngine, pinPad, routeGuard, errorBoundary})) {
+  for (const [name, source] of Object.entries({timecards, stockMovements, storesPage, shiftReport, storePage, inventoryOperations, inventoryReports, purchasing, reports, channelManager, distributionOps, bookingEngine, pinPad, routeGuard, errorBoundary, login, adminCreateProperty, adminRoles, unsettledReceiptSettings, adminProperties})) {
     assert.doesNotMatch(source, /\b(?:text|bg|border)-(?:slate|gray|zinc|neutral|red|amber|emerald|teal|blue|rose|green|yellow|orange)-(?:50|100|200|300|400|500|600|700|800|900|950)\b/, name + ' should not use fixed palette utilities');
   }
   assert.match(timecards, /bg-canvas/);
@@ -202,6 +207,11 @@ test('timecards, stock movements and store operations use semantic theme colours
   assert.match(pinPad, /var\(--danger-soft\)/);
   assert.match(routeGuard, /var\(--danger-text\)/);
   assert.match(errorBoundary, /var\(--danger-soft\)/);
+  assert.match(login, /var\(--danger-text\)/);
+  assert.match(adminCreateProperty, /var\(--success-soft\)/);
+  assert.match(adminRoles, /var\(--danger-soft\)/);
+  assert.match(unsettledReceiptSettings, /var\(--success-soft\)/);
+  assert.match(adminProperties, /var\(--warning-soft\)/);
 });
 
 test('Room Planner toolbar exposes the approved controls and responsive dimensions', () => {
