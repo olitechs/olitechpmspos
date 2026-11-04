@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   buildOrderTicketText,
   buildUnsettledReceiptText,
+  buildFinalReceiptText,
   getPrinterColumns,
   thermalTextToHtml,
   toEscPosPayload,
@@ -44,8 +45,11 @@ test('order ticket includes station metadata, modifiers and prep notes without p
       modifiers: [{ name: 'Extra Lemon' }],
       prepNote: 'No chilli please',
     }],
-  }, { center: 'KITCHEN', printer: { paper_width: '80mm' } }));
+  }, { center: 'KITCHEN', printer: { paper_width: '80mm' }, settings: { property_name: 'Coastal Hotel', address_line1: 'Watamu', footer_line1: 'Thank you for visiting' } }));
   assert.match(output, /KITCHEN ORDER TICKET/);
+  assert.match(output, /Coastal Hotel/);
+  assert.match(output, /Thank you for visiting/);
+  assert.ok(output.includes(String.fromCharCode(29) + '!' + String.fromCharCode(17)), 'order item names use double-size ESC/POS mode');
   assert.match(output, /ORD-001/);
   assert.match(output, /T-04/);
   assert.match(output, /AMINA/);
@@ -89,6 +93,29 @@ test('unsettled bill is prominently unpaid, aligned and has totals without a pay
   assert.doesNotMatch(output, /Payment Method/);
   assert.doesNotMatch(output, /FINAL RECEIPT/);
   assert.ok(output.split('\n').every(line => line.length <= 32));
+});
+
+
+test('final receipt uses centered company header/footer and a paid receipt layout', () => {
+  const output = stripEscPos(buildFinalReceiptText({
+    property_name: 'Coastal Hotel',
+    address_line1: 'Watamu',
+    footer_line1: 'Thank you for dining with us',
+    footer_line2: 'Visit again',
+  }, {
+    checkNo: 'CHK-007',
+    currency: 'KES',
+    items: [{ qty: 1, name: 'Fish Curry', price: 1200 }],
+    subtotal: 1200,
+    total: 1200,
+    paymentMethod: 'M-Pesa',
+  }, { printer: { paper_width: '58mm' } }));
+  assert.match(output, /FINAL RECEIPT/);
+  assert.match(output, /PAYMENT METHOD: M-Pesa/);
+  assert.match(output, /Thank you for dining with us/);
+  assert.match(output, /Visit again/);
+  assert.doesNotMatch(output, /PAYMENT PENDING/);
+  assert.ok(output.split('\\n').every(line => line.length <= 32));
 });
 
 test('HTML fallback renders fixed-width plain text on white paper', () => {
