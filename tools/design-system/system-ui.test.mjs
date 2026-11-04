@@ -31,6 +31,13 @@ const stockMovements = readFileSync(new URL('../../src/components/store/StockMov
 const storesPage = readFileSync(new URL('../../src/components/stores/StoresPage.jsx', import.meta.url), 'utf8');
 const shiftReport = readFileSync(new URL('../../src/pages/ShiftReport.jsx', import.meta.url), 'utf8');
 const storePage = readFileSync(new URL('../../src/pages/Store.jsx', import.meta.url), 'utf8');
+const inventoryOperations = readFileSync(new URL('../../src/components/modules/InventoryOperations.jsx', import.meta.url), 'utf8');
+const inventoryReports = readFileSync(new URL('../../src/components/modules/InventoryReports.jsx', import.meta.url), 'utf8');
+const purchasing = readFileSync(new URL('../../src/components/modules/Purchasing.jsx', import.meta.url), 'utf8');
+const reports = readFileSync(new URL('../../src/components/modules/Reports.jsx', import.meta.url), 'utf8');
+const channelManager = readFileSync(new URL('../../src/components/modules/ChannelManager.jsx', import.meta.url), 'utf8');
+const distributionOps = readFileSync(new URL('../../src/components/modules/DistributionOps.jsx', import.meta.url), 'utf8');
+const bookingEngine = readFileSync(new URL('../../src/components/modules/BookingEngine.jsx', import.meta.url), 'utf8');
 
 
 test('shared operational UI exports the Phase 1 primitives', () => {
@@ -172,7 +179,7 @@ test('operational screens use semantic theme tokens for text, surfaces, focus an
 });
 
 test('timecards, stock movements and store operations use semantic theme colours', () => {
-  for (const [name, source] of Object.entries({timecards, stockMovements, storesPage, shiftReport, storePage})) {
+  for (const [name, source] of Object.entries({timecards, stockMovements, storesPage, shiftReport, storePage, inventoryOperations, inventoryReports, purchasing, reports, channelManager, distributionOps, bookingEngine})) {
     assert.doesNotMatch(source, /\b(?:text|bg|border)-(?:slate|gray|zinc|neutral|red|amber|emerald|teal|blue|rose|green|yellow|orange)-(?:50|100|200|300|400|500|600|700|800|900|950)\b/, name + ' should not use fixed palette utilities');
   }
   assert.match(timecards, /bg-canvas/);
@@ -182,6 +189,13 @@ test('timecards, stock movements and store operations use semantic theme colours
   assert.match(storesPage, /var\(--warning-soft\)/);
   assert.match(shiftReport, /var\(--danger-soft\)/);
   assert.match(storePage, /var\(--danger-soft\)/);
+  assert.match(inventoryOperations, /var\(--warning-text\)/);
+  assert.match(inventoryReports, /var\(--success-text\)/);
+  assert.match(purchasing, /var\(--danger-text\)/);
+  assert.match(reports, /var\(--danger-soft\)/);
+  assert.match(channelManager, /var\(--danger-text\)/);
+  assert.match(distributionOps, /var\(--danger-text\)/);
+  assert.match(bookingEngine, /var\(--danger-text\)/);
 });
 
 test('Room Planner toolbar exposes the approved controls and responsive dimensions', () => {
