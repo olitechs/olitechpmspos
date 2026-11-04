@@ -256,6 +256,12 @@ export const pmsService = {
 		return { reservation, room, charges: charges || [], totals: totals || { subtotal: 0, paid: 0, balance: 0 } };
 	},
 
+	async listFolioEmployees(propertyId) {
+		const { data, error } = await supabase.from('staff').select('id,full_name,user_id').eq('property_id', propertyId).eq('is_active', true).order('full_name');
+		if (error) throw new Error(error.message);
+		return data || [];
+	},
+
 	async listFolioRefunds(reservationId) {
 		const { data, error } = await supabase.from('cashier_refunds').select('*').eq('reservation_id', reservationId).order('created_at', { ascending: false });
 		if (error) throw new Error(error.message);
