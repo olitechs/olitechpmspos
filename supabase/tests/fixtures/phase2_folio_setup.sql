@@ -1,5 +1,8 @@
 -- Disposable PostgreSQL baseline for Phase 2 folio ledger tests only.
 create extension if not exists pgcrypto;
+do $ begin create role anon; exception when duplicate_object then null; end $;
+do $ begin create role authenticated; exception when duplicate_object then null; end $;
+do $ begin create role service_role; exception when duplicate_object then null; end $;
 create schema if not exists auth;
 create table auth.users(id uuid primary key);
 insert into auth.users values ('00000000-0000-0000-0000-000000000001') on conflict do nothing;
