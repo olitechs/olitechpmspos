@@ -1,0 +1,80 @@
+name: Complete Phase 1 Reservation Registration
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/phase1-patch-part-*.b64'
+      - '.github/workflows/phase1-complete.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: phase1_reservation_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d phase1_reservation_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: phase1_reservation_test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Reconstruct and apply Phase 1 source patch
+        run: |
+          cat .github/phase1-patch-part-*.b64 | base64 --decode | gzip --decompress > /tmp/phase1.patch
+          git apply --check /tmp/phase1.patch
+          git apply /tmp/phase1.patch
+      - name: Create disposable PostgreSQL baseline
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/fixtures/phase1_reservation_setup.sql
+      - name: Apply Phase 1 migration to disposable PostgreSQL
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261104150000_phase1_reservation_registration.sql
+      - name: Run Phase 1 database regression suite
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/phase1_reservation_registration_regression.sql
+      - name: Install locked application dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Phase 1 reservation contract tests
+        run: node --test supabase/tests/phase1_reservation_registration_contract.test.mjs
+      - name: Existing architecture regression suite
+        run: npm run test:architecture
+      - name: Production build
+        run: npm run build
+      - name: Commit validated Phase 1 changes to main
+        run: |
+          rm -f .github/phase1-patch-part-*.b64 .github/workflows/phase1-complete.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat(pms): complete reservation registration phase 1"
+          git push origin HEAD:main
+          echo "Validated Phase 1 commit: $(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
