@@ -32,6 +32,15 @@ function fit(value, width) {
   return wrapThermalText(value, width).join('\n');
 }
 
+function centerRows(value, width) {
+  return wrapThermalText(value, width).map(row => row.padStart(Math.floor((width + row.length) / 2)).padEnd(width));
+}
+
+function centeredBlock(values, width) {
+  return values.filter(value => value != null && String(value).trim() !== '')
+    .flatMap(value => centerRows(value, width));
+}
+
 function divider(width) {
   return '-'.repeat(width);
 }
@@ -67,33 +76,47 @@ function emphasize(value) {
   return '\x1BE\x01' + value + '\x1BE\x00';
 }
 
-export function buildOrderTicketText(order = {}, { printer = {}, center = 'KITCHEN', items = order.items || [], now = new Date() } = {}) {
+export function buildOrderTicketText(order = {}, { printer = {}, settings = {}, center = 'KITCHEN', items = order.items || [], now = new Date() } = {}) {
   const width = getPrinterColumns(printer);
   const productionCenter = String(center || 'KITCHEN').toUpperCase();
   const orderNo = order.orderNumber || order.checkNo || order.order_number || order.id || '—';
   const table = order.table || order.tableNumber || order.table_number || '—';
   const waiter = order.waiter || order.server || 'Unassigned';
   const dining = order.diningOption || order.dining_option || order.orderType || order.order_type || '—';
+  const company = settings.property_name || order.propertyName || order.property_name || 'OLITECHS PMS + POS';
+  const header = centeredBlock([
+    company.toUpperCase(),
+    settings.address_line1,
+    settings.address_line2,
+    settings.phone,
+    settings.email,
+    settings.website,
+    settings.kra_pin ? 'KRA PIN: ' + settings.kra_pin : '',
+    settings.extra_header_line,
+  ], width);
   const lines = [
-    fit(order.propertyName || order.property_name || 'OLITECHS PMS + POS', width).toUpperCase(),
+    ...header,
     divider(width),
-    emphasize(fit(productionCenter + ' ORDER TICKET', width)),
-    emphasize(fit('ORDER: ' + orderNo, width)),
+    ...centerRows(productionCenter + ' ORDER TICKET', width).map(emphasize),
+    ...centerRows('ORDER: ' + orderNo, width).map(emphasize),
     'TABLE: ' + fit(table, Math.max(8, width - 7)).replace(/\n/g, '\n       '),
     'SERVER: ' + fit(waiter, Math.max(8, width - 8)).toUpperCase().replace(/\n/g, '\n        '),
     'DINING: ' + fit(dining, Math.max(8, width - 8)).toUpperCase().replace(/\n/g, '\n        '),
   ];
   if (order.covers != null || order.guests != null) lines.push('COVERS: ' + (order.covers ?? order.guests));
   lines.push('TIME: ' + stamp(order.createdAt || order.created_at || now));
-  if (order.isReprint || order.reprint) lines.push(emphasize('*** REPRINT ***'));
-  if (order.isAddition || order.addition) lines.push(emphasize('*** ADDITIONAL ITEMS ***'));
+  if (order.isReprint || order.reprint) lines.push(...centerRows('*** REPRINT ***', width).map(emphasize));
+  if (order.isAddition || order.addition) lines.push(...centerRows('*** ADDITIONAL ITEMS ***', width).map(emphasize));
   lines.push(divider(width));
 
+  // ESC/POS double-size mode improves kitchen readability. Wrap at half-width
+  // so large text never overruns the configured 58mm/80mm paper width.
+  const itemWidth = Math.max(12, Math.floor(width / 2));
   for (const item of items) {
     const qty = itemQuantity(item);
     const heading = qty + ' x ' + itemName(item);
-    const rows = wrapThermalText(heading, width);
-    lines.push(...rows.map(row => emphasize(row)));
+    const rows = wrapThermalText(heading, itemWidth);
+    lines.push('\x1D\x21\x11' + rows.map(row => emphasize(row)).join('\n') + '\x1D\x21\x00');
     const modifiers = (Array.isArray(item.modifiers) ? item.modifiers : []).map(modifierLabel).filter(Boolean);
     for (const modifier of modifiers) lines.push(...wrapThermalText('  + ' + modifier, width));
     const note = item.prepNote || item.prep_note || item.notes || item.note || item.kitchen_note;
@@ -101,7 +124,8 @@ export function buildOrderTicketText(order = {}, { printer = {}, center = 'KITCH
     lines.push('');
   }
 
-  lines.push(divider(width), 'PRODUCTION COPY · ' + productionCenter, '');
+  lines.push(divider(width));
+  lines.push(...centeredBlock([settings.footer_line1, settings.footer_line2, 'PRODUCTION COPY · ' + productionCenter], width), '');
   return lines.join('\n');
 }
 
@@ -109,13 +133,21 @@ export function buildUnsettledReceiptText(settings = {}, data = {}, { printer = 
   const width = getPrinterColumns(printer);
   const currency = data.currency || 'KES';
   const money = value => currency + ' ' + Number(value || 0).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const header = centeredBlock([
+    settings.property_name || data.propertyName || 'OLITECHS PMS + POS',
+    settings.address_line1,
+    settings.address_line2,
+    settings.phone,
+    settings.email,
+    settings.website,
+    settings.kra_pin ? 'KRA PIN: ' + settings.kra_pin : '',
+    settings.extra_header_line,
+  ], width);
   const lines = [
-    fit(settings.property_name || data.propertyName || 'OLITECHS PMS + POS', width).toUpperCase(),
-    ...[settings.address_line1, settings.address_line2, settings.phone, settings.email, settings.website, settings.kra_pin ? 'KRA PIN: ' + settings.kra_pin : '']
-      .filter(Boolean).flatMap(value => wrapThermalText(value, width)),
+    ...header,
     divider(width),
-    emphasize(fit('*** BILL - NOT PAID ***', width)),
-    emphasize(fit('PAYMENT PENDING', width)),
+    ...centerRows(settings.unsettled_receipt_title || '*** BILL - NOT PAID ***', width).map(emphasize),
+    ...centerRows('PAYMENT PENDING', width).map(emphasize),
     'COPY: ' + copyLabel,
     'CHECK: ' + (data.checkNo || data.orderNumber || '—'),
     'TABLE: ' + (data.table || data.tableNumber || '—'),
@@ -149,12 +181,11 @@ export function buildUnsettledReceiptText(settings = {}, data = {}, { printer = 
   lines.push(divider(width));
   lines.push(emphasize(pairLine('TOTAL DUE', money(data.total), width)));
   lines.push(divider(width));
-  if (settings.footer_line1) lines.push(...wrapThermalText(settings.footer_line1, width));
-  if (settings.footer_line2) lines.push(...wrapThermalText(settings.footer_line2, width));
+  lines.push(...centeredBlock([settings.footer_line1, settings.footer_line2], width));
   lines.push('');
-  lines.push(emphasize(fit('PAYMENT PENDING - NOT PAID', width)));
-  lines.push(fit('NOT A TAX INVOICE / NOT A PAID RECEIPT', width));
-  lines.push(fit('PLEASE SETTLE AT THE CASHIER', width), '');
+  lines.push(...centerRows('PAYMENT PENDING - NOT PAID', width).map(emphasize));
+  lines.push(...centerRows('NOT A TAX INVOICE / NOT A PAID RECEIPT', width));
+  lines.push(...centerRows('PLEASE SETTLE AT THE CASHIER', width), '');
   return lines.join('\n');
 }
 
