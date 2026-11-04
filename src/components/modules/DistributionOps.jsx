@@ -63,7 +63,7 @@ export default function DistributionOps() {
           <RefreshCw size={16} />
         </button>
       </div>
-      {error && <p role="alert" className="mb-3 text-xs text-red-600">{error}</p>}
+      {error && <p role="alert" className="mb-3 text-xs text-[var(--danger-text)]">{error}</p>}
       <div className="grid gap-4 lg:grid-cols-3">
         {card('Outbound Sync', <ArrowUpDown size={17} />, queue, (item) => (
           <><b>{item.event_type}</b> · {item.status}<div style={{ color: MUTED }}>{item.idempotency_key}</div></>
