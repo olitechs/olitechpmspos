@@ -90,11 +90,14 @@ export default function KitchenDisplay() {
       if (isPrinterGroupRoutingEnabled()) {
         const jobs = await printRoutedOrder({
           propertyId,
+          propertyName: user?.property?.name || user?.property?.business_name || 'OLITECHS PMS + POS',
           orderId: saved.id,
           id: saved.order_number,
           orderNumber: saved.order_number,
           table: saved.table_number,
           waiter: saved.waiter,
+          diningOption: saved.dining_option || 'Dine In',
+          isReprint: true,
           items: Array.isArray(saved.order_lines) ? saved.order_lines : [],
         });
         if (!jobs.length) throw new Error('No KOT/BOT jobs were queued. Check category mappings and printer assignments.');
@@ -105,6 +108,9 @@ export default function KitchenDisplay() {
           table: saved.table_number,
           tableNumber: saved.table_number,
           orderNumber: saved.order_number,
+          propertyName: user?.property?.name || user?.property?.business_name || 'OLITECHS PMS + POS',
+          diningOption: saved.dining_option || 'Dine In',
+          isReprint: true,
           checkNo: saved.order_number,
           waiter: saved.waiter,
           createdAt: new Date().toISOString(),

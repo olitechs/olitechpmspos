@@ -166,10 +166,14 @@ export default function POSContainer() {
 
 		const printOrder = () => printOrderByCategory({
 			propertyId,
+			propertyName,
 			orderNumber,
 			checkNo: orderNumber,
 			table: tableLabel(table),
 			waiter: store.getSession(table.id)?.waiter,
+			covers: store.getSession(table.id)?.guests || table.seats,
+			diningOption: table?.diningOption || table?.dining_option || 'Dine In',
+			isAddition: !!store.getSession(table.id)?.kotSentAt,
 			createdAt: Date.now(),
 			items: linesSnapshot,
 		});
@@ -177,11 +181,15 @@ export default function POSContainer() {
 			if (isPrinterGroupRoutingEnabled()) {
 				const jobs = await printRoutedOrder({
 					propertyId,
+					propertyName,
 					id: orderNumber,
 					orderId: kitchenOrderRecord?.id,
 					orderNumber,
 					table: tableLabel(table),
 					waiter: store.getSession(table.id)?.waiter,
+					covers: store.getSession(table.id)?.guests || table.seats,
+					diningOption: table?.diningOption || table?.dining_option || 'Dine In',
+					isAddition: !!store.getSession(table.id)?.kotSentAt,
 					items: linesSnapshot,
 				});
 				return { ok: jobs.length > 0, jobs, queued: true };

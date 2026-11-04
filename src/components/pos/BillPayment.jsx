@@ -29,7 +29,7 @@ export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrde
  async function handlePrintBill(){
   setBusy(true);setError('');
   try{
-   const result=await printReceipt('UNSETTLED',{propertyId,orderNumber:stableOrderNumber,checkNo:stableOrderNumber,table:tableLabel(table),waiter,covers:covers ?? table.seats,items:orderLines,total,currency:'KES'});
+   const result=await printReceipt('UNSETTLED',{propertyId,orderNumber:stableOrderNumber,checkNo:stableOrderNumber,table:tableLabel(table),waiter,covers:covers ?? table.seats,diningOption:table?.diningOption||table?.dining_option||table?.orderType||'Dine In',items:orderLines,subtotal,discount,vat,total,currency:'KES'});
    if(!result.ok){setError(result.friendlyError||'Bill printer failed.');toast.error('Bill was not printed.');return}
    store.setUnsettled(table.id);setBillPrinted(true);toast.success('Unsettled bill printed. The table remains open.');
   }catch(e){setError(e?.message||'Bill printer failed.');toast.error('Bill was not printed.');}
