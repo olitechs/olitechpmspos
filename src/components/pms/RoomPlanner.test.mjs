@@ -22,10 +22,12 @@ test('custom date ranges remain bounded to 31 days and reject reversed dates', (
   assert.ok(source.includes("if (days > 31) { setRangeError('Maximum visible range is 31 days.');"));
 });
 
-test('new reservation payment status uses the Room Planner legend and maps choices to recorded amounts', () => {
-  assert.ok(source.includes('Payment status · Room Planner legend'));
-  assert.ok(source.includes("['not_paid','partially_paid','fully_paid'].map(status=>"));
-  assert.ok(source.includes("background:style.background,color:style.color"));
-  assert.ok(source.includes("amountPaid:status==='not_paid'?0:status==='fully_paid'?total:partialAmount"));
-  assert.ok(source.includes('To record a payment or change the actual amount received, use Guest Folio'));
+test('new reservation payment status uses three clean BB Planner legend buttons', () => {
+  assert.ok(source.includes('<Field label="Payment status">'));
+  assert.ok(source.includes("{value:'fully_paid',label:'Paid',amount:total}"));
+  assert.ok(source.includes("{value:'partially_paid',label:'Deposit',amount:total*0.5}"));
+  assert.ok(source.includes("{value:'not_paid',label:'Not paid',amount:0}"));
+  assert.ok(source.includes('aria-pressed={selected}'));
+  assert.ok(source.includes('background:style.background,color:style.color'));
+  assert.ok(source.includes('Amount received: KES'));
 });
