@@ -86,7 +86,7 @@ export default function Purchasing() {
           {!lines.length&&<div className="text-xs" style={{color:MUTED}}>No lines added.</div>}
         </div>
         <div className="mt-4 pt-3 flex justify-between font-black text-sm" style={{borderTop:`1px solid ${BORDER}`}}><span>Total</span><span>{total.toFixed(2)}</span></div>
-        {error&&<div className="mt-3 text-xs font-semibold text-red-600">{error}</div>}
+        {error&&<div className="mt-3 text-xs font-semibold text-[var(--danger-text)]">{error}</div>}
         <button onClick={createOrder} className="w-full mt-4 py-3 rounded-xl font-black text-sm" style={{background:TEXT,color:'white'}}>Create Purchase Order</button>
       </section>
       <section className="xl:col-span-2 rounded-2xl overflow-hidden" style={{background:SURFACE,border:`1px solid ${BORDER}`}}>
