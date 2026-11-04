@@ -156,7 +156,7 @@ export default function Cashier() {
       {!shift ? <section className="mx-auto w-full max-w-xl rounded-xl border border-border bg-surface p-5 shadow-sm">
         <div className="flex items-center gap-3"><Banknote size={20}/><div><h2 className="font-bold">Open cashier shift</h2><p className="text-sm text-muted-foreground">Enter the physical cash float before taking payments.</p></div></div>
         <label className="mt-4 block text-xs font-semibold text-muted-foreground">Opening float<input className={input + ' mt-1'} type="number" min="0" step="0.01" value={openingFloat} onChange={(e) => setOpeningFloat(e.target.value)} placeholder="0.00"/></label>
-        <button className={btn + ' mt-4 w-full bg-primary text-slate-950'} disabled={busy || openingFloat === ''} onClick={open}><CheckCircle2 size={15}/> Open shift</button>
+        <button className={btn + ' mt-4 w-full bg-primary text-[var(--on-primary)]'} disabled={busy || openingFloat === ''} onClick={open}><CheckCircle2 size={15}/> Open shift</button>
       </section> : <>
         <div className="grid gap-3 md:grid-cols-5">
           <Metric label="Opening float" value={money(summary.opening_float)}/>
@@ -245,8 +245,8 @@ export default function Cashier() {
 }
 
 function Metric({ label, value, emphasis }) {
-  return <div className="rounded-xl border border-border bg-surface p-4"><div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</div><div className={`mt-1 text-lg font-bold ${emphasis ? 'text-amber-700' : 'text-slate-950'}`}>{value}</div></div>;
+  return <div className="rounded-xl border border-border bg-surface p-4"><div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</div><div className={`mt-1 text-lg font-bold ${emphasis ? 'text-amber-700' : 'text-[var(--on-primary)]'}`}>{value}</div></div>;
 }
 function Status({ status }) {
-  return <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${status === 'posted' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>{status || 'posted'}</span>;
+  return <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${status === 'posted' ? 'bg-emerald-50 text-emerald-700' : 'bg-[var(--surface-2)] text-[var(--text-muted)]'}`}>{status || 'posted'}</span>;
 }
