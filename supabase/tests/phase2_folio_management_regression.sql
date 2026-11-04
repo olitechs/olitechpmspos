@@ -5,6 +5,8 @@ declare p uuid:='10000000-0000-0000-0000-000000000001'; r1 uuid:='30000000-0000-
  c1 public.folio_charges; c2 public.folio_charges; c3 public.folio_charges; pay1 public.payments; pay2 public.payments; refund public.payments;
  n integer; charge_sum numeric; payment_sum numeric; balance numeric; moved integer; duplicate_count integer;
 begin
+ perform set_config('test.staff_role','hotel_admin',true);
+ perform set_config('test.member','true',true);
  c1:=public.fn_post_folio_charge(p,r1,'accommodation','Room 101 accommodation',2,500,'ROOM-101','charge-key-room');
  c2:=public.fn_post_folio_charge(p,r1,'laundry','Laundry service',2,100,'LAU-001','charge-key-laundry');
  if c1.id<>(public.fn_post_folio_charge(p,r1,'accommodation','Room 101 accommodation',2,500,'ROOM-101','charge-key-room')).id then raise exception 'Charge idempotency failed.'; end if;
