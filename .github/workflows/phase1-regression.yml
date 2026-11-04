@@ -1,0 +1,68 @@
+name: Phase 1 Database and Build Regression
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/20261104150000_phase1_reservation_registration.sql'
+      - 'supabase/tests/phase1_reservation_registration_regression.sql'
+      - 'supabase/tests/phase1_reservation_registration_contract.test.mjs'
+      - 'supabase/tests/fixtures/phase1_reservation_setup.sql'
+      - 'src/components/modules/Reservations.jsx'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  phase1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: phase1_reservation_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d phase1_reservation_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: phase1_reservation_test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Create disposable PostgreSQL baseline
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/fixtures/phase1_reservation_setup.sql
+      - name: Apply Phase 1 migration
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261104150000_phase1_reservation_registration.sql
+      - name: Verify reservation, guest deduplication, deposits and availability
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/phase1_reservation_registration_regression.sql
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Phase 1 contract tests
+        run: node --test supabase/tests/phase1_reservation_registration_contract.test.mjs
+      - name: Existing architecture regression suite
+        run: npm run test:architecture
+      - name: Production build
+        run: npm run build
