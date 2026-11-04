@@ -102,6 +102,13 @@ declare
   v_phone_for_bundle text := nullif(trim(p_phone), '');
   v_email text := nullif(lower(trim(v_guest->>'email')), '');
   v_lock_key text;
+  v_room_count integer := cardinality(coalesce(p_room_ids, '{}'::uuid[]));
+  v_room_index integer := 0;
+  v_total_distributed numeric := 0;
+  v_paid_distributed numeric := 0;
+  v_room_total numeric := 0;
+  v_room_payment numeric := 0;
+  v_payment_method text := coalesce(nullif(trim(v_booking->>'depositMethod'), ''), 'cash');
 begin
   if not public.is_member_of_property(p_property_id) and not public.is_platform_owner() then
     raise exception 'You do not have access to this property.';
@@ -127,6 +134,10 @@ begin
 
   if v_capacity < coalesce(p_adults, 0) + coalesce(p_kids_count, 0) then
     raise exception 'Selected rooms do not have enough combined guest capacity.';
+  end if;
+
+  if coalesce(p_total_amount, 0) < 0 or coalesce(p_amount_paid, 0) < 0 or coalesce(p_amount_paid, 0) > coalesce(p_total_amount, 0) then
+    raise exception 'Reservation total and deposit amounts are invalid.';
   end if;
 
   if nullif(v_booking->>'ratePlanId', '') is not null and not exists (
@@ -179,8 +190,8 @@ begin
   for v_res in
     select * from public.fn_create_reservation_bundle(
       p_property_id, p_room_ids, p_group_id, p_guest_name, v_phone_for_bundle,
-      p_arrival, p_departure, p_payment_status, p_channel, p_meal_plan,
-      p_adults, p_kids_count, p_kids_ages, p_total_amount, p_amount_paid, p_notes
+      p_arrival, p_departure, 'not_paid', p_channel, p_meal_plan,
+      p_adults, p_kids_count, p_kids_ages, p_total_amount, 0, p_notes
     )
   loop
     update public.guests
@@ -196,8 +207,22 @@ begin
         guest_details = coalesce(guest_details, '{}'::jsonb) || v_guest
     where id = v_res.guest_id and property_id = p_property_id;
 
+    v_room_index := v_room_index + 1;
+    if v_room_index < v_room_count then
+      v_room_total := round(coalesce(p_total_amount, 0) / greatest(1, v_room_count), 2);
+      v_total_distributed := v_total_distributed + v_room_total;
+      v_room_payment := round(coalesce(p_amount_paid, 0) / greatest(1, v_room_count), 2);
+      v_paid_distributed := v_paid_distributed + v_room_payment;
+    else
+      v_room_total := greatest(0, coalesce(p_total_amount, 0) - v_total_distributed);
+      v_room_payment := greatest(0, coalesce(p_amount_paid, 0) - v_paid_distributed);
+    end if;
+
     update public.reservations
     set phone = nullif(trim(p_phone), ''),
+        total_amount = v_room_total,
+        amount_paid = 0,
+        payment_status = 'not_paid',
         booking_details = coalesce(booking_details, '{}'::jsonb) || v_booking || jsonb_build_object('submissionId', v_submission_id),
         rate_plan_id = coalesce(nullif(v_booking->>'ratePlanId', '')::uuid, rate_plan_id),
         rate = round(
@@ -206,6 +231,15 @@ begin
         )
     where id = v_res.id and property_id = p_property_id
     returning * into v_res;
+
+    -- A received deposit is a real, posted front-desk payment, not just a
+    -- reservation balance field. Any failure rolls back the entire booking.
+    if v_room_payment > 0 then
+      perform public.fn_record_front_desk_payment(
+        p_property_id, v_res.id, v_room_payment, v_payment_method, null
+      );
+      select * into v_res from public.reservations where id = v_res.id;
+    end if;
 
     return next v_res;
   end loop;
