@@ -87,6 +87,10 @@ export async function printOrder(order = {}) {
   }
 
   const { jobs: plans, unrouted } = planPrinterJobs(order.items);
+  const { data: receiptSettings, error: settingsError } = await supabase
+    .from('property_settings').select('*').eq('property_id', order.propertyId).maybeSingle();
+  if (settingsError) throw new Error(`Could not load company print settings: ${settingsError.message}`);
+
   if (unrouted.length) {
     const names = unrouted.map(item => item.name || item.item_name || 'Unnamed item');
     throw new Error(`No printer group is assigned to: ${names.join(', ')}.`);
@@ -111,6 +115,7 @@ export async function printOrder(order = {}) {
       waiter: order.waiter,
     }, {
       printer,
+      settings: receiptSettings || {},
       items: plan.lines,
       center: plan.center || plan.groupName,
     }))),

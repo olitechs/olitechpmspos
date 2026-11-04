@@ -23,8 +23,13 @@ test('order and unsettled print paths use shared width-aware templates', async (
   const routing = await read('./printRoutingService.js');
   assert.match(service, /buildOrderTicketText/);
   assert.match(service, /buildUnsettledReceiptText/);
+  assert.match(service, /buildFinalReceiptText/);
+  assert.match(service, /buildLogoEscPosBase64/);
+  assert.match(service, /thermalBase64/);
   assert.match(service, /thermalText/);
   assert.match(routing, /buildOrderTicketText/);
+  assert.match(routing, /property_settings/);
+  assert.match(routing, /settings: receiptSettings/);
   assert.match(routing, /toEscPosPayload/);
 });
 
