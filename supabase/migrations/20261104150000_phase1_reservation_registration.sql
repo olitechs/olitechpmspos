@@ -145,6 +145,10 @@ begin
     raise exception 'Required deposit must be between zero and the reservation total.';
   end if;
 
+  if coalesce(p_amount_paid, 0) > 0 and coalesce(p_total_amount, 0) > 0 and p_amount_paid < p_total_amount * 0.5 then
+    raise exception 'Initial deposit must be at least half of the reservation total.';
+  end if;
+
   if nullif(v_booking->>'ratePlanId', '') is not null and not exists (
     select 1 from public.rate_plans rp
     where rp.id = (v_booking->>'ratePlanId')::uuid and rp.property_id = p_property_id and rp.active = true
