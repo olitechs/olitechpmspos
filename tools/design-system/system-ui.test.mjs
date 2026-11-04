@@ -21,6 +21,11 @@ const printerSettings = readFileSync(new URL('../../src/pages/SettingsPrinters.j
 const adminProperties = readFileSync(new URL('../../src/pages/admin/AdminProperties.jsx', import.meta.url), 'utf8');
 const adminRoute = readFileSync(new URL('../../src/lib/AdminRoute.jsx', import.meta.url), 'utf8');
 const protectedRoute = readFileSync(new URL('../../src/components/ui/ProtectedRoute.jsx', import.meta.url), 'utf8');
+const employeeList = readFileSync(new URL('../../src/components/settings/EmployeeListPage.jsx', import.meta.url), 'utf8');
+const sharedSelect = readFileSync(new URL('../../src/components/ui/select.jsx', import.meta.url), 'utf8');
+const productTable = readFileSync(new URL('../../src/components/store/ProductTable.jsx', import.meta.url), 'utf8');
+const publicHome = readFileSync(new URL('../../src/pages/PublicHome.jsx', import.meta.url), 'utf8');
+const pageNotFound = readFileSync(new URL('../../src/lib/PageNotFound.jsx', import.meta.url), 'utf8');
 
 
 test('shared operational UI exports the Phase 1 primitives', () => {
@@ -115,7 +120,7 @@ test('mobile sidebar exposes expanded state and closes with Escape', () => {
 
 test('operational screens use semantic theme tokens for text, surfaces, focus and feedback', () => {
   const screens = {
-    reservations, folio, posDevices, receiptSettings, operationalSettings, catalogue, accessError, nightAudit, cashier, housekeeping, subscriptionPanel, printerSettings, adminProperties, adminRoute, protectedRoute,
+    reservations, folio, posDevices, receiptSettings, operationalSettings, catalogue, accessError, nightAudit, cashier, housekeeping, subscriptionPanel, printerSettings, adminProperties, adminRoute, protectedRoute, employeeList, sharedSelect, productTable, publicHome, pageNotFound,
   };
   for (const [name, source] of Object.entries(screens)) {
     assert.doesNotMatch(
@@ -150,6 +155,14 @@ test('operational screens use semantic theme tokens for text, surfaces, focus an
   assert.match(subscriptionPanel, /var\(--warning-soft\)/);
   assert.match(printerSettings, /var\(--danger-soft\)/);
   assert.match(adminProperties, /var\(--success-soft\)/);
+  assert.match(employeeList, /bg-primary text-primary-foreground/);
+  assert.match(sharedSelect, /var\\(--surface-2\\)/);
+  assert.doesNotMatch(sharedSelect, /NAVY|SURFACE2|data-\\[highlighted\\]:bg-slate/);
+  assert.match(productTable, /var\\(--danger\\)/);
+  assert.doesNotMatch(productTable, /#EF4444|#EAB308|#22C55E|#FFD300/);
+  assert.match(publicHome, /text-secondary-foreground/);
+  assert.match(pageNotFound, /font-family:var\\(--font-heading\\)/);
+  assert.doesNotMatch(pageNotFound, /Roboto/);
 });
 
 test('Room Planner toolbar exposes the approved controls and responsive dimensions', () => {
