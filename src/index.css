@@ -140,6 +140,37 @@
   .bg-slate-950.text-white { background-color: var(--primary) !important; color: var(--on-primary) !important; }
   .bg-surface.text-black { color: var(--text) !important; }
 
+  /* Legacy utility compatibility layer.
+     Older modules still mix fixed Tailwind palette classes with semantic
+     surfaces. Pair foregrounds with the surface class on the same element,
+     in BOTH themes. Exclude the Room Planner and floor tiles: their colours
+     are operational status encodings with dedicated contrast rules. */
+  :root:not([data-theme="dark"]) :not(.room-planner):not(.floor-table-tile):is(.bg-white,.bg-gray-50,.bg-gray-100,.bg-slate-50,.bg-slate-100,.bg-zinc-50,.bg-zinc-100):is(.text-white,.text-gray-50,.text-gray-100,.text-slate-50,.text-slate-100,.text-zinc-50,.text-zinc-100) {
+    color: var(--text) !important;
+  }
+  :root:not([data-theme="dark"]) :not(.room-planner):not(.floor-table-tile):is(.bg-gray-900,.bg-slate-900,.bg-zinc-900,.bg-neutral-900,.bg-black):is(.text-black,.text-gray-900,.text-slate-900,.text-zinc-900,.text-neutral-900) {
+    color: #FFFFFF !important;
+  }
+  :root[data-theme="dark"] :not(.room-planner):not(.floor-table-tile):is(.bg-white,.bg-gray-50,.bg-gray-100,.bg-gray-200,.bg-slate-50,.bg-slate-100,.bg-slate-200,.bg-zinc-50,.bg-zinc-100,.bg-neutral-50,.bg-neutral-100) {
+    background-color: var(--surface) !important;
+    border-color: var(--border) !important;
+  }
+  :root[data-theme="dark"] :not(.room-planner):not(.floor-table-tile):is(.bg-gray-900,.bg-gray-950,.bg-slate-900,.bg-slate-950,.bg-zinc-900,.bg-zinc-950,.bg-neutral-900,.bg-neutral-950,.bg-black) {
+    background-color: var(--sidebar) !important;
+  }
+  :root[data-theme="dark"] :not(.room-planner):not(.floor-table-tile):is(.text-black,.text-gray-900,.text-gray-800,.text-gray-700,.text-slate-900,.text-slate-800,.text-slate-700,.text-zinc-900,.text-zinc-800,.text-neutral-900) {
+    color: var(--text) !important;
+  }
+  :root[data-theme="dark"] :not(.room-planner):not(.floor-table-tile):is(.text-gray-600,.text-gray-500,.text-slate-600,.text-slate-500,.text-zinc-600,.text-zinc-500,.text-neutral-600,.text-neutral-500) {
+    color: var(--text-muted) !important;
+  }
+  :root[data-theme="dark"] :not(.room-planner):not(.floor-table-tile):is(.text-white,.text-gray-50,.text-gray-100,.text-slate-50,.text-slate-100,.text-zinc-50,.text-zinc-100) {
+    color: var(--text) !important;
+  }
+  :root[data-theme="dark"] :not(.room-planner):not(.floor-table-tile):is(.border-gray-100,.border-gray-200,.border-slate-100,.border-slate-200,.border-zinc-100,.border-zinc-200) {
+    border-color: var(--border) !important;
+  }
+
   /* Older screens still contain fixed light/dark utility classes. Rebind them
      to the active theme so dark text never sits on dark surfaces and white
      panels do not remain blinding white in the dark appearance. */
