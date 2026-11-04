@@ -90,7 +90,7 @@ function InventoryInner() {
 
 					{error && <div className="text-xs mb-3" style={{ color: DESTRUCTIVE }}>{error}</div>}
 
-					<button onClick={addItem} className="w-full flex items-center justify-center gap-1.5 py-3 rounded-xl text-sm font-bold" style={{ background: TEAL, color: '#090C11' }}>
+					<button onClick={addItem} className="w-full flex items-center justify-center gap-1.5 py-3 rounded-xl text-sm font-bold" style={{ background: TEAL, color: 'var(--primary-foreground)' }}>
 						<Plus size={14} /> Add Item
 					</button>
 
