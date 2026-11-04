@@ -3,9 +3,9 @@ import { RefreshCw, Mail, ArrowUpDown, Inbox } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { pmsService } from '@/services/pmsService';
 
-const BORDER = '#E5E5E5';
-const SURFACE = '#FFFFFF';
-const MUTED = '#757B81';
+const BORDER = 'var(--border)';
+const SURFACE = 'var(--surface)';
+const MUTED = 'var(--text-muted)';
 
 export default function DistributionOps() {
   const { user } = useAuth();
@@ -53,7 +53,7 @@ export default function DistributionOps() {
   );
 
   return (
-    <div className="flex-1 overflow-y-auto p-4" style={{ background: '#F8F8F7' }}>
+    <div className="flex-1 overflow-y-auto p-4" style={{ background: 'var(--canvas)' }}>
       <div className="mb-4 flex justify-between">
         <div>
           <h1 className="text-lg font-black">Distribution Operations</h1>
