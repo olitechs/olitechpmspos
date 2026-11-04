@@ -5,6 +5,7 @@ declare
   v_property uuid := gen_random_uuid();
   v_room_one uuid := gen_random_uuid();
   v_room_two uuid := gen_random_uuid();
+  v_room_four uuid := gen_random_uuid();
   v_blocked_room uuid := gen_random_uuid();
   v_rate_plan uuid := gen_random_uuid();
   v_result_count integer;
@@ -18,6 +19,7 @@ begin
   insert into public.rooms(id,property_id,number,capacity,status) values
     (v_room_one,v_property,101,2,'available'),
     (v_room_two,v_property,102,2,'available'),
+    (v_room_four,v_property,104,2,'available'),
     (v_blocked_room,v_property,103,2,'blocked');
   insert into public.rate_plans(id,property_id,name,active) values (v_rate_plan,v_property,'Bed & Breakfast',true);
 
@@ -67,6 +69,28 @@ begin
     raise exception 'Idempotent retry duplicated the deposit payment';
   end if;
 
+  -- Multi-room booking splits its received deposit into ledger payments and
+  -- preserves the exact aggregate booking/deposit totals across the group.
+  select count(*) into v_result_count from public.fn_create_reservation_bundle(
+    v_property,array[v_room_one,v_room_four],null,'Group Guest','+254700000006',
+    date '2026-12-10',date '2026-12-12','partially_paid','direct','bb',4,0,'[]'::jsonb,60000,30000,'Multi-room booking',
+    jsonb_build_object('guest',jsonb_build_object('email','group@example.com'),
+      'booking',jsonb_build_object('submissionId','phase1-multi-003','accommodationSubtotal',60000,'depositRequired',25000,'depositMethod','cash'))
+  );
+  if v_result_count <> 2 then raise exception 'Multi-room booking should create two reservation rows'; end if;
+  if (select sum(total_amount) from public.reservations where booking_details->>'submissionId'='phase1-multi-003') <> 60000 then
+    raise exception 'Multi-room reservation totals do not reconcile to the booking total';
+  end if;
+  if (select sum(amount) from public.payments p join public.reservations r on r.id=p.reservation_id where r.booking_details->>'submissionId'='phase1-multi-003' and p.status='posted') <> 30000 then
+    raise exception 'Multi-room deposit does not reconcile to posted payment rows';
+  end if;
+  if (select count(*) from public.payments p join public.reservations r on r.id=p.reservation_id where r.booking_details->>'submissionId'='phase1-multi-003') <> 2 then
+    raise exception 'Multi-room deposit was not split across the two reservation folios';
+  end if;
+  if (select bool_and(booking_details->>'depositRequired'='25000') from public.reservations where booking_details->>'submissionId'='phase1-multi-003') is not true then
+    raise exception 'Required deposit metadata was not persisted for every room';
+  end if;
+
   -- Invalid capacity and unavailable operational status must fail closed.
   v_error := null;
   begin
@@ -107,7 +131,7 @@ begin
     );
   exception when others then get stacked diagnostics v_error = message_text;
   end;
-  if v_error is null or v_error not ilike '%Amount Paid cannot exceed Total Amount%' then raise exception 'Payment validation failed or returned an unexpected error: %',v_error; end if;
+  if v_error is null or v_error not ilike '%Reservation total and deposit amounts are invalid%' then raise exception 'Payment validation failed or returned an unexpected error: %',v_error; end if;
 end;
 $$;
 rollback;
