@@ -161,3 +161,7 @@ export function buildUnsettledReceiptText(settings = {}, data = {}, { printer = 
 export function thermalTextToHtml(text) {
   return '<pre style="margin:0;padding:0;background:#fff;color:#000;white-space:pre-wrap;font-family:monospace">' + escapeHtml(text) + '</pre>';
 }
+
+export function toEscPosPayload(text) {
+  return '\x1B\x40\x1B\x61\x00' + String(text ?? '').replace(/\r/g, '').trimEnd() + '\n\n\x1D\x56\x01';
+}

@@ -5,6 +5,7 @@ import {
   buildUnsettledReceiptText,
   getPrinterColumns,
   thermalTextToHtml,
+  toEscPosPayload,
   wrapThermalText,
 } from './printTemplates.js';
 
@@ -95,4 +96,11 @@ test('HTML fallback renders fixed-width plain text on white paper', () => {
   assert.match(html, /<pre/);
   assert.match(html, /background:#fff;color:#000/);
   assert.match(html, /BILL - NOT PAID/);
+});
+
+test('cloud print payload includes ESC/POS initialization and partial cut', () => {
+  const payload = toEscPosPayload('ORDER TICKET');
+  assert.equal(payload.charCodeAt(0), 27);
+  assert.equal(payload.charCodeAt(1), 64);
+  assert.ok(payload.endsWith(String.fromCharCode(29, 86, 1)));
 });

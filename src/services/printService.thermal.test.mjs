@@ -25,6 +25,7 @@ test('order and unsettled print paths use shared width-aware templates', async (
   assert.match(service, /buildUnsettledReceiptText/);
   assert.match(service, /thermalText/);
   assert.match(routing, /buildOrderTicketText/);
+  assert.match(routing, /toEscPosPayload/);
 });
 
 test('unsettled bill print remains separate from payment and receipt persistence', async () => {

@@ -2,7 +2,7 @@ import { usePrinterStore } from '@/data/modules/printerStore';
 import { isFeatureEnabled } from '@/lib/featureFlags';
 import { supabase } from '@/lib/supabaseClient';
 import { groupCenter, resolveCategoryId } from '@/services/printRoutingCore';
-import { buildOrderTicketText } from '@/services/printTemplates';
+import { buildOrderTicketText, toEscPosPayload } from '@/services/printTemplates';
 
 export { groupCenter, resolveCategoryId };
 export function isPrinterGroupRoutingEnabled() {
@@ -104,7 +104,7 @@ export async function printOrder(order = {}) {
     printer_id: printer.id,
     printer_group_id: plan.groupId,
     order_id: /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(order.orderId || '')) ? order.orderId : null,
-    content_escpos_base64: encode(buildOrderTicketText({
+    content_escpos_base64: encode(toEscPosPayload(buildOrderTicketText({
       ...order,
       orderNumber: order.orderNumber || order.checkNo || order.id,
       table: order.table || order.tableNumber,
@@ -113,7 +113,7 @@ export async function printOrder(order = {}) {
       printer,
       items: plan.lines,
       center: plan.center || plan.groupName,
-    })),
+    }))),
     status: 'pending',
     type: 'kitchen',
   })));
