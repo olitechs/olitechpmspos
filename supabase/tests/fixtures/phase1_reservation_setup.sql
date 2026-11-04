@@ -63,7 +63,7 @@ returns boolean language sql stable as $function$ select false $function$;
 create or replace function public.fn_record_front_desk_payment(
   p_property_id uuid, p_reservation_id uuid, p_amount numeric, p_method text, p_shift_id uuid default null
 ) returns public.payments
-language plpgsql security invoker set search_path = public as $
+language plpgsql security invoker set search_path = public as $function$
 declare
   v_res public.reservations;
   v_payment public.payments;
@@ -98,7 +98,7 @@ begin
   where id=v_res.id;
   return v_payment;
 end;
-$;
+$function$;
 
 -- Baseline availability RPC is replaced by the Phase 1 migration. The legacy
 -- reservation RPC below calls this by signature, as production does.
