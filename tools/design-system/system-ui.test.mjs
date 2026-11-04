@@ -115,7 +115,7 @@ test('mobile sidebar exposes expanded state and closes with Escape', () => {
 
 test('operational screens use semantic theme tokens for text, surfaces, focus and feedback', () => {
   const screens = {
-    reservations, folio, posDevices, receiptSettings, operationalSettings, catalogue, accessError, nightAudit, cashier, housekeeping, subscriptionPanel, printerSettings, adminProperties, adminRoute, protectedRoute,
+    reservations, folio, posDevices, receiptSettings, operationalSettings, catalogue, accessError, nightAudit, cashier, housekeeping, subscriptionPanel, printerSettings, adminProperties, adminRoute, protectedRoute, nightAudit, cashier, housekeeping, subscriptionPanel, printerSettings, adminProperties, adminRoute, protectedRoute,
   };
   for (const [name, source] of Object.entries(screens)) {
     assert.doesNotMatch(
@@ -140,6 +140,15 @@ test('operational screens use semantic theme tokens for text, surfaces, focus an
   assert.match(adminProperties, /var\\(--danger-soft\\)/);
   assert.match(adminRoute, /border-\\[var\\(--border\\)\\]/);
   assert.match(protectedRoute, /border-\\[var\\(--border\\)\\]/);
+  for (const [name, source] of Object.entries({nightAudit, cashier, housekeeping, subscriptionPanel, printerSettings, adminProperties})) {
+    assert.doesNotMatch(source, /(?:text|bg|border)-(?:red|amber|emerald|teal|blue|rose)-(?:50|100|200|300|400|500|600|700|800|900)\\b/, name + ' should use semantic status colours');
+  }
+  assert.match(nightAudit, /var\\(--success-soft\\)/);
+  assert.match(housekeeping, /var\\(--warning-soft\\)/);
+  assert.match(cashier, /var\\(--success-text\\)/);
+  assert.match(subscriptionPanel, /var\\(--warning-soft\\)/);
+  assert.match(printerSettings, /var\\(--danger-soft\\)/);
+  assert.match(adminProperties, /var\\(--success-soft\\)/);
 });
 
 test('Room Planner toolbar exposes the approved controls and responsive dimensions', () => {
