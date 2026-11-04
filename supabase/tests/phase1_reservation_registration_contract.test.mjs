@@ -33,7 +33,7 @@ test('availability guard retains serialization and blocks unavailable operationa
 });
 
 test('reservation form captures guest, stay, multi-room, booking and financial details', () => {
-  for (const field of ['alternativePhone', 'residenceCountry', 'idType', 'kidsAges', 'roomIds', 'arrivalTime', 'departureTime', 'ratePlanId', 'externalReference', 'groupReference', 'services', 'discount', 'tax', 'depositMethod', 'specialRequests']) {
+  for (const field of ['alternativePhone', 'residenceCountry', 'idType', 'kidsAges', 'roomIds', 'arrivalTime', 'departureTime', 'ratePlanId', 'externalReference', 'groupReference', 'services', 'discount', 'tax', 'depositRequired', 'depositMethod', 'specialRequests']) {
     assert.ok(screen.includes(field), `Expected reservation form to include ${field}`);
   }
   assert.match(screen, /booking: \{ submissionId, ratePlanId: data\.ratePlanId \|\| null/i);
