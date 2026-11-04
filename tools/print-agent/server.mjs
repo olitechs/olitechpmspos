@@ -38,11 +38,16 @@ function validEndpoint(host, port) {
     Number.isInteger(port) && ALLOWED_PORTS.has(port);
 }
 
+function estimateFeedLines(text) {
+  const lineCount = String(text ?? '').replace(/\r/g, '').split('\n').length;
+  return Math.min(14, 6 + Math.floor(Math.max(0, lineCount - 60) / 80));
+}
+
 function escPosPayload(text, test = false) {
   const clean = String(text ?? '')
     .replace(/\r/g, '')
     .replace(/\n{3,}/g, '\n\n')
-    .trim();
+    .replace(/^\n+|\n+$/g, '');
 
   const body = test
     ? [
@@ -50,17 +55,19 @@ function escPosPayload(text, test = false) {
         '',
         'OliTechs PMS + POS',
         'Connection: LOCAL PRINT AGENT',
-        `Date: ${new Date().toLocaleString('en-KE')}`,
+        'Date: ' + new Date().toLocaleString('en-KE'),
         '',
         'If this receipt printed, the network connection is working.',
         '',
       ].join('\n')
     : clean;
 
+  const feedLines = estimateFeedLines(body);
   return Buffer.concat([
     Buffer.from([0x1b, 0x40]),
     Buffer.from([0x1b, 0x61, 0x00]),
-    enc.encode(body + '\n\n'),
+    enc.encode(body + '\n'),
+    Buffer.from([0x1b, 0x64, feedLines]),
     Buffer.from([0x1d, 0x56, 0x01]),
   ]);
 }
@@ -69,17 +76,25 @@ function writeTcp(host, port, payload) {
   return new Promise((resolve, reject) => {
     const socket = new net.Socket();
     let settled = false;
+    let settleTimer = null;
 
     const finish = (err) => {
       if (settled) return;
       settled = true;
+      if (settleTimer) clearTimeout(settleTimer);
       socket.destroy();
       err ? reject(err) : resolve();
     };
 
     socket.setTimeout(CONNECT_TIMEOUT_MS);
     socket.once('connect', () => {
-      socket.write(payload, (err) => finish(err || null));
+      // End the stream only after queuing the complete payload. Wait briefly
+      // after the writable stream finishes so the printer can consume the
+      // final feed and cutter bytes before the local socket is closed.
+      socket.end(payload);
+    });
+    socket.once('finish', () => {
+      settleTimer = setTimeout(() => finish(null), 500);
     });
     socket.once('timeout', () => {
       const err = new Error('Printer connection timed out');

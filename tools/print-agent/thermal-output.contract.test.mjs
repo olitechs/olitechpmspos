@@ -2,9 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-test('thermal output uses controlled feed and partial paper cut', async () => {
+test('print agent preserves centered leading spaces and feeds before partial cut', async () => {
   const source = await readFile(new URL('./server.mjs', import.meta.url), 'utf8');
-  assert.match(source, /enc\.encode\(body \+ '\\n\\n'\)/);
-  assert.match(source, /Buffer\.from\(\[0x1d, 0x56, 0x01\]\)/);
-  assert.doesNotMatch(source, /Buffer\.from\(\[0x1d, 0x56, 0x00\]\)/);
+  assert.ok(source.includes(".replace(/^\\n+|\\n+$/g, '')"));
+  assert.ok(source.includes('Buffer.from([0x1b, 0x64, feedLines])'));
+  assert.ok(source.includes('Buffer.from([0x1d, 0x56, 0x01])'));
+  assert.ok(source.includes('socket.end(payload)'));
+  assert.ok(source.includes('setTimeout(() => finish(null), 500)'));
+  assert.ok(!source.includes('socket.write(payload, (err) => finish(err || null))'));
 });

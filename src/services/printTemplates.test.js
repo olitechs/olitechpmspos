@@ -7,6 +7,7 @@ import {
   getPrinterColumns,
   thermalTextToHtml,
   toEscPosPayload,
+  estimateThermalFeedLines,
   wrapThermalText,
 } from './printTemplates.js';
 
@@ -125,9 +126,28 @@ test('HTML fallback renders fixed-width plain text on white paper', () => {
   assert.match(html, /BILL - NOT PAID/);
 });
 
-test('cloud print payload includes ESC/POS initialization and partial cut', () => {
-  const payload = toEscPosPayload('ORDER TICKET');
-  assert.equal(payload.charCodeAt(0), 27);
-  assert.equal(payload.charCodeAt(1), 64);
-  assert.ok(payload.endsWith(String.fromCharCode(29, 86, 1)));
+test('thermal payload feeds beyond the final line before the partial cut', () => {
+  const shortBill = toEscPosPayload('ORDER TICKET');
+  assert.equal(shortBill.charCodeAt(0), 27);
+  assert.equal(shortBill.charCodeAt(1), 64);
+  assert.ok(shortBill.includes(String.fromCharCode(27, 100, 6)));
+  assert.ok(shortBill.endsWith(String.fromCharCode(29, 86, 1)));
+
+  const longBillText = Array.from({ length: 240 }, (_, i) => 'LONG BILL ITEM ' + (i + 1)).join('\n');
+  assert.equal(estimateThermalFeedLines(longBillText), 8);
+  assert.ok(toEscPosPayload(longBillText).includes(String.fromCharCode(27, 100, 8)));
 });
+
+test('long item names and amount fields are wrapped, never sliced off', () => {
+  const longName = 'Supercalifragilisticexpialidocious Seafood Platter';
+  const output = stripEscPos(buildUnsettledReceiptText({}, {
+    currency: 'KES',
+    items: [{ qty: 1, name: longName, price: 987654321 }],
+    subtotal: 987654321,
+    total: 987654321,
+  }, { printer: { paper_width: '58mm' } }));
+  assert.ok(output.replace(/\s/g, '').includes(longName.replace(/\s/g, '')));
+  assert.ok(output.includes('987,654,321.00'));
+  assert.ok(output.split('\n').every(line => line.length <= 32));
+});
+
