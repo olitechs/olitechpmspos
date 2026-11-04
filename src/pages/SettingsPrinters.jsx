@@ -428,7 +428,7 @@ function Empty({onAdd}) {
 function PrinterModal({form,setForm,onClose,onSave,windowsPrinters=[],refreshLocalDevices=()=>{}}) {
   const selected=form.assignmentTypes||[];
   const toggle=type=>setForm({...form,assignmentTypes:selected.includes(type)?selected.filter(x=>x!==type):[...selected,type]});
-  return <div className="fixed inset-0 z-[80] overflow-y-auto bg-slate-950/55 p-4 backdrop-blur-sm">
+  return <div className="fixed inset-0 z-[80] overflow-y-auto bg-foreground/55 p-4 backdrop-blur-sm">
     <div className="mx-auto my-6 w-full max-w-2xl overflow-hidden rounded-3xl bg-surface shadow-2xl">
       <div className="flex items-start justify-between border-b border-border p-5">
         <div><div className="flex items-center gap-2"><div className="rounded-lg bg-primary p-2 text-primary-foreground"><Printer size={16}/></div><h3 className="text-lg font-black text-foreground">{form.id?'Edit printer':'Add printer'}</h3></div><p className="mt-2 text-xs leading-5 text-muted-foreground">LAN and Windows-driver printers use the OliTechs Local Print Agent. USB, Bluetooth and serial printers use browser device APIs. Every connection is tested before it is marked Connected.</p></div>
