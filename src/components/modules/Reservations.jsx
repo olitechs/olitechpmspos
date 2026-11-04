@@ -32,7 +32,7 @@ function Field({ label, children }) {
   );
 }
 
-const inputClass = "w-full rounded-lg border border-slate-200 bg-surface px-3 py-2.5 text-sm text-foreground outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200";
+const inputClass = "w-full rounded-lg border border-[var(--border)] bg-surface px-3 py-2.5 text-sm text-foreground outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200";
 const buttonClass = "inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50";
 
 export default function Reservations() {
@@ -109,7 +109,7 @@ export default function Reservations() {
             <p className="mt-1 text-sm text-muted-foreground">Manage arrivals, departures, room assignments and reservation status from one workspace.</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button className={buttonClass + " border border-slate-200 bg-surface text-slate-800"} onClick={refresh} disabled={busy}>
+            <button className={buttonClass + " border border-[var(--border)] bg-surface text-[var(--text)]"} onClick={refresh} disabled={busy}>
               <RefreshCw size={15} /> Refresh
             </button>
             <button className={buttonClass + " bg-primary text-primary-foreground"} onClick={() => setShowNew(true)}>
@@ -214,7 +214,7 @@ function QueueCard({ title, items, actionLabel, onAction }) {
         {items.slice(0, 6).map((r) => (
           <div key={r.id} className="flex items-center justify-between gap-3 px-4 py-3">
             <div><div className="font-semibold text-foreground">{r.guestName}</div><div className="text-xs text-muted-foreground">Room {r.roomNumber} · {r.partySize} guests</div></div>
-            <button className={buttonClass + " border border-slate-200 bg-surface text-slate-800"} onClick={() => onAction(r)}><CheckCircle2 size={14} /> {actionLabel}</button>
+            <button className={buttonClass + " border border-[var(--border)] bg-surface text-[var(--text)]"} onClick={() => onAction(r)}><CheckCircle2 size={14} /> {actionLabel}</button>
           </div>
         ))}
         {!items.length && <div className="px-4 py-6 text-sm text-muted-foreground">Nothing queued for this date.</div>}
@@ -254,7 +254,7 @@ function NewReservationModal({ rooms, onClose, onCreate, busy }) {
           <Field label="Channel"><select className={inputClass} value={data.channel} onChange={(e) => setData({ ...data, channel: e.target.value })}><option value="direct">Direct</option><option value="booking_com">Booking.com</option><option value="unknown">Other / OTA</option></select></Field>
         </div>
         {error && <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
-        <div className="flex justify-end gap-2 border-t border-border pt-4"><button type="button" className={buttonClass + " border border-slate-200 bg-surface"} onClick={onClose}>Cancel</button><button disabled={busy} className={buttonClass + " bg-primary text-primary-foreground"} type="submit"><Plus size={15} /> Create reservation</button></div>
+        <div className="flex justify-end gap-2 border-t border-border pt-4"><button type="button" className={buttonClass + " border border-[var(--border)] bg-surface"} onClick={onClose}>Cancel</button><button disabled={busy} className={buttonClass + " bg-primary text-primary-foreground"} type="submit"><Plus size={15} /> Create reservation</button></div>
       </form>
     </Modal>
   );
