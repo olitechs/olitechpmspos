@@ -13,6 +13,8 @@ test('folio phase extends existing charge/payment ledgers without duplicate acco
   assert.doesNotMatch(migration, /create table(?: if not exists)? public\.(?:folios|folio_charges|payments)\b/i);
   assert.match(migration, /create unique index if not exists payments_property_idempotency_uidx/i);
   assert.match(migration, /pg_advisory_xact_lock/i);
+  assert.match(migration, /add column if not exists folio_charge_id/i);
+  assert.match(migration, /unallocated balance of the selected charge/i);
 });
 
 test('server operations cover payment, refund, reversal, discount and folio transfer with tenant and role guards', () => {
@@ -38,7 +40,7 @@ test('service layer calls the authoritative folio RPCs and reads existing accoun
 });
 
 test('guest folio screen exposes statement, receipt, transaction categories and account operations', () => {
-  for (const value of ['Accommodation','Restaurant','Bar','Laundry','Airport transfers','Excursions','Room service','Other services','Taxes and adjustments','Print statement','Export CSV','Refund','Reverse','Split / transfer','Take payment','Outstanding balance']) {
+  for (const value of ['Accommodation','Restaurant','Bar','Laundry','Airport transfers','Excursions','Room service','Other services','Taxes and adjustments','Print statement','Export CSV','Refund','Reverse','Split / transfer','Take payment','Outstanding balance','Allocate payment to charge']) {
     assert.ok(screen.includes(value), 'Missing folio UI feature: ' + value);
   }
   assert.match(screen, /printPaymentReceipt/);
