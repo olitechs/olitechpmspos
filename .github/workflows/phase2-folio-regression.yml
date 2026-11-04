@@ -1,0 +1,50 @@
+name: Phase 2 Guest Folio Regression
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/20261105100000_phase2_guest_folio_management.sql'
+      - 'supabase/tests/phase2_folio_management_regression.sql'
+      - 'supabase/tests/fixtures/phase2_folio_setup.sql'
+      - '.github/workflows/phase2-folio-regression.yml'
+  pull_request:
+    paths:
+      - 'supabase/migrations/20261105100000_phase2_guest_folio_management.sql'
+      - 'supabase/tests/phase2_folio_management_regression.sql'
+      - 'supabase/tests/fixtures/phase2_folio_setup.sql'
+      - '.github/workflows/phase2-folio-regression.yml'
+
+jobs:
+  folio-postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: folio-test
+          POSTGRES_DB: folio_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d folio_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Create disposable folio baseline
+        env:
+          PGPASSWORD: folio-test
+        run: psql -h localhost -U postgres -d folio_test -v ON_ERROR_STOP=1 -f supabase/tests/fixtures/phase2_folio_setup.sql
+      - name: Apply additive folio migration
+        env:
+          PGPASSWORD: folio-test
+        run: psql -h localhost -U postgres -d folio_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261105100000_phase2_guest_folio_management.sql
+      - name: Verify folio accounting, refunds, reversals, transfers and permissions
+        env:
+          PGPASSWORD: folio-test
+        run: psql -h localhost -U postgres -d folio_test -v ON_ERROR_STOP=1 -f supabase/tests/phase2_folio_management_regression.sql
