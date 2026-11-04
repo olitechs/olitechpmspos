@@ -325,8 +325,15 @@ export function forgetDevice(printerId) {
 // --- Printing ---------------------------------------------------------------
 
 function escPosBytes(text) {
-	const body = String(text ?? '').replace(/\r/g, '').replace(/\n{3,}/g, '\n\n').trim();
-	return new Uint8Array([0x1b, 0x40, ...new TextEncoder().encode(body + '\n\n'), 0x1d, 0x56, 0x00]);
+  const body = String(text ?? '').replace(/\\r/g, '').replace(/\\n{3,}/g, '\\n\\n').replace(/^\\n+|\\n+$/g, '');
+  const lineCount = body.split('\\n').length;
+  const feedLines = Math.min(14, 6 + Math.floor(Math.max(0, lineCount - 60) / 80));
+  return new Uint8Array([
+    0x1b, 0x40,
+    ...new TextEncoder().encode(body + '\\n'),
+    0x1b, 0x64, feedLines,
+    0x1d, 0x56, 0x01,
+  ]);
 }
 
 
