@@ -45,7 +45,7 @@ const login = readFileSync(new URL('../../src/pages/Login.jsx', import.meta.url)
 const adminCreateProperty = readFileSync(new URL('../../src/pages/admin/AdminCreateProperty.jsx', import.meta.url), 'utf8');
 const adminRoles = readFileSync(new URL('../../src/pages/admin/Roles.jsx', import.meta.url), 'utf8');
 const unsettledReceiptSettings = readFileSync(new URL('../../src/pages/admin/UnsettledReceiptSettings.jsx', import.meta.url), 'utf8');
-const adminProperties = readFileSync(new URL('../../src/pages/admin/AdminProperties.jsx', import.meta.url), 'utf8');
+
 
 
 test('shared operational UI exports the Phase 1 primitives', () => {
