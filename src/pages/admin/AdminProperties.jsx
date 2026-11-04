@@ -13,7 +13,7 @@ const STATUS_STYLES = {
 	rejected: 'bg-secondary text-foreground',
 	inactive: 'bg-secondary text-foreground',
 	trial: 'bg-primary-soft text-primary-text',
-	past_due: 'bg-orange-100 text-orange-800',
+	past_due: 'bg-[var(--warning-soft)] text-[var(--warning-text)]',
 	cancelled: 'bg-secondary text-foreground',
 	'not configured': 'bg-secondary text-muted-foreground',
 };
