@@ -16,6 +16,7 @@ Run only against a disposable PostgreSQL database loaded with the repository mig
 5. Query active reservations and assert exactly one overlap exists.
 
 ## Additional cases
+- Run two `fn_walk_in_check_in` calls concurrently for the same room and overlapping dates. Exactly one may commit; the second must fail with an availability conflict. This path must call `fn_check_room_availability` before inserting the checked-in reservation.
 - Same-day turnover must pass: [2031-04-10, 2031-04-13) followed by [2031-04-13, 2031-04-15).
 - Run two check-in RPC calls concurrently for one booked reservation. One succeeds; the other waits, sees the changed status, and fails.
 - Repeat using different property members and verify cross-property access is denied.
