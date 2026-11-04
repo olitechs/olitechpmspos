@@ -189,6 +189,45 @@ export function buildUnsettledReceiptText(settings = {}, data = {}, { printer = 
   return lines.join('\n');
 }
 
+export function buildFinalReceiptText(settings = {}, data = {}, { printer = {}, copyLabel = 'CUSTOMER COPY', now = new Date() } = {}) {
+  const width = getPrinterColumns(printer);
+  const currency = data.currency || 'KES';
+  const money = value => currency + ' ' + Number(value || 0).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const lines = [
+    ...centeredBlock([
+      settings.property_name || data.propertyName || 'OLITECHS PMS + POS',
+      settings.address_line1, settings.address_line2, settings.phone, settings.email,
+      settings.website, settings.kra_pin ? 'KRA PIN: ' + settings.kra_pin : '', settings.extra_header_line,
+    ], width),
+    divider(width),
+    ...centerRows('FINAL RECEIPT', width).map(emphasize),
+    'COPY: ' + copyLabel,
+    'CHECK: ' + (data.checkNo || data.orderNumber || '—'),
+    'TABLE: ' + (data.table || data.tableNumber || '—'),
+    'SERVER: ' + (data.waiter || data.server || 'Unassigned'),
+    'DATE: ' + stamp(data.createdAt || data.created_at || now),
+    divider(width),
+    pairLine('QTY  ITEM', 'AMOUNT', width),
+    divider(width),
+  ];
+  for (const item of data.items || []) {
+    const qty = itemQuantity(item);
+    const nameRows = wrapThermalText(qty + ' x ' + itemName(item), Math.max(12, width - 12));
+    lines.push(pairLine(nameRows[0], money(qty * Number(item.price || 0)), width), ...nameRows.slice(1));
+    const modifiers = (Array.isArray(item.modifiers) ? item.modifiers : []).map(modifierLabel).filter(Boolean);
+    for (const modifier of modifiers) lines.push(...wrapThermalText('  + ' + modifier, width));
+  }
+  lines.push(divider(width));
+  lines.push(pairLine('SUBTOTAL', money(data.subtotal ?? data.total), width));
+  if (Number(data.discount || 0) > 0) lines.push(pairLine('DISCOUNT', '-' + money(data.discount), width));
+  if (Number(data.vat || 0) > 0) lines.push(pairLine('VAT', money(data.vat), width));
+  if (Number(data.serviceCharge || data.service_charge || 0) > 0) lines.push(pairLine('SERVICE CHARGE', money(data.serviceCharge ?? data.service_charge), width));
+  lines.push(divider(width), emphasize(pairLine('TOTAL PAID', money(data.total), width)), divider(width));
+  lines.push('PAYMENT METHOD: ' + (data.paymentMethod || '—'));
+  lines.push(...centeredBlock([settings.footer_line1, settings.footer_line2], width), '');
+  return lines.join('\n');
+}
+
 export function thermalTextToHtml(text) {
   return '<pre style="margin:0;padding:0;background:white;color:black;white-space:pre-wrap;font-family:monospace">' + escapeHtml(text) + '</pre>';
 }
