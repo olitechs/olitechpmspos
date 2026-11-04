@@ -44,6 +44,7 @@ declare r public.reservations; c public.folio_charges; q numeric; price numeric;
 begin
  if not(public.is_platform_owner() or public.is_member_of_property(p_property_id)) then raise exception 'Access denied.'; end if;
  if public.current_staff_role(p_property_id) is not null and public.current_staff_role(p_property_id) not in ('hotel_admin','super_admin','cashier','fb_manager','front_office_manager','general_manager','property_manager','reception') then raise exception 'Folio charge permission required.'; end if;
+ if public.current_staff_role(p_property_id) is null and not(public.is_platform_owner() or public.property_role(p_property_id) in ('owner','admin','manager','cashier','reception')) then raise exception 'Folio charge permission required.'; end if;
  key:=nullif(trim(p_idempotency_key),'');
  if key is null then raise exception 'An idempotency key is required.'; end if;
  perform pg_advisory_xact_lock(hashtextextended(p_property_id::text||':folio-charge:'||key,0));
@@ -70,7 +71,8 @@ as $$
 declare r public.reservations; p public.payments; c public.folio_charges; key text; charges numeric; paid numeric; booking numeric; balance numeric; shift uuid; allocated numeric;
 begin
  if not(public.is_platform_owner() or public.is_member_of_property(p_property_id)) then raise exception 'Access denied.'; end if;
- if public.current_staff_role(p_property_id) is not null and public.current_staff_role(p_property_id) not in ('hotel_admin','super_admin','cashier','fb_manager','front_office_manager','general_manager','property_manager') then raise exception 'Payment permission required.'; end if;
+ if public.current_staff_role(p_property_id) is not null and public.current_staff_role(p_property_id) not in ('hotel_admin','super_admin','cashier','fb_manager','front_office_manager','general_manager','property_manager','reception') then raise exception 'Payment permission required.'; end if;
+ if public.current_staff_role(p_property_id) is null and not(public.is_platform_owner() or public.property_role(p_property_id) in ('owner','admin','manager','cashier','reception')) then raise exception 'Payment permission required.'; end if;
  key:=nullif(trim(p_idempotency_key),''); if key is null then raise exception 'An idempotency key is required.'; end if;
  perform pg_advisory_xact_lock(hashtextextended(p_property_id::text||':folio-payment:'||key,0));
  select * into p from public.payments where property_id=p_property_id and idempotency_key=key;
