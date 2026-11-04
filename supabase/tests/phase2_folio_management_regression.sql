@@ -1,3 +1,4 @@
+-- Re-run against the corrected Phase 2 migration delimiter.
 -- Run after phase2_folio_setup.sql and 20261105100000_phase2_guest_folio_management.sql.
 do $$
 declare p uuid:='10000000-0000-0000-0000-000000000001'; r1 uuid:='30000000-0000-0000-0000-000000000001'; r2 uuid:='30000000-0000-0000-0000-000000000002';
