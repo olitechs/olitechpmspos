@@ -38,6 +38,9 @@ const reports = readFileSync(new URL('../../src/components/modules/Reports.jsx',
 const channelManager = readFileSync(new URL('../../src/components/modules/ChannelManager.jsx', import.meta.url), 'utf8');
 const distributionOps = readFileSync(new URL('../../src/components/modules/DistributionOps.jsx', import.meta.url), 'utf8');
 const bookingEngine = readFileSync(new URL('../../src/components/modules/BookingEngine.jsx', import.meta.url), 'utf8');
+const pinPad = readFileSync(new URL('../../src/components/auth/PinPad.jsx', import.meta.url), 'utf8');
+const routeGuard = readFileSync(new URL('../../src/components/auth/RouteGuard.jsx', import.meta.url), 'utf8');
+const errorBoundary = readFileSync(new URL('../../src/components/ui/ErrorBoundary.jsx', import.meta.url), 'utf8');
 
 
 test('shared operational UI exports the Phase 1 primitives', () => {
@@ -179,7 +182,7 @@ test('operational screens use semantic theme tokens for text, surfaces, focus an
 });
 
 test('timecards, stock movements and store operations use semantic theme colours', () => {
-  for (const [name, source] of Object.entries({timecards, stockMovements, storesPage, shiftReport, storePage, inventoryOperations, inventoryReports, purchasing, reports, channelManager, distributionOps, bookingEngine})) {
+  for (const [name, source] of Object.entries({timecards, stockMovements, storesPage, shiftReport, storePage, inventoryOperations, inventoryReports, purchasing, reports, channelManager, distributionOps, bookingEngine, pinPad, routeGuard, errorBoundary})) {
     assert.doesNotMatch(source, /\b(?:text|bg|border)-(?:slate|gray|zinc|neutral|red|amber|emerald|teal|blue|rose|green|yellow|orange)-(?:50|100|200|300|400|500|600|700|800|900|950)\b/, name + ' should not use fixed palette utilities');
   }
   assert.match(timecards, /bg-canvas/);
@@ -196,6 +199,9 @@ test('timecards, stock movements and store operations use semantic theme colours
   assert.match(channelManager, /var\(--danger-text\)/);
   assert.match(distributionOps, /var\(--danger-text\)/);
   assert.match(bookingEngine, /var\(--danger-text\)/);
+  assert.match(pinPad, /var\(--danger-soft\)/);
+  assert.match(routeGuard, /var\(--danger-text\)/);
+  assert.match(errorBoundary, /var\(--danger-soft\)/);
 });
 
 test('Room Planner toolbar exposes the approved controls and responsive dimensions', () => {
