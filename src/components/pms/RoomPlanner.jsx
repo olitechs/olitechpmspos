@@ -32,7 +32,7 @@ export const getReservationBarStyle = (status = 'occupied') => ({
 }[status] || {background:'var(--stay-occupied)',color:'var(--payment-text)',border:'var(--stay-occupied)',label:'In-house'});
 
 export const getPaymentStatusFromAmounts = (amountPaid, totalAmount) => { const paid = Number(amountPaid || 0); const total = Number(totalAmount || 0); if (total > 0 && paid >= total) return 'fully_paid'; if (paid > 0) return 'partially_paid'; return 'not_paid'; };
-export const getPaymentStyle=(status)=>({fully_paid:{background:'var(--pay-paid)',color:'var(--payment-text)',border:'var(--pay-paid)',label:'Fully Paid'},partially_paid:{background:'var(--pay-deposit)',color:'var(--payment-deposit-text)',border:'var(--pay-deposit)',label:'Deposit / Partially Paid'},not_paid:{background:'var(--pay-unpaid)',color:'var(--payment-text)',border:'var(--pay-unpaid)',label:'Not Paid'}}[status]||{background:'var(--pay-unpaid)',color:'var(--payment-text)',border:'var(--pay-unpaid)',label:'Not Paid'});
+export const getPaymentStyle=(status)=>({fully_paid:{background:'var(--pay-paid)',color:'var(--payment-status-foreground)',border:'var(--pay-paid)',label:'Fully Paid'},partially_paid:{background:'var(--pay-deposit)',color:'var(--payment-deposit-foreground)',border:'var(--pay-deposit)',label:'Deposit / Partially Paid'},not_paid:{background:'var(--pay-unpaid)',color:'var(--payment-status-foreground)',border:'var(--pay-unpaid)',label:'Not Paid'}}[status]||{background:'var(--pay-unpaid)',color:'var(--payment-status-foreground)',border:'var(--pay-unpaid)',label:'Not Paid'});
 
 export function getBarOpacity(bookingStatus) { return bookingStatus === 'checked_out' ? 0.5 : 1; }
 export function isOverlapping(r1, r2) {
