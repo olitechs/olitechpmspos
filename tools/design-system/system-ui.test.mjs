@@ -125,7 +125,7 @@ test('operational screens use semantic theme tokens for text, surfaces, focus an
   for (const [name, source] of Object.entries(screens)) {
     assert.doesNotMatch(
       source,
-      /\b(?:text|bg|border|divide|ring|focus:ring|focus:border)-(?:slate|gray|zinc|neutral)-(?:50|100|200|300|400|500|600|700|800|900|950)\b/,
+      /\b(?:focus:ring|focus:border|text|bg|border|divide|ring)-(?:slate|gray|zinc|neutral)-(?:50|100|200|300|400|500|600|700|800|900|950)\b/,
       name + ' should not reintroduce fixed neutral utility colours',
     );
   }
