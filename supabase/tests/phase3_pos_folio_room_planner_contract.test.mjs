@@ -44,5 +44,5 @@ test('POS room charge picker preserves room metadata, supports searching, and co
   assert.match(billPayment, /Search guest, room or reservation/);
   assert.match(billPayment, /window\.confirm\('Confirm room charge/);
   assert.match(billPayment, /paymentMethod==='room'\?chargeReservationId:null/);
-  assert.match(billPayment, /p_payment_method/);
+  assert.match(billPayment, /paymentMethod,reservationId:paymentMethod==='room'\?chargeReservationId:null/);
 });
