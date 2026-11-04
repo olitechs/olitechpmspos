@@ -53,7 +53,7 @@ function pairLine(label, value, width) {
   }
   const leftRows = wrapThermalText(left, width);
   const rightRows = wrapThermalText(right, width);
-  return [...leftRows, ...rightRows.map(row => row.padStart(width))].join('\\n');
+  return [...leftRows, ...rightRows.map(row => row.padStart(width))].join('\n');
 }
 
 function stamp(value) {
@@ -235,14 +235,14 @@ export function thermalTextToHtml(text) {
 }
 
 export function estimateThermalFeedLines(text) {
-  const lineCount = String(text ?? '').replace(/\\r/g, '').split('\\n').length;
+  const lineCount = String(text ?? '').replace(/\r/g, '').split('\n').length;
   // Keep a safe tear/cutter margin and add a little more for unusually long bills.
   return Math.min(14, 6 + Math.floor(Math.max(0, lineCount - 60) / 80));
 }
 
 export function toEscPosPayload(text) {
-  const body = String(text ?? '').replace(/\\r/g, '').replace(/\\n+$/g, '');
+  const body = String(text ?? '').replace(/\r/g, '').replace(/\n+$/g, '');
   const feedLines = estimateThermalFeedLines(body);
-  return '\\x1B\\x40\\x1B\\x61\\x00' + body + '\\n' +
-    '\\x1B\\x64' + String.fromCharCode(feedLines) + '\\x1D\\x56\\x01';
+  return '\x1B\x40\x1B\x61\x00' + body + '\n' +
+    '\x1B\x64' + String.fromCharCode(feedLines) + '\x1D\x56\x01';
 }
