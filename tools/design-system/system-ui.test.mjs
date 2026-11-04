@@ -142,7 +142,8 @@ test('operational screens use semantic theme tokens for text, surfaces, focus an
   assert.match(cashier, /var\(--danger-text\)/);
   assert.match(housekeeping, /var\(--success-soft\)/);
   assert.match(subscriptionPanel, /var\(--danger-soft\)/);
-  assert.match(printerSettings, /bg-primary text-primary-foreground/);
+  assert.match(printerSettings, /bg-primary/);
+  assert.match(printerSettings, /text-primary-foreground/);
   assert.match(adminProperties, /var\(--danger-soft\)/);
   assert.match(adminRoute, /border-\[var\(--border\)\]/);
   assert.match(protectedRoute, /border-\[var\(--border\)\]/);
