@@ -6,6 +6,14 @@ const source = readFileSync(new URL('../../src/components/ui/system.jsx', import
 const sidebar = readFileSync(new URL('../../src/components/shell/Sidebar.jsx', import.meta.url), 'utf8');
 const theme = readFileSync(new URL('../../src/index.css', import.meta.url), 'utf8');
 const roomPlanner = readFileSync(new URL('../../src/components/pms/RoomPlanner.jsx', import.meta.url), 'utf8');
+const reservations = readFileSync(new URL('../../src/components/modules/Reservations.jsx', import.meta.url), 'utf8');
+const folio = readFileSync(new URL('../../src/components/modules/Folio.jsx', import.meta.url), 'utf8');
+const posDevices = readFileSync(new URL('../../src/components/stores/POSDevicesPage.jsx', import.meta.url), 'utf8');
+const receiptSettings = readFileSync(new URL('../../src/components/settings/ReceiptSettings.jsx', import.meta.url), 'utf8');
+const operationalSettings = readFileSync(new URL('../../src/components/settings/OperationalSettingsPage.jsx', import.meta.url), 'utf8');
+const catalogue = readFileSync(new URL('../../src/components/settings/Phase2CataloguePage.jsx', import.meta.url), 'utf8');
+const accessError = readFileSync(new URL('../../src/components/ui/UserNotRegisteredError.jsx', import.meta.url), 'utf8');
+
 
 test('shared operational UI exports the Phase 1 primitives', () => {
   for (const component of [
@@ -95,6 +103,27 @@ test('mobile sidebar exposes expanded state and closes with Escape', () => {
   assert.match(sidebar, /event\.key===\"Escape\"/);
 });
 
+
+
+test('operational screens use semantic theme tokens for text, surfaces, focus and feedback', () => {
+  const screens = {
+    reservations, folio, posDevices, receiptSettings, operationalSettings, catalogue, accessError,
+  };
+  for (const [name, source] of Object.entries(screens)) {
+    assert.doesNotMatch(
+      source,
+      /\\b(?:text|bg|border|divide|ring|focus:ring|focus:border)-(?:slate|gray|zinc|neutral)-(?:50|100|200|300|400|500|600|700|800|900|950)\\b/,
+      name + ' should not reintroduce fixed neutral utility colours',
+    );
+  }
+  assert.match(reservations, /var\\(--danger-soft\\)/);
+  assert.match(folio, /bg-primary text-primary-foreground/);
+  assert.match(posDevices, /var\\(--success-text\\)/);
+  assert.match(receiptSettings, /var\\(--danger-text\\)/);
+  assert.match(operationalSettings, /bg-primary text-primary-foreground/);
+  assert.match(catalogue, /bg-primary text-primary-foreground/);
+  assert.match(accessError, /bg-surface/);
+});
 
 test('Room Planner toolbar exposes the approved controls and responsive dimensions', () => {
   for (const label of ['Add Closures', 'New reservation', 'Today', 'Start date', 'End date', 'Select month']) {
