@@ -17,7 +17,7 @@ export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrde
  const role=String(sessionStaff?.role||user?.staff?.role||user?.propertyRole||'').toLowerCase().replace(/\s+/g,'_');
  const canRoomCharge=user?.isPlatformOwner||['hotel_admin','super_admin','cashier','front_office_manager','owner','admin','manager'].includes(role);
  const [paymentMethod,setPaymentMethod]=useState('cash');const [splitPayments,setSplitPayments]=useState([{method:'cash',amount:''},{method:'mpesa',amount:''}]);const[discountId,setDiscountId]=useState('');const[discounts,setDiscounts]=useState([]);const[chargeReservationId,setChargeReservationId]=useState('');const[activeStays,setActiveStays]=useState([]);const[stayQuery,setStayQuery]=useState('');const[busy,setBusy]=useState(false);const[error,setError]=useState('');
- const [billPrinted,setBillPrinted]=useState(false);
+ const [billPrinted,setBillPrinted]=useState(false);const [saleIdempotencyKey,setSaleIdempotencyKey]=useState(()=>crypto.randomUUID());
  useEffect(()=>{if(!propertyId)return;posPhase3Service.listActiveDiscounts(propertyId).then(setDiscounts).catch(()=>setDiscounts([]));},[propertyId]);
  const subtotal=useMemo(()=>orderLines.reduce((s,l)=>s+Number(l.price||0)*Number(l.qty||0),0),[orderLines]);
  const selectedDiscount=discounts.find(d=>d.id===discountId);const splitTotal=splitPayments.reduce((s,p)=>s+Number(p.amount||0),0);const discount=posPhase3Service.calculateDiscount(selectedDiscount,subtotal);const discounted=subtotal-discount;const vat=Math.round(discounted*VAT_RATE);const total=discounted+vat;
@@ -43,7 +43,7 @@ export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrde
   try{
    const currentShift=await shiftService.getCurrentShift(propertyId);
    if(!currentShift?.id){setError('No open POS shift. Open a shift before taking payments.');return;}
-   await pmsService.recordPosSale({propertyId,tableNumber:tableLabel(table),orderNumber:stableOrderNumber,items:orderLines.map(x=>({product_id:x.productId || x.product_id || null,name:x.name,qty:x.qty,price:x.price,base_price:x.basePrice ?? x.price,modifier_total:x.modifierTotal || 0,modifiers:x.modifiers || [],category:x.category,center:x.center})),subtotal,discountAmount:discount,discountId:selectedDiscount?.id || null,discountName:selectedDiscount?.name || null,vat,total,paymentMethod,reservationId:paymentMethod==='room'?chargeReservationId:null,shiftId:currentShift.id,waiter,paymentAllocations:paymentMethod==='split'?splitPayments.filter(p=>Number(p.amount)>0).map(p=>({method:p.method,amount:Number(p.amount),reservation_id:p.method==='room'?p.reservationId||null:null})):null});
+   await pmsService.recordPosSale({propertyId,tableNumber:tableLabel(table),orderNumber:stableOrderNumber,items:orderLines.map(x=>({product_id:x.productId || x.product_id || null,name:x.name,qty:x.qty,price:x.price,base_price:x.basePrice ?? x.price,modifier_total:x.modifierTotal || 0,modifiers:x.modifiers || [],category:x.category,center:x.center})),subtotal,discountAmount:discount,discountId:selectedDiscount?.id || null,discountName:selectedDiscount?.name || null,vat,total,paymentMethod,reservationId:paymentMethod==='room'?chargeReservationId:null,shiftId:currentShift.id,waiter,idempotencyKey:saleIdempotencyKey,paymentAllocations:paymentMethod==='split'?splitPayments.filter(p=>Number(p.amount)>0).map(p=>({method:p.method,amount:Number(p.amount),reservation_id:p.method==='room'?p.reservationId||null:null})):null});
    const methodLabel=paymentMethod==='split'?'Split Payment':PAYMENT_METHODS.find(x=>x.id===paymentMethod)?.label||paymentMethod;
    await store.completeSale({table,orderLines,total,method:methodLabel,receiptText:'',skipPrint:true});
    const voidRows=propertyId?await pmsService.listVoidedItems(propertyId).catch(()=>[]):[];
@@ -75,6 +75,7 @@ export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrde
    }else{
     toast.warning('Payment completed, but the receipt did not print. Reprint it later from Receipts.');
    }
+   setSaleIdempotencyKey(crypto.randomUUID());
   }catch(e){setError('Payment was not recorded: '+e.message);toast.error('Payment was not recorded.');}
   finally{setBusy(false)}
  };
