@@ -184,7 +184,7 @@ export default function Reservations() {
                       <span className="rounded-full bg-secondary px-2 py-1 text-[11px] font-semibold text-foreground">{r.paymentStatus?.replace('_', ' ')}</span>
                       <div className="mt-1 text-xs text-muted-foreground">{money(r.amountPaid)} / {money(r.totalAmount)}</div>
                     </td>
-                    <td className="px-4 py-3"><span className="rounded-full bg-primary px-2 py-1 text-[11px] font-semibold text-foreground">{STATUS[r.status] || r.status}</span></td>
+                    <td className="px-4 py-3"><span className="rounded-full bg-primary px-2 py-1 text-[11px] font-semibold text-primary-foreground">{STATUS[r.status] || r.status}</span></td>
                     <td className="px-4 py-3 text-right"><button className="text-muted-foreground hover:text-foreground" onClick={() => setSelected(r)}><ChevronRight size={17} /></button></td>
                   </tr>
                 ))}
