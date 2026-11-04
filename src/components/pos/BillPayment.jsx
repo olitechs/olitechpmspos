@@ -38,7 +38,7 @@ export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrde
  const confirmPayment=async()=>{
   if(!propertyId){setError('This table is not attached to a property.');return}
   if(!orderLines.length){setError('There are no items on this bill.');return}
-  if(paymentMethod==='room'&&!chargeReservationId){setError('Select the guest/room to charge.');return}if(paymentMethod==='room'&&room&&!window.confirm('Confirm room charge?\\nGuest: '+(room.guest_name||'Guest')+'\\nRoom: '+(room.room_number||'—')+'\\nReservation: '+room.id+'\\nAmount: '+fmt(total)))return;if(paymentMethod==='split'&&(Math.round(splitTotal*100)!==Math.round(total*100)||splitPayments.some(p=>p.method==='room'&&Number(p.amount)>0&&!p.reservationId))){setError(splitPayments.some(p=>p.method==='room'&&Number(p.amount)>0&&!p.reservationId)?'Select a checked-in guest for every room-charge portion.':`Split payments must equal ${fmt(total)}.`);return}
+  if(paymentMethod==='room'&&!chargeReservationId){setError('Select the guest/room to charge.');return}if(paymentMethod==='room'&&room&&!window.confirm('Confirm room charge?\nGuest: '+(room.guest_name||'Guest')+'\nRoom: '+(room.room_number||'—')+'\nReservation: '+room.id+'\nAmount: '+fmt(total)))return;if(paymentMethod==='split'&&(Math.round(splitTotal*100)!==Math.round(total*100)||splitPayments.some(p=>p.method==='room'&&Number(p.amount)>0&&!p.reservationId))){setError(splitPayments.some(p=>p.method==='room'&&Number(p.amount)>0&&!p.reservationId)?'Select a checked-in guest for every room-charge portion.':`Split payments must equal ${fmt(total)}.`);return}
   setBusy(true);setError('');
   try{
    const currentShift=await shiftService.getCurrentShift(propertyId);
