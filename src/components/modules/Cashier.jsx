@@ -170,7 +170,7 @@ export default function Cashier() {
           <section className="overflow-hidden rounded-xl border border-border bg-surface">
             <div className="flex items-center justify-between border-b border-border p-4">
               <div><h2 className="font-bold">Shift transactions</h2><p className="mt-1 text-xs text-muted-foreground">{postedReceipts.length} posted receipt(s) · {receipts.length} total</p></div>
-              <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">SHIFT OPEN</span>
+              <span className="rounded-full bg-[var(--success-soft)] px-2.5 py-1 text-[11px] font-bold text-[var(--success-text)]">SHIFT OPEN</span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[760px] text-sm">
@@ -245,8 +245,8 @@ export default function Cashier() {
 }
 
 function Metric({ label, value, emphasis }) {
-  return <div className="rounded-xl border border-border bg-surface p-4"><div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</div><div className={`mt-1 text-lg font-bold ${emphasis ? 'text-amber-700' : 'text-[var(--on-primary)]'}`}>{value}</div></div>;
+  return <div className="rounded-xl border border-border bg-surface p-4"><div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</div><div className={`mt-1 text-lg font-bold ${emphasis ? 'text-[var(--warning-text)]' : 'text-[var(--on-primary)]'}`}>{value}</div></div>;
 }
 function Status({ status }) {
-  return <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${status === 'posted' ? 'bg-emerald-50 text-emerald-700' : 'bg-[var(--surface-2)] text-[var(--text-muted)]'}`}>{status || 'posted'}</span>;
+  return <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${status === 'posted' ? 'bg-[var(--success-soft)] text-[var(--success-text)]' : 'bg-[var(--surface-2)] text-[var(--text-muted)]'}`}>{status || 'posted'}</span>;
 }
