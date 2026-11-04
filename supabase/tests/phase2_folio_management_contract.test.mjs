@@ -22,6 +22,7 @@ test('server operations cover payment, refund, reversal, discount and folio tran
     assert.match(migration, new RegExp('function public\\.' + fn + '\\('));
   }
   assert.match(migration, /public\.is_member_of_property\(p_property_id\)/i);
+  assert.match(migration, /coalesce\(public\.is_platform_owner\(\)[\s\S]*?false\)/i);
   assert.match(migration, /Manager approval is required to refund/i);
   assert.match(migration, /Manager approval is required to apply a folio discount/i);
   assert.match(migration, /already been reversed/i);
