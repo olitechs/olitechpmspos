@@ -49,7 +49,10 @@ begin
  if key is null then raise exception 'An idempotency key is required.'; end if;
  perform pg_advisory_xact_lock(hashtextextended(p_property_id::text||':folio-charge:'||key,0));
  select * into c from public.folio_charges where property_id=p_property_id and idempotency_key=key;
- if c.id is not null then return c; end if;
+ if c.id is not null then
+   if c.reservation_id<>p_reservation_id or c.category<>p_category or c.description<>trim(p_description) or c.quantity<>coalesce(p_quantity,1) or c.unit_price<>coalesce(p_unit_price,0) then raise exception 'Idempotency key was already used for a different folio charge.'; end if;
+   return c;
+ end if;
  q:=coalesce(p_quantity,1); price:=coalesce(p_unit_price,0); amount:=round(q*price,2);
  if p_category not in ('accommodation','restaurant','bar','laundry','airport_transfer','excursion','room_service','other_services','tax_adjustment') then raise exception 'Invalid folio transaction category.'; end if;
  if q<=0 or price<=0 or amount<=0 then raise exception 'Quantity and unit price must be greater than zero.'; end if;
@@ -76,7 +79,10 @@ begin
  key:=nullif(trim(p_idempotency_key),''); if key is null then raise exception 'An idempotency key is required.'; end if;
  perform pg_advisory_xact_lock(hashtextextended(p_property_id::text||':folio-payment:'||key,0));
  select * into p from public.payments where property_id=p_property_id and idempotency_key=key;
- if p.id is not null then return p; end if;
+ if p.id is not null then
+   if p.reservation_id<>p_reservation_id or p.amount<>round(p_amount,2) or p.method<>p_method or p.folio_charge_id is distinct from p_folio_charge_id then raise exception 'Idempotency key was already used for a different payment.'; end if;
+   return p;
+ end if;
  if coalesce(p_amount,0)<=0 then raise exception 'Payment amount must be greater than zero.'; end if;
  if p_method not in ('cash','mpesa','card','bank_transfer','other') then raise exception 'Unsupported payment method.'; end if;
  select * into r from public.reservations where id=p_reservation_id and property_id=p_property_id for update;
@@ -116,7 +122,10 @@ begin
  key:=nullif(trim(p_idempotency_key),''); if key is null then raise exception 'An idempotency key is required.'; end if;
  perform pg_advisory_xact_lock(hashtextextended(p_property_id::text||':folio-refund:'||key,0));
  select * into refund_payment from public.payments where property_id=p_property_id and idempotency_key='refund:'||key;
- if refund_payment.id is not null then return refund_payment; end if;
+ if refund_payment.id is not null then
+   if refund_payment.refund_of_id<>p_payment_id or refund_payment.amount<>-round(p_amount,2) or refund_payment.method<>p_refund_method then raise exception 'Idempotency key was already used for a different refund.'; end if;
+   return refund_payment;
+ end if;
  if p_amount<=0 or nullif(trim(p_reason),'') is null then raise exception 'Refund amount and reason are required.'; end if;
  if p_refund_method not in ('cash','mpesa','card','bank_transfer','other') then raise exception 'Unsupported refund method.'; end if;
  select * into original from public.payments where id=p_payment_id and property_id=p_property_id and status='posted' and amount>0 for update;
@@ -172,7 +181,11 @@ begin
  if not manager then raise exception 'Manager approval is required to apply a folio discount.'; end if;
  key:=nullif(trim(p_idempotency_key),''); if key is null then raise exception 'An idempotency key is required.'; end if;
  perform pg_advisory_xact_lock(hashtextextended(p_property_id::text||':folio-discount:'||key,0));
- select * into c from public.folio_charges where property_id=p_property_id and idempotency_key=key; if c.id is not null then return c; end if;
+ select * into c from public.folio_charges where property_id=p_property_id and idempotency_key=key;
+ if c.id is not null then
+   if c.reservation_id<>p_reservation_id or c.amount<>-round(p_amount,2) or c.description<>'Authorised discount: '||trim(p_reason) then raise exception 'Idempotency key was already used for a different discount.'; end if;
+   return c;
+ end if;
  if p_amount<=0 or nullif(trim(p_reason),'') is null then raise exception 'Discount amount and reason are required.'; end if;
  select * into r from public.reservations where id=p_reservation_id and property_id=p_property_id for update;
  if r.id is null or r.status in ('cancelled','checked-out') then raise exception 'An active reservation is required.'; end if;
