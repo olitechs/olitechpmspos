@@ -20,7 +20,8 @@ alter table public.payments
   add column if not exists reference text,
   add column if not exists idempotency_key text,
   add column if not exists created_by uuid references auth.users(id),
-  add column if not exists refund_of_id uuid references public.payments(id) on delete restrict;
+  add column if not exists refund_of_id uuid references public.payments(id) on delete restrict,
+  add column if not exists folio_charge_id uuid references public.folio_charges(id) on delete restrict;
 
 create unique index if not exists folio_charges_property_idempotency_uidx
   on public.folio_charges(property_id,idempotency_key) where idempotency_key is not null;
@@ -62,11 +63,11 @@ begin
 end; $$;
 
 create or replace function public.fn_post_folio_payment(
- p_property_id uuid,p_reservation_id uuid,p_amount numeric,p_method text,p_reference text default null,p_idempotency_key text default null
+ p_property_id uuid,p_reservation_id uuid,p_amount numeric,p_method text,p_reference text default null,p_idempotency_key text default null,p_folio_charge_id uuid default null
 ) returns public.payments
 language plpgsql security invoker set search_path=public
 as $$
-declare r public.reservations; p public.payments; key text; charges numeric; paid numeric; booking numeric; balance numeric; shift uuid;
+declare r public.reservations; p public.payments; c public.folio_charges; key text; charges numeric; paid numeric; booking numeric; balance numeric; shift uuid; allocated numeric;
 begin
  if not(public.is_platform_owner() or public.is_member_of_property(p_property_id)) then raise exception 'Access denied.'; end if;
  if public.current_staff_role(p_property_id) is not null and public.current_staff_role(p_property_id) not in ('hotel_admin','super_admin','cashier','fb_manager','front_office_manager','general_manager','property_manager') then raise exception 'Payment permission required.'; end if;
@@ -83,9 +84,15 @@ begin
  booking:=greatest(charges,coalesce(nullif(r.total_amount,0),coalesce(r.rate,0)*greatest(1,r.departure-r.arrival)));
  balance:=greatest(0,booking-paid);
  if p_amount>balance+0.005 then raise exception 'Payment exceeds outstanding folio balance of %.',round(balance,2); end if;
+ if p_folio_charge_id is not null then
+   select * into c from public.folio_charges where id=p_folio_charge_id and reservation_id=r.id and property_id=p_property_id for update;
+   if c.id is null or c.amount<=0 then raise exception 'Selected charge is not eligible for payment allocation.'; end if;
+   select coalesce(sum(amount),0) into allocated from public.payments where folio_charge_id=c.id and status='posted';
+   if p_amount>greatest(0,c.amount-allocated)+0.005 then raise exception 'Payment exceeds the unallocated balance of the selected charge.'; end if;
+ end if;
  select cs.id into shift from public.cashier_shifts cs where cs.property_id=p_property_id and cs.opened_by=auth.uid() and cs.status='open' order by cs.opened_at desc limit 1;
- insert into public.payments(property_id,reservation_id,amount,method,status,shift_id,reference,idempotency_key,created_by)
- values(p_property_id,r.id,round(p_amount,2),p_method,'posted',shift,coalesce(nullif(trim(p_reference),''),'PAY-'||upper(substr(gen_random_uuid()::text,1,8))),key,auth.uid())
+ insert into public.payments(property_id,reservation_id,amount,method,status,shift_id,reference,idempotency_key,created_by,folio_charge_id)
+ values(p_property_id,r.id,round(p_amount,2),p_method,'posted',shift,coalesce(nullif(trim(p_reference),''),'PAY-'||upper(substr(gen_random_uuid()::text,1,8))),key,auth.uid(),p_folio_charge_id)
  returning * into p;
  update public.reservations set amount_paid=least(booking,paid+p.amount),
  payment_status=case when booking>0 and paid+p.amount>=booking-0.005 then 'fully_paid' when paid+p.amount>0 then 'partially_paid' else 'not_paid' end
@@ -120,9 +127,9 @@ begin
  insert into public.cashier_adjustments(property_id,shift_id,adjustment_type,target_type,target_id,amount,reason,created_by,approved_by,status,refund_method)
  values(p_property_id,original.shift_id,'refund','payment',original.id,round(p_amount,2),trim(p_reason),auth.uid(),auth.uid(),'approved',p_refund_method)
  returning * into adjustment;
- insert into public.payments(property_id,reservation_id,amount,method,status,shift_id,reference,idempotency_key,created_by,refund_of_id)
+ insert into public.payments(property_id,reservation_id,amount,method,status,shift_id,reference,idempotency_key,created_by,refund_of_id,folio_charge_id)
  values(p_property_id,original.reservation_id,-round(p_amount,2),p_refund_method,'posted',original.shift_id,
- 'REF-'||upper(substr(gen_random_uuid()::text,1,8)),'refund:'||key,auth.uid(),original.id)
+ 'REF-'||upper(substr(gen_random_uuid()::text,1,8)),'refund:'||key,auth.uid(),original.id,original.folio_charge_id)
  returning * into refund_payment;
  insert into public.cashier_refunds(property_id,adjustment_id,target_type,target_id,original_payment_id,refund_payment_id,amount,method,reservation_id,approved_by,settlement_method)
  values(p_property_id,adjustment.id,'payment',original.id,original.id,refund_payment.id,round(p_amount,2),p_refund_method,original.reservation_id,auth.uid(),p_refund_method);
@@ -203,13 +210,13 @@ begin
 end; $$;
 
 revoke all on function public.fn_post_folio_charge(uuid,uuid,text,text,numeric,numeric,text,text) from public,anon;
-revoke all on function public.fn_post_folio_payment(uuid,uuid,numeric,text,text,text) from public,anon;
+revoke all on function public.fn_post_folio_payment(uuid,uuid,numeric,text,text,text,uuid) from public,anon;
 revoke all on function public.fn_reverse_folio_charge(uuid,uuid,text) from public,anon;
 revoke all on function public.fn_post_folio_refund(uuid,uuid,numeric,text,text,text) from public,anon;
 revoke all on function public.fn_apply_folio_discount(uuid,uuid,numeric,text,text) from public,anon;
 revoke all on function public.fn_transfer_folio_charges(uuid,uuid[],uuid,text) from public,anon;
 grant execute on function public.fn_post_folio_charge(uuid,uuid,text,text,numeric,numeric,text,text) to authenticated,service_role;
-grant execute on function public.fn_post_folio_payment(uuid,uuid,numeric,text,text,text) to authenticated,service_role;
+grant execute on function public.fn_post_folio_payment(uuid,uuid,numeric,text,text,text,uuid) to authenticated,service_role;
 grant execute on function public.fn_reverse_folio_charge(uuid,uuid,text) to authenticated,service_role;
 grant execute on function public.fn_post_folio_refund(uuid,uuid,numeric,text,text,text) to authenticated,service_role;
 grant execute on function public.fn_apply_folio_discount(uuid,uuid,numeric,text,text) to authenticated,service_role;
