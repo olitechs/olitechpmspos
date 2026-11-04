@@ -133,7 +133,7 @@ test('thermal payload feeds beyond the final line before the partial cut', () =>
   assert.ok(shortBill.includes(String.fromCharCode(27, 100, 6)));
   assert.ok(shortBill.endsWith(String.fromCharCode(29, 86, 1)));
 
-  const longBillText = Array.from({ length: 240 }, (_, i) => 'LONG BILL ITEM ' + (i + 1)).join('\\n');
+  const longBillText = Array.from({ length: 240 }, (_, i) => 'LONG BILL ITEM ' + (i + 1)).join('\n');
   assert.equal(estimateThermalFeedLines(longBillText), 8);
   assert.ok(toEscPosPayload(longBillText).includes(String.fromCharCode(27, 100, 8)));
 });
@@ -146,7 +146,8 @@ test('long item names and amount fields are wrapped, never sliced off', () => {
     subtotal: 987654321,
     total: 987654321,
   }, { printer: { paper_width: '58mm' } }));
-  assert.ok(output.replace(/\\s/g, '').includes(longName.replace(/\\s/g, '')));
+  assert.ok(output.replace(/\s/g, '').includes(longName.replace(/\s/g, '')));
   assert.ok(output.includes('987,654,321.00'));
-  assert.ok(output.split('\\n').every(line => line.length <= 32));
+  assert.ok(output.split('\n').every(line => line.length <= 32));
 });
+
