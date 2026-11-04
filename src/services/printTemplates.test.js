@@ -94,7 +94,7 @@ test('unsettled bill is prominently unpaid, aligned and has totals without a pay
 test('HTML fallback renders fixed-width plain text on white paper', () => {
   const html = thermalTextToHtml('BILL - NOT PAID\nKES 100.00');
   assert.match(html, /<pre/);
-  assert.match(html, /background:#fff;color:#000/);
+  assert.match(html, /background:white;color:black/);
   assert.match(html, /BILL - NOT PAID/);
 });
 
