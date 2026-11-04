@@ -55,7 +55,7 @@ test('theme foundation defines canonical light and dark palettes with reduced-mo
   assert.ok(theme.includes(':root[data-theme="dark"]'));
   for (const token of [
     '--canvas:#0B1726', '--surface:#12243A', '--primary:#0D47A1',
-    '--on-primary:#F2F8F9', '--text:#EAF4FD', '--text-muted:#B4CDE3',
+    '--on-primary:#FFFFFF', '--text:#EAF4FD', '--text-muted:#B4CDE3',
   ]) assert.ok(theme.includes(token), 'missing dark token ' + token);
   assert.ok(theme.includes('--primary-soft:#E3F2FD'));
   assert.ok(theme.includes('--accent:#90CAF9'));
