@@ -268,7 +268,7 @@ export default function SettingsPrinters() {
     setTemplateTests(prev => ({ ...prev, [key]: { pending: true, text: 'Sending test print…' } }));
     try {
       const result = kind === 'order'
-        ? await printTestOrder(printer)
+        ? await printTestOrder(printer, assignments.filter(item => item.printer_id === printer.id).map(item => item.assignment_type))
         : await printTestReceipt(printer, propertyId);
       setTemplateTests(prev => ({
         ...prev,

@@ -507,7 +507,9 @@ function receiptHtml(settings, type, data, copyType) {
   return `<div class="receipt"><div class="copy">${esc(copyType)}</div>${logo}<div class="center bold">${esc(settings.property_name)}</div><div class="center">${esc(settings.address_line1)}<br>${esc(settings.address_line2)}<br>${esc(settings.phone)}<br>${esc(settings.email)}<br>${esc(settings.website)}<br>KRA PIN: ${esc(settings.kra_pin)}${settings.extra_header_line ? `<br>${esc(settings.extra_header_line)}` : ''}</div><div class="divider"></div><div class="center bold">${esc(title)}</div><div>Waiter: ${esc(data.waiter || 'Unassigned')} &nbsp; Table: ${esc(data.table || '')}</div><div>Covers: ${esc(data.covers ?? '—')} &nbsp; Date: ${esc(new Date(data.createdAt || Date.now()).toLocaleString('en-KE'))}</div>${itemMarkup}<div class="total">TOTAL ${esc(data.currency || '')} ${total}</div>${payment}<div class="footer">${esc(settings.footer_line1)}<br>${esc(settings.footer_line2)}</div><div class="right bold">Check No: ${esc(data.checkNo || data.orderNumber || '')}</div>${data.voidedCount ? `<div class="divider"></div><div class="center bold" style="font-size:9px">${esc(data.voidedCount)} item${Number(data.voidedCount)===1?'':'s'} voided - See void slip #${esc(data.voidSlipNumber || '—')}</div>` : ''} </div>`;
 }
 
-export async function printTestOrder(printer) {
+export async function printTestOrder(printer, assignmentTypes = []) {
+  const isBar = printer?.type === 'bar' || assignmentTypes.includes('drinks_orders') || assignmentTypes.includes('void_drinks_orders');
+  const center = isBar ? 'BAR' : 'KITCHEN';
   const order = {
     propertyName: 'OLITECHS PMS + POS',
     orderNumber: 'TEST-ORDER-001',
@@ -518,12 +520,12 @@ export async function printTestOrder(printer) {
     createdAt: new Date().toISOString(),
     items: [{
       qty: 2,
-      name: 'Thermal Test Burger',
-      modifiers: [{ name: 'Extra Cheese' }, { name: 'No Onion' }],
+      name: isBar ? 'Thermal Test Drink' : 'Thermal Test Burger',
+      modifiers: isBar ? [{ name: 'No Ice' }, { name: 'Lemon' }] : [{ name: 'Extra Cheese' }, { name: 'No Onion' }],
       prepNote: 'TEST ONLY - no kitchen action',
     }],
   };
-  const thermalText = buildOrderTicketText(order, { printer, center: 'KITCHEN' });
+  const thermalText = buildOrderTicketText(order, { printer, center });
   return printToPrinter(printer, thermalTextToHtml(thermalText), {
     propertyId: null,
     jobType: 'test_order',
