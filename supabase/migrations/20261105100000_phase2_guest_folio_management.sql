@@ -104,7 +104,7 @@ create or replace function public.fn_post_folio_refund(
  p_property_id uuid,p_payment_id uuid,p_amount numeric,p_refund_method text,p_reason text,p_idempotency_key text
 ) returns public.payments
 language plpgsql security invoker set search_path=public
-as $
+as $folio$
 declare original public.payments; refund_payment public.payments; adjustment public.cashier_adjustments;
  manager boolean; key text; already numeric; remaining numeric; reservation_property uuid;
 begin
@@ -136,7 +136,7 @@ begin
  insert into public.audit_logs(actor_id,property_id,action,old_value,new_value,entity_type,entity_id,related_reservation_id)
  values(auth.uid(),p_property_id,'folio_payment_refunded',to_jsonb(original),jsonb_build_object('refund_payment_id',refund_payment.id,'amount',p_amount,'method',p_refund_method,'reason',trim(p_reason)),'payment',original.id,original.reservation_id);
  return refund_payment;
-end; $;
+end; $folio$;
 
 create or replace function public.fn_reverse_folio_charge(p_property_id uuid,p_charge_id uuid,p_reason text)
 returns public.folio_charges
