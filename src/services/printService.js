@@ -683,7 +683,7 @@ export async function printReceipt(type, data) {
 
   for (const printer of targets) {
     const copyTexts = copies.map(copy => buildFinalReceiptText(settings, data, { printer, copyLabel: copy }));
-    const thermalText = copyTexts.join('\\n\\n\\x1D\\x56\\x01\\n\\n');
+    const thermalText = copyTexts.join('\n\n\x1D\x56\x01\n\n');
     const thermalBase64 = await buildLogoEscPosBase64(settings.logo_url, printer, thermalText);
     results.push(await printToPrinter(printer, receiptHtml(settings, type, data, copies[0]), {
       propertyId, jobType: type, copyType:'duplicate', assignmentType,
