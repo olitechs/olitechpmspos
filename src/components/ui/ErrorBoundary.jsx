@@ -29,15 +29,15 @@ export class ErrorBoundary extends React.Component {
     const message = this.state.error?.message || 'An unexpected application error occurred.';
 
     return (
-      <div className="m-4 flex min-h-40 items-center justify-center rounded-2xl border border-red-200 bg-red-50 p-6 text-red-900">
+      <div className="m-4 flex min-h-40 items-center justify-center rounded-2xl border border-[var(--danger)] bg-[var(--danger-soft)] p-6 text-[var(--danger-text)]">
         <div className="w-full max-w-xl">
           <div className="flex items-start gap-3">
-            <div className="mt-0.5 rounded-xl bg-red-100 p-2 text-red-700">
+            <div className="mt-0.5 rounded-xl bg-[var(--danger-soft)] p-2 text-[var(--danger-text)]">
               <AlertTriangle size={18} aria-hidden="true" />
             </div>
             <div className="min-w-0 flex-1">
               <div className="font-semibold">{label} isn't available right now.</div>
-              <div className="mt-1 text-xs leading-5 text-red-800/80">
+              <div className="mt-1 text-xs leading-5 text-[var(--danger-text)]">
                 The rest of the system is unaffected. You can retry this section or return to the dashboard.
               </div>
               <details className="mt-3 rounded-xl border border-red-200 bg-surface/70 p-3 text-xs">
@@ -45,15 +45,15 @@ export class ErrorBoundary extends React.Component {
                 <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words font-mono text-[11px]">{message}</pre>
               </details>
               <div className="mt-4 flex flex-wrap gap-2">
-                <button type="button" onClick={this.reset} className="inline-flex items-center gap-2 rounded-lg bg-red-700 px-3 py-2 text-xs font-semibold text-white hover:bg-red-800">
+                <button type="button" onClick={this.reset} className="inline-flex items-center gap-2 rounded-lg bg-[var(--danger)] px-3 py-2 text-xs font-semibold text-white hover:opacity-90">
                   <RefreshCw size={14} aria-hidden="true" />
                   Try again
                 </button>
-                <button type="button" onClick={() => window.location.reload()} className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-surface px-3 py-2 text-xs font-semibold text-red-900 hover:bg-red-50">
+                <button type="button" onClick={() => window.location.reload()} className="inline-flex items-center gap-2 rounded-lg border border-[var(--danger)] bg-surface px-3 py-2 text-xs font-semibold text-[var(--danger-text)] hover:bg-[var(--danger-soft)]">
                   <RefreshCw size={14} aria-hidden="true" />
                   Reload app
                 </button>
-                <a href="/" className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-surface px-3 py-2 text-xs font-semibold text-red-900 hover:bg-red-50">
+                <a href="/" className="inline-flex items-center gap-2 rounded-lg border border-[var(--danger)] bg-surface px-3 py-2 text-xs font-semibold text-[var(--danger-text)] hover:bg-[var(--danger-soft)]">
                   <Home size={14} aria-hidden="true" />
                   Dashboard
                 </a>
