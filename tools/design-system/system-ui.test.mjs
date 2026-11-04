@@ -133,6 +133,7 @@ test('operational screens use semantic theme tokens for text, surfaces, focus an
   assert.match(accessError, /bg-surface/);
 
   assert.match(nightAudit, /var\(--danger-soft\)/);
+  assert.match(nightAudit, /bg-primary text-primary-foreground/);
   assert.match(cashier, /var\(--danger-text\)/);
   assert.match(housekeeping, /var\(--success-soft\)/);
   assert.match(subscriptionPanel, /var\(--danger-soft\)/);
