@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowLeftRight, Banknote, FileDown, FileText, Plus, Printer, RefreshCw, Search, ShieldCheck, Undo2, X } from 'lucide-react';
+import { ArrowLeftRight, Banknote, FileDown, Plus, Printer, RefreshCw, Search, ShieldCheck, Undo2, X } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { pmsService } from '@/services/pmsService';
 
