@@ -35,7 +35,7 @@ export default function Receipts() {
 				</div>
 			</div>
 			{loading && <div className="flex items-center gap-2 text-sm p-6 justify-center" style={{ color: MUTED }}><Loader2 size={16} className="animate-spin" /> Loading receipts…</div>}
-			{error && <div className="text-xs p-3 rounded-lg mb-3" style={{ background: '#FDECEC', color: '#C0392B' }}>{error}</div>}
+			{error && <div className="text-xs p-3 rounded-lg mb-3" style={{ background: 'var(--danger-soft)', color: 'var(--danger-text)' }}>{error}</div>}
 			{!loading && !error && (
 				<div className="rounded-2xl overflow-hidden" style={{ background: SURFACE, border: `1px solid ${BORDER}` }}>
 					{receipts.length === 0 ? (
