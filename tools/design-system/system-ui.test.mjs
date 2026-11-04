@@ -209,6 +209,8 @@ test('timecards, stock movements and store operations use semantic theme colours
   assert.match(reports, /var\(--danger-soft\)/);
   assert.match(channelManager, /var\(--danger-text\)/);
   assert.match(distributionOps, /var\(--danger-text\)/);
+  assert.match(distributionOps, /var\\(--canvas\\)/);
+  assert.doesNotMatch(distributionOps, /#[0-9a-fA-F]{3,8}\\b/);
   assert.match(bookingEngine, /var\(--danger-text\)/);
   assert.match(pinPad, /var\(--danger-soft\)/);
   assert.match(routeGuard, /var\(--danger-text\)/);
