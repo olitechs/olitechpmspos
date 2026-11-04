@@ -66,10 +66,10 @@ const blank = {
 
 const statusMeta = printer => {
   if (printer?.is_online && printer?.last_status === 'connected') {
-    return {label:'Connected', Icon:CheckCircle2, cls:'bg-emerald-50 text-emerald-700 border-emerald-100', dot:'bg-emerald-500'};
+    return {label:'Connected', Icon:CheckCircle2, cls:'bg-[var(--success-soft)] text-[var(--success-text)] border-[var(--success)]', dot:'bg-[var(--success)]'};
   }
   if (printer?.last_status === 'testing') {
-    return {label:'Testing…', Icon:RefreshCw, cls:'bg-amber-50 text-amber-700 border-amber-100', dot:'bg-amber-500'};
+    return {label:'Testing…', Icon:RefreshCw, cls:'bg-[var(--warning-soft)] text-[var(--warning-text)] border-[var(--warning)]', dot:'bg-[var(--warning)]'};
   }
   if (printer?.last_status === 'failed' || printer?.last_status === 'offline') {
     return {label:'Offline', Icon:AlertCircle, cls:'bg-[var(--danger-soft)] text-[var(--danger-text)] border-[var(--danger)]', dot:'bg-[var(--danger)]'};
@@ -422,7 +422,7 @@ function PrinterCard({printer,assignments,testing,onTest,onEdit,onDelete,onRemov
 }
 
 function Empty({onAdd}) {
-  return <div className="rounded-2xl border border-dashed border-border bg-surface p-10 text-center"><div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary"><Printer size={20} className="text-muted-foreground"/></div><h3 className="mt-3 font-black text-foreground">No printers configured</h3><p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">Add a network thermal printer with its LAN IP. OliTechs will verify the connection and print a test ticket before marking it connected.</p><button onClick={onAdd} className="mt-4 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-black text-amber-300">Add your first printer</button></div>;
+  return <div className="rounded-2xl border border-dashed border-border bg-surface p-10 text-center"><div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary"><Printer size={20} className="text-muted-foreground"/></div><h3 className="mt-3 font-black text-foreground">No printers configured</h3><p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">Add a network thermal printer with its LAN IP. OliTechs will verify the connection and print a test ticket before marking it connected.</p><button onClick={onAdd} className="mt-4 rounded-xl bg-primary px-4 py-2.5 text-sm font-black text-primary-foreground">Add your first printer</button></div>;
 }
 
 function PrinterModal({form,setForm,onClose,onSave,windowsPrinters=[],refreshLocalDevices=()=>{}}) {
@@ -431,12 +431,12 @@ function PrinterModal({form,setForm,onClose,onSave,windowsPrinters=[],refreshLoc
   return <div className="fixed inset-0 z-[80] overflow-y-auto bg-slate-950/55 p-4 backdrop-blur-sm">
     <div className="mx-auto my-6 w-full max-w-2xl overflow-hidden rounded-3xl bg-surface shadow-2xl">
       <div className="flex items-start justify-between border-b border-border p-5">
-        <div><div className="flex items-center gap-2"><div className="rounded-lg bg-slate-950 p-2 text-amber-300"><Printer size={16}/></div><h3 className="text-lg font-black text-foreground">{form.id?'Edit printer':'Add printer'}</h3></div><p className="mt-2 text-xs leading-5 text-muted-foreground">LAN and Windows-driver printers use the OliTechs Local Print Agent. USB, Bluetooth and serial printers use browser device APIs. Every connection is tested before it is marked Connected.</p></div>
+        <div><div className="flex items-center gap-2"><div className="rounded-lg bg-primary p-2 text-primary-foreground"><Printer size={16}/></div><h3 className="text-lg font-black text-foreground">{form.id?'Edit printer':'Add printer'}</h3></div><p className="mt-2 text-xs leading-5 text-muted-foreground">LAN and Windows-driver printers use the OliTechs Local Print Agent. USB, Bluetooth and serial printers use browser device APIs. Every connection is tested before it is marked Connected.</p></div>
         <button onClick={onClose} className="rounded-lg p-2 text-muted-foreground hover:bg-secondary hover:text-foreground"><X size={18}/></button>
       </div>
       <div className="grid gap-5 p-5 md:grid-cols-2">
         <div className="space-y-3">
-          <label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">Printer name<input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Kitchen Epson 01" className="mt-1.5 w-full rounded-xl border border-border px-3 py-2.5 text-sm outline-none focus:border-slate-900"/></label>
+          <label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">Printer name<input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Kitchen Epson 01" className="mt-1.5 w-full rounded-xl border border-border px-3 py-2.5 text-sm outline-none focus:border-[var(--primary)]"/></label>
           <label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">Printer type<select value={form.type} onChange={e=>setForm({...form,type:e.target.value})} className="mt-1.5 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm">{TYPES.map(x=><option key={x[0]} value={x[0]}>{x[1]}</option>)}</select></label>
           <label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">Connection type
             <select value={form.connection_type || 'network_ip'} onChange={e=>setForm({...form,connection_type:e.target.value})} className="mt-1.5 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm">
@@ -449,7 +449,7 @@ function PrinterModal({form,setForm,onClose,onSave,windowsPrinters=[],refreshLoc
           </label>
           <div className="rounded-xl border border-border bg-secondary p-3"><div className="text-[10px] font-black uppercase tracking-wide text-muted-foreground">Transport</div><p className="mt-1 text-[11px] leading-5 text-muted-foreground">LAN and Windows-driver printers use the OliTechs Print Agent. USB, Bluetooth and serial printers use the browser's native device connection.</p></div>
           {form.connection_type === 'network_ip' && <>
-            <label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">Printer IP address<input value={form.ip_address||''} onChange={e=>setForm({...form,ip_address:e.target.value})} placeholder="192.168.1.50" className="mt-1.5 w-full rounded-xl border border-border px-3 py-2.5 font-mono text-sm outline-none focus:border-slate-900"/></label>
+            <label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">Printer IP address<input value={form.ip_address||''} onChange={e=>setForm({...form,ip_address:e.target.value})} placeholder="192.168.1.50" className="mt-1.5 w-full rounded-xl border border-border px-3 py-2.5 font-mono text-sm outline-none focus:border-[var(--primary)]"/></label>
             <label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">TCP port<input type="number" value={form.port||9100} onChange={e=>setForm({...form,port:e.target.value})} className="mt-1.5 w-full rounded-xl border border-border px-3 py-2.5 font-mono text-sm"/><span className="mt-1 block text-[11px] font-normal normal-case tracking-normal text-muted-foreground">9100 is the standard raw ESC/POS port for many network thermal printers.</span></label>
           </>}
           {form.connection_type === 'windows_printer' && <div className="space-y-2"><label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">Windows installed printer<select value={form.windows_printer_name||''} onChange={e=>setForm({...form,windows_printer_name:e.target.value})} onFocus={()=>refreshLocalDevices(form.agent_url)} className="mt-1.5 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm"><option value="">Select installed printer</option>{windowsPrinters.map(p=><option key={p.Name} value={p.Name}>{p.Name}{p.DriverName ? ` — ${p.DriverName}` : ''}</option>)}</select></label><p className="text-[11px] text-muted-foreground">The printer must first be installed and visible in Windows Printers & scanners. OliTechs sends the thermal data through the local print agent.</p></div>}
@@ -470,7 +470,7 @@ function PrinterModal({form,setForm,onClose,onSave,windowsPrinters=[],refreshLoc
       </div>
       <div className="flex flex-col-reverse gap-2 border-t border-border bg-secondary p-5 sm:flex-row sm:justify-end">
         <button onClick={onClose} className="rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-bold text-foreground">Cancel</button>
-        <button onClick={onSave} className="rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-black text-amber-300">Save & verify connection</button>
+        <button onClick={onSave} className="rounded-xl bg-primary px-5 py-2.5 text-sm font-black text-primary-foreground">Save & verify connection</button>
       </div>
     </div>
   </div>;
