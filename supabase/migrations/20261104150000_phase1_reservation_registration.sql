@@ -109,6 +109,7 @@ declare
   v_room_total numeric := 0;
   v_room_payment numeric := 0;
   v_payment_method text := coalesce(nullif(trim(v_booking->>'depositMethod'), ''), 'cash');
+  v_deposit_required numeric := coalesce(nullif(v_booking->>'depositRequired', '')::numeric, 0);
 begin
   if not public.is_member_of_property(p_property_id) and not public.is_platform_owner() then
     raise exception 'You do not have access to this property.';
@@ -138,6 +139,10 @@ begin
 
   if coalesce(p_total_amount, 0) < 0 or coalesce(p_amount_paid, 0) < 0 or coalesce(p_amount_paid, 0) > coalesce(p_total_amount, 0) then
     raise exception 'Reservation total and deposit amounts are invalid.';
+  end if;
+
+  if v_deposit_required < 0 or v_deposit_required > coalesce(p_total_amount, 0) then
+    raise exception 'Required deposit must be between zero and the reservation total.';
   end if;
 
   if nullif(v_booking->>'ratePlanId', '') is not null and not exists (
