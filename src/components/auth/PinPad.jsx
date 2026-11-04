@@ -53,7 +53,7 @@ export default function PinPad({
             <button type="button" onClick={() => setShow((v) => !v)} className="ml-2 text-foreground/55 hover:text-foreground" title={show ? 'Hide PIN' : 'Show PIN'} aria-label={show ? 'Hide PIN' : 'Show PIN'}>{show ? <EyeOff size={16}/> : <Eye size={16}/>}</button>
           </div>
           {show && pin && <div className="mb-3 text-center font-mono text-sm font-black tracking-[.4em] text-foreground">{pin}</div>}
-          {error && <div role="alert" className="mb-3 rounded-xl bg-red-500/15 px-3 py-2 text-center text-xs font-bold text-red-300">{error}</div>}
+          {error && <div role="alert" className="mb-3 rounded-xl bg-[var(--danger-soft)] px-3 py-2 text-center text-xs font-bold text-[var(--danger-text)]">{error}</div>}
           <div className="grid grid-cols-3 gap-2">
             {[1,2,3,4,5,6,7,8,9].map((n) => <button type="button" key={n} onClick={() => append(n)} className="h-14 rounded-xl bg-primary text-xl font-black text-foreground hover:brightness-95 active:scale-95">{n}</button>)}
             <button type="button" onClick={() => setPin('')} className="h-14 rounded-xl border border-border bg-secondary text-xs font-black text-foreground hover:bg-secondary">Clear</button>
