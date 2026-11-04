@@ -28,10 +28,6 @@ export function wrapThermalText(value, width = 48) {
   return rows.length ? rows : [''];
 }
 
-function fit(value, width) {
-  return wrapThermalText(value, width).join('\n');
-}
-
 function centerRows(value, width) {
   return wrapThermalText(value, width).map(row => row.padStart(Math.floor((width + row.length) / 2)).padEnd(width));
 }
