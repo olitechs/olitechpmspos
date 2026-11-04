@@ -26,6 +26,11 @@ const sharedSelect = readFileSync(new URL('../../src/components/ui/select.jsx', 
 const productTable = readFileSync(new URL('../../src/components/store/ProductTable.jsx', import.meta.url), 'utf8');
 const publicHome = readFileSync(new URL('../../src/pages/PublicHome.jsx', import.meta.url), 'utf8');
 const pageNotFound = readFileSync(new URL('../../src/lib/PageNotFound.jsx', import.meta.url), 'utf8');
+const timecards = readFileSync(new URL('../../src/components/settings/TimecardsPage.jsx', import.meta.url), 'utf8');
+const stockMovements = readFileSync(new URL('../../src/components/store/StockMovements.jsx', import.meta.url), 'utf8');
+const storesPage = readFileSync(new URL('../../src/components/stores/StoresPage.jsx', import.meta.url), 'utf8');
+const shiftReport = readFileSync(new URL('../../src/pages/ShiftReport.jsx', import.meta.url), 'utf8');
+const storePage = readFileSync(new URL('../../src/pages/Store.jsx', import.meta.url), 'utf8');
 
 
 test('shared operational UI exports the Phase 1 primitives', () => {
@@ -164,6 +169,19 @@ test('operational screens use semantic theme tokens for text, surfaces, focus an
   assert.match(publicHome, /text-secondary-foreground/);
   assert.match(pageNotFound, /font-family:var\(--font-heading\)/);
   assert.doesNotMatch(pageNotFound, /Roboto/);
+});
+
+test('timecards, stock movements and store operations use semantic theme colours', () => {
+  for (const [name, source] of Object.entries({timecards, stockMovements, storesPage, shiftReport, storePage})) {
+    assert.doesNotMatch(source, /\\b(?:text|bg|border)-(?:slate|gray|zinc|neutral|red|amber|emerald|teal|blue|rose|green|yellow|orange)-(?:50|100|200|300|400|500|600|700|800|900|950)\\b/, name + ' should not use fixed palette utilities');
+  }
+  assert.match(timecards, /bg-canvas/);
+  assert.match(timecards, /var\\(--warning-soft\\)/);
+  assert.match(stockMovements, /var\\(--success-soft\\)/);
+  assert.match(stockMovements, /var\\(--danger-soft\\)/);
+  assert.match(storesPage, /var\\(--warning-soft\\)/);
+  assert.match(shiftReport, /var\\(--danger-soft\\)/);
+  assert.match(storePage, /var\\(--danger-soft\\)/);
 });
 
 test('Room Planner toolbar exposes the approved controls and responsive dimensions', () => {
