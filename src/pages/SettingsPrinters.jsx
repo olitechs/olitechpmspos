@@ -72,9 +72,9 @@ const statusMeta = printer => {
     return {label:'Testing…', Icon:RefreshCw, cls:'bg-amber-50 text-amber-700 border-amber-100', dot:'bg-amber-500'};
   }
   if (printer?.last_status === 'failed' || printer?.last_status === 'offline') {
-    return {label:'Offline', Icon:AlertCircle, cls:'bg-red-50 text-red-700 border-red-100', dot:'bg-red-500'};
+    return {label:'Offline', Icon:AlertCircle, cls:'bg-[var(--danger-soft)] text-[var(--danger-text)] border-[var(--danger)]', dot:'bg-[var(--danger)]'};
   }
-  return {label:'Not verified', Icon:CircleOff, cls:'bg-slate-50 text-slate-600 border-slate-200', dot:'bg-slate-400'};
+  return {label:'Not verified', Icon:CircleOff, cls:'bg-secondary text-muted-foreground border-border', dot:'bg-[var(--text-muted)]'};
 };
 
 export default function SettingsPrinters() {
@@ -305,7 +305,7 @@ export default function SettingsPrinters() {
             <div className="flex gap-2">
               <button onClick={discoverNetwork} disabled={discovering} className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm font-bold text-foreground hover:bg-secondary disabled:opacity-50"><Network size={15}/>{discovering?'Scanning LAN…':'Find network printers'}</button>
               <button onClick={()=>load()} className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm font-bold text-foreground hover:bg-secondary"><RefreshCw size={15}/>Refresh</button>
-              <button onClick={openNew} className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-black text-amber-300 shadow-sm hover:bg-slate-800"><Plus size={16}/>Add Printer</button>
+              <button onClick={openNew} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-black text-primary-foreground shadow-sm hover:bg-[var(--primary-hover)]"><Plus size={16}/>Add Printer</button>
             </div>
           </div>
 
@@ -320,7 +320,7 @@ export default function SettingsPrinters() {
       <div className="mx-auto max-w-7xl space-y-6 px-5 py-6 lg:px-7">
         {error && <Alert type="error" text={error}/>}
 {agentError && <Alert type="error" text={agentError}/>}
-{!!discovered.length && <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4"><div className="text-xs font-black uppercase tracking-wide text-blue-700">Network printers discovered</div><div className="mt-2 flex flex-wrap gap-2">{discovered.map(d=><button key={`${d.host}:${d.port}`} onClick={()=>{setEditing({...blank,connection_type:'network_ip',ip_address:d.host,port:d.port,assignmentTypes:[]});setDiscovered([]);}} className="rounded-xl border border-blue-200 bg-surface px-3 py-2 text-xs font-bold text-blue-800 hover:bg-blue-50">{d.label}</button>)}</div></div>}
+{!!discovered.length && <div className="rounded-2xl border border-[var(--primary)] bg-primary-soft p-4"><div className="text-xs font-black uppercase tracking-wide text-primary-text">Network printers discovered</div><div className="mt-2 flex flex-wrap gap-2">{discovered.map(d=><button key={`${d.host}:${d.port}`} onClick={()=>{setEditing({...blank,connection_type:'network_ip',ip_address:d.host,port:d.port,assignmentTypes:[]});setDiscovered([]);}} className="rounded-xl border border-[var(--primary)] bg-surface px-3 py-2 text-xs font-bold text-primary-text hover:bg-primary-soft">{d.label}</button>)}</div></div>}
         {notice && <Alert type="success" text={notice}/>}
         {loading ? <div className="rounded-2xl border border-border bg-surface p-10 text-center text-sm text-muted-foreground">Loading printer configuration…</div> :
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(420px,0.9fr)]">
@@ -339,7 +339,7 @@ export default function SettingsPrinters() {
                 <h2 className="font-black text-foreground">Print Routing</h2>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">Choose where each operational job goes. One job can be routed to multiple physical printers.</p>
               </div>
-              <div className="divide-y divide-slate-100">
+              <div className="divide-y divide-border">
                 {Object.entries(grouped).map(([group,rows])=><div key={group} className="p-5">
                   <div className="mb-3 text-[11px] font-black uppercase tracking-wider text-muted-foreground">{group}</div>
                   <div className="space-y-3">
@@ -354,7 +354,7 @@ export default function SettingsPrinters() {
                           </select>
                         </div>
                         <div className="mt-2 flex flex-wrap gap-1.5">
-                          {current.map(a=>{const p=printers.find(x=>x.id===a.printer_id); return <span key={a.id} className="inline-flex items-center gap-1 rounded-lg bg-surface px-2 py-1 text-xs font-semibold text-muted-foreground shadow-sm ring-1 ring-slate-200">{p?.name || 'Unknown printer'}<button onClick={()=>removeAssignment(a)} className="rounded p-0.5 text-muted-foreground hover:bg-red-50 hover:text-red-600" title="Remove routing"><X size={12}/></button></span>})}
+                          {current.map(a=>{const p=printers.find(x=>x.id===a.printer_id); return <span key={a.id} className="inline-flex items-center gap-1 rounded-lg bg-surface px-2 py-1 text-xs font-semibold text-muted-foreground shadow-sm ring-1 ring-border">{p?.name || 'Unknown printer'}<button onClick={()=>removeAssignment(a)} className="rounded p-0.5 text-muted-foreground hover:bg-[var(--danger-soft)] hover:text-[var(--danger-text)]" title="Remove routing"><X size={12}/></button></span>})}
                         </div>
                       </div>;
                     })}
@@ -371,11 +371,11 @@ export default function SettingsPrinters() {
 }
 
 function Stat({label,value,icon:Icon,className=''}) {
-  return <div className={`flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3.5 ${className}`}><div className="rounded-lg bg-secondary p-2 text-foreground"><Icon size={15}/></div><div><div className="text-lg font-black text-foreground">{value}</div><div className="text-[11px] font-semibold text-muted-foreground">{label}</div></div></div>;
+  return <div className={`flex items-center gap-3 rounded-xl border border-border bg-surface p-3.5 ${className}`}><div className="rounded-lg bg-secondary p-2 text-foreground"><Icon size={15}/></div><div><div className="text-lg font-black text-foreground">{value}</div><div className="text-[11px] font-semibold text-muted-foreground">{label}</div></div></div>;
 }
 
 function Alert({type,text}) {
-  return <div className={`flex items-start gap-2 rounded-xl border p-3 text-sm font-semibold ${type==='error'?'border-red-100 bg-red-50 text-red-700':'border-emerald-100 bg-emerald-50 text-emerald-700'}`}>{type==='error'?<AlertCircle size={17}/>:<CheckCircle2 size={17}/>}<span>{text}</span></div>;
+  return <div className={`flex items-start gap-2 rounded-xl border p-3 text-sm font-semibold ${type==='error'?'border-[var(--danger)] bg-[var(--danger-soft)] text-[var(--danger-text)]':'border-[var(--success)] bg-[var(--success-soft)] text-[var(--success-text)]'}`}>{type==='error'?<AlertCircle size={17}/>:<CheckCircle2 size={17}/>}<span>{text}</span></div>;
 }
 
 function PrinterCard({printer,assignments,testing,onTest,onEdit,onDelete,onRemoveAssignment}) {
@@ -384,7 +384,7 @@ function PrinterCard({printer,assignments,testing,onTest,onEdit,onDelete,onRemov
   return <article className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
     <div className="flex items-start justify-between gap-4">
       <div className="flex min-w-0 gap-3">
-        <div className="rounded-xl bg-slate-950 p-3 text-amber-300"><Printer size={19}/></div>
+        <div className="rounded-xl bg-primary p-3 text-primary-foreground"><Printer size={19}/></div>
         <div className="min-w-0">
           <h3 className="truncate font-black text-foreground">{printer.name}</h3>
           <div className="mt-1 text-xs font-semibold text-muted-foreground">{TYPES.find(x=>x[0]===printer.type)?.[1] || printer.type}</div>
@@ -406,16 +406,16 @@ function PrinterCard({printer,assignments,testing,onTest,onEdit,onDelete,onRemov
       {printer.connection_type === 'serial' && <div className="col-span-2 rounded-xl bg-secondary p-3"><div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Serial</div><div className="mt-1 text-xs font-bold text-foreground">{printer.baud_rate || 9600} baud</div></div>}
     </div>
 
-    {printer.last_error && <div className="mt-3 rounded-xl border border-red-100 bg-red-50 p-3 text-xs font-semibold leading-5 text-red-700">{printer.last_error}</div>}
+    {printer.last_error && <div className="mt-3 rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] p-3 text-xs font-semibold leading-5 text-[var(--danger-text)]">{printer.last_error}</div>}
 
     <div className="mt-3 flex flex-wrap gap-1.5">
       {assignments.length ? assignments.map(a=><span key={a.id} className="rounded-md bg-secondary px-2 py-1 text-[10px] font-bold text-muted-foreground">{ASSIGNMENTS.find(x=>x[0]===a.assignment_type)?.[1] || a.assignment_type}</span>) : <span className="text-[11px] text-muted-foreground">No routing assigned</span>}
     </div>
 
     <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
-      <button disabled={testing} onClick={onTest} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-950 px-3 py-2 text-xs font-black text-amber-300 disabled:opacity-50"><Play size={13}/>{testing?'Testing…':'Test & Print'}</button>
+      <button disabled={testing} onClick={onTest} className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-black text-primary-foreground disabled:opacity-50"><Play size={13}/>{testing?'Testing…':'Test & Print'}</button>
       <button onClick={onEdit} className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-bold text-foreground hover:bg-secondary"><Pencil size={13}/>Edit</button>
-      <button onClick={onDelete} className="inline-flex items-center gap-1.5 rounded-lg border border-red-100 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50"><Trash2 size={13}/>Delete</button>
+      <button onClick={onDelete} className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--danger)] px-3 py-2 text-xs font-bold text-[var(--danger-text)] hover:bg-[var(--danger-soft)]"><Trash2 size={13}/>Delete</button>
       {printer.last_tested_at && <span className="ml-auto self-center text-[10px] text-muted-foreground">Tested {new Date(printer.last_tested_at).toLocaleString('en-KE')}</span>}
     </div>
   </article>;
