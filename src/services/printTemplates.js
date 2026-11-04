@@ -28,17 +28,20 @@ export function wrapThermalText(value, width = 48) {
   return rows.length ? rows : [''];
 }
 
-function fit(value, width) {
-  return wrapThermalText(value, width).join('\n');
-}
-
 function centerRows(value, width) {
-  return wrapThermalText(value, width).map(row => row.padStart(Math.floor((width - row.length) / 2)).padEnd(width));
+  return wrapThermalText(value, width).map(row => row.padStart(Math.floor((width + row.length) / 2)).padEnd(width));
 }
 
 function centeredBlock(values, width) {
   return values.filter(value => value != null && String(value).trim() !== '')
     .flatMap(value => centerRows(value, width));
+}
+
+function labeledRows(label, value, width) {
+  const prefix = String(label || '') + ': ';
+  const available = Math.max(8, width - prefix.length);
+  const rows = wrapThermalText(value == null || value === '' ? '—' : value, available);
+  return rows.map((row, index) => (index === 0 ? prefix : ' '.repeat(prefix.length)) + row);
 }
 
 function divider(width) {
@@ -100,25 +103,23 @@ export function buildOrderTicketText(order = {}, { printer = {}, settings = {}, 
     ...header,
     divider(width),
     ...centerRows(productionCenter + ' ORDER TICKET', width).map(emphasize),
-    ...centerRows('ORDER: ' + orderNo, width).map(emphasize),
-    'TABLE: ' + fit(table, Math.max(8, width - 7)).replace(/\n/g, '\n       '),
-    'SERVER: ' + fit(waiter, Math.max(8, width - 8)).toUpperCase().replace(/\n/g, '\n        '),
-    'DINING: ' + fit(dining, Math.max(8, width - 8)).toUpperCase().replace(/\n/g, '\n        '),
+    ...labeledRows('ORDER', orderNo, width).map(emphasize),
+    ...labeledRows('TABLE', table, width),
+    ...labeledRows('SERVER', waiter.toUpperCase(), width),
+    ...labeledRows('DINING', dining.toUpperCase(), width),
   ];
-  if (order.covers != null || order.guests != null) lines.push('COVERS: ' + (order.covers ?? order.guests));
-  lines.push('TIME: ' + stamp(order.createdAt || order.created_at || now));
+  if (order.covers != null || order.guests != null) lines.push(...labeledRows('COVERS', order.covers ?? order.guests, width));
+  lines.push(...labeledRows('TIME', stamp(order.createdAt || order.created_at || now), width));
   if (order.isReprint || order.reprint) lines.push(...centerRows('*** REPRINT ***', width).map(emphasize));
   if (order.isAddition || order.addition) lines.push(...centerRows('*** ADDITIONAL ITEMS ***', width).map(emphasize));
   lines.push(divider(width));
 
-  // ESC/POS double-size mode improves kitchen readability. Wrap at half-width
-  // so large text never overruns the configured 58mm/80mm paper width.
-  const itemWidth = Math.max(12, Math.floor(width / 2));
+  // Kitchen tickets use normal thermal font size. Bold emphasis keeps the
+  // item line readable without doubling its physical height or reducing width.
   for (const item of items) {
     const qty = itemQuantity(item);
     const heading = qty + ' x ' + itemName(item);
-    const rows = wrapThermalText(heading, itemWidth);
-    lines.push('\x1D\x21\x11' + rows.map(row => emphasize(row)).join('\n') + '\x1D\x21\x00');
+    for (const row of wrapThermalText(heading, width)) lines.push(emphasize(row));
     const modifiers = (Array.isArray(item.modifiers) ? item.modifiers : []).map(modifierLabel).filter(Boolean);
     for (const modifier of modifiers) lines.push(...wrapThermalText('  + ' + modifier, width));
     const note = item.prepNote || item.prep_note || item.notes || item.note || item.kitchen_note;
@@ -150,13 +151,13 @@ export function buildUnsettledReceiptText(settings = {}, data = {}, { printer = 
     divider(width),
     ...centerRows(settings.unsettled_receipt_title || '*** BILL - NOT PAID ***', width).map(emphasize),
     ...centerRows('PAYMENT PENDING', width).map(emphasize),
-    'COPY: ' + copyLabel,
-    'CHECK: ' + (data.checkNo || data.orderNumber || '—'),
-    'TABLE: ' + (data.table || data.tableNumber || '—'),
-    'SERVER: ' + (data.waiter || data.server || 'Unassigned'),
-    'DINING: ' + (data.diningOption || data.dining_option || '—'),
-    'COVERS: ' + (data.covers ?? '—'),
-    'DATE: ' + stamp(data.createdAt || data.created_at || now),
+    ...labeledRows('COPY', copyLabel, width),
+    ...labeledRows('CHECK', data.checkNo || data.orderNumber || '—', width),
+    ...labeledRows('TABLE', data.table || data.tableNumber || '—', width),
+    ...labeledRows('SERVER', data.waiter || data.server || 'Unassigned', width),
+    ...labeledRows('DINING', data.diningOption || data.dining_option || '—', width),
+    ...labeledRows('COVERS', data.covers ?? '—', width),
+    ...labeledRows('DATE', stamp(data.createdAt || data.created_at || now), width),
     divider(width),
     pairLine('QTY  ITEM', 'AMOUNT', width),
     divider(width),
@@ -176,7 +177,6 @@ export function buildUnsettledReceiptText(settings = {}, data = {}, { printer = 
   lines.push(divider(width));
   lines.push(pairLine('SUBTOTAL', money(data.subtotal ?? data.total), width));
   if (Number(data.discount || 0) > 0) lines.push(pairLine('DISCOUNT', '-' + money(data.discount), width));
-  if (Number(data.vat || 0) > 0) lines.push(pairLine('VAT', money(data.vat), width));
   if (Number(data.serviceCharge || data.service_charge || 0) > 0) {
     lines.push(pairLine('SERVICE CHARGE', money(data.serviceCharge ?? data.service_charge), width));
   }
@@ -203,11 +203,11 @@ export function buildFinalReceiptText(settings = {}, data = {}, { printer = {}, 
     ], width),
     divider(width),
     ...centerRows('FINAL RECEIPT', width).map(emphasize),
-    'COPY: ' + copyLabel,
-    'CHECK: ' + (data.checkNo || data.orderNumber || '—'),
-    'TABLE: ' + (data.table || data.tableNumber || '—'),
-    'SERVER: ' + (data.waiter || data.server || 'Unassigned'),
-    'DATE: ' + stamp(data.createdAt || data.created_at || now),
+    ...labeledRows('COPY', copyLabel, width),
+    ...labeledRows('CHECK', data.checkNo || data.orderNumber || '—', width),
+    ...labeledRows('TABLE', data.table || data.tableNumber || '—', width),
+    ...labeledRows('SERVER', data.waiter || data.server || 'Unassigned', width),
+    ...labeledRows('DATE', stamp(data.createdAt || data.created_at || now), width),
     divider(width),
     pairLine('QTY  ITEM', 'AMOUNT', width),
     divider(width),
@@ -222,10 +222,9 @@ export function buildFinalReceiptText(settings = {}, data = {}, { printer = {}, 
   lines.push(divider(width));
   lines.push(pairLine('SUBTOTAL', money(data.subtotal ?? data.total), width));
   if (Number(data.discount || 0) > 0) lines.push(pairLine('DISCOUNT', '-' + money(data.discount), width));
-  if (Number(data.vat || 0) > 0) lines.push(pairLine('VAT', money(data.vat), width));
   if (Number(data.serviceCharge || data.service_charge || 0) > 0) lines.push(pairLine('SERVICE CHARGE', money(data.serviceCharge ?? data.service_charge), width));
   lines.push(divider(width), emphasize(pairLine('TOTAL PAID', money(data.total), width)), divider(width));
-  lines.push('PAYMENT METHOD: ' + (data.paymentMethod || '—'));
+  lines.push(...labeledRows('PAYMENT METHOD', data.paymentMethod || '—', width));
   lines.push(...centeredBlock([settings.footer_line1, settings.footer_line2], width), '');
   return lines.join('\n');
 }
