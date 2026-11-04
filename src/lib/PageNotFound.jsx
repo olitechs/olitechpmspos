@@ -136,7 +136,7 @@ export default function PageNotFound() {
 
         .ot404-copy { position:absolute; z-index:30; left:50%; bottom:22px; width:min(620px,calc(100% - 40px)); transform:translateX(-50%); text-align:center; color:var(--surface); }
         .ot404-copy__code { font:700 11px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.24em; opacity:.72; }
-        .ot404-copy__title { margin-top:4px; font:700 24px/1.15 Roboto,ui-sans-serif,sans-serif; }
+        .ot404-copy__title { margin-top:4px; font:700 24px/1.15 var(--font-heading),ui-sans-serif,sans-serif; }
         .ot404-copy__text { margin-top:5px; font:500 12px/1.4 ui-sans-serif,system-ui,sans-serif; opacity:.82; }
         .ot404-copy__link { display:inline-flex; margin-top:10px; padding:8px 13px; border-radius:8px; background:var(--primary); color:var(--text); text-decoration:none; font:700 12px/1 ui-sans-serif,system-ui,sans-serif; }
         .ot404-copy__link:hover { background:var(--primary-soft); }
