@@ -3,6 +3,8 @@
 -- A row lock serializes room-charge posting against check-out/status transitions.
 begin;
 
+alter table public.folio_charges add column if not exists reference text;
+
 create or replace function public.fn_guard_pos_folio_charge()
 returns trigger
 language plpgsql
