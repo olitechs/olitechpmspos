@@ -7,8 +7,8 @@ const STATUS={
  trial:{label:'Trial',className:'bg-amber-50 text-amber-700 border-amber-200'},
  active:{label:'Active',className:'bg-emerald-50 text-emerald-700 border-emerald-200'},
  past_due:{label:'Past due',className:'bg-orange-50 text-orange-700 border-orange-200'},
- suspended:{label:'Suspended',className:'bg-red-50 text-red-700 border-red-200'},
- cancelled:{label:'Cancelled',className:'bg-slate-100 text-slate-600 border-slate-200'},
+ suspended:{label:'Suspended',className:'bg-[var(--danger-soft)] text-[var(--danger-text)] border-[var(--danger)]'},
+ cancelled:{label:'Cancelled',className:'bg-secondary text-muted-foreground border-border'},
 };
 
 const MODULE_LABELS={
@@ -26,7 +26,7 @@ function formatDate(value){
 }
 
 function StatusBadge({status}){
- const meta=STATUS[status]||{label:status||'Not configured',className:'bg-slate-100 text-slate-600 border-slate-200'};
+ const meta=STATUS[status]||{label:status||'Not configured',className:'bg-secondary text-muted-foreground border-border'};
  return <span className={'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold '+meta.className}>
    <span className="h-1.5 w-1.5 rounded-full bg-current"/>{meta.label}
  </span>;
@@ -57,7 +57,7 @@ export default function SubscriptionPanel(){
 
  if(loading)return <div className="flex flex-1 items-center justify-center p-8"><RefreshCw className="animate-spin text-muted-foreground"/></div>;
 
- if(error)return <div className="p-5"><div className="max-w-2xl rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-700"><div className="flex items-center gap-2 font-bold"><AlertCircle size={17}/> Subscription details unavailable</div><p className="mt-2">{error}</p><button onClick={load} className="mt-4 rounded-xl border border-red-200 bg-surface px-4 py-2 text-xs font-bold">Try again</button></div></div>;
+ if(error)return <div className="p-5"><div className="max-w-2xl rounded-2xl border border-[var(--danger)] bg-[var(--danger-soft)] p-5 text-sm text-[var(--danger-text)]"><div className="flex items-center gap-2 font-bold"><AlertCircle size={17}/> Subscription details unavailable</div><p className="mt-2">{error}</p><button onClick={load} className="mt-4 rounded-xl border border-[var(--danger)] bg-surface px-4 py-2 text-xs font-bold">Try again</button></div></div>;
 
  if(!overview)return <div className="p-5"><div className="max-w-2xl rounded-2xl border border-border bg-surface p-8 text-center"><Building2 className="mx-auto text-muted-foreground"/><h2 className="mt-3 font-black text-foreground">No property assigned</h2><p className="mt-1 text-sm text-muted-foreground">Your account is not currently assigned to a hotel/property. Contact your administrator.</p></div></div>;
 
