@@ -57,8 +57,8 @@ export default function UnsettledReceiptSettings() {
         </div>
       </div>
 
-      {error && <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">{error}</div>}
-      {message && <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-700">{message}</div>}
+      {error && <div className="rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] p-3 text-sm font-semibold text-[var(--danger-text)]">{error}</div>}
+      {message && <div className="rounded-xl border border-[var(--success)] bg-[var(--success-soft)] p-3 text-sm font-semibold text-[var(--success-text)]">{message}</div>}
 
       <section className="rounded-2xl border border-border bg-card p-5">
         <div className="grid gap-5">
