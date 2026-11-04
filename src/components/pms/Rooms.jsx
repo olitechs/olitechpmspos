@@ -45,7 +45,7 @@ export default function Rooms() {
 
       {!isDedicatedPlanner && tab === 'reservations' && (
         <div className="flex-1 overflow-y-auto p-4">
-          {actionError && <div role="alert" className="mb-3 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">{actionError}</div>}
+          {actionError && <div role="alert" className="mb-3 rounded-lg border border-[var(--danger)] bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger-text)]">{actionError}</div>}
           <div className="overflow-hidden rounded-2xl" style={{ background: SURFACE, border: `1px solid ${BORDER}` }}>
             <table className="w-full text-sm">
               <thead><tr style={{ background: SURFACE2, borderBottom: `1px solid ${BORDER}` }}>
