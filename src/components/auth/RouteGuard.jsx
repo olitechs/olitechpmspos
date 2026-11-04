@@ -160,7 +160,7 @@ export default function RouteGuard({ module, children }) {
         <p className="mt-2 text-center text-sm text-muted-foreground">
           {moduleLabel[moduleKey] || 'Protected workspace'} · Select your staff profile, then enter your assigned 4–6 digit PIN.
         </p>
-        {error && !pinOpen && <div role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+        {error && !pinOpen && <div role="alert" className="mt-4 rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] p-3 text-sm text-[var(--danger-text)]">{error}</div>}
         <div className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-2">
           {visibleStaff.length ? visibleStaff.map((person) => (
             <button key={person.id} type="button" onClick={() => choose(person)}
@@ -183,5 +183,5 @@ export default function RouteGuard({ module, children }) {
 }
 
 export function DeniedScreen({ message = 'Access Denied — Contact Property Admin.' }) {
-  return <div className="flex h-full flex-1 items-center justify-center bg-canvas p-6"><div className="text-center"><div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-surface text-xl font-black text-primary">OT</div><ShieldAlert className="mx-auto h-8 w-8 text-red-600"/><h2 className="mt-3 text-xl font-black text-foreground">Access Denied</h2><p className="mt-1 text-sm text-muted-foreground">{message}</p></div></div>;
+  return <div className="flex h-full flex-1 items-center justify-center bg-canvas p-6"><div className="text-center"><div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-surface text-xl font-black text-primary">OT</div><ShieldAlert className="mx-auto h-8 w-8 text-[var(--danger)]"/><h2 className="mt-3 text-xl font-black text-foreground">Access Denied</h2><p className="mt-1 text-sm text-muted-foreground">{message}</p></div></div>;
 }
