@@ -25,6 +25,7 @@ export default function Folio() {
   const [folio, setFolio] = useState(null);
   const [payments, setPayments] = useState([]);
   const [refunds, setRefunds] = useState([]);
+  const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -54,7 +55,10 @@ export default function Folio() {
     } catch (e) { setError(e.message || 'Guest folio could not be loaded.'); }
   };
 
-  useEffect(() => { loadReservations(); }, [propertyId]);
+  useEffect(() => {
+    loadReservations();
+    if (propertyId) pmsService.listFolioEmployees(propertyId).then(setEmployees).catch(() => setEmployees([]));
+  }, [propertyId]);
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return reservations.filter((r) => !q || [r.guest_name, r.phone, r.room_id, r.id, r.channel].some((v) => String(v || '').toLowerCase().includes(q)));
@@ -80,6 +84,7 @@ export default function Folio() {
   const additionalCharges = charges.filter((c) => c.category !== 'accommodation' && c.category !== 'discount' && c.source !== 'pos').reduce((sum, c) => sum + Number(c.amount || 0), 0);
   const balance = chargeTotal - netPayments;
   const roomLabel = folio?.room?.number ?? selected?.room_id?.slice(0, 8) ?? '—';
+  const employeeName = (actorId) => employees.find((employee) => employee.user_id === actorId || employee.id === actorId)?.full_name || (actorId ? actorId.slice(0, 8) : 'System');
   const refundedByPayment = (paymentId) => refunds.filter((r) => r.target_type === 'payment' && r.target_id === paymentId).reduce((sum, r) => sum + Number(r.amount || 0), 0);
 
   const printStatement = () => window.print();
@@ -92,8 +97,8 @@ export default function Folio() {
   };
   const exportStatement = () => {
     const rows = [
-      ['Date','Category','Description','Reference','Source','Quantity','Unit price','Amount','Status'],
-      ...charges.map((c) => [c.created_at, categoryLabels[c.category] || c.category || c.source, c.description, c.reference || '', c.source_module || c.source, c.quantity ?? 1, c.unit_price ?? c.amount, c.amount, c.reversal_of_id ? 'Reversal' : 'Posted']),
+      ['Date','Category','Description','Reference','Source','Quantity','Unit price','Amount','Employee','Status'],
+      ...charges.map((c) => [c.created_at, categoryLabels[c.category] || c.category || c.source, c.description, c.reference || '', c.source_module || c.source, c.quantity ?? 1, c.unit_price ?? c.amount, c.amount, employeeName(c.created_by), c.reversal_of_id ? 'Reversal' : 'Posted']),
       ...payments.map((p) => [p.created_at, Number(p.amount) < 0 ? 'Refund' : 'Payment', p.method, p.reference || '', 'Cashier', 1, Math.abs(p.amount), p.amount, p.status]),
     ];
     const csv = rows.map((row) => row.map((v) => `"${String(v ?? '').replaceAll('"','""')}"`).join(',')).join('\r\n');
@@ -160,7 +165,7 @@ export default function Folio() {
                 {grouped.length ? grouped.map(({category,rows})=><div key={category} className="mb-5 last:mb-0">
                   <div className="mb-2 flex items-center justify-between"><h4 className="text-sm font-semibold text-[var(--text)]">{categoryLabels[category]}</h4><span className="text-xs text-[var(--text-muted)]">{rows.length} transactions</span></div>
                   <div className="overflow-x-auto"><table className="w-full min-w-[900px] text-xs"><thead><tr className="border-b border-[var(--border)] text-left text-[10px] uppercase text-[var(--text-muted)]">{['Date & time','Reference','Source','Description','Qty','Unit price','Total','Employee','Status','Action'].map(h=><th key={h} className="px-2 py-2">{h}</th>)}</tr></thead><tbody>
-                    {rows.map((c)=><tr key={c.id} className="border-b border-[var(--border)]"><td className="px-2 py-2 text-[var(--text-muted)]">{new Date(c.created_at).toLocaleString('en-KE')}</td><td className="px-2 py-2 font-mono">{c.reference || c.id.slice(0,8)}</td><td className="px-2 py-2 capitalize">{c.source_module || c.source}</td><td className="px-2 py-2 font-medium">{c.description}</td><td className="px-2 py-2 text-right">{c.quantity ?? 1}</td><td className="px-2 py-2 text-right">{money(c.unit_price ?? c.amount)}</td><td className="px-2 py-2 text-right font-semibold">{money(c.amount)}</td><td className="px-2 py-2 font-mono">{c.created_by?.slice(0,8) || 'System'}</td><td className="px-2 py-2">{c.reversal_of_id ? 'Reversal' : 'Posted'}</td><td className="px-2 py-2 print:hidden">{canManage && Number(c.amount)>0 && !c.reversal_of_id && !charges.some((x)=>x.reversal_of_id===c.id) ? <button className="text-xs font-semibold text-[var(--danger)]" disabled={busy} onClick={()=>{const reason=window.prompt('Reason for reversing this charge:');if(reason?.trim())run(()=>pmsService.reverseFolioCharge({propertyId,chargeId:c.id,reason}), 'Charge reversal posted.')}}>Reverse</button> : '—'}</td></tr>)}
+                    {rows.map((c)=><tr key={c.id} className="border-b border-[var(--border)]"><td className="px-2 py-2 text-[var(--text-muted)]">{new Date(c.created_at).toLocaleString('en-KE')}</td><td className="px-2 py-2 font-mono">{c.reference || c.id.slice(0,8)}</td><td className="px-2 py-2 capitalize">{c.source_module || c.source}</td><td className="px-2 py-2 font-medium">{c.description}</td><td className="px-2 py-2 text-right">{c.quantity ?? 1}</td><td className="px-2 py-2 text-right">{money(c.unit_price ?? c.amount)}</td><td className="px-2 py-2 text-right font-semibold">{money(c.amount)}</td><td className="px-2 py-2 font-mono">{employeeName(c.created_by)}</td><td className="px-2 py-2">{c.reversal_of_id ? 'Reversal' : 'Posted'}</td><td className="px-2 py-2 print:hidden">{canManage && Number(c.amount)>0 && !c.reversal_of_id && !charges.some((x)=>x.reversal_of_id===c.id) ? <button className="text-xs font-semibold text-[var(--danger)]" disabled={busy} onClick={()=>{const reason=window.prompt('Reason for reversing this charge:');if(reason?.trim())run(()=>pmsService.reverseFolioCharge({propertyId,chargeId:c.id,reason}), 'Charge reversal posted.')}}>Reverse</button> : '—'}</td></tr>)}
                   </tbody></table></div>
                 </div>) : <div className="rounded-lg bg-[var(--canvas)] p-6 text-center text-sm text-[var(--text-muted)]">No charge transactions have been posted to this folio.</div>}
               </section>
