@@ -56,7 +56,7 @@ create table public.payments (
 create or replace function public.is_member_of_property(p_property_id uuid)
 returns boolean language sql stable as $$ select true $$;
 create or replace function public.is_platform_owner()
-returns boolean language sql stable as $ select false $;
+returns boolean language sql stable as $function$ select false $function$;
 
 -- Existing front-desk payment RPC contract, included so the migration test
 -- verifies that deposits become posted ledger rows rather than metadata only.
