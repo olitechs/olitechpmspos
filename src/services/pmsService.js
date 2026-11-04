@@ -239,13 +239,80 @@ export const pmsService = {
 	},
 
 	async getFolio(reservationId) {
-		const [{ data: charges, error: chargesError }, { data: totals, error: totalsError }] = await Promise.all([
+		const [{ data: reservation, error: reservationError }, { data: charges, error: chargesError }, { data: totals, error: totalsError }] = await Promise.all([
+			supabase.from('reservations').select('*').eq('id', reservationId).maybeSingle(),
 			supabase.from('folio_charges').select('*').eq('reservation_id', reservationId).order('created_at'),
 			supabase.from('folio_totals').select('*').eq('reservation_id', reservationId).maybeSingle(),
 		]);
+		if (reservationError) throw new Error(reservationError.message);
 		if (chargesError) throw new Error(chargesError.message);
 		if (totalsError) throw new Error(totalsError.message);
-		return { charges: charges || [], totals: totals || { subtotal: 0, paid: 0, balance: 0 } };
+		let room = null;
+		if (reservation?.room_id) {
+			const { data, error } = await supabase.from('rooms').select('id,number,room_type_id').eq('id', reservation.room_id).maybeSingle();
+			if (error) throw new Error(error.message);
+			room = data;
+		}
+		return { reservation, room, charges: charges || [], totals: totals || { subtotal: 0, paid: 0, balance: 0 } };
+	},
+
+	async listFolioRefunds(reservationId) {
+		const { data, error } = await supabase.from('cashier_refunds').select('*').eq('reservation_id', reservationId).order('created_at', { ascending: false });
+		if (error) throw new Error(error.message);
+		return data || [];
+	},
+
+	async postFolioCharge({ propertyId, reservationId, category, description, quantity, unitPrice, reference, idempotencyKey }) {
+		const { data, error } = await supabase.rpc('fn_post_folio_charge', {
+			p_property_id: propertyId, p_reservation_id: reservationId, p_category: category, p_description: description,
+			p_quantity: Number(quantity || 1), p_unit_price: Number(unitPrice || 0), p_reference: reference || null,
+			p_idempotency_key: idempotencyKey,
+		});
+		if (error) throw new Error(error.message);
+		return data;
+	},
+
+	async postFolioPayment({ propertyId, reservationId, amount, method, reference, idempotencyKey }) {
+		const { data, error } = await supabase.rpc('fn_post_folio_payment', {
+			p_property_id: propertyId, p_reservation_id: reservationId, p_amount: Number(amount || 0),
+			p_method: method, p_reference: reference || null, p_idempotency_key: idempotencyKey,
+		});
+		if (error) throw new Error(error.message);
+		return data;
+	},
+
+	async refundFolioPayment({ propertyId, paymentId, amount, method, reason, idempotencyKey }) {
+		const { data, error } = await supabase.rpc('fn_post_folio_refund', {
+			p_property_id: propertyId, p_payment_id: paymentId, p_amount: Number(amount || 0),
+			p_refund_method: method, p_reason: reason, p_idempotency_key: idempotencyKey,
+		});
+		if (error) throw new Error(error.message);
+		return data;
+	},
+
+	async reverseFolioCharge({ propertyId, chargeId, reason }) {
+		const { data, error } = await supabase.rpc('fn_reverse_folio_charge', {
+			p_property_id: propertyId, p_charge_id: chargeId, p_reason: reason,
+		});
+		if (error) throw new Error(error.message);
+		return data;
+	},
+
+	async applyFolioDiscount({ propertyId, reservationId, amount, reason, idempotencyKey }) {
+		const { data, error } = await supabase.rpc('fn_apply_folio_discount', {
+			p_property_id: propertyId, p_reservation_id: reservationId, p_amount: Number(amount || 0),
+			p_reason: reason, p_idempotency_key: idempotencyKey,
+		});
+		if (error) throw new Error(error.message);
+		return data;
+	},
+
+	async transferFolioCharges({ propertyId, chargeIds, targetReservationId, reason }) {
+		const { data, error } = await supabase.rpc('fn_transfer_folio_charges', {
+			p_property_id: propertyId, p_charge_ids: chargeIds, p_target_reservation_id: targetReservationId, p_reason: reason,
+		});
+		if (error) throw new Error(error.message);
+		return data;
 	},
 
 	async recordPayment({ propertyId, reservationId, amount, method }) {
