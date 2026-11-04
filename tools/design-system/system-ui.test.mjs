@@ -57,7 +57,7 @@ test('shared operational UI exports the Phase 1 primitives', () => {
     'FilterBar', 'DataTable', 'ConfirmDialog', 'Drawer', 'Tabs',
     'SegmentedControl', 'FormField',
   ]) {
-    assert.match(source, new RegExp('export function ' + component + '\b'), component + ' should be exported');
+    assert.ok(source.includes('export function ' + component + '('), component + ' should be exported');
   }
 });
 
