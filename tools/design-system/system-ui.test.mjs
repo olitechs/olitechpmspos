@@ -13,6 +13,14 @@ const receiptSettings = readFileSync(new URL('../../src/components/settings/Rece
 const operationalSettings = readFileSync(new URL('../../src/components/settings/OperationalSettingsPage.jsx', import.meta.url), 'utf8');
 const catalogue = readFileSync(new URL('../../src/components/settings/Phase2CataloguePage.jsx', import.meta.url), 'utf8');
 const accessError = readFileSync(new URL('../../src/components/ui/UserNotRegisteredError.jsx', import.meta.url), 'utf8');
+const nightAudit = readFileSync(new URL('../../src/components/modules/NightAudit.jsx', import.meta.url), 'utf8');
+const cashier = readFileSync(new URL('../../src/components/modules/Cashier.jsx', import.meta.url), 'utf8');
+const housekeeping = readFileSync(new URL('../../src/components/modules/Housekeeping.jsx', import.meta.url), 'utf8');
+const subscriptionPanel = readFileSync(new URL('../../src/components/admin/SubscriptionPanel.jsx', import.meta.url), 'utf8');
+const printerSettings = readFileSync(new URL('../../src/pages/SettingsPrinters.jsx', import.meta.url), 'utf8');
+const adminProperties = readFileSync(new URL('../../src/pages/admin/AdminProperties.jsx', import.meta.url), 'utf8');
+const adminRoute = readFileSync(new URL('../../src/lib/AdminRoute.jsx', import.meta.url), 'utf8');
+const protectedRoute = readFileSync(new URL('../../src/components/ui/ProtectedRoute.jsx', import.meta.url), 'utf8');
 
 
 test('shared operational UI exports the Phase 1 primitives', () => {
@@ -107,7 +115,7 @@ test('mobile sidebar exposes expanded state and closes with Escape', () => {
 
 test('operational screens use semantic theme tokens for text, surfaces, focus and feedback', () => {
   const screens = {
-    reservations, folio, posDevices, receiptSettings, operationalSettings, catalogue, accessError,
+    reservations, folio, posDevices, receiptSettings, operationalSettings, catalogue, accessError, nightAudit, cashier, housekeeping, subscriptionPanel, printerSettings, adminProperties, adminRoute, protectedRoute,
   };
   for (const [name, source] of Object.entries(screens)) {
     assert.doesNotMatch(
@@ -123,6 +131,15 @@ test('operational screens use semantic theme tokens for text, surfaces, focus an
   assert.match(operationalSettings, /bg-primary text-primary-foreground/);
   assert.match(catalogue, /bg-primary text-primary-foreground/);
   assert.match(accessError, /bg-surface/);
+
+  assert.match(nightAudit, /var\\(--danger-soft\\)/);
+  assert.match(cashier, /var\\(--danger-text\\)/);
+  assert.match(housekeeping, /var\\(--success-soft\\)/);
+  assert.match(subscriptionPanel, /var\\(--danger-soft\\)/);
+  assert.match(printerSettings, /bg-primary text-primary-foreground/);
+  assert.match(adminProperties, /var\\(--danger-soft\\)/);
+  assert.match(adminRoute, /border-\\[var\\(--border\\)\\]/);
+  assert.match(protectedRoute, /border-\\[var\\(--border\\)\\]/);
 });
 
 test('Room Planner toolbar exposes the approved controls and responsive dimensions', () => {
