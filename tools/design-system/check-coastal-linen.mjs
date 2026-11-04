@@ -5,23 +5,23 @@ const root = process.cwd();
 const css = readFileSync(join(root, 'src/index.css'), 'utf8');
 const tailwind = readFileSync(join(root, 'tailwind.config.js'), 'utf8');
 const lightTokens = [
-  '--canvas:#F4F7F8', '--surface:#FFFFFF', '--sidebar:#E6EFF0', '--border:#C9D6DA',
-  '--input-border:#7C9199', '--panel-head:#E6EFF0', '--text:#14232B', '--text-muted:#4F646D',
-  '--primary:#0F7C86', '--on-primary:#FFFFFF', '--primary-hover:#0B6169',
-  '--primary-text:#0B6169', '--primary-soft:#DDF0F1', '--accent:#9A5F2B',
+  '--canvas:#E3F2FD', '--surface:#FFFFFF', '--sidebar:#EAF4FD', '--border:#B8D7F2',
+  '--input-border:#6F9FC7', '--panel-head:#E3F2FD', '--text:#123B63', '--text-muted:#456987',
+  '--primary:#2196F3', '--on-primary:#062C50', '--primary-hover:#0D47A1',
+  '--primary-text:#0D47A1', '--primary-soft:#E3F2FD', '--accent:#90CAF9',
   '--success:#1B7A57', '--success-soft:#E3F3EC', '--danger:#B42318',
   '--danger-soft:#FBE8E6', '--warning:#8F5400', '--warning-soft:#FBEFD9',
-  '--info:#2A5AA7', '--info-soft:#E4EDF9', '--pay-none:#FC7F2C',
+  '--info:#0D47A1', '--info-soft:#E3F2FD', '--pay-none:#FC7F2C',
   '--pay-part:#E0CD29', '--pay-paid:#79AB3E', '--pay-opt:#3CB5AE',
 ];
 const darkTokens = [
-  '--canvas:#10171A', '--surface:#172126', '--sidebar:#131C20', '--border:#2C3B42',
-  '--input-border:#5A6F77', '--panel-head:#1E2B31', '--text:#E3EBED', '--text-muted:#9DB0B8',
-  '--primary:#137682', '--on-primary:#F2F8F9', '--primary-hover:#0E6A75',
-  '--primary-text:#5CC6D0', '--primary-soft:#17353B', '--accent:#D4A06E',
+  '--canvas:#0B1726', '--surface:#12243A', '--sidebar:#102D4C', '--border:#2C4F70',
+  '--input-border:#6F91B1', '--panel-head:#173653', '--text:#EAF4FD', '--text-muted:#B4CDE3',
+  '--primary:#0D47A1', '--on-primary:#FFFFFF', '--primary-hover:#2196F3',
+  '--primary-text:#90CAF9', '--primary-soft:#153B5C', '--accent:#90CAF9',
   '--success:#4CC39A', '--success-soft:#143A2D', '--danger:#FF8A84',
   '--danger-soft:#3E1E1E', '--warning:#F0A56F', '--warning-soft:#3F2318',
-  '--info:#8DB4F0', '--info-soft:#1A2E52', '--pay-none:#8F4118',
+  '--info:#90CAF9', '--info-soft:#153B5C', '--pay-none:#8F4118',
   '--pay-part:#7A5A10', '--pay-paid:#33591C', '--pay-opt:#17524F',
 ];
 const errors = [];
