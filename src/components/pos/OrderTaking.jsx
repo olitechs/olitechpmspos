@@ -379,14 +379,14 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
               <div><div className="flex items-center gap-2 text-base font-medium text-[var(--text)]"><AlertTriangle size={18} className="text-[var(--danger-text)]"/>Cancel sent item</div><p className="mt-1 text-xs text-[var(--text-muted)]">This item was already sent to production or the bill was printed. A control void will be recorded.</p></div>
               <button onClick={()=>setRemoveTarget(null)} className="rounded-lg p-2 text-[var(--text-muted)] hover:bg-secondary"><X size={18}/></button>
             </div>
-            <div className="mt-4 rounded-2xl border border-red-100 bg-red-50 p-4">
+            <div className="mt-4 rounded-2xl border border-[var(--danger)] bg-[var(--danger-soft)] p-4">
               <div className="font-medium text-[var(--text)]">{removeTarget.line.name}</div>
               <div className="mt-1 text-xs text-muted-foreground">Original quantity: {removeTarget.line.qty} · Removing: {removeTarget.removeQty} · Remaining: {Math.max(0, removeTarget.line.qty-removeTarget.removeQty)}</div>
             </div>
             <label className="mt-4 block text-xs font-medium  text-[var(--text-muted)]">Reason required
-              <textarea value={removeReason} onChange={e=>setRemoveReason(e.target.value)} rows={3} placeholder="Wrong order, guest cancellation, duplicate item…" className="mt-2 w-full resize-none rounded-xl border border-[var(--border)] bg-secondary p-3 text-sm outline-none focus:border-red-400"/>
+              <textarea value={removeReason} onChange={e=>setRemoveReason(e.target.value)} rows={3} placeholder="Wrong order, guest cancellation, duplicate item…" className="mt-2 w-full resize-none rounded-xl border border-[var(--border)] bg-secondary p-3 text-sm outline-none focus:border-[var(--danger)]"/>
             </label>
-            {removeError && <div className="mt-3 rounded-xl bg-red-50 p-3 text-xs font-medium text-red-700">{removeError}</div>}
+            {removeError && <div className="mt-3 rounded-xl bg-[var(--danger-soft)] p-3 text-xs font-medium text-[var(--danger-text)]">{removeError}</div>}
             <div className="mt-4 flex items-center gap-2 text-[11px] font-medium text-[var(--text-muted)]"><ShieldCheck size={15}/>Kitchen/Bar control slip will be printed when enabled.</div>
             <div className="mt-4 flex justify-end gap-2"><button onClick={()=>setRemoveTarget(null)} className="rounded-xl border border-[var(--border)] px-4 py-2.5 text-sm font-medium">Keep Item</button><button disabled={removeBusy} onClick={requestRemoval} className="rounded-xl bg-[var(--danger)] px-4 py-2.5 text-sm font-medium text-foreground disabled:opacity-50">{removeBusy?'Removing…':needsManagerPin?'Request Manager PIN':'Confirm Void'}</button></div>
           </div>
