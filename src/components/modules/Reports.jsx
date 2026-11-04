@@ -126,7 +126,7 @@ export default function Reports() {
         </div>
       </div>
 
-      {error && <div role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+      {error && <div role="alert" className="mb-4 rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] p-3 text-sm text-[var(--danger-text)]">{error}</div>}
 
       <div className="mb-4 flex flex-wrap gap-2">{tabs.map(([key,label,Icon])=><button key={key} type="button" onClick={()=>setTab(key)} className="inline-flex min-h-10 items-center gap-2 rounded-xl px-3 text-xs font-medium" style={{ background: tab===key ? 'var(--primary)' : SURFACE, color: tab===key ? 'var(--primary-foreground)' : NAVY, border: `1px solid ${tab===key ? NAVY : BORDER}` }}><Icon size={14}/>{label}</button>)}</div>
 
