@@ -55,8 +55,6 @@ export default function PageNotFound() {
       </div>
 
       <style>{`
-        @import url('https://fonts.googleapis.com/css?family=Roboto:700');
-
         .ot404-page {
           min-height: 100vh;
           width: 100%;
@@ -132,7 +130,7 @@ export default function PageNotFound() {
         .ot404-glow__ball_9 { left:113px; width:8px; height:8px; animation:ot404-fadeUp 4s infinite; animation-delay:.6s; }
         .ot404-glow__ball_10 { left:120px; width:4px; height:4px; animation:ot404-fadeUp 9s infinite; animation-delay:.92s; }
 
-        .ot404-numbers { z-index:20; top:0; left:122px; color:var(--surface); font-family:'Roboto',sans-serif; font-size:200px; display:flex; }
+        .ot404-numbers { z-index:20; top:0; left:122px; color:var(--surface); font-family:var(--font-heading); font-size:200px; display:flex; }
         .ot404-numbers__item { margin:0 10px; animation:ot404-bounceUpDown 5s infinite; }
         .ot404-numbers__item_1 { animation-delay:.3s; } .ot404-numbers__item_2 { animation-duration:5.4s; animation-delay:.5s; } .ot404-numbers__item_3 { animation-delay:.3s; }
 
