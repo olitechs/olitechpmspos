@@ -17,6 +17,8 @@ test('reservation metadata migration is additive and keeps the legacy RPC intact
   assert.match(migration, /lower\(trim\(g\.email\)\) = v_email/i);
   assert.match(migration, /different guest profiles/i);
   assert.match(migration, /returning \* into v_res/i);
+  assert.match(migration, /fn_record_front_desk_payment/i);
+  assert.match(migration, /payment_status = 'not_paid'[\s\S]*?fn_record_front_desk_payment/i);
   assert.match(migration, /create or replace function public\.fn_create_reservation_bundle\([\s\S]*?p_details jsonb/i);
   assert.match(migration, /public\.fn_create_reservation_bundle\([\s\S]*?p_arrival, p_departure[\s\S]*?p_notes\s*\n\s*\)/i);
   assert.doesNotMatch(migration, /drop table|truncate table|delete from public\.(reservations|guests|payments|folio_charges)/i);
