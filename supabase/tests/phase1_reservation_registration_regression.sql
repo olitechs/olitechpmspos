@@ -27,7 +27,7 @@ begin
     date '2026-12-01',date '2026-12-04','partially_paid','direct','bb',2,0,'[]'::jsonb,30000,15000,'Phase 1 test',
     jsonb_build_object(
       'guest',jsonb_build_object('email','ADA@example.com','nationality','Kenyan','idNumber','P12345','alternativePhone','+254711000001'),
-      'booking',jsonb_build_object('submissionId',v_submission,'ratePlanId',v_rate_plan,'accommodationSubtotal',30000,'source','direct')
+      'booking',jsonb_build_object('submissionId',v_submission,'ratePlanId',v_rate_plan,'accommodationSubtotal',30000,'source','direct','depositMethod','mpesa')
     )
   );
   if v_result_count <> 1 then raise exception 'Expected one reservation row, got %',v_result_count; end if;
@@ -36,6 +36,12 @@ begin
   if v_details->>'submissionId' <> v_submission then raise exception 'Idempotency key was not persisted'; end if;
   if not exists(select 1 from public.guests where id=v_guest_one and lower(email)='ada@example.com' and id_number='P12345' and alternative_phone='+254711000001') then
     raise exception 'Guest metadata was not persisted';
+  end if;
+  if not exists(select 1 from public.payments where reservation_id=(select id from public.reservations where room_id=v_room_one) and amount=15000 and method='mpesa' and status='posted') then
+    raise exception 'Received deposit was not posted to the payment ledger';
+  end if;
+  if (select amount_paid from public.reservations where room_id=v_room_one) <> 15000 then
+    raise exception 'Reservation paid total does not reconcile to the posted deposit';
   end if;
 
   -- Same email, changed primary phone, separate room: must reuse the guest profile.
@@ -56,6 +62,9 @@ begin
   );
   if v_result_count <> 1 or (select count(*) from public.reservations where booking_details->>'submissionId'=v_submission) <> 1 then
     raise exception 'Duplicate submission was not idempotent';
+  end if;
+  if (select count(*) from public.payments where reservation_id=(select id from public.reservations where room_id=v_room_one)) <> 1 then
+    raise exception 'Idempotent retry duplicated the deposit payment';
   end if;
 
   -- Invalid capacity and unavailable operational status must fail closed.
