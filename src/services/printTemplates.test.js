@@ -50,7 +50,8 @@ test('order ticket includes station metadata, modifiers and prep notes without p
   assert.match(output, /KITCHEN ORDER TICKET/);
   assert.match(output, /COASTAL HOTEL/);
   assert.match(output, /Thank you for visiting/);
-  assert.ok(output.includes(String.fromCharCode(29) + '!' + String.fromCharCode(17)), 'order item names use double-size ESC/POS mode');
+  assert.ok(!output.includes(String.fromCharCode(29) + '!' + String.fromCharCode(17)), 'order items stay at normal thermal font size');
+  assert.ok(output.split('\n').every(line => line.length <= 48), 'all order ticket lines fit 80mm paper width');
   assert.match(output, /ORD-001/);
   assert.match(output, /T-04/);
   assert.match(output, /AMINA/);
@@ -87,13 +88,15 @@ test('unsettled bill is prominently unpaid, aligned and has totals without a pay
   assert.match(output, /FRESH JUICE/i);
   assert.match(output, /SUBTOTAL/);
   assert.match(output, /DISCOUNT/);
-  assert.match(output, /VAT/);
+  assert.doesNotMatch(output, /VAT/);
   assert.match(output, /SERVICE CHARGE/);
   assert.match(output, /TOTAL DUE/);
   assert.match(output, /NOT A TAX INVOICE/);
   assert.doesNotMatch(output, /Payment Method/);
   assert.doesNotMatch(output, /FINAL RECEIPT/);
   assert.ok(output.split('\n').every(line => line.length <= 32));
+  assert.ok(output.includes('         COASTAL HOTEL'), 'company header is horizontally centered');
+  assert.ok(output.includes('     Thank you'), 'company footer is horizontally centered');
 });
 
 
