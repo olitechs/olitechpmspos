@@ -11,7 +11,7 @@ const categoryLabels = {
   airport_transfer: 'Airport transfers', excursion: 'Excursions', room_service: 'Room service',
   other_services: 'Other services', tax_adjustment: 'Taxes and adjustments', discount: 'Discounts',
 };
-const categories = Object.keys(categoryLabels).filter((key) => key !== 'discount');
+const categories = Object.keys(categoryLabels);
 const managerRoles = ['owner', 'admin', 'manager', 'hotel_admin', 'super_admin', 'fb_manager', 'general_manager', 'front_office_manager'];
 
 export default function Folio() {
@@ -83,6 +83,13 @@ export default function Folio() {
   const refundedByPayment = (paymentId) => refunds.filter((r) => r.target_type === 'payment' && r.target_id === paymentId).reduce((sum, r) => sum + Number(r.amount || 0), 0);
 
   const printStatement = () => window.print();
+  const printPaymentReceipt = (payment) => {
+    const popup = window.open('', '_blank', 'width=720,height=760');
+    if (!popup) { setError('Receipt window was blocked. Allow pop-ups to print the saved receipt.'); return; }
+    const safe = (value) => String(value ?? '').replace(/[&<>\"']/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '\"':'&quot;', "'":'&#39;' }[char]));
+    const html = '<!doctype html><html><head><title>Payment receipt</title><style>body{font:14px Arial,sans-serif;color:#17212b;padding:32px;max-width:620px;margin:auto}.row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #e5eaee}.total{font-size:20px;font-weight:bold}</style></head><body><h1>Guest Payment Receipt</h1><p>OliTechs PMS · Guest Folio</p><div class="row"><span>Guest</span><b>'+safe(selected.guest_name)+'</b></div><div class="row"><span>Reservation</span><b>'+safe(selected.id)+'</b></div><div class="row"><span>Receipt reference</span><b>'+safe(payment.reference || payment.id)+'</b></div><div class="row"><span>Date</span><b>'+safe(new Date(payment.created_at).toLocaleString('en-KE'))+'</b></div><div class="row"><span>Method</span><b>'+safe(payment.method)+'</b></div><div class="row"><span>Transaction</span><b>'+(Number(payment.amount)<0?'Refund':'Payment')+'</b></div><div class="row total"><span>Amount</span><b>'+safe(money(Math.abs(payment.amount)))+'</b></div><p>Status: '+safe(payment.status)+'. This receipt reflects a transaction already saved in the guest ledger.</p><script>window.onload=function(){window.print();};</script></body></html>';
+    popup.document.write(html); popup.document.close(); popup.focus();
+  };
   const exportStatement = () => {
     const rows = [
       ['Date','Category','Description','Reference','Source','Quantity','Unit price','Amount','Status'],
@@ -161,7 +168,7 @@ export default function Folio() {
               <section className="p-4">
                 <div className="mb-3 flex items-center justify-between"><h3 className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">Payment, refund & receipt history</h3><span className="text-xs text-[var(--text-muted)]">{payments.length} ledger entries</span></div>
                 <div className="overflow-x-auto"><table className="w-full min-w-[750px] text-xs"><thead><tr className="border-b border-[var(--border)] text-left text-[10px] uppercase text-[var(--text-muted)]">{['Date & time','Receipt / reference','Method','Transaction','Amount','Status','Receipt'].map(h=><th key={h} className="px-2 py-2">{h}</th>)}</tr></thead><tbody>
-                  {payments.map((p)=><tr key={p.id} className="border-b border-[var(--border)]"><td className="px-2 py-3 text-[var(--text-muted)]">{new Date(p.created_at).toLocaleString('en-KE')}</td><td className="px-2 py-3 font-mono">{p.reference || p.id.slice(0,8)}</td><td className="px-2 py-3 capitalize">{String(p.method).replace('_',' ')}</td><td className="px-2 py-3">{Number(p.amount)<0?'Refund':'Payment'}</td><td className="px-2 py-3 text-right font-semibold">{money(Math.abs(p.amount))}</td><td className="px-2 py-3">{p.status}</td><td className="px-2 py-3 print:hidden"><div className="flex gap-2">{Number(p.amount)>0 && p.status==='posted' && canManage && <button className="font-semibold text-[var(--danger)]" onClick={()=>openRefund(p)} disabled={busy || refundedByPayment(p.id)>=Number(p.amount)-0.005}>Refund</button>}<button className="font-semibold text-[var(--primary)]" onClick={()=>window.print()}><Printer size={13}/></button></div></td></tr>)}
+                  {payments.map((p)=><tr key={p.id} className="border-b border-[var(--border)]"><td className="px-2 py-3 text-[var(--text-muted)]">{new Date(p.created_at).toLocaleString('en-KE')}</td><td className="px-2 py-3 font-mono">{p.reference || p.id.slice(0,8)}</td><td className="px-2 py-3 capitalize">{String(p.method).replace('_',' ')}</td><td className="px-2 py-3">{Number(p.amount)<0?'Refund':'Payment'}</td><td className="px-2 py-3 text-right font-semibold">{money(Math.abs(p.amount))}</td><td className="px-2 py-3">{p.status}</td><td className="px-2 py-3 print:hidden"><div className="flex gap-2">{Number(p.amount)>0 && p.status==='posted' && canManage && <button className="font-semibold text-[var(--danger)]" onClick={()=>openRefund(p)} disabled={busy || refundedByPayment(p.id)>=Number(p.amount)-0.005}>Refund</button>}<button className="font-semibold text-[var(--primary)]" onClick={()=>printPaymentReceipt(p)}><Printer size={13}/></button></div></td></tr>)}
                   {!payments.length&&<tr><td colSpan="7" className="px-3 py-8 text-center text-sm text-[var(--text-muted)]">No payments recorded.</td></tr>}
                 </tbody></table></div>
                 {refunds.length>0&&<div className="mt-4 rounded-lg border border-[var(--border)] p-3"><h4 className="mb-2 text-xs font-semibold text-[var(--text)]">Refund audit records</h4>{refunds.map((r)=><div key={r.id} className="flex flex-wrap justify-between gap-2 border-b border-[var(--border)] py-2 text-xs last:border-0"><span>{r.method} · {r.target_type} · {r.target_id?.slice(0,8)}</span><strong>{money(r.amount)}</strong></div>)}</div>}
