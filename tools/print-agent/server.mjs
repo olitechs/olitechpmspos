@@ -247,13 +247,14 @@ function startHeartbeat() {
   setInterval(()=>supabaseV2.from('print_agents').update({status:'online',last_seen:new Date().toISOString()}).eq('id',AGENT_ID).then(({error})=>error&&console.error('[Print Agent v2] heartbeat:',error.message)),30000);
 }
 
-function json(res, status, body) {
+function json(res, status, body, extraHeaders = {}) {
   res.writeHead(status, {
     'Access-Control-Allow-Headers': 'content-type',
     'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
     'Content-Type': 'application/json; charset=utf-8',
     'Cache-Control': 'no-store',
     Vary: 'Origin',
+    ...extraHeaders,
   });
   res.end(JSON.stringify(body));
 }
@@ -306,7 +307,15 @@ const server = http.createServer(async (req, res) => {
     });
   }
   if (origin) res.setHeader('Access-Control-Allow-Origin', origin);
-  if (req.method === 'OPTIONS') return json(res, 204, { ok: true });
+  if (req.method === 'OPTIONS') {
+    // Chromium sends a Private Network Access preflight when a public HTTPS
+    // app contacts this loopback service. Only approved origins reach here.
+    const privateNetworkRequested =
+      String(req.headers['access-control-request-private-network'] || '').toLowerCase() === 'true';
+    return json(res, 204, { ok: true }, privateNetworkRequested
+      ? { 'Access-Control-Allow-Private-Network': 'true' }
+      : {});
+  }
 
   const url = new URL(req.url || '/', `http://${HOST}:${PORT}`);
 
