@@ -48,10 +48,12 @@ function divider(width) {
 function pairLine(label, value, width) {
   const left = String(label || '');
   const right = String(value ?? '');
-  if (left.length + right.length + 1 > width) {
-    return fit(left, width) + '\n' + right.slice(0, width).padStart(width);
+  if (left.length + right.length + 1 <= width) {
+    return left + ' '.repeat(width - left.length - right.length) + right;
   }
-  return left + ' '.repeat(width - left.length - right.length) + right;
+  const leftRows = wrapThermalText(left, width);
+  const rightRows = wrapThermalText(right, width);
+  return [...leftRows, ...rightRows.map(row => row.padStart(width))].join('\\n');
 }
 
 function stamp(value) {
@@ -232,6 +234,15 @@ export function thermalTextToHtml(text) {
   return '<pre style="margin:0;padding:0;background:white;color:black;white-space:pre-wrap;font-family:monospace">' + escapeHtml(text) + '</pre>';
 }
 
+export function estimateThermalFeedLines(text) {
+  const lineCount = String(text ?? '').replace(/\\r/g, '').split('\\n').length;
+  // Keep a safe tear/cutter margin and add a little more for unusually long bills.
+  return Math.min(14, 6 + Math.floor(Math.max(0, lineCount - 60) / 80));
+}
+
 export function toEscPosPayload(text) {
-  return '\x1B\x40\x1B\x61\x00' + String(text ?? '').replace(/\r/g, '').trimEnd() + '\n\n\x1D\x56\x01';
+  const body = String(text ?? '').replace(/\\r/g, '').replace(/\\n+$/g, '');
+  const feedLines = estimateThermalFeedLines(body);
+  return '\\x1B\\x40\\x1B\\x61\\x00' + body + '\\n' +
+    '\\x1B\\x64' + String.fromCharCode(feedLines) + '\\x1D\\x56\\x01';
 }
