@@ -39,15 +39,15 @@ function validEndpoint(host, port) {
 }
 
 function estimateFeedLines(text) {
-  const lineCount = String(text ?? '').replace(/\\r/g, '').split('\\n').length;
+  const lineCount = String(text ?? '').replace(/\r/g, '').split('\n').length;
   return Math.min(14, 6 + Math.floor(Math.max(0, lineCount - 60) / 80));
 }
 
 function escPosPayload(text, test = false) {
   const clean = String(text ?? '')
-    .replace(/\\r/g, '')
-    .replace(/\\n{3,}/g, '\\n\\n')
-    .replace(/^\\n+|\\n+$/g, '');
+    .replace(/\r/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/^\n+|\n+$/g, '');
 
   const body = test
     ? [
@@ -55,7 +55,7 @@ function escPosPayload(text, test = false) {
         '',
         'OliTechs PMS + POS',
         'Connection: LOCAL PRINT AGENT',
-        `Date: ${new Date().toLocaleString('en-KE')}`,
+        'Date: ' + new Date().toLocaleString('en-KE'),
         '',
         'If this receipt printed, the network connection is working.',
         '',
@@ -66,7 +66,7 @@ function escPosPayload(text, test = false) {
   return Buffer.concat([
     Buffer.from([0x1b, 0x40]),
     Buffer.from([0x1b, 0x61, 0x00]),
-    enc.encode(body + '\\n'),
+    enc.encode(body + '\n'),
     Buffer.from([0x1b, 0x64, feedLines]),
     Buffer.from([0x1d, 0x56, 0x01]),
   ]);
