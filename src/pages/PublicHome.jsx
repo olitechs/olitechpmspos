@@ -214,7 +214,7 @@ function ProductMock() {
         <div className="rounded-[18px] bg-canvas p-3">
           <div className="grid grid-cols-[115px_repeat(7,minmax(48px,1fr))] overflow-hidden rounded-xl border border-border bg-surface text-[9px]">
             <div className="bg-surface p-2 font-bold text-foreground">SEPTEMBER 2026</div>
-            {days.map((d, i) => <div key={d} className={`p-2 text-center font-bold ${i > 4 ? 'bg-secondary' : 'bg-secondary'} text-white`}>{d}</div>)}
+            {days.map((d, i) => <div key={d} className={`p-2 text-center font-bold ${i > 4 ? 'bg-secondary' : 'bg-secondary'} text-secondary-foreground`}>{d}</div>)}
             <div className="border-t border-border p-2 font-bold">STANDARD GARDEN</div>
             <div className="col-span-4 border-t border-border bg-surface p-2 text-foreground">Front desk · Direct · 1A</div>
             <div className="col-span-2 border-t border-border" />
@@ -406,7 +406,7 @@ export default function PublicHome() {
             <h2 className="mt-4 text-4xl font-black tracking-tight">Choose your plan</h2>
             <p className="mt-3 text-[var(--text-muted)]">Start small. Upgrade when your operation grows.</p>
             <div className="mx-auto mt-7 inline-flex rounded-full bg-[var(--surface)] p-1">
-              <button onClick={() => setAnnual(false)} className={`rounded-full px-5 py-2 text-xs font-bold ${!annual ? 'bg-white text-foreground' : 'text-[var(--text-muted)]'}`}>Monthly</button>
+              <button onClick={() => setAnnual(false)} className={`rounded-full px-5 py-2 text-xs font-bold ${!annual ? 'bg-surface text-foreground' : 'text-[var(--text-muted)]'}`}>Monthly</button>
               <button onClick={() => setAnnual(true)} className={`rounded-full px-5 py-2 text-xs font-bold ${annual ? 'bg-white text-foreground' : 'text-[var(--text-muted)]'}`}>Annual <span className="ml-1 text-primary">Save 17%</span></button>
             </div>
           </div>
