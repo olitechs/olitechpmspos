@@ -40,7 +40,7 @@ export class ErrorBoundary extends React.Component {
               <div className="mt-1 text-xs leading-5 text-[var(--danger-text)]">
                 The rest of the system is unaffected. You can retry this section or return to the dashboard.
               </div>
-              <details className="mt-3 rounded-xl border border-red-200 bg-surface/70 p-3 text-xs">
+              <details className="mt-3 rounded-xl border border-[var(--danger)] bg-surface/70 p-3 text-xs">
                 <summary className="cursor-pointer font-semibold">Technical details</summary>
                 <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words font-mono text-[11px]">{message}</pre>
               </details>
