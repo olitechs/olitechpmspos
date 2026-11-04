@@ -527,7 +527,7 @@ export const pmsService = {
 	async listActiveStays(propertyId) {
 		const { data, error } = await supabase.rpc('list_room_charge_stays', { p_property_id: propertyId });
 		if (error) throw new Error(error.message);
-		return (data || []).map((row) => ({ id: row.id, guest_name: row.guest_name, room: { number: row.room_number } }));
+		return (data || []).map((row) => ({ ...row, id: row.id, guest_name: row.guest_name, room_number: row.room_number, room: { number: row.room_number } }));
 	},
 
 	async chargeToRoom({ propertyId, reservationId, description, amount }) {
