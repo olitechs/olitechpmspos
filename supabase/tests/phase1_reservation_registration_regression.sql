@@ -121,7 +121,7 @@ begin
     );
   exception when others then get stacked diagnostics v_error = message_text;
   end;
-  if v_error is null or v_error not ilike '%initial payment must be at least 50%' then
+  if v_error is null or v_error not ilike '%Initial deposit must be at least half of the reservation total%' then
     raise exception 'Initial deposit threshold failed or returned an unexpected error: %',v_error;
   end if;
   if exists(select 1 from public.reservations where booking_details->>'submissionId'='phase1-small-deposit-005')
