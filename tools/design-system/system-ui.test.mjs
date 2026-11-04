@@ -156,12 +156,12 @@ test('operational screens use semantic theme tokens for text, surfaces, focus an
   assert.match(printerSettings, /var\(--danger-soft\)/);
   assert.match(adminProperties, /var\(--success-soft\)/);
   assert.match(employeeList, /bg-primary text-primary-foreground/);
-  assert.match(sharedSelect, /var\\(--surface-2\\)/);
-  assert.doesNotMatch(sharedSelect, /NAVY|SURFACE2|data-\\[highlighted\\]:bg-slate/);
-  assert.match(productTable, /var\\(--danger\\)/);
+  assert.match(sharedSelect, /var\(--surface-2\)/);
+  assert.doesNotMatch(sharedSelect, /NAVY|SURFACE2|data-\[highlighted\]:bg-slate/);
+  assert.match(productTable, /var\(--danger\)/);
   assert.doesNotMatch(productTable, /#EF4444|#EAB308|#22C55E|#FFD300/);
   assert.match(publicHome, /text-secondary-foreground/);
-  assert.match(pageNotFound, /font-family:var\\(--font-heading\\)/);
+  assert.match(pageNotFound, /font-family:var\(--font-heading\)/);
   assert.doesNotMatch(pageNotFound, /Roboto/);
 });
 
