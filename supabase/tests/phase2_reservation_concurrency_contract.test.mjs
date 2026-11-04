@@ -32,3 +32,17 @@ test('migration narrows RPC execution grants and is transaction-bounded', () => 
 test('same-day turnover remains allowed by half-open date overlap logic', () => {
   assert.match(migration, /r\.arrival < p_departure\s+and p_arrival < r\.departure/i);
 });
+
+const walkInMigration = await readFile(
+  new URL('../migrations/20261104120000_phase2_walk_in_concurrency_hardening.sql', import.meta.url),
+  'utf8',
+);
+
+test('walk-in check-in shares the serialized availability guard', () => {
+  const start = walkInMigration.indexOf('create or replace function public.fn_walk_in_check_in');
+  const walkIn = walkInMigration.slice(start);
+  assert.match(walkIn, /fn_check_room_availability\([\s\S]*?p_property_id, p_room_id, p_check_in, p_check_out, null/i);
+  assert.ok(walkIn.indexOf('fn_check_room_availability') < walkIn.indexOf('insert into public.reservations'));
+  assert.match(walkIn, /status = 'available'/i);
+  assert.match(walkInMigration, /begin;[\s\S]*commit;\s*$/i);
+});
