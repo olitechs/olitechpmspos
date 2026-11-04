@@ -39,7 +39,7 @@ test('shared operational UI exports the Phase 1 primitives', () => {
     'FilterBar', 'DataTable', 'ConfirmDialog', 'Drawer', 'Tabs',
     'SegmentedControl', 'FormField',
   ]) {
-    assert.match(source, new RegExp('export function ' + component + '\\b'), component + ' should be exported');
+    assert.match(source, new RegExp('export function ' + component + '\b'), component + ' should be exported');
   }
 });
 
@@ -173,15 +173,15 @@ test('operational screens use semantic theme tokens for text, surfaces, focus an
 
 test('timecards, stock movements and store operations use semantic theme colours', () => {
   for (const [name, source] of Object.entries({timecards, stockMovements, storesPage, shiftReport, storePage})) {
-    assert.doesNotMatch(source, /\\b(?:text|bg|border)-(?:slate|gray|zinc|neutral|red|amber|emerald|teal|blue|rose|green|yellow|orange)-(?:50|100|200|300|400|500|600|700|800|900|950)\\b/, name + ' should not use fixed palette utilities');
+    assert.doesNotMatch(source, /\b(?:text|bg|border)-(?:slate|gray|zinc|neutral|red|amber|emerald|teal|blue|rose|green|yellow|orange)-(?:50|100|200|300|400|500|600|700|800|900|950)\b/, name + ' should not use fixed palette utilities');
   }
   assert.match(timecards, /bg-canvas/);
-  assert.match(timecards, /var\\(--warning-soft\\)/);
-  assert.match(stockMovements, /var\\(--success-soft\\)/);
-  assert.match(stockMovements, /var\\(--danger-soft\\)/);
-  assert.match(storesPage, /var\\(--warning-soft\\)/);
-  assert.match(shiftReport, /var\\(--danger-soft\\)/);
-  assert.match(storePage, /var\\(--danger-soft\\)/);
+  assert.match(timecards, /var\(--warning-soft\)/);
+  assert.match(stockMovements, /var\(--success-soft\)/);
+  assert.match(stockMovements, /var\(--danger-soft\)/);
+  assert.match(storesPage, /var\(--warning-soft\)/);
+  assert.match(shiftReport, /var\(--danger-soft\)/);
+  assert.match(storePage, /var\(--danger-soft\)/);
 });
 
 test('Room Planner toolbar exposes the approved controls and responsive dimensions', () => {
