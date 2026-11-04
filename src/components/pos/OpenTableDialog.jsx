@@ -11,7 +11,7 @@ export default function OpenTableDialog({ open, table, staff, onCancel, onStart 
   useEffect(() => {
     if (open) {
       setGuests('');
-      setWaiter('');
+      setWaiter(table?.assignedWaiterName || table?.assigned_waiter_name || '');
       setError('');
     }
   }, [open, table?.id]);

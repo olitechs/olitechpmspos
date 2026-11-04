@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { Circle, Grid2X2, Move, Pencil, Save, X } from 'lucide-react';
 import { useStore } from '@/data/AppStore';
 import { RESERVATIONS_TONIGHT, tableLabel } from '@/data/mockData';
 import { BORDER, MUTED_DARK } from '@/data/themePalette';
 
 const SHAPE_KEY = 'tableShapeMode';
-const POSITION_KEY = 'tableLayoutPositions';
 const SHAPES = {
   square: { width: 124, height: 112, radius: 12 },
   circle: { width: 124, height: 124, radius: '50%' },
@@ -84,33 +84,26 @@ export default function FloorPlan({ onTableSelect }) {
   const [activeZoneId, setActiveZoneId] = useState(store.zones[0]?.id);
   const [shape, setShape] = useState(() => safeRead(SHAPE_KEY, 'square'));
   const [designMode, setDesignMode] = useState(false);
-  const [positions, setPositions] = useState(() => safeRead(POSITION_KEY, {}));
   const [now, setNow] = useState(() => Date.now());
   const zone = store.zones.find((z) => z.id === activeZoneId) || store.zones[0];
 
   useEffect(() => { localStorage.setItem(SHAPE_KEY, shape); }, [shape]);
-  useEffect(() => { localStorage.setItem(POSITION_KEY, JSON.stringify(positions)); }, [positions]);
   useEffect(() => {
     const ticker = window.setInterval(() => setNow(Date.now()), 30000);
     return () => window.clearInterval(ticker);
   }, []);
 
   const displayTables = useMemo(() => (zone?.tables || []).map((t) => ({
-    ...t,
-    ...(positions[t.id] || {}),
-    zoneId: zone?.id,
-    zoneName: zone?.name,
-  })), [zone, positions]);
+    ...t, zoneId: zone?.id, zoneName: zone?.name,
+  })), [zone]);
 
   const moveTable = (id, x, y) => {
-    setPositions((prev) => ({ ...prev, [id]: { x: Math.round(x), y: Math.round(y) } }));
-    const t = zone?.tables.find((item) => item.id === id);
-    if (t && store.moveTable) store.moveTable(zone.id, id, x, y);
+    if (zone?.tables.some((item) => item.id === id) && store.moveTable) store.moveTable(zone.id, id, x, y);
   };
 
-  const saveLayout = () => {
-    try { localStorage.setItem(POSITION_KEY, JSON.stringify(positions)); } catch { /* ignore storage errors */ }
-    setDesignMode(false);
+  const saveLayout = async () => {
+    try { await store.persistFloorConfiguration(); toast.success('Floor layout saved.'); setDesignMode(false); }
+    catch (error) { toast.error(error?.message || 'Could not save floor layout.'); }
   };
 
   if (!zone) return null;

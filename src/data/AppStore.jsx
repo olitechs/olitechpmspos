@@ -30,10 +30,43 @@ const newId = (prefix) => `${prefix}-${Date.now()}-${counter++}`;
 
 export function StoreProvider({ children }) {
   const [zones, setZones] = useState(INITIAL_ZONES);
+  const zonesRef = useRef(zones);
+  zonesRef.current = zones;
   const [staff, setStaff] = useState(INITIAL_STAFF);
   const { user } = useAuth();
   const propertyId = user?.property?.id;
+  const [floorConfigLoading, setFloorConfigLoading] = useState(false);
+  const [floorConfigError, setFloorConfigError] = useState('');
   const [sessions, setSessions] = useState({});
+
+  useEffect(() => {
+    let active = true;
+    setZones(INITIAL_ZONES);
+    setFloorConfigError('');
+    if (!propertyId) { setFloorConfigLoading(false); return undefined; }
+    setFloorConfigLoading(true);
+    posService.listFloorConfiguration(propertyId)
+      .then((configuredZones) => {
+        if (!active || !Array.isArray(configuredZones) || configuredZones.length === 0) return;
+        setZones(configuredZones.map((zone) => ({
+          ...zone,
+          tables: (Array.isArray(zone.tables) ? zone.tables : []).map((table) => ({
+            ...table,
+            seats: Number(table.seats) || 4, x: Number(table.x) || 0, y: Number(table.y) || 0,
+            w: Number(table.w || table.width) || TABLE_CARD.w,
+            h: Number(table.h || table.height) || TABLE_CARD.h,
+            assignedWaiterId: table.assignedWaiterId || table.assigned_waiter_id || null,
+            assignedWaiterName: table.assignedWaiterName || table.assigned_waiter_name || '',
+          })),
+        })));
+      })
+      .catch((error) => {
+        console.error('[POS] failed to load persisted floor configuration', error);
+        if (active) setFloorConfigError(error?.message || 'Could not load saved floor configuration.');
+      })
+      .finally(() => { if (active) setFloorConfigLoading(false); });
+    return () => { active = false; };
+  }, [propertyId]);
 
   useEffect(() => {
     let active = true;
@@ -293,6 +326,25 @@ export function StoreProvider({ children }) {
   const moveTable = useCallback((zoneId, tableId, x, y) => {
     setZones((prev) => prev.map((z) => (z.id === zoneId ? { ...z, tables: z.tables.map((t) => (t.id === tableId ? { ...t, x: Math.round(x), y: Math.round(y) } : t)) } : z)));
   }, []);
+
+  const persistFloorConfiguration = useCallback(async (nextZones = zonesRef.current) => {
+    if (!propertyId) throw new Error('Select a property before saving floor configuration.');
+    try { await posService.saveFloorConfiguration({ propertyId, zones: nextZones }); setFloorConfigError(''); return true; }
+    catch (error) { setFloorConfigError(error?.message || 'Could not save floor configuration.'); throw error; }
+  }, [propertyId]);
+
+  const setFloorConfiguration = useCallback(async (nextZones) => {
+    const normalized = (Array.isArray(nextZones) ? nextZones : []).map((zone) => ({
+      ...zone, name: String(zone.name || '').trim(),
+      tables: (Array.isArray(zone.tables) ? zone.tables : []).map((table) => ({
+        ...table, number: Number(table.number), seats: Number(table.seats) || 4,
+        x: Math.max(0, Math.round(Number(table.x) || 0)), y: Math.max(0, Math.round(Number(table.y) || 0)),
+        w: Math.max(48, Math.round(Number(table.w || table.width) || TABLE_CARD.w)),
+        h: Math.max(48, Math.round(Number(table.h || table.height) || TABLE_CARD.h)),
+      })),
+    }));
+    await persistFloorConfiguration(normalized); setZones(normalized); return normalized;
+  }, [persistFloorConfiguration]);
 
   // Staff ops (Staff admin)
   const addStaff = useCallback((name) => {
@@ -670,9 +722,9 @@ export function StoreProvider({ children }) {
   }, [orderPrinterForCenter, persistKitchenOrder]);
 
   const value = {
-    zones, staff, sessions, printers, saleReceipts, kitchenOrders,
+    zones, staff, sessions, printers, saleReceipts, kitchenOrders, floorConfigLoading, floorConfigError,
     getSession, openTable, updateSessionTotals, setSessionOrderLines, setUnsettled, closeTable,
-    addZone, renameZone, removeZone, addTable, removeTable, updateTable, moveTable,
+    addZone, renameZone, removeZone, addTable, removeTable, updateTable, moveTable, setFloorConfiguration, persistFloorConfiguration,
     addStaff, updateStaff, removeStaff,
     addPrinter, updatePrinter, removePrinter, togglePurpose,
     testPrinterConnection, connectPrinter, disconnectPrinter, testPrint,
@@ -685,9 +737,9 @@ export function StoreProvider({ children }) {
 
 // Null-safe hook: degrades to an inert fallback if ever called without a provider.
 const FALLBACK = {
-  zones: [], staff: [], sessions: {}, printers: [], saleReceipts: [], kitchenOrders: [],
+  zones: [], staff: [], sessions: {}, printers: [], saleReceipts: [], kitchenOrders: [], floorConfigLoading: false, floorConfigError: '',
   getSession: () => null, openTable: () => {}, updateSessionTotals: () => {}, setSessionOrderLines: () => {}, setUnsettled: () => {}, closeTable: () => {},
-  addZone: () => {}, renameZone: () => {}, removeZone: () => {}, addTable: () => {}, removeTable: () => {}, updateTable: () => {}, moveTable: () => {},
+  addZone: () => {}, renameZone: () => {}, removeZone: () => {}, addTable: () => {}, removeTable: () => {}, updateTable: () => {}, moveTable: () => {}, setFloorConfiguration: async () => [], persistFloorConfiguration: async () => false,
   addStaff: () => {}, updateStaff: () => {}, removeStaff: () => {},
   addPrinter: () => {}, updatePrinter: () => {}, removePrinter: () => {}, togglePurpose: () => {},
   testPrinterConnection: async () => null, connectPrinter: async () => null, disconnectPrinter: () => {}, testPrint: async () => ({ ok: false, friendlyError: 'No provider' }),
