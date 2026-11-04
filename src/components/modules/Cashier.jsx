@@ -151,7 +151,7 @@ export default function Cashier() {
         <button className={btn + ' border border-border bg-surface'} onClick={load} disabled={busy || loading}><RefreshCw size={15}/> Refresh</button>
       </header>
 
-      {error && <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+      {error && <div className="rounded-lg border border-[var(--danger)] bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger-text)]">{error}</div>}
 
       {!shift ? <section className="mx-auto w-full max-w-xl rounded-xl border border-border bg-surface p-5 shadow-sm">
         <div className="flex items-center gap-3"><Banknote size={20}/><div><h2 className="font-bold">Open cashier shift</h2><p className="text-sm text-muted-foreground">Enter the physical cash float before taking payments.</p></div></div>
@@ -187,7 +187,7 @@ export default function Cashier() {
                     <td className="px-3 py-3"><Status status={r.status}/></td>
                     <td className="px-3 py-3 text-right"><div className="flex justify-end gap-3">
   <button className="font-semibold text-foreground hover:underline" disabled={reprintBusy===r.id} onClick={() => reprint(r)}>{reprintBusy===r.id ? 'Printing…' : 'Reprint'}</button>
-  {r.status === 'posted' && <button className="font-semibold text-red-700 hover:underline" onClick={() => selectReceipt(r)}>Adjust</button>}
+  {r.status === 'posted' && <button className="font-semibold text-[var(--danger-text)] hover:underline" onClick={() => selectReceipt(r)}>Adjust</button>}
 </div></td>
                   </tr>)}
                   {!receipts.length && <tr><td colSpan="7" className="px-3 py-12 text-center text-sm text-muted-foreground">No POS receipts have been posted in this shift.</td></tr>}
@@ -234,7 +234,7 @@ export default function Cashier() {
           </div>
           <div className="mt-3 overflow-x-auto">
             <table className="w-full min-w-[700px] text-sm"><thead><tr className="border-b border-border text-left text-[10px] uppercase tracking-wide text-muted-foreground"><th className="px-3 py-2">Time</th><th className="px-3 py-2">Type</th><th className="px-3 py-2">Amount</th><th className="px-3 py-2">Reason</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Action</th></tr></thead>
-              <tbody>{adjustments.map((a) => <tr key={a.id} className="border-b border-border"><td className="px-3 py-2 text-xs text-muted-foreground">{dateTime(a.created_at)}</td><td className="px-3 py-2 capitalize">{a.adjustment_type}</td><td className="px-3 py-2 font-mono">{money(a.amount)}</td><td className="px-3 py-2">{a.reason}</td><td className="px-3 py-2 capitalize">{a.status}</td><td className="px-3 py-2">{a.status === 'pending' ? <div className="flex gap-2"><button className="text-xs font-bold text-emerald-700 hover:underline" disabled={busy} onClick={() => decideAdjustment(a.id, true)}>Approve</button><button className="text-xs font-bold text-red-700 hover:underline" disabled={busy} onClick={() => decideAdjustment(a.id, false)}>Reject</button></div> : '—'}</td></tr>)}
+              <tbody>{adjustments.map((a) => <tr key={a.id} className="border-b border-border"><td className="px-3 py-2 text-xs text-muted-foreground">{dateTime(a.created_at)}</td><td className="px-3 py-2 capitalize">{a.adjustment_type}</td><td className="px-3 py-2 font-mono">{money(a.amount)}</td><td className="px-3 py-2">{a.reason}</td><td className="px-3 py-2 capitalize">{a.status}</td><td className="px-3 py-2">{a.status === 'pending' ? <div className="flex gap-2"><button className="text-xs font-bold text-[var(--success-text)] hover:underline" disabled={busy} onClick={() => decideAdjustment(a.id, true)}>Approve</button><button className="text-xs font-bold text-[var(--danger-text)] hover:underline" disabled={busy} onClick={() => decideAdjustment(a.id, false)}>Reject</button></div> : '—'}</td></tr>)}
               {!adjustments.length && <tr><td colSpan="6" className="px-3 py-8 text-center text-sm text-muted-foreground">No adjustments recorded for this shift.</td></tr>}</tbody>
             </table>
           </div>
