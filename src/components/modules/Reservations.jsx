@@ -32,7 +32,7 @@ function Field({ label, children }) {
   );
 }
 
-const inputClass = "w-full rounded-lg border border-[var(--border)] bg-surface px-3 py-2.5 text-sm text-foreground outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200";
+const inputClass = "w-full rounded-lg border border-[var(--border)] bg-surface px-3 py-2.5 text-sm text-foreground outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--focus)]";
 const buttonClass = "inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50";
 
 export default function Reservations() {
@@ -119,7 +119,7 @@ export default function Reservations() {
         </div>
 
         {error && (
-          <div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <div className="flex items-center justify-between rounded-lg border border-[var(--danger)] bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger-text)]">
             <span>{error}</span>
             <button onClick={() => setError('')} aria-label="Dismiss error"><X size={15} /></button>
           </div>
@@ -210,7 +210,7 @@ function QueueCard({ title, items, actionLabel, onAction }) {
   return (
     <div className="rounded-xl border border-border bg-surface">
       <div className="border-b border-border px-4 py-3 text-sm font-bold text-foreground">{title}</div>
-      <div className="divide-y divide-slate-100">
+      <div className="divide-y divide-border">
         {items.slice(0, 6).map((r) => (
           <div key={r.id} className="flex items-center justify-between gap-3 px-4 py-3">
             <div><div className="font-semibold text-foreground">{r.guestName}</div><div className="text-xs text-muted-foreground">Room {r.roomNumber} · {r.partySize} guests</div></div>
@@ -253,7 +253,7 @@ function NewReservationModal({ rooms, onClose, onCreate, busy }) {
           <Field label="Guests"><input type="number" min="1" className={inputClass} value={data.partySize} onChange={(e) => setData({ ...data, partySize: e.target.value })} /></Field>
           <Field label="Channel"><select className={inputClass} value={data.channel} onChange={(e) => setData({ ...data, channel: e.target.value })}><option value="direct">Direct</option><option value="booking_com">Booking.com</option><option value="unknown">Other / OTA</option></select></Field>
         </div>
-        {error && <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+        {error && <div className="rounded-lg border border-[var(--danger)] bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger-text)]">{error}</div>}
         <div className="flex justify-end gap-2 border-t border-border pt-4"><button type="button" className={buttonClass + " border border-[var(--border)] bg-surface"} onClick={onClose}>Cancel</button><button disabled={busy} className={buttonClass + " bg-primary text-primary-foreground"} type="submit"><Plus size={15} /> Create reservation</button></div>
       </form>
     </Modal>
@@ -371,7 +371,7 @@ function ReservationDrawer({ reservation: r, rooms, pms, propertyId, busy, onClo
           <div className="flex flex-wrap gap-2 border-t border-border pt-4">
             {r.status === 'booked' && <button disabled={busy} className={buttonClass + " bg-primary text-primary-foreground"} onClick={checkIn}><DoorOpen size={15} /> Check in</button>}
             {r.status === 'checked-in' && <button disabled={busy} className={buttonClass + " bg-primary text-primary-foreground"} onClick={checkOut}><LogOut size={15} /> Check out</button>}
-            {r.status === 'booked' && <button disabled={busy} className={buttonClass + " border border-red-200 bg-red-50 text-red-700"} onClick={cancel}><Trash2 size={15} /> Remove reservation</button>}
+            {r.status === 'booked' && <button disabled={busy} className={buttonClass + " border border-[var(--danger)] bg-[var(--danger-soft)] text-[var(--danger-text)]"} onClick={cancel}><Trash2 size={15} /> Remove reservation</button>}
           </div>
         </div>
       </div>
