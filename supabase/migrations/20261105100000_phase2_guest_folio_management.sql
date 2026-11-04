@@ -1,6 +1,6 @@
 -- Phase 2: extend the existing guest folio and payment ledgers. No duplicate ledger tables.
 alter table public.folio_charges
-  add column if not exists category text not null default 'other',
+  add column if not exists category text not null default 'other_services',
   add column if not exists quantity numeric(12,3) not null default 1,
   add column if not exists unit_price numeric(12,2),
   add column if not exists reference text,
@@ -156,12 +156,13 @@ create or replace function public.fn_apply_folio_discount(p_property_id uuid,p_r
 returns public.folio_charges
 language plpgsql security invoker set search_path=public
 as $$
-declare r public.reservations; c public.folio_charges; manager boolean; key text; charges numeric; paid numeric; prior numeric;
+declare r public.reservations; c public.folio_charges; manager boolean; key text; charges numeric; paid numeric;
 begin
  if not(public.is_platform_owner() or public.is_member_of_property(p_property_id)) then raise exception 'Access denied.'; end if;
  manager:=public.is_platform_owner() or public.property_role(p_property_id) in ('owner','admin','manager') or public.current_staff_role(p_property_id) in ('hotel_admin','super_admin','fb_manager','general_manager','front_office_manager');
  if not manager then raise exception 'Manager approval is required to apply a folio discount.'; end if;
  key:=nullif(trim(p_idempotency_key),''); if key is null then raise exception 'An idempotency key is required.'; end if;
+ perform pg_advisory_xact_lock(hashtextextended(p_property_id::text||':folio-discount:'||key,0));
  select * into c from public.folio_charges where property_id=p_property_id and idempotency_key=key; if c.id is not null then return c; end if;
  if p_amount<=0 or nullif(trim(p_reason),'') is null then raise exception 'Discount amount and reason are required.'; end if;
  select * into r from public.reservations where id=p_reservation_id and property_id=p_property_id for update;
