@@ -48,15 +48,23 @@ test('sidebar has accessible mobile open/close controls and a scrollable navigat
 
 test('theme foundation defines canonical light and dark palettes with reduced-motion handling', () => {
   for (const token of [
-    '--canvas:#F4F7F8', '--surface:#FFFFFF', '--primary:#0F7C86',
-    '--on-primary:#FFFFFF', '--text:#14232B', '--text-muted:#4F646D',
+    '--canvas:#E3F2FD', '--surface:#FFFFFF', '--primary:#2196F3',
+    '--on-primary:#FFFFFF', '--text:#123B63', '--text-muted:#456987',
     '--table-free-bg:#74C365', '--table-occupied-bg:#FA003F', '--table-bill-bg:#FAFAFA',
   ]) assert.ok(theme.includes(token), 'missing light token ' + token);
   assert.ok(theme.includes(':root[data-theme="dark"]'));
   for (const token of [
-    '--canvas:#10171A', '--surface:#172126', '--primary:#137682',
-    '--on-primary:#F2F8F9', '--text:#E3EBED', '--text-muted:#9DB0B8',
+    '--canvas:#0B1726', '--surface:#12243A', '--primary:#0D47A1',
+    '--on-primary:#F2F8F9', '--text:#EAF4FD', '--text-muted:#B4CDE3',
   ]) assert.ok(theme.includes(token), 'missing dark token ' + token);
+  assert.ok(theme.includes('--primary-soft:#E3F2FD'));
+  assert.ok(theme.includes('--accent:#90CAF9'));
+  assert.ok(theme.includes('--primary-text:#0D47A1'));
+  assert.ok(theme.includes('--font-body:Inter,ui-sans-serif'));
+  assert.ok(theme.includes('.room-planner .legend-optioned { color:#0F7C86; }'));
+  assert.ok(theme.includes('--table-free-bg:#74C365'));
+  assert.ok(theme.includes('--table-occupied-bg:#FA003F'));
+  assert.ok(theme.includes('--table-bill-bg:#FAFAFA'));
   assert.ok(theme.includes('color-scheme: light'));
   assert.ok(theme.includes('color-scheme:dark'));
   assert.ok(theme.includes('prefers-reduced-motion:reduce'));
