@@ -6,16 +6,16 @@
   :root {
     color-scheme: light;
     /* Canonical light palette — keep all colour literals in this token layer. */
-    --canvas:#F4F7F8; --surface:#FFFFFF; --sidebar:#E6EFF0; --border:#C9D6DA; --input-border:#7C9199;
-    --panel-head:#E6EFF0;
-    --text:#14232B; --text-muted:#4F646D;
-    --primary:#0F7C86; --on-primary:#FFFFFF; --primary-foreground:var(--on-primary);
-    --primary-hover:#0B6169; --primary-text:#0B6169; --primary-soft:#DDF0F1;
-    --accent:#9A5F2B;
+    --canvas:#E3F2FD; --surface:#FFFFFF; --sidebar:#EAF4FD; --border:#B8D7F2; --input-border:#6F9FC7;
+    --panel-head:#E3F2FD;
+    --text:#123B63; --text-muted:#456987;
+    --primary:#2196F3; --on-primary:#FFFFFF; --primary-foreground:var(--on-primary);
+    --primary-hover:#0D47A1; --primary-text:#0D47A1; --primary-soft:#E3F2FD;
+    --accent:#90CAF9;
     --success:#1B7A57; --success-text:#1B7A57; --success-soft:#E3F3EC;
     --danger:#B42318; --danger-foreground:#FFFFFF; --danger-text:#B42318; --danger-soft:#FBE8E6;
     --warning:#8F5400; --warning-text:#8F5400; --warning-soft:#FBEFD9;
-    --info:#2A5AA7; --info-soft:#E4EDF9;
+    --info:#2196F3; --info-soft:#E3F2FD;
     --chip-bg:#4F646D; --chip-fg:#FFFFFF;
     --tooltip-shadow:0 8px 24px rgba(20,35,43,.18);
     --btn-neutral-bg:#E8E8E8; --btn-neutral-fg:#333333; --btn-neutral-bd:#CFCFCF;
@@ -67,23 +67,23 @@
     --table-reserved:var(--room-checkout); --table-paid:var(--success);
     --stay-occupied:var(--room-occupied); --stay-checkout:var(--room-checkout);
     --stay-optioned:var(--pay-opt); --stay-closed:var(--room-out-of-order);
-    --font-body:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-    --font-heading:var(--font-body); --font-display:var(--font-body);
+    --font-body:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    --font-heading:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; --font-display:var(--font-heading);
     --font-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
   }
 
   :root[data-theme="dark"] {
     color-scheme:dark;
-    --canvas:#10171A; --surface:#172126; --sidebar:#131C20; --border:#2C3B42; --input-border:#5A6F77;
-    --panel-head:#1E2B31;
-    --text:#E3EBED; --text-muted:#9DB0B8;
-    --primary:#137682; --on-primary:#F2F8F9; --primary-foreground:var(--on-primary);
-    --primary-hover:#0E6A75; --primary-text:#5CC6D0; --primary-soft:#17353B;
-    --accent:#D4A06E;
+    --canvas:#0B1726; --surface:#12243A; --sidebar:#102D4C; --border:#2C4F70; --input-border:#6F91B1;
+    --panel-head:#173653;
+    --text:#EAF4FD; --text-muted:#B4CDE3;
+    --primary:#2196F3; --on-primary:#FFFFFF; --primary-foreground:var(--on-primary);
+    --primary-hover:#0D47A1; --primary-text:#90CAF9; --primary-soft:#153B5C;
+    --accent:#90CAF9;
     --success:#4CC39A; --success-text:#4CC39A; --success-soft:#143A2D;
     --danger:#FF8A84; --danger-foreground:#FBEDEC; --danger-text:#FF8A84; --danger-soft:#3E1E1E;
     --warning:#F0A56F; --warning-text:#F0A56F; --warning-soft:#3F2318;
-    --info:#8DB4F0; --info-soft:#1A2E52;
+    --info:#90CAF9; --info-soft:#153B5C;
     --chip-bg:#34464F; --chip-fg:#E3EBED;
     --tooltip-shadow:0 8px 24px rgba(0,0,0,.45);
     --btn-neutral-bg:#22313A; --btn-neutral-fg:#E3EBED; --btn-neutral-bd:#34464F;
@@ -159,13 +159,14 @@
   .status-legend { color: var(--text-muted); }
   .legend-swatch { width: 13px; height: 13px; border-radius: 3px; border: 2px solid currentColor; display: inline-block; }
   .legend-optioned { color: var(--primary); border-style: dashed; }
+  .room-planner .legend-optioned { color:#0F7C86; }
   .legend-confirmed { color: var(--room-occupied); }
   .legend-occupied { color: var(--room-occupied); background: var(--room-occupied); }
   .legend-checkout { color: var(--room-checkout); background: var(--room-checkout); }
   .legend-checked_out { color: var(--room-occupied); opacity: .5; }
   .legend-closed { color: var(--room-out-of-order); background: repeating-linear-gradient(45deg, var(--room-out-of-order) 0 6px, var(--border) 6px 12px); }
   .payment-chip { width: 18px; height: 5px; border-radius: 999px; display: inline-block; }
-  .room-planner { --pay-unpaid:var(--pay-none); --pay-deposit:var(--pay-part); --payment-text:var(--text); --payment-deposit-text:var(--pay-part-fg); }
+  .room-planner { --surface:#FFFFFF; --sidebar:#E6EFF0; --border:#C9D6DA; --text:#14232B; --text-muted:#4F646D; --primary:#0F7C86; --primary-hover:#0B6169; --primary-text:#0B6169; --primary-soft:#DDF0F1; --font-body:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; --font-heading:var(--font-body); --pay-unpaid:var(--pay-none); --pay-deposit:var(--pay-part); --payment-text:var(--text); --payment-deposit-text:var(--pay-part-fg); }
   .room-planner .payment-none { background:var(--pay-none); color:var(--pay-none-fg); border:1px solid var(--pay-none-bd); }
   .room-planner .payment-partial { background:var(--pay-part); color:var(--pay-part-fg); border:1px solid var(--pay-part-bd); }
   .room-planner .payment-total { background:var(--pay-paid); color:var(--pay-paid-fg); border:1px solid var(--pay-paid-bd); }
