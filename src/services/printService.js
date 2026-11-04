@@ -366,9 +366,10 @@ const itemIsDrink = (item) => {
   return category === 'drinks' || category === 'drink' || category === 'bibite' || String(item?.center || '').toLowerCase() === 'bar';
 };
 
-function orderTicketHtml(order, kind, items, printer = {}) {
+function orderTicketHtml(order, kind, items, printer = {}, settings = {}) {
   const thermalText = buildOrderTicketText(order, {
     printer,
+    settings,
     center: kind === 'food' ? 'KITCHEN' : 'BAR',
     items,
   });
@@ -377,8 +378,13 @@ function orderTicketHtml(order, kind, items, printer = {}) {
 
 export async function printOrderByCategory(order) {
   const propertyId = order.propertyId;
-  const printers = await getPrinters(propertyId);
-  const assignments = await getAssignments(propertyId);
+  const [printers, assignments, settingsResult] = await Promise.all([
+    getPrinters(propertyId),
+    getAssignments(propertyId),
+    supabase.from('property_settings').select('*').eq('property_id', propertyId).maybeSingle(),
+  ]);
+  if (settingsResult.error) throw settingsResult.error;
+  const settings = settingsResult.data || {};
   const food = (order.items || []).filter((item) => !itemIsDrink(item));
   const drinks = (order.items || []).filter(itemIsDrink);
   const groups = [{ type: 'food_orders', kind: 'food', items: food }, { type: 'drinks_orders', kind: 'drinks', items: drinks }];
@@ -391,7 +397,7 @@ export async function printOrderByCategory(order) {
         propertyId, printerId:null, assignmentType:group.type,
         jobType:group.kind === 'food' ? 'KOT' : 'BOT',
         title:group.kind === 'food' ? 'Kitchen Order' : 'Bar Order',
-        contentHtml:orderTicketHtml(order,group.kind,group.items),
+        contentHtml:orderTicketHtml(order,group.kind,group.items,{},settings),
         payload:{orderNumber:order.orderNumber||order.checkNo||null,table:order.table||order.tableNumber||null}
       });
       await updateFnbPrintJob(queued.id,propertyId,'failed',`No printer assigned to ${group.type}.`,null);
@@ -401,6 +407,7 @@ export async function printOrderByCategory(order) {
     for (const printer of targets) {
       const thermalText = buildOrderTicketText(order, {
         printer,
+        settings,
         center: group.kind === 'food' ? 'KITCHEN' : 'BAR',
         items: group.items,
       });
