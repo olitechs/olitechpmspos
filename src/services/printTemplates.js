@@ -33,7 +33,7 @@ function fit(value, width) {
 }
 
 function centerRows(value, width) {
-  return wrapThermalText(value, width).map(row => row.padStart(Math.floor((width + row.length) / 2)).padEnd(width));
+  return wrapThermalText(value, width).map(row => row.padStart(Math.floor((width - row.length) / 2)).padEnd(width));
 }
 
 function centeredBlock(values, width) {
