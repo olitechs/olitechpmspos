@@ -7,6 +7,7 @@ const posIntegration = await readFile(new URL('../migrations/20261008041101_phas
 const splitPayments = await readFile(new URL('../migrations/20261008071500_phase3_split_payments_and_indexes.sql', import.meta.url), 'utf8');
 const service = await readFile(new URL('../../src/services/pmsService.js', import.meta.url), 'utf8');
 const planner = await readFile(new URL('../../src/components/pms/RoomPlanner.jsx', import.meta.url), 'utf8');
+const billPayment = await readFile(new URL('../../src/components/pos/BillPayment.jsx', import.meta.url), 'utf8');
 
 test('room-charge validation locks the reservation and rejects cross-property or checked-out stays', () => {
   assert.match(migration, /where r\.id = new\.reservation_id\s+for update/i);
@@ -35,4 +36,13 @@ test('room planner folio can display saved itemised POS receipt data without cha
   assert.match(planner, /listReceiptsForReservation/);
   assert.match(planner, /items/);
   assert.match(planner, /folio_charge_id/);
+});
+
+test('POS room charge picker preserves room metadata, supports searching, and confirms the guest', () => {
+  assert.match(service, /room_number: row\.room_number/);
+  assert.match(billPayment, /filteredStays=activeStays\.filter/);
+  assert.match(billPayment, /Search guest, room or reservation/);
+  assert.match(billPayment, /window\.confirm\('Confirm room charge/);
+  assert.match(billPayment, /paymentMethod==='room'\?chargeReservationId:null/);
+  assert.match(billPayment, /p_payment_method/);
 });
