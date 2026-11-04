@@ -173,6 +173,7 @@ export default function POSContainer() {
 			waiter: store.getSession(table.id)?.waiter,
 			covers: store.getSession(table.id)?.guests || table.seats,
 			diningOption: table?.diningOption || table?.dining_option || 'Dine In',
+			isAddition: !!store.getSession(table.id)?.kotSentAt,
 			createdAt: Date.now(),
 			items: linesSnapshot,
 		});
@@ -188,6 +189,7 @@ export default function POSContainer() {
 					waiter: store.getSession(table.id)?.waiter,
 					covers: store.getSession(table.id)?.guests || table.seats,
 					diningOption: table?.diningOption || table?.dining_option || 'Dine In',
+					isAddition: !!store.getSession(table.id)?.kotSentAt,
 					items: linesSnapshot,
 				});
 				return { ok: jobs.length > 0, jobs, queued: true };
