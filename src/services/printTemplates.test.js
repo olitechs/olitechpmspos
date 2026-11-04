@@ -52,6 +52,8 @@ test('order ticket includes station metadata, modifiers and prep notes without p
   assert.match(output, /Thank you for visiting/);
   assert.ok(!output.includes(String.fromCharCode(29) + '!' + String.fromCharCode(17)), 'order items stay at normal thermal font size');
   assert.ok(output.split('\n').every(line => line.length <= 48), 'all order ticket lines fit 80mm paper width');
+  assert.ok(output.includes('                 COASTAL HOTEL'), 'order ticket company header is centered');
+  assert.ok(output.includes('           Thank you for visiting'), 'order ticket footer is centered');
   assert.match(output, /ORD-001/);
   assert.match(output, /T-04/);
   assert.match(output, /AMINA/);
@@ -119,6 +121,7 @@ test('final receipt uses centered company header/footer and a paid receipt layou
   assert.match(output, /Thank you for dining with us/);
   assert.match(output, /Visit again/);
   assert.doesNotMatch(output, /PAYMENT PENDING/);
+  assert.doesNotMatch(output, /VAT/);
   assert.ok(output.split('\n').every(line => line.length <= 32));
 });
 
