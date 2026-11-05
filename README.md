@@ -409,7 +409,18 @@ The project contains substantial working workflows, but some platform architectu
 
 Do not interpret this roadmap as a promise that every item is already available in the deployed application.
 
-## 12. Contributing safely
+## 12. Developer and AI-agent handbook
+
+The repository includes a source-controlled engineering handbook so a coding agent can understand the product, architecture, business workflows, coding languages and safety constraints before changing code.
+
+- [AI Developer Guide](docs/AI_DEVELOPER_GUIDE.md) — mandatory reading order, code boundaries, protected files, implementation protocol and definition of done.
+- [Visual Architecture Diagrams](docs/ARCHITECTURE_DIAGRAMS.md) — system context, runtime layers, auth, reservation, POS, inventory, tenant security, offline roadmap and delivery pipeline.
+- [End-to-End Workflow Catalogue](docs/WORKFLOW_CATALOG.md) — actor-by-actor operational flows and failure/integrity rules.
+- [Languages, Frameworks and Tooling](docs/TECH_STACK_AND_LANGUAGES.md) — JavaScript, JSX, TypeScript, SQL, CSS, HTML, JSON, Markdown, SVG, PowerShell, Mermaid and the installed technology stack.
+
+**AI coding agents must read `AGENTS.md`, `PRD.md`, `Architecture.md`, `Rules.md`, `Phases.md`, `Design.md`, `Memory.md` and the [AI Developer Guide](docs/AI_DEVELOPER_GUIDE.md) before coding.** The Phase 0 approval gate remains in force. Do not assume future offline architecture or partially implemented modules are already production-ready.
+
+## 13. Contributing safely
 
 1. Read `Architecture.md`, `Memory.md` and the relevant audit notes before changing core architecture.
 2. Create a focused feature branch.
