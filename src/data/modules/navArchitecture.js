@@ -1,4 +1,4 @@
-import { BarChart3, ShoppingBag, ShoppingCart, Users, PlugZap, Settings, HelpCircle, Building2, Store, LayoutDashboard } from 'lucide-react';
+import { BarChart3, ShoppingBag, ShoppingCart, Users, PlugZap, Settings, Building2, Store, LayoutDashboard } from 'lucide-react';
 
 export const MAIN_NAV = [
   { id:'backoffice', label:'Back Office', path:'/backoffice', roles:['admin','owner'], color:'var(--brand-dark)', icon:LayoutDashboard },
@@ -14,7 +14,6 @@ export const BACK_OFFICE_NAV = [
   { id:'customers', label:'Customers', icon:Users, path:'/backoffice/customers' },
   { id:'integrations', label:'Integrations', icon:PlugZap, path:'/backoffice/integrations' },
   { id:'settings', label:'Settings', icon:Settings, path:'/backoffice/settings/features', children:[['Features','/backoffice/settings/features'],['Billing & subscriptions','/backoffice/settings/billing'],['Payment types','/backoffice/settings/payment-types'],['Loyalty','/backoffice/settings/loyalty'],['Taxes','/backoffice/settings/taxes'],['Receipt','/backoffice/settings/receipt'],['Open tickets','/backoffice/settings/open-tickets'],['Kitchen printers','/backoffice/settings/kitchen-printers'],['Dining options','/backoffice/settings/dining-options']] },
-  { id:'help', label:'Help', icon:HelpCircle, path:'/backoffice/help', notification:true },
 ];
 export const STORES_NAV = [['All Stores','/stores','store'],['POS Devices','/stores/pos-devices','devices'],['Printers','/stores/printers','printers'],['KDS Screens','/stores/kds','kds']];
 export const FRONT_OFFICE_NAV = [['Dashboard','/frontoffice','dashboard',['admin','owner','front_office_manager','front_desk','housekeeping']],['Room Planner','/frontoffice/room-planner','room-planner',['admin','owner','front_office_manager','front_desk','housekeeping']],['Reservations','/frontoffice/reservations','reservations',['admin','owner','front_office_manager','front_desk']],['Folio','/frontoffice/folio','folio',['admin','owner','front_office_manager','front_desk']],['Housekeeping','/frontoffice/housekeeping','housekeeping',['admin','owner','front_office_manager','front_desk','housekeeping']],['Night Audit','/frontoffice/night-audit','night-audit',['admin','owner','front_office_manager']]];
