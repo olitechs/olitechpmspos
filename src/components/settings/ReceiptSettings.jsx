@@ -12,6 +12,7 @@ export default function ReceiptSettings() {
   const role = String(user?.propertyRole || user?.staff?.role || '').toLowerCase();
   const canManageVat = !!user?.isPlatformOwner || ['owner','admin','hotel_admin','super_admin'].includes(role);
   const [previewWidth, setPreviewWidth] = useState('80mm');
+  const [previewVatMode, setPreviewVatMode] = useState('off');
   const [form,setForm]=useState({...DEFAULT_RECEIPT_SETTINGS});
   const [busy,setBusy]=useState(true); const [saving,setSaving]=useState(false); const [error,setError]=useState(''); const [ok,setOk]=useState('');
   useEffect(()=>{ if(!propertyId)return; setBusy(true); Promise.all([getPropertySettings(propertyId),getUnsettledReceiptSettings(propertyId)]).then(([row,vat])=>setForm({...DEFAULT_RECEIPT_SETTINGS,...row,...vat})).catch(e=>setError(e.message)).finally(()=>setBusy(false)); },[propertyId]);
@@ -65,8 +66,11 @@ export default function ReceiptSettings() {
       <button disabled={!valid||saving} onClick={save} className="mt-6 inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-black text-primary-foreground disabled:opacity-50"><Save size={16}/>{saving?'Saving…':'Save Receipt Settings'}</button>
     </section>
     <aside className="space-y-3">
-      <div className="flex items-center justify-between gap-2"><div className="text-xs font-black uppercase tracking-widest text-muted-foreground">Unsettled bill text preview</div><select aria-label="Preview paper width" value={previewWidth} onChange={e=>setPreviewWidth(e.target.value)} className="rounded-lg border border-border bg-surface px-2 py-1.5 text-xs font-bold"><option value="80mm">80mm</option><option value="58mm">58mm</option></select></div>
-      <ReceiptPreview settings={form} printer={{paper_width:previewWidth}} data={{table:'T4',covers:5,waiter:'Grace Wanjiru',diningOption:'Dine In',checkNo:'ORD-002-USOR1U2',currency:'KES',items:[{name:'Grilled Ocean Fish with Coconut Sauce and Swahili Spices',qty:1,price:1250,modifiers:[{name:'Extra lemon butter'}]},{name:'Soda',qty:2,price:300}]}} type="UNSETTLED"/>
+      <div className="grid grid-cols-2 gap-2">
+        <label className="text-[10px] font-black uppercase tracking-wide text-muted-foreground">Paper width<select aria-label="Preview paper width" value={previewWidth} onChange={e=>setPreviewWidth(e.target.value)} className="mt-1 w-full rounded-lg border border-border bg-surface px-2 py-1.5 text-xs font-bold text-foreground"><option value="80mm">80mm</option><option value="58mm">58mm</option></select></label>
+        <label className="text-[10px] font-black uppercase tracking-wide text-muted-foreground">VAT preview<select aria-label="Preview VAT mode" value={previewVatMode} onChange={e=>setPreviewVatMode(e.target.value)} className="mt-1 w-full rounded-lg border border-border bg-surface px-2 py-1.5 text-xs font-bold text-foreground"><option value="off">VAT off</option><option value="exclusive">VAT exclusive</option><option value="inclusive">VAT inclusive</option></select></label>
+      </div>
+      <ReceiptPreview settings={{...form,unsettled_receipt_show_vat:previewVatMode!=='off',unsettled_receipt_vat_mode:previewVatMode==='inclusive'?'inclusive':'exclusive'}} printer={{paper_width:previewWidth}} data={{table:'T4',covers:5,waiter:'Grace Wanjiru',diningOption:'Dine In',checkNo:'ORD-002-USOR1U2',currency:'KES',items:[{name:'Grilled Ocean Fish with Coconut Sauce and Swahili Spices',qty:1,price:1250,modifiers:[{name:'Extra lemon butter'}]},{name:'Soda',qty:2,price:300}]}} type="UNSETTLED"/>
       <div className="text-[11px] leading-5 text-muted-foreground">Preview uses the selected paper width and current VAT settings. Receipt time is formatted in Africa/Nairobi.</div>
     </aside>
   </div>;
