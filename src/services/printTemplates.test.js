@@ -47,6 +47,17 @@ test('KOT snapshot after a void allows a later re-added quantity to print once',
   assert.equal(delta[0].qty, 1);
 });
 
+test('KOT delta consumes prior sent quantities once across duplicate current rows', () => {
+  const sent = [{ id: 'tea', name: 'Tea', qty: 2 }];
+  const current = [
+    { id: 'tea', name: 'Tea', qty: 2 },
+    { id: 'tea', name: 'Tea', qty: 2 },
+  ];
+  const delta = getUnsentOrderLines(current, sent);
+  assert.equal(delta.length, 1);
+  assert.equal(delta[0].qty, 2);
+});
+
 test('word wrapping never exceeds the configured paper width', () => {
   const rows = wrapThermalText('A very long kitchen preparation instruction for a special order', 32);
   assert.ok(rows.every(row => row.length <= 32));
@@ -249,6 +260,9 @@ test('thermal payload keeps legacy defaults and supports feed-before-partial-cut
 
   const receipt = toEscPosPayload('UNSETTLED BILL', { feedLines: 5, partialCut: true });
   assert.ok(receipt.endsWith(String.fromCharCode(27, 100, 5, 29, 86, 66, 0)), 'feed command must immediately precede partial cut');
+
+  const orderTicket = toEscPosPayload('ORDER TICKET', { feedLines: 8 });
+  assert.ok(orderTicket.endsWith(String.fromCharCode(27, 100, 8, 29, 86, 1)), 'order tickets receive an extended feed before cutting');
   assert.equal(estimateThermalFeedLines(Array.from({ length: 240 }, (_, i) => 'LONG BILL ITEM ' + (i + 1)).join('\n')), 8);
 });
 
