@@ -102,9 +102,16 @@ export function getUnsentOrderLines(currentLines = [], previouslySentLines = [])
     const key = keyFor(line);
     sentQuantities.set(key, (sentQuantities.get(key) || 0) + itemQuantity(line));
   }
+  // Consume sent quantities as rows are traversed. Merged/re-hydrated
+  // sessions may contain duplicate keys; each row must not subtract the same
+  // previously fired quantity independently.
   return (Array.isArray(currentLines) ? currentLines : []).flatMap(line => {
-    const alreadySent = sentQuantities.get(keyFor(line)) || 0;
-    const quantity = Math.max(0, itemQuantity(line) - alreadySent);
+    const key = keyFor(line);
+    const alreadySent = sentQuantities.get(key) || 0;
+    const currentQuantity = itemQuantity(line);
+    const consumed = Math.min(currentQuantity, alreadySent);
+    sentQuantities.set(key, Math.max(0, alreadySent - consumed));
+    const quantity = Math.max(0, currentQuantity - consumed);
     return quantity > 0 ? [{ ...line, qty: quantity }] : [];
   });
 }
@@ -404,7 +411,7 @@ export function toEscPosPayload(text, options = {}) {
   const body = String(text ?? '').replace(/\r/g, '').replace(/\n+$/g, '');
   const requestedFeed = Number(options.feedLines);
   const feedLines = Number.isInteger(requestedFeed)
-    ? Math.max(4, Math.min(6, requestedFeed))
+    ? Math.max(4, Math.min(8, requestedFeed))
     : estimateThermalFeedLines(body);
   const initialize = options.initialize === false ? '' : '\x1B\x40';
   const cut = options.partialCut === true ? '\x1D\x56\x42\x00' : '\x1D\x56\x01';
