@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  buildOrderTicketText,\n  getUnsentOrderLines,
+  buildOrderTicketText,
+  getUnsentOrderLines,
   buildUnsettledReceiptText,
   buildFinalReceiptText,
   getPrinterColumns,
@@ -16,7 +17,7 @@ const stripEscPos = value => value
   .replaceAll(String.fromCharCode(27) + 'E' + String.fromCharCode(0), '')
   .replace(/\x1D\x21[\s\S]/g, '');
 
-test('paper width selects 48 columns for 80mm and 32 for 58mm', () => {
+test('paper width selects safe 42 columns for 80mm and 30 for 58mm', () => {
   assert.equal(getPrinterColumns({ paper_width: '80mm' }), 42);
   assert.equal(getPrinterColumns({ paper_width: '58mm' }), 30);
 });
