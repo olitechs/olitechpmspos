@@ -15,6 +15,7 @@ import { printOrderByCategory } from '@/services/printService';
 import { printOrder as printRoutedOrder, isPrinterGroupRoutingEnabled } from '@/services/printRoutingService';
 import { usePrinterStore as usePrinterStoreV2 } from '@/data/modules/printerStore';
 import { posService } from '@/services/posService';
+import { getUnsentOrderLines } from '@/services/printTemplates';
 import { shiftService } from '@/services/shiftService';
 import CloseShiftModal, { OpenShiftModal } from '@/components/pos/CloseShiftModal';
 import MenuManager from '@/components/pos/MenuManager';
@@ -154,13 +155,21 @@ export default function POSContainer() {
 		const table = activeTable;
 		const orderNumber = orderNumbersRef.current[table.id];
 		const linesSnapshot = orderLinesByTable[table.id] || [];
+		const session = store.getSession(table.id);
+		const previouslySent = session?.kotSentOrderLines || [];
+		const newLines = getUnsentOrderLines(linesSnapshot, previouslySent);
+
+		if (!newLines.length) {
+			toast.info('There are no new items to send. Previously fired items will not be printed again.');
+			return;
+		}
 
 		setActiveTab('floor');
 		setActiveTable(null);
 
 		const kitchenOrderRecord = await store.fireKitchenOrder({
-			table, orderLines: linesSnapshot, orderNumber,
-			buildTicketText: (center, lines) => buildKitchenTicketText(center, lines, { orderNumber, table, propertyName, waiter: store.getSession(table.id)?.waiter }),
+			table, orderLines: newLines, orderNumber,
+			buildTicketText: (center, lines) => buildKitchenTicketText(center, lines, { orderNumber, table, propertyName, waiter: session?.waiter }),
 			printTickets: false,
 		});
 
@@ -170,13 +179,23 @@ export default function POSContainer() {
 			orderNumber,
 			checkNo: orderNumber,
 			table: tableLabel(table),
-			waiter: store.getSession(table.id)?.waiter,
-			covers: store.getSession(table.id)?.guests || table.seats,
+			waiter: session?.waiter,
+			covers: session?.guests || table.seats,
 			diningOption: table?.diningOption || table?.dining_option || 'Dine In',
-			isAddition: !!store.getSession(table.id)?.kotSentAt,
+			isAddition: !!session?.kotSentAt,
 			createdAt: Date.now(),
-			items: linesSnapshot,
+			items: newLines,
 		});
+		const persistSentSnapshot = async () => {
+			try {
+				await store.setKotSentOrderLines(table.id, linesSnapshot, { markSent: true });
+				return true;
+			} catch (error) {
+				console.error('[POS] ticket printed but KOT snapshot could not be saved', error);
+				toast.error('Tickets printed, but the sent-item snapshot could not be saved. Do not resend this order until the connection is restored.');
+				return false;
+			}
+		};
 		const dispatchTickets = async () => {
 			if (isPrinterGroupRoutingEnabled()) {
 				const jobs = await printRoutedOrder({
@@ -186,11 +205,11 @@ export default function POSContainer() {
 					orderId: kitchenOrderRecord?.id,
 					orderNumber,
 					table: tableLabel(table),
-					waiter: store.getSession(table.id)?.waiter,
-					covers: store.getSession(table.id)?.guests || table.seats,
+					waiter: session?.waiter,
+					covers: session?.guests || table.seats,
 					diningOption: table?.diningOption || table?.dining_option || 'Dine In',
-					isAddition: !!store.getSession(table.id)?.kotSentAt,
-					items: linesSnapshot,
+					isAddition: !!session?.kotSentAt,
+					items: newLines,
 				});
 				return { ok: jobs.length > 0, jobs, queued: true };
 			}
@@ -207,11 +226,9 @@ export default function POSContainer() {
 					try {
 						const retry = await dispatchTickets();
 						if (retry.ok) {
-							await posService.markKotSent({ propertyId, tableKey: table.id }).catch(() => {});
-							toast.success(retry.queued ? `Order ${orderNumber} queued for the print agent.` : `Order ${orderNumber} tickets printed.`);
-						} else {
-							toast.error('Ticket retry failed. Check printer assignments.');
-						}
+							await persistSentSnapshot();
+							toast.success(retry.queued ? `New items for ${orderNumber} queued for printing.` : `New items for ${orderNumber} printed.`);
+						} else toast.error('Ticket retry failed. Check printer assignments.');
 					} catch (retryError) {
 						toast.error(retryError?.message || 'Ticket retry failed. Check printer configuration.');
 					}
@@ -221,15 +238,15 @@ export default function POSContainer() {
 		}
 		if (!printResult.ok) {
 			const failures = (printResult.results || []).filter((r) => !r.ok).map((r) => r.friendlyError).filter(Boolean);
-			toast.error(`Order ${orderNumber} was saved, but one or more tickets did not print.`, {
+			toast.error(`New items for order ${orderNumber} were saved, but one or more tickets did not print.`, {
 				description: failures.join(' ') || 'Check printer assignments.',
 				duration: 12000,
 				action: { label: 'Retry Tickets', onClick: async () => {
 					try {
 						const retry = await dispatchTickets();
 						if (retry.ok) {
-							await posService.markKotSent({ propertyId, tableKey: table.id }).catch(() => {});
-							toast.success(retry.queued ? `Order ${orderNumber} queued for the print agent.` : `Order ${orderNumber} tickets printed.`);
+							await persistSentSnapshot();
+							toast.success(retry.queued ? `New items for ${orderNumber} queued for printing.` : `New items for ${orderNumber} printed.`);
 						} else toast.error('Ticket retry failed. Check printer assignments.');
 					} catch (retryError) {
 						toast.error(retryError?.message || 'Ticket retry failed. Check printer configuration.');
@@ -239,8 +256,8 @@ export default function POSContainer() {
 			return;
 		}
 
-		await posService.markKotSent({ propertyId, tableKey: table.id }).catch((error) => console.warn('[POS] failed to mark KOT sent', error));
-		toast.success(printResult.queued ? `Order ${orderNumber} queued for the print agent.` : `Order ${orderNumber} tickets printed.`);
+		await persistSentSnapshot();
+		toast.success(printResult.queued ? `New items for ${orderNumber} queued for the print agent.` : `New items for ${orderNumber} tickets printed.`);
 	};
 
 	const openTableTransfer = () => {
