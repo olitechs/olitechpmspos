@@ -3,9 +3,12 @@ const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({
 }[char]));
 
 export function getPrinterColumns(printer = {}) {
+  // Use conservative printable columns rather than the theoretical maximum:
+  // 42 columns on 80mm and 30 on 58mm avoids clipping on common thermal heads.
+  const paperLimit = String(printer.paper_width || '80mm').toLowerCase() === '58mm' ? 30 : 42;
   const override = Number(printer.character_width ?? printer.characters_per_line);
-  if (Number.isInteger(override) && override >= 24 && override <= 64) return override;
-  return String(printer.paper_width || '80mm').toLowerCase() === '58mm' ? 32 : 48;
+  if (Number.isInteger(override) && override >= 24 && override <= paperLimit) return override;
+  return paperLimit;
 }
 
 export function wrapThermalText(value, width = 48) {
@@ -82,14 +85,21 @@ function emphasize(value) {
 }
 
 export function buildOrderTicketText(order = {}, { printer = {}, settings = {}, center = 'KITCHEN', items = order.items || [], now = new Date() } = {}) {
+  const safe = value => toReceiptAscii(value);
+  items = (Array.isArray(items) ? items : []).map(item => ({
+    ...item,
+    name: safe(itemName(item)),
+    modifiers: (Array.isArray(item.modifiers) ? item.modifiers : []).map(modifier => safe(modifierLabel(modifier))),
+    prepNote: safe(item.prepNote || item.prep_note || item.notes || item.note || item.kitchen_note || ''),
+  }));
   const width = getPrinterColumns(printer);
-  const productionCenter = String(center || 'KITCHEN').toUpperCase();
-  const orderNo = order.orderNumber || order.checkNo || order.order_number || order.id || '—';
-  const ticketNo = order.ticketNumber || order.ticket_number || (productionCenter.includes('BAR') ? 'BOT-' : 'KOT-') + orderNo;
-  const table = order.table || order.tableNumber || order.table_number || '—';
-  const waiter = order.waiter || order.server || 'Unassigned';
-  const dining = order.diningOption || order.dining_option || order.orderType || order.order_type || '—';
-  const company = settings.property_name || order.propertyName || order.property_name || 'OLITECHS PMS + POS';
+  const productionCenter = safe(center || 'KITCHEN').toUpperCase();
+  const orderNo = safe(order.orderNumber || order.checkNo || order.order_number || order.id || '—');
+  const ticketNo = safe(order.ticketNumber || order.ticket_number || (productionCenter.includes('BAR') ? 'BOT-' : 'KOT-') + orderNo);
+  const table = safe(order.table || order.tableNumber || order.table_number || '—');
+  const waiter = safe(order.waiter || order.server || 'Unassigned');
+  const dining = safe(order.diningOption || order.dining_option || order.orderType || order.order_type || '—');
+  const company = safe(settings.property_name || order.propertyName || order.property_name || 'OLITECHS PMS + POS');
   const header = centeredBlock([
     company.toUpperCase(),
     settings.address_line1,
@@ -130,7 +140,7 @@ export function buildOrderTicketText(order = {}, { printer = {}, settings = {}, 
   }
 
   lines.push(divider(width));
-  lines.push(...centeredBlock([settings.footer_line1, settings.footer_line2, 'PRODUCTION COPY · ' + productionCenter], width), '');
+  lines.push(...centeredBlock([safe(settings.footer_line1), safe(settings.footer_line2), 'PRODUCTION COPY - ' + productionCenter], width), '');
   return lines.join('\n');
 }
 
