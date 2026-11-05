@@ -145,10 +145,13 @@ export const posService = {
     return data || null;
   },
 
-  async markKotSent({ propertyId, tableKey }) {
+  async markKotSent({ propertyId, tableKey, orderLines = [] }) {
     const { data, error } = await supabase
       .from('pos_table_sessions')
-      .update({ kot_sent_at: new Date().toISOString() })
+      .update({
+        kot_sent_at: new Date().toISOString(),
+        kot_sent_order_lines: Array.isArray(orderLines) ? orderLines : [],
+      })
       .eq('property_id', propertyId)
       .eq('table_key', tableKey)
       .neq('status', 'closed')
@@ -156,6 +159,18 @@ export const posService = {
       .single();
     if (error) throw new Error(error.message);
     return data;
+  },
+  async saveKotSentSnapshot({ propertyId, tableKey, orderLines = [] }) {
+    const { data, error } = await supabase
+      .from('pos_table_sessions')
+      .update({ kot_sent_order_lines: Array.isArray(orderLines) ? orderLines : [] })
+      .eq('property_id', propertyId)
+      .eq('table_key', tableKey)
+      .neq('status', 'closed')
+      .select('id, kot_sent_order_lines')
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data || null;
   },
   async closeSession({ propertyId, tableKey, orderLines = [] }) {
     return this.saveSession({
