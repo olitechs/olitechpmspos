@@ -13,7 +13,8 @@ import {
 
 const stripEscPos = value => value
   .replaceAll(String.fromCharCode(27) + 'E' + String.fromCharCode(1), '')
-  .replaceAll(String.fromCharCode(27) + 'E' + String.fromCharCode(0), '');
+  .replaceAll(String.fromCharCode(27) + 'E' + String.fromCharCode(0), '')
+  .replace(/\x1D\x21[\s\S]/g, '');
 
 test('paper width selects 48 columns for 80mm and 32 for 58mm', () => {
   assert.equal(getPrinterColumns({ paper_width: '80mm' }), 48);
@@ -65,43 +66,91 @@ test('order ticket includes station metadata, modifiers and prep notes without p
   assert.doesNotMatch(output, /1500/);
 });
 
-test('unsettled bill is prominently unpaid, aligned and has totals without a payment row', () => {
-  const output = stripEscPos(buildUnsettledReceiptText({
-    property_name: 'Coastal Hotel',
-    address_line1: 'Watamu',
-    phone: '+254700000000',
-    footer_line1: 'Thank you',
-  }, {
-    orderNumber: 'ORD-002',
-    table: 'T-02',
-    waiter: 'Baraka',
+test('unsettled bill uses the clean pending layout and summed item amounts with VAT off', () => {
+  const settings = { property_name: 'Coastal Hotel', address_line1: 'Watamu', phone: '+254700000000', email: 'hello@example.com', website: 'coastal.example', kra_pin: 'P051234567A' };
+  const data = {
+    checkNo: 'ORD-002-USOR1U2',
+    table: 'T4',
+    waiter: 'Grace Wanjiru',
     diningOption: 'Dine In',
-    covers: 3,
+    covers: 5,
     currency: 'KES',
-    items: [{ qty: 2, name: 'Fresh Juice', price: 250 }],
-    subtotal: 500,
-    discount: 50,
-    vat: 72,
-    serviceCharge: 25,
-    total: 547,
-  }, { printer: { paper_width: '58mm' }, copyLabel: 'TEST COPY' }));
-  assert.match(output, /BILL - NOT PAID/);
-  assert.match(output, /PAYMENT PENDING/);
-  assert.match(output, /RECEIPT NO: RCT-ORD-002/);
-  assert.match(output, /ORDER NO: ORD-002/);
-  assert.match(output, /FRESH JUICE/i);
-  assert.match(output, /SUBTOTAL/);
-  assert.match(output, /DISCOUNT/);
-  assert.doesNotMatch(output, /VAT/);
-  assert.match(output, /SERVICE CHARGE/);
-  assert.match(output, /TOTAL DUE/);
-  assert.match(output, /NOT A TAX INVOICE/);
-  assert.doesNotMatch(output, /Payment Method/);
-  assert.doesNotMatch(output, /FINAL RECEIPT/);
-  assert.ok(output.split('\n').every(line => line.length <= 32));
-  assert.ok(output.includes('         COASTAL HOTEL'), 'company header is horizontally centered');
-  assert.ok(output.includes('     Thank you'), 'company footer is horizontally centered');
+    items: [
+      { qty: 1, name: 'Grilled Ocean Fish with Coconut Sauce and Swahili Spices', price: 1250, modifiers: [{ name: 'Extra lemon butter' }] },
+      { qty: 2, name: 'Soda', price: 300 },
+    ],
+  };
+  const output = stripEscPos(buildUnsettledReceiptText(settings, data, {
+    printer: { paper_width: '58mm' },
+    now: new Date('2026-11-05T12:46:00.000Z'),
+  }));
+  assert.match(output, /UNSETTLED BILL/);
+  assert.match(output, /Payment pending/);
+  assert.equal((output.match(/Payment pending/g) || []).length, 1);
+  assert.equal((output.match(/Not a tax invoice \/ Not a paid receipt/g) || []).length, 1);
+  assert.match(output, /Table: T4/);
+  assert.match(output, /Server: Grace Wanjuri/);
+  assert.match(output, /Covers: 5/);
+  assert.match(output, /Dining: Dine In/);
+  assert.match(output, /2 x Soda/);
+  assert.match(output, /KES 600\.00/);
+  assert.match(output, /KES 1,250\.00/);
+  assert.match(output, /AMOUNT DUE/);
+  assert.match(output, /KES 1,850\.00/);
+  assert.match(output, /Check: ORD-002-USOR1U2/);
+  assert.match(output, /5 Nov 2026, 15:46/);
+  assert.doesNotMatch(output, /RECEIPT NO|ORDER NO|SUBTOTAL|VAT|Thank you|Please keep your receipt/i);
+  assert.equal((output.match(/Check:/g) || []).length, 1);
+  assert.ok(output.split('\n').every(line => line.length <= 30), '58mm safe lines stay within 30 columns');
 });
+
+test('unsettled VAT exclusive adds VAT on top and reconciles the due amount', () => {
+  const settings = { unsettled_receipt_show_vat: true, unsettled_receipt_vat_rate: 16, unsettled_receipt_vat_mode: 'exclusive' };
+  const data = { currency: 'KES', checkNo: 'ORD-002', items: [{ qty: 1, name: 'Meal', price: 1250 }, { qty: 2, name: 'Soda', price: 300 }] };
+  const output = stripEscPos(buildUnsettledReceiptText(settings, data, { printer: { paper_width: '80mm' } }));
+  assert.match(output, /Subtotal\s+KES 1,850\.00/);
+  assert.match(output, /VAT \(16%\)\s+KES 296\.00/);
+  assert.match(output, /KES 2,146\.00/);
+  assert.ok(output.split('\n').every(line => line.length <= 46), '80mm safe lines stay within 46 columns');
+});
+
+test('unsettled VAT inclusive extracts VAT but keeps the printed line total as amount due', () => {
+  const settings = { unsettled_receipt_show_vat: true, unsettled_receipt_vat_rate: 16, unsettled_receipt_vat_mode: 'inclusive' };
+  const data = { currency: 'KES', checkNo: 'ORD-003', items: [{ qty: 1, name: 'Meal', price: 1250 }, { qty: 2, name: 'Soda', price: 300 }] };
+  const output = stripEscPos(buildUnsettledReceiptText(settings, data, { printer: { paper_width: '58mm' } }));
+  assert.match(output, /Subtotal/);
+  assert.match(output, /VAT included \(16%\)/);
+  assert.match(output, /KES 255\.17/);
+  assert.match(output, /KES 1,850\.00/);
+  assert.ok(output.split('\n').every(line => line.length <= 30));
+});
+
+test('an order VAT snapshot takes precedence over current property VAT settings', () => {
+  const settings = { unsettled_receipt_show_vat: false, unsettled_receipt_vat_rate: 16, unsettled_receipt_vat_mode: 'exclusive' };
+  const data = { checkNo: 'ORD-SNAP', vatSnapshot: { enabled: true, rate: 8, mode: 'exclusive' }, items: [{ qty: 1, name: 'Meal', price: 1000 }] };
+  const output = stripEscPos(buildUnsettledReceiptText(settings, data));
+  assert.match(output, /VAT \(8%\)/);
+  assert.match(output, /KES 1,080\.00/);
+});
+
+test('12-item unsettled bill preserves every item and stays within 58mm width', () => {
+  const items = Array.from({ length: 12 }, (_, index) => ({
+    qty: index === 1 ? 2 : 1,
+    name: index === 0 ? 'Grilled Ocean Fish with Coconut Sauce and Swahili Spices' : 'Sample menu item ' + (index + 1),
+    price: index === 1 ? 300 : 250,
+    modifiers: index === 0 ? [{ name: 'Extra lemon butter' }] : [],
+  }));
+  const output = stripEscPos(buildUnsettledReceiptText({}, { checkNo: 'ORD-LONG', items }, { printer: { paper_width: '58mm' } }));
+  for (let index = 1; index <= 12; index++) {
+    if (index === 1) assert.match(output, /Grilled Ocean Fish/);
+    else if (index === 2) assert.match(output, /2 x Sample menu item 2/);
+    else assert.match(output, new RegExp('Sample menu item ' + index));
+  }
+  assert.match(output, /Extra lemon butter/);
+  assert.ok(output.split('\n').every(line => line.length <= 30));
+});
+
+
 
 
 test('final receipt uses centered company header/footer and a paid receipt layout', () => {
@@ -155,16 +204,16 @@ test('HTML fallback renders fixed-width plain text on white paper', () => {
   assert.match(html, /BILL - NOT PAID/);
 });
 
-test('thermal payload feeds beyond the final line before the partial cut', () => {
+test('thermal payload keeps legacy defaults and supports feed-before-partial-cut receipt buffer', () => {
   const shortBill = toEscPosPayload('ORDER TICKET');
   assert.equal(shortBill.charCodeAt(0), 27);
   assert.equal(shortBill.charCodeAt(1), 64);
   assert.ok(shortBill.includes(String.fromCharCode(27, 100, 6)));
   assert.ok(shortBill.endsWith(String.fromCharCode(29, 86, 1)));
 
-  const longBillText = Array.from({ length: 240 }, (_, i) => 'LONG BILL ITEM ' + (i + 1)).join('\n');
-  assert.equal(estimateThermalFeedLines(longBillText), 8);
-  assert.ok(toEscPosPayload(longBillText).includes(String.fromCharCode(27, 100, 8)));
+  const receipt = toEscPosPayload('UNSETTLED BILL', { feedLines: 5, partialCut: true });
+  assert.ok(receipt.endsWith(String.fromCharCode(27, 100, 5, 29, 86, 66, 0)), 'feed command must immediately precede partial cut');
+  assert.equal(estimateThermalFeedLines(Array.from({ length: 240 }, (_, i) => 'LONG BILL ITEM ' + (i + 1)).join('\n')), 8);
 });
 
 test('long item names and amount fields are wrapped, never sliced off', () => {
