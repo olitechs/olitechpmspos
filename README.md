@@ -406,6 +406,7 @@ The project contains substantial working workflows, but some platform architectu
 - [ ] Design and build a LAN Edge Server for shared multi-terminal offline operation.
 - [ ] Continue security remediation and live migration-provenance reconciliation.
 - [ ] Expand payment, reporting, channel connectivity and hardware integrations after validating each provider/device.
+- [ ] Build the dedicated Help Centre with searchable FAQs/how-to guides, support tickets, real-time user-to-admin conversations and a platform-admin support inbox. See [Help Centre implementation brief](docs/HELP_CENTRE_IMPLEMENTATION_BRIEF.md).
 
 Do not interpret this roadmap as a promise that every item is already available in the deployed application.
 
