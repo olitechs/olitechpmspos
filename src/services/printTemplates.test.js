@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  buildOrderTicketText,
+  buildOrderTicketText,\n  getUnsentOrderLines,
   buildUnsettledReceiptText,
   buildFinalReceiptText,
   getPrinterColumns,
@@ -17,13 +17,30 @@ const stripEscPos = value => value
   .replace(/\x1D\x21[\s\S]/g, '');
 
 test('paper width selects 48 columns for 80mm and 32 for 58mm', () => {
-  assert.equal(getPrinterColumns({ paper_width: '80mm' }), 48);
-  assert.equal(getPrinterColumns({ paper_width: '58mm' }), 32);
+  assert.equal(getPrinterColumns({ paper_width: '80mm' }), 42);
+  assert.equal(getPrinterColumns({ paper_width: '58mm' }), 30);
 });
 
 test('character override takes precedence and rejects out-of-range values', () => {
-  assert.equal(getPrinterColumns({ paper_width: '58mm', character_width: 42 }), 42);
-  assert.equal(getPrinterColumns({ paper_width: '80mm', character_width: 65 }), 48);
+  assert.equal(getPrinterColumns({ paper_width: '58mm', character_width: 42 }), 30);
+  assert.equal(getPrinterColumns({ paper_width: '80mm', character_width: 65 }), 42);
+});
+
+test('additional KOT sends contain only quantities not previously fired', () => {
+  const existing = [{ id: 'fish-extra-lemon', name: 'Grilled Fish', qty: 2, modifiers: [{ name: 'Extra lemon' }] }];
+  const current = [{ id: 'fish-extra-lemon', name: 'Grilled Fish', qty: 3, modifiers: [{ name: 'Extra lemon' }] }];
+  const delta = getUnsentOrderLines(current, existing);
+  assert.equal(delta.length, 1);
+  assert.equal(delta[0].qty, 1);
+  assert.equal(getUnsentOrderLines(existing, existing).length, 0);
+});
+
+test('KOT snapshot after a void allows a later re-added quantity to print once', () => {
+  const afterVoid = [{ id: 'soda', name: 'Soda', qty: 1 }];
+  const afterAddition = [{ id: 'soda', name: 'Soda', qty: 2 }];
+  const delta = getUnsentOrderLines(afterAddition, afterVoid);
+  assert.equal(delta.length, 1);
+  assert.equal(delta[0].qty, 1);
 });
 
 test('word wrapping never exceeds the configured paper width', () => {
@@ -52,7 +69,7 @@ test('order ticket includes station metadata, modifiers and prep notes without p
   assert.match(output, /COASTAL HOTEL/);
   assert.match(output, /Thank you for visiting/);
   assert.ok(!output.includes(String.fromCharCode(29) + '!' + String.fromCharCode(17)), 'order items stay at normal thermal font size');
-  assert.ok(output.split('\n').every(line => line.length <= 48), 'all order ticket lines fit 80mm paper width');
+  assert.ok(output.split('\n').every(line => line.length <= 42), 'all order ticket lines fit safe 80mm paper width');
   assert.ok(output.includes('                 COASTAL HOTEL'), 'order ticket company header is centered');
   assert.ok(output.includes('           Thank you for visiting'), 'order ticket footer is centered');
   assert.match(output, /ORDER NO: ORD-001/);
