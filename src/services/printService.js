@@ -64,12 +64,34 @@ async function resolveRetryPrinter(job, propertyId) {
   return fallback || original || assignedPrinters.find((printer) => printer.is_online !== false) || null;
 }
 
+// PostgreSQL text/JSONB cannot store NUL or unpaired UTF-16 surrogates.
+// Keep normal Unicode (including emoji) and printable text, but strip control
+// bytes before persisting HTML/JSON. Raw ESC/POS bytes stay in thermalText and
+// are sent directly to the printer; they are never needed in the job record.
+function sanitizeDatabaseValue(value) {
+  if (typeof value === 'string') {
+    let clean = '';
+    for (const character of value) {
+      const codePoint = character.codePointAt(0);
+      if (codePoint === 0 || (codePoint >= 0xD800 && codePoint <= 0xDFFF)) continue;
+      if ((codePoint >= 0x01 && codePoint <= 0x08) || codePoint === 0x0B || codePoint === 0x0C || (codePoint >= 0x0E && codePoint <= 0x1F)) continue;
+      clean += character;
+    }
+    return clean;
+  }
+  if (Array.isArray(value)) return value.map(sanitizeDatabaseValue);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([key, nested]) => [sanitizeDatabaseValue(key), sanitizeDatabaseValue(nested)]));
+  }
+  return value;
+}
+
 async function createFnbPrintJob({propertyId,printerId,assignmentType,jobType,copyType=null,title='',contentHtml='',payload={},retryOf=null}) {
   if (!propertyId) return null;
   const {data,error}=await supabase.from('fnb_print_jobs').insert({
     property_id:propertyId, printer_id:printerId||null, assignment_type:assignmentType||'document',
     job_type:jobType||'document', copy_type:copyType, title:title||'OliTechs Print',
-    content_html:String(contentHtml||''), payload:payload||{}, retry_of:retryOf||null,
+    content_html:sanitizeDatabaseValue(String(contentHtml||'')), payload:sanitizeDatabaseValue(payload||{}), retry_of:retryOf||null,
     created_by:(await supabase.auth.getUser()).data?.user?.id||null, status:'queued'
   }).select().single();
   if(error) throw error;
