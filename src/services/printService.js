@@ -651,7 +651,7 @@ export async function printTestReceipt(printer, propertyId, { vatMode = 'off', l
     if (vatError) throw vatError;
     settings = {
       ...(data || {}),
-      unsettled_receipt_show_vat: vatMode === 'off' ? false : vatSettings?.show_vat ?? true,
+      unsettled_receipt_show_vat: vatMode !== 'off',
       unsettled_receipt_vat_rate: Number(vatSettings?.vat_rate ?? 16),
       unsettled_receipt_vat_mode: vatMode === 'inclusive' ? 'inclusive' : 'exclusive',
       unsettled_receipt_feed_lines: Number(vatSettings?.feed_lines ?? 5),
