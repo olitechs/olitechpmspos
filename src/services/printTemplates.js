@@ -216,13 +216,16 @@ function resolveUnsettledVat(settings = {}, data = {}, subtotal = 0) {
   const rate = Math.max(0, Math.min(100, Number(rateValue) || 0));
   const modeValue = snapshot?.mode ?? snapshot?.vatMode ?? snapshot?.vat_mode ?? settings.unsettled_receipt_vat_mode ?? 'exclusive';
   const mode = String(modeValue).toLowerCase() === 'inclusive' ? 'inclusive' : 'exclusive';
-  if (!enabled || rate <= 0) return { enabled: false, rate, mode, vat: 0, amountDue: roundReceiptMoney(subtotal) };
-  if (mode === 'inclusive') {
-    const vat = roundReceiptMoney(subtotal - subtotal / (1 + rate / 100));
-    return { enabled: true, rate, mode, vat, amountDue: roundReceiptMoney(subtotal) };
-  }
-  const vat = roundReceiptMoney(subtotal * rate / 100);
-  return { enabled: true, rate, mode, vat, amountDue: roundReceiptMoney(subtotal + vat) };
+  const discount = roundReceiptMoney(Math.max(0, Number(snapshot?.discount ?? data.discount ?? 0)));
+  const taxableSubtotal = roundReceiptMoney(Math.max(0, Number(snapshot?.taxableSubtotal ?? snapshot?.taxable_subtotal ?? subtotal - discount)));
+  if (!enabled || rate <= 0) return { enabled: false, rate, mode, discount, taxableSubtotal, vat: 0, amountDue: taxableSubtotal };
+  const vat = roundReceiptMoney(Number(snapshot?.vat ?? (mode === 'inclusive'
+    ? taxableSubtotal * rate / (100 + rate)
+    : taxableSubtotal * rate / 100)));
+  const amountDue = roundReceiptMoney(Number(snapshot?.total ?? snapshot?.amountDue ?? snapshot?.amount_due ?? (mode === 'inclusive'
+    ? taxableSubtotal
+    : taxableSubtotal + vat)));
+  return { enabled: true, rate, mode, discount, taxableSubtotal, vat, amountDue };
 }
 
 export function buildUnsettledReceiptText(settings = {}, data = {}, { printer = {}, copyLabel = 'CUSTOMER COPY', now = new Date() } = {}) {
@@ -280,8 +283,11 @@ export function buildUnsettledReceiptText(settings = {}, data = {}, { printer = 
   lines.push(divider(width));
   if (vat.enabled) {
     lines.push(...receiptPairLine('Subtotal', formatReceiptMoney(subtotal, currency), width));
+    if (vat.discount > 0) lines.push(...receiptPairLine('Discount', '-' + formatReceiptMoney(vat.discount, currency), width));
     const vatLabel = vat.mode === 'inclusive' ? 'VAT included (' + vat.rate + '%)' : 'VAT (' + vat.rate + '%)';
     lines.push(...receiptPairLine(vatLabel, formatReceiptMoney(vat.vat, currency), width));
+  } else if (vat.discount > 0) {
+    lines.push(...receiptPairLine('Discount', '-' + formatReceiptMoney(vat.discount, currency), width));
   }
   lines.push('='.repeat(width));
   lines.push(receiptDoubleHeight(
