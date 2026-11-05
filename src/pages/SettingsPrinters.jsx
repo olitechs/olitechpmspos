@@ -263,13 +263,13 @@ export default function SettingsPrinters() {
     }
   };
 
-  const runTemplateTest = async (printer, kind) => {
+  const runTemplateTest = async (printer, kind, options = {}) => {
     const key = printer.id + ':' + kind;
     setTemplateTests(prev => ({ ...prev, [key]: { pending: true, text: 'Sending test print…' } }));
     try {
       const result = kind === 'order'
         ? await printTestOrder(printer, assignments.filter(item => item.printer_id === printer.id).map(item => item.assignment_type), propertyId)
-        : await printTestReceipt(printer, propertyId);
+        : await printTestReceipt(printer, propertyId, options);
       setTemplateTests(prev => ({
         ...prev,
         [key]: {
@@ -355,7 +355,7 @@ export default function SettingsPrinters() {
                 <div><h2 className="text-sm font-black uppercase tracking-wide text-foreground">Physical Printers</h2><p className="mt-1 text-xs text-muted-foreground">Only a verified connection is shown as Connected.</p></div>
               </div>
               <div className="space-y-3">
-                {printers.map(p=><PrinterCard key={p.id} printer={p} assignments={assignments.filter(a=>a.printer_id===p.id)} testing={testingId===p.id} onTest={()=>verify(p.id)} onTestOrder={()=>runTemplateTest(p,'order')} onTestReceipt={()=>runTemplateTest(p,'receipt')} orderTest={templateTests[p.id+':order']} receiptTest={templateTests[p.id+':receipt']} onEdit={()=>openEdit(p)} onDelete={()=>remove(p.id)} onRemoveAssignment={removeAssignment}/>)}
+                {printers.map(p=><PrinterCard key={p.id} printer={p} assignments={assignments.filter(a=>a.printer_id===p.id)} testing={testingId===p.id} onTest={()=>verify(p.id)} onTestOrder={()=>runTemplateTest(p,'order')} onTestReceipt={(vatMode,longReceipt)=>runTemplateTest(p,'receipt',{vatMode,longReceipt})} orderTest={templateTests[p.id+':order']} receiptTest={templateTests[p.id+':receipt']} onEdit={()=>openEdit(p)} onDelete={()=>remove(p.id)} onRemoveAssignment={removeAssignment}/>)}
                 {!printers.length && <Empty onAdd={openNew}/>}
               </div>
             </section>
@@ -405,6 +405,8 @@ function Alert({type,text}) {
 }
 
 function PrinterCard({printer,assignments,testing,onTest,onTestOrder,onTestReceipt,orderTest,receiptTest,onEdit,onDelete,onRemoveAssignment}) {
+  const [receiptVatMode, setReceiptVatMode] = useState('off');
+  const [longReceipt, setLongReceipt] = useState(false);
   const meta=statusMeta(printer);
   const Icon=meta.Icon;
   return <article className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
@@ -441,7 +443,13 @@ function PrinterCard({printer,assignments,testing,onTest,onTestOrder,onTestRecei
     <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
       <button disabled={testing} onClick={onTest} className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-black text-primary-foreground disabled:opacity-50"><Play size={13}/>{testing?'Testing…':'Test Connection'}</button>
       <button disabled={orderTest?.pending} onClick={onTestOrder} className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-xs font-bold text-foreground disabled:opacity-50"><Printer size={13}/>{orderTest?.pending?'Printing…':'Test Print – Order'}</button>
-      <button disabled={receiptTest?.pending} onClick={onTestReceipt} className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-xs font-bold text-foreground disabled:opacity-50"><Printer size={13}/>{receiptTest?.pending?'Printing…':'Test Print – Receipt'}</button>
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-secondary/60 p-2">
+        <select aria-label="Receipt VAT test mode" value={receiptVatMode} onChange={e=>setReceiptVatMode(e.target.value)} className="rounded-md border border-border bg-surface px-2 py-1.5 text-[11px] font-bold text-foreground">
+          <option value="off">VAT off</option><option value="exclusive">VAT on - exclusive</option><option value="inclusive">VAT on - inclusive</option>
+        </select>
+        <label className="flex items-center gap-1.5 text-[11px] font-semibold text-foreground"><input type="checkbox" checked={longReceipt} onChange={e=>setLongReceipt(e.target.checked)} className="h-3.5 w-3.5"/>12-item sample</label>
+      </div>
+      <button disabled={receiptTest?.pending} onClick={()=>onTestReceipt(receiptVatMode,longReceipt)} className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-xs font-bold text-foreground disabled:opacity-50"><Printer size={13}/>{receiptTest?.pending?'Printing…':'Receipt Test Print'}</button>
       <button onClick={onEdit} className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-bold text-foreground hover:bg-secondary"><Pencil size={13}/>Edit</button>
       <button onClick={onDelete} className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--danger)] px-3 py-2 text-xs font-bold text-[var(--danger-text)] hover:bg-[var(--danger-soft)]"><Trash2 size={13}/>Delete</button>
       {printer.last_tested_at && <span className="ml-auto self-center text-[10px] text-muted-foreground">Tested {new Date(printer.last_tested_at).toLocaleString('en-KE')}</span>}
