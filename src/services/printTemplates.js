@@ -297,12 +297,16 @@ export function buildUnsettledReceiptText(settings = {}, data = {}, { printer = 
 
   for (const { item, qty, lineTotal } of normalizedItems) {
     const amount = formatReceiptMoney(lineTotal, currency);
-    const leftWidth = Math.max(4, width - amount.length);
+    const leftWidth = Math.max(4, width - amount.length - 1);
     const heading = toReceiptAscii(qty + ' x ' + itemName(item));
-    const nameRows = wrapThermalText(heading, leftWidth);
-    const firstName = nameRows[0] || '';
-    lines.push(firstName.padEnd(leftWidth, '.') + amount);
-    for (const row of nameRows.slice(1)) lines.push(...wrapThermalText('  ' + row, width));
+    if (heading.length <= leftWidth) {
+      lines.push(heading.padEnd(leftWidth) + ' ' + amount);
+    } else {
+      // Preserve the full item name on wrapped lines; put the amount on its
+      // own right-aligned row rather than clipping or dot-truncating the name.
+      lines.push(...wrapThermalText(heading, width));
+      lines.push(amount.padStart(width));
+    }
     const modifiers = (Array.isArray(item.modifiers) ? item.modifiers : []).map(modifierLabel).filter(Boolean);
     for (const modifier of modifiers) lines.push(...wrapThermalText('  + ' + toReceiptAscii(modifier), width));
     const note = item.prepNote || item.prep_note || item.notes || item.note;
