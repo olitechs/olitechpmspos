@@ -47,6 +47,7 @@ export function StoreProvider({ children }) {
       openedAt: row.opened_at ? new Date(row.opened_at).getTime() : Date.now(),
       kotSentAt: row.kot_sent_at ? new Date(row.kot_sent_at).getTime() : null,
       kotSentOrderLines: Array.isArray(row.kot_sent_order_lines) ? row.kot_sent_order_lines : [],
+      vatSnapshot: row.vat_snapshot || null,
       total: 0,
       orderCount: Array.isArray(row.order_lines) ? row.order_lines.length : 0,
       tableNumber: row.table_number,
