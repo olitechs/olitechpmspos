@@ -108,6 +108,31 @@ export const posService = {
   },
 
 
+  async getVatSnapshot({ propertyId, tableKey }) {
+    const { data, error } = await supabase
+      .from('pos_table_sessions')
+      .select('vat_snapshot')
+      .eq('property_id', propertyId)
+      .eq('table_key', String(tableKey))
+      .neq('status', 'closed')
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data?.vat_snapshot || null;
+  },
+
+  async saveVatSnapshot({ propertyId, tableKey, snapshot }) {
+    const { data, error } = await supabase
+      .from('pos_table_sessions')
+      .update({ vat_snapshot: snapshot })
+      .eq('property_id', propertyId)
+      .eq('table_key', String(tableKey))
+      .neq('status', 'closed')
+      .select('id, vat_snapshot')
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data || null;
+  },
+
   async moveOrMergeTable({ propertyId, sourceTableKey, targetTableKey, targetTableNumber, mode }) {
     const { data, error } = await supabase.rpc('fn_move_or_merge_pos_table', {
       p_property_id: propertyId,
