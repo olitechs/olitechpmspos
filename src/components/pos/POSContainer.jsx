@@ -216,6 +216,12 @@ export default function POSContainer() {
 			}
 			return printOrder(linesToPrint);
 		};
+		// Persist the full sent-item snapshot before printer I/O. The POS leaves
+		// the order screen while tickets are being dispatched; without this
+		// early snapshot, staff can reopen the table during a slow print and the
+		// next send sees the previous snapshot, reprinting the whole check.
+		if (!(await persistSentSnapshot())) return;
+
 		let printResult;
 		try {
 			printResult = await dispatchTickets();
@@ -227,7 +233,6 @@ export default function POSContainer() {
 					try {
 						const retry = await dispatchTickets(retryLines);
 						if (retry.ok) {
-							if (!(await persistSentSnapshot())) return;
 							toast.success(retry.queued ? `New items for ${orderNumber} queued for printing.` : `New items for ${orderNumber} printed.`);
 						} else toast.error('Ticket retry failed. Check printer assignments.');
 					} catch (retryError) {
@@ -253,7 +258,6 @@ export default function POSContainer() {
 					try {
 						const retry = await dispatchTickets(retryLines);
 						if (retry.ok) {
-							if (!(await persistSentSnapshot())) return;
 							toast.success(retry.queued ? `New items for ${orderNumber} queued for printing.` : `New items for ${orderNumber} printed.`);
 						} else toast.error('Ticket retry failed. Check printer assignments.');
 					} catch (retryError) {
@@ -264,7 +268,6 @@ export default function POSContainer() {
 			return;
 		}
 
-		if (!(await persistSentSnapshot())) return;
 		toast.success(printResult.queued ? `New items for ${orderNumber} queued for the print agent.` : `New items for ${orderNumber} tickets printed.`);
 	};
 
