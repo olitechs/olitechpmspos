@@ -123,6 +123,18 @@ export default function AppShell({ workspace = 'backoffice' }) {
                 {!collapsed && children.length > 0 && <div className="ml-7 border-l border-[var(--border)] py-1 pl-2">{children.map(([label, path]) => <NavLink key={path} to={path} onClick={() => setMobileOpen(false)} className={({ isActive }) => ['block rounded px-2 py-1.5 text-xs', isActive ? 'bg-[var(--surface-2)] font-medium text-[var(--text)]' : 'text-[var(--text-muted)] hover:text-[var(--text)]'].join(' ')}>{label}</NavLink>)}</div>}
               </div>;
             })}
+            <div className="mb-1">
+              <NavLink to="/help" onClick={() => setMobileOpen(false)} title={collapsed ? 'Help Centre' : undefined}
+                className={({ isActive }) => [
+                  'flex min-h-9 items-center gap-2 rounded-md px-2 text-[13px] transition-colors',
+                  isActive ? 'bg-[var(--brand-soft)] font-semibold text-[var(--text)]' : 'text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]',
+                  collapsed ? 'justify-center' : '',
+                ].join(' ')}
+                aria-label="Open Help Centre">
+                <HelpCircle size={17} className="shrink-0" />
+                {!collapsed && <span className="min-w-0 flex-1 truncate">Help Centre</span>}
+              </NavLink>
+            </div>
           </nav>
           <div className="shrink-0 border-t border-[var(--border)] p-2">
             <button type="button" onClick={() => setOwnerOpen(value => !value)} className="flex min-h-10 w-full items-center gap-2 rounded-md px-2 text-left hover:bg-[var(--surface-2)]">
