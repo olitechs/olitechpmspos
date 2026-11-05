@@ -140,11 +140,11 @@ test('long order-ticket names, modifiers and kitchen notes are preserved within 
     orderNumber: 'ORD-058',
     items: [{ qty: 2, name: longName, modifiers: [longModifier], prepNote: longNote }],
   }, { printer: { paper_width: '58mm' }, center: 'KITCHEN' }));
-  const plain = output.replace(/\\s/g, '');
+  const plain = output.replace(/\s/g, '');
   for (const value of [longName, longModifier, longNote]) {
-    assert.ok(plain.includes(value.replace(/\\s/g, '')), 'all supplied ticket text is preserved');
+    assert.ok(plain.includes(value.replace(/\s/g, '')), 'all supplied ticket text is preserved');
   }
-  assert.ok(output.split('\\n').every(line => line.length <= 32), 'every physical line fits 58mm paper');
+  assert.ok(output.split('\n').every(line => line.length <= 32), 'every physical line fits 58mm paper');
   assert.match(output, /TICKET NO: KOT-ORD-058/);
 });
 
