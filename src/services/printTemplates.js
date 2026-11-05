@@ -3,8 +3,14 @@ const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({
 }[char]));
 
 export function getPrinterColumns(printer = {}) {
-  // Use conservative printable columns rather than the theoretical maximum:
-  // 42 columns on 80mm and 30 on 58mm avoids clipping on common thermal heads.
+  // Preserve the established receipt width so settled receipt output does not change.
+  const override = Number(printer.character_width ?? printer.characters_per_line);
+  if (Number.isInteger(override) && override >= 24 && override <= 64) return override;
+  return String(printer.paper_width || '80mm').toLowerCase() === '58mm' ? 32 : 48;
+}
+
+export function getOrderTicketColumns(printer = {}) {
+  // Production tickets use a conservative safe width to avoid clipped thermal lines.
   const paperLimit = String(printer.paper_width || '80mm').toLowerCase() === '58mm' ? 30 : 42;
   const override = Number(printer.character_width ?? printer.characters_per_line);
   if (Number.isInteger(override) && override >= 24 && override <= paperLimit) return override;
@@ -111,7 +117,7 @@ export function buildOrderTicketText(order = {}, { printer = {}, settings = {}, 
     modifiers: (Array.isArray(item.modifiers) ? item.modifiers : []).map(modifier => safe(modifierLabel(modifier))),
     prepNote: safe(item.prepNote || item.prep_note || item.notes || item.note || item.kitchen_note || ''),
   }));
-  const width = getPrinterColumns(printer);
+  const width = getOrderTicketColumns(printer);
   const productionCenter = safe(center || 'KITCHEN').toUpperCase();
   const orderNo = safe(order.orderNumber || order.checkNo || order.order_number || order.id || '—');
   const ticketNo = safe(order.ticketNumber || order.ticket_number || (productionCenter.includes('BAR') ? 'BOT-' : 'KOT-') + orderNo);

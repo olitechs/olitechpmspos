@@ -6,6 +6,7 @@ import {
   buildUnsettledReceiptText,
   buildFinalReceiptText,
   getPrinterColumns,
+  getOrderTicketColumns,
   thermalTextToHtml,
   toEscPosPayload,
   estimateThermalFeedLines,
@@ -17,14 +18,16 @@ const stripEscPos = value => value
   .replaceAll(String.fromCharCode(27) + 'E' + String.fromCharCode(0), '')
   .replace(/\x1D\x21[\s\S]/g, '');
 
-test('paper width selects safe 42 columns for 80mm and 30 for 58mm', () => {
-  assert.equal(getPrinterColumns({ paper_width: '80mm' }), 42);
-  assert.equal(getPrinterColumns({ paper_width: '58mm' }), 30);
+test('settled receipt columns preserve the legacy 80mm and 58mm widths', () => {
+  assert.equal(getPrinterColumns({ paper_width: '80mm' }), 48);
+  assert.equal(getPrinterColumns({ paper_width: '58mm' }), 32);
 });
 
-test('character override takes precedence and rejects out-of-range values', () => {
-  assert.equal(getPrinterColumns({ paper_width: '58mm', character_width: 42 }), 30);
-  assert.equal(getPrinterColumns({ paper_width: '80mm', character_width: 65 }), 42);
+test('order ticket columns use conservative safe 42 and 30 character widths', () => {
+  assert.equal(getOrderTicketColumns({ paper_width: '80mm' }), 42);
+  assert.equal(getOrderTicketColumns({ paper_width: '58mm' }), 30);
+  assert.equal(getOrderTicketColumns({ paper_width: '58mm', character_width: 42 }), 30);
+  assert.equal(getOrderTicketColumns({ paper_width: '80mm', character_width: 65 }), 42);
 });
 
 test('additional KOT sends contain only quantities not previously fired', () => {
