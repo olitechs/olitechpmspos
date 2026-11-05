@@ -105,6 +105,7 @@ export async function savePropertySettings(propertyId, values) {
     unsettled_receipt_front_office_copy: values?.unsettled_receipt_front_office_copy ?? existing?.unsettled_receipt_front_office_copy ?? DEFAULT_RECEIPT_SETTINGS.unsettled_receipt_front_office_copy,
     updated_at: new Date().toISOString(),
   };
+  UNSETTLED_RECEIPT_SETTING_KEYS.forEach((key) => delete payload[key]);
   const { data, error } = await supabase
     .from('property_settings')
     .upsert(payload, { onConflict: 'property_id' })
