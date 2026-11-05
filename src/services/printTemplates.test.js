@@ -71,8 +71,8 @@ test('order ticket includes station metadata, modifiers and prep notes without p
   assert.match(output, /Thank you for visiting/);
   assert.ok(!output.includes(String.fromCharCode(29) + '!' + String.fromCharCode(17)), 'order items stay at normal thermal font size');
   assert.ok(output.split('\n').every(line => line.length <= 42), 'all order ticket lines fit safe 80mm paper width');
-  assert.ok(output.includes('                 COASTAL HOTEL'), 'order ticket company header is centered');
-  assert.ok(output.includes('           Thank you for visiting'), 'order ticket footer is centered');
+  assert.ok(output.includes('              COASTAL HOTEL'), 'order ticket company header is centered');
+  assert.ok(output.includes('         Thank you for visiting'), 'order ticket footer is centered');
   assert.match(output, /ORDER NO: ORD-001/);
   assert.match(output, /TICKET NO: KOT-ORD-001/);
   assert.match(output, /T-04/);
@@ -226,7 +226,7 @@ test('long order-ticket names, modifiers and kitchen notes are preserved within 
   for (const value of [longName, longModifier, longNote]) {
     assert.ok(plain.includes(value.replace(/\s/g, '')), 'all supplied ticket text is preserved');
   }
-  assert.ok(output.split('\n').every(line => line.length <= 32), 'every physical line fits 58mm paper');
+  assert.ok(output.split('\n').every(line => line.length <= 30), 'every physical line fits safe 58mm paper width');
   assert.match(output, /TICKET NO: KOT-ORD-058/);
 });
 
