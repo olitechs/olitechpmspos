@@ -580,25 +580,35 @@ async function buildLogoEscPosBase64(logoUrl, printer = {}, text = '', options =
     const rowBytes = Math.ceil(width / 8);
     const raster = new Uint8Array(11 + rowBytes * height);
     raster.set([0x1b,0x61,0x01,0x1d,0x76,0x30,0x00,rowBytes & 0xff,(rowBytes >> 8) & 0xff,height & 0xff,(height >> 8) & 0xff]);
-    // Floyd-Steinberg monochrome dithering keeps small logo details legible
-    // on thermal paper while retaining the strict 60% paper-width limit.
-    const gray = new Float32Array(width * height);
-    for (let index = 0; index < gray.length; index++) {
-      const pixel = index * 4;
-      gray[index] = (pixels[pixel] * 299 + pixels[pixel + 1] * 587 + pixels[pixel + 2] * 114) / 1000;
-    }
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const index = y * width + x;
-        const oldValue = gray[index];
-        const newValue = oldValue < 128 ? 0 : 255;
-        const error = oldValue - newValue;
-        if (newValue === 0) raster[11 + y * rowBytes + (x >> 3)] |= (0x80 >> (x & 7));
-        if (x + 1 < width) gray[index + 1] += error * 7 / 16;
-        if (y + 1 < height) {
-          if (x > 0) gray[index + width - 1] += error * 3 / 16;
-          gray[index + width] += error * 5 / 16;
-          if (x + 1 < width) gray[index + width + 1] += error / 16;
+    if (singleBuffer) {
+      // Floyd-Steinberg monochrome dithering is specific to the redesigned
+      // unsettled bill. Keep the settled-receipt raster path byte-for-byte.
+      const gray = new Float32Array(width * height);
+      for (let index = 0; index < gray.length; index++) {
+        const pixel = index * 4;
+        gray[index] = (pixels[pixel] * 299 + pixels[pixel + 1] * 587 + pixels[pixel + 2] * 114) / 1000;
+      }
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const index = y * width + x;
+          const oldValue = gray[index];
+          const newValue = oldValue < 128 ? 0 : 255;
+          const error = oldValue - newValue;
+          if (newValue === 0) raster[11 + y * rowBytes + (x >> 3)] |= (0x80 >> (x & 7));
+          if (x + 1 < width) gray[index + 1] += error * 7 / 16;
+          if (y + 1 < height) {
+            if (x > 0) gray[index + width - 1] += error * 3 / 16;
+            gray[index + width] += error * 5 / 16;
+            if (x + 1 < width) gray[index + width + 1] += error / 16;
+          }
+        }
+      }
+    } else {
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const index = (y * width + x) * 4;
+          const luminance = (pixels[index] * 299 + pixels[index + 1] * 587 + pixels[index + 2] * 114) / 1000;
+          if (luminance < 160) raster[11 + y * rowBytes + (x >> 3)] |= (0x80 >> (x & 7));
         }
       }
     }
