@@ -67,3 +67,12 @@ test('KOT and BOT jobs include an extended feed margin before the cutter', async
   assert.ok(agent.includes('8 + Math.floor'));
   assert.ok(agent.includes('finish(null), 1200'));
 });
+
+
+test('POS snapshots sent order lines before asynchronous printer dispatch', async () => {
+  const pos = await read('../components/pos/POSContainer.jsx');
+  const snapshot = pos.indexOf('if (!(await persistSentSnapshot())) return;');
+  const dispatch = pos.indexOf('printResult = await dispatchTickets();');
+  assert.ok(snapshot >= 0 && dispatch > snapshot, 'sent snapshot must be persisted before printer I/O');
+  assert.ok(!pos.slice(dispatch).includes('if (!(await persistSentSnapshot())) return;'), 'retry must not mutate the sent snapshot again');
+});
