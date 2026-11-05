@@ -3,13 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/app-icon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0A3F4A" />
+    <meta name="description" content="OliTechs — hospitality operations for front office, restaurant POS, inventory and property management." />
+    <link rel="manifest" href="/manifest.json" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet" />
-    <meta name="theme-color" content="#F4F7F8" />
-    <link rel="manifest" href="/manifest.json" />
-    <title>OliTechs</title>
+    <title>OliTechs | Hospitality Operations</title>
     <script>
       (function(){try{
         var m=localStorage.getItem("olitech_theme_mode")||"system";
@@ -18,7 +20,7 @@
         r.setAttribute("data-theme",d?"dark":"light");
         r.classList.toggle("dark",d);
         var meta=document.querySelector('meta[name="theme-color"]');
-        if(meta)meta.setAttribute("content",d?"#10171A":"#F4F7F8");
+        if(meta)meta.setAttribute("content",d?"#10171A":"#0A3F4A");
       }catch(e){}})();
     </script>
   </head>
