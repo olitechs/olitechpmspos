@@ -45,3 +45,25 @@ test('unsettled bill print remains separate from payment and receipt persistence
   assert.match(bill, /printReceipt\('UNSETTLED'/);
   assert.doesNotMatch(service, /from\(['"]pos_receipts['"]\)/);
 });
+
+
+test('unsettled duplicate copies are sent as independently cut print jobs', async () => {
+  const service = await read('./printService.js');
+  assert.match(service, /for \\(const copy of copies\\)/);
+  assert.match(service, /copyType: copy\\.toLowerCase\\(\\)\\.replace/);
+  assert.match(service, /title: 'Unsettled Bill - ' \\+ copy/);
+  assert.doesNotMatch(service, /copyTexts\\.join/);
+});
+
+test('KOT and BOT jobs include an extended feed margin before the cutter', async () => {
+  const service = await read('./printService.js');
+  const routing = await read('./printRoutingService.js');
+  const browser = await read('./printerService.js');
+  const agent = await read('../../tools/print-agent/server.mjs');
+  assert.match(service, /toEscPosPayload\\(thermalText, \\{ feedLines: 8 \\}\\)/);
+  assert.match(service, /thermalBase64,/);
+  assert.match(routing, /\\{ feedLines: 8 \\}/);
+  assert.match(browser, /8 \\+ Math\\.floor/);
+  assert.match(agent, /8 \\+ Math\\.floor/);
+  assert.match(agent, /finish\\(null\\), 1200/);
+});
