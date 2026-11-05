@@ -173,7 +173,7 @@ export default function POSContainer() {
 			printTickets: false,
 		});
 
-		const printOrder = () => printOrderByCategory({
+		const printOrder = (linesToPrint = newLines) => printOrderByCategory({
 			propertyId,
 			propertyName,
 			orderNumber,
@@ -214,7 +214,7 @@ export default function POSContainer() {
 				});
 				return { ok: jobs.length > 0, jobs, queued: true };
 			}
-			return printOrder();
+			return printOrder(linesToPrint);
 		};
 		let printResult;
 		try {
@@ -251,7 +251,7 @@ export default function POSContainer() {
 				duration: 12000,
 				action: { label: 'Retry Tickets', onClick: async () => {
 					try {
-						const retry = await dispatchTickets();
+						const retry = await dispatchTickets(retryLines);
 						if (retry.ok) {
 							if (!(await persistSentSnapshot())) return;
 							toast.success(retry.queued ? `New items for ${orderNumber} queued for printing.` : `New items for ${orderNumber} printed.`);
