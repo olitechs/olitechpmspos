@@ -537,8 +537,23 @@ function receiptHtml(settings, type, data, copyType) {
   return `<div class="receipt"><div class="copy">${esc(copyType)}</div>${logo}<div class="center bold">${esc(settings.property_name)}</div><div class="center">${esc(settings.address_line1)}<br>${esc(settings.address_line2)}<br>${esc(settings.phone)}<br>${esc(settings.email)}<br>${esc(settings.website)}<br>KRA PIN: ${esc(settings.kra_pin)}${settings.extra_header_line ? `<br>${esc(settings.extra_header_line)}` : ''}</div><div class="divider"></div><div class="center bold">${esc(title)}</div><div>Waiter: ${esc(data.waiter || 'Unassigned')} &nbsp; Table: ${esc(data.table || '')}</div><div>Covers: ${esc(data.covers ?? '—')} &nbsp; Date: ${esc(new Date(data.createdAt || Date.now()).toLocaleString('en-KE'))}</div>${itemMarkup}<div class="total">TOTAL ${esc(data.currency || '')} ${total}</div>${payment}<div class="right bold">Receipt No: ${esc(data.receiptNumber || data.receipt_number || data.receiptId || 'RCT-' + (data.checkNo || data.orderNumber || ''))}</div><div class="right">Order No: ${esc(data.orderNumber || data.checkNo || '')}</div><div class="footer">${esc(settings.footer_line1)}<br>${esc(settings.footer_line2)}</div><div class="right bold">Check No: ${esc(data.checkNo || data.orderNumber || '')}</div>${data.voidedCount ? `<div class="divider"></div><div class="center bold" style="font-size:9px">${esc(data.voidedCount)} item${Number(data.voidedCount)===1?'':'s'} voided - See void slip #${esc(data.voidSlipNumber || '—')}</div>` : ''} </div>`;
 }
 
-async function buildLogoEscPosBase64(logoUrl, printer = {}, text = '') {
-  if (!logoUrl || typeof Image === 'undefined' || typeof document === 'undefined') return null;
+function bytesToBase64(bytes) {
+  let binary = '';
+  for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(offset, Math.min(offset + 0x8000, bytes.length)));
+  }
+  return btoa(binary);
+}
+
+async function buildLogoEscPosBase64(logoUrl, printer = {}, text = '', options = {}) {
+  const singleBuffer = options.singleBuffer === true;
+  const feedLines = Number(options.feedLines ?? 5);
+  const fallbackTextBuffer = () => {
+    if (!singleBuffer) return null;
+    const bytes = new TextEncoder().encode(toEscPosPayload(text, { feedLines, partialCut: true }));
+    return bytesToBase64(bytes);
+  };
+  if (!logoUrl || typeof Image === 'undefined' || typeof document === 'undefined') return fallbackTextBuffer();
   try {
     const image = new Image();
     image.crossOrigin = 'anonymous';
@@ -547,7 +562,9 @@ async function buildLogoEscPosBase64(logoUrl, printer = {}, text = '') {
       image.onload = resolve;
       image.onerror = () => reject(new Error('Logo could not be loaded for thermal printing.'));
     });
-    const maxWidth = String(printer.paper_width || '80mm').toLowerCase() === '58mm' ? 360 : 540;
+    const paper = String(printer.paper_width || '80mm').toLowerCase();
+    const standardWidth = paper === '58mm' ? 360 : 540;
+    const maxWidth = singleBuffer ? Number(options.maxLogoDots || Math.floor(standardWidth * 0.6)) : standardWidth;
     const scale = Math.min(1, maxWidth / image.naturalWidth, 180 / image.naturalHeight);
     const width = Math.max(1, Math.floor(image.naturalWidth * scale));
     const height = Math.max(1, Math.floor(image.naturalHeight * scale));
@@ -555,34 +572,34 @@ async function buildLogoEscPosBase64(logoUrl, printer = {}, text = '') {
     canvas.width = width;
     canvas.height = height;
     const context = canvas.getContext('2d', { willReadFrequently: true });
-    if (!context) return null;
+    if (!context) return fallbackTextBuffer();
     context.fillStyle = '#fff';
     context.fillRect(0, 0, width, height);
     context.drawImage(image, 0, 0, width, height);
     const pixels = context.getImageData(0, 0, width, height).data;
     const rowBytes = Math.ceil(width / 8);
-    // ESC/POS GS v 0 header is 8 bytes after command; dimensions are little-endian.
-    const payload = new Uint8Array(11 + rowBytes * height);
-    payload.set([0x1b,0x61,0x01,0x1d,0x76,0x30,0x00,rowBytes & 0xff,(rowBytes >> 8) & 0xff,height & 0xff,(height >> 8) & 0xff]);
+    const raster = new Uint8Array(11 + rowBytes * height);
+    raster.set([0x1b,0x61,0x01,0x1d,0x76,0x30,0x00,rowBytes & 0xff,(rowBytes >> 8) & 0xff,height & 0xff,(height >> 8) & 0xff]);
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         const index = (y * width + x) * 4;
         const luminance = (pixels[index] * 299 + pixels[index + 1] * 587 + pixels[index + 2] * 114) / 1000;
-        if (luminance < 160) payload[11 + y * rowBytes + (x >> 3)] |= (0x80 >> (x & 7));
+        if (luminance < 160) raster[11 + y * rowBytes + (x >> 3)] |= (0x80 >> (x & 7));
       }
     }
-    const textBytes = new TextEncoder().encode(toEscPosPayload(text));
-    const combined = new Uint8Array(payload.length + textBytes.length);
-    combined.set(payload, 0);
-    combined.set(textBytes, payload.length);
-    let binary = '';
-    for (let offset = 0; offset < combined.length; offset += 0x8000) {
-      binary += String.fromCharCode(...combined.subarray(offset, Math.min(offset + 0x8000, combined.length)));
-    }
-    return btoa(binary);
+    const textOptions = singleBuffer
+      ? { initialize: false, feedLines, partialCut: true }
+      : {};
+    const textBytes = new TextEncoder().encode(toEscPosPayload(text, textOptions));
+    const init = singleBuffer ? new Uint8Array([0x1b,0x40]) : new Uint8Array(0);
+    const combined = new Uint8Array(init.length + raster.length + textBytes.length);
+    combined.set(init, 0);
+    combined.set(raster, init.length);
+    combined.set(textBytes, init.length + raster.length);
+    return bytesToBase64(combined);
   } catch (error) {
     console.warn('[printService] thermal logo rendering skipped', error);
-    return null;
+    return fallbackTextBuffer();
   }
 }
 
@@ -623,36 +640,73 @@ export async function printTestOrder(printer, assignmentTypes = [], propertyId =
   });
 }
 
-export async function printTestReceipt(printer, propertyId) {
+export async function printTestReceipt(printer, propertyId, { vatMode = 'off', longReceipt = false } = {}) {
   let settings = {};
   if (propertyId) {
-    const { data, error } = await supabase.from('property_settings').select('*').eq('property_id', propertyId).maybeSingle();
+    const [{ data, error }, { data: vatSettings, error: vatError }] = await Promise.all([
+      supabase.from('property_settings').select('*').eq('property_id', propertyId).maybeSingle(),
+      supabase.from('property_unsettled_receipt_settings').select('*').eq('property_id', propertyId).maybeSingle(),
+    ]);
     if (error) throw error;
-    settings = data || {};
+    if (vatError) throw vatError;
+    settings = {
+      ...(data || {}),
+      unsettled_receipt_show_vat: vatMode === 'off' ? false : vatSettings?.show_vat ?? true,
+      unsettled_receipt_vat_rate: Number(vatSettings?.vat_rate ?? 16),
+      unsettled_receipt_vat_mode: vatMode === 'inclusive' ? 'inclusive' : 'exclusive',
+      unsettled_receipt_feed_lines: Number(vatSettings?.feed_lines ?? 5),
+    };
+  } else {
+    settings = {
+      unsettled_receipt_show_vat: vatMode !== 'off',
+      unsettled_receipt_vat_rate: 16,
+      unsettled_receipt_vat_mode: vatMode === 'inclusive' ? 'inclusive' : 'exclusive',
+      unsettled_receipt_feed_lines: 5,
+    };
   }
+  const sampleItems = [
+    {
+      qty: 1,
+      name: 'Grilled Ocean Fish with Coconut Sauce and Swahili Spices',
+      price: 1250,
+      modifiers: [{ name: 'Extra lemon butter' }],
+    },
+    { qty: 2, name: 'Soda', price: 300 },
+  ];
+  const items = longReceipt
+    ? Array.from({ length: 12 }, (_, index) => ({
+        ...sampleItems[index % 2],
+        qty: index === 1 ? 2 : 1,
+        name: index === 0 ? sampleItems[0].name : (index === 1 ? 'Soda' : 'Sample menu item ' + (index + 1)),
+        modifiers: index === 0 ? sampleItems[0].modifiers : [],
+      }))
+    : sampleItems;
   const data = {
-    orderNumber: 'TEST-RECEIPT-001',
-    checkNo: 'TEST-RECEIPT-001',
-    table: 'TEST-01',
-    waiter: 'Print Test',
+    checkNo: 'ORD-002-USOR1U2',
+    table: 'T4',
+    waiter: 'Grace Wanjiru',
     diningOption: 'Dine In',
-    covers: 2,
+    covers: 5,
     currency: 'KES',
-    items: [{ qty: 2, name: 'Thermal Test Burger', price: 450, modifiers: [{ name: 'Extra Cheese' }] }],
-    subtotal: 900,
-    vat: 144,
-    total: 1044,
+    items,
     createdAt: new Date().toISOString(),
   };
-  const thermalText = buildUnsettledReceiptText(settings, data, { printer, copyLabel: 'TEST PRINT' });
-  const thermalBase64 = await buildLogoEscPosBase64(settings.logo_url, printer, thermalText);
+  const now = new Date();
+  const thermalText = buildUnsettledReceiptText(settings, data, { printer, copyLabel: 'CUSTOMER COPY', now });
+  console.info('[POS] Unsettled receipt plain-text preview\\n' + thermalText);
+  const is58mm = String(printer.paper_width || '80mm').toLowerCase() === '58mm';
+  const thermalBase64 = await buildLogoEscPosBase64(settings.logo_url, printer, thermalText, {
+    singleBuffer: true,
+    maxLogoDots: is58mm ? 230 : 345,
+    feedLines: settings.unsettled_receipt_feed_lines,
+  });
   return printToPrinter(printer, thermalTextToHtml(thermalText), {
     propertyId: null,
     jobType: 'test_receipt',
     copyType: 'test',
     assignmentType: 'unsettled_bills',
-    title: 'Test Print - Receipt',
-    payload: { test: true, template: 'unsettled_receipt' },
+    title: 'Test Print - Unsettled Bill',
+    payload: { test: true, template: 'unsettled_receipt', vatMode, longReceipt },
     persistJob: false,
     thermalText,
     thermalBase64,
@@ -661,8 +715,20 @@ export async function printTestReceipt(printer, propertyId) {
 
 export async function printReceipt(type, data) {
   const propertyId = data.propertyId;
-  const settings = data.settings || await (async () => { const { data: row, error } = await supabase.from('property_settings').select('*').eq('property_id', propertyId).maybeSingle(); if(error) throw error; return row; })();
+  let settings = data.settings || await (async () => { const { data: row, error } = await supabase.from('property_settings').select('*').eq('property_id', propertyId).maybeSingle(); if(error) throw error; return row; })();
   if (!settings) return { ok:false, friendlyError:'Receipt company details are not configured.' };
+  if (type === 'UNSETTLED') {
+    const { data: vatSettings, error: vatError } = await supabase.from('property_unsettled_receipt_settings').select('*').eq('property_id', propertyId).maybeSingle();
+    if (vatError) throw vatError;
+    settings = {
+      ...settings,
+      unsettled_receipt_show_vat: vatSettings?.show_vat === true,
+      unsettled_receipt_vat_rate: Number(vatSettings?.vat_rate ?? 16),
+      unsettled_receipt_vat_mode: vatSettings?.vat_mode === 'inclusive' ? 'inclusive' : 'exclusive',
+      unsettled_receipt_feed_lines: Number(vatSettings?.feed_lines ?? 5),
+      unsettled_receipt_paper_width: vatSettings?.paper_width || '80mm',
+    };
+  }
   const assignmentType = type === 'UNSETTLED' ? 'unsettled_bills' : 'final_receipts';
   const printers = await getPrinters(propertyId);
   const assignments = await getAssignments(propertyId);
@@ -685,16 +751,25 @@ export async function printReceipt(type, data) {
     : ['CUSTOMER COPY', 'CASHIER COPY'];
   const results = [];
   if (type === 'UNSETTLED') {
+    const printedAt = new Date();
     for (const printer of targets) {
-      const copyTexts = copies.map(copy => buildUnsettledReceiptText(settings, data, { printer, copyLabel: copy }));
-      const thermalText = copyTexts.join('\n\n\x1D\x56\x01\n\n');
-      const thermalBase64 = await buildLogoEscPosBase64(settings.logo_url, printer, thermalText);
+      const copyTexts = copies.map(copy => buildUnsettledReceiptText(settings, data, { printer, copyLabel: copy, now: printedAt }));
+      // Both configured copies, when requested, are one continuous receipt
+      // buffer. There is no intermediate cut or second print job.
+      const thermalText = copyTexts.join('\n\n\n\n');
+      console.info('[POS] Unsettled receipt plain-text preview\\n' + thermalText);
+      const is58mm = String(printer.paper_width || settings.unsettled_receipt_paper_width || '80mm').toLowerCase() === '58mm';
+      const thermalBase64 = await buildLogoEscPosBase64(settings.logo_url, printer, thermalText, {
+        singleBuffer: true,
+        maxLogoDots: is58mm ? 230 : 345,
+        feedLines: settings.unsettled_receipt_feed_lines ?? 5,
+      });
       results.push(await printToPrinter(printer, thermalTextToHtml(thermalText), {
         propertyId,
         jobType: type,
         copyType: 'duplicate',
         assignmentType,
-        payload: { orderNumber: data.orderNumber || data.checkNo || null, total: data.total || 0 },
+        payload: { orderNumber: data.orderNumber || data.checkNo || null, total: data.total || 0, receiptTemplate: 'unsettled-v2' },
         title: 'Unsettled Bill',
         thermalText,
         thermalBase64,
