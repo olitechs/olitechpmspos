@@ -40,7 +40,7 @@ function validEndpoint(host, port) {
 
 function estimateFeedLines(text) {
   const lineCount = String(text ?? '').replace(/\r/g, '').split('\n').length;
-  return Math.min(14, 6 + Math.floor(Math.max(0, lineCount - 60) / 80));
+  return Math.min(14, 8 + Math.floor(Math.max(0, lineCount - 60) / 80));
 }
 
 function escPosPayload(text, test = false) {
@@ -94,7 +94,9 @@ function writeTcp(host, port, payload) {
       socket.end(payload);
     });
     socket.once('finish', () => {
-      settleTimer = setTimeout(() => finish(null), 500);
+      // Allow the printer to consume the complete buffer and execute its
+      // final feed/cutter bytes before the TCP connection is closed.
+      settleTimer = setTimeout(() => finish(null), 1200);
     });
     socket.once('timeout', () => {
       const err = new Error('Printer connection timed out');
