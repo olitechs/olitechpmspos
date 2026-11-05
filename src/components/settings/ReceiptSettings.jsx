@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Save, Building2, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
-import { DEFAULT_RECEIPT_SETTINGS, getPropertySettings, savePropertySettings, saveUnsettledReceiptSettings, uploadPropertyLogo } from '@/services/settingsService';
+import { DEFAULT_RECEIPT_SETTINGS, getPropertySettings, getUnsettledReceiptSettings, savePropertySettings, saveUnsettledReceiptSettings, uploadPropertyLogo } from '@/services/settingsService';
 import ReceiptPreview from '@/components/settings/ReceiptPreview';
 
 const REQUIRED = ['logo_url','property_name','address_line1','address_line2','phone','email','website','kra_pin','footer_line1','footer_line2'];
@@ -14,7 +14,7 @@ export default function ReceiptSettings() {
   const [previewWidth, setPreviewWidth] = useState('80mm');
   const [form,setForm]=useState({...DEFAULT_RECEIPT_SETTINGS});
   const [busy,setBusy]=useState(true); const [saving,setSaving]=useState(false); const [error,setError]=useState(''); const [ok,setOk]=useState('');
-  useEffect(()=>{ if(!propertyId)return; setBusy(true); getPropertySettings(propertyId).then(row=>setForm({...DEFAULT_RECEIPT_SETTINGS,...row})).catch(e=>setError(e.message)).finally(()=>setBusy(false)); },[propertyId]);
+  useEffect(()=>{ if(!propertyId)return; setBusy(true); Promise.all([getPropertySettings(propertyId),getUnsettledReceiptSettings(propertyId)]).then(([row,vat])=>setForm({...DEFAULT_RECEIPT_SETTINGS,...row,...vat})).catch(e=>setError(e.message)).finally(()=>setBusy(false)); },[propertyId]);
   const valid=useMemo(()=>REQUIRED.every(k=>String(form[k]||'').trim()),[form]);
   const update=(k,v)=>setForm(f=>({...f,[k]:v}));
   const onLogo=async(e)=>{const file=e.target.files?.[0];if(!file)return;setError('');try{const url=await uploadPropertyLogo(propertyId,file);update('logo_url',url);}catch(err){setError(err.message||'Logo upload failed.');}};
