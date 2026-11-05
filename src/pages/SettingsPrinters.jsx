@@ -449,7 +449,7 @@ function PrinterCard({printer,assignments,testing,onTest,onTestOrder,onTestRecei
         </select>
         <label className="flex items-center gap-1.5 text-[11px] font-semibold text-foreground"><input type="checkbox" checked={longReceipt} onChange={e=>setLongReceipt(e.target.checked)} className="h-3.5 w-3.5"/>12-item sample</label>
       </div>
-      <button disabled={receiptTest?.pending} onClick={()=>onTestReceipt(receiptVatMode,longReceipt)} className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-xs font-bold text-foreground disabled:opacity-50"><Printer size={13}/>{receiptTest?.pending?'Printing…':'Receipt Test Print'}</button>
+      <button disabled={receiptTest?.pending} onClick={()=>onTestReceipt(receiptVatMode,longReceipt)} className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-xs font-bold text-foreground disabled:opacity-50"><Printer size={13}/>{receiptTest?.pending?'Printing…' :'Test Print – Receipt'}</button>
       <button onClick={onEdit} className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-bold text-foreground hover:bg-secondary"><Pencil size={13}/>Edit</button>
       <button onClick={onDelete} className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--danger)] px-3 py-2 text-xs font-bold text-[var(--danger-text)] hover:bg-[var(--danger-soft)]"><Trash2 size={13}/>Delete</button>
       {printer.last_tested_at && <span className="ml-auto self-center text-[10px] text-muted-foreground">Tested {new Date(printer.last_tested_at).toLocaleString('en-KE')}</span>}
