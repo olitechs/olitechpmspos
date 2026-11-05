@@ -133,6 +133,21 @@ test('an order VAT snapshot takes precedence over current property VAT settings'
   assert.match(output, /KES 1,080\.00/);
 });
 
+test('unsettled bill reconciles a saved discounted VAT snapshot to the POS amount due', () => {
+  const settings = { unsettled_receipt_show_vat: false, unsettled_receipt_vat_rate: 16, unsettled_receipt_vat_mode: 'exclusive' };
+  const data = {
+    checkNo: 'ORD-DISCOUNT',
+    discount: 100,
+    vatSnapshot: { enabled: true, rate: 16, mode: 'exclusive', subtotal: 1000, discount: 100, taxableSubtotal: 900, vat: 144, total: 1044 },
+    items: [{ qty: 1, name: 'Meal', price: 1000 }],
+  };
+  const output = stripEscPos(buildUnsettledReceiptText(settings, data, { printer: { paper_width: '80mm' } }));
+  assert.match(output, /Subtotal\\s+KES 1,000\\.00/);
+  assert.match(output, /Discount\\s+-KES 100\\.00/);
+  assert.match(output, /VAT \\(16%\\)\\s+KES 144\\.00/);
+  assert.match(output, /KES 1,044\\.00/);
+});
+
 test('12-item unsettled bill preserves every item and stays within 58mm width', () => {
   const items = Array.from({ length: 12 }, (_, index) => ({
     qty: index === 1 ? 2 : 1,
