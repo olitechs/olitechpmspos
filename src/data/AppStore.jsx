@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useRef, useEff
 import { INITIAL_ZONES, INITIAL_STAFF, TABLE_CARD } from './mockData';
 import { useAuth } from '@/lib/AuthContext';
 import { posService } from '@/services/posService';
+import { getUnsettledReceiptSettings } from '@/services/settingsService';
 import { printOrderByCategory } from '@/services/printService';
 import {
   PrinterStatus, PrintJobStatus, testConnection as psTestConnection,
@@ -200,17 +201,36 @@ export function StoreProvider({ children }) {
   }, [propertyId]);
 
   const openTable = useCallback((id, { guests, waiter, tableNumber, zoneId, orderNumber = null }) => {
-    const next = { status: 'occupied', guests: Number(guests) || 1, waiter: waiter || '', openedAt: Date.now(), total: 0, orderCount: 0, tableNumber: String(tableNumber ?? ''), zoneId: zoneId || null, orderNumber, orderLines: [] };
+    const next = { status: 'occupied', guests: Number(guests) || 1, waiter: waiter || '', openedAt: Date.now(), total: 0, orderCount: 0, tableNumber: String(tableNumber ?? ''), zoneId: zoneId || null, orderNumber, orderLines: [], vatSnapshot: null };
     setSessions((prev) => ({ ...prev, [id]: next }));
-    persistSession(id, next).then((row) => {
+    persistSession(id, next).then(async (row) => {
       const serverOpenedAt = row?.opened_at ? new Date(row.opened_at).getTime() : null;
-      if (!Number.isFinite(serverOpenedAt) || serverOpenedAt <= 0) return;
-      setSessions((prev) => prev[id] ? {
-        ...prev,
-        [id]: { ...prev[id], openedAt: serverOpenedAt },
-      } : prev);
-    });
-  }, [persistSession]);
+      if (Number.isFinite(serverOpenedAt) && serverOpenedAt > 0) {
+        setSessions((prev) => prev[id] ? {
+          ...prev,
+          [id]: { ...prev[id], openedAt: serverOpenedAt },
+        } : prev);
+      }
+      // Freeze the property's VAT treatment when this table session starts so
+      // later setting changes cannot alter an existing order's unsettled bill.
+      if (propertyId) {
+        try {
+          const settings = await getUnsettledReceiptSettings(propertyId);
+          const vatSnapshot = {
+            enabled: settings.unsettled_receipt_show_vat === true,
+            rate: Number(settings.unsettled_receipt_vat_rate ?? 16),
+            mode: settings.unsettled_receipt_vat_mode === 'inclusive' ? 'inclusive' : 'exclusive',
+            discountId: null,
+            currency: 'KES',
+          };
+          await posService.saveVatSnapshot({ propertyId, tableKey: id, snapshot: vatSnapshot });
+          setSessions((prev) => prev[id] ? { ...prev, [id]: { ...prev[id], vatSnapshot } } : prev);
+        } catch (error) {
+          console.error('[POS] could not snapshot VAT settings when opening table', error);
+        }
+      }
+    }).catch((error) => console.error('[POS] failed to persist opened table session', error));
+  }, [persistSession, propertyId]);
 
   const updateSessionTotals = useCallback((id, { total = 0, orderCount = 0 } = {}) => {
     setSessions((prev) => {
