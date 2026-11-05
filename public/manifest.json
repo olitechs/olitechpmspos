@@ -1,12 +1,13 @@
 {
   "name": "OliTechs PMS + POS",
   "short_name": "OliTechs",
-  "description": "Hotel Property Management System and Point of Sale",
+  "description": "Hospitality operations platform for front office, point of sale, inventory and property administration.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#F4F7F8",
-  "theme_color": "#F4F7F8",
+  "background_color": "#F5F8F8",
+  "theme_color": "#0A3F4A",
   "icons": [
-    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" },
+    { "src": "/app-icon.svg", "sizes": "1024x1024", "type": "image/svg+xml", "purpose": "any maskable" }
   ]
 }
