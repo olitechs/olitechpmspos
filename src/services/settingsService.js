@@ -16,17 +16,69 @@ export const DEFAULT_RECEIPT_SETTINGS = {
   unsettled_receipt_copy_count: 2,
   unsettled_receipt_front_office_copy: true,
   print_void_slips: true,
+  unsettled_receipt_show_vat: false,
+  unsettled_receipt_vat_rate: 16,
+  unsettled_receipt_vat_mode: 'exclusive',
+  unsettled_receipt_paper_width: '80mm',
+  unsettled_receipt_feed_lines: 5,
 };
 
-export async function getPropertySettings(propertyId) {
-  if (!propertyId) return null;
+export const DEFAULT_UNSETTLED_RECEIPT_SETTINGS = {
+  unsettled_receipt_show_vat: false,
+  unsettled_receipt_vat_rate: 16,
+  unsettled_receipt_vat_mode: 'exclusive',
+  unsettled_receipt_paper_width: '80mm',
+  unsettled_receipt_feed_lines: 5,
+};
+
+const UNSETTLED_RECEIPT_SETTING_KEYS = Object.keys(DEFAULT_UNSETTLED_RECEIPT_SETTINGS);
+
+export async function getUnsettledReceiptSettings(propertyId) {
+  if (!propertyId) return { ...DEFAULT_UNSETTLED_RECEIPT_SETTINGS };
   const { data, error } = await supabase
-    .from('property_settings')
+    .from('property_unsettled_receipt_settings')
     .select('*')
     .eq('property_id', propertyId)
     .maybeSingle();
   if (error) throw error;
-  return data || { property_id: propertyId, ...DEFAULT_RECEIPT_SETTINGS };
+  return {
+    ...DEFAULT_UNSETTLED_RECEIPT_SETTINGS,
+    unsettled_receipt_show_vat: data?.show_vat === true,
+    unsettled_receipt_vat_rate: Number(data?.vat_rate ?? 16),
+    unsettled_receipt_vat_mode: data?.vat_mode === 'inclusive' ? 'inclusive' : 'exclusive',
+    unsettled_receipt_paper_width: data?.paper_width === '58mm' ? '58mm' : '80mm',
+    unsettled_receipt_feed_lines: Math.max(4, Math.min(6, Number(data?.feed_lines ?? 5))),
+  };
+}
+
+export async function saveUnsettledReceiptSettings(propertyId, values = {}) {
+  if (!propertyId) throw new Error('Property is required.');
+  const payload = {
+    property_id: propertyId,
+    show_vat: values.unsettled_receipt_show_vat === true,
+    vat_rate: Math.max(0, Math.min(100, Number(values.unsettled_receipt_vat_rate ?? 16))),
+    vat_mode: values.unsettled_receipt_vat_mode === 'inclusive' ? 'inclusive' : 'exclusive',
+    paper_width: values.unsettled_receipt_paper_width === '58mm' ? '58mm' : '80mm',
+    feed_lines: Math.max(4, Math.min(6, Number(values.unsettled_receipt_feed_lines ?? 5))),
+    updated_at: new Date().toISOString(),
+  };
+  const { data, error } = await supabase
+    .from('property_unsettled_receipt_settings')
+    .upsert(payload, { onConflict: 'property_id' })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function getPropertySettings(propertyId) {
+  if (!propertyId) return null;
+  const [{ data, error }, unsettled] = await Promise.all([
+    supabase.from('property_settings').select('*').eq('property_id', propertyId).maybeSingle(),
+    getUnsettledReceiptSettings(propertyId),
+  ]);
+  if (error) throw error;
+  return { property_id: propertyId, ...DEFAULT_RECEIPT_SETTINGS, ...(data || {}), ...unsettled };
 }
 
 export async function savePropertySettings(propertyId, values) {
@@ -42,10 +94,12 @@ export async function savePropertySettings(propertyId, values) {
     .maybeSingle();
   if (existingError) throw existingError;
 
+  const receiptValues = { ...(values || {}) };
+  UNSETTLED_RECEIPT_SETTING_KEYS.forEach((key) => delete receiptValues[key]);
   const payload = {
     ...DEFAULT_RECEIPT_SETTINGS,
     ...(existing || {}),
-    ...(values || {}),
+    ...receiptValues,
     property_id: propertyId,
     unsettled_receipt_copy_count: Number(values?.unsettled_receipt_copy_count ?? existing?.unsettled_receipt_copy_count ?? DEFAULT_RECEIPT_SETTINGS.unsettled_receipt_copy_count) === 1 ? 1 : 2,
     unsettled_receipt_front_office_copy: values?.unsettled_receipt_front_office_copy ?? existing?.unsettled_receipt_front_office_copy ?? DEFAULT_RECEIPT_SETTINGS.unsettled_receipt_front_office_copy,
