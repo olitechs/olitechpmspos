@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { authService } from '@/services/authService';
 import { pmsService } from '@/services/pmsService';
 import { getPrinters, getAssignments, printVoidTicket } from '@/services/printService';
+import { isPrinterGroupRoutingEnabled } from '@/services/printRoutingService';
 import { getPropertySettings } from '@/services/settingsService';
 import { inventoryService } from '@/services/inventoryService';
 import { posPhase3Service } from '@/services/posPhase3Service';
@@ -36,6 +37,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
   const [modifierGroups, setModifierGroups] = useState([]);
   const [modifierSelections, setModifierSelections] = useState({});
   const [modifierLoading, setModifierLoading] = useState(false);
+  const [assignedOrderCenters, setAssignedOrderCenters] = useState(null);
 
   const loadPosMenu = async () => {
     if (!propertyId) return;
@@ -52,6 +54,28 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
       setMenuItems([]); setMenuCategories(CATEGORIES);
     }
   };
+  useEffect(() => {
+    let active = true;
+    if (isPrinterGroupRoutingEnabled()) {
+      setAssignedOrderCenters([]);
+    } else if (propertyId) {
+      Promise.all([getPrinters(propertyId), getAssignments(propertyId)])
+        .then(([printers, assignments]) => {
+          if (!active) return;
+          const printerIds = new Set(printers.map(printer => printer.id));
+          const centers = new Set();
+          if (assignments.some(a => a.assignment_type === 'food_orders' && printerIds.has(a.printer_id))) centers.add('kitchen');
+          if (assignments.some(a => a.assignment_type === 'drinks_orders' && printerIds.has(a.printer_id))) centers.add('bar');
+          setAssignedOrderCenters([...centers]);
+        })
+        .catch(error => {
+          console.warn('[POS] could not verify saved order-printer assignments', error);
+          if (active) setAssignedOrderCenters([]);
+        });
+    }
+    return () => { active = false; };
+  }, [propertyId]);
+
   useEffect(() => {
     loadPosMenu();
     const refresh = () => loadPosMenu();
@@ -225,7 +249,9 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
 
   // Order-routing warning: any production center in this order lacking a connected order printer.
   const orderCenters = [...new Set(orderLines.map((l) => l.center).filter(Boolean))];
-  const missingCenters = orderCenters.filter((c) => !store.orderPrinterForCenter(c));
+  const missingCenters = isPrinterGroupRoutingEnabled() || assignedOrderCenters === null ? [] : orderCenters
+    .filter(center => !assignedOrderCenters.includes(/bar|drink/i.test(String(center)) ? 'bar' : 'kitchen'));
+
 
   return (
     <div className="flex h-full overflow-hidden" style={{ background: SAND }}>

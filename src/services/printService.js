@@ -64,12 +64,34 @@ async function resolveRetryPrinter(job, propertyId) {
   return fallback || original || assignedPrinters.find((printer) => printer.is_online !== false) || null;
 }
 
+// PostgreSQL text/JSONB cannot store NUL or unpaired UTF-16 surrogates.
+// Keep normal Unicode (including emoji) and printable text, but strip control
+// bytes before persisting HTML/JSON. Raw ESC/POS bytes stay in thermalText and
+// are sent directly to the printer; they are never needed in the job record.
+function sanitizeDatabaseValue(value) {
+  if (typeof value === 'string') {
+    let clean = '';
+    for (const character of value) {
+      const codePoint = character.codePointAt(0);
+      if (codePoint === 0 || (codePoint >= 0xD800 && codePoint <= 0xDFFF)) continue;
+      if ((codePoint >= 0x01 && codePoint <= 0x08) || codePoint === 0x0B || codePoint === 0x0C || (codePoint >= 0x0E && codePoint <= 0x1F)) continue;
+      clean += character;
+    }
+    return clean;
+  }
+  if (Array.isArray(value)) return value.map(sanitizeDatabaseValue);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([key, nested]) => [sanitizeDatabaseValue(key), sanitizeDatabaseValue(nested)]));
+  }
+  return value;
+}
+
 async function createFnbPrintJob({propertyId,printerId,assignmentType,jobType,copyType=null,title='',contentHtml='',payload={},retryOf=null}) {
   if (!propertyId) return null;
   const {data,error}=await supabase.from('fnb_print_jobs').insert({
     property_id:propertyId, printer_id:printerId||null, assignment_type:assignmentType||'document',
     job_type:jobType||'document', copy_type:copyType, title:title||'OliTechs Print',
-    content_html:String(contentHtml||''), payload:payload||{}, retry_of:retryOf||null,
+    content_html:sanitizeDatabaseValue(String(contentHtml||'')), payload:sanitizeDatabaseValue(payload||{}), retry_of:retryOf||null,
     created_by:(await supabase.auth.getUser()).data?.user?.id||null, status:'queued'
   }).select().single();
   if(error) throw error;
@@ -512,7 +534,7 @@ function receiptHtml(settings, type, data, copyType) {
   const title = type === 'UNSETTLED' ? (settings.unsettled_receipt_title || 'UNSETTLED RECEIPT') : 'FINAL RECEIPT';
   const payment = type === 'RECEIPT' ? `<div class="divider"></div><div>Payment Method: <b>${esc(data.paymentMethod || '—')}</b></div>` : '';
   const total = Number(data.total || 0).toFixed(2);
-  return `<div class="receipt"><div class="copy">${esc(copyType)}</div>${logo}<div class="center bold">${esc(settings.property_name)}</div><div class="center">${esc(settings.address_line1)}<br>${esc(settings.address_line2)}<br>${esc(settings.phone)}<br>${esc(settings.email)}<br>${esc(settings.website)}<br>KRA PIN: ${esc(settings.kra_pin)}${settings.extra_header_line ? `<br>${esc(settings.extra_header_line)}` : ''}</div><div class="divider"></div><div class="center bold">${esc(title)}</div><div>Waiter: ${esc(data.waiter || 'Unassigned')} &nbsp; Table: ${esc(data.table || '')}</div><div>Covers: ${esc(data.covers ?? '—')} &nbsp; Date: ${esc(new Date(data.createdAt || Date.now()).toLocaleString('en-KE'))}</div>${itemMarkup}<div class="total">TOTAL ${esc(data.currency || '')} ${total}</div>${payment}<div class="footer">${esc(settings.footer_line1)}<br>${esc(settings.footer_line2)}</div><div class="right bold">Check No: ${esc(data.checkNo || data.orderNumber || '')}</div>${data.voidedCount ? `<div class="divider"></div><div class="center bold" style="font-size:9px">${esc(data.voidedCount)} item${Number(data.voidedCount)===1?'':'s'} voided - See void slip #${esc(data.voidSlipNumber || '—')}</div>` : ''} </div>`;
+  return `<div class="receipt"><div class="copy">${esc(copyType)}</div>${logo}<div class="center bold">${esc(settings.property_name)}</div><div class="center">${esc(settings.address_line1)}<br>${esc(settings.address_line2)}<br>${esc(settings.phone)}<br>${esc(settings.email)}<br>${esc(settings.website)}<br>KRA PIN: ${esc(settings.kra_pin)}${settings.extra_header_line ? `<br>${esc(settings.extra_header_line)}` : ''}</div><div class="divider"></div><div class="center bold">${esc(title)}</div><div>Waiter: ${esc(data.waiter || 'Unassigned')} &nbsp; Table: ${esc(data.table || '')}</div><div>Covers: ${esc(data.covers ?? '—')} &nbsp; Date: ${esc(new Date(data.createdAt || Date.now()).toLocaleString('en-KE'))}</div>${itemMarkup}<div class="total">TOTAL ${esc(data.currency || '')} ${total}</div>${payment}<div class="right bold">Receipt No: ${esc(data.receiptNumber || data.receipt_number || data.receiptId || 'RCT-' + (data.checkNo || data.orderNumber || ''))}</div><div class="right">Order No: ${esc(data.orderNumber || data.checkNo || '')}</div><div class="footer">${esc(settings.footer_line1)}<br>${esc(settings.footer_line2)}</div><div class="right bold">Check No: ${esc(data.checkNo || data.orderNumber || '')}</div>${data.voidedCount ? `<div class="divider"></div><div class="center bold" style="font-size:9px">${esc(data.voidedCount)} item${Number(data.voidedCount)===1?'':'s'} voided - See void slip #${esc(data.voidSlipNumber || '—')}</div>` : ''} </div>`;
 }
 
 async function buildLogoEscPosBase64(logoUrl, printer = {}, text = '') {

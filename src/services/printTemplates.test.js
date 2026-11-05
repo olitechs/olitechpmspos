@@ -54,7 +54,8 @@ test('order ticket includes station metadata, modifiers and prep notes without p
   assert.ok(output.split('\n').every(line => line.length <= 48), 'all order ticket lines fit 80mm paper width');
   assert.ok(output.includes('                 COASTAL HOTEL'), 'order ticket company header is centered');
   assert.ok(output.includes('           Thank you for visiting'), 'order ticket footer is centered');
-  assert.match(output, /ORD-001/);
+  assert.match(output, /ORDER NO: ORD-001/);
+  assert.match(output, /TICKET NO: KOT-ORD-001/);
   assert.match(output, /T-04/);
   assert.match(output, /AMINA/);
   assert.match(output, /TAKE AWAY/);
@@ -86,7 +87,8 @@ test('unsettled bill is prominently unpaid, aligned and has totals without a pay
   }, { printer: { paper_width: '58mm' }, copyLabel: 'TEST COPY' }));
   assert.match(output, /BILL - NOT PAID/);
   assert.match(output, /PAYMENT PENDING/);
-  assert.match(output, /ORD-002/);
+  assert.match(output, /RECEIPT NO: RCT-ORD-002/);
+  assert.match(output, /ORDER NO: ORD-002/);
   assert.match(output, /FRESH JUICE/i);
   assert.match(output, /SUBTOTAL/);
   assert.match(output, /DISCOUNT/);
@@ -110,6 +112,8 @@ test('final receipt uses centered company header/footer and a paid receipt layou
     footer_line2: 'Visit again',
   }, {
     checkNo: 'CHK-007',
+    orderNumber: 'ORD-007',
+    receiptNumber: 'RCT-2026-007',
     currency: 'KES',
     items: [{ qty: 1, name: 'Fish Curry', price: 1200 }],
     subtotal: 1200,
@@ -117,12 +121,31 @@ test('final receipt uses centered company header/footer and a paid receipt layou
     paymentMethod: 'M-Pesa',
   }, { printer: { paper_width: '58mm' } }));
   assert.match(output, /FINAL RECEIPT/);
+  assert.match(output, /RECEIPT NO: RCT-2026-007/);
+  assert.match(output, /ORDER NO: ORD-007/);
   assert.match(output, /PAYMENT METHOD: M-Pesa/);
   assert.match(output, /Thank you for dining with us/);
   assert.match(output, /Visit again/);
   assert.doesNotMatch(output, /PAYMENT PENDING/);
   assert.doesNotMatch(output, /VAT/);
   assert.ok(output.split('\n').every(line => line.length <= 32));
+});
+
+
+test('long order-ticket names, modifiers and kitchen notes are preserved within 58mm width', () => {
+  const longName = 'Supercalifragilisticexpialidocious Seafood Preparation Platter';
+  const longModifier = 'Extra crispy with lemon butter sauce served separately';
+  const longNote = 'Please prepare without chilli and keep the sauce in a separate container';
+  const output = stripEscPos(buildOrderTicketText({
+    orderNumber: 'ORD-058',
+    items: [{ qty: 2, name: longName, modifiers: [longModifier], prepNote: longNote }],
+  }, { printer: { paper_width: '58mm' }, center: 'KITCHEN' }));
+  const plain = output.replace(/\s/g, '');
+  for (const value of [longName, longModifier, longNote]) {
+    assert.ok(plain.includes(value.replace(/\s/g, '')), 'all supplied ticket text is preserved');
+  }
+  assert.ok(output.split('\n').every(line => line.length <= 32), 'every physical line fits 58mm paper');
+  assert.match(output, /TICKET NO: KOT-ORD-058/);
 });
 
 test('HTML fallback renders fixed-width plain text on white paper', () => {
