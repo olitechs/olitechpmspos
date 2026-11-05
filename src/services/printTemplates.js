@@ -121,13 +121,13 @@ export function buildOrderTicketText(order = {}, { printer = {}, settings = {}, 
   const company = safe(settings.property_name || order.propertyName || order.property_name || 'OLITECHS PMS + POS');
   const header = centeredBlock([
     company.toUpperCase(),
-    settings.address_line1,
-    settings.address_line2,
-    settings.phone,
-    settings.email,
-    settings.website,
-    settings.kra_pin ? 'KRA PIN: ' + settings.kra_pin : '',
-    settings.extra_header_line,
+    safe(settings.address_line1),
+    safe(settings.address_line2),
+    safe(settings.phone),
+    safe(settings.email),
+    safe(settings.website),
+    settings.kra_pin ? 'KRA PIN: ' + safe(settings.kra_pin) : '',
+    safe(settings.extra_header_line),
   ], width);
   const lines = [
     ...header,
