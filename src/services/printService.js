@@ -434,6 +434,7 @@ export async function printOrderByCategory(order) {
         center: group.kind === 'food' ? 'KITCHEN' : 'BAR',
         items: group.items,
       });
+      const thermalBase64 = bytesToBase64(new TextEncoder().encode(toEscPosPayload(thermalText, { feedLines: 8 })));
       results.push(await printToPrinter(printer, thermalTextToHtml(thermalText), {
         propertyId,
         jobType: group.kind === 'food' ? 'KOT' : 'BOT',
@@ -441,6 +442,7 @@ export async function printOrderByCategory(order) {
         payload: { orderNumber: order.orderNumber || order.checkNo || null, table: order.table || order.tableNumber || null },
         title: group.kind === 'food' ? 'Kitchen Order' : 'Bar Order',
         thermalText,
+        thermalBase64,
       }));
     }
   }
@@ -777,30 +779,40 @@ export async function printReceipt(type, data) {
   const results = [];
   if (type === 'UNSETTLED') {
     const printedAt = new Date();
+    // Each copy is an independently cut ESC/POS job. A combined text buffer
+    // only carries one cutter command, leaving the copies attached together.
     for (const printer of targets) {
-      const copyTexts = copies.map(copy => buildUnsettledReceiptText(settings, data, { printer, copyLabel: copy, now: printedAt }));
-      // Both configured copies, when requested, are one continuous receipt
-      // buffer. There is no intermediate cut or second print job.
-      const thermalText = copyTexts.join('\n\n\n\n');
-      console.info('[POS] Unsettled receipt plain-text preview\\n' + thermalText);
-      const is58mm = String(printer.paper_width || settings.unsettled_receipt_paper_width || '80mm').toLowerCase() === '58mm';
-      const thermalBase64 = await buildLogoEscPosBase64(settings.logo_url, printer, thermalText, {
-        singleBuffer: true,
-        maxLogoDots: is58mm ? 230 : 345,
-        feedLines: settings.unsettled_receipt_feed_lines ?? 5,
-      });
-      results.push(await printToPrinter(printer, thermalTextToHtml(thermalText), {
-        propertyId,
-        jobType: type,
-        copyType: 'duplicate',
-        assignmentType,
-        payload: { orderNumber: data.orderNumber || data.checkNo || null, total: data.total || 0, receiptTemplate: 'unsettled-v2' },
-        title: 'Unsettled Bill',
-        thermalText,
-        thermalBase64,
-      }));
+      for (const copy of copies) {
+        const thermalText = buildUnsettledReceiptText(settings, data, {
+          printer,
+          copyLabel: copy,
+          now: printedAt,
+        });
+        console.info('[POS] Unsettled receipt plain-text preview\\n' + thermalText);
+        const is58mm = String(printer.paper_width || settings.unsettled_receipt_paper_width || '80mm').toLowerCase() === '58mm';
+        const thermalBase64 = await buildLogoEscPosBase64(settings.logo_url, printer, thermalText, {
+          singleBuffer: true,
+          maxLogoDots: is58mm ? 230 : 345,
+          feedLines: settings.unsettled_receipt_feed_lines ?? 5,
+        });
+        results.push(await printToPrinter(printer, thermalTextToHtml(thermalText), {
+          propertyId,
+          jobType: type,
+          copyType: copy.toLowerCase().replace(/\\s+/g, '_'),
+          assignmentType,
+          payload: {
+            orderNumber: data.orderNumber || data.checkNo || null,
+            total: data.total || 0,
+            copy,
+            receiptTemplate: 'unsettled-v2',
+          },
+          title: 'Unsettled Bill - ' + copy,
+          thermalText,
+          thermalBase64,
+        }));
+      }
     }
-    return { ok: results.every(result => result.ok), results };
+    return { ok: results.length === targets.length * copies.length && results.every(result => result.ok), results };
   }
 
   for (const printer of targets) {
