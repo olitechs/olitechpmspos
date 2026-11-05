@@ -107,7 +107,7 @@ test('unsettled bill uses the clean pending layout and summed item amounts with 
   assert.equal((output.match(/Payment pending/g) || []).length, 1);
   assert.equal((output.replace(/\s+/g, ' ').match(/Not a tax invoice \/ Not a paid receipt/g) || []).length, 1);
   assert.match(output, /Table: T4/);
-  assert.match(output, /Server: Grace Wanjuri/);
+  assert.match(output, /Server: Grace Wanjiru/);
   assert.match(output, /Covers: 5/);
   assert.match(output, /Dining: Dine In/);
   assert.match(output, /2 x Soda/);
