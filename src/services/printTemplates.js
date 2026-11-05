@@ -192,7 +192,9 @@ function receiptLeftRows(label, value, width) {
 function receiptPairLine(label, amount, width) {
   const left = toReceiptAscii(label);
   const right = toReceiptAscii(amount);
-  if (right.length >= width - 2) return [left, right.padStart(width)].filter(Boolean);
+  if (right.length >= width - 2 || left.length + right.length + 1 > width) {
+    return [left, right.padStart(width)].filter(Boolean);
+  }
   return [left + ' '.repeat(Math.max(1, width - left.length - right.length)) + right];
 }
 
