@@ -84,6 +84,25 @@ function emphasize(value) {
   return '\x1BE\x01' + value + '\x1BE\x00';
 }
 
+export function getUnsentOrderLines(currentLines = [], previouslySentLines = []) {
+  const keyFor = line => {
+    const identity = line?.id ?? line?.productId ?? line?.product_id ?? line?.menu_item_id ?? itemName(line);
+    const modifiers = (Array.isArray(line?.modifiers) ? line.modifiers : [])
+      .map(modifierLabel).filter(Boolean).sort().join('|');
+    return String(identity) + '::' + modifiers;
+  };
+  const sentQuantities = new Map();
+  for (const line of Array.isArray(previouslySentLines) ? previouslySentLines : []) {
+    const key = keyFor(line);
+    sentQuantities.set(key, (sentQuantities.get(key) || 0) + itemQuantity(line));
+  }
+  return (Array.isArray(currentLines) ? currentLines : []).flatMap(line => {
+    const alreadySent = sentQuantities.get(keyFor(line)) || 0;
+    const quantity = Math.max(0, itemQuantity(line) - alreadySent);
+    return quantity > 0 ? [{ ...line, qty: quantity }] : [];
+  });
+}
+
 export function buildOrderTicketText(order = {}, { printer = {}, settings = {}, center = 'KITCHEN', items = order.items || [], now = new Date() } = {}) {
   const safe = value => toReceiptAscii(value);
   items = (Array.isArray(items) ? items : []).map(item => ({
