@@ -73,12 +73,13 @@ export async function saveUnsettledReceiptSettings(propertyId, values = {}) {
 
 export async function getPropertySettings(propertyId) {
   if (!propertyId) return null;
-  const [{ data, error }, unsettled] = await Promise.all([
-    supabase.from('property_settings').select('*').eq('property_id', propertyId).maybeSingle(),
-    getUnsettledReceiptSettings(propertyId),
-  ]);
+  const { data, error } = await supabase
+    .from('property_settings')
+    .select('*')
+    .eq('property_id', propertyId)
+    .maybeSingle();
   if (error) throw error;
-  return { property_id: propertyId, ...DEFAULT_RECEIPT_SETTINGS, ...(data || {}), ...unsettled };
+  return data || { property_id: propertyId, ...DEFAULT_RECEIPT_SETTINGS };
 }
 
 export async function savePropertySettings(propertyId, values) {
