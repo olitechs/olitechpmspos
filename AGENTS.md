@@ -215,7 +215,7 @@ The Phase 0 architecture/product decisions are in:
 - `Phases.md` — implementation sequence
 - `Design.md` — visual/UX system
 - `Memory.md` — durable project decisions/gotchas
-- `AGENTS.md` — agent roles and operating rules
+- `AGENTS.md` — agent roles and operating rules\n- `docs/AI_DEVELOPER_GUIDE.md` — AI onboarding and task protocol\n- `docs/ARCHITECTURE_DIAGRAMS.md` — visual system/data-flow diagrams\n- `docs/WORKFLOW_CATALOG.md` — end-to-end business workflows\n- `docs/TECH_STACK_AND_LANGUAGES.md` — languages and coding stack
 
 ### 10. Required implementation cycle
 
