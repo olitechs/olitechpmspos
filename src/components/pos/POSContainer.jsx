@@ -184,8 +184,9 @@ export default function POSContainer() {
 			diningOption: table?.diningOption || table?.dining_option || 'Dine In',
 			isAddition: !!session?.kotSentAt,
 			createdAt: Date.now(),
-			items: newLines,
+			items: linesToPrint,
 		});
+		let retryLines = newLines;
 		const persistSentSnapshot = async () => {
 			try {
 				await store.setKotSentOrderLines(table.id, linesSnapshot, { markSent: true });
@@ -196,7 +197,7 @@ export default function POSContainer() {
 				return false;
 			}
 		};
-		const dispatchTickets = async () => {
+		const dispatchTickets = async (linesToPrint = retryLines) => {
 			if (isPrinterGroupRoutingEnabled()) {
 				const jobs = await printRoutedOrder({
 					propertyId,
@@ -209,7 +210,7 @@ export default function POSContainer() {
 					covers: session?.guests || table.seats,
 					diningOption: table?.diningOption || table?.dining_option || 'Dine In',
 					isAddition: !!session?.kotSentAt,
-					items: newLines,
+					items: linesToPrint,
 				});
 				return { ok: jobs.length > 0, jobs, queued: true };
 			}
@@ -224,9 +225,9 @@ export default function POSContainer() {
 				duration: 12000,
 				action: { label: 'Retry Tickets', onClick: async () => {
 					try {
-						const retry = await dispatchTickets();
+						const retry = await dispatchTickets(retryLines);
 						if (retry.ok) {
-							await persistSentSnapshot();
+							if (!(await persistSentSnapshot())) return;
 							toast.success(retry.queued ? `New items for ${orderNumber} queued for printing.` : `New items for ${orderNumber} printed.`);
 						} else toast.error('Ticket retry failed. Check printer assignments.');
 					} catch (retryError) {
@@ -237,6 +238,13 @@ export default function POSContainer() {
 			return;
 		}
 		if (!printResult.ok) {
+			const failedAssignments = new Set((printResult.results || []).filter((r) => !r.ok && r.assignmentType).map((r) => r.assignmentType));
+			if (failedAssignments.size) retryLines = newLines.filter(item => {
+				const category = String(item?.category || '').toLowerCase();
+				const center = String(item?.center || '').toLowerCase();
+				const drinks = ['drink','drinks','bibite'].includes(category) || center === 'bar';
+				return failedAssignments.has(drinks ? 'drinks_orders' : 'food_orders');
+			});
 			const failures = (printResult.results || []).filter((r) => !r.ok).map((r) => r.friendlyError).filter(Boolean);
 			toast.error(`New items for order ${orderNumber} were saved, but one or more tickets did not print.`, {
 				description: failures.join(' ') || 'Check printer assignments.',
@@ -245,7 +253,7 @@ export default function POSContainer() {
 					try {
 						const retry = await dispatchTickets();
 						if (retry.ok) {
-							await persistSentSnapshot();
+							if (!(await persistSentSnapshot())) return;
 							toast.success(retry.queued ? `New items for ${orderNumber} queued for printing.` : `New items for ${orderNumber} printed.`);
 						} else toast.error('Ticket retry failed. Check printer assignments.');
 					} catch (retryError) {
@@ -256,7 +264,7 @@ export default function POSContainer() {
 			return;
 		}
 
-		await persistSentSnapshot();
+		if (!(await persistSentSnapshot())) return;
 		toast.success(printResult.queued ? `New items for ${orderNumber} queued for the print agent.` : `New items for ${orderNumber} tickets printed.`);
 	};
 
