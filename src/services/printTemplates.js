@@ -134,66 +134,170 @@ export function buildOrderTicketText(order = {}, { printer = {}, settings = {}, 
   return lines.join('\n');
 }
 
+function toReceiptAscii(value) {
+  return String(value ?? '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
+    .replace(/[–—−]/g, '-')
+    .replace(/…/g, '...')
+    .replace(/[•·]/g, '-')
+    .replace(/[^\x20-\x7E]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function roundReceiptMoney(value) {
+  const amount = Number(value || 0);
+  return Math.round((amount + Number.EPSILON) * 100) / 100;
+}
+
+function formatReceiptMoney(value, currency = 'KES') {
+  return toReceiptAscii(currency || 'KES') + ' ' + roundReceiptMoney(value).toLocaleString('en-KE', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function nairobiPrintedAt(value = new Date()) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Africa/Nairobi',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date);
+  const get = type => parts.find(part => part.type === type)?.value || '';
+  return get('day') + ' ' + get('month') + ' ' + get('year') + ', ' + get('hour') + ':' + get('minute');
+}
+
+function receiptCenterRows(value, width) {
+  return wrapThermalText(toReceiptAscii(value), width).map(row =>
+    row.padStart(Math.floor((width + row.length) / 2))
+  );
+}
+
+function receiptLeftRows(label, value, width) {
+  if (value == null || String(value).trim() === '') return [];
+  const prefix = String(label) + ': ';
+  return wrapThermalText(toReceiptAscii(value), Math.max(4, width - prefix.length))
+    .map((row, index) => (index === 0 ? prefix : ' '.repeat(prefix.length)) + row);
+}
+
+function receiptPairLine(label, amount, width) {
+  const left = toReceiptAscii(label);
+  const right = toReceiptAscii(amount);
+  if (right.length >= width - 2) return [left, right.padStart(width)].filter(Boolean);
+  return [left + ' '.repeat(Math.max(1, width - left.length - right.length)) + right];
+}
+
+function receiptDoubleHeight(value) {
+  return '\x1D\x21\x01' + emphasize(value) + '\x1D\x21\x00';
+}
+
+function getUnsettledReceiptWidth(settings = {}, printer = {}) {
+  const paper = String(printer.paper_width || settings.unsettled_receipt_paper_width || '80mm').toLowerCase();
+  return paper === '58mm' ? 30 : 46;
+}
+
+function resolveUnsettledVat(settings = {}, data = {}, subtotal = 0) {
+  const snapshot = data.vatSnapshot || data.vat_snapshot || data.receiptVatSnapshot || data.receipt_vat_snapshot || null;
+  const enabled = snapshot
+    ? snapshot.enabled === true || snapshot.showVat === true || snapshot.show_vat === true
+    : settings.unsettled_receipt_show_vat === true;
+  const rateValue = snapshot?.rate ?? snapshot?.vatRate ?? snapshot?.vat_rate ?? settings.unsettled_receipt_vat_rate ?? 16;
+  const rate = Math.max(0, Math.min(100, Number(rateValue) || 0));
+  const modeValue = snapshot?.mode ?? snapshot?.vatMode ?? snapshot?.vat_mode ?? settings.unsettled_receipt_vat_mode ?? 'exclusive';
+  const mode = String(modeValue).toLowerCase() === 'inclusive' ? 'inclusive' : 'exclusive';
+  if (!enabled || rate <= 0) return { enabled: false, rate, mode, vat: 0, amountDue: roundReceiptMoney(subtotal) };
+  if (mode === 'inclusive') {
+    const vat = roundReceiptMoney(subtotal - subtotal / (1 + rate / 100));
+    return { enabled: true, rate, mode, vat, amountDue: roundReceiptMoney(subtotal) };
+  }
+  const vat = roundReceiptMoney(subtotal * rate / 100);
+  return { enabled: true, rate, mode, vat, amountDue: roundReceiptMoney(subtotal + vat) };
+}
+
 export function buildUnsettledReceiptText(settings = {}, data = {}, { printer = {}, copyLabel = 'CUSTOMER COPY', now = new Date() } = {}) {
-  const width = getPrinterColumns(printer);
+  const width = getUnsettledReceiptWidth(settings, printer);
   const currency = data.currency || 'KES';
-  const receiptNo = data.receiptNumber || data.receipt_number || data.receiptId || 'RCT-' + (data.checkNo || data.orderNumber || '—');
-  const money = value => currency + ' ' + Number(value || 0).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const items = Array.isArray(data.items) ? data.items : [];
+  const normalizedItems = items.map(item => {
+    const qty = itemQuantity(item);
+    const unitPrice = Number(item?.price ?? item?.unitPrice ?? item?.unit_price ?? 0);
+    return { item, qty, lineTotal: roundReceiptMoney(qty * unitPrice) };
+  });
+  const subtotal = roundReceiptMoney(normalizedItems.reduce((sum, row) => sum + row.lineTotal, 0));
+  const vat = resolveUnsettledVat(settings, data, subtotal);
   const header = centeredBlock([
-    settings.property_name || data.propertyName || 'OLITECHS PMS + POS',
+    settings.property_name || data.propertyName || '',
     settings.address_line1,
     settings.address_line2,
     settings.phone,
     settings.email,
     settings.website,
     settings.kra_pin ? 'KRA PIN: ' + settings.kra_pin : '',
-    settings.extra_header_line,
-  ], width);
+  ].map(value => toReceiptAscii(value)), width);
+
   const lines = [
     ...header,
     divider(width),
-    ...centerRows(settings.unsettled_receipt_title || '*** BILL - NOT PAID ***', width).map(emphasize),
-    ...centerRows('PAYMENT PENDING', width).map(emphasize),
-    ...labeledRows('COPY', copyLabel, width),
-    ...labeledRows('RECEIPT NO', receiptNo, width),
-    ...labeledRows('ORDER NO', data.orderNumber || data.checkNo || '—', width),
-    ...labeledRows('CHECK', data.checkNo || data.orderNumber || '—', width),
-    ...labeledRows('TABLE', data.table || data.tableNumber || '—', width),
-    ...labeledRows('SERVER', data.waiter || data.server || 'Unassigned', width),
-    ...labeledRows('DINING', data.diningOption || data.dining_option || '—', width),
-    ...labeledRows('COVERS', data.covers ?? '—', width),
-    ...labeledRows('DATE', stamp(data.createdAt || data.created_at || now), width),
-    divider(width),
-    pairLine('QTY  ITEM', 'AMOUNT', width),
-    divider(width),
+    ...receiptCenterRows('UNSETTLED BILL', width).map(receiptDoubleHeight),
+    ...receiptCenterRows('Payment pending', width),
   ];
 
-  for (const item of data.items || []) {
-    const qty = itemQuantity(item);
-    const nameRows = wrapThermalText(qty + ' x ' + itemName(item), Math.max(12, width - 12));
-    lines.push(pairLine(nameRows[0], money(qty * Number(item.price || 0)), width));
-    for (const row of nameRows.slice(1)) lines.push(row);
+  const info = [
+    ['Table', data.table || data.tableNumber || data.table_number],
+    ['Server', data.waiter || data.server],
+    ['Covers', data.covers ?? data.guests],
+    ['Dining', data.diningOption || data.dining_option || data.orderType || data.order_type],
+  ];
+  for (const [label, value] of info) lines.push(...receiptLeftRows(label, value, width));
+
+  lines.push(divider(width));
+
+  for (const { item, qty, lineTotal } of normalizedItems) {
+    const amount = formatReceiptMoney(lineTotal, currency);
+    const leftWidth = Math.max(4, width - amount.length);
+    const heading = toReceiptAscii(qty + ' x ' + itemName(item));
+    const nameRows = wrapThermalText(heading, leftWidth);
+    const firstName = nameRows[0] || '';
+    lines.push(firstName.padEnd(leftWidth, '.') + amount);
+    for (const row of nameRows.slice(1)) lines.push(...wrapThermalText('  ' + row, width));
     const modifiers = (Array.isArray(item.modifiers) ? item.modifiers : []).map(modifierLabel).filter(Boolean);
-    for (const modifier of modifiers) lines.push(...wrapThermalText('  + ' + modifier, width));
+    for (const modifier of modifiers) lines.push(...wrapThermalText('  + ' + toReceiptAscii(modifier), width));
     const note = item.prepNote || item.prep_note || item.notes || item.note;
-    if (note) lines.push(...wrapThermalText('  NOTE: ' + note, width));
+    if (note) lines.push(...wrapThermalText('  NOTE: ' + toReceiptAscii(note), width));
   }
 
   lines.push(divider(width));
-  lines.push(pairLine('SUBTOTAL', money(data.subtotal ?? data.total), width));
-  if (Number(data.discount || 0) > 0) lines.push(pairLine('DISCOUNT', '-' + money(data.discount), width));
-  if (Number(data.serviceCharge || data.service_charge || 0) > 0) {
-    lines.push(pairLine('SERVICE CHARGE', money(data.serviceCharge ?? data.service_charge), width));
+  if (vat.enabled) {
+    lines.push(...receiptPairLine('Subtotal', formatReceiptMoney(subtotal, currency), width));
+    const vatLabel = vat.mode === 'inclusive' ? 'VAT included (' + vat.rate + '%)' : 'VAT (' + vat.rate + '%)';
+    lines.push(...receiptPairLine(vatLabel, formatReceiptMoney(vat.vat, currency), width));
   }
-  lines.push(divider(width));
-  lines.push(emphasize(pairLine('TOTAL DUE', money(data.total), width)));
-  lines.push(divider(width));
-  lines.push(...centeredBlock([settings.footer_line1, settings.footer_line2], width));
-  lines.push('');
-  lines.push(...centerRows('PAYMENT PENDING - NOT PAID', width).map(emphasize));
-  lines.push(...centerRows('NOT A TAX INVOICE / NOT A PAID RECEIPT', width));
-  lines.push(...centerRows('PLEASE SETTLE AT THE CASHIER', width), '');
-  return lines.join('\n');
+  lines.push('='.repeat(width));
+  lines.push(receiptDoubleHeight(
+    receiptPairLine('AMOUNT DUE', formatReceiptMoney(vat.amountDue, currency), width)[0]
+  ));
+  lines.push('='.repeat(width));
+
+  lines.push(...receiptCenterRows('Please settle at the cashier', width));
+  lines.push(...receiptCenterRows('Not a tax invoice / Not a paid receipt', width));
+
+  const checkNo = data.checkNo || data.check_no || data.orderNumber || data.order_number || '';
+  if (checkNo) lines.push(...receiptCenterRows('Check: ' + toReceiptAscii(checkNo), width).map(emphasize));
+  const printedAt = nairobiPrintedAt(now);
+  if (printedAt) lines.push(...receiptCenterRows(printedAt, width));
+  if (copyLabel) lines.push(...receiptCenterRows(toReceiptAscii(copyLabel), width));
+
+  const output = lines.join('\n');
+  return output.split('\n').map(line => line.length > width ? line.slice(0, width) : line).join('\n');
 }
 
 export function buildFinalReceiptText(settings = {}, data = {}, { printer = {}, copyLabel = 'CUSTOMER COPY', now = new Date() } = {}) {
@@ -247,9 +351,14 @@ export function estimateThermalFeedLines(text) {
   return Math.min(14, 6 + Math.floor(Math.max(0, lineCount - 60) / 80));
 }
 
-export function toEscPosPayload(text) {
+export function toEscPosPayload(text, options = {}) {
   const body = String(text ?? '').replace(/\r/g, '').replace(/\n+$/g, '');
-  const feedLines = estimateThermalFeedLines(body);
-  return '\x1B\x40\x1B\x61\x00' + body + '\n' +
-    '\x1B\x64' + String.fromCharCode(feedLines) + '\x1D\x56\x01';
+  const requestedFeed = Number(options.feedLines);
+  const feedLines = Number.isInteger(requestedFeed)
+    ? Math.max(4, Math.min(6, requestedFeed))
+    : estimateThermalFeedLines(body);
+  const initialize = options.initialize === false ? '' : '\x1B\x40';
+  const cut = options.partialCut === true ? '\x1D\x56\x42\x00' : '\x1D\x56\x01';
+  return initialize + '\x1B\x61\x00' + body + '\n' +
+    '\x1B\x64' + String.fromCharCode(feedLines) + cut;
 }
