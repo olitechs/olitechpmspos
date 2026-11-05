@@ -298,8 +298,10 @@ export function buildUnsettledReceiptText(settings = {}, data = {}, { printer = 
   if (printedAt) lines.push(...receiptCenterRows(printedAt, width));
   if (copyLabel) lines.push(...receiptCenterRows(toReceiptAscii(copyLabel), width));
 
-  const output = lines.join('\n');
-  return output.split('\n').map(line => line.length > width ? line.slice(0, width) : line).join('\n');
+  // All visible lines are wrapped before this point. Do not slice the raw
+  // string here: ESC/POS emphasis/size commands are non-printing bytes and
+  // must not count against the paper's printable character width.
+  return lines.join('\n');
 }
 
 export function buildFinalReceiptText(settings = {}, data = {}, { printer = {}, copyLabel = 'CUSTOMER COPY', now = new Date() } = {}) {
