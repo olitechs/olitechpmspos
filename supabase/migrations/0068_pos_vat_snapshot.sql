@@ -2,6 +2,11 @@
 alter table public.pos_receipts
   add column if not exists vat_snapshot jsonb;
 
+-- Keep the tax configuration with an active table order so unsettled bill
+-- reprints remain stable even if an administrator later changes VAT settings.
+alter table public.pos_table_sessions
+  add column if not exists vat_snapshot jsonb;
+
 -- Keep the existing transactional sale function and its stock, folio,
 -- split-payment and idempotency behavior intact. This wrapper adds only the
 -- immutable tax snapshot within the same database transaction.
