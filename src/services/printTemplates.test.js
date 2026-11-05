@@ -142,10 +142,10 @@ test('unsettled bill reconciles a saved discounted VAT snapshot to the POS amoun
     items: [{ qty: 1, name: 'Meal', price: 1000 }],
   };
   const output = stripEscPos(buildUnsettledReceiptText(settings, data, { printer: { paper_width: '80mm' } }));
-  assert.match(output, /Subtotal\\s+KES 1,000\\.00/);
-  assert.match(output, /Discount\\s+-KES 100\\.00/);
-  assert.match(output, /VAT \\(16%\\)\\s+KES 144\\.00/);
-  assert.match(output, /KES 1,044\\.00/);
+  assert.match(output, /Subtotal\s+KES 1,000\.00/);
+  assert.match(output, /Discount\s+-KES 100\.00/);
+  assert.match(output, /VAT \(16%\)\s+KES 144\.00/);
+  assert.match(output, /KES 1,044\.00/);
 });
 
 test('12-item unsettled bill preserves every item and stays within 58mm width', () => {
