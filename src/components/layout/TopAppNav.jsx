@@ -1,5 +1,5 @@
 import React from 'react';
-import { ExternalLink, LockKeyhole } from 'lucide-react';
+import { ExternalLink, HelpCircle, LockKeyhole } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { MAIN_NAV, canAccessApp, normalizeAppRole } from '@/data/modules/navArchitecture';
 import { useAuth } from '@/lib/AuthContext';
@@ -40,6 +40,15 @@ export default function TopAppNav() {
           );
         })}
       </nav>
+      <div className="flex shrink-0 items-center gap-2">
+        <NavLink to="/help" aria-label="Open Help Centre" title="Help Centre"
+          className={({ isActive }) => [
+            'flex h-9 items-center gap-2 rounded-lg border px-3 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--focus)]',
+            isActive ? 'border-[var(--brand-primary)] bg-[var(--brand-soft)] text-[var(--text)]' : 'border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--bg)] hover:text-[var(--text)]',
+          ].join(' ')}>
+          <HelpCircle size={15}/><span>Help</span>
+        </NavLink>
+      </div>
       {showLock && (
         <button type="button" onClick={lockWorkspace}
           className="flex h-9 shrink-0 items-center gap-2 rounded-lg border border-[var(--border)] px-3 text-xs font-bold text-[var(--text)] transition hover:bg-[var(--bg)] focus:outline-none focus:ring-2 focus:ring-[var(--focus)]"
