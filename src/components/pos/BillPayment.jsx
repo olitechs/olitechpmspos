@@ -7,7 +7,8 @@ import{useAuth}from'@/lib/AuthContext';
 import{pmsService}from'@/services/pmsService';
 import{getSessionStaff}from'@/services/authService';
 import{printReceipt,getPrinters,getAssignments,openCashDrawer}from'@/services/printService';
-import{shiftService}from'@/services/shiftService';\nimport{getUnsettledReceiptSettings}from'@/services/settingsService';
+import{shiftService}from'@/services/shiftService';
+import{getUnsettledReceiptSettings}from'@/services/settingsService';
 import{posService}from'@/services/posService';
 import{posPhase3Service}from'@/services/posPhase3Service';
 
