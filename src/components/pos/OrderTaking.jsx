@@ -178,6 +178,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
         removedByName: staffName,
       });
       setOrderLines(result?.order_lines || []);
+      if (removeTarget.sent) await store.setKotSentOrderLines(table.id, result?.order_lines || []);
       const voidRow = result?.void;
       const settings = await getPropertySettings(propertyId).catch(() => null);
       if (removeTarget.sent && settings?.print_void_slips !== false && voidRow) {
