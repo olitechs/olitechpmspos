@@ -1,6 +1,6 @@
 # OliTechs Help Centre — Implementation Brief
 
-**Status:** Planned feature; documentation only. No application code, database schema, migrations, policies, or support workflows have been implemented by this brief.
+**Status:** Phase 1 frontend slice in progress on `feat/help-centre-support`. `src/pages/HelpCentre.jsx` now provides searchable, category-filtered how-to guides and the `/backoffice/help` route renders it. Persistent tickets, live chat, admin inbox, database schema, RLS, storage and Realtime are not implemented.
 
 ## 1. Objective
 
@@ -140,3 +140,23 @@ Prefer a manageable, version-controlled article catalogue initially. If administ
 ## 10. Scope and safety gates
 
 This brief records the requested feature and acceptance criteria only. It does not authorize an unreviewed production migration, deployment, or broad changes to authentication, RLS or platform administration. Before implementation, inspect the current repository and database state, identify exact affected files and migration dependencies, and propose a focused implementation plan. Any database migration must be forward-only, reviewed, tested against an appropriate disposable environment and handled under the repository's migration safety rules.
+
+
+## 11. Implementation progress and verification boundary
+
+### Completed on the feature branch
+- Replaced the `/backoffice/help` placeholder with a dedicated Help Centre page.
+- Added searchable, category-filtered starter guides for getting started, Front Office, POS, Inventory, Reports, and Devices & Settings.
+- Added clear guidance that support tickets and live chat are not yet connected, so the UI does not falsely claim to send requests.
+- Kept changes isolated from `main`.
+
+### Blocked pending database baseline
+The persistent support system must not be implemented against guessed production schema or assumed migration state. Before adding ticket/message tables, RPCs, RLS, storage policies or Realtime subscriptions, obtain a current read-only schema/catalog and applied-migration history from the target Supabase project, or an authorized production-equivalent disposable database.
+
+Required baseline evidence:
+- Current definitions, owners, grants and RLS policies for profiles, property membership and platform-owner authorization.
+- Current migration history and deployed schema version.
+- Existing storage buckets and policies relevant to private attachments.
+- Existing Realtime publication/configuration and authorization constraints.
+
+Until this evidence is available, ticket submission, cross-property admin inbox and real-time messaging remain unimplemented. Do not expose a non-persistent form or simulated chat as a working support channel.
