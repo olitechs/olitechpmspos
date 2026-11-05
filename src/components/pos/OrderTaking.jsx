@@ -178,6 +178,10 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
         removedByName: staffName,
       });
       setOrderLines(result?.order_lines || []);
+      if (removeTarget.sent) {
+        try { await store.setKotSentOrderLines(table.id, result?.order_lines || []); }
+        catch (snapshotError) { console.error('[POS] voided order KOT snapshot could not be reconciled', snapshotError); setRemoveError('Item was removed. The void ticket will still print, but reconnect before sending more items.'); }
+      }
       const voidRow = result?.void;
       const settings = await getPropertySettings(propertyId).catch(() => null);
       if (removeTarget.sent && settings?.print_void_slips !== false && voidRow) {

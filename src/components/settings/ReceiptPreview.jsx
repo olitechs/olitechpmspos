@@ -1,6 +1,12 @@
 import React from 'react';
+import { buildUnsettledReceiptText } from '@/services/printTemplates';
 
-export default function ReceiptPreview({ settings, data = {}, type = 'RECEIPT' }) {
+export default function ReceiptPreview({ settings, data = {}, type = 'RECEIPT', printer = { paper_width: '80mm' } }) {
+  if (type === 'UNSETTLED') {
+    const text = buildUnsettledReceiptText(settings, data, { printer, copyLabel: 'CUSTOMER COPY', now: new Date('2026-11-05T12:46:00.000Z') })
+      .replace(/\x1D\x21\x01|\x1D\x21\x00|\x1BE\x01|\x1BE\x00/g, '');
+    return <pre className="mx-auto max-h-none w-full max-w-[380px] overflow-visible whitespace-pre-wrap rounded-lg bg-white p-4 font-mono text-[10px] leading-[1.35] text-black shadow-xl">{text}</pre>;
+  }
   const money = (n) => Number(n || 0).toFixed(2);
   const items = data.items || [];
   const drink = (i) => ['drinks','drink','bibite'].includes(String(i.category||'').toLowerCase()) || String(i.center||'').toLowerCase()==='bar';

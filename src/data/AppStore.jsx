@@ -45,6 +45,7 @@ export function StoreProvider({ children }) {
       waiter: row.waiter || '',
       openedAt: row.opened_at ? new Date(row.opened_at).getTime() : Date.now(),
       kotSentAt: row.kot_sent_at ? new Date(row.kot_sent_at).getTime() : null,
+      kotSentOrderLines: Array.isArray(row.kot_sent_order_lines) ? row.kot_sent_order_lines : [],
       total: 0,
       orderCount: Array.isArray(row.order_lines) ? row.order_lines.length : 0,
       tableNumber: row.table_number,
@@ -227,6 +228,17 @@ export function StoreProvider({ children }) {
       return next;
     });
   }, [persistSession]);
+
+  const setKotSentOrderLines = useCallback((id, orderLines, { markSent = false } = {}) => {
+    const snapshot = Array.isArray(orderLines) ? orderLines : [];
+    setSessions((prev) => prev[id]
+      ? { ...prev, [id]: { ...prev[id], kotSentOrderLines: snapshot, ...(markSent ? { kotSentAt: Date.now() } : {}) } }
+      : prev);
+    if (!propertyId) return Promise.resolve(null);
+    return markSent
+      ? posService.markKotSent({ propertyId, tableKey: id, orderLines: snapshot })
+      : posService.saveKotSentSnapshot({ propertyId, tableKey: id, orderLines: snapshot });
+  }, [propertyId]);
 
   const setUnsettled = useCallback((id) => {
     setSessions((prev) => {
@@ -671,7 +683,7 @@ export function StoreProvider({ children }) {
 
   const value = {
     zones, staff, sessions, printers, saleReceipts, kitchenOrders,
-    getSession, openTable, updateSessionTotals, setSessionOrderLines, setUnsettled, closeTable,
+    getSession, openTable, updateSessionTotals, setSessionOrderLines, setKotSentOrderLines, setUnsettled, closeTable,
     addZone, renameZone, removeZone, addTable, removeTable, updateTable, moveTable,
     addStaff, updateStaff, removeStaff,
     addPrinter, updatePrinter, removePrinter, togglePurpose,
@@ -686,7 +698,7 @@ export function StoreProvider({ children }) {
 // Null-safe hook: degrades to an inert fallback if ever called without a provider.
 const FALLBACK = {
   zones: [], staff: [], sessions: {}, printers: [], saleReceipts: [], kitchenOrders: [],
-  getSession: () => null, openTable: () => {}, updateSessionTotals: () => {}, setSessionOrderLines: () => {}, setUnsettled: () => {}, closeTable: () => {},
+  getSession: () => null, openTable: () => {}, updateSessionTotals: () => {}, setSessionOrderLines: () => {}, setKotSentOrderLines: () => Promise.resolve(null), setUnsettled: () => {}, closeTable: () => {},
   addZone: () => {}, renameZone: () => {}, removeZone: () => {}, addTable: () => {}, removeTable: () => {}, updateTable: () => {}, moveTable: () => {},
   addStaff: () => {}, updateStaff: () => {}, removeStaff: () => {},
   addPrinter: () => {}, updatePrinter: () => {}, removePrinter: () => {}, togglePurpose: () => {},

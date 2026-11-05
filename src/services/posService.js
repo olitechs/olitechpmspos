@@ -108,6 +108,31 @@ export const posService = {
   },
 
 
+  async getVatSnapshot({ propertyId, tableKey }) {
+    const { data, error } = await supabase
+      .from('pos_table_sessions')
+      .select('vat_snapshot')
+      .eq('property_id', propertyId)
+      .eq('table_key', String(tableKey))
+      .neq('status', 'closed')
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data?.vat_snapshot || null;
+  },
+
+  async saveVatSnapshot({ propertyId, tableKey, snapshot }) {
+    const { data, error } = await supabase
+      .from('pos_table_sessions')
+      .update({ vat_snapshot: snapshot })
+      .eq('property_id', propertyId)
+      .eq('table_key', String(tableKey))
+      .neq('status', 'closed')
+      .select('id, vat_snapshot')
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data || null;
+  },
+
   async moveOrMergeTable({ propertyId, sourceTableKey, targetTableKey, targetTableNumber, mode }) {
     const { data, error } = await supabase.rpc('fn_move_or_merge_pos_table', {
       p_property_id: propertyId,
@@ -120,10 +145,13 @@ export const posService = {
     return data || null;
   },
 
-  async markKotSent({ propertyId, tableKey }) {
+  async markKotSent({ propertyId, tableKey, orderLines = [] }) {
     const { data, error } = await supabase
       .from('pos_table_sessions')
-      .update({ kot_sent_at: new Date().toISOString() })
+      .update({
+        kot_sent_at: new Date().toISOString(),
+        kot_sent_order_lines: Array.isArray(orderLines) ? orderLines : [],
+      })
       .eq('property_id', propertyId)
       .eq('table_key', tableKey)
       .neq('status', 'closed')
@@ -131,6 +159,18 @@ export const posService = {
       .single();
     if (error) throw new Error(error.message);
     return data;
+  },
+  async saveKotSentSnapshot({ propertyId, tableKey, orderLines = [] }) {
+    const { data, error } = await supabase
+      .from('pos_table_sessions')
+      .update({ kot_sent_order_lines: Array.isArray(orderLines) ? orderLines : [] })
+      .eq('property_id', propertyId)
+      .eq('table_key', tableKey)
+      .neq('status', 'closed')
+      .select('id, kot_sent_order_lines')
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data || null;
   },
   async closeSession({ propertyId, tableKey, orderLines = [] }) {
     return this.saveSession({
