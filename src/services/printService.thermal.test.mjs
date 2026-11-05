@@ -49,10 +49,10 @@ test('unsettled bill print remains separate from payment and receipt persistence
 
 test('unsettled duplicate copies are sent as independently cut print jobs', async () => {
   const service = await read('./printService.js');
-  assert.match(service, /for \\(const copy of copies\\)/);
-  assert.match(service, /copyType: copy\\.toLowerCase\\(\\)\\.replace/);
-  assert.match(service, /title: 'Unsettled Bill - ' \\+ copy/);
-  assert.doesNotMatch(service, /copyTexts\\.join/);
+  assert.ok(service.includes('for (const copy of copies)'));
+  assert.ok(service.includes('copyType: copy.toLowerCase().replace'));
+  assert.ok(service.includes("title: 'Unsettled Bill - ' + copy"));
+  assert.ok(!service.includes('copyTexts.join'));
 });
 
 test('KOT and BOT jobs include an extended feed margin before the cutter', async () => {
@@ -60,10 +60,10 @@ test('KOT and BOT jobs include an extended feed margin before the cutter', async
   const routing = await read('./printRoutingService.js');
   const browser = await read('./printerService.js');
   const agent = await read('../../tools/print-agent/server.mjs');
-  assert.match(service, /toEscPosPayload\\(thermalText, \\{ feedLines: 8 \\}\\)/);
-  assert.match(service, /thermalBase64,/);
-  assert.match(routing, /\\{ feedLines: 8 \\}/);
-  assert.match(browser, /8 \\+ Math\\.floor/);
-  assert.match(agent, /8 \\+ Math\\.floor/);
-  assert.match(agent, /finish\\(null\\), 1200/);
+  assert.ok(service.includes('toEscPosPayload(thermalText, { feedLines: 8 })'));
+  assert.ok(service.includes('thermalBase64,'));
+  assert.ok(routing.includes('{ feedLines: 8 }'));
+  assert.ok(browser.includes('8 + Math.floor'));
+  assert.ok(agent.includes('8 + Math.floor'));
+  assert.ok(agent.includes('finish(null), 1200'));
 });
