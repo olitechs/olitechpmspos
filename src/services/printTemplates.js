@@ -85,6 +85,7 @@ export function buildOrderTicketText(order = {}, { printer = {}, settings = {}, 
   const width = getPrinterColumns(printer);
   const productionCenter = String(center || 'KITCHEN').toUpperCase();
   const orderNo = order.orderNumber || order.checkNo || order.order_number || order.id || '—';
+  const ticketNo = order.ticketNumber || order.ticket_number || (productionCenter.includes('BAR') ? 'BOT-' : 'KOT-') + orderNo;
   const table = order.table || order.tableNumber || order.table_number || '—';
   const waiter = order.waiter || order.server || 'Unassigned';
   const dining = order.diningOption || order.dining_option || order.orderType || order.order_type || '—';
@@ -103,7 +104,8 @@ export function buildOrderTicketText(order = {}, { printer = {}, settings = {}, 
     ...header,
     divider(width),
     ...centerRows(productionCenter + ' ORDER TICKET', width).map(emphasize),
-    ...labeledRows('ORDER', orderNo, width).map(emphasize),
+    ...labeledRows('ORDER NO', orderNo, width).map(emphasize),
+    ...labeledRows('TICKET NO', ticketNo, width).map(emphasize),
     ...labeledRows('TABLE', table, width),
     ...labeledRows('SERVER', waiter.toUpperCase(), width),
     ...labeledRows('DINING', dining.toUpperCase(), width),
@@ -135,6 +137,7 @@ export function buildOrderTicketText(order = {}, { printer = {}, settings = {}, 
 export function buildUnsettledReceiptText(settings = {}, data = {}, { printer = {}, copyLabel = 'CUSTOMER COPY', now = new Date() } = {}) {
   const width = getPrinterColumns(printer);
   const currency = data.currency || 'KES';
+  const receiptNo = data.receiptNumber || data.receipt_number || data.receiptId || 'RCT-' + (data.checkNo || data.orderNumber || '—');
   const money = value => currency + ' ' + Number(value || 0).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const header = centeredBlock([
     settings.property_name || data.propertyName || 'OLITECHS PMS + POS',
@@ -152,6 +155,8 @@ export function buildUnsettledReceiptText(settings = {}, data = {}, { printer = 
     ...centerRows(settings.unsettled_receipt_title || '*** BILL - NOT PAID ***', width).map(emphasize),
     ...centerRows('PAYMENT PENDING', width).map(emphasize),
     ...labeledRows('COPY', copyLabel, width),
+    ...labeledRows('RECEIPT NO', receiptNo, width),
+    ...labeledRows('ORDER NO', data.orderNumber || data.checkNo || '—', width),
     ...labeledRows('CHECK', data.checkNo || data.orderNumber || '—', width),
     ...labeledRows('TABLE', data.table || data.tableNumber || '—', width),
     ...labeledRows('SERVER', data.waiter || data.server || 'Unassigned', width),
@@ -194,6 +199,7 @@ export function buildUnsettledReceiptText(settings = {}, data = {}, { printer = 
 export function buildFinalReceiptText(settings = {}, data = {}, { printer = {}, copyLabel = 'CUSTOMER COPY', now = new Date() } = {}) {
   const width = getPrinterColumns(printer);
   const currency = data.currency || 'KES';
+  const receiptNo = data.receiptNumber || data.receipt_number || data.receiptId || 'RCT-' + (data.checkNo || data.orderNumber || '—');
   const money = value => currency + ' ' + Number(value || 0).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const lines = [
     ...centeredBlock([
@@ -204,6 +210,8 @@ export function buildFinalReceiptText(settings = {}, data = {}, { printer = {}, 
     divider(width),
     ...centerRows('FINAL RECEIPT', width).map(emphasize),
     ...labeledRows('COPY', copyLabel, width),
+    ...labeledRows('RECEIPT NO', receiptNo, width),
+    ...labeledRows('ORDER NO', data.orderNumber || data.checkNo || '—', width),
     ...labeledRows('CHECK', data.checkNo || data.orderNumber || '—', width),
     ...labeledRows('TABLE', data.table || data.tableNumber || '—', width),
     ...labeledRows('SERVER', data.waiter || data.server || 'Unassigned', width),
