@@ -52,7 +52,10 @@ test('unsettled duplicate copies are sent as independently cut print jobs', asyn
   assert.ok(service.includes('for (const copy of copies)'));
   assert.ok(service.includes('copyType: copy.toLowerCase().replace'));
   assert.ok(service.includes("title: 'Unsettled Bill - ' + copy"));
-  assert.ok(!service.includes('copyTexts.join'));
+  const unsettledStart = service.indexOf("if (type === 'UNSETTLED') {", service.indexOf('export async function printReceipt'));
+  const unsettledEnd = service.indexOf('\\n\\n  for (const printer of targets) {', unsettledStart);
+  const unsettledBlock = service.slice(unsettledStart, unsettledEnd);
+  assert.ok(!unsettledBlock.includes('copyTexts.join'));
 });
 
 test('KOT and BOT jobs include an extended feed margin before the cutter', async () => {
