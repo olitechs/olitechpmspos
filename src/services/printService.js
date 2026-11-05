@@ -798,7 +798,7 @@ export async function printReceipt(type, data) {
         results.push(await printToPrinter(printer, thermalTextToHtml(thermalText), {
           propertyId,
           jobType: type,
-          copyType: copy.toLowerCase().replace(/\\s+/g, '_'),
+          copyType: copy.toLowerCase().replaceAll(' ', '_'),
           assignmentType,
           payload: {
             orderNumber: data.orderNumber || data.checkNo || null,
