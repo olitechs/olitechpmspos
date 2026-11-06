@@ -157,8 +157,6 @@ export function buildOrderTicketText(order = {}, { printer = {}, settings = {}, 
   }
 
   lines.push(divider(width));
-  const footer = [settings.footer_line1, settings.footer_line2].map(safe).filter(Boolean);
-  lines.push(...centeredBlock(footer, width));
   return lines.join('\n');
 }
 function toReceiptAscii(value) {
@@ -323,7 +321,7 @@ export function buildUnsettledReceiptText(settings = {}, data = {}, { printer = 
   if (checkNo) lines.push(...receiptCenterRows('Check: ' + toReceiptAscii(checkNo), width).map(emphasize));
   const printedAt = nairobiPrintedAt(now);
   if (printedAt) lines.push(...receiptCenterRows(printedAt, width));
-  if (copyLabel) lines.push(...receiptCenterRows(toReceiptAscii(copyLabel), width));
+  lines.push(...centeredBlock([settings.footer_line1, settings.footer_line2, copyLabel], width));
   return lines.join('\n');
 }
 export function buildFinalReceiptText(settings = {}, data = {}, { printer = {}, copyLabel = 'CUSTOMER COPY', now = new Date() } = {}) {
