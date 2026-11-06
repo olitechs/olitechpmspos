@@ -14,6 +14,7 @@ export default function PinPad({
   helperText = '',
   brandLogo = null,
   busy = false,
+  footerAction = null,
 }) {
   const [pin, setPin] = useState('');
   const [show, setShow] = useState(false);
@@ -68,6 +69,7 @@ export default function PinPad({
           </div>
           <button type="button" onClick={() => (pinLength === 6 ? pin.length >= 4 : pin.length === pinLength) && !busy && onSubmit(pin)} disabled={busy || (pinLength === 6 ? pin.length < 4 : pin.length !== pinLength)} className="mt-3 w-full rounded-xl bg-surface py-3 text-sm font-black text-foreground disabled:cursor-not-allowed disabled:opacity-40">{busy ? 'Verifying…' : 'Submit PIN'}</button>
           <div className="mt-3 text-center text-[10px] font-semibold uppercase tracking-widest text-foreground/35">{helperText || (pinLength === 4 ? '4-digit property POS access PIN' : '4–6 digit secure staff PIN')}</div>
+          {footerAction && <div className="mt-3 text-center">{footerAction}</div>}
         </div>
       </div>
     </div>
