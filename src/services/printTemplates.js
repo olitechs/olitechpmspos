@@ -411,7 +411,7 @@ export function toEscPosPayload(text, options = {}) {
   const body = String(text ?? '').replace(/\r/g, '').replace(/\n+$/g, '');
   const requestedFeed = Number(options.feedLines);
   const feedLines = Number.isInteger(requestedFeed)
-    ? Math.max(4, Math.min(8, requestedFeed))
+    ? Math.max(4, Math.min(14, requestedFeed))
     : estimateThermalFeedLines(body);
   const initialize = options.initialize === false ? '' : '\x1B\x40';
   const cut = options.partialCut === true ? '\x1D\x56\x42\x00' : '\x1D\x56\x01';
