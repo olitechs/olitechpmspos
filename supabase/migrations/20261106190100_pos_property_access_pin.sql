@@ -176,6 +176,13 @@ begin
     public.is_platform_owner()
     or public.property_role(p_property_id) in ('owner', 'admin')
     or public.current_staff_role(p_property_id) in ('hotel_admin', 'super_admin')
+    or exists (
+      select 1 from public.staff s
+      where s.property_id = p_property_id and s.is_active = true
+        and (s.user_id = auth.uid() or lower(coalesce(s.email, '')) = lower(coalesce(auth.jwt() ->> 'email', '')))
+        and 'pos' = any(coalesce(s.assigned_modules, array[]::text[]))
+        and lower(coalesce(s.role, '')) in ('hotel_admin', 'super_admin')
+    )
   ) then raise exception 'Only the property owner or administrator can reset the POS PIN.'; end if;
   if p_new_pin is null or p_new_pin !~ '^[0-9]{4}$' then
     raise exception 'POS PIN must contain exactly four digits.';
