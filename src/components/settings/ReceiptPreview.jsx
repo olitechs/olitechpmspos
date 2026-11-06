@@ -5,7 +5,10 @@ export default function ReceiptPreview({ settings, data = {}, type = 'RECEIPT', 
   if (type === 'UNSETTLED') {
     const text = buildUnsettledReceiptText(settings, data, { printer, copyLabel: 'CUSTOMER COPY', now: new Date('2026-11-05T12:46:00.000Z') })
       .replace(/\x1D\x21\x01|\x1D\x21\x00|\x1BE\x01|\x1BE\x00/g, '');
-    return <pre className="mx-auto max-h-none w-full max-w-[380px] overflow-visible whitespace-pre-wrap rounded-lg bg-white p-4 font-mono text-[10px] leading-[1.35] text-black shadow-xl">{text}</pre>;
+    return <div className="mx-auto w-full max-w-[380px] overflow-visible rounded-lg bg-white p-4 shadow-xl">
+      {settings.logo_url && <img src={settings.logo_url} alt="Company logo" className="mx-auto mb-3 max-h-16 max-w-[170px] object-contain [filter:grayscale(1)_contrast(2)]" />}
+      <pre className="m-0 overflow-visible whitespace-pre-wrap bg-transparent p-0 font-mono text-[10px] leading-[1.35] text-black">{text}</pre>
+    </div>;
   }
   const money = (n) => Number(n || 0).toFixed(2);
   const items = data.items || [];
