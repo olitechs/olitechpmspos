@@ -77,12 +77,12 @@ function buildPayload({ text, test = false, printSettings = {} }: { text?: unkno
         escPos.init,
         escPos.alignCenter,
         escPos.boldOn,
-        encoder.encode('OLITECHS PMS + POS\\n'),
+        encoder.encode('OLITECHS PMS + POS\n'),
         escPos.boldOff,
-        encoder.encode('PRINTER TEST\\n\\n'),
+        encoder.encode('PRINTER TEST\n\n'),
         escPos.alignLeft,
-        encoder.encode('Connection: DIRECT TCP\\n'),
-        encoder.encode(`Date: ${stamp}\\n\\n`),
+        encoder.encode('Connection: DIRECT TCP\n'),
+        encoder.encode(`Date: ${stamp}\n\n`),
         encoder.encode('Printer test successful.'),
       )
     : concat(
