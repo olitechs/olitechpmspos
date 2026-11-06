@@ -39,7 +39,7 @@ function validEndpoint(host, port) {
 }
 
 function estimateFeedLines() {
-  return 1;
+  return 2;
 }
 
 function escPosPayload(text, test = false) {
