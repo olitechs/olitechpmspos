@@ -9,6 +9,6 @@ test('print agent preserves centered leading spaces and feeds before partial cut
   assert.ok(source.includes('Buffer.from([0x1d, 0x56, 0x01])'));
   assert.ok(source.includes('socket.end(payload)'));
   assert.ok(source.includes('setTimeout(() => finish(null), 1200)'));
-  assert.ok(source.includes('8 + Math.floor'), 'thermal jobs receive an extended feed margin before cutting');
+  assert.ok(source.includes('12 + Math.floor'), 'thermal jobs receive an extended feed margin before cutting');
   assert.ok(!source.includes('socket.write(payload, (err) => finish(err || null))'));
 });
