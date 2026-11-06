@@ -60,6 +60,7 @@ function writeTcpNow(host, port, payload) {
     let writeCallbackDone = false;
     let drainDone = true;
     let endCalled = false;
+    let writeFinished = false;
 
     const finish = (error) => {
       if (settled) return;
@@ -90,9 +91,18 @@ function writeTcpNow(host, port, payload) {
     });
     socket.once('finish', () => {
       // Writable finish confirms the complete payload has drained before close.
+      writeFinished = true;
       finish(null);
     });
-    socket.once('close', () => finish(null));
+    socket.once('close', () => {
+      if (!settled && !writeFinished) {
+        const error = new Error('Printer socket closed before the complete job drained.');
+        error.code = 'ECONNRESET';
+        finish(error);
+      } else {
+        finish(null);
+      }
+    });
     socket.once('timeout', () => {
       const error = new Error('Printer connection timed out');
       error.code = 'ETIMEDOUT';
