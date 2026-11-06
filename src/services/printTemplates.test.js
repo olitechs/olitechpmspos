@@ -255,7 +255,7 @@ test('HTML fallback renders fixed-width plain text on white paper', () => {
   assert.match(html, /BILL - NOT PAID/);
 });
 
-test('thermal payload provides a minimal default feed and supports feed-before-partial-cut receipt buffer', () => {
+test('thermal payload cuts immediately after a minimal footer feed', () => {
   const shortBill = toEscPosPayload('ORDER TICKET');
   assert.equal(shortBill.charCodeAt(0), 27);
   assert.equal(shortBill.charCodeAt(1), 64);
