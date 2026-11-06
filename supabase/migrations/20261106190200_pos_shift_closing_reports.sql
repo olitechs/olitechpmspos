@@ -6,6 +6,9 @@ alter table public.pos_receipts
 alter table public.pos_shifts
   add column if not exists counted_cash numeric(12,2),
   add column if not exists cash_variance numeric(12,2),
+  add column if not exists gross_sales numeric(12,2) not null default 0,
+  add column if not exists refunds_total numeric(12,2) not null default 0,
+  add column if not exists voided_total numeric(12,2) not null default 0,
   add column if not exists total_sales numeric(12,2) not null default 0,
   add column if not exists total_receipts integer not null default 0,
   add column if not exists total_covers integer not null default 0;
@@ -155,8 +158,8 @@ revoke all on function public.fn_current_pos_shift(uuid) from public, anon;
 grant execute on function public.fn_open_pos_shift(uuid, numeric, text) to authenticated;
 grant execute on function public.fn_current_pos_shift(uuid) to authenticated;
 
--- Refuse to close until the entire floor is cleared. Reconcile split tender rows
--- and persist the totals needed to reprint the closing report later.
+-- Refuse to close until the entire floor is cleared. Reconcile split tender rows,
+-- subtract refunds by their actual settlement method, and persist the full summary.
 drop function if exists public.fn_close_pos_shift(uuid, numeric, text, boolean);
 create or replace function public.fn_close_pos_shift(
   p_shift_id uuid,
@@ -177,6 +180,15 @@ declare
   v_room numeric := 0;
   v_bank numeric := 0;
   v_other numeric := 0;
+  v_cash_refund numeric := 0;
+  v_mpesa_refund numeric := 0;
+  v_card_refund numeric := 0;
+  v_room_refund numeric := 0;
+  v_bank_refund numeric := 0;
+  v_other_refund numeric := 0;
+  v_gross numeric := 0;
+  v_refunds numeric := 0;
+  v_voided numeric := 0;
   v_total numeric := 0;
   v_count integer := 0;
   v_covers integer := 0;
@@ -233,11 +245,10 @@ begin
   end if;
 
   with method_rows as (
-    select
-      r.id as receipt_id,
+    select r.id as receipt_id,
       case
-        when r.payment_method = 'room' then 'room_charge'
-        when r.payment_method in ('cash', 'mpesa', 'card', 'bank', 'room_charge', 'other') then r.payment_method
+        when r.payment_method in ('room', 'room_charge') then 'room_charge'
+        when r.payment_method in ('cash', 'mpesa', 'card', 'bank', 'other') then r.payment_method
         else 'other'
       end as payment_method,
       r.total as amount
@@ -246,14 +257,11 @@ begin
       and (r.pos_shift_id = p_shift_id or r.shift_id = p_shift_id)
       and r.status = 'posted'
       and r.payment_method <> 'split'
-
     union all
-
-    select
-      r.id as receipt_id,
+    select r.id as receipt_id,
       case
-        when rp.payment_method = 'room' then 'room_charge'
-        when rp.payment_method in ('cash', 'mpesa', 'card', 'bank', 'room_charge', 'other') then rp.payment_method
+        when rp.payment_method in ('room', 'room_charge') then 'room_charge'
+        when rp.payment_method in ('cash', 'mpesa', 'card', 'bank', 'other') then rp.payment_method
         else 'other'
       end as payment_method,
       rp.amount
@@ -275,14 +283,51 @@ begin
   into v_cash, v_mpesa, v_card, v_room, v_bank, v_other
   from method_rows;
 
-  select count(*), coalesce(sum(covers), 0)
-  into v_count, v_covers
+  select
+    coalesce(sum(case when method_key = 'cash' then amount else 0 end), 0),
+    coalesce(sum(case when method_key = 'mpesa' then amount else 0 end), 0),
+    coalesce(sum(case when method_key = 'card' then amount else 0 end), 0),
+    coalesce(sum(case when method_key = 'room_charge' then amount else 0 end), 0),
+    coalesce(sum(case when method_key = 'bank' then amount else 0 end), 0),
+    coalesce(sum(case when method_key = 'other' then amount else 0 end), 0)
+  into v_cash_refund, v_mpesa_refund, v_card_refund, v_room_refund, v_bank_refund, v_other_refund
+  from (
+    select cr.amount,
+      case
+        when coalesce(nullif(cr.settlement_method, ''), nullif(cr.method, '')) in ('room', 'room_charge') then 'room_charge'
+        when coalesce(nullif(cr.settlement_method, ''), nullif(cr.method, '')) in ('cash', 'mpesa', 'card', 'bank', 'other') then coalesce(nullif(cr.settlement_method, ''), nullif(cr.method, ''))
+        else 'other'
+      end as method_key
+    from public.cashier_refunds cr
+    join public.pos_receipts r on r.id = cr.receipt_id and r.property_id = cr.property_id
+    where cr.property_id = v_shift.property_id
+      and (r.pos_shift_id = p_shift_id or r.shift_id = p_shift_id)
+      and r.status = 'posted'
+  ) refund_rows;
+
+  select
+    coalesce(sum(total) filter (where status = 'posted'), 0),
+    coalesce(sum(total) filter (where status = 'voided'), 0),
+    count(*) filter (where status = 'posted'),
+    coalesce(sum(covers) filter (where status = 'posted'), 0)
+  into v_gross, v_voided, v_count, v_covers
   from public.pos_receipts
   where property_id = v_shift.property_id
-    and (pos_shift_id = p_shift_id or shift_id = p_shift_id)
-    and status = 'posted';
+    and (pos_shift_id = p_shift_id or shift_id = p_shift_id);
 
-  v_total := v_cash + v_mpesa + v_card + v_room + v_bank + v_other;
+  v_refunds := v_cash_refund + v_mpesa_refund + v_card_refund + v_room_refund + v_bank_refund + v_other_refund;
+  v_cash := v_cash - v_cash_refund;
+  v_mpesa := v_mpesa - v_mpesa_refund;
+  v_card := v_card - v_card_refund;
+  v_room := v_room - v_room_refund;
+  v_bank := v_bank - v_bank_refund;
+  v_other := v_other - v_other_refund;
+  v_total := v_gross - v_refunds;
+
+  if abs(v_total - (v_cash + v_mpesa + v_card + v_room + v_bank + v_other)) > 0.01 then
+    raise exception 'Shift payment reconciliation failed. Review payment and refund allocations before closing.';
+  end if;
+
   v_expected := v_shift.opening_cash + v_cash;
   v_variance := p_counted_cash - v_expected;
 
@@ -304,6 +349,9 @@ begin
       notes = coalesce(p_notes, notes),
       counted_cash = p_counted_cash,
       cash_variance = v_variance,
+      gross_sales = v_gross,
+      refunds_total = v_refunds,
+      voided_total = v_voided,
       total_sales = v_total,
       total_receipts = v_count,
       total_covers = v_covers
@@ -315,8 +363,8 @@ begin
   with method_rows as (
     select r.id as receipt_id,
       case
-        when r.payment_method = 'room' then 'room_charge'
-        when r.payment_method in ('cash', 'mpesa', 'card', 'bank', 'room_charge', 'other') then r.payment_method
+        when r.payment_method in ('room', 'room_charge') then 'room_charge'
+        when r.payment_method in ('cash', 'mpesa', 'card', 'bank', 'other') then r.payment_method
         else 'other'
       end as payment_method,
       r.total as amount
@@ -328,8 +376,8 @@ begin
     union all
     select r.id as receipt_id,
       case
-        when rp.payment_method = 'room' then 'room_charge'
-        when rp.payment_method in ('cash', 'mpesa', 'card', 'bank', 'room_charge', 'other') then rp.payment_method
+        when rp.payment_method in ('room', 'room_charge') then 'room_charge'
+        when rp.payment_method in ('cash', 'mpesa', 'card', 'bank', 'other') then rp.payment_method
         else 'other'
       end as payment_method,
       rp.amount
@@ -341,20 +389,42 @@ begin
       and r.status = 'posted'
       and r.payment_method = 'split'
   ),
+  refund_rows as (
+    select
+      case
+        when coalesce(nullif(cr.settlement_method, ''), nullif(cr.method, '')) in ('room', 'room_charge') then 'room_charge'
+        when coalesce(nullif(cr.settlement_method, ''), nullif(cr.method, '')) in ('cash', 'mpesa', 'card', 'bank', 'other') then coalesce(nullif(cr.settlement_method, ''), nullif(cr.method, ''))
+        else 'other'
+      end as payment_method,
+      sum(cr.amount) as amount
+    from public.cashier_refunds cr
+    join public.pos_receipts r on r.id = cr.receipt_id and r.property_id = cr.property_id
+    where cr.property_id = v_shift.property_id
+      and (r.pos_shift_id = p_shift_id or r.shift_id = p_shift_id)
+      and r.status = 'posted'
+    group by 1
+  ),
+  gross_by_method as (
+    select payment_method, sum(amount) as amount, count(distinct receipt_id) as transaction_count
+    from method_rows group by payment_method
+  ),
   methods(payment_method) as (
     values ('cash'), ('mpesa'), ('card'), ('bank'), ('room_charge'), ('other')
   )
   insert into public.pos_shift_payments(shift_id, payment_method, amount, transaction_count)
   select p_shift_id, methods.payment_method,
-    coalesce(sum(method_rows.amount), 0),
-    count(distinct method_rows.receipt_id)
+    coalesce(gross_by_method.amount, 0) - coalesce(refund_rows.amount, 0),
+    coalesce(gross_by_method.transaction_count, 0)
   from methods
-  left join method_rows using (payment_method)
-  group by methods.payment_method;
+  left join gross_by_method using (payment_method)
+  left join refund_rows using (payment_method);
 
   return jsonb_build_object(
     'shift', to_jsonb(v_shift),
     'opening_cash', v_shift.opening_cash,
+    'gross_sales', v_gross,
+    'refunds', v_refunds,
+    'voided_value', v_voided,
     'cash', v_cash,
     'mpesa', v_mpesa,
     'card', v_card,
