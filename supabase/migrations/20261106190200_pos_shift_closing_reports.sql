@@ -209,7 +209,14 @@ begin
   if not (
     public.is_platform_owner()
     or public.property_role(v_shift.property_id) in ('owner', 'admin', 'manager', 'cashier')
-    or public.current_staff_role(v_shift.property_id) in ('hotel_admin', 'super_admin', 'cashier', 'fb_manager')
+    or public.current_staff_role(v_shift.property_id) in ('hotel_admin', 'super_admin', 'cashier', 'fb_manager', 'manager', 'admin', 'owner', 'property_manager', 'general_manager')
+    or exists (
+      select 1 from public.staff s
+      where s.property_id = v_shift.property_id and s.is_active = true
+        and (s.user_id = auth.uid() or lower(coalesce(s.email, '')) = lower(coalesce(auth.jwt() ->> 'email', '')))
+        and 'pos' = any(coalesce(s.assigned_modules, array[]::text[]))
+        and lower(coalesce(s.role, '')) in ('hotel_admin', 'super_admin', 'cashier', 'fb_manager', 'manager', 'admin', 'owner', 'property_manager', 'general_manager')
+    )
   ) then raise exception 'Only cashier, manager or admin can close a shift.'; end if;
   if v_shift.status <> 'open' then raise exception 'Shift is already closed.'; end if;
 
