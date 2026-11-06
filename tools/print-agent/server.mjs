@@ -39,8 +39,7 @@ function validEndpoint(host, port) {
 }
 
 function estimateFeedLines(text) {
-  const lineCount = String(text ?? '').replace(/\r/g, '').split('\n').length;
-  return Math.min(24, 20 + Math.floor(Math.max(0, lineCount - 60) / 80));
+  return 1;
 }
 
 function escPosPayload(text, test = false) {
