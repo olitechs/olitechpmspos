@@ -716,7 +716,7 @@ export async function printTestReceipt(printer, propertyId, { vatMode = 'off', l
   const thermalBase64 = await buildLogoEscPosBase64(settings.logo_url, printer, thermalText, {
     singleBuffer: true,
     maxLogoDots: is58mm ? 230 : 345,
-    feedLines: settings.unsettled_receipt_feed_lines,
+    feedLines: 1,
   });
   return printToPrinter(printer, thermalTextToHtml(thermalText), {
     propertyId: null,
