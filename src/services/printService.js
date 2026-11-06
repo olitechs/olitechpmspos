@@ -434,7 +434,7 @@ export async function printOrderByCategory(order) {
         center: group.kind === 'food' ? 'KITCHEN' : 'BAR',
         items: group.items,
       });
-      const thermalBase64 = bytesToBase64(new TextEncoder().encode(toEscPosPayload(thermalText, { feedLines: 8 })));
+      const thermalBase64 = bytesToBase64(new TextEncoder().encode(toEscPosPayload(thermalText, { feedLines: 12 })));
       results.push(await printToPrinter(printer, thermalTextToHtml(thermalText), {
         propertyId,
         jobType: group.kind === 'food' ? 'KOT' : 'BOT',
@@ -793,7 +793,7 @@ export async function printReceipt(type, data) {
         const thermalBase64 = await buildLogoEscPosBase64(settings.logo_url, printer, thermalText, {
           singleBuffer: true,
           maxLogoDots: is58mm ? 230 : 345,
-          feedLines: settings.unsettled_receipt_feed_lines ?? 5,
+          feedLines: Math.max(12, Number(settings.unsettled_receipt_feed_lines ?? 5)),
         });
         results.push(await printToPrinter(printer, thermalTextToHtml(thermalText), {
           propertyId,
@@ -816,14 +816,24 @@ export async function printReceipt(type, data) {
   }
 
   for (const printer of targets) {
-    const copyTexts = copies.map(copy => buildFinalReceiptText(settings, data, { printer, copyLabel: copy }));
-    const thermalText = copyTexts.join('\n\n\x1D\x56\x01\n\n');
-    const thermalBase64 = await buildLogoEscPosBase64(settings.logo_url, printer, thermalText);
-    results.push(await printToPrinter(printer, receiptHtml(settings, type, data, copies[0]), {
-      propertyId, jobType: type, copyType:'duplicate', assignmentType,
-      payload:{orderNumber:data.orderNumber||data.checkNo||null,total:data.total||0},
-      title:'Final Receipt', thermalText, thermalBase64,
-    }));
+    // A receipt copy is a complete physical print job with its own feed and
+    // cutter sequence. Never concatenate copies into one ESC/POS text stream.
+    for (const copy of copies) {
+      const thermalText = buildFinalReceiptText(settings, data, { printer, copyLabel: copy });
+      const thermalBase64 = await buildLogoEscPosBase64(settings.logo_url, printer, thermalText, {
+        feedLines: 12,
+      });
+      results.push(await printToPrinter(printer, receiptHtml(settings, type, data, copy), {
+        propertyId,
+        jobType: type,
+        copyType: copy.toLowerCase().replaceAll(' ', '_'),
+        assignmentType,
+        payload: { orderNumber: data.orderNumber || data.checkNo || null, total: data.total || 0, copy },
+        title: 'Final Receipt - ' + copy,
+        thermalText,
+        thermalBase64,
+      }));
+    }
   }
   return { ok: results.every((r) => r.ok), results };
 }
