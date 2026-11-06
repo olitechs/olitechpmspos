@@ -404,7 +404,7 @@ export function thermalTextToHtml(text) {
 export function estimateThermalFeedLines(text) {
   const lineCount = String(text ?? '').replace(/\r/g, '').split('\n').length;
   // Keep a safe tear/cutter margin and add a little more for unusually long bills.
-  return Math.min(14, 6 + Math.floor(Math.max(0, lineCount - 60) / 80));
+  return Math.min(14, 12 + Math.floor(Math.max(0, lineCount - 60) / 80));
 }
 
 export function toEscPosPayload(text, options = {}) {
