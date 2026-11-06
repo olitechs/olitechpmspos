@@ -130,3 +130,18 @@ The POS inventory migration `20261008160000_phase4_pos_inventory_authority.sql` 
 - Transfers are different: the paired source/destination movement must preserve the property-wide aggregate total. They must not be implemented as two unrelated aggregate stock adjustments.
 
 These are source-level findings only. No SQL was executed, no database object was changed, and no test or build was run.
+
+
+### POS application call order and partial-posting risk
+
+A read-only trace of `v6/src/BillPayment.jsx` and `src/services/inventoryService.js` adds an application-layer constraint:
+
+- The POS payment handler first awaits `store.completeSale(...)` and records the completed sale in UI state.
+- Only after that succeeds does it call `inventoryService.deductStockForOrder(...)`.
+- The inventory helper resolves each order line to a product and loops through the lines, calling the single-product stock deduction RPC separately for each item.
+- This is not one atomic inventory batch tied to the POS receipt. If a later item deduction fails after earlier items succeeded, the sale is already recorded and the stock postings may be partial. The helper's reference text is human-readable context, not a stable receipt-line idempotency key.
+- The POS handler also has downstream receipt-print retry behavior. That code is protected and must not be changed as part of inventory remediation.
+
+**Gate:** before changing this integration, design a server-owned, receipt-idempotent inventory posting contract that links every movement to the committed POS receipt and line, handles recipe and direct-product items exactly once, and defines recoverable failure/retry semantics. Validate it with duplicate receipt requests and injected mid-batch failures in an isolated database fixture. Do not move, refactor, or otherwise alter the payment, receipt-print, order-ticket, or cashier-printing flow in this Phase 1 work.
+
+This finding is from source inspection only; no POS application file or printing-related file was modified.
