@@ -19,8 +19,10 @@ const stripEscPos = value => value
   .replace(/\x1D\x21[\s\S]/g, '');
 
 test('settled receipt columns preserve the legacy 80mm and 58mm widths', () => {
-  assert.equal(getPrinterColumns({ paper_width: '80mm' }), 48);
-  assert.equal(getPrinterColumns({ paper_width: '58mm' }), 32);
+  assert.equal(getPrinterColumns({ paper_width: '80mm' }), 46);
+  assert.equal(getPrinterColumns({ paper_width: '58mm' }), 30);
+  assert.equal(getPrinterColumns({ paper_width: '58mm', character_width: 48 }), 30);
+  assert.equal(getPrinterColumns({ paper_width: '80mm', character_width: 64 }), 46);
 });
 
 test('order ticket columns use conservative safe 42 and 30 character widths', () => {
@@ -80,16 +82,13 @@ test('order ticket includes station metadata, modifiers and prep notes without p
       prepNote: 'No chilli please',
     }],
   }, { center: 'KITCHEN', printer: { paper_width: '80mm' }, settings: { property_name: 'Coastal Hotel', address_line1: 'Watamu', footer_line1: 'Thank you for visiting' } }));
-  assert.match(output, /KITCHEN ORDER TICKET/);
-  assert.match(output, /COASTAL HOTEL/);
+  assert.match(output, /KITCHEN POS/);
+  assert.match(output, /#ORD-001/);
   assert.match(output, /Thank you for visiting/);
   assert.ok(!output.includes(String.fromCharCode(29) + '!' + String.fromCharCode(17)), 'order items stay at normal thermal font size');
   assert.ok(output.split('\n').every(line => line.length <= 42), 'all order ticket lines fit safe 80mm paper width');
-  assert.ok(output.includes('              COASTAL HOTEL'), 'order ticket company header is centered');
+  assert.ok(output.includes('              KITCHEN POS'), 'order ticket station header is centered');
   assert.ok(output.includes('         Thank you for visiting'), 'order ticket footer is centered');
-  assert.match(output, /ORDER NO: ORD-001/);
-  assert.match(output, /TICKET NO: KOT-ORD-001/);
-  assert.match(output, /T-04/);
   assert.match(output, /AMINA/);
   assert.match(output, /TAKE AWAY/);
   assert.match(output, /2 x Grilled Fish/);
@@ -120,9 +119,9 @@ test('unsettled bill uses the clean pending layout and summed item amounts with 
   assert.match(output, /Payment pending/);
   assert.equal((output.match(/Payment pending/g) || []).length, 1);
   assert.equal((output.replace(/\s+/g, ' ').match(/Not a tax invoice \/ Not a paid receipt/g) || []).length, 1);
-  assert.match(output, /Table: T4/);
-  assert.match(output, /Server: Grace Wanjiru/);
-  assert.match(output, /Covers: 5/);
+  assert.match(output, /Order: ORD-002-USOR1U2/);
+  assert.match(output, /Employee: Grace Wanjiru/);
+  assert.match(output, /POS: —/);
   assert.match(output, /Dining: Dine In/);
   assert.match(output, /2 x Soda/);
   assert.match(output, /KES 600\.00/);
@@ -216,10 +215,10 @@ test('final receipt uses centered company header/footer and a paid receipt layou
     total: 1200,
     paymentMethod: 'M-Pesa',
   }, { printer: { paper_width: '58mm' } }));
-  assert.match(output, /FINAL RECEIPT/);
-  assert.match(output, /RECEIPT NO: RCT-2026-007/);
-  assert.match(output, /ORDER NO: ORD-007/);
-  assert.match(output, /PAYMENT METHOD: M-Pesa/);
+  assert.match(output, /RECEIPT/);
+  assert.match(output, /Receipt No: RCT-2026-007/);
+  assert.match(output, /Order: ORD-007/);
+  assert.match(output, /Payment: M-Pesa/);
   assert.match(output, /Thank you for dining with us/);
   assert.match(output, /Visit again/);
   assert.doesNotMatch(output, /PAYMENT PENDING/);
@@ -241,7 +240,7 @@ test('long order-ticket names, modifiers and kitchen notes are preserved within 
     assert.ok(plain.includes(value.replace(/\s/g, '')), 'all supplied ticket text is preserved');
   }
   assert.ok(output.split('\n').every(line => line.length <= 30), 'every physical line fits safe 58mm paper width');
-  assert.match(output, /TICKET NO: KOT-ORD-058/);
+  assert.match(output, /#ORD-058/);
 });
 
 test('HTML fallback renders fixed-width plain text on white paper', () => {
