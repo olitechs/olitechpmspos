@@ -191,6 +191,78 @@ grant execute on function public.fn_verify_pos_access_pin(uuid, text) to authent
 grant execute on function public.fn_pos_access_pin_status(uuid) to authenticated;
 grant execute on function public.fn_reset_pos_access_pin(uuid, text) to authenticated;
 
+-- A property may have only one active POS shift. The transaction-scoped
+-- advisory lock makes the check-and-insert safe when two tills open together.
+create or replace function public.fn_open_pos_shift(
+  p_property_id uuid,
+  p_opening_cash numeric default 0,
+  p_notes text default null
+)
+returns public.pos_shifts
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $
+declare
+  v_shift public.pos_shifts;
+  v_date date := (now() at time zone 'Africa/Nairobi')::date;
+  v_seq integer;
+begin
+  if auth.uid() is null then raise exception 'Authentication required.'; end if;
+  if p_opening_cash < 0 then raise exception 'Opening cash cannot be negative.'; end if;
+  if not (
+    public.is_platform_owner()
+    or public.property_role(p_property_id) in ('owner', 'admin', 'manager', 'cashier', 'waiter')
+    or public.current_staff_role(p_property_id) in ('hotel_admin', 'super_admin', 'cashier', 'waiter', 'pos_staff', 'fb_manager', 'receptionist', 'front_desk')
+  ) then raise exception 'Authorised POS staff access required to open a shift.'; end if;
+
+  perform pg_advisory_xact_lock(hashtextextended(p_property_id::text, 0));
+  if exists (
+    select 1 from public.pos_shifts
+    where property_id = p_property_id and status = 'open'
+  ) then
+    raise exception 'A POS shift is already open. Close the existing shift before opening another.';
+  end if;
+
+  select count(*) + 1 into v_seq
+  from public.pos_shifts
+  where property_id = p_property_id and date = v_date;
+
+  insert into public.pos_shifts(property_id, shift_no, opened_by, opening_cash, date, notes)
+  values (
+    p_property_id,
+    'SHIFT-' || to_char(v_date, 'YYYYMMDD') || '-' || lpad(v_seq::text, 3, '0'),
+    auth.uid(),
+    coalesce(p_opening_cash, 0),
+    v_date,
+    p_notes
+  )
+  returning * into v_shift;
+
+  return v_shift;
+end;
+$;
+
+create or replace function public.fn_current_pos_shift(p_property_id uuid)
+returns public.pos_shifts
+language sql
+security definer
+set search_path = public, pg_temp
+as $
+  select *
+  from public.pos_shifts
+  where property_id = p_property_id
+    and status = 'open'
+    and (public.is_platform_owner() or public.is_member_of_property(p_property_id))
+  order by opened_at desc
+  limit 1
+$;
+
+revoke all on function public.fn_open_pos_shift(uuid, numeric, text) from public, anon;
+revoke all on function public.fn_current_pos_shift(uuid) from public, anon;
+grant execute on function public.fn_open_pos_shift(uuid, numeric, text) to authenticated;
+grant execute on function public.fn_current_pos_shift(uuid) to authenticated;
+
 -- Preserve actual guest covers on the receipt so the closing report can count
 -- diners rather than guessing from the number of receipts.
 alter table public.pos_receipts
