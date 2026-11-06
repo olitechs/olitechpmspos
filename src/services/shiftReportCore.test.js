@@ -19,6 +19,8 @@ test('aggregates direct and split payments by their actual tender methods', () =
   assert.equal(report.itemsSold, 5);
   assert.deepEqual(report.payments.cash, { amount: 200, count: 2 });
   assert.deepEqual(report.payments.mpesa, { amount: 200, count: 1 });
+  assert.equal(report.grossPayments.cash.amount, 200);
+  assert.equal(report.refundsByMethod.cash, 0);
   assert.equal(report.payments.card.amount, 0);
   assert.equal(report.categories.drinks.qty, 2);
   assert.equal(report.categories.food.amount, 300);
@@ -46,6 +48,9 @@ test('subtracts refunds by settlement method and reports voided receipt value se
   assert.equal(report.totalSales, 270);
   assert.equal(report.payments.cash.amount, 130);
   assert.equal(report.payments.mpesa.amount, 140);
+  assert.equal(report.grossPayments.cash.amount, 150);
+  assert.equal(report.refundsByMethod.cash, 20);
+  assert.equal(report.refundsByMethod.mpesa, 10);
   assert.equal(report.totalCovers, 5);
 });
 
