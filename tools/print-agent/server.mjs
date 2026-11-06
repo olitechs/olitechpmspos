@@ -40,7 +40,7 @@ function validEndpoint(host, port) {
 
 function estimateFeedLines(text) {
   const lineCount = String(text ?? '').replace(/\r/g, '').split('\n').length;
-  return Math.min(14, 12 + Math.floor(Math.max(0, lineCount - 60) / 80));
+  return Math.min(24, 20 + Math.floor(Math.max(0, lineCount - 60) / 80));
 }
 
 function escPosPayload(text, test = false) {
@@ -72,7 +72,7 @@ function escPosPayload(text, test = false) {
   ]);
 }
 
-function writeTcp(host, port, payload) {
+function writeTcpNow(host, port, payload) {
   return new Promise((resolve, reject) => {
     const socket = new net.Socket();
     let settled = false;
@@ -96,7 +96,7 @@ function writeTcp(host, port, payload) {
     socket.once('finish', () => {
       // Allow the printer to consume the complete buffer and execute its
       // final feed/cutter bytes before the TCP connection is closed.
-      settleTimer = setTimeout(() => finish(null), 1200);
+      settleTimer = setTimeout(() => finish(null), 1800);
     });
     socket.once('timeout', () => {
       const err = new Error('Printer connection timed out');
@@ -106,6 +106,22 @@ function writeTcp(host, port, payload) {
     socket.once('error', finish);
     socket.connect(port, host);
   });
+}
+
+
+// Serialize all jobs per physical printer. Separate HTTP requests can otherwise
+// reach the same thermal printer concurrently and interleave receipt/ticket data.
+const printerWriteQueues = new Map();
+function writeTcp(host, port, payload) {
+  const key = host + ':' + port;
+  const previous = printerWriteQueues.get(key) || Promise.resolve();
+  const current = previous.catch(() => {}).then(() => writeTcpNow(host, port, payload));
+  printerWriteQueues.set(key, current);
+  current.then(
+    () => { if (printerWriteQueues.get(key) === current) printerWriteQueues.delete(key); },
+    () => { if (printerWriteQueues.get(key) === current) printerWriteQueues.delete(key); },
+  );
+  return current;
 }
 
 function runPowerShell(script, args = []) {
