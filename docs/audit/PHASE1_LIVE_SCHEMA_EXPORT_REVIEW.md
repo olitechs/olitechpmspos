@@ -132,3 +132,24 @@ The exported `fn_record_pos_sale` accepts `split` as a payment method, while the
 The export materially improves the baseline and confirms several function-body and privilege risks. It also introduces an unresolved discrepancy about trigger presence. Continue read-only reconciliation and isolated-fixture preparation. Do not write to the connected Supabase project, alter historical migrations, or propose a production migration until the trigger catalog and migration provenance are resolved.
 
 No application code, SQL migration, database object, printer, paper-feed, ticket, receipt, unsettled-bill, cashier-printing, or payment-printing file was changed for this review.
+
+
+## Live trigger catalogue verification — 6 November 2026
+
+After detecting that the supplied SQL file contained no trigger DDL, a separate read-only query against the connected Supabase project's `pg_trigger` catalogue was run. It returned 12 non-internal triggers in `public`, including:
+
+- `products_sync_default_location` on `products`, AFTER UPDATE OF `current_stock`.
+- `products_touch` on `products`, BEFORE UPDATE.
+- Other maintenance, POS modifier/device/discount, room, staff, and store triggers.
+
+The current trigger catalogue therefore confirms that `products_sync_default_location` **is installed now**. The discrepancy is in the exported SQL artifact: it omitted all 12 trigger definitions, not in the live trigger state.
+
+A second read-only query retrieved the live `fn_sync_product_default_location()` body. It computes the aggregate stock delta, ensures the product's default-named inventory location exists, then:
+- creates a `product_stock_locations` row with the new aggregate stock if no matching row exists; or
+- adds the aggregate delta to the existing default-location quantity.
+
+This confirms the trigger's active default-location synchronization behavior. Combined with the live function bodies for `fn_post_stock_adjustment` and `fn_approve_inventory_count`, which independently mutate a selected location and then call `fn_apply_stock_movement`, the dual-write/double-delta risk is confirmed for the current live definitions, not merely historical source.
+
+**Updated gate:** the trigger-presence question is resolved by the live catalogue query. However, the schema-only artifact is incomplete for replay purposes because it omitted trigger DDL. Obtain a corrected export that includes triggers or otherwise generate a complete, reproducible schema fixture before local replay. Keep the connected free-tier database read-only.
+
+The live catalog and function-body checks were SELECT-only. No SQL writes, DDL, migrations, data changes, tests, or builds were performed.
