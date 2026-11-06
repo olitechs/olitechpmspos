@@ -89,8 +89,8 @@ function writeTcpNow(host, port, payload) {
       }
     });
     socket.once('finish', () => {
-      // Writable finish means the complete payload has drained to the OS socket.
-      // Keep the connection open until the peer closes or the timeout fires.
+      // Writable finish confirms the complete payload has drained before close.
+      finish(null);
     });
     socket.once('close', () => finish(null));
     socket.once('timeout', () => {
