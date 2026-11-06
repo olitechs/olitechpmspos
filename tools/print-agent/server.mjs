@@ -40,7 +40,7 @@ function validEndpoint(host, port) {
 
 function estimateFeedLines(text) {
   const lineCount = String(text ?? '').replace(/\r/g, '').split('\n').length;
-  return Math.min(14, 8 + Math.floor(Math.max(0, lineCount - 60) / 80));
+  return Math.min(14, 12 + Math.floor(Math.max(0, lineCount - 60) / 80));
 }
 
 function escPosPayload(text, test = false) {
