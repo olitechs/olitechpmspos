@@ -8,6 +8,8 @@ export function normalizeShiftPaymentMethod(value) {
 
 export function buildShiftSalesSummary(receipts = [], allocations = [], refunds = [], voidedReceipts = []) {
   const payments = Object.fromEntries(PAYMENT_METHODS.map((method) => [method, { amount: 0, count: 0 }]));
+  const grossPayments = Object.fromEntries(PAYMENT_METHODS.map((method) => [method, { amount: 0, count: 0 }]));
+  const refundsByMethod = Object.fromEntries(PAYMENT_METHODS.map((method) => [method, 0]));
   const allocationMap = new Map();
   for (const allocation of allocations) {
     const receiptId = String(allocation.receipt_id || '');
@@ -34,6 +36,7 @@ export function buildShiftSalesSummary(receipts = [], allocations = [], refunds 
     for (const row of methodRows) {
       const method = normalizeShiftPaymentMethod(row.payment_method);
       payments[method].amount += Number(row.amount || 0);
+      grossPayments[method].amount += Number(row.amount || 0);
       countedByMethod.get(method).add(String(receipt.id));
     }
 
@@ -52,14 +55,20 @@ export function buildShiftSalesSummary(receipts = [], allocations = [], refunds 
     const method = normalizeShiftPaymentMethod(refund.settlement_method || refund.method);
     const amount = Number(refund.amount || 0);
     payments[method].amount -= amount;
+    refundsByMethod[method] += amount;
     refundsTotal += amount;
   }
 
-  for (const method of PAYMENT_METHODS) payments[method].count = countedByMethod.get(method).size;
+  for (const method of PAYMENT_METHODS) {
+    payments[method].count = countedByMethod.get(method).size;
+    grossPayments[method].count = countedByMethod.get(method).size;
+  }
 
   const voidedValue = voidedReceipts.reduce((sum, receipt) => sum + Number(receipt.total || 0), 0);
   return {
     payments,
+    grossPayments,
+    refundsByMethod,
     categories,
     grossSales,
     refundsTotal,
