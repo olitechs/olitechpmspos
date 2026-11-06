@@ -134,7 +134,7 @@ export function exportShiftToExcel(report) {
     receipt.waiter || '',
     new Date(receipt.created_at).toLocaleString('en-KE'),
     (Array.isArray(receipt.items) ? receipt.items : []).map((item) => `${item.name || ''} x${item.qty || item.quantity || 1}`).join(', '),
-    normalizeShiftPaymentMethod(receipt.payment_method),
+    receipt.payment_method === 'split' ? 'Split Payment' : normalizeShiftPaymentMethod(receipt.payment_method),
     money(receipt.total),
     receipt.guest_name || '',
     Number(receipt.covers || 1),
