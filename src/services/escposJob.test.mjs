@@ -7,6 +7,7 @@ test('default job ending feeds two lines and 100 dots then sends one GS V 66 n c
   const payload = buildEscPosPayload('FOOTER');
   assert.ok(payload.startsWith(String.fromCharCode(27,64)));
   assert.ok(payload.endsWith(finishPrintJob()));
+  assert.ok(payload.includes('FOOTER' + finishPrintJob()), 'the configured feed sequence starts immediately after the footer');
   assert.equal(payload.split(String.fromCharCode(29,86)).length - 1, 1);
 });
 
