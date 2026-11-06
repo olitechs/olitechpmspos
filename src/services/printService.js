@@ -616,7 +616,7 @@ async function buildLogoEscPosBase64(logoUrl, printer = {}, text = '', options =
     }
     const textOptions = singleBuffer
       ? { initialize: false, feedLines, partialCut: true }
-      : {};
+      : { feedLines };
     const textBytes = new TextEncoder().encode(toEscPosPayload(text, textOptions));
     const init = singleBuffer ? new Uint8Array([0x1b,0x40]) : new Uint8Array(0);
     const combined = new Uint8Array(init.length + raster.length + textBytes.length);
