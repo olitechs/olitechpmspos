@@ -524,21 +524,12 @@ export async function printVoidTicket(printer, data = {}) {
   return result;
 }
 
-function receiptHtml(settings, type, data, copyType) {
-  const items = data.items || [];
-  const food = items.filter((i) => !itemIsDrink(i));
-  const drinks = items.filter(itemIsDrink);
-  const rows = (list) => list.map((i) => { const modifiers = Array.isArray(i.modifiers) ? i.modifiers : []; const modifierText = modifiers.length ? `<div style="font-size:9px;margin-left:4px">+ ${esc(modifiers.map((m) => m.name).join(' · '))}</div>` : ''; return `<tr><td class="qty">${esc(i.qty)}x</td><td>${esc(i.name)}${modifierText}</td><td class="amount">${esc(data.currency || '')} ${(Number(i.qty || 0) * Number(i.price || 0)).toFixed(2)}</td></tr>`; }).join('');
-  const itemMarkup = food.length && drinks.length
-    ? `<div class="section">--- FOOD ---</div><table class="items">${rows(food)}</table><div class="section">--- DRINKS ---</div><table class="items">${rows(drinks)}</table>`
-    : `<table class="items">${rows(food.length ? food : drinks)}</table>`;
-  const logo = settings.logo_url ? `<img class="logo" src="${esc(settings.logo_url)}" alt="" style="display:block;max-width:160px;max-height:70px;margin:0 auto 8px;filter:grayscale(1) contrast(2)">` : '';
-  const title = type === 'UNSETTLED' ? (settings.unsettled_receipt_title || 'UNSETTLED RECEIPT') : 'FINAL RECEIPT';
-  const payment = type === 'RECEIPT' ? `<div class="divider"></div><div>Payment Method: <b>${esc(data.paymentMethod || '—')}</b></div>` : '';
-  const total = Number(data.total || 0).toFixed(2);
-  return `<div class="receipt"><div class="copy">${esc(copyType)}</div>${logo}<div class="center bold">${esc(settings.property_name)}</div><div class="center">${esc(settings.address_line1)}<br>${esc(settings.address_line2)}<br>${esc(settings.phone)}<br>${esc(settings.email)}<br>${esc(settings.website)}<br>KRA PIN: ${esc(settings.kra_pin)}${settings.extra_header_line ? `<br>${esc(settings.extra_header_line)}` : ''}</div><div class="divider"></div><div class="center bold">${esc(title)}</div><div>Waiter: ${esc(data.waiter || 'Unassigned')} &nbsp; Table: ${esc(data.table || '')}</div><div>Covers: ${esc(data.covers ?? '—')} &nbsp; Date: ${esc(new Date(data.createdAt || Date.now()).toLocaleString('en-KE'))}</div>${itemMarkup}<div class="total">TOTAL ${esc(data.currency || '')} ${total}</div>${payment}<div class="right bold">Receipt No: ${esc(data.receiptNumber || data.receipt_number || data.receiptId || 'RCT-' + (data.checkNo || data.orderNumber || ''))}</div><div class="right">Order No: ${esc(data.orderNumber || data.checkNo || '')}</div><div class="footer">${esc(settings.footer_line1)}<br>${esc(settings.footer_line2)}</div><div class="right bold">Check No: ${esc(data.checkNo || data.orderNumber || '')}</div>${data.voidedCount ? `<div class="divider"></div><div class="center bold" style="font-size:9px">${esc(data.voidedCount)} item${Number(data.voidedCount)===1?'':'s'} voided - See void slip #${esc(data.voidSlipNumber || '—')}</div>` : ''} </div>`;
+function receiptHtml(settings, type, data, copyType, printer = {}) {
+  const thermalText = type === 'UNSETTLED'
+    ? buildUnsettledReceiptText(settings, data, { printer, copyLabel: copyType })
+    : buildFinalReceiptText(settings, data, { printer, copyLabel: copyType });
+  return thermalTextToHtml(thermalText);
 }
-
 function bytesToBase64(bytes) {
   let binary = '';
   for (let offset = 0; offset < bytes.length; offset += 0x8000) {
@@ -761,7 +752,7 @@ export async function printReceipt(type, data) {
   const assignments = await getAssignments(propertyId);
   const targets = assignments.filter((a) => a.assignment_type === assignmentType).map((a) => printers.find((p) => p.id === a.printer_id)).filter(Boolean);
   if (!targets.length) {
-    const content = receiptHtml(settings, type, data, 'CUSTOMER COPY');
+    const content = receiptHtml(settings, type, data, 'CUSTOMER COPY', {});
     const queued = await createFnbPrintJob({
       propertyId, printerId:null, assignmentType, jobType:type, copyType:'duplicate',
       title:type === 'UNSETTLED' ? 'Unsettled Bill' : 'Final Receipt',
@@ -824,7 +815,7 @@ export async function printReceipt(type, data) {
         // Keep the receipt clear of the cutter and provide a consistent tear margin.
         feedLines: 20,
       });
-      results.push(await printToPrinter(printer, receiptHtml(settings, type, data, copy), {
+      results.push(await printToPrinter(printer, receiptHtml(settings, type, data, copy, printer), {
         propertyId,
         jobType: type,
         copyType: copy.toLowerCase().replaceAll(' ', '_'),
