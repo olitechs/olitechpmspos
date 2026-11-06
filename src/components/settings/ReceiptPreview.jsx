@@ -7,14 +7,14 @@ export default function ReceiptPreview({ settings, data = {}, type = 'RECEIPT', 
       .replace(/\x1D\x21\x01|\x1D\x21\x00|\x1BE\x01|\x1BE\x00/g, '');
     return <div className="mx-auto w-full max-w-[380px] overflow-visible rounded-lg bg-white p-4 shadow-xl">
       {settings.logo_url && <img src={settings.logo_url} alt="Company logo" className="mx-auto mb-3 max-h-16 max-w-[170px] object-contain [filter:grayscale(1)_contrast(2)]" />}
-      <pre className="m-0 overflow-visible whitespace-pre-wrap bg-transparent p-0 font-mono text-[10px] leading-[1.35] text-black">{text}</pre>
+      <pre className="m-0 overflow-visible whitespace-pre-wrap bg-transparent p-0 font-sans text-[11px] font-normal leading-[1.4] tracking-[0.01em] text-black">{text}</pre>
     </div>;
   }
   const money = (n) => Number(n || 0).toFixed(2);
   const items = data.items || [];
   const drink = (i) => ['drinks','drink','bibite'].includes(String(i.category||'').toLowerCase()) || String(i.center||'').toLowerCase()==='bar';
   const food = items.filter(i=>!drink(i)), drinks = items.filter(drink);
-  return <div className="mx-auto w-[302px] receipt-preview-paper rounded-lg bg-white p-4 font-mono text-[11px] leading-[1.35] text-black shadow-xl">
+  return <div className="mx-auto w-[302px] receipt-preview-paper rounded-lg bg-white p-4 font-sans text-[11px] font-normal leading-[1.4] tracking-[0.01em] text-black shadow-xl">
     {settings.logo_url && <img src={settings.logo_url} alt="" className="mx-auto mb-2 max-h-16 max-w-[170px] object-contain [filter:grayscale(1)_contrast(2)]" />}
     <div className="text-center font-black">{settings.property_name || 'PROPERTY NAME'}</div>
     <div className="text-center">{settings.address_line1 || 'Address line 1'}<br/>{settings.address_line2 || 'Address line 2'}<br/>{settings.phone || '+254...'}<br/>{settings.email || 'email@example.com'}<br/>{settings.website || 'website'}<br/>KRA PIN: {settings.kra_pin || 'PIN'}</div>
@@ -31,4 +31,4 @@ export default function ReceiptPreview({ settings, data = {}, type = 'RECEIPT', 
     {(data.voidedCount || data.voidedItems?.length) ? <div className="mt-2 border-t border-dashed border-black pt-2 text-center text-[9px] font-black">{Number(data.voidedCount || data.voidedItems?.length || 0)} item{Number(data.voidedCount || data.voidedItems?.length || 0) === 1 ? '' : 's'} voided - See void slip #{data.voidSlipNumber || '—'}</div> : null}
   </div>;
 }
-function Row({i}){ return <div className="flex gap-1 text-[12px] font-bold leading-relaxed"><span className="w-7">{i.qty}x</span><span className="flex-1">{i.name}</span><span>{(Number(i.qty||0)*Number(i.price||0)).toFixed(2)}</span></div>; }
+function Row({i}){ return <div className="flex gap-1 text-[12px] font-normal leading-relaxed"><span className="w-7">{i.qty}x</span><span className="flex-1">{i.name}</span><span>{(Number(i.qty||0)*Number(i.price||0)).toFixed(2)}</span></div>; }
