@@ -166,16 +166,24 @@ export function exportShiftToExcel(report) {
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(voided), 'Voided Receipts');
 
   const sales = report.totalSales || 0;
-  const breakdown = [['Payment Method', 'Receipt Count', 'Total Amount', '% of Sales']];
+  const breakdown = [['Payment Method', 'Receipt Count', 'Gross Amount', 'Refunds', 'Net Amount', '% of Net Sales']];
   Object.entries(report.payments).forEach(([method, values]) => breakdown.push([
-    method, values.count, money(values.amount), sales ? money(values.amount) / sales : 0,
+    method, values.count, money(report.grossPayments?.[method]?.amount), money(report.refundsByMethod?.[method]), money(values.amount), sales ? money(values.amount) / sales : 0,
   ]));
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(breakdown), 'Payment Breakdown');
+  const receiptNames = new Map(report.orders.map((receipt) => [receipt.id, receipt.order_number || receipt.id]));
+  const refundDetails = [['Receipt No', 'Settlement Method', 'Refund Amount']];
+  (report.refunds || []).forEach((refund) => refundDetails.push([
+    receiptNames.get(refund.receipt_id) || refund.receipt_id || '',
+    normalizeShiftPaymentMethod(refund.settlement_method || refund.method),
+    money(refund.amount),
+  ]));
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(refundDetails), 'Refund Details');
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
-    ['Category', 'Qty Sold', 'Amount'],
+    ['Category', 'Qty Sold', 'Gross Amount'],
     ['Food', report.categories.food.qty, report.categories.food.amount],
     ['Drinks', report.categories.drinks.qty, report.categories.drinks.amount],
-    ['All Items', report.itemsSold, sales],
+    ['All Items', report.itemsSold, money(report.grossSales)],
   ]), 'Items Sold');
 
   const dateLabel = new Date(shift.date + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '');
