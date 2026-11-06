@@ -381,7 +381,7 @@ export function thermalTextToHtml(text) {
   return '<pre style="margin:0;padding:0;background:white;color:black;white-space:pre-wrap;font-family:monospace">' + escapeHtml(text) + '</pre>';
 }
 
-export function estimateThermalFeedLines(text) {
+export function estimateThermalFeedLines() {
   // The cutter is positioned immediately after the footer; do not add a length-based blank tail.
   return 1;
 }
