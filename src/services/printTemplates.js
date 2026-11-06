@@ -394,6 +394,6 @@ export function toEscPosPayload(text, options = {}) {
     : estimateThermalFeedLines(body);
   const initialize = options.initialize === false ? '' : '\x1B\x40';
   const cut = options.partialCut === true ? '\x1D\x56\x42\x00' : '\x1D\x56\x01';
-  return initialize + '\x1B\x61\x00' + body + '\n' +
+  return initialize + '\x1B\x61\x00' + body +
     '\x1B\x64' + String.fromCharCode(feedLines) + cut;
 }

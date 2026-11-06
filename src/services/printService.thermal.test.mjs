@@ -67,7 +67,9 @@ test('KOT and BOT jobs use a minimal footer-to-cutter feed', async () => {
   assert.ok(service.includes('thermalBase64,'));
   assert.ok(routing.includes('{ feedLines: 1 }'));
   assert.ok(browser.includes('const feedLines = 1;'));
+  assert.ok(browser.includes('encode(body),'), 'browser transport must not add a second newline before the feed command');
   assert.ok(agent.includes('return 1;'));
+  assert.ok(agent.includes('enc.encode(body),'), 'local agent must not add a second newline before the feed command');
   assert.ok(agent.includes('finish(null), 1800'));
 });
 

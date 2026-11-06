@@ -329,7 +329,7 @@ function escPosBytes(text) {
   const feedLines = 1;
   return new Uint8Array([
     0x1b, 0x40,
-    ...new TextEncoder().encode(body + '\n'),
+    ...new TextEncoder().encode(body),
     0x1b, 0x64, feedLines,
     0x1d, 0x56, 0x01,
   ]);
