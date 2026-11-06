@@ -1,4 +1,5 @@
 name: Thermal Printer Validation
+# Focused checks for the printer paths changed by PR #73.
 
 on:
   pull_request:
