@@ -124,9 +124,9 @@ export function buildOrderTicketText(order = {}, { printer = {}, settings = {}, 
   const productionCenter = safe(center || 'KITCHEN').toUpperCase();
   const orderNo = safe(order.ticketNumber || order.ticket_number || order.orderNumber || order.checkNo || order.order_number || order.id || '—');
   const displayOrderNo = orderNo.startsWith('#') ? orderNo : '#' + orderNo;
-  const orderName = safe(order.orderName || order.order_name || order.customerName || order.customer_name || order.guestName || order.guest_name || order.name || '—');
+  const orderName = safe(order.orderName || order.order_name || order.customerName || order.customer_name || order.guestName || order.guest_name || order.name || order.table || order.tableNumber || order.orderNumber || '—');
   const employee = safe(order.employeeName || order.employee_name || order.employee || order.staffName || order.staff_name || order.createdByName || order.created_by_name || order.waiter || order.server || '—');
-  const posName = safe(order.posName || order.pos_name || order.terminalName || order.terminal_name || order.deviceName || order.device_name || order.pos || '—');
+  const posName = safe(order.posName || order.pos_name || order.posNumber || order.pos_number || order.terminalName || order.terminal_name || order.terminal || order.deviceName || order.device_name || order.pos || 'POS');
   const dining = safe(order.diningOption || order.dining_option || order.orderType || order.order_type || '—').toUpperCase();
   const lines = [
     ...centerRows('*** ' + productionCenter + ' POS ***', width).map(emphasize),
@@ -265,7 +265,7 @@ export function buildUnsettledReceiptText(settings = {}, data = {}, { printer = 
   const vat = resolveUnsettledVat(settings, data, subtotal);
   const orderName = data.orderName || data.order_name || data.customerName || data.customer_name || data.guestName || data.guest_name || data.name || data.orderNumber || data.checkNo || '—';
   const employee = data.employeeName || data.employee_name || data.employee || data.staffName || data.staff_name || data.waiter || data.server || '—';
-  const posName = data.posName || data.pos_name || data.terminalName || data.terminal_name || data.deviceName || data.device_name || data.pos || '—';
+  const posName = data.posName || data.pos_name || data.posNumber || data.pos_number || data.terminalName || data.terminal_name || data.terminal || data.deviceName || data.device_name || data.pos || 'POS';
   const dining = data.diningOption || data.dining_option || data.orderType || data.order_type || '';
   const header = centeredBlock([
     settings.property_name || data.propertyName || 'VISIWA BEACH RESORT',
