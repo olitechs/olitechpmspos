@@ -593,9 +593,10 @@ async function buildLogoEscPosBase64(logoUrl, printer = {}, text = '', options =
   const singleBuffer = options.singleBuffer === true;
   const printSettings = getPrinterPrintSettings(printer, options.printSettings || {});
   const fallbackTextBuffer = () => {
+    if (typeof document === 'undefined') return bytesToBase64(new TextEncoder().encode(toEscPosPayload(text, printSettings)));
     const raster = renderThermalTextRaster(text, printer);
     const initialize = new Uint8Array([0x1b, 0x40]);
-    const finish = finishPrintJob(printSettings);
+    const finish = new TextEncoder().encode(finishPrintJob(printSettings));
     const output = new Uint8Array(initialize.length + raster.length + finish.length);
     output.set(initialize, 0);
     output.set(raster, initialize.length);
@@ -664,7 +665,7 @@ async function buildLogoEscPosBase64(logoUrl, printer = {}, text = '', options =
     }
     const textRaster = renderThermalTextRaster(text, printer);
     const init = new Uint8Array([0x1b,0x40]);
-    const finish = finishPrintJob(printSettings);
+    const finish = new TextEncoder().encode(finishPrintJob(printSettings));
     const combined = new Uint8Array(init.length + raster.length + textRaster.length + finish.length);
     combined.set(init, 0);
     combined.set(raster, init.length);
