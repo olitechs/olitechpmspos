@@ -93,10 +93,18 @@ export const shiftService = {
     }
 
     const summary = buildShiftSalesSummary(postedRows, allocations, refunds, voidedRows);
+    const staffIds = [shift.opened_by, shift.closed_by].filter(Boolean);
+    let staffNames = {};
+    if (staffIds.length) {
+      const { data: staffRows } = await supabase.from('staff').select('user_id,full_name,email').eq('property_id', shift.property_id).in('user_id', staffIds);
+      staffNames = Object.fromEntries((staffRows || []).map((person) => [person.user_id, person.full_name || person.email || 'Staff']));
+    }
     const countedCash = shift.counted_cash == null ? null : Number(shift.counted_cash);
     const variance = shift.cash_variance == null ? null : Number(shift.cash_variance);
     return {
       shift,
+      openedBy: staffNames[shift.opened_by] || '',
+      closedBy: staffNames[shift.closed_by] || '',
       orders: postedRows,
       voidedOrders: voidedRows,
       refunds,
