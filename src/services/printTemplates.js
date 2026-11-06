@@ -404,14 +404,14 @@ export function thermalTextToHtml(text) {
 export function estimateThermalFeedLines(text) {
   const lineCount = String(text ?? '').replace(/\r/g, '').split('\n').length;
   // Keep a safe tear/cutter margin and add a little more for unusually long bills.
-  return Math.min(14, 12 + Math.floor(Math.max(0, lineCount - 60) / 80));
+  return Math.min(24, 20 + Math.floor(Math.max(0, lineCount - 60) / 80));
 }
 
 export function toEscPosPayload(text, options = {}) {
   const body = String(text ?? '').replace(/\r/g, '').replace(/\n+$/g, '');
   const requestedFeed = Number(options.feedLines);
   const feedLines = Number.isInteger(requestedFeed)
-    ? Math.max(4, Math.min(14, requestedFeed))
+    ? Math.max(4, Math.min(24, requestedFeed))
     : estimateThermalFeedLines(body);
   const initialize = options.initialize === false ? '' : '\x1B\x40';
   const cut = options.partialCut === true ? '\x1D\x56\x42\x00' : '\x1D\x56\x01';
