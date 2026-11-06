@@ -126,7 +126,7 @@ function toFriendlyError(rawError, context = {}) {
 
 // --- Connection testing -----------------------------------------------------
 
-async function postToLocalAgent(printer, path, text = '') {
+async function postToLocalAgent(printer, path, text = '', printSettings = {}) {
   const base = String(printer.agentUrl || 'http://127.0.0.1:8631').replace(/\/+$/, '');
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
@@ -140,6 +140,7 @@ async function postToLocalAgent(printer, path, text = '') {
         printerId: printer.id || null,
         propertyId: printer.propertyId || null,
         text,
+        printSettings,
       }),
       signal: controller.signal,
     });
@@ -329,8 +330,8 @@ function escPosBytes(text, settings = {}) {
   return new TextEncoder().encode(buildEscPosPayload(text, settings));
 }
 
-async function sendToAgent(printer, text) {
-  const result = await postToLocalAgent(printer, '/print', text);
+async function sendToAgent(printer, text, printSettings = {}) {
+  const result = await postToLocalAgent(printer, '/print', text, printSettings);
   if (result.ok) return { ok:true, direct:true, transport:'local_agent' };
   return {
     ok:false,
@@ -434,7 +435,7 @@ export async function sendPrintJob(printer, text, { title, thermal = false, prin
 			return { ok: false, friendlyError: `${printer.name} is not connected. Test the connection and try again.` };
 		}
 		switch (printer.connectionType) {
-			case 'network': return await sendToAgent(printer, text);
+			case 'network': return await sendToAgent(printer, text, printSettings);
 			case 'usb': return await sendToUsb(printer, text, printSettings);
 			case 'bluetooth': return await sendToBluetooth(printer, text, printSettings);
 			case 'serial': return await sendToSerial(printer, text, printSettings);
