@@ -61,6 +61,17 @@ begin
   if not (public.is_platform_owner() or public.is_member_of_property(p_property_id)) then
     raise exception 'Not allowed.';
   end if;
+  if not (
+    public.is_platform_owner()
+    or public.property_role(p_property_id) in ('owner', 'admin', 'manager', 'cashier', 'waiter')
+    or public.current_staff_role(p_property_id) in ('hotel_admin', 'super_admin', 'cashier', 'waiter', 'pos_staff', 'fb_manager', 'receptionist', 'front_desk')
+    or exists (
+      select 1 from public.staff s
+      where s.property_id = p_property_id and s.is_active = true
+        and (s.user_id = auth.uid() or lower(coalesce(s.email, '')) = lower(coalesce(auth.jwt() ->> 'email', '')))
+        and 'pos' = any(coalesce(s.assigned_modules, array[]::text[]))
+    )
+  ) then raise exception 'POS module access required.'; end if;
 
   delete from public.pos_access_pin_attempts
   where property_id = p_property_id
