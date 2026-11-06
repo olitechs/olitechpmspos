@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 const sql = readFileSync(new URL('../migrations/20261106190000_pos_access_pin_and_shift_close.sql', import.meta.url), 'utf8');
 
 test('property POS access PIN is hashed, defaulted and protected by RLS', () => {
-  assert.match(sql, /crypt\('1234',\s*extensions\.gen_salt\('bf'\)\)/i);
+  assert.match(sql, /crypt\('1234',\s*extensions\.gen_salt\('bf',\s*12\)\)/i);
   assert.match(sql, /enable row level security/i);
   assert.match(sql, /revoke all on table public\.pos_access_credentials from public, anon, authenticated/i);
   assert.match(sql, /failed_attempts \+ 1/i);
