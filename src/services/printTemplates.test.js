@@ -97,6 +97,7 @@ test('order ticket includes station metadata, modifiers and prep notes without p
   assert.match(output, /POS: POS 3/);
   assert.match(output, /TAKE AWAY/);
   assert.match(output, /2 x Grilled Fish/);
+  assert.doesNotMatch(output, /\x1BE\x01 2 x Grilled Fish/);
   assert.match(output, /Extra Lemon/);
   assert.match(output, /No chilli please/);
   assert.doesNotMatch(output, /1500/);
@@ -254,6 +255,8 @@ test('HTML fallback renders fixed-width plain text on white paper', () => {
   const html = thermalTextToHtml('BILL - NOT PAID\nKES 100.00');
   assert.match(html, /<pre/);
   assert.match(html, /background:white;color:black/);
+  assert.match(html, /font-family:Arial,Helvetica,sans-serif/);
+  assert.match(html, /font-weight:400/);
   assert.match(html, /BILL - NOT PAID/);
 });
 
