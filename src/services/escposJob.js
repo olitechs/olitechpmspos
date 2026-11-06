@@ -65,5 +65,5 @@ export function finishPrintJob(settings = {}) {
 export function buildEscPosPayload(text, settings = {}) {
   const body = String(text ?? '').replace(/\r/g, '').replace(/\n+$/g, '');
   const initialize = settings.initialize === false ? '' : String.fromCharCode(0x1b, 0x40);
-  return initialize + String.fromCharCode(0x1b, 0x61, 0x00) + body + '\n' + finishPrintJob(settings);
+  return initialize + String.fromCharCode(0x1b, 0x61, 0x00) + body + finishPrintJob(settings);
 }
