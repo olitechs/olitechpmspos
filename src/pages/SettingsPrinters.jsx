@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Plus, Pencil, Trash2, Printer, Wifi, Play, X, RefreshCw, CheckCircle2, AlertCircle, CircleOff, Network, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
-import { getPrinters, getAssignments, testPrint, connectPrinter, printTestOrder, printTestReceipt } from '@/services/printService';
+import { getPrinters, getAssignments, testPrint, connectPrinter, printTestOrder, printTestReceipt, printCutCalibrationTest } from '@/services/printService';
+import { getPrinterPrintSettings, savePrinterPrintSettings } from '@/services/printerPrintSettings';
 import { supabase } from '@/lib/supabaseClient';
 
 const normalizeNetworkEndpoint = (value, fallbackPort = 9100) => {
@@ -59,6 +60,10 @@ const blank = {
   device_address:'',
   paper_width:'80mm',
   character_width:null,
+  feedLinesBeforeCut:2,
+  feedDotsBeforeCut:100,
+  cutCommand:'gs_v_66',
+  extraFeedAfterCut:0,
   is_online:false,
   is_default:false,
   last_status:'disconnected',
@@ -164,6 +169,7 @@ export default function SettingsPrinters() {
     setError(''); setNotice('');
     setEditing({
       ...printer,
+      ...getPrinterPrintSettings(printer),
       connection_type:printer.connection_type || 'network_ip',
       port:printer.port || 9100,
       windows_printer_name:printer.windows_printer_name || '',
@@ -187,10 +193,13 @@ export default function SettingsPrinters() {
     if (type === 'windows_printer' && !editing.windows_printer_name?.trim()) return setError('Enter the Windows installed printer name.');
     if (type === 'serial' && ![9600,19200,38400,57600,115200].includes(Number(editing.baud_rate || 9600))) return setError('Select a supported serial baud rate.');
     const characterWidth = editing.character_width === '' || editing.character_width == null ? null : Number(editing.character_width);
+    if (Number(editing.feedLinesBeforeCut ?? 2) < 2 || Number(editing.feedLinesBeforeCut ?? 2) > 255) return setError('Feed lines before cut must be between 2 and 255.');
+    if (Number(editing.feedDotsBeforeCut ?? 100) < 0 || Number(editing.feedDotsBeforeCut ?? 100) > 255) return setError('Feed dots before cut must be between 0 and 255.');
+    if (Number(editing.extraFeedAfterCut ?? 0) < 0 || Number(editing.extraFeedAfterCut ?? 0) > 255) return setError('Extra feed after cut must be between 0 and 255.');
     if (characterWidth != null && (!Number.isInteger(characterWidth) || characterWidth < 24 || characterWidth > 64)) return setError('Character override must be a whole number from 24 to 64.');
 
     setError(''); setNotice('');
-    const {assignmentTypes=[],...printerFields} = editing;
+    const {assignmentTypes=[],feedLinesBeforeCut=2,feedDotsBeforeCut=100,cutCommand='gs_v_66',extraFeedAfterCut=0,paperWidth:ignoredPaperWidth,...printerFields} = editing;
     const endpoint = type === 'network_ip'
       ? normalizeNetworkEndpoint(printerFields.ip_address, port)
       : { host: printerFields.ip_address || '', port };
@@ -214,6 +223,7 @@ export default function SettingsPrinters() {
     if (result.error) return setError(result.error.message);
 
     const printerId=result.data.id;
+    savePrinterPrintSettings(printerId, { feedLinesBeforeCut:Number(feedLinesBeforeCut), feedDotsBeforeCut:Number(feedDotsBeforeCut), cutCommand, extraFeedAfterCut:Number(extraFeedAfterCut), paperWidth:result.data.paper_width || editing.paper_width || '80mm' });
     const deleted=await supabase.from('printer_assignments').delete().eq('printer_id',printerId).eq('property_id',propertyId);
     if (deleted.error) return setError(deleted.error.message);
     if (assignmentTypes.length) {
@@ -224,6 +234,14 @@ export default function SettingsPrinters() {
     setEditing(null);
     await load(true);
     await verify(printerId,result.data);
+  };
+
+  const runCutCalibration = async () => {
+    if (!editing) return;
+    setError(''); setNotice('');
+    const result = await printCutCalibrationTest(editing, null, editing);
+    if (result?.ok) setNotice('Calibration ticket sent. Check all five numbered lines, adjust feed dots, then save the printer settings.');
+    else setError(result?.friendlyError || 'Cut calibration test failed.');
   };
 
   const verify = async (id, printerOverride=null) => {
@@ -391,7 +409,7 @@ export default function SettingsPrinters() {
           </div>}
       </div>
 
-      {editing && <PrinterModal form={editing} setForm={setEditing} onClose={()=>setEditing(null)} onSave={save} windowsPrinters={windowsPrinters} refreshLocalDevices={refreshLocalDevices}/>} 
+      {editing && <PrinterModal form={editing} setForm={setEditing} onClose={()=>setEditing(null)} onSave={save} onCalibration={runCutCalibration} windowsPrinters={windowsPrinters} refreshLocalDevices={refreshLocalDevices}/>} 
     </div>
   );
 }
@@ -465,7 +483,7 @@ function Empty({onAdd}) {
   return <div className="rounded-2xl border border-dashed border-border bg-surface p-10 text-center"><div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary"><Printer size={20} className="text-muted-foreground"/></div><h3 className="mt-3 font-black text-foreground">No printers configured</h3><p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">Add a network thermal printer with its LAN IP. OliTechs will verify the connection and print a test ticket before marking it connected.</p><button onClick={onAdd} className="mt-4 rounded-xl bg-primary px-4 py-2.5 text-sm font-black text-primary-foreground">Add your first printer</button></div>;
 }
 
-function PrinterModal({form,setForm,onClose,onSave,windowsPrinters=[],refreshLocalDevices=()=>{}}) {
+function PrinterModal({form,setForm,onClose,onSave,onCalibration,windowsPrinters=[],refreshLocalDevices=()=>{}}) {
   const selected=form.assignmentTypes||[];
   const toggle=type=>setForm({...form,assignmentTypes:selected.includes(type)?selected.filter(x=>x!==type):[...selected,type]});
   return <div className="fixed inset-0 z-[80] overflow-y-auto bg-foreground/55 p-4 backdrop-blur-sm">
@@ -495,6 +513,30 @@ function PrinterModal({form,setForm,onClose,onSave,windowsPrinters=[],refreshLoc
           {form.connection_type === 'windows_printer' && <div className="space-y-2"><label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">Windows installed printer<select value={form.windows_printer_name||''} onChange={e=>setForm({...form,windows_printer_name:e.target.value})} onFocus={()=>refreshLocalDevices(form.agent_url)} className="mt-1.5 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm"><option value="">Select installed printer</option>{windowsPrinters.map(p=><option key={p.Name} value={p.Name}>{p.Name}{p.DriverName ? ` — ${p.DriverName}` : ''}</option>)}</select></label><p className="text-[11px] text-muted-foreground">The printer must first be installed and visible in Windows Printers & scanners. OliTechs sends the thermal data through the local print agent.</p></div>}
           {form.connection_type === 'serial' && <label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">Baud rate<select value={form.baud_rate||9600} onChange={e=>setForm({...form,baud_rate:Number(e.target.value)})} className="mt-1.5 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm">{[9600,19200,38400,57600,115200].map(rate=><option key={rate} value={rate}>{rate} baud</option>)}</select></label>}
           <label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">Paper width<select value={form.paper_width||'80mm'} onChange={e=>setForm({...form,paper_width:e.target.value})} className="mt-1.5 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm"><option>80mm</option><option>58mm</option></select></label>
+          <div className="space-y-3 rounded-xl border border-border p-3">
+            <div className="text-[10px] font-black uppercase tracking-wide text-muted-foreground">Thermal feed and cut</div>
+            <label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">Blank lines before cut
+              <input type="number" min="2" max="255" value={form.feedLinesBeforeCut ?? 2} onChange={e=>setForm({...form,feedLinesBeforeCut:Number(e.target.value)})} className="mt-1.5 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm"/>
+            </label>
+            <label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">Precise feed before cut (dots)
+              <input type="number" min="0" max="255" value={form.feedDotsBeforeCut ?? 100} onChange={e=>setForm({...form,feedDotsBeforeCut:Number(e.target.value)})} className="mt-1.5 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm"/>
+            </label>
+            <label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">Cut command
+              <select value={form.cutCommand || 'gs_v_66'} onChange={e=>setForm({...form,cutCommand:e.target.value})} className="mt-1.5 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm">
+                <option value="gs_v_66">GS V 66 n — feed and partial cut</option>
+                <option value="gs_v_1">GS V 1 — partial cut</option>
+                <option value="gs_v_0">GS V 0 — full cut</option>
+                <option value="esc_i">ESC i — older Xprinter full cut</option>
+                <option value="esc_m">ESC m — older Xprinter partial cut</option>
+                <option value="none">None — disable cutter</option>
+              </select>
+            </label>
+            <label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">Extra feed after cut (dots)
+              <input type="number" min="0" max="255" value={form.extraFeedAfterCut ?? 0} onChange={e=>setForm({...form,extraFeedAfterCut:Number(e.target.value)})} className="mt-1.5 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm"/>
+            </label>
+            <button type="button" onClick={onCalibration} className="w-full rounded-xl border border-border bg-secondary px-4 py-2.5 text-xs font-black text-foreground">Cut Calibration Test</button>
+            <p className="text-[10px] leading-4 text-muted-foreground">Settings are saved per printer on this POS workstation. Start at 100 dots and calibrate with the five numbered lines.</p>
+          </div>
           <label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">Characters per line (optional)<input type="number" min="24" max="64" step="1" value={form.character_width ?? ''} onChange={e=>setForm({...form,character_width:e.target.value===''?null:Number(e.target.value)})} placeholder={form.paper_width==='58mm'?'Auto: 32':'Auto: 48'} className="mt-1.5 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm"/><span className="mt-1 block text-[10px] font-normal normal-case tracking-normal text-muted-foreground">Leave blank to use the paper-width default. Set 24–64 to override.</span></label>
           {form.connection_type === 'network_ip' && <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-secondary/60 p-3">
             <input type="checkbox" checked={!!form.open_drawer_after_sale} onChange={e=>setForm({...form,open_drawer_after_sale:e.target.checked})} className="mt-0.5 h-4 w-4"/>
