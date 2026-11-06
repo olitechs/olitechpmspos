@@ -200,6 +200,7 @@ $$;
 revoke all on function public.fn_verify_pos_access_pin(uuid, text) from public, anon;
 revoke all on function public.fn_pos_access_pin_status(uuid) from public, anon;
 revoke all on function public.fn_reset_pos_access_pin(uuid, text) from public, anon;
+revoke all on function public.fn_seed_property_pos_access_pin() from public, anon, authenticated;
 grant execute on function public.fn_verify_pos_access_pin(uuid, text) to authenticated;
 grant execute on function public.fn_pos_access_pin_status(uuid) to authenticated;
 grant execute on function public.fn_reset_pos_access_pin(uuid, text) to authenticated;
