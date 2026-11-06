@@ -41,7 +41,7 @@ test('unsettled bill print remains separate from payment and receipt persistence
   const templates = await read('./printTemplates.js');
   const bill = await read('../components/pos/BillPayment.jsx');
   assert.match(service, /type === 'UNSETTLED'/);
-  assert.match(templates, /Payment pending/);
+  assert.match(templates, /buildEscPosPayload\(text, options\)/);
   assert.match(bill, /printReceipt\('UNSETTLED'/);
   assert.doesNotMatch(service, /from\(['"]pos_receipts['"]\)/);
 });
