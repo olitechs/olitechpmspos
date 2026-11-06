@@ -36,7 +36,7 @@ Combined with the aggregate trigger above, these paths can misallocate the delta
 - `20261008041101_phase3_pos_pms_integration.sql` includes receipt-level idempotency through `pos_receipts.idempotency_key`.
 - The source body calls `fn_consume_recipe_stock` and separately deducts tracked non-recipe products by updating `products.current_stock` and inserting `stock_movements` directly.
 - `20261008120000_phase4_authoritative_inventory_ledger.sql` defines a shared writer, while `20261008160000_phase4_pos_inventory_authority.sql` attempts a text replacement against one exact 16-argument `fn_record_pos_sale` signature. Its replacement supplies a NULL source ID.
-- The recipe-consumption implementation in the tracked source updates aggregate stock and inserts movement rows directly; the forensic snapshot records a later implementation calling the shared writer but still passing NULL source IDs.
+- The later tracked definition in `20261008120000_phase4_authoritative_inventory_ledger.sql` calls `fn_apply_stock_movement` for each recipe ingredient and writes `stock_usage` as a secondary department/audit record. However, it passes `source_type = 'pos_recipe'` with `source_id = NULL`. The reversal function in the same migration also calls the shared writer with `source_type = 'pos_reversal'` and `source_id = NULL`. The earlier `0030_recipes_laundry_transfers.sql` definition is a different implementation, so migration order and deployed body must be reconciled rather than treating the earlier body as current.
 
 **Implication:** source migration order/signature provenance must be reconciled before assuming the POS replacement was applied to the currently deployed overload. POS receipt idempotency does not automatically make each stock movement source-linked. Recipe consumption and direct product deduction must remain mutually exclusive for recipe products, as intended by the current conditional.
 
@@ -96,3 +96,37 @@ A focused review of the existing `tools/inventory/phase2-ledger-contract.test.mj
 **Required test correction before implementation:** separate (1) a source-text test that confirms the expected legacy fragment and replacement are exact, from (2) a database catalog/runtime test that inspects the resulting overload and verifies a non-null stable sale/line source key and duplicate-request behavior. A passing source-text test must never be reported as runtime or deployment verification.
 
 This is a test-quality and source-design finding only. No test, SQL, application code, or database was changed. The protected printer, paper-feed, ticket, receipt, unsettled-bill, and cashier-printing scope remains excluded.
+
+
+## Continued source review — exact retry and scope findings (6 November 2026)
+
+### Recipe consumption and reversal source identity
+
+The later shared-writer definition in `20261008120000_phase4_authoritative_inventory_ledger.sql` establishes a single aggregate stock posting call for each recipe ingredient, with `stock_usage` written as a secondary F&B usage record. This is preferable to treating `stock_usage` as a second quantity ledger. However:
+
+- Recipe movements use `source_type = 'pos_recipe'` and `source_id = NULL`.
+- POS reversal movements use `source_type = 'pos_reversal'` and `source_id = NULL`.
+- The human-readable reference string is not a stable unique event identity.
+- A repeated standalone recipe-consumption request is not proven idempotent by the inspected function body.
+
+**Gate:** source IDs must resolve to the originating receipt/usage/reversal event and line before retry-safety can be claimed. Preserve the single-owner rule: POS recipe ingredients are consumed by the recipe consumer, not again by the direct-product loop.
+
+### GRN retry behavior
+
+The committed `fn_receive_purchase_order(uuid,jsonb)` implementation creates a new GRN number using the current timestamp plus a generated UUID on every call. It locks the purchase order and rejects quantities beyond the outstanding ordered amount, but it does not accept a stable caller-supplied request key. A repeated partial-receipt request can therefore be accepted as another receipt while outstanding quantity remains.
+
+**Gate:** use a stable request identity and unique receipt-line identity, then test a repeated request after a simulated lost response. Keep over-receipt checks as a separate invariant.
+
+### POS migration and protected printer boundary
+
+The POS inventory migration `20261008160000_phase4_pos_inventory_authority.sql` uses exact function-definition text replacement and supplies a NULL source ID for the POS movement. It also contains separate grants on `fnb_print_jobs`. This mixed-scope historical migration is not an inventory-only migration template and must not be replayed or edited as part of this remediation.
+
+**Gate:** any future inventory-only change must be a new, narrowly scoped forward migration. Printer services, print-job grants/configuration, device routing, paper feed, tickets, receipts and cashier/payment printing remain outside the change set.
+
+### Confirmed design distinction
+
+- `fn_apply_stock_movement` updates aggregate `products.current_stock` and writes `stock_movements`; the default-location trigger can then update a location projection.
+- A location-aware operation must not independently update that same projection and then call the aggregate writer unless the exact intended delta ownership is proven.
+- Transfers are different: the paired source/destination movement must preserve the property-wide aggregate total. They must not be implemented as two unrelated aggregate stock adjustments.
+
+These are source-level findings only. No SQL was executed, no database object was changed, and no test or build was run.
