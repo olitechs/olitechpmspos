@@ -197,9 +197,9 @@ export default function SettingsPrinters() {
     if (type === 'windows_printer' && !editing.windows_printer_name?.trim()) return setError('Enter the Windows installed printer name.');
     if (type === 'serial' && ![9600,19200,38400,57600,115200].includes(Number(editing.baud_rate || 9600))) return setError('Select a supported serial baud rate.');
     const characterWidth = editing.character_width === '' || editing.character_width == null ? null : Number(editing.character_width);
-    if (Number(editing.feedLinesBeforeCut ?? 2) < 2 || Number(editing.feedLinesBeforeCut ?? 2) > 255) return setError('Feed lines before cut must be between 2 and 255.');
-    if (Number(editing.feedDotsBeforeCut ?? 100) < 0 || Number(editing.feedDotsBeforeCut ?? 100) > 255) return setError('Feed dots before cut must be between 0 and 255.');
-    if (Number(editing.extraFeedAfterCut ?? 0) < 0 || Number(editing.extraFeedAfterCut ?? 0) > 255) return setError('Extra feed after cut must be between 0 and 255.');
+    if (!Number.isInteger(Number(editing.feedLinesBeforeCut ?? 2)) || Number(editing.feedLinesBeforeCut ?? 2) < 2 || Number(editing.feedLinesBeforeCut ?? 2) > 255) return setError('Feed lines before cut must be between 2 and 255.');
+    if (!Number.isInteger(Number(editing.feedDotsBeforeCut ?? 100)) || Number(editing.feedDotsBeforeCut ?? 100) < 0 || Number(editing.feedDotsBeforeCut ?? 100) > 255) return setError('Feed dots before cut must be between 0 and 255.');
+    if (!Number.isInteger(Number(editing.extraFeedAfterCut ?? 0)) || Number(editing.extraFeedAfterCut ?? 0) < 0 || Number(editing.extraFeedAfterCut ?? 0) > 255) return setError('Extra feed after cut must be between 0 and 255.');
     if (characterWidth != null && (!Number.isInteger(characterWidth) || characterWidth < 24 || characterWidth > 64)) return setError('Character override must be a whole number from 24 to 64.');
 
     setError(''); setNotice('');
