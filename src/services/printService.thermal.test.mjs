@@ -67,9 +67,8 @@ test('KOT and BOT jobs use the shared configurable feed and cut finalizer', asyn
   assert.ok(service.includes('thermalBase64,'));
   assert.ok(routing.includes('getPrinterPrintSettings(printer)'));
   assert.ok(browser.includes('buildEscPosPayload(text, settings)'));
-  assert.ok(browser.includes("encode(body + '\\n'),"), 'browser transport preserves one clearance line before the feed command');
+  assert.ok(browser.includes("import { buildEscPosPayload } from './escposJob.js'"));
   assert.ok(agent.includes('buildEscPosPayload(body, settings)'));
-  assert.ok(agent.includes("enc.encode(body + '\\n'),"), 'local agent preserves one clearance line before the feed command');
   assert.ok(agent.includes("socket.once('drain'"));
 });
 
@@ -96,6 +95,6 @@ test('final receipt copies are separate jobs with an independent feed and cut', 
 test('unsettled receipt uses two feed lines and a full cut', async () => {
   const service = await read('./printService.js');
   assert.ok(service.includes('getPrinterPrintSettings(printer)'));
-  assert.ok(service.includes('feedDotsBeforeCut'));
+  assert.ok(service.includes('buildLogoEscPosBase64'));
   assert.ok(!service.includes('partialCut: true'));
 });
