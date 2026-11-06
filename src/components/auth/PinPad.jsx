@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Delete, Eye, EyeOff, Lock, X } from 'lucide-react';
 
 export default function PinPad({
@@ -25,6 +26,13 @@ export default function PinPad({
   }, [staffName]);
 
   useEffect(() => {
+    if (!fullscreen || typeof document === 'undefined') return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, [fullscreen]);
+
+  useEffect(() => {
     if (!error) return undefined;
     setShake(true);
     const timer = window.setTimeout(() => setShake(false), 450);
@@ -40,7 +48,7 @@ export default function PinPad({
     if (autoSubmit && next.length === pinLength) window.setTimeout(() => onSubmit(next), 80);
   };
 
-  return (
+  const pad = (
     <div
       className={fullscreen
         ? 'fixed left-0 top-0 z-[9999] flex h-[100dvh] w-[100vw] items-center justify-center overflow-y-auto bg-[#e3f2fd] p-3 sm:p-5'
@@ -61,8 +69,11 @@ export default function PinPad({
         <div className="min-h-0 overflow-y-auto p-5">
           {subtitle && <p className="mb-4 text-center text-sm leading-6 text-[#315b83]">{subtitle}</p>}
           <div className="mb-4 flex min-h-14 items-center justify-center gap-3 rounded-xl border border-[#c7def4] bg-[#f5faff] px-4 py-3" aria-label="PIN entry">
-            <span className="font-mono text-lg font-bold tracking-[.45em] text-[#173b60]">{show ? pin.padEnd(pinLength, ' ') : ''}</span>
-            {!show && Array.from({ length: pinLength }).map((_, i) => <span key={i} className={`h-3 w-3 rounded-full border-2 ${i < pin.length ? 'border-[#2196f3] bg-[#2196f3]' : 'border-[#a8cfee] bg-transparent'}`} />)}
+            {Array.from({ length: pinLength }).map((_, i) => (
+              <span key={i} className={`flex h-9 w-9 items-center justify-center rounded-lg border text-base font-bold ${i < pin.length ? 'border-[#2196f3] bg-white text-[#173b60]' : 'border-[#a8cfee] bg-white text-transparent'}`}>
+                {i < pin.length ? (show ? pin[i] : <span className="h-2.5 w-2.5 rounded-full bg-[#2196f3]" />) : '•'}
+              </span>
+            ))}
             <button type="button" onClick={() => setShow((v) => !v)} className="ml-2 shrink-0 text-[#315b83] hover:text-[#0d47a1]" title={show ? 'Hide PIN' : 'Show PIN'} aria-label={show ? 'Hide PIN' : 'Show PIN'}>{show ? <EyeOff size={16}/> : <Eye size={16}/>}</button>
           </div>
           {error && <div role="alert" className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-center text-xs font-bold text-red-700">{error}</div>}
@@ -79,4 +90,9 @@ export default function PinPad({
       </div>
     </div>
   );
+
+  // Render outside the application shell so its module navigation, stacking
+  // contexts and transformed parents can never appear above the locked screen.
+  if (fullscreen && typeof document !== 'undefined') return createPortal(pad, document.body);
+  return pad;
 }
