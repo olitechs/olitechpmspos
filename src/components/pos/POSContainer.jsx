@@ -76,7 +76,7 @@ export default function POSContainer() {
 	const [posUnlocked, setPosUnlocked] = useState(false);
 	const [posAccessError, setPosAccessError] = useState('');
 	const [posAccessBusy, setPosAccessBusy] = useState(false);
-	useEffect(() => { if (!propertyId) return; authService.listStaff(propertyId, 'pos').then(setPosStaff).catch(() => {}); shiftService.getCurrentShift(propertyId).then(setCurrentShift).catch(()=>setCurrentShift(null)).finally(()=>setShiftLoading(false)); }, [propertyId]);
+	useEffect(() => { if (!propertyId) return; setPosUnlocked(false); setPosAccessError(''); setCurrentShift(null); setShiftLoading(true); authService.listStaff(propertyId, 'pos').then(setPosStaff).catch(() => {}); shiftService.getCurrentShift(propertyId).then(setCurrentShift).catch(()=>setCurrentShift(null)).finally(()=>setShiftLoading(false)); }, [propertyId]);
 	const verifySwitch = async (pin) => { try { const result = await authService.verifyStaffPin({ propertyId, module: 'pos', pin }); if (!result?.ok) { setSwitchError('Wrong PIN'); return; } sessionStorage.setItem('olitech_active_staff_v2', JSON.stringify(result.staff)); window.dispatchEvent(new CustomEvent('olitech:staff-changed', { detail: result.staff })); setSwitchStaff(null); setSwitchError(''); } catch (e) { setSwitchError(e.message); } };
 	const verifyPosAccess = async (pin) => {
 		setPosAccessBusy(true);
