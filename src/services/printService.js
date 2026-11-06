@@ -438,7 +438,7 @@ export async function printOrderByCategory(order) {
         center: group.kind === 'food' ? 'KITCHEN' : 'BAR',
         items: group.items,
       });
-      const thermalBase64 = bytesToBase64(new TextEncoder().encode(toEscPosPayload(thermalText, { feedLines: 2 })));
+      const thermalBase64 = bytesToBase64(new TextEncoder().encode(toEscPosPayload(thermalText, getPrinterPrintSettings(printer))));
       results.push(await printToPrinter(printer, thermalTextToHtml(thermalText), {
         propertyId,
         jobType: group.kind === 'food' ? 'KOT' : 'BOT',
