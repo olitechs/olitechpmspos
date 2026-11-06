@@ -133,7 +133,10 @@ export function exportShiftToExcel(report) {
     ['Bank', money(report.payments.bank.amount), report.payments.bank.count],
     ['Room Charge', money(report.payments.room_charge.amount), report.payments.room_charge.count],
     ['Other', money(report.payments.other.amount), report.payments.other.count],
-    ['Total Sales', money(report.totalSales), report.totalTransactions],
+    ['Gross Sales', money(report.grossSales), report.totalTransactions],
+    ['Refunds', money(report.refundsTotal), ''],
+    ['Voided Value', money(report.voidedValue), ''],
+    ['Net Sales', money(report.totalSales), report.totalTransactions],
     ['Guest Covers', money(report.totalCovers), ''],
     ['Items Sold', money(report.itemsSold), ''],
     ['Expected Cash', money(report.expectedCash), ''],
@@ -155,6 +158,12 @@ export function exportShiftToExcel(report) {
     Number(receipt.covers || 1),
   ]));
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(detailed), 'Detailed Receipts');
+
+  const voided = [['Voided Receipt', 'Table', 'Time', 'Voided Value']];
+  (report.voidedOrders || []).forEach((receipt) => voided.push([
+    receipt.order_number || '', receipt.table_number || '', new Date(receipt.created_at).toLocaleString('en-KE'), money(receipt.total),
+  ]));
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(voided), 'Voided Receipts');
 
   const sales = report.totalSales || 0;
   const breakdown = [['Payment Method', 'Receipt Count', 'Total Amount', '% of Sales']];
