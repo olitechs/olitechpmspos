@@ -83,7 +83,6 @@ test('POS snapshots sent order lines before asynchronous printer dispatch', asyn
 test('final receipt copies are separate jobs with an independent feed and cut', async () => {
   const service = await read('./printService.js');
   const templates = await read('./printTemplates.js');
-  const start = service.indexOf("  for (const printer of targets) {", service.indexOf("if (type === 'UNSETTLED')"));
   const finalBlock = service.slice(service.indexOf("  for (const printer of targets) {", service.indexOf("return { ok: results.length")), service.indexOf("\n  return { ok: results.every", service.indexOf("return { ok: results.length")));
   assert.ok(finalBlock.includes('for (const copy of copies)'));
   assert.ok(finalBlock.includes('feedLines: 12'));
