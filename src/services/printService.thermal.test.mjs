@@ -85,7 +85,7 @@ test('final receipt copies are separate jobs with an independent feed and cut', 
   const templates = await read('./printTemplates.js');
   const finalBlock = service.slice(service.indexOf("  for (const printer of targets) {", service.indexOf("return { ok: results.length")), service.indexOf("\n  return { ok: results.every", service.indexOf("return { ok: results.length")));
   assert.ok(finalBlock.includes('for (const copy of copies)'));
-  assert.ok(finalBlock.includes('feedLines: 12'));
+  assert.ok(finalBlock.includes('feedLines: 20'));
   assert.ok(finalBlock.includes("copyType: copy.toLowerCase()"));
   assert.ok(!finalBlock.includes('copyTexts.join'));
   assert.match(templates, /Math\.min\(24, requestedFeed\)/);
