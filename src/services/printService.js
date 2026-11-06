@@ -821,7 +821,8 @@ export async function printReceipt(type, data) {
     for (const copy of copies) {
       const thermalText = buildFinalReceiptText(settings, data, { printer, copyLabel: copy });
       const thermalBase64 = await buildLogoEscPosBase64(settings.logo_url, printer, thermalText, {
-        feedLines: 12,
+        // Keep the receipt clear of the cutter and provide a consistent tear margin.
+        feedLines: 20,
       });
       results.push(await printToPrinter(printer, receiptHtml(settings, type, data, copy), {
         propertyId,
