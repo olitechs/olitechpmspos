@@ -1,7 +1,7 @@
 import { getPrinterPrintSettings } from '@/services/printerPrintSettings';
 import { testConnection as testBrowserPrinterConnection, pairUsbDevice, pairBluetoothDevice, pairSerialDevice, sendPrintJob as sendBrowserPrintJob, buildTestPageText, PrinterStatus } from '@/services/printerService';
 import { supabase } from '@/lib/supabaseClient';
-import { buildOrderTicketText, buildUnsettledReceiptText, buildFinalReceiptText, toEscPosPayload, thermalTextToHtml } from '@/services/printTemplates';
+import { buildOrderTicketText, buildUnsettledReceiptText, buildFinalReceiptText, toEscPosPayload, thermalTextToHtml, finishPrintJob, getPrinterColumns, getOrderTicketColumns } from '@/services/printTemplates';
 
 const normalizeNetworkEndpoint = (value, fallbackPort = 9100) => {
   let host = String(value || '').trim();
@@ -346,7 +346,7 @@ export async function printToPrinter(printer, contentHtml, { propertyId, jobType
       result = { ok:false, friendlyError:verified.friendlyError || 'The physical printer is no longer connected to this browser session.' };
       await updatePrinterTransportStatus(printer, propertyId, 'offline', result.friendlyError);
     } else {
-      result = await sendBrowserPrintJob(transport, text, { thermal:true, title, printSettings });
+      result = await sendBrowserPrintJob(transport, text, { thermal:true, title, printSettings, thermalBase64: finalThermalBase64 });
       await updatePrinterTransportStatus(printer, propertyId, result.ok ? 'connected' : 'offline', result.friendlyError || null);
     }
   } else {
@@ -438,7 +438,7 @@ export async function printOrderByCategory(order) {
         center: group.kind === 'food' ? 'KITCHEN' : 'BAR',
         items: group.items,
       });
-      const thermalBase64 = bytesToBase64(new TextEncoder().encode(toEscPosPayload(thermalText, getPrinterPrintSettings(printer))));
+      const thermalBase64 = await buildLogoEscPosBase64(null, printer, thermalText, { printSettings: getPrinterPrintSettings(printer) });
       results.push(await printToPrinter(printer, thermalTextToHtml(thermalText), {
         propertyId,
         jobType: group.kind === 'food' ? 'KOT' : 'BOT',
@@ -542,14 +542,68 @@ function bytesToBase64(bytes) {
   return btoa(binary);
 }
 
+function renderThermalTextRaster(text, printer = {}) {
+  if (typeof document === 'undefined') throw new Error('Thermal image rendering requires a browser canvas.');
+  const is58mm = String(printer.paper_width || '80mm').toLowerCase() === '58mm';
+  const dots = is58mm ? 360 : 540;
+  const columns = is58mm
+    ? (getOrderTicketColumns(printer) === 30 ? 30 : getPrinterColumns(printer))
+    : (printer.assignment_type === 'food_orders' || printer.assignment_type === 'drinks_orders'
+      ? getOrderTicketColumns(printer) : getPrinterColumns(printer));
+  const source = String(text || '').replace(/\r/g, '');
+  const plain = source.replace(/\x1bE[01]/g, '').replace(/\x1d![\s\S]/g, '');
+  const lines = plain.split('\n');
+  const fontSize = 19;
+  const lineHeight = 27;
+  const paddingTop = 8;
+  const paddingBottom = 8;
+  const canvas = document.createElement('canvas');
+  canvas.width = dots;
+  canvas.height = Math.max(1, paddingTop + lines.length * lineHeight + paddingBottom);
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  if (!context) throw new Error('Unable to create thermal text canvas.');
+  context.fillStyle = '#fff';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.fillStyle = '#000';
+  context.font = '400 ' + fontSize + 'px Arial, Helvetica, sans-serif';
+  context.textBaseline = 'alphabetic';
+  context.imageSmoothingEnabled = true;
+  const cellWidth = dots / Math.max(1, columns);
+  lines.forEach((line, row) => {
+    for (let index = 0; index < line.length && index < columns; index++) {
+      const char = line[index];
+      if (char !== ' ') context.fillText(char, index * cellWidth + 0.5, paddingTop + row * lineHeight + 20, cellWidth);
+    }
+  });
+  const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+  const rowBytes = Math.ceil(dots / 8);
+  const raster = new Uint8Array(11 + rowBytes * canvas.height);
+  raster.set([0x1b,0x61,0x00,0x1d,0x76,0x30,0x00,rowBytes & 0xff,(rowBytes >> 8) & 0xff,canvas.height & 0xff,(canvas.height >> 8) & 0xff]);
+  for (let y = 0; y < canvas.height; y++) {
+    for (let x = 0; x < dots; x++) {
+      const pixel = (y * dots + x) * 4;
+      const luminance = (pixels[pixel] * 299 + pixels[pixel + 1] * 587 + pixels[pixel + 2] * 114) / 1000;
+      if (luminance < 160) raster[11 + y * rowBytes + (x >> 3)] |= (0x80 >> (x & 7));
+    }
+  }
+  return raster;
+}
+
 async function buildLogoEscPosBase64(logoUrl, printer = {}, text = '', options = {}) {
   const singleBuffer = options.singleBuffer === true;
   const printSettings = getPrinterPrintSettings(printer, options.printSettings || {});
   const fallbackTextBuffer = () => {
-    const bytes = new TextEncoder().encode(toEscPosPayload(text, printSettings));
-    return bytesToBase64(bytes);
+    const raster = renderThermalTextRaster(text, printer);
+    const initialize = new Uint8Array([0x1b, 0x40]);
+    const finish = finishPrintJob(printSettings);
+    const output = new Uint8Array(initialize.length + raster.length + finish.length);
+    output.set(initialize, 0);
+    output.set(raster, initialize.length);
+    output.set(finish, initialize.length + raster.length);
+    return bytesToBase64(output);
   };
-  if (!logoUrl || typeof Image === 'undefined' || typeof document === 'undefined') return fallbackTextBuffer();
+  if (typeof document === 'undefined') return fallbackTextBuffer();
+  if (!logoUrl || typeof Image === 'undefined') return fallbackTextBuffer();
   try {
     const image = new Image();
     image.crossOrigin = 'anonymous';
@@ -608,12 +662,14 @@ async function buildLogoEscPosBase64(logoUrl, printer = {}, text = '', options =
         }
       }
     }
-    const textBytes = new TextEncoder().encode(toEscPosPayload(text, { ...printSettings, initialize: false }));
+    const textRaster = renderThermalTextRaster(text, printer);
     const init = new Uint8Array([0x1b,0x40]);
-    const combined = new Uint8Array(init.length + raster.length + textBytes.length);
+    const finish = finishPrintJob(printSettings);
+    const combined = new Uint8Array(init.length + raster.length + textRaster.length + finish.length);
     combined.set(init, 0);
     combined.set(raster, init.length);
-    combined.set(textBytes, init.length + raster.length);
+    combined.set(textRaster, init.length + raster.length);
+    combined.set(finish, init.length + raster.length + textRaster.length);
     return bytesToBase64(combined);
   } catch (error) {
     console.warn('[printService] thermal logo rendering skipped', error);
