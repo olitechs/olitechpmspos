@@ -3,10 +3,12 @@ const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({
 }[char]));
 
 export function getPrinterColumns(printer = {}) {
-  // Preserve the established receipt width so settled receipt output does not change.
+  // Leave a physical side margin on both paper sizes. Configured widths may
+  // narrow the layout, but must never exceed the safe printable area.
+  const paperLimit = String(printer.paper_width || '80mm').toLowerCase() === '58mm' ? 30 : 46;
   const override = Number(printer.character_width ?? printer.characters_per_line);
-  if (Number.isInteger(override) && override >= 24 && override <= 64) return override;
-  return String(printer.paper_width || '80mm').toLowerCase() === '58mm' ? 32 : 48;
+  if (Number.isInteger(override) && override >= 24) return Math.min(override, paperLimit);
+  return paperLimit;
 }
 
 export function getOrderTicketColumns(printer = {}) {
@@ -118,64 +120,44 @@ export function getUnsentOrderLines(currentLines = [], previouslySentLines = [])
 
 export function buildOrderTicketText(order = {}, { printer = {}, settings = {}, center = 'KITCHEN', items = order.items || [], now = new Date() } = {}) {
   const safe = value => toReceiptAscii(value);
-  items = (Array.isArray(items) ? items : []).map(item => ({
-    ...item,
-    name: safe(itemName(item)),
-    modifiers: (Array.isArray(item.modifiers) ? item.modifiers : []).map(modifier => safe(modifierLabel(modifier))),
-    prepNote: safe(item.prepNote || item.prep_note || item.notes || item.note || item.kitchen_note || ''),
-  }));
   const width = getOrderTicketColumns(printer);
   const productionCenter = safe(center || 'KITCHEN').toUpperCase();
-  const orderNo = safe(order.orderNumber || order.checkNo || order.order_number || order.id || '—');
-  const ticketNo = safe(order.ticketNumber || order.ticket_number || (productionCenter.includes('BAR') ? 'BOT-' : 'KOT-') + orderNo);
-  const table = safe(order.table || order.tableNumber || order.table_number || '—');
-  const waiter = safe(order.waiter || order.server || 'Unassigned');
-  const dining = safe(order.diningOption || order.dining_option || order.orderType || order.order_type || '—');
-  const company = safe(settings.property_name || order.propertyName || order.property_name || 'OLITECHS PMS + POS');
-  const header = centeredBlock([
-    company.toUpperCase(),
-    safe(settings.address_line1),
-    safe(settings.address_line2),
-    safe(settings.phone),
-    safe(settings.email),
-    safe(settings.website),
-    settings.kra_pin ? 'KRA PIN: ' + safe(settings.kra_pin) : '',
-    safe(settings.extra_header_line),
-  ], width);
+  const orderNo = safe(order.ticketNumber || order.ticket_number || order.orderNumber || order.checkNo || order.order_number || order.id || '—');
+  const displayOrderNo = orderNo.startsWith('#') ? orderNo : '#' + orderNo;
+  const orderName = safe(order.orderName || order.order_name || order.customerName || order.customer_name || order.guestName || order.guest_name || order.name || '—');
+  const employee = safe(order.employeeName || order.employee_name || order.employee || order.staffName || order.staff_name || order.createdByName || order.created_by_name || order.waiter || order.server || '—');
+  const posName = safe(order.posName || order.pos_name || order.terminalName || order.terminal_name || order.deviceName || order.device_name || order.pos || '—');
+  const dining = safe(order.diningOption || order.dining_option || order.orderType || order.order_type || '—').toUpperCase();
   const lines = [
-    ...header,
+    ...centerRows('*** ' + productionCenter + ' POS ***', width).map(emphasize),
+    '',
+    ...centerRows(displayOrderNo, width).map(receiptDoubleHeight),
+    ...centerRows(orderName, width).map(receiptDoubleHeight),
+    '',
+    ...wrapThermalText(stamp(order.createdAt || order.created_at || now), width),
+    ...wrapThermalText('Employee: ' + employee, width),
+    ...wrapThermalText('POS: ' + posName, width),
     divider(width),
-    ...centerRows(productionCenter + ' ORDER TICKET', width).map(emphasize),
-    ...labeledRows('ORDER NO', orderNo, width).map(emphasize),
-    ...labeledRows('TICKET NO', ticketNo, width).map(emphasize),
-    ...labeledRows('TABLE', table, width),
-    ...labeledRows('SERVER', waiter.toUpperCase(), width),
-    ...labeledRows('DINING', dining.toUpperCase(), width),
+    ...centerRows(dining, width).map(emphasize),
+    divider(width),
   ];
-  if (order.covers != null || order.guests != null) lines.push(...labeledRows('COVERS', order.covers ?? order.guests, width));
-  lines.push(...labeledRows('TIME', stamp(order.createdAt || order.created_at || now), width));
-  if (order.isReprint || order.reprint) lines.push(...centerRows('*** REPRINT ***', width).map(emphasize));
-  if (order.isAddition || order.addition) lines.push(...centerRows('*** ADDITIONAL ITEMS ***', width).map(emphasize));
-  lines.push(divider(width));
 
-  // Kitchen tickets use normal thermal font size. Bold emphasis keeps the
-  // item line readable without doubling its physical height or reducing width.
-  for (const item of items) {
+  for (const item of (Array.isArray(items) ? items : [])) {
     const qty = itemQuantity(item);
-    const heading = qty + ' x ' + itemName(item);
-    for (const row of wrapThermalText(heading, width)) lines.push(emphasize(row));
-    const modifiers = (Array.isArray(item.modifiers) ? item.modifiers : []).map(modifierLabel).filter(Boolean);
+    const name = safe(itemName(item));
+    lines.push(...wrapThermalText(qty + ' x ' + name, width).map(emphasize));
+    const modifiers = (Array.isArray(item.modifiers) ? item.modifiers : []).map(modifier => safe(modifierLabel(modifier))).filter(Boolean);
     for (const modifier of modifiers) lines.push(...wrapThermalText('  + ' + modifier, width));
-    const note = item.prepNote || item.prep_note || item.notes || item.note || item.kitchen_note;
+    const note = safe(item.prepNote || item.prep_note || item.notes || item.note || item.kitchen_note || '');
     if (note) lines.push(...wrapThermalText('  NOTE: ' + note, width));
     lines.push('');
   }
 
   lines.push(divider(width));
-  lines.push(...centeredBlock([safe(settings.footer_line1), safe(settings.footer_line2), 'PRODUCTION COPY - ' + productionCenter], width), '');
+  const footer = [settings.footer_line1, settings.footer_line2].map(safe).filter(Boolean);
+  lines.push(...centeredBlock(footer, width));
   return lines.join('\n');
 }
-
 function toReceiptAscii(value) {
   return String(value ?? '')
     .normalize('NFKD')
@@ -359,44 +341,57 @@ export function buildUnsettledReceiptText(settings = {}, data = {}, { printer = 
 export function buildFinalReceiptText(settings = {}, data = {}, { printer = {}, copyLabel = 'CUSTOMER COPY', now = new Date() } = {}) {
   const width = getPrinterColumns(printer);
   const currency = data.currency || 'KES';
+  const money = value => formatReceiptMoney(value, currency);
+  const orderName = data.orderName || data.order_name || data.customerName || data.customer_name || data.guestName || data.guest_name || data.name || data.orderNumber || data.checkNo || '—';
+  const employee = data.employeeName || data.employee_name || data.employee || data.staffName || data.staff_name || data.waiter || data.server || '—';
+  const posName = data.posName || data.pos_name || data.terminalName || data.terminal_name || data.deviceName || data.device_name || data.pos || '—';
+  const dining = data.diningOption || data.dining_option || data.orderType || data.order_type || '';
   const receiptNo = data.receiptNumber || data.receipt_number || data.receiptId || 'RCT-' + (data.checkNo || data.orderNumber || '—');
-  const money = value => currency + ' ' + Number(value || 0).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const lines = [
     ...centeredBlock([
-      settings.property_name || data.propertyName || 'OLITECHS PMS + POS',
+      settings.property_name || data.propertyName || 'VISIWA BEACH RESORT',
       settings.address_line1, settings.address_line2, settings.phone, settings.email,
-      settings.website, settings.kra_pin ? 'KRA PIN: ' + settings.kra_pin : '', settings.extra_header_line,
+      settings.website, settings.kra_pin ? 'KRA PIN: ' + settings.kra_pin : '',
     ], width),
     divider(width),
-    ...centerRows('FINAL RECEIPT', width).map(emphasize),
-    ...labeledRows('COPY', copyLabel, width),
-    ...labeledRows('RECEIPT NO', receiptNo, width),
-    ...labeledRows('ORDER NO', data.orderNumber || data.checkNo || '—', width),
-    ...labeledRows('CHECK', data.checkNo || data.orderNumber || '—', width),
-    ...labeledRows('TABLE', data.table || data.tableNumber || '—', width),
-    ...labeledRows('SERVER', data.waiter || data.server || 'Unassigned', width),
-    ...labeledRows('DATE', stamp(data.createdAt || data.created_at || now), width),
-    divider(width),
-    pairLine('QTY  ITEM', 'AMOUNT', width),
+    ...receiptCenterRows('RECEIPT', width).map(receiptDoubleHeight),
+    ...receiptLeftRows('Order', orderName, width),
+    ...receiptLeftRows('Employee', employee, width),
+    ...receiptLeftRows('POS', posName, width),
     divider(width),
   ];
-  for (const item of data.items || []) {
+  if (dining) {
+    lines.push(...receiptCenterRows(dining, width).map(emphasize), divider(width));
+  }
+  for (const item of (Array.isArray(data.items) ? data.items : [])) {
     const qty = itemQuantity(item);
-    const nameRows = wrapThermalText(qty + ' x ' + itemName(item), Math.max(12, width - 12));
-    lines.push(pairLine(nameRows[0], money(qty * Number(item.price || 0)), width), ...nameRows.slice(1));
+    const unitPrice = Number(item?.price ?? item?.unitPrice ?? item?.unit_price ?? 0);
+    const lineTotal = roundReceiptMoney(qty * unitPrice);
+    const name = toReceiptAscii(itemName(item));
+    const amount = money(lineTotal);
+    const available = Math.max(8, width - amount.length - 1);
+    if (name.length <= available) lines.push(name.padEnd(available) + ' ' + amount);
+    else {
+      lines.push(...wrapThermalText(name, width));
+      lines.push(amount.padStart(width));
+    }
+    lines.push(...receiptPairLine(qty + ' x ' + money(unitPrice), '', width).filter(Boolean));
     const modifiers = (Array.isArray(item.modifiers) ? item.modifiers : []).map(modifierLabel).filter(Boolean);
-    for (const modifier of modifiers) lines.push(...wrapThermalText('  + ' + modifier, width));
+    for (const modifier of modifiers) lines.push(...wrapThermalText('  + ' + toReceiptAscii(modifier), width));
   }
   lines.push(divider(width));
-  lines.push(pairLine('SUBTOTAL', money(data.subtotal ?? data.total), width));
-  if (Number(data.discount || 0) > 0) lines.push(pairLine('DISCOUNT', '-' + money(data.discount), width));
-  if (Number(data.serviceCharge || data.service_charge || 0) > 0) lines.push(pairLine('SERVICE CHARGE', money(data.serviceCharge ?? data.service_charge), width));
-  lines.push(divider(width), emphasize(pairLine('TOTAL PAID', money(data.total), width)), divider(width));
-  lines.push(...labeledRows('PAYMENT METHOD', data.paymentMethod || '—', width));
-  lines.push(...centeredBlock([settings.footer_line1, settings.footer_line2], width), '');
+  lines.push(...receiptPairLine('Subtotal', money(data.subtotal ?? data.total), width));
+  if (Number(data.discount || 0) > 0) lines.push(...receiptPairLine('Discount', '-' + money(data.discount), width));
+  if (Number(data.serviceCharge || data.service_charge || 0) > 0) lines.push(...receiptPairLine('Service charge', money(data.serviceCharge ?? data.service_charge), width));
+  lines.push('='.repeat(width));
+  lines.push(receiptDoubleHeight(receiptPairLine('AMOUNT PAID', money(data.total), width)[0]));
+  lines.push('='.repeat(width));
+  lines.push(...receiptLeftRows('Payment', data.paymentMethod || data.payment_method || '—', width));
+  lines.push(...receiptLeftRows('Receipt No', receiptNo, width));
+  lines.push(...receiptLeftRows('Date', nairobiPrintedAt(data.createdAt || data.created_at || now), width));
+  lines.push(...centeredBlock([settings.footer_line1, settings.footer_line2, copyLabel], width));
   return lines.join('\n');
 }
-
 export function thermalTextToHtml(text) {
   return '<pre style="margin:0;padding:0;background:white;color:black;white-space:pre-wrap;font-family:monospace">' + escapeHtml(text) + '</pre>';
 }
