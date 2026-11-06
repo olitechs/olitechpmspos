@@ -19,6 +19,7 @@ import { getUnsentOrderLines } from '@/services/printTemplates';
 import { shiftService } from '@/services/shiftService';
 import { posAccessService } from '@/services/posAccessService';
 import POSAccessGate from '@/components/pos/POSAccessGate';
+import AccessPinTab from '@/components/pos/AccessPinTab';
 import CloseShiftModal, { OpenShiftModal } from '@/components/pos/CloseShiftModal';
 import MenuManager from '@/components/pos/MenuManager';
 import POSSettings from '@/components/pos/settings/POSSettings';
@@ -76,7 +77,9 @@ export default function POSContainer() {
 	const [posUnlocked, setPosUnlocked] = useState(false);
 	const [posAccessError, setPosAccessError] = useState('');
 	const [posAccessBusy, setPosAccessBusy] = useState(false);
-	useEffect(() => { if (!propertyId) return; setPosUnlocked(false); setPosAccessError(''); setCurrentShift(null); setShiftLoading(true); authService.listStaff(propertyId, 'pos').then(setPosStaff).catch(() => {}); shiftService.getCurrentShift(propertyId).then(setCurrentShift).catch(()=>setCurrentShift(null)).finally(()=>setShiftLoading(false)); }, [propertyId]);
+	const [pinSettingsOpen, setPinSettingsOpen] = useState(false);
+	const canManagePosPin = Boolean(user?.isPlatformOwner || ['owner', 'admin'].includes(String(user?.propertyRole || '').toLowerCase()));
+	useEffect(() => { if (!propertyId) return; setPosUnlocked(false); setPosAccessError(''); setPinSettingsOpen(false); setCurrentShift(null); setShiftLoading(true); authService.listStaff(propertyId, 'pos').then(setPosStaff).catch(() => {}); shiftService.getCurrentShift(propertyId).then(setCurrentShift).catch(()=>setCurrentShift(null)).finally(()=>setShiftLoading(false)); }, [propertyId]);
 	const verifySwitch = async (pin) => { try { const result = await authService.verifyStaffPin({ propertyId, module: 'pos', pin }); if (!result?.ok) { setSwitchError('Wrong PIN'); return; } sessionStorage.setItem('olitech_active_staff_v2', JSON.stringify(result.staff)); window.dispatchEvent(new CustomEvent('olitech:staff-changed', { detail: result.staff })); setSwitchStaff(null); setSwitchError(''); } catch (e) { setSwitchError(e.message); } };
 	const verifyPosAccess = async (pin) => {
 		setPosAccessBusy(true);
@@ -355,7 +358,10 @@ export default function POSContainer() {
 
 	if (!propertyId) return <div className="flex h-full items-center justify-center bg-[var(--canvas)] p-6 text-sm text-[var(--text-muted)]">Select an active property before opening POS.</div>;
 	if (shiftLoading) return <div className="flex h-full items-center justify-center bg-[var(--canvas)] text-sm text-[var(--text-muted)]">Loading POS shift…</div>;
-	if (!posUnlocked) return <POSAccessGate propertyName={propertyName} logoUrl={user?.property?.logo_url} error={posAccessError} busy={posAccessBusy} onSubmit={verifyPosAccess} />;
+	if (!posUnlocked) return <>
+		<POSAccessGate propertyName={propertyName} logoUrl={user?.property?.logo_url} error={posAccessError} busy={posAccessBusy} canManagePin={canManagePosPin} onAdminReset={() => setPinSettingsOpen(true)} onSubmit={verifyPosAccess} />
+		{pinSettingsOpen && <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-3"><div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-[var(--surface)] p-4 shadow-2xl sm:p-6"><div className="mb-4 flex items-center justify-between gap-3"><div><h2 className="text-lg font-bold text-[var(--text)]">Reset property POS PIN</h2><p className="text-xs text-[var(--text-muted)]">Administrator access required</p></div><button type="button" onClick={() => setPinSettingsOpen(false)} className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-semibold text-[var(--text)]">Close</button></div><AccessPinTab /></div></div>}
+	</> ;
 	if (!currentShift) return <OpenShiftModal propertyId={propertyId} onOpened={(shift) => setCurrentShift(shift)} />;
 
 	return (
