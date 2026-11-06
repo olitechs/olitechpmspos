@@ -336,7 +336,7 @@ begin
     or not (
       public.is_platform_owner()
       or public.property_role(v_shift.property_id) in ('owner', 'admin', 'manager')
-      or public.current_staff_role(v_shift.property_id) in ('hotel_admin', 'super_admin', 'fb_manager', 'manager', 'admin', 'owner')
+      or public.current_staff_role(v_shift.property_id) in ('hotel_admin', 'super_admin', 'fb_manager', 'manager', 'admin', 'owner', 'property_manager', 'general_manager')
     )
   ) then
     raise exception 'Manager approval is required for a cash variance above KES 500.';
