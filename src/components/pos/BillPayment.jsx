@@ -15,7 +15,7 @@ import{posPhase3Service}from'@/services/posPhase3Service';
 const PAYMENT_METHODS=[{id:'cash',label:'Cash'},{id:'card',label:'Card'},{id:'mpesa',label:'M-Pesa'},{id:'bank',label:'Bank Transfer'},{id:'room',label:'Room Charge'},{id:'split',label:'Split Payment'}];
 const fmt=n=>'KES '+Number(n||0).toLocaleString('en-KE',{minimumFractionDigits:2,maximumFractionDigits:2});
 export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrder,onBackToFloor,onMoveTable,orderNumber,waiter,covers}){
- const store=useStore();const{user}=useAuth();const propertyId=user?.property?.id;const sessionStaff=getSessionStaff();
+ const store=useStore();const{user}=useAuth();const propertyId=user?.property?.id;const sessionStaff=getSessionStaff();const guestCovers=Math.max(1,Number(covers??table?.guests??1));
  const role=String(sessionStaff?.role||user?.staff?.role||user?.propertyRole||'').toLowerCase().replace(/\s+/g,'_');
  const canRoomCharge=user?.isPlatformOwner||['hotel_admin','super_admin','cashier','front_office_manager','owner','admin','manager'].includes(role);
  const [paymentMethod,setPaymentMethod]=useState('cash');const [splitPayments,setSplitPayments]=useState([{method:'cash',amount:''},{method:'mpesa',amount:''}]);const[discountId,setDiscountId]=useState('');const[discounts,setDiscounts]=useState([]);const[chargeReservationId,setChargeReservationId]=useState('');const[activeStays,setActiveStays]=useState([]);const[stayQuery,setStayQuery]=useState('');const[busy,setBusy]=useState(false);const[error,setError]=useState('');
@@ -33,7 +33,7 @@ export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrde
   setBusy(true);setError('');
   try{
    await posService.saveVatSnapshot({propertyId,tableKey:table.id,snapshot:vatSnapshot});
-   const result=await printReceipt('UNSETTLED',{propertyId,orderNumber:stableOrderNumber,checkNo:stableOrderNumber,table:tableLabel(table),waiter,covers:covers ?? table.seats,diningOption:table?.diningOption||table?.dining_option||table?.orderType||'Dine In',items:orderLines,subtotal,discount,vat,total,vatSnapshot,currency:'KES'});
+   const result=await printReceipt('UNSETTLED',{propertyId,orderNumber:stableOrderNumber,checkNo:stableOrderNumber,table:tableLabel(table),waiter,covers:guestCovers,diningOption:table?.diningOption||table?.dining_option||table?.orderType||'Dine In',items:orderLines,subtotal,discount,vat,total,vatSnapshot,currency:'KES'});
    if(!result.ok){setError(result.friendlyError||'Bill printer failed.');toast.error('Bill was not printed.');return}
    store.setUnsettled(table.id);setBillPrinted(true);toast.success('Unsettled bill printed. The table remains open.');
   }catch(e){setError(e?.message||'Bill printer failed.');toast.error('Bill was not printed.');}
@@ -47,12 +47,12 @@ export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrde
   try{
    const currentShift=await shiftService.getCurrentShift(propertyId);
    if(!currentShift?.id){setError('No open POS shift. Open a shift before taking payments.');return;}
-   await pmsService.recordPosSale({propertyId,tableNumber:tableLabel(table),orderNumber:stableOrderNumber,items:orderLines.map(x=>({product_id:x.productId || x.product_id || null,name:x.name,qty:x.qty,price:x.price,base_price:x.basePrice ?? x.price,modifier_total:x.modifierTotal || 0,modifiers:x.modifiers || [],category:x.category,center:x.center})),subtotal,discountAmount:discount,discountId:selectedDiscount?.id || null,discountName:selectedDiscount?.name || null,vat,total,paymentMethod,reservationId:paymentMethod==='room'?chargeReservationId:null,shiftId:currentShift.id,waiter,idempotencyKey:saleIdempotencyKey,vatSnapshot,paymentAllocations:paymentMethod==='split'?splitPayments.filter(p=>Number(p.amount)>0).map(p=>({method:p.method,amount:Number(p.amount),reservation_id:p.method==='room'?p.reservationId||null:null})):null});
+   await pmsService.recordPosSale({propertyId,tableNumber:tableLabel(table),orderNumber:stableOrderNumber,items:orderLines.map(x=>({product_id:x.productId || x.product_id || null,name:x.name,qty:x.qty,price:x.price,base_price:x.basePrice ?? x.price,modifier_total:x.modifierTotal || 0,modifiers:x.modifiers || [],category:x.category,center:x.center})),subtotal,discountAmount:discount,discountId:selectedDiscount?.id || null,discountName:selectedDiscount?.name || null,vat,total,paymentMethod,reservationId:paymentMethod==='room'?chargeReservationId:null,shiftId:currentShift.id,waiter,covers:guestCovers,idempotencyKey:saleIdempotencyKey,vatSnapshot,paymentAllocations:paymentMethod==='split'?splitPayments.filter(p=>Number(p.amount)>0).map(p=>({method:p.method,amount:Number(p.amount),reservation_id:p.method==='room'?p.reservationId||null:null})):null});
    const methodLabel=paymentMethod==='split'?'Split Payment':PAYMENT_METHODS.find(x=>x.id===paymentMethod)?.label||paymentMethod;
    await store.completeSale({table,orderLines,total,method:methodLabel,receiptText:'',skipPrint:true});
    const voidRows=propertyId?await pmsService.listVoidedItems(propertyId).catch(()=>[]):[];
    const tableVoids=voidRows.filter(v=>String(v.table_number||'')===String(tableLabel(table)) && String(v.order_number||'')===String(stableOrderNumber));
-   const result=await printReceipt('RECEIPT',{propertyId,orderNumber:stableOrderNumber,checkNo:stableOrderNumber,table:tableLabel(table),waiter,covers,items:orderLines,total,currency:'KES',paymentMethod:methodLabel,room:room?.room_number,voidedCount:tableVoids.length,voidSlipNumber:tableVoids[0]?.void_number||null});
+   const result=await printReceipt('RECEIPT',{propertyId,orderNumber:stableOrderNumber,checkNo:stableOrderNumber,table:tableLabel(table),waiter,covers:guestCovers,items:orderLines,total,currency:'KES',paymentMethod:methodLabel,room:room?.room_number,voidedCount:tableVoids.length,voidSlipNumber:tableVoids[0]?.void_number||null});
    // Payment is already recorded in PMS at this point. A printer failure must
    // never leave the table occupied or prevent the next guest/waiter using it.
    onConfirmPayment();
@@ -87,7 +87,7 @@ export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrde
   setBusy(true);setError('');
   try{
    await posService.saveVatSnapshot({propertyId,tableKey:table.id,snapshot:vatSnapshot});
-   const result=await printReceipt('UNSETTLED',{propertyId,orderNumber:stableOrderNumber,checkNo:stableOrderNumber,table:tableLabel(table),waiter,covers,items:orderLines,subtotal,discount,vat,total,vatSnapshot,currency:'KES'});
+   const result=await printReceipt('UNSETTLED',{propertyId,orderNumber:stableOrderNumber,checkNo:stableOrderNumber,table:tableLabel(table),waiter,covers:guestCovers,items:orderLines,subtotal,discount,vat,total,vatSnapshot,currency:'KES'});
    if(result.ok){setBillPrinted(true);toast.success('Bill reprinted.')}else setError(result.friendlyError||'Bill printer failed.');
   }catch(e){setError(e?.message||'Bill printer failed.')}finally{setBusy(false)}
  };

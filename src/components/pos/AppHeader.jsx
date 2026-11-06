@@ -9,7 +9,7 @@ const TABS = [
   { id: 'bill', label: 'Bill & Payment', icon: '🧾' },
 ];
 
-export default function AppHeader({ activeTab, onTabChange, activeTable, onCloseShift, shift, onManageMenu, onOpenSettings }) {
+export default function AppHeader({ activeTab, onTabChange, activeTable, onCloseShift, shift, onManageMenu, onOpenSettings, propertyName }) {
   const now = new Date();
   const timeStr = now.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' });
   const dateStr = now.toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'short' });
@@ -21,7 +21,7 @@ export default function AppHeader({ activeTab, onTabChange, activeTable, onClose
           <span className="font-bold text-[var(--primary)] tracking-wide text-base font-mono tracking-[0.05em]">
             OliTechs POS
           </span>
-          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Visiwa Beach Resort</span>
+          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{propertyName || 'Restaurant POS'}</span>
         </div>
       </div>
 

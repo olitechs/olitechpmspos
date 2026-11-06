@@ -1,81 +1,199 @@
 import { supabase } from '@/lib/supabaseClient';
 import * as XLSX from 'xlsx';
-
-const KENYA_DATE = new Intl.DateTimeFormat('en-CA',{timeZone:'Africa/Nairobi'});
-const today = () => KENYA_DATE.format(new Date());
-
-const normalizeMethod = (m) => ({ room:'room_charge',room_charge:'room_charge',cash:'cash',mpesa:'mpesa',card:'card',bank:'bank',other:'other' }[String(m||'').toLowerCase()] || String(m||'other').toLowerCase());
+import { buildShiftSalesSummary, normalizeShiftPaymentMethod } from '@/services/shiftReportCore';
 
 export const shiftService = {
   async getCurrentShift(propertyId) {
-    const { data, error } = await supabase.rpc('fn_current_pos_shift',{p_property_id:propertyId});
-    if(error) throw new Error(error.message);
+    const { data, error } = await supabase.rpc('fn_current_pos_shift', { p_property_id: propertyId });
+    if (error) throw new Error(error.message);
     return data || null;
   },
-  async openShift({propertyId, openingCash=0, notes=''}) {
-    const {data,error}=await supabase.rpc('fn_open_pos_shift',{p_property_id:propertyId,p_opening_cash:Number(openingCash||0),p_notes:notes||null});
-    if(error) throw new Error(error.message);
-    if(data?.id) localStorage.setItem(`olitech_pos_shift_${propertyId}`,data.id);
-    return data;
-  },
-  async closeShift({shiftId,countedCash,notes='',managerApproved=false}) {
-    const {data,error}=await supabase.rpc('fn_close_pos_shift',{p_shift_id:shiftId,p_counted_cash:Number(countedCash||0),p_notes:notes||null,p_manager_approved:Boolean(managerApproved)});
-    if(error) throw new Error(error.message);
-    return data;
-  },
-  async getShiftReport(shiftId) {
-    const {data:shift,error}=await supabase.from('pos_shifts').select('*').eq('id',shiftId).single();
-    if(error) throw new Error(error.message);
-    const {data:rows,error:rowsError}=await supabase.from('pos_receipts').select('*').eq('pos_shift_id',shiftId).eq('status','posted').order('created_at');
-    if(rowsError) throw new Error(rowsError.message);
-    const payments={cash:{amount:0,count:0},mpesa:{amount:0,count:0},card:{amount:0,count:0},bank:{amount:0,count:0},room_charge:{amount:0,count:0},other:{amount:0,count:0}};
-    const categories={food:{qty:0,amount:0},drinks:{qty:0,amount:0}};
-    const orders=(rows||[]).map(r=>{
-      const method=normalizeMethod(r.payment_method); const p=payments[method]||payments.other; p.amount+=Number(r.total||0);p.count+=1;
-      (Array.isArray(r.items)?r.items:[]).forEach(i=>{const qty=Number(i.qty||i.quantity||1);const amount=Number(i.total||0)||Number(i.price||0)*qty;const cat=String(i.category||i.center||'').toLowerCase().includes('drink')||String(i.center||'').toLowerCase()==='bar'?'drinks':'food';categories[cat].qty+=qty;categories[cat].amount+=amount;});
-      return r;
+
+  async openShift({ propertyId, openingCash = 0, notes = '' }) {
+    const { data, error } = await supabase.rpc('fn_open_pos_shift', {
+      p_property_id: propertyId,
+      p_opening_cash: Number(openingCash || 0),
+      p_notes: notes || null,
     });
-    const total=Object.values(payments).reduce((s,p)=>s+p.amount,0);
-    const cash=payments.cash.amount;
-    return {shift,orders,payments,categories,totalSales:total,totalTransactions:orders.length,expectedCash:Number(shift.opening_cash||0)+cash,countedCash:null,variance:null};
+    if (error) throw new Error(error.message);
+    if (data?.id) localStorage.setItem(`olitech_pos_shift_${propertyId}`, data.id);
+    return data;
   },
-  async listShifts(propertyId,date=null) {
-    let q=supabase.from('pos_shifts').select('*').eq('property_id',propertyId).order('opened_at',{ascending:false});
-    if(date) q=q.eq('date',date);
-    const {data,error}=await q;
-    if(error) throw new Error(error.message);
-    return data||[];
+
+  async closeShift({ shiftId, countedCash, notes = '', managerApproved = false }) {
+    const { data, error } = await supabase.rpc('fn_close_pos_shift', {
+      p_shift_id: shiftId,
+      p_counted_cash: Number(countedCash || 0),
+      p_notes: notes || null,
+      p_manager_approved: Boolean(managerApproved),
+    });
+    if (error) throw new Error(error.message);
+    return data;
   },
-  async printData(shiftId) { return this.getShiftReport(shiftId); },
+
+  async getOpenTables(propertyId) {
+    const { data, error } = await supabase
+      .from('pos_table_sessions')
+      .select('id,table_key,table_number,status,order_number')
+      .eq('property_id', propertyId)
+      .neq('status', 'closed')
+      .order('table_number', { ascending: true });
+    if (error) throw new Error(error.message);
+    return data || [];
+  },
+
+  async getShiftReport(shiftId) {
+    const { data: shift, error } = await supabase.from('pos_shifts').select('*').eq('id', shiftId).single();
+    if (error) throw new Error(error.message);
+
+    // New receipts use pos_shift_id; shift_id is included for older rows.
+    const { data: rows, error: rowsError } = await supabase
+      .from('pos_receipts')
+      .select('*')
+      .eq('property_id', shift.property_id)
+      .or(`pos_shift_id.eq.${shiftId},shift_id.eq.${shiftId}`)
+      .order('created_at', { ascending: true });
+    if (rowsError) throw new Error(rowsError.message);
+
+    const postedRows = (rows || []).filter((receipt) => receipt.status === 'posted');
+    const voidedRows = (rows || []).filter((receipt) => receipt.status === 'voided');
+    const splitIds = postedRows.filter((receipt) => receipt.payment_method === 'split').map((receipt) => receipt.id);
+    let allocations = [];
+    if (splitIds.length) {
+      const { data, error: allocationError } = await supabase
+        .from('pos_receipt_payments')
+        .select('receipt_id,payment_method,amount')
+        .eq('property_id', shift.property_id)
+        .in('receipt_id', splitIds);
+      if (allocationError) throw new Error(allocationError.message);
+      allocations = data || [];
+    }
+
+    const postedIds = postedRows.map((receipt) => receipt.id);
+    let refunds = [];
+    if (postedIds.length) {
+      const { data, error: refundError } = await supabase
+        .from('cashier_refunds')
+        .select('receipt_id,amount,settlement_method,method')
+        .eq('property_id', shift.property_id)
+        .in('receipt_id', postedIds);
+      if (refundError) throw new Error(refundError.message);
+      refunds = data || [];
+    }
+
+    const allocationTotals = new Map();
+    for (const allocation of allocations) {
+      const receiptId = String(allocation.receipt_id || '');
+      allocationTotals.set(receiptId, (allocationTotals.get(receiptId) || 0) + Number(allocation.amount || 0));
+    }
+    const unreconciled = postedRows.filter((receipt) => receipt.payment_method === 'split'
+      && Math.abs((allocationTotals.get(String(receipt.id)) || 0) - Number(receipt.total || 0)) > 0.01);
+    if (unreconciled.length) {
+      throw new Error('Shift report blocked: split payment allocations do not reconcile for receipt(s) ' + unreconciled.map((receipt) => receipt.order_number || receipt.id).join(', ') + '.');
+    }
+
+    const summary = buildShiftSalesSummary(postedRows, allocations, refunds, voidedRows);
+    const staffIds = [shift.opened_by, shift.closed_by].filter(Boolean);
+    let staffNames = {};
+    if (staffIds.length) {
+      const { data: staffRows } = await supabase.from('staff').select('user_id,full_name,email').eq('property_id', shift.property_id).in('user_id', staffIds);
+      staffNames = Object.fromEntries((staffRows || []).map((person) => [person.user_id, person.full_name || person.email || 'Staff']));
+    }
+    const countedCash = shift.counted_cash == null ? null : Number(shift.counted_cash);
+    const variance = shift.cash_variance == null ? null : Number(shift.cash_variance);
+    return {
+      shift,
+      openedBy: staffNames[shift.opened_by] || '',
+      closedBy: staffNames[shift.closed_by] || '',
+      orders: postedRows,
+      voidedOrders: voidedRows,
+      refunds,
+      ...summary,
+      expectedCash: Number(shift.opening_cash || 0) + Number(summary.payments.cash.amount || 0),
+      countedCash,
+      variance,
+    };
+  },
+
+  async listShifts(propertyId, date = null) {
+    let query = supabase.from('pos_shifts').select('*').eq('property_id', propertyId).order('opened_at', { ascending: false });
+    if (date) query = query.eq('date', date);
+    const { data, error } = await query;
+    if (error) throw new Error(error.message);
+    return data || [];
+  },
+
+  async printData(shiftId) {
+    return this.getShiftReport(shiftId);
+  },
 };
 
 export function exportShiftToExcel(report) {
-  const shift=report.shift;
-  const wb=XLSX.utils.book_new();
-  const money=n=>Number(n||0);
-  const summary=[
-    ['Metric','Amount','Count'],
-    ['Opening Cash',money(shift.opening_cash),1],
-    ['Cash',money(report.payments.cash.amount),report.payments.cash.count],
-    ['M-Pesa',money(report.payments.mpesa.amount),report.payments.mpesa.count],
-    ['Card',money(report.payments.card.amount),report.payments.card.count],
-    ['Bank',money(report.payments.bank.amount),report.payments.bank.count],
-    ['Room Charge',money(report.payments.room_charge.amount),report.payments.room_charge.count],
-    ['Other',money(report.payments.other.amount),report.payments.other.count],
-    ['Total Sales',money(report.totalSales),report.totalTransactions],
-    ['Expected Cash',money(report.expectedCash),''],
-    ['Counted Cash',report.countedCash==null?'':money(report.countedCash),''],
-    ['Variance',report.variance==null?'':money(report.variance),''],
+  const shift = report.shift;
+  const money = (value) => Number(value || 0);
+  const workbook = XLSX.utils.book_new();
+  const summary = [
+    ['Metric', 'Amount', 'Count'],
+    ['Opening Cash', money(shift.opening_cash), 1],
+    ['Cash', money(report.payments.cash.amount), report.payments.cash.count],
+    ['M-Pesa', money(report.payments.mpesa.amount), report.payments.mpesa.count],
+    ['Card', money(report.payments.card.amount), report.payments.card.count],
+    ['Bank', money(report.payments.bank.amount), report.payments.bank.count],
+    ['Room Charge', money(report.payments.room_charge.amount), report.payments.room_charge.count],
+    ['Other', money(report.payments.other.amount), report.payments.other.count],
+    ['Gross Sales', money(report.grossSales), report.totalTransactions],
+    ['Refunds', money(report.refundsTotal), ''],
+    ['Voided Value', money(report.voidedValue), ''],
+    ['Net Sales', money(report.totalSales), report.totalTransactions],
+    ['Guest Covers', money(report.totalCovers), ''],
+    ['Items Sold', money(report.itemsSold), ''],
+    ['Expected Cash', money(report.expectedCash), ''],
+    ['Counted Cash', report.countedCash == null ? '' : money(report.countedCash), ''],
+    ['Variance', report.variance == null ? '' : money(report.variance), ''],
   ];
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(summary),'Summary');
-  const detailed=[['Bill No','Check No','Table','Waiter','Time','Items','Payment Method','Amount','Guest']];
-  report.orders.forEach(r=>detailed.push([r.order_number||'',r.order_number||'',r.table_number||'',r.waiter||'',new Date(r.created_at).toLocaleString('en-KE'),(Array.isArray(r.items)?r.items:[]).map(i=>`${i.name||''} x${i.qty||i.quantity||1}`).join(', '),normalizeMethod(r.payment_method),money(r.total),r.guest_name||'']));
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(detailed),'Detailed Orders');
-  const sales=report.totalSales||0; const breakdown=[['Payment Method','Transaction Count','Total Amount','% of Sales']];
-  Object.entries(report.payments).forEach(([k,v])=>breakdown.push([k,v.count,money(v.amount),sales?money(v.amount)/sales:0]));
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(breakdown),'Payment Method Breakdown');
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Category','Qty Sold','Amount'],['Food',report.categories.food.qty,report.categories.food.amount],['Drinks',report.categories.drinks.qty,report.categories.drinks.amount]]),'Category Breakdown');
-  [summary,detailed,breakdown].forEach((rows)=>{});
-  const dateLabel=new Date(shift.date+'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}).replace(/ /g,'');
-  XLSX.writeFile(wb,`Shift-Report-${shift.shift_no}-${dateLabel}.xlsx`);
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(summary), 'Summary');
+
+  const detailed = [['Receipt No', 'Table', 'Waiter', 'Time', 'Items', 'Payment Method', 'Amount', 'Guest', 'Covers']];
+  report.orders.forEach((receipt) => detailed.push([
+    receipt.order_number || '',
+    receipt.table_number || '',
+    receipt.waiter || '',
+    new Date(receipt.created_at).toLocaleString('en-KE'),
+    (Array.isArray(receipt.items) ? receipt.items : []).map((item) => `${item.name || ''} x${item.qty || item.quantity || 1}`).join(', '),
+    receipt.payment_method === 'split' ? 'Split Payment' : normalizeShiftPaymentMethod(receipt.payment_method),
+    money(receipt.total),
+    receipt.guest_name || '',
+    Number(receipt.covers || 1),
+  ]));
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(detailed), 'Detailed Receipts');
+
+  const voided = [['Voided Receipt', 'Table', 'Time', 'Voided Value']];
+  (report.voidedOrders || []).forEach((receipt) => voided.push([
+    receipt.order_number || '', receipt.table_number || '', new Date(receipt.created_at).toLocaleString('en-KE'), money(receipt.total),
+  ]));
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(voided), 'Voided Receipts');
+
+  const sales = report.totalSales || 0;
+  const breakdown = [['Payment Method', 'Receipt Count', 'Gross Amount', 'Refunds', 'Net Amount', '% of Net Sales']];
+  Object.entries(report.payments).forEach(([method, values]) => breakdown.push([
+    method, values.count, money(report.grossPayments?.[method]?.amount), money(report.refundsByMethod?.[method]), money(values.amount), sales ? money(values.amount) / sales : 0,
+  ]));
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(breakdown), 'Payment Breakdown');
+  const receiptNames = new Map(report.orders.map((receipt) => [receipt.id, receipt.order_number || receipt.id]));
+  const refundDetails = [['Receipt No', 'Settlement Method', 'Refund Amount']];
+  (report.refunds || []).forEach((refund) => refundDetails.push([
+    receiptNames.get(refund.receipt_id) || refund.receipt_id || '',
+    normalizeShiftPaymentMethod(refund.settlement_method || refund.method),
+    money(refund.amount),
+  ]));
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(refundDetails), 'Refund Details');
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
+    ['Category', 'Qty Sold', 'Gross Amount'],
+    ['Food', report.categories.food.qty, report.categories.food.amount],
+    ['Drinks', report.categories.drinks.qty, report.categories.drinks.amount],
+    ['All Items', report.itemsSold, money(report.grossSales)],
+  ]), 'Items Sold');
+
+  const dateLabel = new Date(shift.date + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '');
+  XLSX.writeFile(workbook, `Shift-Report-${shift.shift_no}-${dateLabel}.xlsx`);
 }

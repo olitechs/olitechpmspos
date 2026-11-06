@@ -17,6 +17,9 @@ import { usePrinterStore as usePrinterStoreV2 } from '@/data/modules/printerStor
 import { posService } from '@/services/posService';
 import { getUnsentOrderLines } from '@/services/printTemplates';
 import { shiftService } from '@/services/shiftService';
+import { posAccessService } from '@/services/posAccessService';
+import POSAccessGate from '@/components/pos/POSAccessGate';
+import AccessPinTab from '@/components/pos/AccessPinTab';
 import CloseShiftModal, { OpenShiftModal } from '@/components/pos/CloseShiftModal';
 import MenuManager from '@/components/pos/MenuManager';
 import POSSettings from '@/components/pos/settings/POSSettings';
@@ -71,8 +74,29 @@ export default function POSContainer() {
 	const [posStaff, setPosStaff] = useState([]);
 	const [switchStaff, setSwitchStaff] = useState(null);
 	const [switchError, setSwitchError] = useState('');
-	useEffect(() => { if (!propertyId) return; authService.listStaff(propertyId, 'pos').then(setPosStaff).catch(() => {}); shiftService.getCurrentShift(propertyId).then(setCurrentShift).catch(()=>setCurrentShift(null)).finally(()=>setShiftLoading(false)); }, [propertyId]);
+	const [posUnlocked, setPosUnlocked] = useState(false);
+	const [posAccessError, setPosAccessError] = useState('');
+	const [posAccessBusy, setPosAccessBusy] = useState(false);
+	const [pinSettingsOpen, setPinSettingsOpen] = useState(false);
+	const canManagePosPin = Boolean(user?.isPlatformOwner || ['owner', 'admin'].includes(String(user?.propertyRole || '').toLowerCase()) || ['hotel_admin', 'super_admin'].includes(String(user?.staff?.role || '').toLowerCase()));
+	useEffect(() => { if (!propertyId) return; setPosUnlocked(false); setPosAccessError(''); setPinSettingsOpen(false); setCurrentShift(null); setShiftLoading(true); authService.listStaff(propertyId, 'pos').then(setPosStaff).catch(() => {}); shiftService.getCurrentShift(propertyId).then(setCurrentShift).catch(()=>setCurrentShift(null)).finally(()=>setShiftLoading(false)); }, [propertyId]);
 	const verifySwitch = async (pin) => { try { const result = await authService.verifyStaffPin({ propertyId, module: 'pos', pin }); if (!result?.ok) { setSwitchError('Wrong PIN'); return; } sessionStorage.setItem('olitech_active_staff_v2', JSON.stringify(result.staff)); window.dispatchEvent(new CustomEvent('olitech:staff-changed', { detail: result.staff })); setSwitchStaff(null); setSwitchError(''); } catch (e) { setSwitchError(e.message); } };
+	const verifyPosAccess = async (pin) => {
+		setPosAccessBusy(true);
+		setPosAccessError('');
+		try {
+			const result = await posAccessService.verifyPin({ propertyId, pin });
+			if (!result?.ok) {
+				setPosAccessError(result?.message || 'Incorrect POS PIN. Try again.');
+				return;
+			}
+			setPosUnlocked(true);
+		} catch (error) {
+			setPosAccessError(error?.message || 'Could not verify the POS PIN. Check your connection.');
+		} finally {
+			setPosAccessBusy(false);
+		}
+	};
 	const [activeTab, setActiveTab] = useState('floor');
 	const [activeTable, setActiveTable] = useState(null);
 	const [pendingTable, setPendingTable] = useState(null); // table awaiting "open" dialog
@@ -332,9 +356,17 @@ export default function POSContainer() {
 		setActiveTab('floor');
 	};
 
+	if (!propertyId) return <div className="flex h-full items-center justify-center bg-[var(--canvas)] p-6 text-sm text-[var(--text-muted)]">Select an active property before opening POS.</div>;
+	if (shiftLoading) return <div className="flex h-full items-center justify-center bg-[var(--canvas)] text-sm text-[var(--text-muted)]">Loading POS shift…</div>;
+	if (!posUnlocked) return <>
+		<POSAccessGate propertyName={propertyName} logoUrl={user?.property?.logo_url} error={posAccessError} busy={posAccessBusy} canManagePin={canManagePosPin} onAdminReset={() => setPinSettingsOpen(true)} onSubmit={verifyPosAccess} />
+		{pinSettingsOpen && <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-3"><div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-[var(--surface)] p-4 shadow-2xl sm:p-6"><div className="mb-4 flex items-center justify-between gap-3"><div><h2 className="text-lg font-bold text-[var(--text)]">Reset property POS PIN</h2><p className="text-xs text-[var(--text-muted)]">Administrator access required</p></div><button type="button" onClick={() => setPinSettingsOpen(false)} className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-semibold text-[var(--text)]">Close</button></div><AccessPinTab /></div></div>}
+	</> ;
+	if (!currentShift) return <OpenShiftModal propertyId={propertyId} onOpened={(shift) => setCurrentShift(shift)} />;
+
 	return (
 		<div className="flex flex-col h-full overflow-hidden">
-			<AppHeader activeTab={activeTab} onTabChange={setActiveTab} activeTable={activeTable} shift={currentShift} onCloseShift={canCloseShift ? ()=>setCloseShiftOpen(true) : null} onManageMenu={canCloseShift ? ()=>setMenuManagerOpen(true) : null} onOpenSettings={()=>setSettingsOpen(true)} />
+			<AppHeader activeTab={activeTab} onTabChange={setActiveTab} activeTable={activeTable} shift={currentShift} propertyName={propertyName} onCloseShift={canCloseShift ? ()=>setCloseShiftOpen(true) : null} onManageMenu={canCloseShift ? ()=>setMenuManagerOpen(true) : null} onOpenSettings={()=>setSettingsOpen(true)} />
 
 			<div className="flex-1 min-h-0">
 				{activeTab === 'floor' && <div className="relative h-full"><FloorPlan onTableSelect={handleTableSelect} /><div className="absolute bottom-3 left-3 z-20 flex items-center gap-1 rounded-2xl border-2 border-border bg-surface p-2 shadow-lg"><span className="px-1 text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]">Staff</span>{posStaff.slice(0,8).map(person => <button key={person.id} title={`Switch to ${person.full_name}`} onClick={()=>{setSwitchStaff(person);setSwitchError('');}} className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-border bg-primary text-[10px] font-black text-foreground hover:scale-105">{person.avatar || person.full_name?.slice(0,2).toUpperCase()}</button>)}</div>{switchStaff&&<PinPad title="Switch POS Staff" staffName={switchStaff.full_name} error={switchError} onSubmit={verifySwitch} onClose={()=>setSwitchStaff(null)}/>}</div>}
@@ -361,7 +393,7 @@ export default function POSContainer() {
 						onBackToFloor={() => { setActiveTable(null); setActiveTab('floor'); }}
 						orderNumber={orderNumbersRef.current[activeTable.id]}
 						waiter={store.getSession(activeTable.id)?.waiter || ''}
-						covers={store.getSession(activeTable.id)?.guests || activeTable.seats}
+						covers={store.getSession(activeTable.id)?.guests || 1}
 					/>
 				)}
 			</div>
@@ -411,8 +443,7 @@ export default function POSContainer() {
 
 			{menuManagerOpen && <MenuManager open={menuManagerOpen} onClose={()=>setMenuManagerOpen(false)} />}
 			{settingsOpen && <POSSettings user={user} onClose={()=>setSettingsOpen(false)} />}
-			{closeShiftOpen && currentShift && <CloseShiftModal shift={currentShift} onClose={()=>setCloseShiftOpen(false)} onClosed={()=>{setCurrentShift(null);setCloseShiftOpen(false);setActiveTable(null);setActiveTab('floor');}} />}
-			{!shiftLoading && !currentShift && propertyId && <OpenShiftModal propertyId={propertyId} onOpened={(s)=>setCurrentShift(s)} />}
+			{closeShiftOpen && currentShift && <CloseShiftModal shift={currentShift} onClose={()=>setCloseShiftOpen(false)} onClosed={()=>{setCurrentShift(null);setCloseShiftOpen(false);setActiveTable(null);setActiveTab('floor');setPosUnlocked(false);}} />}
 			<OpenTableDialog
 				open={!!pendingTable}
 				table={pendingTable}
