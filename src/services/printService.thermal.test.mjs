@@ -11,6 +11,9 @@ test('printer test buttons use the real template-backed print service without cr
   assert.match(settings, /Test Print – Receipt/);
   assert.match(settings, /printTestOrder/);
   assert.match(settings, /printTestReceipt/);
+  assert.match(settings, /printCutCalibrationTest/);
+  assert.match(settings, /Cut Calibration Test/);
+  assert.match(service, /export async function printCutCalibrationTest/);
   assert.match(service, /export async function printTestOrder/);
   assert.match(service, /export async function printTestReceipt/);
   assert.match(service, /persistJob: false/);
