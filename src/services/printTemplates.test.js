@@ -255,20 +255,20 @@ test('HTML fallback renders fixed-width plain text on white paper', () => {
   assert.match(html, /BILL - NOT PAID/);
 });
 
-test('thermal payload cuts immediately after a minimal footer feed', () => {
+test('thermal payload leaves two blank lines after the footer before cutting', () => {
   const shortBill = toEscPosPayload('ORDER TICKET');
   assert.equal(shortBill.charCodeAt(0), 27);
   assert.equal(shortBill.charCodeAt(1), 64);
-  const oneFeedAndCut = String.fromCharCode(27, 100, 1, 29, 86, 1);
-  assert.ok(shortBill.endsWith(oneFeedAndCut));
-  assert.ok(shortBill.includes('ORDER TICKET\n' + oneFeedAndCut), 'one clearance line follows the final printed line before the cutter feed');
+  const twoFeedAndCut = String.fromCharCode(27, 100, 2, 29, 86, 1);
+  assert.ok(shortBill.endsWith(twoFeedAndCut));
+  assert.ok(shortBill.includes('ORDER TICKET\n' + twoFeedAndCut), 'one clearance line follows the final printed line before the cutter feed');
 
   const receipt = toEscPosPayload('UNSETTLED BILL', { feedLines: 1, partialCut: false });
-  assert.ok(receipt.endsWith(oneFeedAndCut), 'one feed command must immediately precede a full cut');
-  assert.ok(receipt.includes('UNSETTLED BILL\n' + oneFeedAndCut), 'receipt footer has one clearance line before the feed and cut');
+  assert.ok(receipt.endsWith(twoFeedAndCut), 'one feed command must immediately precede a full cut');
+  assert.ok(receipt.includes('UNSETTLED BILL\n' + twoFeedAndCut), 'receipt footer has one clearance line before the feed and cut');
 
   const orderTicket = toEscPosPayload('ORDER TICKET', { feedLines: 1 });
-  assert.ok(orderTicket.endsWith(String.fromCharCode(27, 100, 1, 29, 86, 1)), 'order tickets cut after one short feed line');
+  assert.ok(orderTicket.endsWith(String.fromCharCode(27, 100, 2, 29, 86, 1)), 'order tickets cut after one short feed line');
   assert.equal(estimateThermalFeedLines(Array.from({ length: 240 }, (_, i) => 'LONG BILL ITEM ' + (i + 1)).join('\n')), 1);
 });
 
