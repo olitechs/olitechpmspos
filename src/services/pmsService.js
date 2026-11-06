@@ -535,7 +535,7 @@ export const pmsService = {
 		if (error) throw new Error(error.message);
 	},
 	async recordPosSale({ propertyId, tableNumber, orderNumber, items, subtotal, discountAmount, vat, total, paymentMethod, reservationId, shiftId, waiter, discountId = null, discountName = null, idempotencyKey = null, paymentAllocations = null, vatSnapshot = null, covers = 1 }) {
-		const { data, error } = await supabase.rpc('fn_record_pos_sale_with_vat_snapshot', { p_property_id: propertyId, p_table_number: tableNumber, p_order_number: orderNumber, p_items: items, p_subtotal: subtotal, p_discount_amount: discountAmount || 0, p_vat: vat, p_total: total, p_payment_method: paymentMethod, p_reservation_id: reservationId || null, p_shift_id: shiftId || null, p_waiter: waiter || null, p_discount_id: discountId || null, p_discount_name: discountName || null, p_idempotency_key: idempotencyKey || orderNumber || null, p_payment_allocations: paymentAllocations || null, p_vat_snapshot: vatSnapshot });
+		const { data, error } = await supabase.rpc('fn_record_pos_sale_with_vat_snapshot', { p_property_id: propertyId, p_table_number: tableNumber, p_order_number: orderNumber, p_items: items, p_subtotal: subtotal, p_discount_amount: discountAmount || 0, p_vat: vat, p_total: total, p_payment_method: paymentMethod, p_reservation_id: reservationId || null, p_shift_id: shiftId || null, p_waiter: waiter || null, p_discount_id: discountId || null, p_discount_name: discountName || null, p_idempotency_key: idempotencyKey || orderNumber || null, p_payment_allocations: paymentAllocations || null, p_vat_snapshot: vatSnapshot, p_covers: Math.max(1, Number(covers || 1)) });
 		if (error) throw new Error(error.message);
 		return data;
 	},
