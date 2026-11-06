@@ -434,7 +434,7 @@ export async function printOrderByCategory(order) {
         center: group.kind === 'food' ? 'KITCHEN' : 'BAR',
         items: group.items,
       });
-      const thermalBase64 = bytesToBase64(new TextEncoder().encode(toEscPosPayload(thermalText, { feedLines: 1 })));
+      const thermalBase64 = bytesToBase64(new TextEncoder().encode(toEscPosPayload(thermalText, { feedLines: 2 })));
       results.push(await printToPrinter(printer, thermalTextToHtml(thermalText), {
         propertyId,
         jobType: group.kind === 'food' ? 'KOT' : 'BOT',
@@ -540,7 +540,7 @@ function bytesToBase64(bytes) {
 
 async function buildLogoEscPosBase64(logoUrl, printer = {}, text = '', options = {}) {
   const singleBuffer = options.singleBuffer === true;
-  const feedLines = Number(options.feedLines ?? 1);
+  const feedLines = Number(options.feedLines ?? 2);
   const fallbackTextBuffer = () => {
     if (!singleBuffer) return null;
     const bytes = new TextEncoder().encode(toEscPosPayload(text, { feedLines, partialCut: false }));
@@ -716,7 +716,7 @@ export async function printTestReceipt(printer, propertyId, { vatMode = 'off', l
   const thermalBase64 = await buildLogoEscPosBase64(settings.logo_url, printer, thermalText, {
     singleBuffer: true,
     maxLogoDots: is58mm ? 230 : 345,
-    feedLines: 1,
+    feedLines: 2,
   });
   return printToPrinter(printer, thermalTextToHtml(thermalText), {
     propertyId: null,
@@ -784,7 +784,7 @@ export async function printReceipt(type, data) {
         const thermalBase64 = await buildLogoEscPosBase64(settings.logo_url, printer, thermalText, {
           singleBuffer: true,
           maxLogoDots: is58mm ? 230 : 345,
-          feedLines: 1,
+          feedLines: 2,
         });
         results.push(await printToPrinter(printer, thermalTextToHtml(thermalText), {
           propertyId,
@@ -813,7 +813,7 @@ export async function printReceipt(type, data) {
       const thermalText = buildFinalReceiptText(settings, data, { printer, copyLabel: copy });
       const thermalBase64 = await buildLogoEscPosBase64(settings.logo_url, printer, thermalText, {
         // Keep the receipt clear of the cutter and provide a consistent tear margin.
-        feedLines: 1,
+        feedLines: 2,
       });
       results.push(await printToPrinter(printer, receiptHtml(settings, type, data, copy, printer), {
         propertyId,
