@@ -24,6 +24,31 @@ test('aggregates direct and split payments by their actual tender methods', () =
   assert.equal(report.categories.food.amount, 300);
 });
 
+test('subtracts refunds by settlement method and reports voided receipt value separately', () => {
+  const report = buildShiftSalesSummary(
+    [
+      { id: 'r1', payment_method: 'cash', total: 100, covers: 2, items: [] },
+      { id: 'r2', payment_method: 'split', total: 200, covers: 3, items: [] },
+    ],
+    [
+      { receipt_id: 'r2', payment_method: 'cash', amount: 50 },
+      { receipt_id: 'r2', payment_method: 'mpesa', amount: 150 },
+    ],
+    [
+      { receipt_id: 'r1', settlement_method: 'cash', amount: 20 },
+      { receipt_id: 'r2', settlement_method: 'mpesa', amount: 10 },
+    ],
+    [{ id: 'v1', total: 50 }],
+  );
+  assert.equal(report.grossSales, 300);
+  assert.equal(report.refundsTotal, 30);
+  assert.equal(report.voidedValue, 50);
+  assert.equal(report.totalSales, 270);
+  assert.equal(report.payments.cash.amount, 130);
+  assert.equal(report.payments.mpesa.amount, 140);
+  assert.equal(report.totalCovers, 5);
+});
+
 test('normalizes room charge and unknown tenders without losing receipt totals', () => {
   const report = buildShiftSalesSummary([
     { id: 'r1', payment_method: 'room', total: 250, items: [] },
