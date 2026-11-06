@@ -1,1 +1,0 @@
--- No-op placeholder. Replaced by 20261106190100_pos_property_access_pin.sql and 20261106190200_pos_shift_closing_reports.sql.
