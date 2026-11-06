@@ -24,7 +24,7 @@ export default function CloseShiftModal({shift,onClosed,onClose}){
    try{
     const closed=await shiftService.closeShift({shiftId:shift.id,countedCash:Number(counted||0),notes,managerApproved:approved});
     const fresh=await shiftService.getShiftReport(shift.id);
-    fresh.countedCash=Number(counted||0);fresh.variance=Number(closed?.variance||0);fresh.propertyId=propertyId;fresh.openedBy=staff?.full_name||user?.name||'Staff';fresh.closedBy=staff?.full_name||user?.name||'Staff';
+    fresh.countedCash=Number(counted||0);fresh.variance=Number(closed?.variance||0);fresh.propertyId=propertyId;fresh.openedBy=fresh.openedBy||'Staff';fresh.closedBy=fresh.closedBy||staff?.full_name||user?.name||'Staff';
     const settingsRow=await (async()=>{const {data}=await import('@/lib/supabaseClient').then(m=>m.supabase.from('property_settings').select('*').eq('property_id',propertyId).maybeSingle());return data||null;})().catch(()=>null);
     fresh.settings=settingsRow;
     const [printers,assignments]=await Promise.all([getPrinters(propertyId),getAssignments(propertyId)]);
