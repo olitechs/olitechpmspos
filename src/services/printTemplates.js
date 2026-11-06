@@ -259,12 +259,16 @@ export function buildUnsettledReceiptText(settings = {}, data = {}, { printer = 
   const normalizedItems = items.map(item => {
     const qty = itemQuantity(item);
     const unitPrice = Number(item?.price ?? item?.unitPrice ?? item?.unit_price ?? 0);
-    return { item, qty, lineTotal: roundReceiptMoney(qty * unitPrice) };
+    return { item, qty, unitPrice, lineTotal: roundReceiptMoney(qty * unitPrice) };
   });
   const subtotal = roundReceiptMoney(normalizedItems.reduce((sum, row) => sum + row.lineTotal, 0));
   const vat = resolveUnsettledVat(settings, data, subtotal);
+  const orderName = data.orderName || data.order_name || data.customerName || data.customer_name || data.guestName || data.guest_name || data.name || data.orderNumber || data.checkNo || '—';
+  const employee = data.employeeName || data.employee_name || data.employee || data.staffName || data.staff_name || data.waiter || data.server || '—';
+  const posName = data.posName || data.pos_name || data.terminalName || data.terminal_name || data.deviceName || data.device_name || data.pos || '—';
+  const dining = data.diningOption || data.dining_option || data.orderType || data.order_type || '';
   const header = centeredBlock([
-    settings.property_name || data.propertyName || '',
+    settings.property_name || data.propertyName || 'VISIWA BEACH RESORT',
     settings.address_line1,
     settings.address_line2,
     settings.phone,
@@ -272,40 +276,30 @@ export function buildUnsettledReceiptText(settings = {}, data = {}, { printer = 
     settings.website,
     settings.kra_pin ? 'KRA PIN: ' + settings.kra_pin : '',
   ].map(value => toReceiptAscii(value)), width);
-
   const lines = [
     ...header,
     divider(width),
     ...receiptCenterRows('UNSETTLED BILL', width).map(receiptDoubleHeight),
-    ...receiptCenterRows('Payment pending', width),
+    ...receiptCenterRows('PAYMENT PENDING', width),
+    ...receiptLeftRows('Order', orderName, width),
+    ...receiptLeftRows('Employee', employee, width),
+    ...receiptLeftRows('POS', posName, width),
+    divider(width),
   ];
+  if (dining) lines.push(...receiptCenterRows(dining, width).map(emphasize), divider(width));
 
-  const info = [
-    ['Table', data.table || data.tableNumber || data.table_number],
-    ['Server', data.waiter || data.server],
-    ['Covers', data.covers ?? data.guests],
-    ['Dining', data.diningOption || data.dining_option || data.orderType || data.order_type],
-  ];
-  for (const [label, value] of info) lines.push(...receiptLeftRows(label, value, width));
-
-  lines.push(divider(width));
-
-  for (const { item, qty, lineTotal } of normalizedItems) {
+  for (const { item, qty, unitPrice, lineTotal } of normalizedItems) {
+    const name = toReceiptAscii(itemName(item));
     const amount = formatReceiptMoney(lineTotal, currency);
-    const leftWidth = Math.max(4, width - amount.length - 1);
-    const heading = toReceiptAscii(qty + ' x ' + itemName(item));
-    if (heading.length <= leftWidth) {
-      lines.push(heading.padEnd(leftWidth) + ' ' + amount);
-    } else {
-      // Preserve the full item name on wrapped lines; put the amount on its
-      // own right-aligned row rather than clipping or dot-truncating the name.
-      lines.push(...wrapThermalText(heading, width));
+    const available = Math.max(8, width - amount.length - 1);
+    if (name.length <= available) lines.push(name.padEnd(available) + ' ' + amount);
+    else {
+      lines.push(...wrapThermalText(name, width));
       lines.push(amount.padStart(width));
     }
+    lines.push(...wrapThermalText(qty + ' x ' + formatReceiptMoney(unitPrice, currency), width));
     const modifiers = (Array.isArray(item.modifiers) ? item.modifiers : []).map(modifierLabel).filter(Boolean);
     for (const modifier of modifiers) lines.push(...wrapThermalText('  + ' + toReceiptAscii(modifier), width));
-    const note = item.prepNote || item.prep_note || item.notes || item.note;
-    if (note) lines.push(...wrapThermalText('  NOTE: ' + toReceiptAscii(note), width));
   }
 
   lines.push(divider(width));
@@ -318,26 +312,17 @@ export function buildUnsettledReceiptText(settings = {}, data = {}, { printer = 
     lines.push(...receiptPairLine('Discount', '-' + formatReceiptMoney(vat.discount, currency), width));
   }
   lines.push('='.repeat(width));
-  lines.push(receiptDoubleHeight(
-    receiptPairLine('AMOUNT DUE', formatReceiptMoney(vat.amountDue, currency), width)[0]
-  ));
+  lines.push(receiptDoubleHeight(receiptPairLine('AMOUNT DUE', formatReceiptMoney(vat.amountDue, currency), width)[0]));
   lines.push('='.repeat(width));
-
   lines.push(...receiptCenterRows('Please settle at the cashier', width));
   lines.push(...receiptCenterRows('Not a tax invoice / Not a paid receipt', width));
-
   const checkNo = data.checkNo || data.check_no || data.orderNumber || data.order_number || '';
   if (checkNo) lines.push(...receiptCenterRows('Check: ' + toReceiptAscii(checkNo), width).map(emphasize));
   const printedAt = nairobiPrintedAt(now);
   if (printedAt) lines.push(...receiptCenterRows(printedAt, width));
   if (copyLabel) lines.push(...receiptCenterRows(toReceiptAscii(copyLabel), width));
-
-  // All visible lines are wrapped before this point. Do not slice the raw
-  // string here: ESC/POS emphasis/size commands are non-printing bytes and
-  // must not count against the paper's printable character width.
   return lines.join('\n');
 }
-
 export function buildFinalReceiptText(settings = {}, data = {}, { printer = {}, copyLabel = 'CUSTOMER COPY', now = new Date() } = {}) {
   const width = getPrinterColumns(printer);
   const currency = data.currency || 'KES';
