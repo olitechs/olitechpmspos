@@ -118,7 +118,7 @@ export async function printOrder(order = {}) {
       settings: receiptSettings || {},
       items: plan.lines,
       center: plan.center || plan.groupName,
-    }), { feedLines: 12 })),
+    }), { feedLines: 20 })),
     status: 'pending',
     type: 'kitchen',
   })));
