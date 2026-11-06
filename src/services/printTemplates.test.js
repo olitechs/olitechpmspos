@@ -87,11 +87,11 @@ test('order ticket includes station metadata, modifiers and prep notes without p
   }, { center: 'KITCHEN', printer: { paper_width: '80mm' }, settings: { property_name: 'Coastal Hotel', address_line1: 'Watamu', footer_line1: 'Thank you for visiting' } }));
   assert.match(output, /KITCHEN POS/);
   assert.match(output, /#ORD-001/);
-  assert.match(output, /Thank you for visiting/);
+  assert.doesNotMatch(output, /Thank you for visiting/);
   assert.ok(!output.includes(String.fromCharCode(29) + '!' + String.fromCharCode(17)), 'order items stay at normal thermal font size');
   assert.ok(output.split('\n').every(line => line.length <= 42), 'all order ticket lines fit safe 80mm paper width');
   assert.ok(/\*\*\* KITCHEN POS \*\*\*/.test(output), 'order ticket station header is centered');
-  assert.ok(output.includes('          Thank you for visiting'), 'order ticket footer is centered');
+  assert.ok(!output.includes('Thank you for visiting'), 'configured receipt message footer is omitted from order tickets');
   assert.match(output, /Fabio GM/);
   assert.match(output, /Employee: Owner/);
   assert.match(output, /POS: POS 3/);
@@ -103,7 +103,7 @@ test('order ticket includes station metadata, modifiers and prep notes without p
 });
 
 test('unsettled bill uses the clean pending layout and summed item amounts with VAT off', () => {
-  const settings = { property_name: 'Coastal Hotel', address_line1: 'Watamu', phone: '+254700000000', email: 'hello@example.com', website: 'coastal.example', kra_pin: 'P051234567A' };
+  const settings = { property_name: 'Coastal Hotel', address_line1: 'Watamu', phone: '+254700000000', email: 'hello@example.com', website: 'coastal.example', kra_pin: 'P051234567A', footer_line1: 'Thank you for dining with us.', footer_line2: 'Please keep your receipt.' };
   const data = {
     checkNo: 'ORD-002-USOR1U2',
     table: 'T4',
@@ -135,7 +135,7 @@ test('unsettled bill uses the clean pending layout and summed item amounts with 
   assert.match(output, /KES 1,850\.00/);
   assert.match(output, /Check: ORD-002-USOR1U2/);
   assert.match(output, /5 Nov 2026, 15:46/);
-  assert.doesNotMatch(output, /RECEIPT NO|ORDER NO|SUBTOTAL|VAT|Thank you|Please keep your receipt/i);
+  assert.match(output, /Thank you for dining with us/);\n  assert.match(output, /Please keep your receipt/);\n  assert.doesNotMatch(output, /RECEIPT NO|ORDER NO|SUBTOTAL|VAT/);
   assert.equal((output.match(/Check:/g) || []).length, 1);
   assert.ok(output.split('\n').every(line => line.length <= 30), '58mm safe lines stay within 30 columns');
 });
