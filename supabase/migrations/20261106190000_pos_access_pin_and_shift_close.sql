@@ -334,12 +334,30 @@ begin
     raise exception 'Cannot close the shift. Clear or settle these tables first: %', v_open_tables;
   end if;
 
+  if exists (
+    select 1
+    from public.pos_receipts r
+    left join (
+      select receipt_id, sum(amount) as allocated_amount
+      from public.pos_receipt_payments
+      where property_id = v_shift.property_id
+      group by receipt_id
+    ) a on a.receipt_id = r.id
+    where r.property_id = v_shift.property_id
+      and (r.pos_shift_id = p_shift_id or r.shift_id = p_shift_id)
+      and r.status = 'posted'
+      and r.payment_method = 'split'
+      and abs(coalesce(a.allocated_amount, 0) - r.total) > 0.01
+  ) then
+    raise exception 'Cannot close the shift: one or more split-payment receipts do not reconcile to their receipt totals.';
+  end if;
+
   with method_rows as (
     select
       r.id as receipt_id,
       case
         when r.payment_method = 'room' then 'room_charge'
-        when r.payment_method in ('cash', 'mpesa', 'card', 'bank', 'other') then r.payment_method
+        when r.payment_method in ('cash', 'mpesa', 'card', 'bank', 'room_charge', 'other') then r.payment_method
         else 'other'
       end as payment_method,
       r.total as amount
@@ -355,7 +373,7 @@ begin
       r.id as receipt_id,
       case
         when rp.payment_method = 'room' then 'room_charge'
-        when rp.payment_method in ('cash', 'mpesa', 'card', 'bank', 'other') then rp.payment_method
+        when rp.payment_method in ('cash', 'mpesa', 'card', 'bank', 'room_charge', 'other') then rp.payment_method
         else 'other'
       end as payment_method,
       rp.amount
