@@ -88,7 +88,7 @@ test('final receipt copies are separate jobs with an independent feed and cut', 
   assert.ok(finalBlock.includes('feedLines: 1'));
   assert.ok(finalBlock.includes("copyType: copy.toLowerCase()"));
   assert.ok(!finalBlock.includes('copyTexts.join'));
-  assert.match(templates, /Math\.min\(24, requestedFeed\)/);
+  assert.match(templates, /Math\.min\(4, requestedFeed\)/);
 });
 
 test('unsettled receipt uses one feed line and a full cut', async () => {
