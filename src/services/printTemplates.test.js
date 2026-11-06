@@ -127,7 +127,7 @@ test('unsettled bill uses the clean pending layout and summed item amounts with 
   assert.match(output, /Order: ORD-002-USOR1U2/);
   assert.match(output, /Employee: Grace Wanjiru/);
   assert.match(output, /POS: POS/);
-  assert.match(output, /DINE IN/);
+  assert.match(output, /Dine In/i);
   assert.match(output, /2 x Soda/);
   assert.match(output, /KES 600\.00/);
   assert.match(output, /KES 1,250\.00/);
@@ -194,7 +194,7 @@ test('12-item unsettled bill preserves every item and stays within 58mm width', 
   const output = stripEscPos(buildUnsettledReceiptText({}, { checkNo: 'ORD-LONG', items }, { printer: { paper_width: '58mm' } }));
   for (let index = 1; index <= 12; index++) {
     if (index === 1) assert.match(output, /Grilled Ocean Fish/);
-    else if (index === 2) assert.match(output, /2 x Sample menu item 2/);
+    else if (index === 2) { assert.match(output, /Sample menu item 2/); assert.match(output, /2 x KES 300\.00/); }
     else assert.match(output, new RegExp('Sample menu item ' + index));
   }
   assert.match(output, /Extra lemon butter/);
