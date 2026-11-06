@@ -572,7 +572,11 @@ function renderThermalTextRaster(text, printer = {}) {
   lines.forEach((line, row) => {
     for (let index = 0; index < line.length && index < columns; index++) {
       const char = line[index];
-      if (char !== ' ') context.fillText(char, index * cellWidth + 0.5, paddingTop + row * lineHeight + 20, cellWidth);
+      if (char !== ' ') {
+        const glyphWidth = context.measureText(char).width;
+        const x = index * cellWidth + Math.max(0, (cellWidth - glyphWidth) / 2);
+        context.fillText(char, x, paddingTop + row * lineHeight + 20);
+      }
     }
   });
   const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
