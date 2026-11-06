@@ -126,7 +126,7 @@ function toFriendlyError(rawError, context = {}) {
 
 // --- Connection testing -----------------------------------------------------
 
-async function postToLocalAgent(printer, path, text = '', printSettings = {}, escposBase64 = null) {
+async function postToLocalAgent(printer, path, text = '', printSettings = {}) {
   const base = String(printer.agentUrl || 'http://127.0.0.1:8631').replace(/\/+$/, '');
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
@@ -141,7 +141,6 @@ async function postToLocalAgent(printer, path, text = '', printSettings = {}, es
         propertyId: printer.propertyId || null,
         text,
         printSettings,
-        ...(escposBase64 ? { escposBase64 } : {}),
       }),
       signal: controller.signal,
     });
@@ -331,8 +330,8 @@ function escPosBytes(text, settings = {}) {
   return new TextEncoder().encode(buildEscPosPayload(text, settings));
 }
 
-async function sendToAgent(printer, text, printSettings = {}, escposBase64 = null) {
-  const result = await postToLocalAgent(printer, '/print', text, printSettings, escposBase64);
+async function sendToAgent(printer, text, printSettings = {}) {
+  const result = await postToLocalAgent(printer, '/print', text, printSettings);
   if (result.ok) return { ok:true, direct:true, transport:'local_agent' };
   return {
     ok:false,
@@ -343,7 +342,7 @@ async function sendToAgent(printer, text, printSettings = {}, escposBase64 = nul
   };
 }
 
-async function sendToUsb(printer, text, settings = {}, thermalBase64 = null) {
+async function sendToUsb(printer, text, settings = {}) {
 	const handle = deviceHandles.get(printer.id);
 	if (!handle) return { ok: false, friendlyError: 'No USB device paired. Connect the printer first.' };
 	try {
@@ -354,7 +353,7 @@ async function sendToUsb(printer, text, settings = {}, thermalBase64 = null) {
 			return { ok: false, friendlyError: 'This USB device does not expose a printable interface.' };
 		}
 		await handle.claimInterface(iface.interfaceNumber).catch(() => {});
-		const data = thermalBase64 ? Uint8Array.from(atob(thermalBase64), char => char.charCodeAt(0)) : escPosBytes(text, settings);
+		const data = escPosBytes(text, settings);
 		await handle.transferOut(outEndpoint.endpointNumber, data);
 		return { ok: true };
 	} catch (err) {
@@ -362,7 +361,7 @@ async function sendToUsb(printer, text, settings = {}, thermalBase64 = null) {
 	}
 }
 
-async function sendToSerial(printer, text, settings = {}, thermalBase64 = null) {
+async function sendToSerial(printer, text, settings = {}) {
   const handle = deviceHandles.get(printer.id);
   if (!handle) return { ok: false, friendlyError: 'No serial device paired. Connect the printer first.' };
   try {
@@ -377,7 +376,7 @@ async function sendToSerial(printer, text, settings = {}, thermalBase64 = null) 
     }
     const writer = handle.writable.getWriter();
     try {
-      const data = thermalBase64 ? Uint8Array.from(atob(thermalBase64), char => char.charCodeAt(0)) : escPosBytes(text, settings);
+      const data = escPosBytes(text, settings);
       await writer.write(data);
     } finally {
       writer.releaseLock();
@@ -388,14 +387,14 @@ async function sendToSerial(printer, text, settings = {}, thermalBase64 = null) 
   }
 }
 
-async function sendToBluetooth(printer, text, settings = {}, thermalBase64 = null) {
+async function sendToBluetooth(printer, text, settings = {}) {
 	const handle = deviceHandles.get(printer.id);
 	if (!handle) return { ok: false, friendlyError: 'No Bluetooth device paired. Pair the printer first.' };
 	try {
 		if (!handle.gatt.connected) await handle.gatt.connect();
 		const service = await handle.gatt.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb');
 		const characteristic = await service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb');
-		const data = thermalBase64 ? Uint8Array.from(atob(thermalBase64), char => char.charCodeAt(0)) : escPosBytes(text, settings);
+		const data = escPosBytes(text, settings);
     // BLE printer buffers are small. Prefer acknowledged writes where the
     // characteristic supports them; otherwise pace no-response chunks so
     // long receipts cannot overrun the device buffer before the cut command.
@@ -428,7 +427,7 @@ function escapeHtml(str) {
 
 // Sends `text` to `printer`. Requires the printer to already be CONNECTED
 // (except `system`, which always opens the OS dialog). Never throws.
-export async function sendPrintJob(printer, text, { title, thermal = false, printSettings = {}, thermalBase64 = null } = {}) {
+export async function sendPrintJob(printer, text, { title, thermal = false, printSettings = {} } = {}) {
 	if (!printer) return { ok: false, friendlyError: 'No printer is configured for this purpose.' };
 	try {
 		if (printer.connectionType === 'system') return sendToSystem(text, title, { thermal });
@@ -436,10 +435,10 @@ export async function sendPrintJob(printer, text, { title, thermal = false, prin
 			return { ok: false, friendlyError: `${printer.name} is not connected. Test the connection and try again.` };
 		}
 		switch (printer.connectionType) {
-			case 'network': return await sendToAgent(printer, text, printSettings, thermalBase64);
-			case 'usb': return await sendToUsb(printer, text, printSettings, thermalBase64);
-			case 'bluetooth': return await sendToBluetooth(printer, text, printSettings, thermalBase64);
-			case 'serial': return await sendToSerial(printer, text, printSettings, thermalBase64);
+			case 'network': return await sendToAgent(printer, text, printSettings);
+			case 'usb': return await sendToUsb(printer, text, printSettings);
+			case 'bluetooth': return await sendToBluetooth(printer, text, printSettings);
+			case 'serial': return await sendToSerial(printer, text, printSettings);
 			default: return { ok: false, friendlyError: 'Unknown connection type.' };
 		}
 	} catch (err) {
