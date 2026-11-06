@@ -18,13 +18,18 @@ test('shared ledger writer locks product, rejects negative stock, and records so
   assert.match(ledgerMigration, /insert into public\.stock_movements/i);
 });
 
-test('POS sale migration routes stock through the shared posting owner rather than a parallel direct write', () => {
-  assert.match(posMigration, /perform public\.fn_apply_stock_movement\(v_product\.id,-v_qty/i);
+test('POS migration is only statically characterized: exact legacy replacement target and NULL source ID', () => {
+  // These assertions inspect migration text only. The legacy UPDATE/INSERT statements
+  // are the string passed to replace(...), not proof that the resulting function
+  // contains those writes or that the migration ran against the deployed overload.
+  assert.match(posMigration, /v_def := replace\(/i);
   assert.match(posMigration, /update public\.products set current_stock=current_stock-v_qty/i);
   assert.match(posMigration, /insert into public\.stock_movements/i);
-  // Characterization guard: this migration rewrites the legacy direct-write fragment.
-  // Source-ID/idempotency is a known open defect and is covered by the phase-2 integration plan.
+  assert.match(posMigration, /perform public\.fn_apply_stock_movement\(v_product\.id,-v_qty/i);
   assert.match(posMigration, /''pos_sale'',null/i);
+  assert.match(posMigration, /if v_def = pg_get_functiondef\(/i);
+  // Runtime catalog/body verification and a stable non-NULL movement source key
+  // remain separate release gates; this source-text test cannot satisfy either.
 });
 
 test('GRN receipt owns quantity posting through the shared writer and guards over-receipt', () => {
