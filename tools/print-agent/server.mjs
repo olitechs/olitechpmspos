@@ -65,7 +65,7 @@ function escPosPayload(text, test = false) {
   return Buffer.concat([
     Buffer.from([0x1b, 0x40]),
     Buffer.from([0x1b, 0x61, 0x00]),
-    enc.encode(body + '\n'),
+    enc.encode(body),
     Buffer.from([0x1b, 0x64, feedLines]),
     Buffer.from([0x1d, 0x56, 0x01]),
   ]);
