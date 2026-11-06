@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Delete, Eye, EyeOff, Lock, X } from 'lucide-react';
 
 export default function PinPad({
@@ -25,6 +26,13 @@ export default function PinPad({
   }, [staffName]);
 
   useEffect(() => {
+    if (!fullscreen || typeof document === 'undefined') return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, [fullscreen]);
+
+  useEffect(() => {
     if (!error) return undefined;
     setShake(true);
     const timer = window.setTimeout(() => setShake(false), 450);
@@ -40,7 +48,7 @@ export default function PinPad({
     if (autoSubmit && next.length === pinLength) window.setTimeout(() => onSubmit(next), 80);
   };
 
-  return (
+  const pad = (
     <div
       className={fullscreen
         ? 'fixed left-0 top-0 z-[9999] flex h-[100dvh] w-[100vw] items-center justify-center overflow-y-auto bg-[#e3f2fd] p-3 sm:p-5'
@@ -79,4 +87,9 @@ export default function PinPad({
       </div>
     </div>
   );
+
+  // Render outside the application shell so its module navigation, stacking
+  // contexts and transformed parents can never appear above the locked screen.
+  if (fullscreen && typeof document !== 'undefined') return createPortal(pad, document.body);
+  return pad;
 }
