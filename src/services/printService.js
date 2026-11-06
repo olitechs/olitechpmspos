@@ -543,6 +543,7 @@ function bytesToBase64(bytes) {
 }
 
 async function buildLogoEscPosBase64(logoUrl, printer = {}, text = '', options = {}) {
+  const singleBuffer = options.singleBuffer === true;
   const printSettings = getPrinterPrintSettings(printer, options.printSettings || {});
   const fallbackTextBuffer = () => {
     const bytes = new TextEncoder().encode(toEscPosPayload(text, printSettings));
