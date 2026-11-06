@@ -382,8 +382,8 @@ export function thermalTextToHtml(text) {
 }
 
 export function estimateThermalFeedLines() {
-  // The cutter is positioned immediately after the footer; do not add a length-based blank tail.
-  return 1;
+  // Leave approximately two blank lines after the footer before the cutter.
+  return 2;
 }
 
 export function toEscPosPayload(text, options = {}) {
