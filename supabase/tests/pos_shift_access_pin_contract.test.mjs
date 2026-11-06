@@ -11,6 +11,7 @@ test('property POS access PIN is hashed, defaulted and protected by RLS', () => 
   assert.match(sql, /failed_attempts \+ 1/i);
   assert.match(sql, /interval '15 minutes'/i);
   assert.match(sql, /fn_reset_pos_access_pin/i);
+  assert.match(sql, /Choose a PIN different from the initial default 1234/i);
 });
 
 test('shift close is blocked by active table sessions and reconciles split tenders', () => {
