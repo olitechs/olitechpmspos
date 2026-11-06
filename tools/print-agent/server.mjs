@@ -38,7 +38,7 @@ function validEndpoint(host, port) {
     Number.isInteger(port) && ALLOWED_PORTS.has(port);
 }
 
-function estimateFeedLines(text) {
+function estimateFeedLines() {
   return 1;
 }
 
