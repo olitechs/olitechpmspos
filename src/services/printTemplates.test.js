@@ -18,7 +18,7 @@ const stripEscPos = value => value
   .replaceAll(String.fromCharCode(27) + 'E' + String.fromCharCode(0), '')
   .replace(/\x1D\x21[\s\S]/g, '');
 
-test('settled receipt columns preserve the legacy 80mm and 58mm widths', () => {
+test('settled receipt columns stay inside safe 80mm and 58mm print margins', () => {
   assert.equal(getPrinterColumns({ paper_width: '80mm' }), 46);
   assert.equal(getPrinterColumns({ paper_width: '58mm' }), 30);
   assert.equal(getPrinterColumns({ paper_width: '58mm', character_width: 48 }), 30);
@@ -87,7 +87,7 @@ test('order ticket includes station metadata, modifiers and prep notes without p
   assert.match(output, /Thank you for visiting/);
   assert.ok(!output.includes(String.fromCharCode(29) + '!' + String.fromCharCode(17)), 'order items stay at normal thermal font size');
   assert.ok(output.split('\n').every(line => line.length <= 42), 'all order ticket lines fit safe 80mm paper width');
-  assert.ok(output.includes('           KITCHEN POS'), 'order ticket station header is centered');
+  assert.ok(/\*\*\* KITCHEN POS \*\*\*/.test(output), 'order ticket station header is centered');
   assert.ok(output.includes('          Thank you for visiting'), 'order ticket footer is centered');
   assert.match(output, /AMINA/);
   assert.match(output, /TAKE AWAY/);
@@ -121,7 +121,7 @@ test('unsettled bill uses the clean pending layout and summed item amounts with 
   assert.equal((output.replace(/\s+/g, ' ').match(/Not a tax invoice \/ Not a paid receipt/g) || []).length, 1);
   assert.match(output, /Order: ORD-002-USOR1U2/);
   assert.match(output, /Employee: Grace Wanjiru/);
-  assert.match(output, /POS: —/);
+  assert.match(output, /POS: -/);
   assert.match(output, /DINE IN/);
   assert.match(output, /2 x Soda/);
   assert.match(output, /KES 600\.00/);
@@ -223,7 +223,7 @@ test('final receipt uses centered company header/footer and a paid receipt layou
   assert.match(output, /Visit again/);
   assert.doesNotMatch(output, /PAYMENT PENDING/);
   assert.doesNotMatch(output, /VAT/);
-  assert.ok(output.split('\n').every(line => line.length <= 32));
+  assert.ok(output.split('\n').every(line => line.length <= 30));
 });
 
 
