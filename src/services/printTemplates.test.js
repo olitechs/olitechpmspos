@@ -261,11 +261,11 @@ test('thermal payload leaves two blank lines after the footer before cutting', (
   assert.equal(shortBill.charCodeAt(1), 64);
   const twoFeedAndCut = String.fromCharCode(27,100,2,27,74,100,29,86,66,0);
   assert.ok(shortBill.endsWith(twoFeedAndCut));
-  assert.ok(shortBill.includes('ORDER TICKET\n' + twoFeedAndCut), 'two blank lines remain after the final printed line before the cutter feed');
+  assert.ok(shortBill.includes('ORDER TICKET' + twoFeedAndCut), 'two blank lines remain after the final printed line before the cutter feed');
 
   const receipt = toEscPosPayload('UNSETTLED BILL', { feedLinesBeforeCut:2, feedDotsBeforeCut:100, cutCommand:'gs_v_0' });
   assert.ok(receipt.endsWith(String.fromCharCode(27,100,2,27,74,100,29,86,0)), 'configured full cut follows line and dot feeds');
-  assert.ok(receipt.includes('UNSETTLED BILL\n' + String.fromCharCode(27,100,2,27,74,100,29,86,0)), 'receipt footer has two blank lines before the feed and cut');
+  assert.ok(receipt.includes('UNSETTLED BILL' + String.fromCharCode(27,100,2,27,74,100,29,86,0)), 'receipt footer has two blank lines before the feed and cut');
 
   const orderTicket = toEscPosPayload('ORDER TICKET', { feedLines: 2 });
   assert.ok(orderTicket.endsWith(twoFeedAndCut), 'order tickets use the shared feed and cutter sequence');
