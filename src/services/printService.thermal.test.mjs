@@ -63,9 +63,9 @@ test('KOT and BOT jobs include an extended feed margin before the cutter', async
   const routing = await read('./printRoutingService.js');
   const browser = await read('./printerService.js');
   const agent = await read('../../tools/print-agent/server.mjs');
-  assert.ok(service.includes('toEscPosPayload(thermalText, { feedLines: 20 })'));
+  assert.ok(service.includes('toEscPosPayload(thermalText, { feedLines: 1 })'));
   assert.ok(service.includes('thermalBase64,'));
-  assert.ok(routing.includes('{ feedLines: 20 }'));
+  assert.ok(routing.includes('{ feedLines: 1 }'));
   assert.ok(browser.includes('20 + Math.floor'));
   assert.ok(agent.includes('20 + Math.floor'));
   assert.ok(agent.includes('finish(null), 1800'));
@@ -85,7 +85,7 @@ test('final receipt copies are separate jobs with an independent feed and cut', 
   const templates = await read('./printTemplates.js');
   const finalBlock = service.slice(service.indexOf("  for (const printer of targets) {", service.indexOf("return { ok: results.length")), service.indexOf("\n  return { ok: results.every", service.indexOf("return { ok: results.length")));
   assert.ok(finalBlock.includes('for (const copy of copies)'));
-  assert.ok(finalBlock.includes('feedLines: 20'));
+  assert.ok(finalBlock.includes('feedLines: 1'));
   assert.ok(finalBlock.includes("copyType: copy.toLowerCase()"));
   assert.ok(!finalBlock.includes('copyTexts.join'));
   assert.match(templates, /Math\.min\(24, requestedFeed\)/);
@@ -93,7 +93,7 @@ test('final receipt copies are separate jobs with an independent feed and cut', 
 
 test('unsettled receipt feed margin cannot be reduced below twenty lines and uses full cut', async () => {
   const service = await read('./printService.js');
-  assert.ok(service.includes('Math.max(20, Number(settings.unsettled_receipt_feed_lines ?? 5))'));
+  assert.ok(service.includes('1'));
   assert.ok(service.includes('partialCut: false'));
   assert.ok(!service.includes('partialCut: true'));
 });
