@@ -13,7 +13,7 @@ export function OpenShiftModal({propertyId,onOpened}){const[cash,setCash]=useSta
 
 export default function CloseShiftModal({shift,onClosed,onClose}){
  const{user}=useAuth();const propertyId=user?.property?.id;const[report,setReport]=useState(null);const[openTables,setOpenTables]=useState([]);const[tablesLoaded,setTablesLoaded]=useState(false);const[tableLoadError,setTableLoadError]=useState('');const[counted,setCounted]=useState('');const[notes,setNotes]=useState('');const[busy,setBusy]=useState(false);const[error,setError]=useState('');const[pinOpen,setPinOpen]=useState(false);const[pinError,setPinError]=useState('');
- const staff=getSessionStaff();const canApproveWithoutStaffPin=Boolean(user?.isPlatformOwner||['owner','admin','manager'].includes(String(user?.propertyRole||'').toLowerCase()));const[managerApproved,setManagerApproved]=useState(false);
+ const staff=getSessionStaff();const canApproveWithoutStaffPin=Boolean(user?.isPlatformOwner||['owner','admin','manager'].includes(String(user?.propertyRole||'').toLowerCase())||['hotel_admin','super_admin'].includes(String(user?.staff?.role||'').toLowerCase()));const[managerApproved,setManagerApproved]=useState(false);
  
  useEffect(()=>{if(!shift)return;shiftService.getShiftReport(shift.id).then(setReport).catch(e=>setError(e.message));shiftService.getOpenTables(propertyId).then(setOpenTables).catch(e=>setTableLoadError(e.message||'Could not verify open tables.')).finally(()=>setTablesLoaded(true));},[shift,propertyId]);
  const variance=useMemo(()=>report?Number(counted||0)-Number(report.expectedCash||0):0,[counted,report]);
