@@ -8,6 +8,8 @@ test('print agent uses shared configurable finalizer and waits for the TCP write
   assert.ok(source.includes('Buffer.from(buildEscPosPayload(body, settings), \'latin1\')'));
   assert.ok(source.includes('socket.write(payload, (error) => {'));
   assert.ok(source.includes("socket.once('drain'"));
+  assert.ok(source.includes("socket.once('close'"));
+  assert.ok(source.includes('closed before the complete job drained'));
   assert.ok(source.includes('socket.end();'));
   assert.ok(source.includes('const printerWriteQueues = new Map()'));
   assert.ok(source.includes('writeTcpNow(host, port, payload)'));
