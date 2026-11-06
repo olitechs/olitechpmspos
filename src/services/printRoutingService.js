@@ -1,3 +1,4 @@
+import { getPrinterPrintSettings } from '@/services/printerPrintSettings';
 import { usePrinterStore } from '@/data/modules/printerStore';
 import { isFeatureEnabled } from '@/lib/featureFlags';
 import { supabase } from '@/lib/supabaseClient';
@@ -118,7 +119,7 @@ export async function printOrder(order = {}) {
       settings: receiptSettings || {},
       items: plan.lines,
       center: plan.center || plan.groupName,
-    }), { feedLines: 2 })),
+    }), getPrinterPrintSettings(printer))),
     status: 'pending',
     type: 'kitchen',
   })));
