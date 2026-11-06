@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { BookOpen, Search, MessageCircle, ChevronDown, LifeBuoy, ClipboardList, BedDouble, ShoppingCart, BarChart3, Settings, Printer, CircleHelp } from 'lucide-react';
+import { BookOpen, Search, MessageCircle, ChevronDown, LifeBuoy, ClipboardList, CircleHelp } from 'lucide-react';
 
 const ARTICLES = [
   { category: 'Getting started', title: 'Getting started with OliTechs', summary: 'A quick orientation to the main workspaces.', steps: ['Sign in with the account provided by your property administrator.', 'Choose the workspace available to your role: Back Office, Front Office, POS or Stores.', 'Use the left navigation to open a module. Your available modules depend on your role and subscription.', 'Use the Help Centre search whenever you need guidance.'] },
