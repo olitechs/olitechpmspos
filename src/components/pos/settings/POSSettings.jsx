@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { X, Printer, Table2, ReceiptText, Utensils, ChartNoAxesCombined, ShieldAlert } from 'lucide-react';
+import { X, Printer, Table2, ReceiptText, Utensils, ChartNoAxesCombined, ShieldAlert, KeyRound } from 'lucide-react';
 import { canUseModule, getSessionStaff, normalizeStaffRole } from '@/services/authService';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import PrintersTab from './tabs/PrintersTab';
@@ -7,6 +7,7 @@ import TablesTab from './tabs/TablesTab';
 import ReceiptsTab from './tabs/ReceiptsTab';
 import MenuTab from './tabs/MenuTab';
 import SalesSummaryTab from './tabs/SalesSummaryTab';
+import AccessPinTab from '@/components/pos/AccessPinTab';
 
 // The current authorization contract is module access plus normalized staff roles.
 // Keep this UI gate aligned with that contract; service/RLS authorization remains authoritative.
@@ -16,6 +17,7 @@ const TABS = [
   { id: 'receipts', label: 'Receipts', description: 'Receipt header, footer and branding', icon: ReceiptText, roles: ['hotel_admin', 'super_admin', 'fb_manager', 'cashier'] },
   { id: 'menu', label: 'Menu', description: 'POS menu and product catalogue', icon: Utensils, roles: ['hotel_admin', 'super_admin', 'fb_manager'] },
   { id: 'sales', label: 'Sales summary', description: 'Sales and stock-control reporting', icon: ChartNoAxesCombined, roles: ['hotel_admin', 'super_admin', 'fb_manager', 'accountant', 'auditor'] },
+  { id: 'access', label: 'Access PIN', description: 'Manage the property POS entry code', icon: KeyRound, roles: ['hotel_admin', 'super_admin', 'owner', 'admin'] },
 ];
 
 export default function POSSettings({ user, onClose }) {
@@ -55,6 +57,7 @@ export default function POSSettings({ user, onClose }) {
               {activeTab === 'receipts' && <ReceiptsTab />}
               {activeTab === 'menu' && <MenuTab />}
               {activeTab === 'sales' && <SalesSummaryTab />}
+              {activeTab === 'access' && <AccessPinTab />}
             </ErrorBoundary>
           </div>
         </>}
