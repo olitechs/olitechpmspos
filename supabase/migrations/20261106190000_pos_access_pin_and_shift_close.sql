@@ -848,7 +848,7 @@ begin
     select r.id as receipt_id,
       case
         when rp.payment_method = 'room' then 'room_charge'
-        when rp.payment_method in ('cash', 'mpesa', 'card', 'bank', 'other') then rp.payment_method
+        when rp.payment_method in ('cash', 'mpesa', 'card', 'bank', 'room_charge', 'other') then rp.payment_method
         else 'other'
       end as payment_method,
       rp.amount
