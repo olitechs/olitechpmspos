@@ -23,7 +23,7 @@ export default function ReceiptPreview({ settings, data = {}, type = 'RECEIPT', 
     {food.length&&drinks.length ? <><div className="my-2 text-center font-black">--- FOOD ---</div>{food.map((i,k)=><Row key={'f'+k} i={i}/>) }<div className="my-2 text-center font-black">--- DRINKS ---</div>{drinks.map((i,k)=><Row key={'d'+k} i={i}/>)}</> : (food.length?food:drinks).map((i,k)=><Row key={k} i={i}/>)}
     <div className="my-2 border-t border-black pt-1 text-right text-lg font-black">TOTAL {data.currency||''} {money(data.total)}</div>
     {type==='RECEIPT'&&<div className="border-t border-dashed pt-2">Payment Method: <b>{data.paymentMethod||'Cash'}</b></div>}
-    <div className="mt-3 text-center">{settings.footer_line1||'Thank you.'}<br/>{settings.footer_line2||''}</div>
+    {type==='RECEIPT'&&<div className="mt-3 text-center">{settings.footer_line1||'Thank you.'}<br/>{settings.footer_line2||''}</div>}
     <div className="mt-2 text-right font-black">Check No: {data.checkNo||data.orderNumber||'—'}</div>
     {(data.voidedCount || data.voidedItems?.length) ? <div className="mt-2 border-t border-dashed border-black pt-2 text-center text-[9px] font-black">{Number(data.voidedCount || data.voidedItems?.length || 0)} item{Number(data.voidedCount || data.voidedItems?.length || 0) === 1 ? '' : 's'} voided - See void slip #{data.voidSlipNumber || '—'}</div> : null}
   </div>;
