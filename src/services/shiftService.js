@@ -68,6 +68,17 @@ export const shiftService = {
       allocations = data || [];
     }
 
+    const allocationTotals = new Map();
+    for (const allocation of allocations) {
+      const receiptId = String(allocation.receipt_id || '');
+      allocationTotals.set(receiptId, (allocationTotals.get(receiptId) || 0) + Number(allocation.amount || 0));
+    }
+    const unreconciled = (rows || []).filter((receipt) => receipt.payment_method === 'split'
+      && Math.abs((allocationTotals.get(String(receipt.id)) || 0) - Number(receipt.total || 0)) > 0.01);
+    if (unreconciled.length) {
+      throw new Error('Shift report blocked: split payment allocations do not reconcile for receipt(s) ' + unreconciled.map((receipt) => receipt.order_number || receipt.id).join(', ') + '.');
+    }
+
     const summary = buildShiftSalesSummary(rows || [], allocations);
     const countedCash = shift.counted_cash == null ? null : Number(shift.counted_cash);
     const variance = shift.cash_variance == null ? null : Number(shift.cash_variance);
