@@ -123,10 +123,12 @@ export async function uploadPropertyLogo(propertyId, file) {
   }
   if (file.size > 2 * 1024 * 1024) throw new Error('Logo must be 2MB or smaller.');
   const ext = (file.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '');
-  const path = `${propertyId}/logo.${ext}`;
+  // Use a fresh object key for every replacement. Reusing logo.png/logo.jpg
+  // can leave browsers and the public storage CDN serving the previous image.
+  const path = `${propertyId}/logo-${Date.now()}.${ext}`;
   const { error } = await supabase.storage
     .from('property-logos')
-    .upload(path, file, { upsert: true, contentType: file.type || 'image/png', cacheControl: '3600' });
+    .upload(path, file, { upsert: false, contentType: file.type || 'image/png', cacheControl: '3600' });
   if (error) throw error;
   const { data } = supabase.storage.from('property-logos').getPublicUrl(path);
   return data.publicUrl;

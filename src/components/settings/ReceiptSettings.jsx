@@ -18,7 +18,22 @@ export default function ReceiptSettings() {
   useEffect(()=>{ if(!propertyId)return; setBusy(true); Promise.all([getPropertySettings(propertyId),getUnsettledReceiptSettings(propertyId)]).then(([row,vat])=>setForm({...DEFAULT_RECEIPT_SETTINGS,...row,...vat})).catch(e=>setError(e.message)).finally(()=>setBusy(false)); },[propertyId]);
   const valid=useMemo(()=>REQUIRED.every(k=>String(form[k]||'').trim()),[form]);
   const update=(k,v)=>setForm(f=>({...f,[k]:v}));
-  const onLogo=async(e)=>{const file=e.target.files?.[0];if(!file)return;setError('');try{const url=await uploadPropertyLogo(propertyId,file);update('logo_url',url);}catch(err){setError(err.message||'Logo upload failed.');}};
+  const onLogo=async(e)=>{
+    const input=e.target;
+    const file=input.files?.[0];
+    if(!file)return;
+    setError('');
+    setOk('');
+    try {
+      const url=await uploadPropertyLogo(propertyId,file);
+      update('logo_url',url);
+      setOk('New logo uploaded and shown in the preview. Save Receipt Settings to apply it to printed receipts.');
+    } catch(err) {
+      setError(err.message||'Logo upload failed.');
+    } finally {
+      input.value='';
+    }
+  };
   const save=async()=>{if(!valid){setError('Complete all required company and footer fields.');return}setSaving(true);setError('');setOk('');try{await savePropertySettings(propertyId,form);if(canManageVat)await saveUnsettledReceiptSettings(propertyId,form);setOk('Receipt settings saved.')}catch(e){setError(e.message||'Could not save receipt settings.')}finally{setSaving(false)}};
   if(busy)return <div className="p-8 text-sm text-muted-foreground">Loading receipt settings…</div>;
   return <div className="grid gap-6 p-5 xl:grid-cols-[minmax(0,1fr)_360px]">
