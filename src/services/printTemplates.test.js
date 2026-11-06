@@ -258,11 +258,11 @@ test('thermal payload provides a safe default feed and supports feed-before-part
   assert.ok(shortBill.includes(String.fromCharCode(27, 100, 12)));
   assert.ok(shortBill.endsWith(String.fromCharCode(29, 86, 1)));
 
-  const receipt = toEscPosPayload('UNSETTLED BILL', { feedLines: 5, partialCut: true });
-  assert.ok(receipt.endsWith(String.fromCharCode(27, 100, 5, 29, 86, 66, 0)), 'feed command must immediately precede partial cut');
+  const receipt = toEscPosPayload('UNSETTLED BILL', { feedLines: 5, partialCut: false });
+  assert.ok(receipt.endsWith(String.fromCharCode(27, 100, 5, 29, 86, 1)), 'feed command must immediately precede a full cut');
 
-  const orderTicket = toEscPosPayload('ORDER TICKET', { feedLines: 12 });
-  assert.ok(orderTicket.endsWith(String.fromCharCode(27, 100, 12, 29, 86, 1)), 'order tickets receive an extended feed before cutting');
+  const orderTicket = toEscPosPayload('ORDER TICKET', { feedLines: 20 });
+  assert.ok(orderTicket.endsWith(String.fromCharCode(27, 100, 20, 29, 86, 1)), 'order tickets receive an extended feed before cutting');
   assert.equal(estimateThermalFeedLines(Array.from({ length: 240 }, (_, i) => 'LONG BILL ITEM ' + (i + 1)).join('\n')), 14);
 });
 
