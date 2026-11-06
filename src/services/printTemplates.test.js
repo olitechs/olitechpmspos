@@ -135,7 +135,8 @@ test('unsettled bill uses the clean pending layout and summed item amounts with 
   assert.match(output, /KES 1,850\.00/);
   assert.match(output, /Check: ORD-002-USOR1U2/);
   assert.match(output, /5 Nov 2026, 15:46/);
-  assert.match(output, /Thank you for dining with us/);\n  assert.match(output, /Please keep your receipt/);\n  assert.doesNotMatch(output, /RECEIPT NO|ORDER NO|SUBTOTAL|VAT/);
+  assert.match(output, /Thank you for dining with us/);
+  assert.match(output, /Please keep your receipt/);\n  assert.doesNotMatch(output, /RECEIPT NO|ORDER NO|SUBTOTAL|VAT/);
   assert.equal((output.match(/Check:/g) || []).length, 1);
   assert.ok(output.split('\n').every(line => line.length <= 30), '58mm safe lines stay within 30 columns');
 });
