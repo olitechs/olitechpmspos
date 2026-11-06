@@ -434,7 +434,7 @@ export async function printOrderByCategory(order) {
         center: group.kind === 'food' ? 'KITCHEN' : 'BAR',
         items: group.items,
       });
-      const thermalBase64 = bytesToBase64(new TextEncoder().encode(toEscPosPayload(thermalText, { feedLines: 12 })));
+      const thermalBase64 = bytesToBase64(new TextEncoder().encode(toEscPosPayload(thermalText, { feedLines: 20 })));
       results.push(await printToPrinter(printer, thermalTextToHtml(thermalText), {
         propertyId,
         jobType: group.kind === 'food' ? 'KOT' : 'BOT',
@@ -552,7 +552,7 @@ async function buildLogoEscPosBase64(logoUrl, printer = {}, text = '', options =
   const feedLines = Number(options.feedLines ?? 5);
   const fallbackTextBuffer = () => {
     if (!singleBuffer) return null;
-    const bytes = new TextEncoder().encode(toEscPosPayload(text, { feedLines, partialCut: true }));
+    const bytes = new TextEncoder().encode(toEscPosPayload(text, { feedLines, partialCut: false }));
     return bytesToBase64(bytes);
   };
   if (!logoUrl || typeof Image === 'undefined' || typeof document === 'undefined') return fallbackTextBuffer();
@@ -615,7 +615,7 @@ async function buildLogoEscPosBase64(logoUrl, printer = {}, text = '', options =
       }
     }
     const textOptions = singleBuffer
-      ? { initialize: false, feedLines, partialCut: true }
+      ? { initialize: false, feedLines, partialCut: false }
       : { feedLines };
     const textBytes = new TextEncoder().encode(toEscPosPayload(text, textOptions));
     const init = singleBuffer ? new Uint8Array([0x1b,0x40]) : new Uint8Array(0);
@@ -793,7 +793,7 @@ export async function printReceipt(type, data) {
         const thermalBase64 = await buildLogoEscPosBase64(settings.logo_url, printer, thermalText, {
           singleBuffer: true,
           maxLogoDots: is58mm ? 230 : 345,
-          feedLines: Math.max(12, Number(settings.unsettled_receipt_feed_lines ?? 5)),
+          feedLines: Math.max(20, Number(settings.unsettled_receipt_feed_lines ?? 5)),
         });
         results.push(await printToPrinter(printer, thermalTextToHtml(thermalText), {
           propertyId,
