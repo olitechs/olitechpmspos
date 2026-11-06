@@ -52,11 +52,12 @@ export const shiftService = {
       .select('*')
       .eq('property_id', shift.property_id)
       .or(`pos_shift_id.eq.${shiftId},shift_id.eq.${shiftId}`)
-      .eq('status', 'posted')
       .order('created_at', { ascending: true });
     if (rowsError) throw new Error(rowsError.message);
 
-    const splitIds = (rows || []).filter((receipt) => receipt.payment_method === 'split').map((receipt) => receipt.id);
+    const postedRows = (rows || []).filter((receipt) => receipt.status === 'posted');
+    const voidedRows = (rows || []).filter((receipt) => receipt.status === 'voided');
+    const splitIds = postedRows.filter((receipt) => receipt.payment_method === 'split').map((receipt) => receipt.id);
     let allocations = [];
     if (splitIds.length) {
       const { data, error: allocationError } = await supabase
@@ -68,23 +69,37 @@ export const shiftService = {
       allocations = data || [];
     }
 
+    const postedIds = postedRows.map((receipt) => receipt.id);
+    let refunds = [];
+    if (postedIds.length) {
+      const { data, error: refundError } = await supabase
+        .from('cashier_refunds')
+        .select('receipt_id,amount,settlement_method,method')
+        .eq('property_id', shift.property_id)
+        .in('receipt_id', postedIds);
+      if (refundError) throw new Error(refundError.message);
+      refunds = data || [];
+    }
+
     const allocationTotals = new Map();
     for (const allocation of allocations) {
       const receiptId = String(allocation.receipt_id || '');
       allocationTotals.set(receiptId, (allocationTotals.get(receiptId) || 0) + Number(allocation.amount || 0));
     }
-    const unreconciled = (rows || []).filter((receipt) => receipt.payment_method === 'split'
+    const unreconciled = postedRows.filter((receipt) => receipt.payment_method === 'split'
       && Math.abs((allocationTotals.get(String(receipt.id)) || 0) - Number(receipt.total || 0)) > 0.01);
     if (unreconciled.length) {
       throw new Error('Shift report blocked: split payment allocations do not reconcile for receipt(s) ' + unreconciled.map((receipt) => receipt.order_number || receipt.id).join(', ') + '.');
     }
 
-    const summary = buildShiftSalesSummary(rows || [], allocations);
+    const summary = buildShiftSalesSummary(postedRows, allocations, refunds, voidedRows);
     const countedCash = shift.counted_cash == null ? null : Number(shift.counted_cash);
     const variance = shift.cash_variance == null ? null : Number(shift.cash_variance);
     return {
       shift,
-      orders: rows || [],
+      orders: postedRows,
+      voidedOrders: voidedRows,
+      refunds,
       ...summary,
       expectedCash: Number(shift.opening_cash || 0) + Number(summary.payments.cash.amount || 0),
       countedCash,
