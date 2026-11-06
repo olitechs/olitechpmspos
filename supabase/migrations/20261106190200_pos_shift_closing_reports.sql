@@ -344,6 +344,13 @@ begin
       public.is_platform_owner()
       or public.property_role(v_shift.property_id) in ('owner', 'admin', 'manager')
       or public.current_staff_role(v_shift.property_id) in ('hotel_admin', 'super_admin', 'fb_manager', 'manager', 'admin', 'owner', 'property_manager', 'general_manager')
+      or exists (
+        select 1 from public.staff s
+        where s.property_id = v_shift.property_id and s.is_active = true
+          and (s.user_id = auth.uid() or lower(coalesce(s.email, '')) = lower(coalesce(auth.jwt() ->> 'email', '')))
+          and 'pos' = any(coalesce(s.assigned_modules, array[]::text[]))
+          and lower(coalesce(s.role, '')) in ('hotel_admin', 'super_admin', 'fb_manager', 'manager', 'admin', 'owner', 'property_manager', 'general_manager')
+      )
     )
   ) then
     raise exception 'Manager approval is required for a cash variance above KES 500.';
