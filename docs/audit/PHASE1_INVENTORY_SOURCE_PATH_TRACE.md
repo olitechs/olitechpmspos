@@ -83,3 +83,16 @@ The committed transfer schema stores source/destination locations and a pending/
 ## Files deliberately not changed
 
 No source code, SQL migration, printer, paper-feed, order-ticket, receipt, unsettled-bill, cashier-printing, or payment-printing file was modified in this continuation.
+
+
+## Regression-test quality finding (6 November 2026)
+
+A focused review of the existing `tools/inventory/phase2-ledger-contract.test.mjs` found that its POS source assertion is a migration-text characterization, not proof of the deployed function body:
+
+- The test asserts that the POS migration contains `fn_apply_stock_movement`, but also asserts that the migration contains the legacy direct `UPDATE products` and `INSERT stock_movements` statements. Those legacy statements are embedded as the exact text-replacement target inside the migration's `replace(...)` call.
+- The migration replaces that fragment with a shared-writer call, but supplies `source_type = 'pos_sale'` and `source_id = NULL`. Thus the migration's intended replacement still leaves stock movements without a stable source identity.
+- The test does not execute the migration, inspect the resulting function definition, verify that the replacement matched the deployed overload, or prove idempotent movement posting.
+
+**Required test correction before implementation:** separate (1) a source-text test that confirms the expected legacy fragment and replacement are exact, from (2) a database catalog/runtime test that inspects the resulting overload and verifies a non-null stable sale/line source key and duplicate-request behavior. A passing source-text test must never be reported as runtime or deployment verification.
+
+This is a test-quality and source-design finding only. No test, SQL, application code, or database was changed. The protected printer, paper-feed, ticket, receipt, unsettled-bill, and cashier-printing scope remains excluded.
