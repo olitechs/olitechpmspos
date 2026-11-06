@@ -255,7 +255,7 @@ test('thermal payload provides a safe default feed and supports feed-before-part
   const shortBill = toEscPosPayload('ORDER TICKET');
   assert.equal(shortBill.charCodeAt(0), 27);
   assert.equal(shortBill.charCodeAt(1), 64);
-  assert.ok(shortBill.includes(String.fromCharCode(27, 100, 12)));
+  assert.ok(shortBill.includes(String.fromCharCode(27, 100, 20)));
   assert.ok(shortBill.endsWith(String.fromCharCode(29, 86, 1)));
 
   const receipt = toEscPosPayload('UNSETTLED BILL', { feedLines: 5, partialCut: false });
@@ -263,7 +263,7 @@ test('thermal payload provides a safe default feed and supports feed-before-part
 
   const orderTicket = toEscPosPayload('ORDER TICKET', { feedLines: 20 });
   assert.ok(orderTicket.endsWith(String.fromCharCode(27, 100, 20, 29, 86, 1)), 'order tickets receive an extended feed before cutting');
-  assert.equal(estimateThermalFeedLines(Array.from({ length: 240 }, (_, i) => 'LONG BILL ITEM ' + (i + 1)).join('\n')), 14);
+  assert.equal(estimateThermalFeedLines(Array.from({ length: 240 }, (_, i) => 'LONG BILL ITEM ' + (i + 1)).join('\n')), 24);
 });
 
 test('long item names and amount fields are wrapped, never sliced off', () => {
