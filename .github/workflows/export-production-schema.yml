@@ -29,8 +29,11 @@ jobs:
             exit 1
           fi
           supabase --version | tee "$RUNNER_TEMP/supabase-cli-version.txt"
+          # GitHub-hosted runners may not have IPv6 connectivity. Store the
+          # Supabase Transaction pooler URI (IPv4-compatible) in this secret.
+          # --remote is the current Supabase CLI option; --db-url is deprecated.
           supabase db dump \
-            --db-url "$SUPABASE_DB_URL" \
+            --remote="$SUPABASE_DB_URL" \
             --schema public \
             --file "$RUNNER_TEMP/olitechs-public-schema.sql"
           test -s "$RUNNER_TEMP/olitechs-public-schema.sql"
