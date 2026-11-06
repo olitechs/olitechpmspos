@@ -255,19 +255,19 @@ test('HTML fallback renders fixed-width plain text on white paper', () => {
   assert.match(html, /BILL - NOT PAID/);
 });
 
-test('thermal payload provides a safe default feed and supports feed-before-partial-cut receipt buffer', () => {
+test('thermal payload provides a minimal default feed and supports feed-before-partial-cut receipt buffer', () => {
   const shortBill = toEscPosPayload('ORDER TICKET');
   assert.equal(shortBill.charCodeAt(0), 27);
   assert.equal(shortBill.charCodeAt(1), 64);
-  assert.ok(shortBill.includes(String.fromCharCode(27, 100, 20)));
+  assert.ok(shortBill.includes(String.fromCharCode(27, 100, 1)));
   assert.ok(shortBill.endsWith(String.fromCharCode(29, 86, 1)));
 
-  const receipt = toEscPosPayload('UNSETTLED BILL', { feedLines: 5, partialCut: false });
-  assert.ok(receipt.endsWith(String.fromCharCode(27, 100, 5, 29, 86, 1)), 'feed command must immediately precede a full cut');
+  const receipt = toEscPosPayload('UNSETTLED BILL', { feedLines: 1, partialCut: false });
+  assert.ok(receipt.endsWith(String.fromCharCode(27, 100, 1, 29, 86, 1)), 'feed command must immediately precede a full cut');
 
-  const orderTicket = toEscPosPayload('ORDER TICKET', { feedLines: 20 });
-  assert.ok(orderTicket.endsWith(String.fromCharCode(27, 100, 20, 29, 86, 1)), 'order tickets receive an extended feed before cutting');
-  assert.equal(estimateThermalFeedLines(Array.from({ length: 240 }, (_, i) => 'LONG BILL ITEM ' + (i + 1)).join('\n')), 22);
+  const orderTicket = toEscPosPayload('ORDER TICKET', { feedLines: 1 });
+  assert.ok(orderTicket.endsWith(String.fromCharCode(27, 100, 1, 29, 86, 1)), 'order tickets cut after one short feed line');
+  assert.equal(estimateThermalFeedLines(Array.from({ length: 240 }, (_, i) => 'LONG BILL ITEM ' + (i + 1)).join('\n')), 1);
 });
 
 test('long item names and amount fields are wrapped, never sliced off', () => {
