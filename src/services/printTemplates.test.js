@@ -87,8 +87,8 @@ test('order ticket includes station metadata, modifiers and prep notes without p
   assert.match(output, /Thank you for visiting/);
   assert.ok(!output.includes(String.fromCharCode(29) + '!' + String.fromCharCode(17)), 'order items stay at normal thermal font size');
   assert.ok(output.split('\n').every(line => line.length <= 42), 'all order ticket lines fit safe 80mm paper width');
-  assert.ok(output.includes('              KITCHEN POS'), 'order ticket station header is centered');
-  assert.ok(output.includes('         Thank you for visiting'), 'order ticket footer is centered');
+  assert.ok(output.includes('           KITCHEN POS'), 'order ticket station header is centered');
+  assert.ok(output.includes('          Thank you for visiting'), 'order ticket footer is centered');
   assert.match(output, /AMINA/);
   assert.match(output, /TAKE AWAY/);
   assert.match(output, /2 x Grilled Fish/);
@@ -116,13 +116,13 @@ test('unsettled bill uses the clean pending layout and summed item amounts with 
     now: new Date('2026-11-05T12:46:00.000Z'),
   }));
   assert.match(output, /UNSETTLED BILL/);
-  assert.match(output, /Payment pending/);
-  assert.equal((output.match(/Payment pending/g) || []).length, 1);
+  assert.match(output, /PAYMENT PENDING/);
+  assert.equal((output.match(/PAYMENT PENDING/g) || []).length, 1);
   assert.equal((output.replace(/\s+/g, ' ').match(/Not a tax invoice \/ Not a paid receipt/g) || []).length, 1);
   assert.match(output, /Order: ORD-002-USOR1U2/);
   assert.match(output, /Employee: Grace Wanjiru/);
   assert.match(output, /POS: —/);
-  assert.match(output, /Dining: Dine In/);
+  assert.match(output, /DINE IN/);
   assert.match(output, /2 x Soda/);
   assert.match(output, /KES 600\.00/);
   assert.match(output, /KES 1,250\.00/);
