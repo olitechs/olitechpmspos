@@ -167,9 +167,13 @@ export default function SettingsPrinters() {
 
   const openEdit = printer => {
     setError(''); setNotice('');
+    const printSettings = getPrinterPrintSettings(printer);
     setEditing({
       ...printer,
-      ...getPrinterPrintSettings(printer),
+      feedLinesBeforeCut:printSettings.feedLinesBeforeCut,
+      feedDotsBeforeCut:printSettings.feedDotsBeforeCut,
+      cutCommand:printSettings.cutCommand,
+      extraFeedAfterCut:printSettings.extraFeedAfterCut,
       connection_type:printer.connection_type || 'network_ip',
       port:printer.port || 9100,
       windows_printer_name:printer.windows_printer_name || '',
@@ -199,7 +203,7 @@ export default function SettingsPrinters() {
     if (characterWidth != null && (!Number.isInteger(characterWidth) || characterWidth < 24 || characterWidth > 64)) return setError('Character override must be a whole number from 24 to 64.');
 
     setError(''); setNotice('');
-    const {assignmentTypes=[],feedLinesBeforeCut=2,feedDotsBeforeCut=100,cutCommand='gs_v_66',extraFeedAfterCut=0,paperWidth:ignoredPaperWidth,...printerFields} = editing;
+    const {assignmentTypes=[],feedLinesBeforeCut=2,feedDotsBeforeCut=100,cutCommand='gs_v_66',extraFeedAfterCut=0,...printerFields} = editing;
     const endpoint = type === 'network_ip'
       ? normalizeNetworkEndpoint(printerFields.ip_address, port)
       : { host: printerFields.ip_address || '', port };
