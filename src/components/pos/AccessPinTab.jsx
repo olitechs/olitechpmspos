@@ -27,6 +27,7 @@ export default function AccessPinTab() {
   const save = async () => {
     setError('');
     if (!/^\d{4}$/.test(pin)) { setError('Enter exactly four digits.'); return; }
+    if (pin === '1234') { setError('Choose a PIN different from the initial default 1234.'); return; }
     if (pin !== confirmPin) { setError('The PIN confirmation does not match.'); return; }
     setBusy(true);
     try {
