@@ -26,6 +26,9 @@ test('shift close is blocked by active tables and reconciles split tenders', () 
   assert.match(shiftSql, /from public\\.cashier_refunds/i);
   assert.match(shiftSql, /refunds_total = v_refunds/i);
   assert.match(shiftSql, /gross_sales = v_gross/i);
+  assert.match(shiftSql, /refunds_total = v_refunds/i);
+  assert.match(shiftSql, /voided_total = v_voided/i);
+  assert.match(shiftSql, /settlement_method/i);
 });
 
 test('receipt sale RPC persists guest covers', () => {
