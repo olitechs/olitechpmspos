@@ -1,3 +1,4 @@
+import { buildEscPosPayload } from '../../src/services/escposJob.js';
 import http from 'node:http';
 import net from 'node:net';
 import { URL } from 'node:url';
@@ -9,8 +10,6 @@ const PORT = Number(process.env.PRINT_AGENT_PORT || 8631);
 const CONNECT_TIMEOUT_MS = Number(process.env.PRINT_AGENT_TIMEOUT_MS || 6000);
 const ALLOWED_PORTS = new Set([9100, 9101, 9102]);
 const IPV4 = /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/;
-
-const enc = new TextEncoder();
 
 function normalizeEndpoint(host, port) {
   let rawHost = String(host || '').trim();
@@ -38,69 +37,76 @@ function validEndpoint(host, port) {
     Number.isInteger(port) && ALLOWED_PORTS.has(port);
 }
 
-function estimateFeedLines() {
-  return 1;
-}
-
-function escPosPayload(text, test = false) {
-  const clean = String(text ?? '')
-    .replace(/\r/g, '')
-    .replace(/\n{3,}/g, '\n\n')
-    .replace(/^\n+|\n+$/g, '');
-
+function escPosPayload(text, test = false, settings = {}) {
+  const clean = String(text ?? '').replace(/\\r/g, '').replace(/\\n{3,}/g, '\\n\\n').replace(/^\\n+|\\n+$/g, '');
   const body = test
     ? [
-        'OLITECH PMS TEST PRINT OK',
+        'OLITECHS PMS TEST PRINT OK',
         '',
         'OliTechs PMS + POS',
         'Connection: LOCAL PRINT AGENT',
         'Date: ' + new Date().toLocaleString('en-KE'),
         '',
         'If this receipt printed, the network connection is working.',
-        '',
-      ].join('\n')
+      ].join('\\n')
     : clean;
-
-  const feedLines = estimateFeedLines(body);
-  return Buffer.concat([
-    Buffer.from([0x1b, 0x40]),
-    Buffer.from([0x1b, 0x61, 0x00]),
-    enc.encode(body + '\n'),
-    Buffer.from([0x1b, 0x64, feedLines]),
-    Buffer.from([0x1d, 0x56, 0x01]),
-  ]);
+  return Buffer.from(buildEscPosPayload(body, settings), 'latin1');
 }
 
 function writeTcpNow(host, port, payload) {
   return new Promise((resolve, reject) => {
     const socket = new net.Socket();
     let settled = false;
-    let settleTimer = null;
+    let writeCallbackDone = false;
+    let drainDone = true;
+    let endCalled = false;
+    let writeFinished = false;
 
-    const finish = (err) => {
+    const finish = (error) => {
       if (settled) return;
       settled = true;
-      if (settleTimer) clearTimeout(settleTimer);
       socket.destroy();
-      err ? reject(err) : resolve();
+      error ? reject(error) : resolve();
+    };
+    const endWhenDrained = () => {
+      if (endCalled || !writeCallbackDone || !drainDone) return;
+      endCalled = true;
+      socket.end();
     };
 
     socket.setTimeout(CONNECT_TIMEOUT_MS);
     socket.once('connect', () => {
-      // End the stream only after queuing the complete payload. Wait briefly
-      // after the writable stream finishes so the printer can consume the
-      // final feed and cutter bytes before the local socket is closed.
-      socket.end(payload);
+      const accepted = socket.write(payload, (error) => {
+        if (error) return finish(error);
+        writeCallbackDone = true;
+        endWhenDrained();
+      });
+      if (!accepted) {
+        drainDone = false;
+        socket.once('drain', () => {
+          drainDone = true;
+          endWhenDrained();
+        });
+      }
     });
     socket.once('finish', () => {
-      // Allow the printer to consume the complete buffer and execute its
-      // final feed/cutter bytes before the TCP connection is closed.
-      settleTimer = setTimeout(() => finish(null), 1800);
+      // Writable finish confirms the complete payload has drained before close.
+      writeFinished = true;
+      finish(null);
+    });
+    socket.once('close', () => {
+      if (!settled && !writeFinished) {
+        const error = new Error('Printer socket closed before the complete job drained.');
+        error.code = 'ECONNRESET';
+        finish(error);
+      } else {
+        finish(null);
+      }
     });
     socket.once('timeout', () => {
-      const err = new Error('Printer connection timed out');
-      err.code = 'ETIMEDOUT';
-      finish(err);
+      const error = new Error('Printer connection timed out');
+      error.code = 'ETIMEDOUT';
+      finish(error);
     });
     socket.once('error', finish);
     socket.connect(port, host);
@@ -415,7 +421,8 @@ const server = http.createServer(async (req, res) => {
     const body = await readBody(req);
     if (['/windows-print','/windows-test'].includes(route)) {
       const printerName = String(body.windowsPrinterName || '').trim();
-      const payload = escPosPayload(body.text, route === '/windows-test');
+      const raw = body.escposBase64 || body.content_escpos_base64;
+      const payload = raw ? Buffer.from(raw, 'base64') : escPosPayload(body.text, route === '/windows-test', body.printSettings || {});
       await printWindowsRaw(printerName, payload);
       return json(res, 200, { ok:true, status:'connected', printed:true, transport:'windows_spooler', printerName });
     }
@@ -445,14 +452,14 @@ const server = http.createServer(async (req, res) => {
 
     let payload;
     const rawBase64 = body.escposBase64 || body.content_escpos_base64;
-    if (rawBase64 && route === '/print') {
+    if (rawBase64 && ['/print','/test'].includes(route)) {
       if (typeof rawBase64 !== 'string' || rawBase64.length > 700000 || !/^[A-Za-z0-9+/]*={0,2}$/.test(rawBase64)) {
         return json(res, 400, { ok:false, code:'INVALID_ESCPOS_PAYLOAD', message:'ESC/POS payload must be valid base64 under 512 KB.' });
       }
       payload = Buffer.from(rawBase64, 'base64');
       if (!payload.length) return json(res, 400, { ok:false, code:'EMPTY_ESCPOS_PAYLOAD', message:'ESC/POS payload is empty.' });
     } else {
-      payload = escPosPayload(body.text, route === '/test');
+      payload = escPosPayload(body.text, route === '/test', body.printSettings || {});
     }
     await writeTcp(host, port, payload);
 

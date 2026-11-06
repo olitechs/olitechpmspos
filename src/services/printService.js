@@ -1,3 +1,4 @@
+import { getPrinterPrintSettings } from '@/services/printerPrintSettings';
 import { testConnection as testBrowserPrinterConnection, pairUsbDevice, pairBluetoothDevice, pairSerialDevice, sendPrintJob as sendBrowserPrintJob, buildTestPageText, PrinterStatus } from '@/services/printerService';
 import { supabase } from '@/lib/supabaseClient';
 import { buildOrderTicketText, buildUnsettledReceiptText, buildFinalReceiptText, toEscPosPayload, thermalTextToHtml } from '@/services/printTemplates';
@@ -155,6 +156,7 @@ async function localAgentRequest(printer, propertyId, path, text = '', escposBas
     propertyId: propertyId || null,
     windowsPrinterName: printer.windows_printer_name || null,
     text,
+    printSettings: getPrinterPrintSettings(printer),
     ...(escposBase64 ? { escposBase64 } : {}),
   };
 
@@ -248,11 +250,11 @@ async function directTcpPrint(printer, propertyId, text, action = 'print', escpo
   return directAgentPrint(printer, propertyId, text, action === 'test' ? '/test' : '/print', escposBase64);
 }
 
-async function directWindowsPrint(printer, propertyId, text, action = 'print') {
+async function directWindowsPrint(printer, propertyId, text, action = 'print', escposBase64 = null) {
   if (!printer.windows_printer_name) {
     return { ok:false, friendlyError:'Select a Windows-installed printer first.' };
   }
-  return directAgentPrint(printer, propertyId, text, action === 'test' ? '/windows-test' : '/windows-print');
+  return directAgentPrint(printer, propertyId, text, action === 'test' ? '/windows-test' : '/windows-print', escposBase64);
 }
 
 function browserPrinterShape(printer) {
@@ -325,16 +327,18 @@ export async function testPrinterConnection(printer, propertyId) {
   }
 }
 
-export async function printToPrinter(printer, contentHtml, { propertyId, jobType = 'document', copyType = null, title = 'OliTechs Print', assignmentType = 'document', payload = {}, retryOf = null, persistJob = true, thermalText = null, thermalBase64 = null } = {}) {
+export async function printToPrinter(printer, contentHtml, { propertyId, jobType = 'document', copyType = null, title = 'OliTechs Print', assignmentType = 'document', payload = {}, retryOf = null, persistJob = true, thermalText = null, thermalBase64 = null, printSettings: settingsOverride = null } = {}) {
   if (!printer) return { ok: false, friendlyError: 'Printer not configured.' };
   const text = typeof thermalText === 'string' ? thermalText : htmlToThermalText(contentHtml);
+  const printSettings = getPrinterPrintSettings(printer, settingsOverride || {});
+  const finalThermalBase64 = thermalBase64 || bytesToBase64(new TextEncoder().encode(toEscPosPayload(text, printSettings)));
   let job = null;
   if (persistJob && propertyId) { job = await createFnbPrintJob({propertyId,printerId:printer.id,assignmentType,jobType,copyType,title,contentHtml,payload,retryOf}); await updateFnbPrintJob(job.id,propertyId,'printing',null,printer.id); }
   let result;
   if (printer.connection_type === 'network_ip') {
-    result = await directTcpPrint(printer, propertyId, text, 'print', thermalBase64);
+    result = await directTcpPrint(printer, propertyId, text, 'print', finalThermalBase64);
   } else if (printer.connection_type === 'windows_printer') {
-    result = await directWindowsPrint(printer, propertyId, text, 'print');
+    result = await directWindowsPrint(printer, propertyId, text, 'print', finalThermalBase64);
   } else if (['usb','bluetooth','serial'].includes(printer.connection_type)) {
     const transport = browserPrinterShape(printer);
     const verified = await testBrowserPrinterConnection(transport);
@@ -342,7 +346,7 @@ export async function printToPrinter(printer, contentHtml, { propertyId, jobType
       result = { ok:false, friendlyError:verified.friendlyError || 'The physical printer is no longer connected to this browser session.' };
       await updatePrinterTransportStatus(printer, propertyId, 'offline', result.friendlyError);
     } else {
-      result = await sendBrowserPrintJob(transport, text, { thermal:true, title });
+      result = await sendBrowserPrintJob(transport, text, { thermal:true, title, printSettings });
       await updatePrinterTransportStatus(printer, propertyId, result.ok ? 'connected' : 'offline', result.friendlyError || null);
     }
   } else {
@@ -434,7 +438,7 @@ export async function printOrderByCategory(order) {
         center: group.kind === 'food' ? 'KITCHEN' : 'BAR',
         items: group.items,
       });
-      const thermalBase64 = bytesToBase64(new TextEncoder().encode(toEscPosPayload(thermalText, { feedLines: 1 })));
+      const thermalBase64 = bytesToBase64(new TextEncoder().encode(toEscPosPayload(thermalText, getPrinterPrintSettings(printer))));
       results.push(await printToPrinter(printer, thermalTextToHtml(thermalText), {
         propertyId,
         jobType: group.kind === 'food' ? 'KOT' : 'BOT',
@@ -540,10 +544,9 @@ function bytesToBase64(bytes) {
 
 async function buildLogoEscPosBase64(logoUrl, printer = {}, text = '', options = {}) {
   const singleBuffer = options.singleBuffer === true;
-  const feedLines = Number(options.feedLines ?? 1);
+  const printSettings = getPrinterPrintSettings(printer, options.printSettings || {});
   const fallbackTextBuffer = () => {
-    if (!singleBuffer) return null;
-    const bytes = new TextEncoder().encode(toEscPosPayload(text, { feedLines, partialCut: false }));
+    const bytes = new TextEncoder().encode(toEscPosPayload(text, printSettings));
     return bytesToBase64(bytes);
   };
   if (!logoUrl || typeof Image === 'undefined' || typeof document === 'undefined') return fallbackTextBuffer();
@@ -605,11 +608,8 @@ async function buildLogoEscPosBase64(logoUrl, printer = {}, text = '', options =
         }
       }
     }
-    const textOptions = singleBuffer
-      ? { initialize: false, feedLines, partialCut: false }
-      : { feedLines };
-    const textBytes = new TextEncoder().encode(toEscPosPayload(text, textOptions));
-    const init = singleBuffer ? new Uint8Array([0x1b,0x40]) : new Uint8Array(0);
+    const textBytes = new TextEncoder().encode(toEscPosPayload(text, { ...printSettings, initialize: false }));
+    const init = new Uint8Array([0x1b,0x40]);
     const combined = new Uint8Array(init.length + raster.length + textBytes.length);
     combined.set(init, 0);
     combined.set(raster, init.length);
@@ -619,6 +619,29 @@ async function buildLogoEscPosBase64(logoUrl, printer = {}, text = '', options =
     console.warn('[printService] thermal logo rendering skipped', error);
     return fallbackTextBuffer();
   }
+}
+
+export async function printCutCalibrationTest(printer, propertyId = null, settings = {}) {
+  const thermalText = [
+    'OLITECHS CUT CALIBRATION',
+    'Keep all five numbered lines intact',
+    '1. CALIBRATION LINE ONE',
+    '2. CALIBRATION LINE TWO',
+    '3. CALIBRATION LINE THREE',
+    '4. CALIBRATION LINE FOUR',
+    '5. CALIBRATION LINE FIVE',
+  ].join('\n');
+  return printToPrinter(printer, thermalTextToHtml(thermalText), {
+    propertyId: null,
+    jobType: 'cut_calibration_test',
+    copyType: 'test',
+    assignmentType: 'document',
+    title: 'Cut Calibration Test',
+    payload: { test: true, template: 'cut_calibration' },
+    persistJob: false,
+    thermalText,
+    printSettings: settings,
+  });
 }
 
 export async function printTestOrder(printer, assignmentTypes = [], propertyId = null) {
@@ -716,7 +739,7 @@ export async function printTestReceipt(printer, propertyId, { vatMode = 'off', l
   const thermalBase64 = await buildLogoEscPosBase64(settings.logo_url, printer, thermalText, {
     singleBuffer: true,
     maxLogoDots: is58mm ? 230 : 345,
-    feedLines: 1,
+    printSettings: getPrinterPrintSettings(printer),
   });
   return printToPrinter(printer, thermalTextToHtml(thermalText), {
     propertyId: null,
@@ -784,7 +807,7 @@ export async function printReceipt(type, data) {
         const thermalBase64 = await buildLogoEscPosBase64(settings.logo_url, printer, thermalText, {
           singleBuffer: true,
           maxLogoDots: is58mm ? 230 : 345,
-          feedLines: 1,
+          printSettings: getPrinterPrintSettings(printer),
         });
         results.push(await printToPrinter(printer, thermalTextToHtml(thermalText), {
           propertyId,
@@ -813,7 +836,7 @@ export async function printReceipt(type, data) {
       const thermalText = buildFinalReceiptText(settings, data, { printer, copyLabel: copy });
       const thermalBase64 = await buildLogoEscPosBase64(settings.logo_url, printer, thermalText, {
         // Keep the receipt clear of the cutter and provide a consistent tear margin.
-        feedLines: 1,
+        printSettings: getPrinterPrintSettings(printer),
       });
       results.push(await printToPrinter(printer, receiptHtml(settings, type, data, copy, printer), {
         propertyId,

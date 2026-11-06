@@ -127,7 +127,7 @@ test('unsettled bill uses the clean pending layout and summed item amounts with 
   assert.match(output, /Order: ORD-002-USOR1U2/);
   assert.match(output, /Employee: Grace Wanjiru/);
   assert.match(output, /POS: POS/);
-  assert.match(output, /DINE IN/);
+  assert.match(output, /Dine In/i);
   assert.match(output, /2 x Soda/);
   assert.match(output, /KES 600\.00/);
   assert.match(output, /KES 1,250\.00/);
@@ -194,7 +194,7 @@ test('12-item unsettled bill preserves every item and stays within 58mm width', 
   const output = stripEscPos(buildUnsettledReceiptText({}, { checkNo: 'ORD-LONG', items }, { printer: { paper_width: '58mm' } }));
   for (let index = 1; index <= 12; index++) {
     if (index === 1) assert.match(output, /Grilled Ocean Fish/);
-    else if (index === 2) assert.match(output, /2 x Sample menu item 2/);
+    else if (index === 2) { assert.match(output, /Sample menu item 2/); assert.match(output, /2 x KES 300\.00/); }
     else assert.match(output, new RegExp('Sample menu item ' + index));
   }
   assert.match(output, /Extra lemon butter/);
@@ -255,21 +255,21 @@ test('HTML fallback renders fixed-width plain text on white paper', () => {
   assert.match(html, /BILL - NOT PAID/);
 });
 
-test('thermal payload cuts immediately after a minimal footer feed', () => {
+test('thermal payload leaves two blank lines after the footer before cutting', () => {
   const shortBill = toEscPosPayload('ORDER TICKET');
   assert.equal(shortBill.charCodeAt(0), 27);
   assert.equal(shortBill.charCodeAt(1), 64);
-  const oneFeedAndCut = String.fromCharCode(27, 100, 1, 29, 86, 1);
-  assert.ok(shortBill.endsWith(oneFeedAndCut));
-  assert.ok(shortBill.includes('ORDER TICKET\n' + oneFeedAndCut), 'one clearance line follows the final printed line before the cutter feed');
+  const twoFeedAndCut = String.fromCharCode(27,100,2,27,74,100,29,86,66,0);
+  assert.ok(shortBill.endsWith(twoFeedAndCut));
+  assert.ok(shortBill.includes('ORDER TICKET' + twoFeedAndCut), 'two blank lines remain after the final printed line before the cutter feed');
 
-  const receipt = toEscPosPayload('UNSETTLED BILL', { feedLines: 1, partialCut: false });
-  assert.ok(receipt.endsWith(oneFeedAndCut), 'one feed command must immediately precede a full cut');
-  assert.ok(receipt.includes('UNSETTLED BILL\n' + oneFeedAndCut), 'receipt footer has one clearance line before the feed and cut');
+  const receipt = toEscPosPayload('UNSETTLED BILL', { feedLinesBeforeCut:2, feedDotsBeforeCut:100, cutCommand:'gs_v_0' });
+  assert.ok(receipt.endsWith(String.fromCharCode(27,100,2,27,74,100,29,86,0)), 'configured full cut follows line and dot feeds');
+  assert.ok(receipt.includes('UNSETTLED BILL' + String.fromCharCode(27,100,2,27,74,100,29,86,0)), 'receipt footer has two blank lines before the feed and cut');
 
-  const orderTicket = toEscPosPayload('ORDER TICKET', { feedLines: 1 });
-  assert.ok(orderTicket.endsWith(String.fromCharCode(27, 100, 1, 29, 86, 1)), 'order tickets cut after one short feed line');
-  assert.equal(estimateThermalFeedLines(Array.from({ length: 240 }, (_, i) => 'LONG BILL ITEM ' + (i + 1)).join('\n')), 1);
+  const orderTicket = toEscPosPayload('ORDER TICKET', { feedLines: 2 });
+  assert.ok(orderTicket.endsWith(twoFeedAndCut), 'order tickets use the shared feed and cutter sequence');
+  assert.equal(estimateThermalFeedLines(Array.from({ length: 240 }, (_, i) => 'LONG BILL ITEM ' + (i + 1)).join('\n')), 2);
 });
 
 test('long item names and amount fields are wrapped, never sliced off', () => {

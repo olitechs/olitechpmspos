@@ -1,3 +1,6 @@
+import { buildEscPosPayload } from './escposJob.js';
+export { finishPrintJob } from './escposJob.js';
+
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
 }[char]));
@@ -378,22 +381,14 @@ export function buildFinalReceiptText(settings = {}, data = {}, { printer = {}, 
   return lines.join('\n');
 }
 export function thermalTextToHtml(text) {
-  return '<pre style="margin:0;padding:0;background:white;color:black;white-space:pre-wrap;font-family:monospace">' + escapeHtml(text) + '</pre>';
+  return '<pre style="margin:0;padding:0 0 2em;background:white;color:black;white-space:pre-wrap;font-family:monospace">' + escapeHtml(text) + '</pre>';
 }
 
 export function estimateThermalFeedLines() {
-  // The cutter is positioned immediately after the footer; do not add a length-based blank tail.
-  return 1;
+  // Leave approximately two blank lines after the footer before the cutter.
+  return 2;
 }
 
 export function toEscPosPayload(text, options = {}) {
-  const body = String(text ?? '').replace(/\r/g, '').replace(/\n+$/g, '');
-  const requestedFeed = Number(options.feedLines);
-  const feedLines = Number.isInteger(requestedFeed)
-    ? Math.max(1, Math.min(4, requestedFeed))
-    : estimateThermalFeedLines(body);
-  const initialize = options.initialize === false ? '' : '\x1B\x40';
-  const cut = options.partialCut === true ? '\x1D\x56\x42\x00' : '\x1D\x56\x01';
-  return initialize + '\x1B\x61\x00' + body + '\n' +
-    '\x1B\x64' + String.fromCharCode(feedLines) + cut;
+  return buildEscPosPayload(text, options);
 }

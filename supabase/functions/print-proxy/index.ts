@@ -1,3 +1,4 @@
+import { finishPrintJob } from '../../../src/services/escposJob.js';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
@@ -25,8 +26,6 @@ const escPos = {
   boldOff: new Uint8Array([0x1b, 0x45, 0x00]),
   alignCenter: new Uint8Array([0x1b, 0x61, 0x01]),
   alignLeft: new Uint8Array([0x1b, 0x61, 0x00]),
-  cut: new Uint8Array([0x1d, 0x56, 0x00]),
-  lf: new Uint8Array([0x0a]),
 };
 
 const encoder = new TextEncoder();
@@ -70,10 +69,10 @@ function normaliseText(value: unknown) {
     .trim();
 }
 
-function buildPayload({ text, test = false }: { text?: unknown; test?: boolean }) {
+function buildPayload({ text, test = false, printSettings = {} }: { text?: unknown; test?: boolean; printSettings?: Record<string, unknown> }) {
   const body = normaliseText(text);
   const stamp = new Date().toLocaleString('en-KE');
-  const header = test
+  const content = test
     ? concat(
         escPos.init,
         escPos.alignCenter,
@@ -84,20 +83,15 @@ function buildPayload({ text, test = false }: { text?: unknown; test?: boolean }
         escPos.alignLeft,
         encoder.encode('Connection: DIRECT TCP\n'),
         encoder.encode(`Date: ${stamp}\n\n`),
-        encoder.encode('Printer test successful.\n'),
-        escPos.lf,
-        escPos.lf,
-        escPos.cut,
+        encoder.encode('Printer test successful.'),
       )
     : concat(
         escPos.init,
         escPos.alignLeft,
-        encoder.encode(body + '\n'),
-        escPos.lf,
-        escPos.lf,
-        escPos.cut,
+        encoder.encode(body),
       );
-  return header;
+  const ending = encoder.encode(finishPrintJob(printSettings));
+  return concat(content, ending);
 }
 
 async function writeTcp(host: string, port: number, payload: Uint8Array, timeoutMs = 6000) {
@@ -178,7 +172,7 @@ Deno.serve(async (req) => {
       }, 400);
     }
 
-    const payload = buildPayload({ text: body?.text, test: action === 'test' });
+    const payload = buildPayload({ text: body?.text, test: action === 'test', printSettings: body?.printSettings || {} });
     await writeTcp(savedHost, savedPort, payload);
 
     return corsJson({

@@ -11,6 +11,9 @@ test('printer test buttons use the real template-backed print service without cr
   assert.match(settings, /Test Print – Receipt/);
   assert.match(settings, /printTestOrder/);
   assert.match(settings, /printTestReceipt/);
+  assert.match(settings, /printCutCalibrationTest/);
+  assert.match(settings, /Cut Calibration Test/);
+  assert.match(service, /export async function printCutCalibrationTest/);
   assert.match(service, /export async function printTestOrder/);
   assert.match(service, /export async function printTestReceipt/);
   assert.match(service, /persistJob: false/);
@@ -41,7 +44,7 @@ test('unsettled bill print remains separate from payment and receipt persistence
   const templates = await read('./printTemplates.js');
   const bill = await read('../components/pos/BillPayment.jsx');
   assert.match(service, /type === 'UNSETTLED'/);
-  assert.match(templates, /Payment pending/);
+  assert.match(templates, /buildEscPosPayload\(text, options\)/);
   assert.match(bill, /printReceipt\('UNSETTLED'/);
   assert.doesNotMatch(service, /from\(['"]pos_receipts['"]\)/);
 });
@@ -58,19 +61,18 @@ test('unsettled duplicate copies are sent as independently cut print jobs', asyn
   assert.ok(!unsettledBlock.includes('copyTexts.join'));
 });
 
-test('KOT and BOT jobs preserve one footer clearance line before cutting', async () => {
+test('KOT and BOT jobs use the shared configurable feed and cut finalizer', async () => {
   const service = await read('./printService.js');
   const routing = await read('./printRoutingService.js');
   const browser = await read('./printerService.js');
   const agent = await read('../../tools/print-agent/server.mjs');
-  assert.ok(service.includes('toEscPosPayload(thermalText, { feedLines: 1 })'));
+  assert.ok(service.includes('toEscPosPayload(thermalText, getPrinterPrintSettings(printer))'));
   assert.ok(service.includes('thermalBase64,'));
-  assert.ok(routing.includes('{ feedLines: 1 }'));
-  assert.ok(browser.includes('const feedLines = 1;'));
-  assert.ok(browser.includes("encode(body + '\\n'),"), 'browser transport preserves one clearance line before the feed command');
-  assert.ok(agent.includes('return 1;'));
-  assert.ok(agent.includes("enc.encode(body + '\\n'),"), 'local agent preserves one clearance line before the feed command');
-  assert.ok(agent.includes('finish(null), 1800'));
+  assert.ok(routing.includes('getPrinterPrintSettings(printer)'));
+  assert.ok(browser.includes('buildEscPosPayload(text, settings)'));
+  assert.ok(browser.includes("import { buildEscPosPayload } from './escposJob.js'"));
+  assert.ok(agent.includes('buildEscPosPayload(body, settings)'));
+  assert.ok(agent.includes("socket.once('drain'"));
 });
 
 
@@ -87,15 +89,14 @@ test('final receipt copies are separate jobs with an independent feed and cut', 
   const templates = await read('./printTemplates.js');
   const finalBlock = service.slice(service.indexOf("  for (const printer of targets) {", service.indexOf("return { ok: results.length")), service.indexOf("\n  return { ok: results.every", service.indexOf("return { ok: results.length")));
   assert.ok(finalBlock.includes('for (const copy of copies)'));
-  assert.ok(finalBlock.includes('feedLines: 1'));
+  assert.ok(finalBlock.includes('getPrinterPrintSettings(printer)'));
   assert.ok(finalBlock.includes("copyType: copy.toLowerCase()"));
   assert.ok(!finalBlock.includes('copyTexts.join'));
-  assert.match(templates, /Math\.min\(4, requestedFeed\)/);
 });
 
-test('unsettled receipt uses one feed line and a full cut', async () => {
+test('unsettled receipt uses two feed lines and a full cut', async () => {
   const service = await read('./printService.js');
-  assert.ok(service.includes('feedLines: 1'));
-  assert.ok(service.includes('partialCut: false'));
+  assert.ok(service.includes('getPrinterPrintSettings(printer)'));
+  assert.ok(service.includes('buildLogoEscPosBase64'));
   assert.ok(!service.includes('partialCut: true'));
 });
