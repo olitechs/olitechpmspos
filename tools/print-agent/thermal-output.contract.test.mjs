@@ -12,6 +12,6 @@ test('print agent preserves centered leading spaces and serializes printer jobs 
   assert.ok(source.includes('writeTcpNow(host, port, payload)'));
   assert.ok(source.includes('const key = host + \':\' + port;'));
   assert.ok(source.includes('setTimeout(() => finish(null), 1800)'));
-  assert.ok(source.includes('return 1;'), 'thermal jobs receive an extended feed margin before cutting');
+  assert.ok(source.includes('return 1;'), 'thermal jobs use one feed line before cutting');
   assert.ok(!source.includes('socket.write(payload, (err) => finish(err || null))'));
 });
