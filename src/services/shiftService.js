@@ -2,9 +2,6 @@ import { supabase } from '@/lib/supabaseClient';
 import * as XLSX from 'xlsx';
 import { buildShiftSalesSummary, normalizeShiftPaymentMethod } from '@/services/shiftReportCore';
 
-const KENYA_DATE = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Nairobi' });
-const today = () => KENYA_DATE.format(new Date());
-
 export const shiftService = {
   async getCurrentShift(propertyId) {
     const { data, error } = await supabase.rpc('fn_current_pos_shift', { p_property_id: propertyId });
