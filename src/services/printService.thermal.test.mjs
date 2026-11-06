@@ -63,11 +63,11 @@ test('KOT and BOT jobs include an extended feed margin before the cutter', async
   const routing = await read('./printRoutingService.js');
   const browser = await read('./printerService.js');
   const agent = await read('../../tools/print-agent/server.mjs');
-  assert.ok(service.includes('toEscPosPayload(thermalText, { feedLines: 8 })'));
+  assert.ok(service.includes('toEscPosPayload(thermalText, { feedLines: 12 })'));
   assert.ok(service.includes('thermalBase64,'));
-  assert.ok(routing.includes('{ feedLines: 8 }'));
-  assert.ok(browser.includes('8 + Math.floor'));
-  assert.ok(agent.includes('8 + Math.floor'));
+  assert.ok(routing.includes('{ feedLines: 12 }'));
+  assert.ok(browser.includes('12 + Math.floor'));
+  assert.ok(agent.includes('12 + Math.floor'));
   assert.ok(agent.includes('finish(null), 1200'));
 });
 
@@ -78,4 +78,21 @@ test('POS snapshots sent order lines before asynchronous printer dispatch', asyn
   const dispatch = pos.indexOf('printResult = await dispatchTickets();');
   assert.ok(snapshot >= 0 && dispatch > snapshot, 'sent snapshot must be persisted before printer I/O');
   assert.ok(!pos.slice(dispatch).includes('if (!(await persistSentSnapshot())) return;'), 'retry must not mutate the sent snapshot again');
+});
+
+test('final receipt copies are separate jobs with an independent feed and cut', async () => {
+  const service = await read('./printService.js');
+  const templates = await read('./printTemplates.js');
+  const start = service.indexOf("  for (const printer of targets) {", service.indexOf("if (type === 'UNSETTLED')"));
+  const finalBlock = service.slice(service.indexOf("  for (const printer of targets) {", service.indexOf("return { ok: results.length")), service.indexOf("\n  return { ok: results.every", service.indexOf("return { ok: results.length")));
+  assert.ok(finalBlock.includes('for (const copy of copies)'));
+  assert.ok(finalBlock.includes('feedLines: 12'));
+  assert.ok(finalBlock.includes("copyType: copy.toLowerCase()"));
+  assert.ok(!finalBlock.includes('copyTexts.join'));
+  assert.match(templates, /Math\.min\(14, requestedFeed\)/);
+});
+
+test('unsettled receipt feed margin cannot be reduced below twelve lines', async () => {
+  const service = await read('./printService.js');
+  assert.ok(service.includes('Math.max(12, Number(settings.unsettled_receipt_feed_lines ?? 5))'));
 });
