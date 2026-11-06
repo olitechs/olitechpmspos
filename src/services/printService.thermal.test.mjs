@@ -58,15 +58,15 @@ test('unsettled duplicate copies are sent as independently cut print jobs', asyn
   assert.ok(!unsettledBlock.includes('copyTexts.join'));
 });
 
-test('KOT and BOT jobs preserve one footer clearance line before cutting', async () => {
+test('KOT and BOT jobs leave two blank footer lines before cutting', async () => {
   const service = await read('./printService.js');
   const routing = await read('./printRoutingService.js');
   const browser = await read('./printerService.js');
   const agent = await read('../../tools/print-agent/server.mjs');
-  assert.ok(service.includes('toEscPosPayload(thermalText, { feedLines: 1 })'));
+  assert.ok(service.includes('toEscPosPayload(thermalText, { feedLines: 2 })'));
   assert.ok(service.includes('thermalBase64,'));
-  assert.ok(routing.includes('{ feedLines: 1 }'));
-  assert.ok(browser.includes('const feedLines = 1;'));
+  assert.ok(routing.includes('{ feedLines: 2 }'));
+  assert.ok(browser.includes('const feedLines = 2;'));
   assert.ok(browser.includes("encode(body + '\\n'),"), 'browser transport preserves one clearance line before the feed command');
   assert.ok(agent.includes('return 1;'));
   assert.ok(agent.includes("enc.encode(body + '\\n'),"), 'local agent preserves one clearance line before the feed command');
@@ -87,15 +87,15 @@ test('final receipt copies are separate jobs with an independent feed and cut', 
   const templates = await read('./printTemplates.js');
   const finalBlock = service.slice(service.indexOf("  for (const printer of targets) {", service.indexOf("return { ok: results.length")), service.indexOf("\n  return { ok: results.every", service.indexOf("return { ok: results.length")));
   assert.ok(finalBlock.includes('for (const copy of copies)'));
-  assert.ok(finalBlock.includes('feedLines: 1'));
+  assert.ok(finalBlock.includes('feedLines: 2'));
   assert.ok(finalBlock.includes("copyType: copy.toLowerCase()"));
   assert.ok(!finalBlock.includes('copyTexts.join'));
   assert.match(templates, /Math\.min\(4, requestedFeed\)/);
 });
 
-test('unsettled receipt uses one feed line and a full cut', async () => {
+test('unsettled receipt uses two feed lines and a full cut', async () => {
   const service = await read('./printService.js');
-  assert.ok(service.includes('feedLines: 1'));
+  assert.ok(service.includes('feedLines: 2'));
   assert.ok(service.includes('partialCut: false'));
   assert.ok(!service.includes('partialCut: true'));
 });
