@@ -69,6 +69,9 @@ test('order ticket includes station metadata, modifiers and prep notes without p
   const output = stripEscPos(buildOrderTicketText({
     propertyName: 'Coastal Hotel',
     orderNumber: 'ORD-001',
+    orderName: 'Fabio GM',
+    employeeName: 'Owner',
+    posName: 'POS 3',
     table: 'T-04',
     waiter: 'Amina',
     diningOption: 'Take Away',
@@ -89,7 +92,9 @@ test('order ticket includes station metadata, modifiers and prep notes without p
   assert.ok(output.split('\n').every(line => line.length <= 42), 'all order ticket lines fit safe 80mm paper width');
   assert.ok(/\*\*\* KITCHEN POS \*\*\*/.test(output), 'order ticket station header is centered');
   assert.ok(output.includes('          Thank you for visiting'), 'order ticket footer is centered');
-  assert.match(output, /Employee: Amina/);
+  assert.match(output, /Fabio GM/);
+  assert.match(output, /Employee: Owner/);
+  assert.match(output, /POS: POS 3/);
   assert.match(output, /TAKE AWAY/);
   assert.match(output, /2 x Grilled Fish/);
   assert.match(output, /Extra Lemon/);
