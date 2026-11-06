@@ -148,7 +148,7 @@ export function buildOrderTicketText(order = {}, { printer = {}, settings = {}, 
   for (const item of (Array.isArray(items) ? items : [])) {
     const qty = itemQuantity(item);
     const name = safe(itemName(item));
-    lines.push(...wrapThermalText(qty + ' x ' + name, width).map(emphasize));
+    lines.push(...wrapThermalText(qty + ' x ' + name, width));
     const modifiers = (Array.isArray(item.modifiers) ? item.modifiers : []).map(modifier => safe(modifierLabel(modifier))).filter(Boolean);
     for (const modifier of modifiers) lines.push(...wrapThermalText('  + ' + modifier, width));
     const note = safe(item.prepNote || item.prep_note || item.notes || item.note || item.kitchen_note || '');
@@ -379,7 +379,7 @@ export function buildFinalReceiptText(settings = {}, data = {}, { printer = {}, 
   return lines.join('\n');
 }
 export function thermalTextToHtml(text) {
-  return '<pre style="margin:0;padding:0 0 2em;background:white;color:black;white-space:pre-wrap;font-family:monospace">' + escapeHtml(text) + '</pre>';
+  return '<pre style="margin:0;padding:0 0 2em;background:white;color:black;white-space:pre-wrap;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:400;line-height:1.35;letter-spacing:0.05px;font-kerning:normal;-webkit-font-smoothing:antialiased">' + escapeHtml(text) + '</pre>';
 }
 
 export function estimateThermalFeedLines() {
