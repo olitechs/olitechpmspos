@@ -261,11 +261,11 @@ test('thermal payload cuts immediately after a minimal footer feed', () => {
   assert.equal(shortBill.charCodeAt(1), 64);
   const oneFeedAndCut = String.fromCharCode(27, 100, 1, 29, 86, 1);
   assert.ok(shortBill.endsWith(oneFeedAndCut));
-  assert.ok(shortBill.includes('ORDER TICKET' + oneFeedAndCut), 'no extra newline is inserted before the single cutter feed');
+  assert.ok(shortBill.includes('ORDER TICKET\n' + oneFeedAndCut), 'one clearance line follows the final printed line before the cutter feed');
 
   const receipt = toEscPosPayload('UNSETTLED BILL', { feedLines: 1, partialCut: false });
   assert.ok(receipt.endsWith(oneFeedAndCut), 'one feed command must immediately precede a full cut');
-  assert.ok(receipt.includes('UNSETTLED BILL' + oneFeedAndCut), 'receipt footer is followed by one feed only');
+  assert.ok(receipt.includes('UNSETTLED BILL\n' + oneFeedAndCut), 'receipt footer has one clearance line before the feed and cut');
 
   const orderTicket = toEscPosPayload('ORDER TICKET', { feedLines: 1 });
   assert.ok(orderTicket.endsWith(String.fromCharCode(27, 100, 1, 29, 86, 1)), 'order tickets cut after one short feed line');

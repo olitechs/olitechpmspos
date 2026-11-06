@@ -58,7 +58,7 @@ test('unsettled duplicate copies are sent as independently cut print jobs', asyn
   assert.ok(!unsettledBlock.includes('copyTexts.join'));
 });
 
-test('KOT and BOT jobs use a minimal footer-to-cutter feed', async () => {
+test('KOT and BOT jobs preserve one footer clearance line before cutting', async () => {
   const service = await read('./printService.js');
   const routing = await read('./printRoutingService.js');
   const browser = await read('./printerService.js');
@@ -67,9 +67,9 @@ test('KOT and BOT jobs use a minimal footer-to-cutter feed', async () => {
   assert.ok(service.includes('thermalBase64,'));
   assert.ok(routing.includes('{ feedLines: 1 }'));
   assert.ok(browser.includes('const feedLines = 1;'));
-  assert.ok(browser.includes('encode(body),'), 'browser transport must not add a second newline before the feed command');
+  assert.ok(browser.includes("encode(body + '\\n'),"), 'browser transport preserves one clearance line before the feed command');
   assert.ok(agent.includes('return 1;'));
-  assert.ok(agent.includes('enc.encode(body),'), 'local agent must not add a second newline before the feed command');
+  assert.ok(agent.includes("enc.encode(body + '\\n'),"), 'local agent preserves one clearance line before the feed command');
   assert.ok(agent.includes('finish(null), 1800'));
 });
 
