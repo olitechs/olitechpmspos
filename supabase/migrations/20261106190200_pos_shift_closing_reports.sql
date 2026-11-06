@@ -101,13 +101,13 @@ begin
   if not (
     public.is_platform_owner()
     or public.property_role(p_property_id) in ('owner', 'admin', 'manager', 'cashier', 'waiter')
-    or public.current_staff_role(p_property_id) in ('hotel_admin', 'super_admin', 'cashier', 'waiter', 'pos_staff', 'fb_manager', 'receptionist', 'front_desk')
+    or public.current_staff_role(p_property_id) in ('hotel_admin', 'super_admin', 'cashier', 'waiter', 'pos_staff', 'fb_manager', 'receptionist', 'front_desk', 'manager', 'property_manager', 'general_manager')
     or exists (
       select 1 from public.staff s
       where s.property_id = p_property_id and s.is_active = true
         and (s.user_id = auth.uid() or lower(coalesce(s.email, '')) = lower(coalesce(auth.jwt() ->> 'email', '')))
         and 'pos' = any(coalesce(s.assigned_modules, array[]::text[]))
-        and lower(coalesce(s.role, '')) in ('hotel_admin', 'super_admin', 'cashier', 'waiter', 'pos_staff', 'fb_manager', 'receptionist', 'front_desk')
+        and lower(coalesce(s.role, '')) in ('hotel_admin', 'super_admin', 'cashier', 'waiter', 'pos_staff', 'fb_manager', 'receptionist', 'front_desk', 'manager', 'property_manager', 'general_manager')
     )
   ) then raise exception 'Authorised POS staff access required to open a shift.'; end if;
 
