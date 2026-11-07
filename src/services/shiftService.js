@@ -9,10 +9,14 @@ export const shiftService = {
     return data || null;
   },
 
-  async openShift({ propertyId, openingCash = 0, notes = '' }) {
+  async openShift({ propertyId, openingCash, notes = '' }) {
+    const amount = Number(openingCash);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new Error('A starting cash float greater than zero is required to open a shift.');
+    }
     const { data, error } = await supabase.rpc('fn_open_pos_shift', {
       p_property_id: propertyId,
-      p_opening_cash: Number(openingCash || 0),
+      p_opening_cash: amount,
       p_notes: notes || null,
     });
     if (error) throw new Error(error.message);

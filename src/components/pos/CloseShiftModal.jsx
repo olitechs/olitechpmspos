@@ -9,7 +9,52 @@ import PinPad from'@/components/auth/PinPad';
 
 const money=n=>Number(n||0).toLocaleString('en-KE',{minimumFractionDigits:2,maximumFractionDigits:2});
 const managerRoles = new Set(['hotel_admin','super_admin','fb_manager','owner','admin','manager','property_manager','general_manager']);
-export function OpenShiftModal({propertyId,onOpened}){const[cash,setCash]=useState('');const[notes,setNotes]=useState('');const[busy,setBusy]=useState(false);const[error,setError]=useState('');const staff=getSessionStaff();const open=async()=>{setBusy(true);setError('');try{const s=await shiftService.openShift({propertyId,openingCash:Number(cash||0),notes});onOpened?.(s);}catch(e){setError(e.message||'Unable to open shift.')}finally{setBusy(false)}};return <div className="fixed inset-0 z-[270] flex items-center justify-center bg-[rgba(34,48,57,0.25)] p-4"><div className="w-full max-w-md rounded-3xl bg-[var(--surface)] p-6 shadow-2xl"><div className="text-xl font-medium">Open Shift</div><p className="mt-1 text-sm text-[var(--text-muted)]">Start today’s POS cashier shift before taking payments.</p><div className="mt-5 space-y-3"><div><label className="text-xs font-medium  text-[var(--text-muted)]">Opening Cash (Float)</label><input autoFocus value={cash} onChange={e=>setCash(e.target.value)} type="number" min="0" placeholder="5000" className="mt-1 w-full rounded-xl border border-[var(--border)] p-3 text-lg font-medium"/></div><div className="rounded-xl bg-[var(--canvas)] p-3 text-xs"><b>Cashier:</b> {staff?.full_name||'Current staff'}<br/><b>Date:</b> {new Date().toLocaleDateString('en-KE')}</div><textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Opening notes (optional)" className="min-h-20 w-full rounded-xl border border-[var(--border)] p-3 text-sm"/>{error&&<div className="rounded-xl bg-[var(--danger-soft)] p-3 text-sm font-medium text-[var(--danger-text)]">{error}</div>}<button disabled={busy} onClick={open} className="w-full rounded-xl bg-[var(--primary)] p-3.5 text-sm font-medium text-primary-foreground">{busy?'Opening…':'Open Shift'}</button></div></div></div>}
+export function OpenShiftModal({ propertyId, onOpened }) {
+  const [cash, setCash] = useState('');
+  const [notes, setNotes] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const staff = getSessionStaff();
+  const openingFloat = Number(cash);
+  const validFloat = cash.trim() !== '' && Number.isFinite(openingFloat) && openingFloat > 0;
+
+  const open = async () => {
+    if (!validFloat) {
+      setError('Enter a starting cash float greater than zero before opening the shift.');
+      return;
+    }
+    setBusy(true);
+    setError('');
+    try {
+      const shift = await shiftService.openShift({ propertyId, openingCash: openingFloat, notes });
+      onOpened?.(shift);
+    } catch (e) {
+      setError(e.message || 'Unable to open shift.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[270] flex items-center justify-center bg-[rgba(34,48,57,0.25)] p-4">
+      <div className="w-full max-w-md rounded-3xl bg-[var(--surface)] p-6 shadow-2xl">
+        <div className="text-xl font-medium">Open Shift</div>
+        <p className="mt-1 text-sm text-[var(--text-muted)]">Enter the cash float placed in the drawer before taking payments.</p>
+        <div className="mt-5 space-y-3">
+          <div>
+            <label htmlFor="pos-opening-float" className="text-xs font-medium text-[var(--text-muted)]">Opening Cash Float (KES) <span aria-hidden="true">*</span></label>
+            <input id="pos-opening-float" autoFocus required value={cash} onChange={e => setCash(e.target.value)} type="number" inputMode="decimal" min="0.01" step="0.01" placeholder="5000.00" aria-invalid={cash !== '' && !validFloat} className="mt-1 w-full rounded-xl border border-[var(--border)] p-3 text-lg font-medium" />
+            <p className="mt-1 text-xs text-[var(--text-muted)]">A positive starting float is required. Zero and blank amounts are not accepted.</p>
+          </div>
+          <div className="rounded-xl bg-[var(--canvas)] p-3 text-xs"><b>Cashier:</b> {staff?.full_name || 'Current staff'}<br /><b>Date:</b> {new Date().toLocaleDateString('en-KE')}</div>
+          <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Opening notes (optional)" className="min-h-20 w-full rounded-xl border border-[var(--border)] p-3 text-sm" />
+          {error && <div role="alert" className="rounded-xl bg-[var(--danger-soft)] p-3 text-sm font-medium text-[var(--danger-text)]">{error}</div>}
+          <button disabled={busy || !validFloat} onClick={open} className="w-full rounded-xl bg-[var(--primary)] p-3.5 text-sm font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40">{busy ? 'Opening…' : 'Open Shift'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function CloseShiftModal({shift,onClosed,onClose}){
  const{user}=useAuth();const propertyId=user?.property?.id;const[report,setReport]=useState(null);const[openTables,setOpenTables]=useState([]);const[tablesLoaded,setTablesLoaded]=useState(false);const[tableLoadError,setTableLoadError]=useState('');const[counted,setCounted]=useState('');const[notes,setNotes]=useState('');const[busy,setBusy]=useState(false);const[error,setError]=useState('');const[pinOpen,setPinOpen]=useState(false);const[pinError,setPinError]=useState('');
@@ -50,6 +95,6 @@ export default function CloseShiftModal({shift,onClosed,onClose}){
    <textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Closing notes (optional)" className="mt-4 min-h-20 w-full rounded-xl border border-[var(--border)] p-3 text-sm"/>
    </>}
   </div>
-  <div className="flex flex-wrap justify-between gap-2 border-t border-[var(--border)] px-5 py-4"><button disabled={!report||busy} onClick={()=>{const r={...report,countedCash:Number(counted||0),variance};exportShiftToExcel(r)}} className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] px-4 py-2.5 text-sm font-medium disabled:opacity-40"><Download size={16}/>Export Excel</button><div className="flex gap-2"><button onClick={onClose} className="rounded-xl border border-[var(--border)] px-4 py-2.5 text-sm font-medium">Cancel</button><button disabled={!report||busy||counted===''||!tablesLoaded||!!tableLoadError||openTables.length>0} onClick={()=>Math.abs(variance)>500&&!canApproveWithoutStaffPin?setPinOpen(true):doClose(Math.abs(variance)>500&&canApproveAsPropertyAdmin)} className="inline-flex items-center gap-2 rounded-xl bg-[var(--primary)] px-5 py-2.5 text-sm font-medium text-primary-foreground disabled:opacity-40"><LockKeyhole size={16}/>{busy?'Closing…':Math.abs(variance)>500&&!canApproveAsPropertyAdmin?'Manager PIN · Print & Close':'Print & Close Shift'}</button></div></div>
+  <div className="flex flex-wrap justify-between gap-2 border-t border-[var(--border)] px-5 py-4"><button disabled={!report||busy} onClick={()=>{const r={...report,countedCash:Number(counted||0),variance};exportShiftToExcel(r)}} className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] px-4 py-2.5 text-sm font-medium disabled:opacity-40"><Download size={16}/>Export Excel</button><div className="flex gap-2"><button onClick={onClose} className="rounded-xl border border-[var(--border)] px-4 py-2.5 text-sm font-medium">Cancel</button><button disabled={!report||busy||counted===''||!tablesLoaded||!!tableLoadError||openTables.length>0} onClick={()=>Math.abs(variance)>500&&!canApproveWithoutStaffPin?setPinOpen(true):doClose(Math.abs(variance)>500&&canApproveWithoutStaffPin)} className="inline-flex items-center gap-2 rounded-xl bg-[var(--primary)] px-5 py-2.5 text-sm font-medium text-primary-foreground disabled:opacity-40"><LockKeyhole size={16}/>{busy?'Closing…':Math.abs(variance)>500&&!canApproveWithoutStaffPin?'Manager PIN · Print & Close':'Print & Close Shift'}</button></div></div>
  </div></div>;
 }

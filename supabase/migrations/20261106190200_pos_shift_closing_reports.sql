@@ -97,7 +97,9 @@ declare
   v_seq integer;
 begin
   if auth.uid() is null then raise exception 'Authentication required.'; end if;
-  if p_opening_cash < 0 then raise exception 'Opening cash cannot be negative.'; end if;
+  if p_opening_cash is null or p_opening_cash <= 0 then
+    raise exception 'A starting cash float greater than zero is required to open a shift.';
+  end if;
   if not (
     public.is_platform_owner()
     or public.property_role(p_property_id) in ('owner', 'admin', 'manager', 'cashier', 'waiter')
