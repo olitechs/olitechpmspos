@@ -4,19 +4,6 @@ import { Mail, Lock, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import BrandLogo from '@/components/ui/BrandLogo';
 
-function BrandMark() {
-  return (
-    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--primary-soft)] text-[var(--text)] shadow-sm" aria-hidden="true">
-      <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M4 21h16" />
-        <path d="M6 21V9l6-4 6 4v12" />
-        <path d="M9 21v-5h6v5" />
-        <path d="M9 11h1M14 11h1M9 14h1M14 14h1" />
-      </svg>
-    </span>
-  );
-}
-
 function FieldIcon({ children }) {
   return <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">{children}</span>;
 }
