@@ -21,6 +21,9 @@ const pmsService = read('../../services/pmsService.js');
 const distributionOps = read('../../components/modules/DistributionOps.jsx');
 const publicHome = read('../../pages/PublicHome.jsx');
 const authService = read('../../services/authService.js');
+const storekeeperDashboard = read('../../pages/StorekeeperDashboard.jsx');
+const storekeeperService = read('../../services/storekeeperDashboardService.js');
+const storePage = read('../../pages/Store.jsx');
 
 function routePathExists(path) {
   if (path === '/backoffice') return /path="\/backoffice"/.test(app);
@@ -78,10 +81,41 @@ test('POSApp contains resolved source and preserves route and subscription guard
   assert.match(posApp, /useEffect\(\(\) => \{\s*setActiveModule\(routeModule\);\s*\}, \[routeModule\]\)/);
 });
 
-test('legacy Store Settings URL redirects instead of duplicating the All Stores page', () => {
+test('legacy Store Settings URL redirects while the Stores dashboard has a separate management route', () => {
   assert.ok(app.includes('<Route path="settings" element={<Navigate to="/stores" replace/>}/>'));
   assert.ok(!navArchitecture.includes('Store Settings'));
-  assert.ok(navArchitecture.includes("['All Stores','/stores','store']"));
+  assert.ok(navArchitecture.includes("['Dashboard','/stores','dashboard'"));
+  assert.ok(navArchitecture.includes("['Manage stores','/stores/manage','store'"));
+  assert.match(app, /index element={<StorekeeperDashboard\/>}/);
+  assert.match(shell, /STORES_NAV\.filter\(\(\[, , , roles\]\) => !roles \|\| roles\.includes\(role\)\)/);
+});
+
+test('Storekeeper KPI/action routes target registered operational screens', () => {
+  for (const route of [
+    'stock', 'stock-alerts', 'purchasing', 'transfers', 'inventory/counts',
+    'inventory/history', 'inventory/valuation', 'reports/sales', 'reports/inventory', 'requisitions',
+  ]) assert.ok(app.includes(`path="${route}"`), `missing Stores route: ${route}`);
+  assert.match(app, /path="transfers" element={<POSApp initialModule="transfers" embedded workspaceModule="stores"\/>}/);
+  assert.match(app, /path="purchasing" element={<Store initialTab="purchases"\/>}/);
+  assert.match(storekeeperDashboard, /to="\/stores\/purchasing"[^>]*>Raise PO/);
+  assert.match(app, /path="stock" element={<Store initialTab="overview"\/>}/);
+  assert.match(storePage, /const routeTab = TABS\.some\(\(\[id\]\) => id === searchParams\.get\('tab'\)\) \? searchParams\.get\('tab'\) : initialTab/);
+  assert.match(storePage, /useState\(searchParams\.get\('search'\) \|\| ''\)/);
+});
+
+test('Storekeeper dashboard exposes required filters, operational sections and honest data limitations', () => {
+  for (const text of ['Active business', 'Stock location', 'Period', 'Department', 'Global item search', 'Stock alerts', 'Today’s deliveries', 'Open requisitions', 'Transfers awaiting confirmation', 'Recent stock movements', 'Top 10 selling items', 'Top 10 wasted items', 'Top 10 highest-value items']) {
+    assert.ok(storekeeperDashboard.includes(text), `missing dashboard section: ${text}`);
+  }
+  assert.match(storekeeperDashboard, /function KpiCard\([\s\S]*?<Link/);
+  assert.match(storekeeperDashboard, /COGS snapshots are missing/);
+  assert.match(storekeeperDashboard, /Dismiss with note/);
+  assert.match(storekeeperDashboard, /No requisition entity\/workflow/);
+  assert.match(storekeeperDashboard, /to="\/stores\/stock\?tab=products/);
+  assert.doesNotMatch(storekeeperDashboard, /\/stores\/manage\?tab=products/);
+  assert.match(storekeeperService, /\.eq\('property_id', propertyId\)/);
+  assert.match(storekeeperService, /salesTodayDetail/);
+  assert.doesNotMatch(storekeeperDashboard, /#[0-9a-fA-F]{3,8}\b/);
 });
 
 test('each workspace opens in its own named browser window', () => {

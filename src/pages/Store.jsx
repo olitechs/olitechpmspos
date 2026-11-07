@@ -11,6 +11,7 @@ import StockMovements from '@/components/store/StockMovements';
 import UsageForm from '@/components/store/UsageForm';
 import { Modal } from '@/components/store/SupplierList';
 import { getSessionStaff } from '@/services/authService';
+import { useSearchParams } from 'react-router-dom';
 
 const TABS = [
   ['overview','Stock Overview'], ['products','Products'], ['suppliers','Suppliers'], ['purchases','Purchases / GRN'], ['usage','Stock Usage'], ['alerts','Alerts'],
@@ -19,6 +20,8 @@ const ROLES = ['store_manager','fb_manager','general_manager','admin','owner','a
 const normalizeRole = (r) => String(r || '').toLowerCase().replace(/\s+/g,'_');
 
 export default function Store({ initialTab = 'overview' }) {
+  const [searchParams] = useSearchParams();
+  const routeTab = TABS.some(([id]) => id === searchParams.get('tab')) ? searchParams.get('tab') : initialTab;
   const { user } = useAuth();
   const propertyId = user?.property?.id;
   const sessionStaff = getSessionStaff();
@@ -28,11 +31,11 @@ export default function Store({ initialTab = 'overview' }) {
   const showCost = ['store_manager','fb_manager','hotel_admin','super_admin','owner','admin','administrator','manager'].includes(role) || user?.isPlatformOwner;
   const readOnly = role === 'front_office_manager';
   const canWrite = !readOnly && ['store_manager','fb_manager','hotel_admin','super_admin','owner','admin','administrator','manager'].includes(role);
-  const [tab,setTab]=useState(initialTab);
-  useEffect(()=>{ if(initialTab) setTab(initialTab); },[initialTab]);
+  const [tab,setTab]=useState(routeTab);
+  useEffect(()=>{ if(routeTab) setTab(routeTab); },[routeTab]);
   const [products,setProducts]=useState([]), [suppliers,setSuppliers]=useState([]), [movements,setMovements]=useState([]), [alerts,setAlerts]=useState([]), [purchases,setPurchases]=useState([]);
   const [loading,setLoading]=useState(true), [error,setError]=useState('');
-  const [search,setSearch]=useState(''), [category,setCategory]=useState('all'), [location,setLocation]=useState('all');
+  const [search,setSearch]=useState(searchParams.get('search') || ''), [category,setCategory]=useState('all'), [location,setLocation]=useState('all');
   const [productModal,setProductModal]=useState(null); const [reportFrom,setReportFrom]=useState(''); const [reportTo,setReportTo]=useState(''); const [reportCategory,setReportCategory]=useState('all');
 
   const load = useCallback(async()=>{ if(!propertyId)return; setLoading(true); try { const filterCategory=isFnbManager?'F&B':category; const [ps,ss,ms,as,po]=await Promise.all([inventoryService.listProducts(propertyId,{category:filterCategory,location,search}),inventoryService.listSuppliers(propertyId),inventoryService.listMovements(propertyId),inventoryService.getAlerts(propertyId),inventoryService.listPurchases(propertyId)]); setProducts(ps);setSuppliers(ss);setMovements(ms);setAlerts(as);setPurchases(po);setError(''); } catch(e){setError(e.message);} finally{setLoading(false);} },[propertyId,category,location,search,isFnbManager]);

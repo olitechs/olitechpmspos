@@ -29,11 +29,18 @@ This feature branch contains the route/link audit fixes, POS-to-stock workflow d
 - Standardized visible product-name casing to exact `OliTechs` across the HTML title, UI, manifest, README and receipt/print copy. No app-owned email template was found; provider-managed auth email branding remains unverified outside this repository.
 - Added strict color/token and contrast checks plus the per-file audit in `docs/audit/COASTAL_LINEN_COLOR_AUDIT.md`.
 
+## Part 4 — Storekeeper Dashboard
+
+- Added `/stores` as the Storekeeper Dashboard landing page with role-gated Stores access, responsive KPI cards, a property-scoped data service, and explicit loading/empty/error/retry states. Dashboard cards and item results deep-link to existing inventory, purchasing, transfer, count, history, valuation, sales-report and item-management routes.
+- Added period, department, saved stock-location and global item/SKU/barcode-input filters; operational panels cover posted goods receipts, purchase orders, transfers and recent stock movements. Stock alerts include reorder/on-hand/recorded expiry and activity signals, prioritized with actions to open supported workflows.
+- Added sales-versus-recorded-use and department comparison charts, plus current valuation and top-item/wastage lists. Values use existing property-scoped APIs and are not replaced with sample data; estimates are labeled.
+- Kept the existing database schema unchanged. The current account context exposes one property, not a business/branch switcher; saved stock locations are product filters and movement rows do not consistently carry branch/location. COGS, historical valuation changes, expected/late deliveries, requisition queues, batch expiry, par levels, dismissal notes, price-jump baselines and several unusual-activity baselines remain unavailable or explicitly qualified because the current schema/APIs do not support them.
+
 ## Validation
 
 - `npm run lint` — passed.
 - `npm run typecheck` — passed.
-- `npm run test:architecture` — 166 passed, 0 failed.
+- `npm run test:architecture` — 179 passed, 0 failed.
 - `npm run build` — passed. Vite still reports a large-main-chunk advisory (>500 kB).
 - `npm run check:contrast` — required body/surface/room/deposit pairs passed. The user-mandated white-on-Paid and white-on-Not-paid pairs measure 2.99:1 and 2.52:1; they cannot meet WCAG AA without changing the specified colors, so they are explicitly flagged.
 - Local HTTP: `/`, `/manus-routes.json`, `/manifest.json` and `/olitechs-logo.svg` returned 200; all 65 source routes matched the manifest.
@@ -41,6 +48,7 @@ This feature branch contains the route/link audit fixes, POS-to-stock workflow d
 ## Remaining risks / review notes
 
 - Authenticated POS screens and tablet before/after screenshots could not be captured: no Supabase environment variables or test staff account were provided; the sandbox renders its safe setup gate. See `docs/audit/screenshots/local-preview-setup-gate.png` for the diagnostic, not as a POS screenshot.
+- Authenticated dashboard data rendering and staff-specific deep-link interaction likewise require a configured Supabase property and test staff account; source/contract checks and the production build passed, but no live account was available for an interactive session.
 - No printer hardware or workstation Print Agent was attached; printing was validated by source/contract tests only.
 - `v6/` is an inactive historical duplicate with 59 files containing 735 legacy palette references. It was not modified because repository guidance marks it inactive; verify it is not served before claiming the theme covers that historical tree.
 - Refund restock quantity/disposition, post-fire wastage, movement source-key uniqueness, and authoritative location-balance reconciliation remain migration-gated; see the design document.

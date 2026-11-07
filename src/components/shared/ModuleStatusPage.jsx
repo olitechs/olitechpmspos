@@ -11,7 +11,7 @@ const PHASES = {
   features: { phase:'Phase 9', title:'Features', description:'Property-level feature and entitlement controls.' },
 };
 
-export default function ModuleStatusPage({ module='features', phase, title, description, back='/backoffice' }) {
+export default function ModuleStatusPage({ module='features', phase, title, description, back='/backoffice', backLabel='Return to Back Office' }) {
   const navigate = useNavigate();
   const meta = PHASES[module] || { phase:phase||'Upcoming phase', title:title||'Module', description:description||'This operational module is scheduled for implementation.' };
   return <div className="min-h-full bg-background p-4 md:p-6">
@@ -31,7 +31,7 @@ export default function ModuleStatusPage({ module='features', phase, title, desc
             <div><p className="text-sm font-bold text-foreground">Navigation is active; operational logic is being delivered by phase.</p><p className="mt-1 text-xs leading-5 text-muted-foreground">This page deliberately does not pretend that unfinished functionality is production-ready.</p></div>
           </div>
         </div>
-        <button type="button" onClick={()=>navigate(back)} className="mt-6 inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">Return to Back Office <ArrowRight size={16}/></button>
+        <button type="button" onClick={()=>navigate(back)} className="mt-6 inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground">{backLabel} <ArrowRight size={16}/></button>
       </div>
     </div>
   </div>;

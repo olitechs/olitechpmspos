@@ -17,7 +17,7 @@ const FRONT_ICONS = {
   dashboard: LayoutDashboard, 'room-planner': BedDouble, rooms: BedDouble,
   reservations: CalendarDays, folio: Receipt, housekeeping: Sparkles, 'night-audit': ClipboardList,
 };
-const STORE_ICONS = { store: Store, settings: Settings, devices: MonitorCog, printers: Printer, kds: LayoutGrid };
+const STORE_ICONS = { store: Store, dashboard: LayoutDashboard, inventory: Boxes, purchasing: ShoppingCart, transfers: ArrowRightLeft, counts: ClipboardCheck, reports: BarChart3, settings: Settings, devices: MonitorCog, printers: Printer, kds: LayoutGrid };
 const BACK_ICONS = {
   reports: BarChart3, items: ShoppingBag, inventory: ShoppingCart, employees: Users,
   customers: Users, integrations: PlugZap, settings: Settings, help: HelpCircle,
@@ -68,7 +68,7 @@ export default function AppShell({ workspace = 'backoffice' }) {
     }
     if (workspace === 'pos') return [];
     if (workspace === 'stores') {
-      return STORES_NAV.map(([label, path, id]) => ({
+      return STORES_NAV.filter(([, , , roles]) => !roles || roles.includes(role)).map(([label, path, id]) => ({
         id, label, path, icon: STORE_ICONS[id], active: pathname === path || pathname.startsWith(path + '/'),
       }));
     }
