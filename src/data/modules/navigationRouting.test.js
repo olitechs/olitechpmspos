@@ -93,14 +93,14 @@ test('workspace layouts own one shell and embedded module routes suppress legacy
   assert.match(posLayout, /<AppShell workspace="pos" \/>/);
   assert.match(shell, /workspace !== 'pos' && <aside/);
   assert.match(shell, /workspace === 'pos' \? 'w-full min-h-full'/);
-  assert.match(shell, /<TopAppNav\s*\/>/);
+  assert.match(shell, /<TopAppNav workspace=\{workspace\} \/>/);
   assert.match(frontLayout, /return <AppShell workspace="frontoffice" \/>/);
   assert.match(posApp, /!embedded && <Sidebar/);
   assert.match(posApp, /showTopBar && !embedded && <TopBar/);
   assert.match(posApp, /isMobile && !embedded && <POSTabs/);
 });
 
-test('standalone POS uses the global workspace switcher and hides the generic duplicate sidebar', () => {
+test('only the main Back Office shell exposes the workspace launcher; Front Office and POS stay isolated', () => {
   assert.ok(app.includes('path="/pos" element={<POSLayout/>}><Route index element={<POSApp initialModule="pos" embedded workspaceModule="pos"/>}/></Route>'));
   assert.match(posLayout, /AppShell workspace="pos"/);
   assert.match(shell, /if \(workspace === 'pos'\) return \[\]/);
