@@ -114,7 +114,7 @@ test('official OliTechs identity is shared across all application workspaces and
   assert.match(brandLogo, /app-icon\.svg/);
   assert.ok(theme.includes('--primary:#0F7C86'));
   assert.ok(theme.includes('--primary-hover:#0A3F4A'));
-  assert.ok(theme.includes('--pos-gate-accent:#2A9AA0'));
+  assert.ok(theme.includes('--pos-gate-accent:#58AEB0'));
 });
 
 test('theme foundation defines canonical light and dark palettes with reduced-motion handling', () => {
@@ -125,7 +125,7 @@ test('theme foundation defines canonical light and dark palettes with reduced-mo
   ]) assert.ok(theme.includes(token), 'missing light token ' + token);
   assert.ok(theme.includes(':root[data-theme="dark"]'));
   for (const token of [
-    '--canvas:#081E22', '--surface:#102B30', '--primary:#15919A',
+    '--canvas:#081E22', '--surface:#102B30', '--primary:#0F7C86',
     '--on-primary:#FFFFFF', '--text:#EAF5F3', '--text-muted:#B1CECA',
   ]) assert.ok(theme.includes(token), 'missing dark token ' + token);
   assert.ok(theme.includes('--primary-soft:#E2F1F0'));
