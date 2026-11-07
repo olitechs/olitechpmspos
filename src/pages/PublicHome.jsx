@@ -210,7 +210,7 @@ function ProductMock() {
           <span className="h-2.5 w-2.5 rounded-full bg-border" />
           <span className="h-2.5 w-2.5 rounded-full bg-border" />
           <span className="h-2.5 w-2.5 rounded-full bg-border" />
-          <span className="ml-3 text-[10px] font-bold text-muted-foreground">OliTechs Grand Hotel · Room Planner</span>
+          <span className="ml-3 text-[10px] font-bold text-muted-foreground">OliTechs · Room Planner</span>
         </div>
         <div className="rounded-[18px] bg-canvas p-3">
           <div className="grid grid-cols-[115px_repeat(7,minmax(48px,1fr))] overflow-hidden rounded-xl border border-border bg-surface text-[9px]">
