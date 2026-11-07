@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle, X, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, Search, X, ShieldCheck } from 'lucide-react';
 import { CATEGORIES, MENU_ITEMS, VAT_RATE, tableLabel, CATEGORY_CENTER } from '@/data/mockData';
 import { useStore } from '@/data/AppStore';
 import PrintWarn from '@/components/pos/PrintWarn';
@@ -12,7 +12,7 @@ import { isPrinterGroupRoutingEnabled } from '@/services/printRoutingService';
 import { getPropertySettings } from '@/services/settingsService';
 import { inventoryService } from '@/services/inventoryService';
 import { posPhase3Service } from '@/services/posPhase3Service';
-import { getPosStockStatus } from '@/components/pos/stockStatus';
+import { filterPosMenuItems, getPosStockStatus } from '@/components/pos/stockStatus';
 
 function fmt(n) {
   return `KES ${n.toLocaleString('en-KE', { minimumFractionDigits: 0 })}`;
@@ -33,6 +33,9 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
   const [pinError, setPinError] = useState('');
   const [menuItems, setMenuItems] = useState([]);
   const [menuCategories, setMenuCategories] = useState(CATEGORIES);
+  const [menuLoading, setMenuLoading] = useState(true);
+  const [menuError, setMenuError] = useState('');
+  const [menuSearch, setMenuSearch] = useState('');
   const [modifierTarget, setModifierTarget] = useState(null);
   const [modifierGroups, setModifierGroups] = useState([]);
   const [modifierSelections, setModifierSelections] = useState({});
@@ -40,7 +43,9 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
   const [assignedOrderCenters, setAssignedOrderCenters] = useState(null);
 
   const loadPosMenu = async () => {
-    if (!propertyId) return;
+    if (!propertyId) { setMenuLoading(false); return; }
+    setMenuLoading(true);
+    setMenuError('');
     try {
       const rows = await inventoryService.listPosMenu(propertyId);
       if (rows.length) {
@@ -50,8 +55,11 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
         setMenuItems([]); setMenuCategories(CATEGORIES);
       }
     } catch (error) {
-      console.warn('[POS] menu catalogue unavailable; using built-in menu', error);
+      console.warn('[POS] menu catalogue unavailable', error);
       setMenuItems([]); setMenuCategories(CATEGORIES);
+      setMenuError('The menu could not be loaded. Check the connection and retry.');
+    } finally {
+      setMenuLoading(false);
     }
   };
   useEffect(() => {
@@ -255,6 +263,9 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
   const orderCenters = [...new Set(orderLines.map((l) => l.center).filter(Boolean))];
   const missingCenters = isPrinterGroupRoutingEnabled() || assignedOrderCenters === null ? [] : orderCenters
     .filter(center => !assignedOrderCenters.includes(/bar|drink/i.test(String(center)) ? 'bar' : 'kitchen'));
+  const demoMenuItems = (MENU_ITEMS[activeCategory] || []).map((item) => ({ ...item, category: activeCategory, center: CATEGORY_CENTER[activeCategory] || 'Kitchen', stock: null }));
+  const categoryMenuItems = propertyId ? menuItems.filter((item) => item.category === activeCategory) : demoMenuItems;
+  const visibleMenuItems = filterPosMenuItems(categoryMenuItems, menuSearch);
 
   return (
     <div className="pos-shell flex h-full min-h-0 flex-col overflow-hidden bg-[var(--canvas)] lg:flex-row">
@@ -282,8 +293,33 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
             <PrintWarn message={`No order printer set for ${missingCenters.join(', ')} — configure in Settings`} />
           </div>
         )}
-        <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(160px,1fr))]">
-          {(menuItems.length ? menuItems.filter((item) => item.category === activeCategory) : (MENU_ITEMS[activeCategory] || []).map((item) => ({ ...item, category: activeCategory, center: CATEGORY_CENTER[activeCategory] || 'Kitchen', stock: null }))).map((item) => {
+        <div className="relative mb-3">
+          <Search aria-hidden="true" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
+          <label htmlFor="pos-menu-search" className="sr-only">Search menu items in {activeCategory}</label>
+          <input
+            id="pos-menu-search"
+            type="search"
+            value={menuSearch}
+            onChange={(event) => setMenuSearch(event.target.value)}
+            placeholder={`Search ${activeCategory.toLowerCase()} items`}
+            autoComplete="off"
+            className="h-12 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-10 pr-3 text-base text-[var(--text)] placeholder:text-[var(--text-muted)] focus-visible:border-[var(--primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--canvas)]"
+          />
+        </div>
+        {menuLoading ? (
+          <div role="status" aria-live="polite" className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 text-center text-sm font-semibold text-[var(--text-muted)]">Loading menu items…</div>
+        ) : menuError ? (
+          <div role="alert" className="flex flex-col items-center gap-3 rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] p-6 text-center">
+            <p className="text-sm font-semibold text-[var(--danger-text)]">{menuError}</p>
+            <button type="button" onClick={loadPosMenu} className="min-h-11 rounded-lg bg-[var(--primary)] px-4 text-sm font-bold text-[var(--on-primary)] hover:bg-[var(--primary-hover)]">Retry menu</button>
+          </div>
+        ) : visibleMenuItems.length === 0 ? (
+          <div role="status" aria-live="polite" className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] p-6 text-center text-sm text-[var(--text-muted)]">
+            {menuSearch.trim() ? `No menu items match “${menuSearch.trim()}” in ${activeCategory}.` : propertyId ? `No POS items are available in ${activeCategory}. Add or enable products in Stores.` : `No demo menu items are available in ${activeCategory}.`}
+          </div>
+        ) : (
+          <div id="pos-product-grid" className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(160px,1fr))]">
+          {visibleMenuItems.map((item) => {
             const inOrder = orderLines.find((l) => l.id === item.id);
             const stockStatus = menuItems.length > 0 ? getPosStockStatus(item.stock, item.minimumStock) : 'unknown';
             const outOfStock = stockStatus === 'out-of-stock';
@@ -304,7 +340,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
                 )}
                 <div className="pr-8 text-sm font-semibold leading-tight text-[var(--text)]">{item.name}</div>
                 <div className="mt-2 text-sm font-bold text-[var(--primary)]">{fmt(item.price)}</div>
-                {menuItems.length > 0 && (
+                {propertyId && menuItems.length > 0 && (
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     {outOfStock && <span className="rounded-full bg-[var(--danger-soft)] px-2 py-1 text-[11px] font-extrabold text-[var(--danger-text)]">OUT OF STOCK</span>}
                     {lowStock && <span className="rounded-full bg-[var(--warning-soft)] px-2 py-1 text-[11px] font-extrabold text-[var(--warning-text)]">LOW STOCK</span>}
@@ -314,7 +350,8 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
               </button>
             );
           })}
-        </div>
+          </div>
+        )}
       </main>
 
       <aside className="pos-ticket order-3 flex h-[42vh] min-h-[18rem] max-h-96 shrink-0 flex-col border-t border-[var(--border)] bg-[var(--surface)] text-[var(--text)] lg:order-none lg:h-full lg:max-h-none lg:w-[22rem] lg:border-l lg:border-t-0">

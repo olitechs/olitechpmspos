@@ -7,3 +7,9 @@ export function getPosStockStatus(stock, minimumStock = 0) {
   if (Number.isFinite(threshold) && threshold > 0 && quantity <= threshold) return 'low-stock';
   return 'available';
 }
+
+export function filterPosMenuItems(items, query) {
+  const search = String(query ?? '').trim().toLocaleLowerCase();
+  if (!search) return items;
+  return items.filter((item) => String(item?.name ?? '').toLocaleLowerCase().includes(search));
+}

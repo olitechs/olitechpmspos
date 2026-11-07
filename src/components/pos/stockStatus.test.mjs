@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getPosStockStatus } from './stockStatus.js';
+import { filterPosMenuItems, getPosStockStatus } from './stockStatus.js';
 
 test('POS stock card status reflects available, low and out-of-stock quantities', () => {
   assert.equal(getPosStockStatus(8, 3), 'available');
@@ -15,4 +15,16 @@ test('POS stock card status remains unknown when inventory data is absent or inv
   assert.equal(getPosStockStatus(undefined, 3), 'unknown');
   assert.equal(getPosStockStatus('', 3), 'unknown');
   assert.equal(getPosStockStatus('unavailable', 3), 'unknown');
+});
+
+test('POS menu search is case-insensitive and preserves catalog order', () => {
+  const items = [{ name: 'Hibiscus Tea' }, { name: 'Iced Coffee' }, { name: 'Tea Cake' }];
+  assert.deepEqual(filterPosMenuItems(items, 'TEA'), [items[0], items[2]]);
+  assert.deepEqual(filterPosMenuItems(items, 'coffee'), [items[1]]);
+});
+
+test('blank POS menu search preserves all category items', () => {
+  const items = [{ name: 'Soda' }, { name: 'Water' }];
+  assert.deepEqual(filterPosMenuItems(items, ''), items);
+  assert.deepEqual(filterPosMenuItems(items, '   '), items);
 });

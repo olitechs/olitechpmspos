@@ -63,5 +63,15 @@ test('receipt line identity and stock mapping status are durable and unmapped it
   assert.doesNotMatch(inventory, /Automatic deduction on POS sale is planned/);
 });
 
+test('POS product grid supports search and explicit catalog loading, empty, error and retry states', () => {
+  assert.match(orderTaking, /filterPosMenuItems\(categoryMenuItems, menuSearch\)/);
+  assert.match(orderTaking, /type="search"/);
+  assert.match(orderTaking, /Loading menu items/);
+  assert.match(orderTaking, /No menu items match/);
+  assert.match(orderTaking, /role="alert"/);
+  assert.match(orderTaking, /Retry menu/);
+  assert.match(orderTaking, /setMenuError\('The menu could not be loaded/);
+});
+
 // This is an application/SQL-source contract suite. Database behavior still
 // needs the repository's authorized local/disposable runtime fixtures.

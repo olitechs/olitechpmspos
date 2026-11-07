@@ -23,7 +23,7 @@ This feature branch contains the route/link audit fixes, POS-to-stock workflow d
 
 - Consolidated literal colors into `src/index.css` and mapped Tailwind, shadcn, components, print helpers and templates to semantic CSS variables.
 - Enforced light-only Coastal Linen styling, status colors, diagonal-striped out-of-order rooms, accessible room/status labels and token-based warning/error states.
-- Updated shared POS presentation for tablet/touch targets and added the POS low-stock chip.
+- Updated shared POS presentation for tablet/touch targets; added searchable category products, explicit catalog loading/empty/error/retry states, and low-/out-of-stock badges. A failed property catalog request no longer falls through to saleable demo products.
 - Preserved existing public asset paths and the `ThemeToggle.jsx` file; SVG/manifest paths are template-backed and generated from CSS tokens. The retained compatibility component displays only “Coastal Linen · Light.”
 - Kept receipt paper/ink and the void-slip warning colors visually unchanged through `--print-*` tokens.
 - Standardized visible product-name casing to exact `OliTechs` across the HTML title, UI, manifest, README and receipt/print copy. No app-owned email template was found; provider-managed auth email branding remains unverified outside this repository.
