@@ -6,21 +6,55 @@ import{authService,getSessionStaff}from'@/services/authService';
 import{shiftService,exportShiftToExcel}from'@/services/shiftService';
 import{getPrinters,getAssignments,printShiftReport}from'@/services/printService';
 import PinPad from'@/components/auth/PinPad';
+import BrandLogo from'@/components/ui/BrandLogo';
 
 const money=n=>Number(n||0).toLocaleString('en-KE',{minimumFractionDigits:2,maximumFractionDigits:2});
 const managerRoles = new Set(['hotel_admin','super_admin','fb_manager','owner','admin','manager','property_manager','general_manager']);
 export function OpenShiftModal({ propertyId, onOpened }) {
+  const [step, setStep] = useState('pin');
+  const [pin, setPin] = useState('');
+  const [staff, setStaff] = useState(null);
   const [cash, setCash] = useState('');
   const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const staff = getSessionStaff();
   const openingFloat = Number(cash);
   const validFloat = cash.trim() !== '' && Number.isFinite(openingFloat) && openingFloat > 0;
+  const today = new Date().toLocaleDateString('en-KE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+  const verifyPin = async (value) => {
+    if (busy || value.length !== 4) return;
+    setBusy(true);
+    setError('');
+    try {
+      const result = await authService.verifyStaffPin({ propertyId, module: 'pos', pin: value });
+      if (!result?.ok || !result?.staff) {
+        setPin('');
+        setError('PIN not recognised. Please try again.');
+        return;
+      }
+      setStaff(result.staff);
+      sessionStorage.setItem('olitech_active_staff_v2', JSON.stringify(result.staff));
+      window.dispatchEvent(new CustomEvent('olitech:staff-changed', { detail: result.staff }));
+      setStep('float');
+    } catch (e) {
+      setPin('');
+      setError(e.message || 'Could not verify staff PIN. Check your connection.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const enterDigit = (digit) => {
+    if (busy || pin.length >= 4) return;
+    const next = pin + String(digit);
+    setPin(next);
+    if (next.length === 4) verifyPin(next);
+  };
 
   const open = async () => {
-    if (!validFloat) {
-      setError('Enter a starting cash float greater than zero before opening the shift.');
+    if (!validFloat || busy) {
+      setError('Enter a starting cash float greater than zero.');
       return;
     }
     setBusy(true);
@@ -29,30 +63,83 @@ export function OpenShiftModal({ propertyId, onOpened }) {
       const shift = await shiftService.openShift({ propertyId, openingCash: openingFloat, notes });
       onOpened?.(shift);
     } catch (e) {
-      setError(e.message || 'Unable to open shift.');
+      setError(e.message || 'Unable to open shift. Please try again.');
     } finally {
       setBusy(false);
     }
   };
 
+  const keyClass = 'flex min-h-[58px] items-center justify-center border-b border-r border-[var(--pos-gate-border)] bg-transparent text-2xl font-semibold text-[var(--pos-gate-text)] transition hover:bg-[var(--pos-gate-hover)] active:bg-[var(--pos-gate-active)] disabled:opacity-40';
+
   return (
-    <div className="fixed inset-0 z-[270] flex items-center justify-center bg-[rgba(34,48,57,0.25)] p-4">
-      <div className="w-full max-w-md rounded-3xl bg-[var(--surface)] p-6 shadow-2xl">
-        <div className="text-xl font-medium">Open Shift</div>
-        <p className="mt-1 text-sm text-[var(--text-muted)]">Enter the cash float placed in the drawer before taking payments.</p>
-        <div className="mt-5 space-y-3">
+    <main className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen flex-col items-center justify-center overflow-y-auto bg-[var(--pos-gate-bg)] px-4 py-5 font-body text-[var(--pos-gate-text)] sm:px-6">
+      <header className="mb-5 flex w-full max-w-4xl items-center justify-between gap-4">
+        <div className="rounded-xl bg-[var(--surface)] px-4 py-2 shadow-sm"><BrandLogo className="h-9 w-auto max-w-[158px] object-contain" /></div>
+        <div className="text-right"><div className="text-xs font-semibold text-[var(--pos-gate-muted)]">POS SHIFT CONTROL</div><div className="mt-1 text-xs text-[var(--pos-gate-muted)]">{today}</div></div>
+      </header>
+
+      <section className="grid w-full max-w-4xl overflow-hidden rounded-3xl border border-[var(--pos-gate-border)] bg-[var(--pos-gate-surface)] shadow-[0_24px_70px_rgba(0,0,0,.22)] md:grid-cols-[0.9fr_1.1fr]">
+        <aside className="flex flex-col justify-between bg-[var(--pos-gate-accent)] p-6 text-white sm:p-8">
           <div>
-            <label htmlFor="pos-opening-float" className="text-xs font-medium text-[var(--text-muted)]">Opening Cash Float (KES) <span aria-hidden="true">*</span></label>
-            <input id="pos-opening-float" autoFocus required value={cash} onChange={e => setCash(e.target.value)} type="number" inputMode="decimal" min="0.01" step="0.01" placeholder="5000.00" aria-invalid={cash !== '' && !validFloat} className="mt-1 w-full rounded-xl border border-[var(--border)] p-3 text-lg font-medium" />
-            <p className="mt-1 text-xs text-[var(--text-muted)]">A positive starting float is required. Zero and blank amounts are not accepted.</p>
+            <div className="text-[11px] font-bold uppercase tracking-[.2em] text-white/70">Start of business</div>
+            <h1 className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">Open your shift</h1>
+            <p className="mt-3 max-w-sm text-sm leading-6 text-white/80">Verify the cashier on duty and record the cash float before accepting POS payments.</p>
           </div>
-          <div className="rounded-xl bg-[var(--canvas)] p-3 text-xs"><b>Cashier:</b> {staff?.full_name || 'Current staff'}<br /><b>Date:</b> {new Date().toLocaleDateString('en-KE')}</div>
-          <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Opening notes (optional)" className="min-h-20 w-full rounded-xl border border-[var(--border)] p-3 text-sm" />
-          {error && <div role="alert" className="rounded-xl bg-[var(--danger-soft)] p-3 text-sm font-medium text-[var(--danger-text)]">{error}</div>}
-          <button disabled={busy || !validFloat} onClick={open} className="w-full rounded-xl bg-[var(--primary)] p-3.5 text-sm font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40">{busy ? 'Opening…' : 'Open Shift'}</button>
+          <div className="mt-8 space-y-3">
+            <div className="flex items-center gap-3 rounded-xl border border-white/20 bg-white/10 p-3"><span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 text-sm font-bold">1</span><div><div className="text-sm font-semibold">Staff verification</div><div className="text-xs text-white/70">Your personal POS PIN</div></div></div>
+            <div className="flex items-center gap-3 rounded-xl border border-white/20 bg-white/10 p-3"><span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 text-sm font-bold">2</span><div><div className="text-sm font-semibold">Opening cash float</div><div className="text-xs text-white/70">Record the amount in the drawer</div></div></div>
+          </div>
+          <div className="mt-8 text-[10px] font-medium text-white/60">{'OliTechs PMS + POS · Secure cashier workflow'}</div>
+        </aside>
+
+        <div className="flex min-w-0 flex-col justify-center p-5 sm:p-8">
+          {step === 'pin' ? (
+            <>
+              <div className="text-center">
+                <div className="text-xs font-bold uppercase tracking-wider text-[var(--pos-gate-muted)]">Step 1 of 2</div>
+                <h2 className="mt-2 text-xl font-semibold">Cashier PIN</h2>
+                <p className="mt-1 text-sm text-[var(--pos-gate-muted)]">Enter your 4-digit staff PIN to take responsibility for this shift.</p>
+                <div className="mt-5 flex justify-center gap-3" aria-label={`${pin.length} of 4 PIN digits entered`}>
+                  {Array.from({ length: 4 }, (_, i) => <span key={i} className={`h-4 w-4 rounded-full border-2 border-[var(--pos-gate-accent)] ${i < pin.length ? 'bg-[var(--pos-gate-accent)]' : 'bg-transparent'}`} />)}
+                </div>
+              </div>
+              <div className="mt-5 grid grid-cols-3 overflow-hidden rounded-xl border-l border-t border-[var(--pos-gate-border)]">
+                {[1,2,3,4,5,6,7,8,9].map(n => <button key={n} type="button" onClick={() => enterDigit(n)} disabled={busy || pin.length >= 4} className={keyClass}>{n}</button>)}
+                <button type="button" onClick={() => setPin('')} disabled={busy || !pin.length} className="border-b border-r border-[var(--pos-gate-border)] text-xs font-semibold text-[var(--pos-gate-accent)] disabled:opacity-40">Clear</button>
+                <button type="button" onClick={() => enterDigit(0)} disabled={busy || pin.length >= 4} className={keyClass}>0</button>
+                <div className="border-b border-r border-[var(--pos-gate-border)]" />
+              </div>
+              {error && <p role="alert" className="mt-3 text-center text-xs font-semibold text-[var(--danger-text)]">{error}</p>}
+              {busy && <p aria-live="polite" className="mt-3 text-center text-xs text-[var(--pos-gate-muted)]">Verifying cashier…</p>}
+              <p className="mt-4 text-center text-[11px] text-[var(--pos-gate-muted)]">Only an authorised staff PIN can open a shift.</p>
+            </>
+          ) : (
+            <>
+              <div className="text-xs font-bold uppercase tracking-wider text-[var(--pos-gate-muted)]">Step 2 of 2</div>
+              <h2 className="mt-2 text-xl font-semibold">Opening cash float</h2>
+              <p className="mt-1 text-sm text-[var(--pos-gate-muted)]">Confirm the physical cash placed in the drawer before service begins.</p>
+              <div className="mt-5 flex items-center gap-3 rounded-xl border border-[var(--pos-gate-border)] bg-[var(--pos-gate-bg)] p-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--pos-gate-accent)] text-sm font-bold text-white">{(staff?.full_name || 'S').slice(0,1).toUpperCase()}</div>
+                <div className="min-w-0"><div className="truncate text-sm font-semibold">{staff?.full_name || 'Verified cashier'}</div><div className="text-xs text-[var(--pos-gate-muted)]">{staff?.role || 'POS Staff'} · Verified</div></div>
+                <span className="ml-auto rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold text-emerald-800">VERIFIED</span>
+              </div>
+              <label htmlFor="pos-opening-float" className="mt-5 text-xs font-semibold text-[var(--pos-gate-muted)]">Opening cash float · KES</label>
+              <div className="mt-2 flex items-center rounded-xl border border-[var(--pos-gate-border)] bg-[var(--pos-gate-bg)] px-4 py-3 focus-within:border-[var(--pos-gate-accent)]">
+                <span className="mr-3 text-sm font-semibold text-[var(--pos-gate-muted)]">KES</span>
+                <input id="pos-opening-float" autoFocus value={cash} onChange={e => { setCash(e.target.value); setError(''); }} type="number" inputMode="decimal" min="0.01" step="0.01" placeholder="5,000.00" aria-invalid={cash !== '' && !validFloat} className="w-full min-w-0 bg-transparent text-2xl font-semibold outline-none" />
+              </div>
+              <p className="mt-2 text-xs text-[var(--pos-gate-muted)]">Enter the actual amount counted in the cash drawer. This becomes the opening balance for the shift.</p>
+              <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Opening notes (optional)" className="mt-4 min-h-20 w-full rounded-xl border border-[var(--pos-gate-border)] bg-transparent p-3 text-sm outline-none focus:border-[var(--pos-gate-accent)]" />
+              {error && <p role="alert" className="mt-3 text-xs font-semibold text-[var(--danger-text)]">{error}</p>}
+              <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row">
+                <button type="button" onClick={() => { setStep('pin'); setPin(''); setError(''); setCash(''); }} disabled={busy} className="rounded-xl border border-[var(--pos-gate-border)] px-4 py-3 text-sm font-semibold">Back</button>
+                <button type="button" disabled={!validFloat || busy} onClick={open} className="flex-1 rounded-xl bg-[var(--pos-gate-accent)] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40">{busy ? 'Opening shift…' : 'Confirm & Open Shift'}</button>
+              </div>
+            </>
+          )}
         </div>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }
 
