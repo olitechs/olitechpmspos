@@ -8,7 +8,6 @@ const brandLogo = readFileSync(new URL('../../src/components/ui/BrandLogo.jsx', 
 const appShell = readFileSync(new URL('../../src/components/layout/AppShell.jsx', import.meta.url), 'utf8');
 const posHeader = readFileSync(new URL('../../src/components/pos/AppHeader.jsx', import.meta.url), 'utf8');
 const posGate = readFileSync(new URL('../../src/components/pos/POSAccessGate.jsx', import.meta.url), 'utf8');
-const login = readFileSync(new URL('../../src/pages/Login.jsx', import.meta.url), 'utf8');
 const publicSignIn = readFileSync(new URL('../../src/pages/PublicSignIn.jsx', import.meta.url), 'utf8');
 const authLayout = readFileSync(new URL('../../src/components/ui/AuthLayout.jsx', import.meta.url), 'utf8');
 const adminLayout = readFileSync(new URL('../../src/pages/admin/AdminLayout.jsx', import.meta.url), 'utf8');
