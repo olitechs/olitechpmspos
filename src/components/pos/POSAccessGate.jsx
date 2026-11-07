@@ -22,7 +22,7 @@ export default function POSAccessGate({ propertyName, error, busy, canManagePin,
   return (
     <main className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen flex-col items-center overflow-y-auto bg-[var(--pos-gate-bg)] px-4 py-5 font-body text-[var(--pos-gate-text)] sm:justify-center sm:px-6 sm:py-6">
       <header className="mb-5 flex w-full max-w-[760px] shrink-0 items-center justify-center sm:mb-6">
-        <div className="rounded-xl bg-white px-4 py-2 shadow-sm"><BrandLogo className="h-9 w-auto max-w-[158px] object-contain" /></div>
+        <div className="rounded-xl bg-[var(--surface)] px-4 py-2 shadow-sm"><BrandLogo className="h-9 w-auto max-w-[158px] object-contain" /></div>
       </header>
 
       <section className="flex w-full max-w-[760px] flex-col items-center">
