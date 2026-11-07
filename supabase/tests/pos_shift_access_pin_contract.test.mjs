@@ -34,3 +34,8 @@ test('receipt sale RPC persists guest covers', () => {
   assert.match(shiftSql, /p_covers integer default 1/i);
   assert.match(shiftSql, /covers = greatest\(1, least\(p_covers, 1000\)\)/i);
 });
+
+test('opening a POS shift requires a positive starting cash float', () => {
+  assert.match(shiftSql, /if p_opening_cash is null or p_opening_cash <= 0 then/i);
+  assert.match(shiftSql, /starting cash float greater than zero is required/i);
+});
