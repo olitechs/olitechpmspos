@@ -1,0 +1,13 @@
+services:
+  oli-techs:
+    image: ghcr.io/olitechs/olitechpmspos:latest
+    container_name: olitechs-pms-pos
+    ports:
+      - "${PORT:-8080}:80"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/health"]
+      interval: 30s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
