@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Building2, ScrollText, ShieldCheck, LogOut, UsersRound, Settings } from 'lucide-react';
+import { LayoutDashboard, Building2, ScrollText, LogOut, UsersRound, Settings } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import BrandLogo from '@/components/ui/BrandLogo';
 
