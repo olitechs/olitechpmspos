@@ -1,0 +1,13 @@
+services:
+  oli-techs:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:-}
+    image: olitechs-pms-pos:local
+    container_name: olitechs-pms-pos
+    ports:
+      - "8080:80"
+    restart: unless-stopped
