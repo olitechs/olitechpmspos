@@ -145,9 +145,9 @@ test('employee reporting does not silently render timecards as a report', () => 
 });
 
 
-test('workspace highlighting remains active on nested routes and exact POS route only', () => {
-  assert.match(topNav, /end=\{a\.id\s*===\s*'pos'\}/);
-  assert.match(topNav, /to=\{a\.path\}/);
+test('separate workspace buttons highlight the active workspace and retain nested route awareness', () => {
+  assert.match(topNav, /window\.location\.pathname === a\.path/);
+  assert.match(topNav, /window\.location\.pathname\.startsWith\(a\.path \+ '\/'\)/);
   assert.match(shell, /pathname === path \|\| pathname\.startsWith\(path \+ '\/'\)/);
 });
 
