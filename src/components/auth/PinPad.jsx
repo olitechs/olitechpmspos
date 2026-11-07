@@ -34,6 +34,7 @@ export default function PinPad({
 
   useEffect(() => {
     if (!error) return undefined;
+    setPin('');
     setShake(true);
     const timer = window.setTimeout(() => setShake(false), 450);
     return () => window.clearTimeout(timer);
