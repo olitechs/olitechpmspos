@@ -26,6 +26,7 @@ This feature branch contains the route/link audit fixes, POS-to-stock workflow d
 - Updated shared POS presentation for tablet/touch targets and added the POS low-stock chip.
 - Preserved existing public asset paths and the `ThemeToggle.jsx` file; SVG/manifest paths are template-backed and generated from CSS tokens. The retained compatibility component displays only “Coastal Linen · Light.”
 - Kept receipt paper/ink and the void-slip warning colors visually unchanged through `--print-*` tokens.
+- Standardized visible product-name casing to exact `OliTechs` across the HTML title, UI, manifest, README and receipt/print copy. No app-owned email template was found; provider-managed auth email branding remains unverified outside this repository.
 - Added strict color/token and contrast checks plus the per-file audit in `docs/audit/COASTAL_LINEN_COLOR_AUDIT.md`.
 
 ## Validation

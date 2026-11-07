@@ -2,13 +2,17 @@
 
 **Audit date:** 2026-11-07
 
-**Scope:** Active root Vite application, design-system guidance, Tailwind mappings, print/email-facing templates, public brand assets and generated logo/manifest templates. No files were deleted. The historical `v6/` tree is reported separately and was not changed.
+**Scope:** Active root Vite application, design-system guidance, Tailwind mappings, receipt/print templates, public brand assets and generated logo/manifest templates. No files were deleted. The historical `v6/` tree is reported separately and was not changed.
 
 ## Color source and result
 
 `src/index.css` is the only source of literal color values. It now holds the 15 required Coastal Linen, payment and room-state literals plus two print-only literals that preserve existing black-on-white receipt text and the red void-slip warning. Components, Tailwind and asset templates use semantic CSS variables. The public SVGs/manifest and the retained documentation wordmark are rendered from `tools/brand-assets/*.in` by `scripts/prepare-brand-assets.mjs` during `predev`/`prebuild`, then restored to placeholder templates by the signal-aware dev wrapper or `postbuild`; the production `dist/` output retains rendered assets.
 
 The strict audit scanned 218 active source/template files and passed: no active raw hex/RGB/HSL colors, palette-specific Tailwind utilities, literal black/white CSS colors, or unresolved `var(--token)` references remain outside `src/index.css`. The active palette contains no purple; the blue-indigo `--room-checkout` token is intentional and required for “checking out today.”
+
+## Product-name and email coverage
+
+The active application uses the exact `OliTechs` casing in the HTML title, README, PWA manifest, wordmark, public sign-in/registration copy, and receipt/print fallback copy. No app-owned outbound email body or subject template was found. `ForgotPassword.jsx` states that no email server is connected and exposes a generated reset link in development; any provider-managed email sender/template is outside this repository and was not verified.
 
 ## File-by-file color audit
 
