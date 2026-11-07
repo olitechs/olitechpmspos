@@ -3,6 +3,7 @@ import { PackageSearch, Plus, Minus, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { inventoryService } from '@/services/inventoryService';
 import FeatureGate from '@/lib/FeatureGate';
+import { Link } from 'react-router-dom';
 import { NAVY, TEAL, TEAL_DARK, SAND, SURFACE, SURFACE2, BORDER, MUTED, DESTRUCTIVE } from '@/data/themePalette';
 
 function InventoryInner() {
@@ -94,9 +95,9 @@ function InventoryInner() {
 						<Plus size={14} /> Add Item
 					</button>
 
-					<p className="text-xs mt-3" style={{ color: MUTED }}>
-						Automatic deduction on POS sale is planned once the POS product catalog moves to the same backend — for now, adjust stock manually here.
-					</p>
+		<p className="text-xs mt-3" style={{ color: MUTED }}>
+			Finalized POS sales deduct linked products and active recipe ingredients from the Stores ledger. This legacy stock list is separate and remains manual; manage POS-linked products in <Link className="font-bold underline" to="/backoffice/items/list">Store / Products</Link>.
+		</p>
 				</div>
 
 				<div className="lg:col-span-2 rounded-2xl overflow-hidden h-fit" style={{ background: SURFACE, border: `1px solid ${BORDER}` }}>
