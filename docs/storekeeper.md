@@ -255,3 +255,65 @@ A transfer produces a linked OUT and IN movement and preserves branch-level tota
 - Live table/column, row-count, trigger, RLS policy and function metadata inspected read-only.
 - No schema or production data changed.
 - A local clone could not be created in this execution environment because outbound DNS/network access to GitHub was unavailable. Therefore lint/build/typecheck were not run here. No claim of passing local tests is made. Run the repository scripts in CI or a connected checkout before Phase 1 code changes.
+
+
+## 8. Storekeeper dashboard — approved home-screen requirements
+
+The canonical inventory workspace landing route will be `/storekeeper`. The existing `/stores` configuration records and their POS device, printer and KDS relationships must remain intact. Preserve legacy URLs as aliases/redirects; do not delete or repurpose the `stores` table. Storekeeper becomes the inventory operations workspace, not a destructive rename of the store/outlet entity.
+
+### Global dashboard controls
+
+- Business and branch switcher, with only memberships the signed-in user is authorized to access.
+- Current date and period selector: Today, This Week, This Month, Custom.
+- Department filter: All, Bar, Kitchen, Housekeeping, General.
+- Global item search supporting SKU/name/barcode and barcode-scanner input.
+- Filters must be applied consistently to every dashboard query, KPI, chart, alert and movement feed. Every request must be scoped by the authorized business and branch (and the legacy property scope during compatibility rollout).
+
+### Row 1 — KPI cards (all clickable)
+
+1. Current stock value with comparisons to last week and last month.
+2. Today's POS sales with Bar/Kitchen split.
+3. Today's issued, consumed and wasted stock value.
+4. COGS percentage for today, this week and this month.
+5. Below-reorder, out-of-stock and expiring-within-seven-days item counts.
+6. Open purchase orders and deliveries expected today.
+7. Pending requisitions and transfers in transit.
+8. Last stock-count variance in value and percentage.
+
+Each KPI must navigate to a filtered detail/report view. Show loading skeletons, a meaningful no-data state and a recoverable error state; do not display fabricated zeroes when data is unavailable.
+
+### Row 2 — prioritised Stock Alerts
+
+Alert groups: out of stock, critical low, below reorder, below par, expired/expiring batches, overstock, slow-moving items, fast movers with estimated days of cover, and unusual activity (large adjustments, wastage spikes, issues without requisitions, after-hours movements, negative stock and supplier price jumps).
+
+Each alert supports the appropriate permitted action: create requisition, raise purchase order, transfer stock, start count, or dismiss with a required note. Actions must respect role permissions, branch scope, approval rules and audit logging. Dismissal must not delete source movements or hide a still-active critical condition globally.
+
+### Row 3 — operations
+
+- Today's deliveries with expected/received quantities and partial/late status.
+- Requisitions awaiting approval or issue.
+- Transfers awaiting dispatch/receipt confirmation.
+- Recent movement feed with actor, item, location, quantity and source document.
+
+### Row 4 — trends and analysis
+
+- Daily POS sales versus stock consumption for 7- and 30-day periods.
+- Weekly/monthly stock-value trend with Bar/Kitchen breakdown.
+- Top 10 selling items, top 10 wasted items and top 10 highest-value stock items.
+- Department-level usage versus sales variance.
+
+### Dashboard implementation and data integrity requirements
+
+- Build the dashboard against the authoritative existing `products` and `stock_movements` model and reused PO/GRN, requisition, transfer, count, waste and POS records. Do not introduce a second product catalogue or ledger to make dashboard queries easier.
+- Dashboard summaries must be computed from scoped, paginated/aggregated server-side queries or narrowly defined database functions; never download an unbounded ledger to the browser.
+- Value metrics must use a documented costing method and movement-time cost snapshots. Until costing and required source links are reliable, show an explicit unavailable/not-yet-reconciled state instead of a misleading figure.
+- Batch expiry and days-of-cover alerts require batch/lot and usage history support; do not infer batch quantities from a single product-level expiry date.
+- Sales, COGS and usage-versus-sales comparisons must use consistent business-day boundaries and department mapping.
+- Barcode scanning must degrade gracefully to keyboard-wedge scanner input and manual search when camera permission or hardware is unavailable.
+- Every clickable KPI, alert, chart segment and operations row must have a stable destination/action and preserve current business, branch, period and department filters.
+- The dashboard must remain usable on tablet and desktop, follow the existing OliTechs Coastal Linen design tokens, and provide accessible labels, keyboard navigation and clear focus states.
+- Do not change POS receipt/KOT payloads, print-agent transport, receipt/ticket templates or Shift Report as part of dashboard work.
+
+### Delivery dependency
+
+The dashboard UI is not considered complete merely because cards render. Phase 1 must establish the scoped foundation and normalized department/location/item metadata; Phase 2 supplies requisition/receiving/transfer/count workflows; Phase 3 supplies traceable POS/PMS consumption; Phase 4 supplies reconciled reporting; Phase 5 supplies role-aware action permissions and audit history. Dashboard panels should be enabled as their source data and authorization are verified, with unavailable states for later-phase metrics until then.
