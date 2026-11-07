@@ -67,10 +67,20 @@ test('legacy Store Settings URL redirects instead of duplicating the All Stores 
   assert.ok(navArchitecture.includes("['All Stores','/stores','store']"));
 });
 
-test('workspace links navigate in the current tab by default', () => {
-  assert.doesNotMatch(topNav, /target="_blank"/);
-  assert.doesNotMatch(topNav, /rel="noopener noreferrer"/);
-  assert.match(topNav, /to={a\.path}/);
+test('each workspace opens in its own named browser window', () => {
+  assert.match(topNav, /window\.open\([\s\S]*?olitech-workspace-\$\{workspace\.id\}/);
+  assert.match(topNav, /popup=yes/);
+  assert.match(topNav, /onClick=\{\(\) => openWorkspaceWindow\(a\)\}/);
+  assert.match(topNav, /aria-label=\{\`Open \$\{a\.label\} in a separate window\`\}/);
+  assert.doesNotMatch(topNav, /<NavLink/);
+});
+
+test('workspace window handoff preserves the current tab-scoped staff PIN identity', () => {
+  assert.match(topNav, /const STAFF_SESSION_KEY = 'olitech_active_staff_v2'/);
+  assert.match(topNav, /sessionStorage\.getItem\(STAFF_SESSION_KEY\)/);
+  assert.match(topNav, /popup\.sessionStorage\.setItem\(STAFF_SESSION_KEY, staffSession\)/);
+  assert.match(topNav, /popup\.sessionStorage\.removeItem\(STAFF_SESSION_KEY\)/);
+  assert.match(topNav, /popup\.opener = null/);
 });
 
 test('workspace layouts own one shell and embedded module routes suppress legacy navigation', () => {
@@ -135,9 +145,9 @@ test('employee reporting does not silently render timecards as a report', () => 
 });
 
 
-test('workspace highlighting remains active on nested routes and exact POS route only', () => {
-  assert.match(topNav, /end=\{a\.id\s*===\s*'pos'\}/);
-  assert.match(topNav, /to=\{a\.path\}/);
+test('separate workspace buttons highlight the active workspace and retain nested route awareness', () => {
+  assert.match(topNav, /window\.location\.pathname === a\.path/);
+  assert.match(topNav, /window\.location\.pathname\.startsWith\(a\.path \+ '\/'\)/);
   assert.match(shell, /pathname === path \|\| pathname\.startsWith\(path \+ '\/'\)/);
 });
 
