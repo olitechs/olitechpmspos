@@ -48,7 +48,7 @@ export default function POSAccessGate({ propertyName, logoUrl, error, busy, canM
               <span key={index} className={`h-7 w-7 rounded-full border-[3px] border-[var(--pos-gate-accent)] sm:h-8 sm:w-8 ${index < pin.length ? 'bg-[var(--pos-gate-accent)]' : 'bg-transparent'}`} />
             ))}
           </div>
-          {error && <p role="alert" className="mt-3 text-sm font-semibold text-red-300">{error}</p>}
+          {error && <p role="alert" className="mt-3 text-sm font-semibold text-[var(--danger-text)]">{error}</p>}
           {busy && <p aria-live="polite" className="mt-2 text-xs text-[var(--pos-gate-muted)]">Verifying PIN…</p>}
         </div>
 
