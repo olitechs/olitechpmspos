@@ -182,8 +182,8 @@ test('database subscription access normalizes screen ids and legacy workspace na
 });
 
 
-test('POS access screen uses the full-screen three-column keypad and four green PIN indicators', () => {
-  assert.match(posAccessGate, /bg-\[var\(--pos-gate-bg\)\]/);
+test('POS access screen uses OliTechs branding, a compact keypad and four blue PIN indicators', () => {
+  assert.match(posAccessGate, /bg-\[var\(--pos-gate-bg\)\]/);\n  assert.match(posAccessGate, /OliTechsBrand/);\n  assert.match(posAccessGate, /font-heading/);\n  assert.match(posAccessGate, /h-\[min\(49vh,440px\)\]/);\n  assert.match(posAccessGate, /var\(--pos-gate-accent\)/);
   assert.match(posAccessGate, /grid-cols-3 grid-rows-4/);
   assert.match(posAccessGate, /Array\.from\(\{ length: 4 \}/);
   assert.match(posAccessGate, /onClick=\{\(\) => enterDigit\(digit\)\}/);
