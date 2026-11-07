@@ -7,6 +7,7 @@ import {
   ShieldCheck, Smartphone, Sparkles, Utensils, X, Zap
 } from 'lucide-react';
 import SocialFAB from '../components/shell/SocialFAB';
+import BrandLogo from '@/components/ui/BrandLogo';
 
 const CONTACT = {
   phone: '+254 745 043 121',
@@ -282,8 +283,7 @@ export default function PublicHome() {
       <nav className="sticky top-0 z-50 border-b border-border bg-surface/80 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-6 px-5 sm:px-6">
           <a href="#top" className="flex shrink-0 items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-xs font-black text-foreground">OT</span>
-            <span className="hidden font-black tracking-tight sm:block">OliTechs Grand</span>
+            <BrandLogo className="h-9 w-auto max-w-[132px] object-contain object-left" />
           </a>
           <div className="hidden flex-1 items-center justify-center gap-7 lg:flex">
             {scrollLinks.map(([label, href]) => <a key={label} href={href} className="text-sm text-[var(--text-muted)] transition hover:text-foreground">{label}</a>)}
@@ -315,7 +315,7 @@ export default function PublicHome() {
               Hotel Management, <span className="text-primary">Simplified.</span><br />From Desk to Kitchen.
             </motion.h1>
             <motion.p variants={fadeUp} className="mt-6 max-w-xl text-base leading-7 text-[var(--text-muted)] sm:text-lg">
-              OliTechs replaces Excel & 3 systems. Room Planner, PMS, POS and M-Pesa billing in one yellow/black operating system built for Kenya.
+              OliTechs replaces Excel & 3 systems. Room Planner, PMS, POS and M-Pesa billing in one connected operating system built for Kenya.
             </motion.p>
             <motion.div variants={fadeUp} className="mt-8 flex flex-wrap gap-3">
               <Link to="/signup" className="rounded-full bg-primary px-7 py-3.5 text-sm font-black text-foreground hover:bg-primary">Start 7-Day Free Trial <ArrowRight className="ml-1 inline h-4 w-4" /></Link>
@@ -516,8 +516,8 @@ export default function PublicHome() {
       <footer className="border-t border-border bg-surface">
         <div className="mx-auto grid max-w-7xl gap-10 px-5 py-14 sm:px-6 md:grid-cols-2 lg:grid-cols-4">
           <div>
-            <div className="flex items-center gap-3"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-xs font-black text-foreground">OT</span><span className="font-black">OliTechs Grand</span></div>
-            <p className="mt-4 max-w-xs text-sm leading-6 text-muted-foreground">The yellow/black operating system for modern African hospitality.</p>
+            <BrandLogo className="h-10 w-auto max-w-[150px] object-contain object-left" />
+            <p className="mt-4 max-w-xs text-sm leading-6 text-muted-foreground">The connected operating system for modern African hospitality.</p>
             <div className="mt-5 flex items-center gap-2 text-xs text-muted-foreground"><ShieldCheck className="h-4 w-4 text-primary" /> Built for hospitality operations</div>
           </div>
           <div><h3 className="text-sm font-bold">Menu</h3><div className="mt-4 space-y-3 text-sm text-[var(--text-muted)]"><a className="block hover:text-foreground" href="#features">Features</a><a className="block hover:text-foreground" href="#pricing">Pricing</a><a className="block hover:text-foreground" href="#how-it-works">How it works</a><a className="block hover:text-foreground" href="#faq">FAQ</a></div></div>
