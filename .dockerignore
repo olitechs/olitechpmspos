@@ -1,0 +1,22 @@
+# Dependencies and generated output
+node_modules
+dist
+dist-ssr
+coverage
+
+# Git and local tooling
+.git
+.github
+.vscode
+.idea
+.DS_Store
+
+# Local environment files and secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
