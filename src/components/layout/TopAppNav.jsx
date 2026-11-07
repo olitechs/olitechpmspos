@@ -38,7 +38,11 @@ function openWorkspaceWindow(workspace) {
   }
 }
 
-export default function TopAppNav() {
+export default function TopAppNav({ workspace = 'backoffice' }) {
+  // Back Office is the main workspace and the only place that can launch
+  // the other workspaces. Front Office, Stores, and POS stay self-contained.
+  if (workspace !== 'backoffice') return null;
+
   const { user } = useAuth();
   const s = getSessionStaff();
   const raw = s?.role || user?.staff?.role || user?.propertyRole || user?.role;
