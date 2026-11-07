@@ -4,6 +4,14 @@ import { readFileSync } from 'node:fs';
 
 const source = readFileSync(new URL('../../src/components/ui/system.jsx', import.meta.url), 'utf8');
 const sidebar = readFileSync(new URL('../../src/components/shell/Sidebar.jsx', import.meta.url), 'utf8');\nconst brandLogo = readFileSync(new URL('../../src/components/ui/BrandLogo.jsx', import.meta.url), 'utf8');
+const appShell = readFileSync(new URL('../../src/components/layout/AppShell.jsx', import.meta.url), 'utf8');
+const posHeader = readFileSync(new URL('../../src/components/pos/AppHeader.jsx', import.meta.url), 'utf8');
+const posGate = readFileSync(new URL('../../src/components/pos/POSAccessGate.jsx', import.meta.url), 'utf8');
+const login = readFileSync(new URL('../../src/pages/Login.jsx', import.meta.url), 'utf8');
+const publicSignIn = readFileSync(new URL('../../src/pages/PublicSignIn.jsx', import.meta.url), 'utf8');
+const authLayout = readFileSync(new URL('../../src/components/ui/AuthLayout.jsx', import.meta.url), 'utf8');
+const adminLayout = readFileSync(new URL('../../src/pages/admin/AdminLayout.jsx', import.meta.url), 'utf8');
+const publicHomeBrand = readFileSync(new URL('../../src/pages/PublicHome.jsx', import.meta.url), 'utf8');
 const theme = readFileSync(new URL('../../src/index.css', import.meta.url), 'utf8');
 const html = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
 const roomPlanner = readFileSync(new URL('../../src/components/pms/RoomPlanner.jsx', import.meta.url), 'utf8');
@@ -96,6 +104,17 @@ test('sidebar has accessible mobile open/close controls and a scrollable navigat
   assert.match(sidebar, /-translate-x-\[calc\(100%\+16px\)\]/);
   assert.match(sidebar, /min-h-0 flex-1 overflow-y-auto/);
   assert.match(sidebar, /aria-label="Search navigation"/);
+});
+
+test('official OliTechs identity is shared across all application workspaces and entry screens', () => {
+  for (const source of [appShell, sidebar, posHeader, posGate, login, publicSignIn, authLayout, adminLayout, publicHomeBrand]) {
+    assert.match(source, /BrandLogo/);
+  }
+  assert.match(brandLogo, /olitechs-logo\\.svg/);
+  assert.match(brandLogo, /app-icon\\.svg/);
+  assert.ok(theme.includes('--primary:#0F7C86'));
+  assert.ok(theme.includes('--primary-hover:#0A3F4A'));
+  assert.ok(theme.includes('--pos-gate-accent:#2A9AA0'));
 });
 
 test('theme foundation defines canonical light and dark palettes with reduced-motion handling', () => {
