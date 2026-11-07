@@ -39,3 +39,9 @@ test('opening a POS shift requires a positive starting cash float', () => {
   assert.match(shiftSql, /if p_opening_cash is null or p_opening_cash <= 0 then/i);
   assert.match(shiftSql, /starting cash float greater than zero is required/i);
 });
+
+test('close-shift approval controls use the defined manager permission flag', () => {
+  const closeShiftUi = readFileSync(new URL('../../src/components/pos/CloseShiftModal.jsx', import.meta.url), 'utf8');
+  assert.match(closeShiftUi, /canApproveWithoutStaffPin/);
+  assert.doesNotMatch(closeShiftUi, /canApproveAsPropertyAdmin/);
+});
