@@ -2,7 +2,7 @@ import React from "react";
 import BrandLogo from "@/components/ui/BrandLogo";
 import { ArrowUpRight, CheckCircle2, KeyRound, ShieldCheck, Sparkles } from "lucide-react";
 
-export default function AuthLayout({ icon: Icon = ShieldCheck, title, subtitle, footer, children }) {
+export default function AuthLayout({ title, subtitle, footer, children }) {
   return (
     <main className="min-h-screen bg-[var(--canvas)] px-4 py-6 text-[var(--text)] sm:px-6 lg:px-10">
       <div className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-[1320px] items-center justify-center">
