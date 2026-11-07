@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const source = readFileSync(new URL('../../src/components/ui/system.jsx', import.meta.url), 'utf8');
-const sidebar = readFileSync(new URL('../../src/components/shell/Sidebar.jsx', import.meta.url), 'utf8');\nconst brandLogo = readFileSync(new URL('../../src/components/ui/BrandLogo.jsx', import.meta.url), 'utf8');
+const sidebar = readFileSync(new URL('../../src/components/shell/Sidebar.jsx', import.meta.url), 'utf8');
+const brandLogo = readFileSync(new URL('../../src/components/ui/BrandLogo.jsx', import.meta.url), 'utf8');
 const appShell = readFileSync(new URL('../../src/components/layout/AppShell.jsx', import.meta.url), 'utf8');
 const posHeader = readFileSync(new URL('../../src/components/pos/AppHeader.jsx', import.meta.url), 'utf8');
 const posGate = readFileSync(new URL('../../src/components/pos/POSAccessGate.jsx', import.meta.url), 'utf8');
