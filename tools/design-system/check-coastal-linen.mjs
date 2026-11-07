@@ -17,7 +17,7 @@ const lightTokens = [
 const darkTokens = [
   '--canvas:#081E22', '--surface:#102B30', '--sidebar:#12383E', '--border:#28545A',
   '--input-border:#537A7F', '--panel-head:#173F43', '--text:#EAF5F3', '--text-muted:#B1CECA',
-  '--primary:#15919A', '--on-primary:#FFFFFF', '--primary-hover:#20A0A5',
+  '--primary:#0F7C86', '--on-primary:#FFFFFF', '--primary-hover:#0A3F4A',
   '--primary-text:#8AD1D0', '--primary-soft:#143B40', '--accent:#58AEB0',
   '--success:#4CC39A', '--success-soft:#143A2D', '--danger:#FF8A84',
   '--danger-soft:#3E1E1E', '--warning:#F0A56F', '--warning-soft:#3F2318',
