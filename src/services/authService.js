@@ -25,7 +25,7 @@ export const ROLE_LABELS = {
 };
 export function normalizeStaffRole(role) {
   const value = String(role || '').toLowerCase().trim().replace(/\s+/g, '_');
-  const aliases = { owner:'hotel_admin', administrator:'hotel_admin', general_manager:'hotel_admin', manager:'front_office_manager', storekeeper:'store_manager', housekeeping:'housekeeping_supervisor' };
+	const aliases = { owner:'hotel_admin', administrator:'hotel_admin', general_manager:'hotel_admin', manager:'front_office_manager', storekeeper:'store_manager', store_keeper:'store_manager', housekeeping:'housekeeping_supervisor' };
   return aliases[value] || value;
 }
 export function getDefaultModulesForRole(role) {

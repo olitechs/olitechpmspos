@@ -23,6 +23,9 @@ test('legacy staff roles normalize to the canonical application roles', () => {
   assert.equal(normalizeAppRole('receptionist'), 'front_desk');
   assert.equal(normalizeAppRole('housekeeping_supervisor'), 'housekeeping');
   assert.equal(normalizeAppRole('cashier'), 'pos_staff');
+  assert.equal(normalizeAppRole('waiter'), 'pos_staff');
+  assert.equal(normalizeAppRole('store_keeper'), 'store_manager');
+  assert.equal(normalizeAppRole('storekeeper'), 'store_manager');
   assert.equal(normalizeAppRole('  FRONT_DESK  '), 'front_desk');
 });
 
@@ -31,7 +34,12 @@ test('workspace access is constrained by role', () => {
   assert.equal(canAccessApp('front_desk', 'frontoffice'), true);
   assert.equal(canAccessApp('front_desk', 'backoffice'), false);
   assert.equal(canAccessApp('pos_staff', 'backoffice'), false);
+  assert.equal(canAccessApp('cashier', 'pos'), true);
+  assert.equal(canAccessApp('waiter', 'pos'), true);
+  assert.equal(canAccessApp('waiter', 'backoffice'), false);
   assert.equal(canAccessApp('store_manager', 'stores'), true);
+  assert.equal(canAccessApp('store_keeper', 'stores'), true);
+  assert.equal(getDefaultApp('store_keeper', 'professional'), 'stores');
   assert.equal(canAccessApp('admin', 'missing-workspace'), false);
 });
 

@@ -19,6 +19,8 @@ const roomPlanner = read('../../components/pms/RoomPlanner.jsx');
 const legacySidebar = read('../../components/shell/Sidebar.jsx');
 const pmsService = read('../../services/pmsService.js');
 const distributionOps = read('../../components/modules/DistributionOps.jsx');
+const publicHome = read('../../pages/PublicHome.jsx');
+const authService = read('../../services/authService.js');
 
 function routePathExists(path) {
   if (path === '/backoffice') return /path="\/backoffice"/.test(app);
@@ -39,6 +41,19 @@ test('every declared navigation destination has a registered route', () => {
   ];
   const missing = [...new Set(paths)].filter((path) => path.startsWith('/') && !routePathExists(path));
   assert.deepEqual(missing, [], 'navigation destinations missing route registrations');
+});
+
+test('public legal footer destinations use registered coming-soon pages', () => {
+  assert.ok(publicHome.includes('to="/terms"'));
+  assert.ok(publicHome.includes('to="/privacy"'));
+  assert.ok(app.includes('<Route path="/terms" element={<LegalComingSoon page="terms"/>}/>'));
+  assert.ok(app.includes('<Route path="/privacy" element={<LegalComingSoon page="privacy"/>}/>'));
+});
+
+test('store keeper role aliases resolve through app navigation and staff authorization', () => {
+  assert.match(navArchitecture, /store_keeper:'store_manager'/);
+  assert.match(authService, /store_keeper:'store_manager'/);
+  assert.match(authService, /storekeeper:'store_manager'/);
 });
 
 test('navigation-related source files contain no unresolved merge separators', () => {

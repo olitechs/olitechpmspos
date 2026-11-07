@@ -4,12 +4,11 @@ import { MessageCircle, X as CloseIcon } from 'lucide-react';
 
 // TODO: swap these for OliTechs' real profile URLs — only WhatsApp below is confirmed real.
 const SOCIALS = [
-  { key: 'whatsapp', label: 'WhatsApp', href: 'https://wa.me/254745043121', color: '#25D366', kind: 'icon' },
-  { key: 'instagram', label: 'Instagram', href: 'https://instagram.com/olitechs', color: '#E1306C', kind: 'mono', mono: 'IG' },
-  { key: 'tiktok', label: 'TikTok', href: 'https://tiktok.com/@olitechs', color: '#25F4EE', kind: 'mono', mono: 'TT' },
-  { key: 'linkedin', label: 'LinkedIn', href: 'https://linkedin.com/company/olitechs', color: '#0A66C2', kind: 'mono', mono: 'in' },
-  { key: 'facebook', label: 'Facebook', href: 'https://facebook.com/olitechs', color: '#1877F2', kind: 'mono', mono: 'f' },
-  { key: 'x', label: 'X', href: 'https://x.com/olitechs', color: 'var(--border)', kind: 'mono', mono: 'X' },
+  { key: 'whatsapp', label: 'WhatsApp', href: 'https://wa.me/254745043121', kind: 'icon' },
+  { key: 'instagram', label: 'Instagram', href: 'https://instagram.com/olitechs', kind: 'mono', mono: 'IG' },
+  { key: 'tiktok', label: 'TikTok', href: 'https://tiktok.com/@olitechs', kind: 'mono', mono: 'TT' },
+  { key: 'linkedin', label: 'LinkedIn', href: 'https://linkedin.com/company/olitechs', kind: 'mono', mono: 'in' },
+  { key: 'facebook', label: 'Facebook', href: 'https://facebook.com/olitechs', kind: 'mono', mono: 'f' },
 ];
 
 /**
@@ -35,16 +34,15 @@ export default function SocialFAB() {
               transition={{ type: 'spring', stiffness: 380, damping: 22, delay: i * 0.05 }}
               whileHover={{ scale: 1.12, y: -2 }}
               whileTap={{ scale: 0.94 }}
-              className="group relative flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-surface text-foreground shadow-[0_8px_24px_rgba(0,0,0,0.45)] transition-colors"
+              className="group relative flex h-11 w-11 items-center justify-center rounded-full border border-[var(--border)] bg-surface text-foreground shadow-[var(--shadow-overlay)] transition-colors"
               aria-label={s.label}
-              style={{ '--brand': s.color }}
-              onMouseEnter={(e) => (e.currentTarget.style.borderColor = s.color)}
+              onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--primary)')}
               onMouseLeave={(e) => (e.currentTarget.style.borderColor = '')}
             >
               {s.kind === 'icon' ? (
-                <MessageCircle className="h-5 w-5" style={{ color: s.color }} />
+                <MessageCircle className="h-5 w-5 text-primary" />
               ) : (
-                <span className="text-[13px] font-black" style={{ color: s.color }}>
+                <span className="text-[13px] font-black text-primary">
                   {s.mono}
                 </span>
               )}
@@ -61,7 +59,7 @@ export default function SocialFAB() {
         whileTap={{ scale: 0.9 }}
         aria-expanded={open}
         aria-label={open ? 'Close social links' : 'Open social links'}
-        className="relative flex h-14 w-14 items-center justify-center rounded-full bg-primary text-foreground shadow-[0_10px_30px_rgba(255,211,0,0.35)]"
+        className="relative flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[var(--shadow-overlay)]"
       >
         {!open && (
           <motion.span
