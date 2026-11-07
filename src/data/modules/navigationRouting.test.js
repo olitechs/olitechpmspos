@@ -190,7 +190,7 @@ test('POS access screen uses the official OliTechs logo, compact keypad and bran
   assert.match(posAccessGate, /grid-cols-3 grid-rows-4/);
   assert.match(posAccessGate, /Array\.from\(\{ length: 4 \}/);
   assert.match(posAccessGate, /onClick=\{\(\) => enterDigit\(digit\)\}/);
-  assert.match(posAccessGate, />Clear</);
+  assert.match(posAccessGate, /Clear/);
   assert.match(posAccessGate, /next\.length === 4/);
 });
 
