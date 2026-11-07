@@ -10,6 +10,8 @@ const topNav = read('../../components/layout/TopAppNav.jsx');
 const frontLayout = read('../../components/layout/FrontOfficeLayout.jsx');
 const posLayout = read('../../components/layout/POSLayout.jsx');
 const posApp = read('../../pages/POSApp.jsx');
+const posContainer = read('../../components/pos/POSContainer.jsx');
+const posAccessGate = read('../../components/pos/POSAccessGate.jsx');
 const inventoryOperations = read('../../components/modules/InventoryOperations.jsx');
 const navArchitecture = read('./navArchitecture.js');
 const sidebarNavigation = read('./sidebarNavigation.js');
@@ -177,4 +179,21 @@ test('database subscription access normalizes screen ids and legacy workspace na
   assert.match(migration, /when 'cashier' then 'pos'/);
   assert.match(migration, /where case lower\(trim\(enabled\.module\)\)/);
   assert.doesNotMatch(migration, /p_module\s*=\s*any\(s\.enabled_modules\)/);
+});
+
+
+test('POS access screen uses the full-screen three-column keypad and four green PIN indicators', () => {
+  assert.match(posAccessGate, /bg-\[var\(--pos-gate-bg\)\]/);
+  assert.match(posAccessGate, /grid-cols-3 grid-rows-4/);
+  assert.match(posAccessGate, /Array\.from\(\{ length: 4 \}/);
+  assert.match(posAccessGate, /onClick=\{\(\) => enterDigit\(digit\)\}/);
+  assert.match(posAccessGate, />Clear</);
+  assert.match(posAccessGate, /next\.length === 4/);
+});
+
+test('POS access stays unlocked during navigation and is cleared when its browser window unloads', () => {
+  assert.match(posContainer, /sessionStorage\.setItem\(\`\$\{POS_ACCESS_KEY\}:\$\{propertyId\}\`, '1'\)/);
+  assert.match(posContainer, /sessionStorage\.getItem\(accessKey\) === '1'/);
+  assert.match(posContainer, /window\.addEventListener\('beforeunload', clearWindowAccess\)/);
+  assert.match(posContainer, /sessionStorage\.removeItem\(accessKey\)/);
 });

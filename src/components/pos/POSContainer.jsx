@@ -18,7 +18,7 @@ import { posService } from '@/services/posService';
 import { getUnsentOrderLines } from '@/services/printTemplates';
 import { shiftService } from '@/services/shiftService';
 import { posAccessService } from '@/services/posAccessService';
-import POSAccessGate from '@/components/pos/POSAccessGate';
+import POSAccessGate, { POS_ACCESS_KEY } from '@/components/pos/POSAccessGate';
 import AccessPinTab from '@/components/pos/AccessPinTab';
 import CloseShiftModal, { OpenShiftModal } from '@/components/pos/CloseShiftModal';
 import MenuManager from '@/components/pos/MenuManager';
@@ -79,7 +79,29 @@ export default function POSContainer() {
 	const [posAccessBusy, setPosAccessBusy] = useState(false);
 	const [pinSettingsOpen, setPinSettingsOpen] = useState(false);
 	const canManagePosPin = Boolean(user?.isPlatformOwner || ['owner', 'admin'].includes(String(user?.propertyRole || '').toLowerCase()) || ['hotel_admin', 'super_admin'].includes(String(user?.staff?.role || '').toLowerCase()));
-	useEffect(() => { if (!propertyId) return; setPosUnlocked(false); setPosAccessError(''); setPinSettingsOpen(false); setCurrentShift(null); setShiftLoading(true); authService.listStaff(propertyId, 'pos').then(setPosStaff).catch(() => {}); shiftService.getCurrentShift(propertyId).then(setCurrentShift).catch(()=>setCurrentShift(null)).finally(()=>setShiftLoading(false)); }, [propertyId]);
+	useEffect(() => {
+		if (!propertyId) return;
+		// Keep the POS access grant for this browser window only. Navigating between
+		// POS screens/routes must not ask for the property PIN again; closing or
+		// refreshing this window clears the grant and requires a fresh PIN.
+		const accessKey = `${POS_ACCESS_KEY}:${propertyId}`;
+		setPosUnlocked(sessionStorage.getItem(accessKey) === '1');
+		setPosAccessError('');
+		setPinSettingsOpen(false);
+		setCurrentShift(null);
+		setShiftLoading(true);
+		authService.listStaff(propertyId, 'pos').then(setPosStaff).catch(() => {});
+		shiftService.getCurrentShift(propertyId).then(setCurrentShift).catch(()=>setCurrentShift(null)).finally(()=>setShiftLoading(false));
+	}, [propertyId]);
+	useEffect(() => {
+		if (!propertyId) return undefined;
+		const accessKey = `${POS_ACCESS_KEY}:${propertyId}`;
+		const clearWindowAccess = () => {
+			try { sessionStorage.removeItem(accessKey); } catch {}
+		};
+		window.addEventListener('beforeunload', clearWindowAccess);
+		return () => window.removeEventListener('beforeunload', clearWindowAccess);
+	}, [propertyId]);
 	const verifySwitch = async (pin) => { try { const result = await authService.verifyStaffPin({ propertyId, module: 'pos', pin }); if (!result?.ok) { setSwitchError('Wrong PIN'); return; } sessionStorage.setItem('olitech_active_staff_v2', JSON.stringify(result.staff)); window.dispatchEvent(new CustomEvent('olitech:staff-changed', { detail: result.staff })); setSwitchStaff(null); setSwitchError(''); } catch (e) { setSwitchError(e.message); } };
 	const verifyPosAccess = async (pin) => {
 		setPosAccessBusy(true);
@@ -90,6 +112,7 @@ export default function POSContainer() {
 				setPosAccessError(result?.message || 'Incorrect POS PIN. Try again.');
 				return;
 			}
+			sessionStorage.setItem(`${POS_ACCESS_KEY}:${propertyId}`, '1');
 			setPosUnlocked(true);
 		} catch (error) {
 			setPosAccessError(error?.message || 'Could not verify the POS PIN. Check your connection.');
