@@ -4,8 +4,8 @@
   "description": "Hospitality operations platform for front office, point of sale, inventory and property administration.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#F5F8F8",
-  "theme_color": "#0A3F4A",
+  "background_color": "{{SOFT_WHITE}}",
+  "theme_color": "{{DEEP_LAGOON}}",
   "icons": [
     { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" },
     { "src": "/app-icon.svg", "sizes": "1024x1024", "type": "image/svg+xml", "purpose": "any maskable" }

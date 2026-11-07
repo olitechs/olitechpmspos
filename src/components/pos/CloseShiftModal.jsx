@@ -36,7 +36,7 @@ export function OpenShiftModal({ propertyId, onOpened }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[270] flex items-center justify-center bg-[rgba(34,48,57,0.25)] p-4">
+    <div className="fixed inset-0 z-[270] flex items-center justify-center bg-[var(--overlay-scrim)] p-4">
       <div className="w-full max-w-md rounded-3xl bg-[var(--surface)] p-6 shadow-2xl">
         <div className="text-xl font-medium">Open Shift</div>
         <p className="mt-1 text-sm text-[var(--text-muted)]">Enter the cash float placed in the drawer before taking payments.</p>
@@ -86,7 +86,7 @@ export default function CloseShiftModal({shift,onClosed,onClose}){
    try{const result=await authService.verifyStaffPin({propertyId,module:'pos',pin});const r=String(result?.staff?.role||'').toLowerCase().replace(/\s+/g,'_');if(!result?.ok||!managerRoles.has(r)){setPinError('Manager or administrator PIN required.');return;}setPinOpen(false);setManagerApproved(true);await doClose(true);}catch(e){setPinError(e.message||'PIN verification failed.');}
  };
  if(pinOpen)return <PinPad title="Manager PIN Required" staffName="Manager approval" error={pinError} onSubmit={submitPin} onClose={()=>setPinOpen(false)}/>;
- return <div className="fixed inset-0 z-[260] flex items-center justify-center bg-[rgba(34,48,57,0.25)] p-4"><div className="w-full max-w-xl overflow-hidden rounded-3xl bg-[var(--surface)] shadow-2xl">
+ return <div className="fixed inset-0 z-[260] flex items-center justify-center bg-[var(--overlay-scrim)] p-4"><div className="w-full max-w-xl overflow-hidden rounded-3xl bg-[var(--surface)] shadow-2xl">
   <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4"><div><div className="text-lg font-medium">Close Shift</div><div className="text-xs text-[var(--text-muted)]">{shift?.shift_no} · {shift?.date}</div></div><button onClick={onClose} className="rounded-xl p-2 hover:bg-[var(--sidebar)]"><X size={18}/></button></div>
   <div className="max-h-[72vh] overflow-y-auto p-5">
    {error&&<div className="mb-4 rounded-xl bg-[var(--danger-soft)] p-3 text-sm font-medium text-[var(--danger-text)]">{error}</div>}

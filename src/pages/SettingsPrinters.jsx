@@ -339,7 +339,7 @@ export default function SettingsPrinters() {
   },{}),[]);
 
   return (
-    <div className="min-h-full bg-[#F7F8FA]">
+    <div className="min-h-full bg-[var(--canvas)]">
       <div className="border-b border-border bg-surface">
         <div className="mx-auto max-w-7xl px-5 py-5 lg:px-7">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">

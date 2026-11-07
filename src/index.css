@@ -5,248 +5,291 @@
 @layer base {
   :root {
     color-scheme: light;
-    /* Canonical light palette — keep all colour literals in this token layer. */
-    --canvas:#F3F7F7; --surface:#FFFFFF; --sidebar:#EAF2F1; --border:#D2E1DF; --input-border:#8AAEAA;
-    --pos-gate-bg:#0A2529; --pos-gate-surface:#10383D; --pos-gate-border:#28575B; --pos-gate-accent:#58AEB0; --pos-gate-text:#F0F8F7; --pos-gate-muted:#B4D0CD; --pos-gate-hover:rgba(42,154,160,.12); --pos-gate-active:rgba(42,154,160,.20);
-    --panel-head:#E6F0EF;
-    --text:#173D40; --text-muted:#557477;
-    --primary:#0F7C86; --on-primary:#FFFFFF; --primary-foreground:var(--on-primary);
-    --primary-hover:#0A3F4A; --primary-text:#0A6871; --primary-soft:#E2F1F0;
-    --accent:#58AEB0;
-    --success:#1B7A57; --success-text:#1B7A57; --success-soft:#E3F3EC;
-    --danger:#B42318; --danger-foreground:#FFFFFF; --danger-text:#B42318; --danger-soft:#FBE8E6;
-    --warning:#8F5400; --warning-text:#8F5400; --warning-soft:#FBEFD9;
-    --info:#0A6871; --info-soft:#E2F1F0;
-    --chip-bg:#4F646D; --chip-fg:#FFFFFF;
-    --tooltip-shadow:0 8px 24px rgba(20,35,43,.18);
-    --btn-neutral-bg:#E8E8E8; --btn-neutral-fg:#333333; --btn-neutral-bd:#CFCFCF;
-    --btn-danger-bg:#C3312D; --btn-danger-fg:#FFFFFF;
-    --btn-today-bg:#2F7A33; --btn-today-fg:#FFFFFF;
-    --btn-action-bg:#0F7C86; --btn-action-fg:#FFFFFF;
-    --cal-page:#F8FBFA; --cal-head:#FFFFFF; --cal-grid:#E0E7E6; --cal-group:#F1F6F5;
-    --cal-weekend:#E7F1F0; --cal-today:#DFF0D8;
-    --cal-text:#557477; --cal-room:#3F5557; --cal-scroll:#8B8B8B;
-    --pay-none:#FC7F2C; --pay-none-fg:#2B1200; --pay-none-bd:rgba(0,0,0,.20);
-    --pay-part:#E0CD29; --pay-part-fg:#2E2900; --pay-part-bd:rgba(0,0,0,.20);
-    --pay-paid:#79AB3E; --pay-paid-fg:#14230A; --pay-paid-bd:rgba(0,0,0,.20);
-    --pay-opt:#3CB5AE; --pay-opt-fg:#06201E; --pay-opt-bd:rgba(0,0,0,.20);
-    --st-cancel:#990000; --st-cancel-fg:#FFFFFF; --st-cancel-bd:rgba(0,0,0,.20);
 
-    /* Existing application semantic tokens, now aliases of the canonical palette. */
-    --room-clean:#1F7A57; --room-dirty:#B4532F; --room-occupied:#2F5FC4;
-    --room-checkout:#5148BE; --room-out-of-order:#5E6E76;
-    --floor-bg:#D7D7D7;
-    --table-free-bg:#74C365; --table-free-fg:#10260A; --table-free-border:#5CA84E;
-    --table-occupied-bg:#FA003F; --table-occupied-fg:#FFFFFF; --table-occupied-border:#C70032;
-    --table-bill-bg:#FAFAFA; --table-bill-fg:#14232B; --table-bill-border:#9AA3A8;
-    --payment-deposit-foreground:var(--pay-part-fg); --payment-status-foreground:var(--text);
-    --stay-optioned-foreground:var(--pay-opt-fg);
-    --planner-ice:var(--primary-soft); --planner-blue-soft:var(--primary-soft);
-    --planner-blue:var(--primary); --planner-navy:var(--text);
-    --grid-weekend:var(--cal-weekend); --grid-today:var(--cal-today);
-    --shadow:none; --shadow-overlay:var(--tooltip-shadow); --overlay-scrim:rgba(20,35,43,.55);
+    /* Canonical brand and Coastal Linen palette. Color literals live only here. */
+    --deep-lagoon: #0A3F4A;
+    --coastal-teal: #0F7C86;
+    --white: #FFFFFF;
+    --soft-white: #F5F8F8;
+    --canvas: #F6F9F9;
+    --surface: var(--white);
+    --sidebar: #EAF3F3;
+    --text: #223039;
+    --accent: #E8955A;
 
-    /* shadcn semantic mappings */
-    --background:var(--canvas); --foreground:var(--text);
-    --card:var(--surface); --card-foreground:var(--text);
-    --popover:var(--surface); --popover-foreground:var(--text);
-    --secondary:var(--sidebar); --secondary-foreground:var(--text);
-    --muted:var(--text-muted); --muted-foreground:var(--text-muted);
-    --accent-foreground:var(--text); --destructive:var(--danger);
-    --destructive-foreground:var(--danger-foreground);
-    --input:var(--input-border); --ring:var(--primary-text);
-    --radius:12px; --radius-control:8px; --control-border:var(--border);
+    /* Functional payment states: preserve the requested fill/foreground pairs. */
+    --status-paid: #3FA77A;
+    --status-deposit-paid: #F2C14E;
+    --status-deposit-foreground: #5A4310;
+    --status-not-paid: #EE8A3C;
+    --status-not-paid-foreground: var(--white);
 
-    /* Backward-compatible names mapped to canonical tokens. */
-    --bg:var(--canvas); --surface-2:var(--sidebar); --border-strong:var(--border);
-    --brand-dark:var(--text); --brand-charcoal:var(--sidebar); --action:var(--primary);
-    --action-hover:var(--primary-hover); --action-text:var(--on-primary);
-    --brand-primary:var(--primary); --brand-surface:var(--surface); --on-dark:var(--text);
-    --stay-text:var(--text); --brand-soft:var(--primary-soft);
-    --warning-text-legacy:var(--warning-text); --room-charge:var(--primary); --focus:var(--primary-text);
-    --table-free:var(--table-free-bg); --table-occupied:var(--table-occupied-bg); --table-bill:var(--table-bill-bg);
-    --table-reserved:var(--room-checkout); --table-paid:var(--success);
-    --stay-occupied:var(--room-occupied); --stay-checkout:var(--room-checkout);
-    --stay-optioned:var(--pay-opt); --stay-closed:var(--room-out-of-order);
-    --font-body:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-    --font-heading:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; --font-display:var(--font-heading);
-    --font-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    /* Room states are separate from payment states; out-of-order is striped. */
+    --room-clean: var(--status-paid);
+    --room-dirty: var(--status-deposit-paid);
+    --room-occupied: #2F6F9F;
+    --room-checkout: #3949AB;
+    --room-out-of-order: #65727A;
+    --room-clean-foreground: var(--text);
+    --room-dirty-foreground: var(--status-deposit-foreground);
+    --room-occupied-foreground: var(--white);
+    --room-checkout-foreground: var(--white);
+    --room-out-of-order-foreground: var(--white);
+    --room-out-of-order-soft: color-mix(in srgb, var(--room-out-of-order) 14%, var(--white));
+    --room-out-of-order-stripe: repeating-linear-gradient(135deg, color-mix(in srgb, var(--room-out-of-order) 24%, var(--white)) 0 6px, var(--surface) 6px 12px);
+
+    /* Semantic and derived values use the canonical colors above. */
+    --border: color-mix(in srgb, var(--text) 16%, var(--white));
+    --input-border: color-mix(in srgb, var(--deep-lagoon) 38%, var(--white));
+    --panel-head: var(--sidebar);
+    --text-muted: color-mix(in srgb, var(--text) 68%, var(--white));
+    --primary: var(--coastal-teal);
+    --on-primary: var(--white);
+    --primary-foreground: var(--on-primary);
+    --primary-hover: var(--deep-lagoon);
+    --primary-text: var(--deep-lagoon);
+    --primary-soft: color-mix(in srgb, var(--coastal-teal) 11%, var(--white));
+    --success: var(--status-paid);
+    --success-text: var(--deep-lagoon);
+    --success-soft: color-mix(in srgb, var(--status-paid) 12%, var(--white));
+    --danger: var(--status-not-paid);
+    --danger-foreground: var(--status-not-paid-foreground);
+    --danger-text: var(--deep-lagoon);
+    --danger-soft: color-mix(in srgb, var(--status-not-paid) 12%, var(--white));
+    --warning: var(--accent);
+    --warning-text: var(--deep-lagoon);
+    --warning-soft: color-mix(in srgb, var(--accent) 15%, var(--white));
+    --info: var(--coastal-teal);
+    --info-soft: var(--primary-soft);
+    --chip-bg: var(--deep-lagoon);
+    --chip-fg: var(--white);
+    --tooltip-shadow: 0 8px 24px color-mix(in srgb, var(--deep-lagoon) 18%, transparent);
+    --btn-neutral-bg: var(--soft-white);
+    --btn-neutral-fg: var(--text);
+    --btn-neutral-bd: var(--border);
+    --btn-danger-bg: var(--status-not-paid);
+    --btn-danger-fg: var(--white);
+    --btn-today-bg: var(--status-paid);
+    --btn-today-fg: var(--white);
+    --btn-action-bg: var(--primary);
+    --btn-action-fg: var(--on-primary);
+
+    /* Calendar, booking and payment compatibility tokens. */
+    --cal-page: var(--canvas);
+    --cal-head: var(--surface);
+    --cal-grid: var(--border);
+    --cal-group: var(--sidebar);
+    --cal-weekend: color-mix(in srgb, var(--primary) 6%, var(--surface));
+    --cal-today: color-mix(in srgb, var(--status-paid) 10%, var(--surface));
+    --cal-text: var(--text-muted);
+    --cal-room: var(--text);
+    --cal-scroll: var(--text-muted);
+    --grid-weekend: var(--cal-weekend);
+    --pay-none: var(--status-not-paid);
+    --pay-none-fg: var(--status-not-paid-foreground);
+    --pay-none-bd: var(--status-not-paid);
+    --pay-part: var(--status-deposit-paid);
+    --pay-part-fg: var(--status-deposit-foreground);
+    --pay-part-bd: color-mix(in srgb, var(--status-deposit-paid) 72%, var(--deep-lagoon));
+    --pay-paid: var(--status-paid);
+    --pay-paid-fg: var(--white);
+    --pay-paid-bd: var(--status-paid);
+    --pay-opt: var(--primary-soft);
+    --pay-opt-fg: var(--deep-lagoon);
+    --pay-opt-bd: var(--primary);
+    --st-cancel: var(--status-not-paid);
+    --st-cancel-fg: var(--white);
+    --st-cancel-bd: var(--status-not-paid);
+
+    --floor-bg: var(--canvas);
+    --table-free-bg: var(--room-clean);
+    --table-free-fg: var(--room-clean-foreground);
+    --table-free-border: color-mix(in srgb, var(--room-clean) 76%, var(--deep-lagoon));
+    --table-occupied-bg: var(--room-occupied);
+    --table-occupied-fg: var(--room-occupied-foreground);
+    --table-occupied-border: color-mix(in srgb, var(--room-occupied) 76%, var(--deep-lagoon));
+    --table-bill-bg: var(--status-not-paid);
+    --table-bill-fg: var(--status-not-paid-foreground);
+    --table-bill-border: var(--status-not-paid);
+    --table-reserved-bg: var(--room-checkout);
+    --table-paid-bg: var(--status-paid);
+    --payment-deposit-foreground: var(--status-deposit-foreground);
+    --payment-status-foreground: var(--white);
+    --stay-optioned-foreground: var(--deep-lagoon);
+
+    /* Common effects and print-preview aliases; these print-only inks preserve established output. */
+    --shadow: none;
+    --shadow-overlay: var(--tooltip-shadow);
+    --overlay-scrim: color-mix(in srgb, var(--deep-lagoon) 48%, transparent);
+    --print-ink: #000000;
+    --print-paper: var(--white);
+    --print-border: var(--border);
+    --print-muted: var(--text-muted);
+    --print-void: #DC2626;
+    --print-void-foreground: var(--white);
+
+    /* POS PIN gate compatibility aliases; keep the entry screen light and on-brand. */
+    --pos-gate-bg: var(--canvas);
+    --pos-gate-surface: var(--surface);
+    --pos-gate-border: var(--border);
+    --pos-gate-text: var(--text);
+    --pos-gate-muted: var(--text-muted);
+    --pos-gate-accent: var(--primary);
+    --pos-gate-hover: var(--primary-soft);
+    --pos-gate-active: var(--sidebar);
+
+    /* shadcn semantic mappings. */
+    --background: var(--canvas);
+    --foreground: var(--text);
+    --card: var(--surface);
+    --card-foreground: var(--text);
+    --popover: var(--surface);
+    --popover-foreground: var(--text);
+    --secondary: var(--sidebar);
+    --secondary-foreground: var(--text);
+    --muted: var(--text-muted);
+    --muted-foreground: var(--text-muted);
+    --accent-foreground: var(--text);
+    --destructive: var(--danger);
+    --destructive-foreground: var(--danger-foreground);
+    --input: var(--input-border);
+    --ring: var(--primary);
+    --radius: 12px;
+    --radius-control: 8px;
+    --control-border: var(--border);
+
+    /* Backward-compatible names map to the same single palette. */
+    --bg: var(--canvas);
+    --surface-2: var(--sidebar);
+    --border-strong: var(--border);
+    --brand-dark: var(--deep-lagoon);
+    --brand-charcoal: var(--sidebar);
+    --action: var(--primary);
+    --action-hover: var(--primary-hover);
+    --action-text: var(--on-primary);
+    --brand-primary: var(--primary);
+    --brand-surface: var(--surface);
+    --on-dark: var(--white);
+    --stay-text: var(--white);
+    --brand-soft: var(--primary-soft);
+    --warning-text-legacy: var(--warning-text);
+    --room-charge: var(--primary);
+    --focus: var(--primary);
+    --table-free: var(--table-free-bg);
+    --table-occupied: var(--table-occupied-bg);
+    --table-bill: var(--table-bill-bg);
+    --table-reserved: var(--room-checkout);
+    --table-paid: var(--status-paid);
+    --stay-occupied: var(--room-occupied);
+    --stay-checkout: var(--room-checkout);
+    --stay-optioned: var(--pay-opt);
+    --stay-closed: var(--room-out-of-order);
+
+    --font-body: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-heading: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-display: var(--font-heading);
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   }
 
-  :root[data-theme="dark"] {
-    color-scheme:dark;
-    --canvas:#081E22; --surface:#102B30; --sidebar:#12383E; --border:#28545A; --input-border:#537A7F;
-    --panel-head:#173F43;
-    --text:#EAF5F3; --text-muted:#B1CECA;
-    --primary:#0F7C86; --on-primary:#FFFFFF; --primary-foreground:var(--on-primary);
-    --primary-hover:#0A3F4A; --primary-text:#8AD1D0; --primary-soft:#143B40;
-    --accent:#58AEB0;
-    --success:#4CC39A; --success-text:#4CC39A; --success-soft:#143A2D;
-    --danger:#FF8A84; --danger-foreground:#FBEDEC; --danger-text:#FF8A84; --danger-soft:#3E1E1E;
-    --warning:#F0A56F; --warning-text:#F0A56F; --warning-soft:#3F2318;
-    --info:#8AD1D0; --info-soft:#143B40;
-    --chip-bg:#34464F; --chip-fg:#E3EBED;
-    --tooltip-shadow:0 8px 24px rgba(0,0,0,.45);
-    --btn-neutral-bg:#22313A; --btn-neutral-fg:#E3EBED; --btn-neutral-bd:#34464F;
-    --btn-danger-bg:#B3302B; --btn-danger-fg:#FBEDEC;
-    --btn-today-bg:#2F7A33; --btn-today-fg:#F2F8F9;
-    --btn-action-bg:#0F7C86; --btn-action-fg:#FFFFFF;
-    --cal-page:#0D2529; --cal-head:#102B30; --cal-grid:#28545A; --cal-group:#17363A;
-    --cal-weekend:#173B3F; --cal-today:#1C3326;
-    --cal-text:#B1CECA; --cal-room:#C9DAD7; --cal-scroll:#4A5C64;
-    --pay-none:#8F4118; --pay-none-fg:#FFEBDD; --pay-none-bd:#F08A55;
-    --pay-part:#7A5A10; --pay-part-fg:#FFF3D6; --pay-part-bd:#D9B53F;
-    --pay-paid:#33591C; --pay-paid-fg:#EAF5DC; --pay-paid-bd:#8CC152;
-    --pay-opt:#17524F; --pay-opt-fg:#DDF5F3; --pay-opt-bd:#4FC9C0;
-    --st-cancel:#7A1F1F; --st-cancel-fg:#FFD9D6; --st-cancel-bd:#E0605A;
-    --room-clean:#4CC39A; --room-dirty:#E58A66; --room-occupied:#6E9BEA;
-    --room-checkout:#8F88E6; --room-out-of-order:#8A9AA2;
-    --floor-bg:#1B2327;
-    --table-free-bg:#33591C; --table-free-fg:#EAF5DC; --table-free-border:#8CC152;
-    --table-occupied-bg:#8F263F; --table-occupied-fg:#FFF0F1; --table-occupied-border:#FF8A9D;
-    --table-bill-bg:#26343A; --table-bill-fg:#E3EBED; --table-bill-border:#8A9BA2;
-    --payment-deposit-foreground:var(--pay-part-fg); --payment-status-foreground:var(--text);
-    --stay-optioned-foreground:var(--pay-opt-fg);
-    --planner-ice:var(--primary-soft); --planner-blue-soft:var(--primary-soft);
-    --planner-blue:var(--primary); --planner-navy:var(--text);
-    --grid-weekend:var(--cal-weekend); --grid-today:var(--cal-today);
-    --shadow-overlay:var(--tooltip-shadow); --overlay-scrim:rgba(0,0,0,.62);
-  }
-
-  * { box-sizing:border-box; }
-  html,body,#root { min-height:100%; }
-  html { font-family:var(--font-body); font-synthesis:none; text-rendering:optimizeLegibility; }
-  body { margin:0; background:var(--canvas); color:var(--text); font-family:var(--font-body); font-size:14px; font-weight:400; }
-  h1,h2,h3,h4,.font-heading { font-family:var(--font-heading); font-weight:500; }
-  :where(*):not(svg):not(path) { font-synthesis:none; }
-  button,a,input,select,textarea { transition:background-color 150ms ease,border-color 150ms ease,color 150ms ease,box-shadow 150ms ease,opacity 150ms ease,transform 150ms ease; }
-  button { min-height:36px; font-weight:500; }
-  input,select,textarea { border-color:var(--input-border); }
-  input::placeholder,textarea::placeholder { color:var(--text-muted); opacity:1; }
-  :focus-visible { outline:2px solid var(--primary-text); outline-offset:2px; }
-  ::selection { background:var(--primary-soft); color:var(--text); }
-  @media (prefers-reduced-motion:reduce) {
-    *,*::before,*::after { scroll-behavior:auto!important; animation-duration:.01ms!important; animation-iteration-count:1!important; transition-duration:.01ms!important; }
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body, #root { min-height: 100%; }
+  html { font-family: var(--font-body); font-synthesis: none; text-rendering: optimizeLegibility; }
+  body { margin: 0; background: var(--canvas); color: var(--text); font-family: var(--font-body); font-size: 14px; font-weight: 400; }
+  h1, h2, h3, h4, .font-heading { font-family: var(--font-heading); font-weight: 600; }
+  :where(*):not(svg):not(path) { font-synthesis: none; }
+  button, a, input, select, textarea { transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease, opacity 150ms ease, transform 150ms ease; }
+  button { min-height: 44px; font-weight: 600; }
+  input, select, textarea { border-color: var(--input-border); color: var(--text); }
+  input, select, textarea { font-size: max(16px, 1em); }
+  input::placeholder, textarea::placeholder { color: var(--text-muted); opacity: 1; }
+  :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  ::selection { background: var(--primary-soft); color: var(--text); }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
   }
 }
 
 @layer components {
   .app-shell { background: var(--canvas); color: var(--text); }
   .global-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: none; }
-  /* Legacy utility-class guardrails: keep foregrounds paired with their surfaces. */
-  .bg-primary.text-foreground { color: var(--on-primary) !important; }
-  .bg-secondary.text-white { color: var(--text) !important; }
-  .bg-white.text-white { color: var(--text) !important; }
-  .bg-slate-900.text-foreground,
-  .bg-slate-950.text-white { background-color: var(--primary) !important; color: var(--on-primary) !important; }
-  .bg-surface.text-black { color: var(--text) !important; }
-
-  /* Legacy utility compatibility layer.
-     Older modules still mix fixed Tailwind palette classes with semantic
-     surfaces. Pair foregrounds with the surface class on the same element,
-     in BOTH themes. Exclude the Room Planner and floor tiles: their colours
-     are operational status encodings with dedicated contrast rules. */
-  :root:not([data-theme="dark"]) :not(.room-planner):not(.floor-table-tile):is(.bg-white,.bg-gray-50,.bg-gray-100,.bg-slate-50,.bg-slate-100,.bg-zinc-50,.bg-zinc-100):is(.text-white,.text-gray-50,.text-gray-100,.text-slate-50,.text-slate-100,.text-zinc-50,.text-zinc-100) {
-    color: var(--text) !important;
-  }
-  :root:not([data-theme="dark"]) :not(.room-planner):not(.floor-table-tile):is(.bg-gray-900,.bg-slate-900,.bg-zinc-900,.bg-neutral-900,.bg-black):is(.text-black,.text-gray-900,.text-slate-900,.text-zinc-900,.text-neutral-900) {
-    color: #FFFFFF !important;
-  }
-  :root[data-theme="dark"] :not(.room-planner):not(.floor-table-tile):is(.bg-white,.bg-gray-50,.bg-gray-100,.bg-gray-200,.bg-slate-50,.bg-slate-100,.bg-slate-200,.bg-zinc-50,.bg-zinc-100,.bg-neutral-50,.bg-neutral-100) {
-    background-color: var(--surface) !important;
-    border-color: var(--border) !important;
-  }
-  :root[data-theme="dark"] :not(.room-planner):not(.floor-table-tile):is(.bg-gray-900,.bg-gray-950,.bg-slate-900,.bg-slate-950,.bg-zinc-900,.bg-zinc-950,.bg-neutral-900,.bg-neutral-950,.bg-black) {
-    background-color: var(--sidebar) !important;
-  }
-  :root[data-theme="dark"] :not(.room-planner):not(.floor-table-tile):is(.text-black,.text-gray-900,.text-gray-800,.text-gray-700,.text-slate-900,.text-slate-800,.text-slate-700,.text-zinc-900,.text-zinc-800,.text-neutral-900) {
-    color: var(--text) !important;
-  }
-  :root[data-theme="dark"] :not(.room-planner):not(.floor-table-tile):is(.text-gray-600,.text-gray-500,.text-slate-600,.text-slate-500,.text-zinc-600,.text-zinc-500,.text-neutral-600,.text-neutral-500) {
-    color: var(--text-muted) !important;
-  }
-  :root[data-theme="dark"] :not(.room-planner):not(.floor-table-tile):is(.text-white,.text-gray-50,.text-gray-100,.text-slate-50,.text-slate-100,.text-zinc-50,.text-zinc-100) {
-    color: var(--text) !important;
-  }
-  :root[data-theme="dark"] :not(.room-planner):not(.floor-table-tile):is(.border-gray-100,.border-gray-200,.border-slate-100,.border-slate-200,.border-zinc-100,.border-zinc-200) {
-    border-color: var(--border) !important;
-  }
-
-  /* Older screens still contain fixed light/dark utility classes. Rebind them
-     to the active theme so dark text never sits on dark surfaces and white
-     panels do not remain blinding white in the dark appearance. */
-  :root[data-theme="dark"] .bg-white:not(.receipt-preview-paper) { background-color: var(--surface) !important; }
-  :root[data-theme="dark"] :not(.receipt-preview-paper).text-black,
-  :root[data-theme="dark"] .text-slate-900,
-  :root[data-theme="dark"] .text-slate-800,
-  :root[data-theme="dark"] .text-gray-900 { color: var(--text) !important; }
-  :root[data-theme="dark"] .border-slate-200,
-  :root[data-theme="dark"] .border-gray-200 { border-color: var(--border) !important; }
-  .global-primary-button { background: var(--primary); color: var(--primary-foreground); min-height: 40px; border: 1px solid var(--primary); border-radius: var(--radius-control); font-weight: 500; }
+  .global-primary-button { background: var(--primary); color: var(--on-primary); min-height: 44px; border: 1px solid var(--primary); border-radius: var(--radius-control); font-weight: 600; }
   .global-primary-button:hover { background: var(--primary-hover); }
-  .global-secondary-button { background: var(--surface); border: 1px solid var(--border); color: var(--primary); min-height: 40px; border-radius: var(--radius-control); font-weight: 500; }
+  .global-secondary-button { background: var(--surface); border: 1px solid var(--border); color: var(--primary); min-height: 44px; border-radius: var(--radius-control); font-weight: 600; }
   .global-secondary-button:hover { background: var(--primary-soft); }
-  .theme-toggle { background: var(--surface); color: var(--text-muted); border-color: var(--border); }
-  .theme-toggle:hover { background: var(--primary-soft); }
   .status-legend { color: var(--text-muted); }
   .legend-swatch { width: 13px; height: 13px; border-radius: 3px; border: 2px solid currentColor; display: inline-block; }
   .legend-optioned { color: var(--primary); border-style: dashed; }
-  .room-planner .legend-optioned { color:#0F7C86; }
   .legend-confirmed { color: var(--room-occupied); }
   .legend-occupied { color: var(--room-occupied); background: var(--room-occupied); }
   .legend-checkout { color: var(--room-checkout); background: var(--room-checkout); }
-  .legend-checked_out { color: var(--room-occupied); opacity: .5; }
-  .legend-closed { color: var(--room-out-of-order); background: repeating-linear-gradient(45deg, var(--room-out-of-order) 0 6px, var(--border) 6px 12px); }
+  .legend-checked_out { color: var(--room-occupied); opacity: .62; }
+  .legend-closed { color: var(--room-out-of-order); background: var(--room-out-of-order-stripe); }
   .payment-chip { width: 18px; height: 5px; border-radius: 999px; display: inline-block; }
-  .room-planner { --surface:#FFFFFF; --sidebar:#E6EFF0; --border:#C9D6DA; --text:#14232B; --text-muted:#4F646D; --primary:#0F7C86; --primary-hover:#0B6169; --primary-text:#0B6169; --primary-soft:#DDF0F1; --font-body:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; --font-heading:var(--font-body); --pay-unpaid:var(--pay-none); --pay-deposit:var(--pay-part); --payment-text:var(--text); --payment-deposit-text:var(--pay-part-fg); }
-  .room-planner .payment-none { background:var(--pay-none); color:var(--pay-none-fg); border:1px solid var(--pay-none-bd); }
-  .room-planner .payment-partial { background:var(--pay-part); color:var(--pay-part-fg); border:1px solid var(--pay-part-bd); }
-  .room-planner .payment-total { background:var(--pay-paid); color:var(--pay-paid-fg); border:1px solid var(--pay-paid-bd); }
-  .room-planner .stay { background: var(--stay-color); color: var(--stay-text, var(--primary-foreground)); border-radius: 4px; padding: 2px 8px; border-left: 4px solid var(--pay-color, transparent); transition: opacity 150ms ease; }
+
+  .room-planner {
+    --pay-unpaid: var(--pay-none);
+    --pay-deposit: var(--pay-part);
+    --payment-text: var(--text);
+    --payment-deposit-text: var(--status-deposit-foreground);
+    --stay-occupied: var(--room-occupied);
+    --stay-checkout: var(--room-checkout);
+    --stay-optioned: var(--pay-opt);
+    --stay-closed: var(--room-out-of-order);
+  }
+  .room-planner .payment-none { background: var(--pay-none); color: var(--pay-none-fg); border: 1px solid var(--pay-none-bd); }
+  .room-planner .payment-partial { background: var(--pay-part); color: var(--pay-part-fg); border: 1px solid var(--pay-part-bd); }
+  .room-planner .payment-total { background: var(--pay-paid); color: var(--pay-paid-fg); border: 1px solid var(--pay-paid-bd); }
+  .room-planner .stay { background: var(--stay-color); color: var(--stay-text, var(--white)); border-radius: 4px; padding: 2px 8px; border-left: 4px solid var(--pay-color, transparent); transition: opacity 150ms ease; }
   .room-planner .stay[data-status="occupied"] { --stay-color: var(--room-occupied); }
   .room-planner .stay[data-status="checkout"] { --stay-color: var(--room-checkout); }
-  .room-planner .stay[data-status="optioned"] { --stay-color:var(--pay-opt); color:var(--pay-opt-fg); border:1px solid var(--pay-opt-bd); border-style:dashed; }
-  .room-planner .stay[data-status="confirmed"] { background:var(--pay-paid); color:var(--pay-paid-fg); border:1px solid var(--pay-paid-bd); }
-  .room-planner .stay[data-status="checked_out"] { opacity:.5; }
-  .room-planner .stay[data-pay="none"] { --pay-color:var(--pay-none); }
-  .room-planner .stay[data-pay="partial"] { --pay-color:var(--pay-part); }
-  .room-planner .stay[data-pay="total"] { --pay-color:var(--pay-paid); color:var(--pay-paid-fg); border-color:var(--pay-paid-bd); }
-  .room-planner .stay[data-pay="partial"] { color:var(--pay-part-fg); border-color:var(--pay-part-bd); }
-  .room-planner .stay[data-pay="none"] { color:var(--pay-none-fg); border-color:var(--pay-none-bd); }
-  .closure { background: repeating-linear-gradient(45deg, var(--room-out-of-order), var(--room-out-of-order) 6px, var(--border) 6px, var(--border) 12px); color: var(--text); }
+  .room-planner .stay[data-status="optioned"] { --stay-color: var(--pay-opt); color: var(--pay-opt-fg); border: 1px solid var(--pay-opt-bd); border-style: dashed; }
+  .room-planner .stay[data-status="confirmed"] { background: var(--pay-paid); color: var(--pay-paid-fg); border: 1px solid var(--pay-paid-bd); }
+  .room-planner .stay[data-status="checked_out"] { opacity: .62; }
+  .room-planner .stay[data-pay="none"] { --pay-color: var(--pay-none); }
+  .room-planner .stay[data-pay="partial"] { --pay-color: var(--pay-part); color: var(--pay-part-fg); border-color: var(--pay-part-bd); }
+  .room-planner .stay[data-pay="total"] { --pay-color: var(--pay-paid); color: var(--pay-paid-fg); border-color: var(--pay-paid-bd); }
+  .closure { background: var(--room-out-of-order-stripe); color: var(--text); }
   .room-dot { width: 9px; height: 9px; border-radius: 999px; display: inline-block; flex: none; }
   .room-dot[data-hk="clean"] { background: var(--room-clean); }
   .room-dot[data-hk="dirty"] { background: var(--room-dirty); }
-  .table-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; }
+  .room-dot[data-hk="occupied"] { background: var(--room-occupied); }
+  .room-dot[data-hk="checkout"] { background: var(--room-checkout); }
+  .room-dot[data-hk="out-of-order"] { background: var(--room-out-of-order-stripe); }
+
+  .table-status { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; }
   .table-status::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: currentColor; flex: none; }
-  .table-status[data-status="free"] { color: var(--text-muted); }
+  .table-status[data-status="free"] { color: var(--room-clean); }
   .table-status[data-status="occupied"] { color: var(--room-occupied); }
-  .table-status[data-status="bill"] { color: var(--warning); }
+  .table-status[data-status="bill"] { color: var(--status-not-paid); }
   .table-status[data-status="reserved"] { color: var(--room-checkout); }
-  .table-status[data-status="paid"] { color: var(--success); }
-  .touch button, .touch [role="button"], .touch input, .touch select { min-height: 48px; }
-  .touch .global-primary-button, .touch .global-secondary-button { min-height: 48px; }
-  .tabular-nums, .money, .metric-value { font-variant-numeric: tabular-nums lining-nums; }
-  .control-compact, .table-compact button, .table-compact input, .table-compact select { min-height: 32px; }
+  .table-status[data-status="paid"] { color: var(--status-paid); }
+
+  .pos-shell { min-height: 0; background: var(--canvas); color: var(--text); }
+  .pos-shell .pos-control { min-height: 48px; }
+  .pos-shell .pos-compact-control { min-height: 44px; }
+  .pos-ticket { background: var(--surface); color: var(--text); border-color: var(--border); }
+  .pos-ticket-muted { color: var(--text-muted); }
   .overlay-surface { box-shadow: var(--shadow-overlay); }
   .room-planner-toolbar { background: var(--surface); border-bottom: 1px solid var(--border); }
-  .room-planner-toolbar-main { min-height: 42px; }
-  .room-planner-tool-button { min-height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; }
-  .room-planner-tool-button:focus-visible { outline: 2px solid color-mix(in srgb, var(--primary) 30%, transparent); outline-offset: 2px; }
+  .room-planner-toolbar-main { min-height: 44px; }
+  .room-planner-tool-button { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; }
+  .room-planner-tool-button:focus-visible { outline: 2px solid color-mix(in srgb, var(--primary) 35%, transparent); outline-offset: 2px; }
   .room-planner-settings-panel { box-shadow: var(--shadow-overlay); }
   .room-planner-payment-legend { min-height: 48px; }
-  .room-planner-legend-item { font-size: 12px; line-height: 1.1; }
+  .room-planner-legend-item { font-size: 14px; font-weight: 700; line-height: 1.25; }
 }
+
 @media (max-width: 900px) {
   .room-planner-toolbar-main { align-items: stretch; }
   .room-planner-date-range { flex-basis: 100%; order: 10; padding: 4px 0; }
   .room-planner-toolbar-actions { margin-left: 0; }
-  .room-planner-legend-item { font-size: 11px; }
+  .room-planner-legend-item { font-size: 12px; }
 }
+
 @media (max-width: 560px) {
   .room-planner-toolbar { padding-left: 8px; padding-right: 8px; }
   .room-planner-toolbar-main { gap: 6px; }
-  .room-planner-tool-button { min-height: 40px; }
+  .room-planner-tool-button { min-height: 44px; }
   .room-planner-toolbar-actions { width: 100%; }
   .room-planner-toolbar-actions > button:last-child { margin-left: auto; }
   .room-planner-settings-panel label { width: 100%; justify-content: space-between; }
@@ -258,7 +301,4 @@
   .app-shell { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 
-/* Keep floor status labels bold enough for the fixed occupied-state colour contrast. */
 .floor-table-tile .font-bold, .floor-table-tile .font-black { font-weight: 700 !important; }
-
-

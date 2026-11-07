@@ -1,52 +1,70 @@
-import { readdirSync, readFileSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 const root = process.cwd();
 const css = readFileSync(join(root, 'src/index.css'), 'utf8');
 const tailwind = readFileSync(join(root, 'tailwind.config.js'), 'utf8');
-const lightTokens = [
-  '--canvas:#F3F7F7', '--surface:#FFFFFF', '--sidebar:#EAF2F1', '--border:#D2E1DF',
-  '--input-border:#8AAEAA', '--panel-head:#E6F0EF', '--text:#173D40', '--text-muted:#557477',
-  '--primary:#0F7C86', '--on-primary:#FFFFFF', '--primary-hover:#0A3F4A',
-  '--primary-text:#0A6871', '--primary-soft:#E2F1F0', '--accent:#58AEB0',
-  '--success:#1B7A57', '--success-soft:#E3F3EC', '--danger:#B42318',
-  '--danger-soft:#FBE8E6', '--warning:#8F5400', '--warning-soft:#FBEFD9',
-  '--info:#0A6871', '--info-soft:#E2F1F0', '--pay-none:#FC7F2C',
-  '--pay-part:#E0CD29', '--pay-paid:#79AB3E', '--pay-opt:#3CB5AE',
-];
-const darkTokens = [
-  '--canvas:#081E22', '--surface:#102B30', '--sidebar:#12383E', '--border:#28545A',
-  '--input-border:#537A7F', '--panel-head:#173F43', '--text:#EAF5F3', '--text-muted:#B1CECA',
-  '--primary:#0F7C86', '--on-primary:#FFFFFF', '--primary-hover:#0A3F4A',
-  '--primary-text:#8AD1D0', '--primary-soft:#143B40', '--accent:#58AEB0',
-  '--success:#4CC39A', '--success-soft:#143A2D', '--danger:#FF8A84',
-  '--danger-soft:#3E1E1E', '--warning:#F0A56F', '--warning-soft:#3F2318',
-  '--info:#8AD1D0', '--info-soft:#143B40', '--pay-none:#8F4118',
-  '--pay-part:#7A5A10', '--pay-paid:#33591C', '--pay-opt:#17524F',
-];
+const provider = readFileSync(join(root, 'src/theme/ThemeProvider.jsx'), 'utf8');
+const design = readFileSync(join(root, 'Design.md'), 'utf8');
 const errors = [];
-for (const token of lightTokens) if (!css.includes(token)) errors.push('Missing light theme token: ' + token);
-if (!css.includes(':root[data-theme="dark"] {')) errors.push('Dark theme token block is missing.');
-for (const token of darkTokens) if (!css.includes(token)) errors.push('Missing dark theme token: ' + token);
-if (!css.includes('color-scheme:dark')) errors.push('Dark theme must set the native control colour scheme.');
-if (!css.includes('body { margin:0; background:var(--canvas); color:var(--text);')) errors.push('Body must use canonical canvas and text tokens.');
-if (!css.includes('--primary-foreground:var(--on-primary)')) errors.push('Primary foreground must alias the separate on-primary token.');
-if (!tailwind.includes("darkMode: ['class']")) errors.push('Tailwind dark mode must remain class-based.');
-if (!tailwind.includes("background: 'var(--background)'") || !tailwind.includes("border: 'var(--border)'")) errors.push('Tailwind/shadcn semantic mappings are incomplete.');
-if (!/\.room-planner\s*\{[^}]*--pay-unpaid:var\(--pay-none\)/.test(css)) errors.push('Room Planner payment compatibility aliases are missing.');
 
-function walk(dir) {
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const path = join(dir, entry.name);
-    if (entry.isDirectory()) { walk(path); continue; }
-    if (!/\.(jsx?|tsx?)$/.test(entry.name)) continue;
-    const rel = relative(root, path).replaceAll('\\\\', '/');
-    if (rel.startsWith('src/components/pms/RoomPlanner') || /Receipt|Print|Thermal/i.test(rel)) continue;
-    if (readFileSync(path, 'utf8').includes('var(--pay-')) errors.push('Planner payment token referenced outside Room Planner: ' + rel);
-  }
+const requiredTokens = [
+  ['--deep-lagoon', '#0A3F4A'],
+  ['--coastal-teal', '#0F7C86'],
+  ['--white', '#FFFFFF'],
+  ['--soft-white', '#F5F8F8'],
+  ['--canvas', '#F6F9F9'],
+  ['--sidebar', '#EAF3F3'],
+  ['--text', '#223039'],
+  ['--accent', '#E8955A'],
+  ['--status-paid', '#3FA77A'],
+  ['--status-deposit-paid', '#F2C14E'],
+  ['--status-deposit-foreground', '#5A4310'],
+  ['--status-not-paid', '#EE8A3C'],
+  ['--room-occupied', '#2F6F9F'],
+  ['--room-checkout', '#3949AB'],
+  ['--room-out-of-order', '#65727A'],
+  ['--print-ink', '#000000'],
+  ['--print-void', '#DC2626'],
+];
+
+for (const [name, value] of requiredTokens) {
+  const declaration = new RegExp(`${name}\\s*:\\s*${value}\\s*;`, 'i');
+  if (!declaration.test(css)) errors.push(`Canonical token ${name} must be ${value}.`);
 }
-walk(join(root, 'src'));
+
+if ((css.match(/#[0-9a-fA-F]{3,8}\b/g) || []).length !== requiredTokens.length) {
+  errors.push(`src/index.css must contain only the ${requiredTokens.length} canonical literal color tokens, once each.`);
+}
+if (/\[data-theme=["']dark|color-scheme\s*:\s*dark|\.dark\b/.test(css + provider)) {
+  errors.push('Dark theme selectors must not be present in the active theme or provider.');
+}
+if (!/darkMode\s*:\s*["']class["']/.test(tailwind)) {
+  errors.push('Tailwind must use class-only dark activation so system dark mode cannot affect the light UI.');
+}
+if (!provider.includes("root.setAttribute('data-theme', 'light')") || provider.includes('prefers-color-scheme')) {
+  errors.push('ThemeProvider must enforce a fixed light appearance without system-mode detection.');
+}
+if (!css.includes('--primary: var(--coastal-teal)') || !css.includes('--on-primary: var(--white)')) {
+  errors.push('Primary and primary-foreground aliases must use the official Coastal Teal/White tokens.');
+}
+if (!css.includes('--pay-none: var(--status-not-paid)') || !css.includes('--pay-part: var(--status-deposit-paid)') || !css.includes('--pay-paid: var(--status-paid)')) {
+  errors.push('Payment status compatibility tokens must map to the mandated paid/deposit/not-paid colors.');
+}
+if (!css.includes('--room-clean: var(--status-paid)') || !css.includes('--room-dirty: var(--status-deposit-paid)')) {
+  errors.push('Vacant clean/dirty room states must use green/amber status tokens.');
+}
+if (!css.includes('--room-out-of-order-stripe: repeating-linear-gradient(135deg')) {
+  errors.push('Out-of-order rooms must retain a diagonal gray stripe treatment.');
+}
+if (!design.includes('light-only') || !design.includes('src/index.css')) errors.push('Design.md must document the light-only single-token-file contract.');
+if (/Choose light, dark|Dark palette|enable system-color-mode listener|support both light and dark/.test(design)) {
+  errors.push('Design.md still describes a selectable/dark theme.');
+}
+
 if (errors.length) {
-  console.error('Light/dark design-token contract failed:\\n' + errors.map((e) => '- ' + e).join('\\n'));
+  console.error('Coastal Linen theme contract failed:\n' + errors.map((error) => '- ' + error).join('\n'));
   process.exitCode = 1;
-} else console.log('Light/dark design tokens, theme mode and Tailwind/shadcn mappings passed.');
+} else {
+  console.log('Coastal Linen light-only tokens, payment/room status semantics and Tailwind mappings passed.');
+}

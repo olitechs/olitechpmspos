@@ -90,7 +90,7 @@ export default function KitchenDisplay() {
       if (isPrinterGroupRoutingEnabled()) {
         const jobs = await printRoutedOrder({
           propertyId,
-          propertyName: user?.property?.name || user?.property?.business_name || 'OLITECHS PMS + POS',
+          propertyName: user?.property?.name || user?.property?.business_name || 'OliTechs PMS + POS',
           orderId: saved.id,
           id: saved.order_number,
           orderNumber: saved.order_number,
@@ -108,7 +108,7 @@ export default function KitchenDisplay() {
           table: saved.table_number,
           tableNumber: saved.table_number,
           orderNumber: saved.order_number,
-          propertyName: user?.property?.name || user?.property?.business_name || 'OLITECHS PMS + POS',
+          propertyName: user?.property?.name || user?.property?.business_name || 'OliTechs PMS + POS',
           diningOption: saved.dining_option || 'Dine In',
           isReprint: true,
           checkNo: saved.order_number,
@@ -155,21 +155,21 @@ export default function KitchenDisplay() {
       </div>
 
       {tab === 'voids' ? (
-        <div className="rounded-2xl border border-white/10 bg-[var(--surface)] p-4">
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div><div className="text-sm font-black text-foreground">Today's Void / Cancellation Controls</div><div className="mt-1 text-xs text-muted-foreground">Every controlled removal is retained for manager review and printer reprint.</div></div>
-            <input value={voidFilter} onChange={e=>setVoidFilter(e.target.value)} placeholder="Filter table, item, reason…" className="rounded-xl border border-white/10 bg-surface/5 px-3 py-2 text-xs text-foreground outline-none"/>
+            <input value={voidFilter} onChange={e=>setVoidFilter(e.target.value)} placeholder="Filter table, item, reason…" className="rounded-xl border border-[var(--border)] bg-[var(--canvas)] px-3 py-2 text-xs text-foreground outline-none"/>
           </div>
           {voidError && <div className="mb-3 rounded-xl bg-[var(--danger-soft)] p-3 text-xs font-bold text-[var(--danger-text)]">{voidError}</div>}
           <div className="overflow-x-auto"><table className="w-full min-w-[850px] text-left text-xs">
-            <thead className="border-b border-white/10 text-[10px] uppercase tracking-wider text-muted-foreground"><tr><th className="p-3">Time</th><th className="p-3">Table</th><th className="p-3">Item</th><th className="p-3">Removed</th><th className="p-3">Reason</th><th className="p-3">Removed By</th><th className="p-3">Status</th><th className="p-3">Control</th></tr></thead>
-            <tbody>{visibleVoids.map(v=><tr key={v.id} className="border-b border-white/5 text-muted-foreground">
+            <thead className="border-b border-[var(--border)] text-[10px] uppercase tracking-wider text-muted-foreground"><tr><th className="p-3">Time</th><th className="p-3">Table</th><th className="p-3">Item</th><th className="p-3">Removed</th><th className="p-3">Reason</th><th className="p-3">Removed By</th><th className="p-3">Status</th><th className="p-3">Control</th></tr></thead>
+            <tbody>{visibleVoids.map(v=><tr key={v.id} className="border-b border-[var(--border)] text-muted-foreground">
               <td className="p-3 font-mono">{formatTime(v.created_at)}</td><td className="p-3 font-black text-foreground">{v.table_number}</td><td className="p-3"><div className="font-bold text-foreground">{v.item_name}</div><div className="text-[10px] uppercase text-muted-foreground">{v.category}</div></td><td className="p-3 font-black text-[var(--danger-text)]">{v.removed_qty}</td><td className="p-3">{v.reason}</td><td className="p-3">{v.removed_by_name||'—'}</td><td className="p-3"><span className="rounded-full bg-surface/10 px-2 py-1 text-[10px] font-black uppercase">{v.status === 'printed' ? 'Void Printed' : v.status}</span></td>
               <td className="p-3"><div className="flex flex-wrap gap-2"><button disabled={voidBusy} onClick={()=>reprintVoid(v)} className="rounded-lg bg-surface/10 px-2.5 py-1.5 font-bold text-foreground">Re-print Void</button>{canApproveVoid&&v.status!=='approved'&&<button onClick={()=>approveVoid(v)} className="rounded-lg bg-[var(--primary)] px-2.5 py-1.5 font-black text-foreground">Approve</button>}</div></td>
             </tr>)}</tbody>
           </table></div>
           {visibleVoids.length===0&&<div className="py-10 text-center text-xs text-muted-foreground">No voids found today.</div>}
-          {canApproveVoid && <div className="mt-4 flex items-center gap-2 border-t border-white/10 pt-4"><input value={signature} onChange={e=>setSignature(e.target.value)} placeholder="Manager signature / name for approval" className="flex-1 rounded-xl border border-white/10 bg-surface/5 px-3 py-2 text-xs text-foreground outline-none"/><span className="text-[10px] text-muted-foreground">Signature required before Approve.</span></div>}
+          {canApproveVoid && <div className="mt-4 flex items-center gap-2 border-t border-[var(--border)] pt-4"><input value={signature} onChange={e=>setSignature(e.target.value)} placeholder="Manager signature / name for approval" className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--canvas)] px-3 py-2 text-xs text-foreground outline-none"/><span className="text-[10px] text-muted-foreground">Signature required before Approve.</span></div>}
         </div>
       ) : (
         <>
@@ -243,13 +243,13 @@ export default function KitchenDisplay() {
       )}
       {refireOrder && (
         <div className="fixed inset-0 z-[260] flex items-center justify-center bg-[var(--overlay-scrim)] p-4">
-          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[var(--surface)] p-5 shadow-2xl">
+          <div className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-2xl">
             <div className="text-lg font-black text-foreground">Re-fire kitchen ticket</div>
             <p className="mt-1 text-xs text-muted-foreground">
               This creates an audit event and prints the complete ticket again. It does not create a new sale.
             </p>
             {refireError && <div className="mt-3 rounded-xl bg-[var(--danger-soft)] p-3 text-xs font-bold text-[var(--danger-text)]">{refireError}</div>}
-            <textarea value={refireReason} onChange={e=>setRefireReason(e.target.value)} placeholder="Reason, e.g. printer jam or ticket lost" className="mt-4 min-h-24 w-full rounded-xl border border-white/10 bg-surface/5 p-3 text-xs text-foreground outline-none" />
+            <textarea value={refireReason} onChange={e=>setRefireReason(e.target.value)} placeholder="Reason, e.g. printer jam or ticket lost" className="mt-4 min-h-24 w-full rounded-xl border border-[var(--border)] bg-[var(--canvas)] p-3 text-xs text-foreground outline-none" />
             <div className="mt-4 flex justify-end gap-2">
               <button onClick={()=>setRefireOrder(null)} disabled={refireBusy} className="rounded-xl bg-surface/10 px-4 py-2 text-xs font-bold text-foreground">Cancel</button>
               <button onClick={performRefire} disabled={refireBusy||!refireReason.trim()} className="rounded-xl bg-[var(--primary)] px-4 py-2 text-xs font-black text-foreground">{refireBusy?'Re-firing…':'Authorize & Re-fire'}</button>

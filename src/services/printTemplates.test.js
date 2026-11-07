@@ -129,7 +129,7 @@ test('unsettled bill uses the clean pending layout and summed item amounts with 
   assert.match(output, /Employee: Grace Wanjiru/);
   assert.match(output, /POS: POS/);
   assert.match(output, /Dine In/i);
-  assert.match(output, /2 x Soda/);
+  assert.match(output, /2 x KES 300\.00/);
   assert.match(output, /KES 600\.00/);
   assert.match(output, /KES 1,250\.00/);
   assert.match(output, /AMOUNT DUE/);
@@ -251,10 +251,10 @@ test('long order-ticket names, modifiers and kitchen notes are preserved within 
   assert.match(output, /#ORD-058/);
 });
 
-test('HTML fallback renders fixed-width plain text on white paper', () => {
+test('HTML fallback renders fixed-width plain text with the canonical print colors', () => {
   const html = thermalTextToHtml('BILL - NOT PAID\nKES 100.00');
   assert.match(html, /<pre/);
-  assert.match(html, /background:white;color:black/);
+  assert.match(html, /background:var\(--print-paper\);color:var\(--print-ink\)/);
   assert.match(html, /font-family:Arial,Helvetica,sans-serif/);
   assert.match(html, /font-weight:400/);
   assert.match(html, /BILL - NOT PAID/);
@@ -289,4 +289,3 @@ test('long item names and amount fields are wrapped, never sliced off', () => {
   assert.ok(output.includes('987,654,321.00'));
   assert.ok(output.split('\n').every(line => line.length <= 30));
 });
-

@@ -41,7 +41,7 @@ function escPosPayload(text, test = false, settings = {}) {
   const clean = String(text ?? '').replace(/\\r/g, '').replace(/\\n{3,}/g, '\\n\\n').replace(/^\\n+|\\n+$/g, '');
   const body = test
     ? [
-        'OLITECHS PMS TEST PRINT OK',
+        'OliTechs PMS TEST PRINT OK',
         '',
         'OliTechs PMS + POS',
         'Connection: LOCAL PRINT AGENT',
@@ -224,7 +224,7 @@ async function printWindowsRaw(printerName, payload) {
     'Add-Type @\"\nusing System;\nusing System.Runtime.InteropServices;\npublic static class RawPrinter {\n  [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Unicode)]\n  public class DOCINFO { [MarshalAs(UnmanagedType.LPWStr)] public string pDocName; [MarshalAs(UnmanagedType.LPWStr)] public string pOutputFile; [MarshalAs(UnmanagedType.LPWStr)] public string pDataType; }\n  [DllImport("winspool.drv", SetLastError=true, CharSet=CharSet.Unicode)] public static extern bool OpenPrinter(string pPrinterName, out IntPtr hPrinter, IntPtr pDefault);\n  [DllImport("winspool.drv", SetLastError=true)] public static extern bool ClosePrinter(IntPtr hPrinter);\n  [DllImport("winspool.drv", SetLastError=true, CharSet=CharSet.Unicode)] public static extern int StartDocPrinter(IntPtr hPrinter, int level, [In] DOCINFO di);\n  [DllImport("winspool.drv", SetLastError=true)] public static extern bool EndDocPrinter(IntPtr hPrinter);\n  [DllImport("winspool.drv", SetLastError=true)] public static extern int StartPagePrinter(IntPtr hPrinter);\n  [DllImport("winspool.drv", SetLastError=true)] public static extern bool EndPagePrinter(IntPtr hPrinter);\n  [DllImport("winspool.drv", SetLastError=true)] public static extern bool WritePrinter(IntPtr hPrinter, IntPtr pBytes, int dwCount, out int dwWritten);\n}\n\"@',
     '$printer=$args[0]; $data=[Convert]::FromBase64String($args[1]); $h=[IntPtr]::Zero',
     'if(-not [RawPrinter]::OpenPrinter($printer,[ref]$h,[IntPtr]::Zero)){throw "OpenPrinter failed"}',
-    '$doc=New-Object RawPrinter+DOCINFO; $doc.pDocName="OliTechs PMS POS"; $doc.pDataType="RAW"',
+    '$doc=New-Object RawPrinter+DOCINFO; $doc.pDocName="OliTechs PMS + POS"; $doc.pDataType="RAW"',
     'try { if([RawPrinter]::StartDocPrinter($h,1,$doc)-eq 0){throw "StartDocPrinter failed"}; try { if([RawPrinter]::StartPagePrinter($h)-eq 0){throw "StartPagePrinter failed"}; try { $ptr=[Runtime.InteropServices.Marshal]::AllocHGlobal($data.Length); try { [Runtime.InteropServices.Marshal]::Copy($data,0,$ptr,$data.Length); $written=0; if(-not [RawPrinter]::WritePrinter($h,$ptr,$data.Length,[ref]$written)){throw "WritePrinter failed"}; if($written-ne $data.Length){throw "Spooler wrote $written of $($data.Length) bytes"} } finally {[Runtime.InteropServices.Marshal]::FreeHGlobal($ptr)} } finally {[RawPrinter]::EndPagePrinter($h)|Out-Null} } finally {[RawPrinter]::EndDocPrinter($h)|Out-Null} } finally {[RawPrinter]::ClosePrinter($h)|Out-Null}',
     'Write-Output "OK"'
   ].join('\n');
@@ -341,7 +341,7 @@ const server = http.createServer(async (req, res) => {
     return json(res, 403, {
       ok: false,
       code: 'ORIGIN_NOT_ALLOWED',
-      message: 'This local Print Agent only accepts browser requests from the Olitech app or localhost.',
+      message: 'This local Print Agent only accepts browser requests from the OliTechs app or localhost.',
     });
   }
   if (origin) res.setHeader('Access-Control-Allow-Origin', origin);

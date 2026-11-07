@@ -1,40 +1,27 @@
-import React,{createContext,useCallback,useContext,useEffect,useMemo,useState} from 'react';
+import React, { createContext, useContext, useEffect, useMemo } from 'react';
 
-const KEY='olitech_theme_mode';
-const THEME_COLORS={light:'#F4F7F8',dark:'#10171A'};
-const ThemeContext=createContext(null);
-const readMode=()=>{try{const saved=localStorage.getItem(KEY);return ['light','dark','system'].includes(saved)?saved:'system'}catch{return 'system'}};
-const prefersDark=()=>typeof window!=='undefined'&&typeof window.matchMedia==='function'&&window.matchMedia('(prefers-color-scheme: dark)').matches;
+const LIGHT_THEME = Object.freeze({ mode: 'light', resolvedTheme: 'light', isDark: false });
+const ThemeContext = createContext({ ...LIGHT_THEME, setMode: () => {} });
+const noOp = () => {};
 
-export function ThemeProvider({children}){
-  const [mode,setModeState]=useState(readMode);
-  const [systemDark,setSystemDark]=useState(prefersDark);
-  useEffect(()=>{
-    if(typeof window==='undefined'||typeof window.matchMedia!=='function')return undefined;
-    const mq=window.matchMedia('(prefers-color-scheme: dark)');
-    const h=e=>setSystemDark(e.matches);
-    if(mq.addEventListener)mq.addEventListener('change',h);else mq.addListener?.(h);
-    return()=>{if(mq.removeEventListener)mq.removeEventListener('change',h);else mq.removeListener?.(h)};
-  },[]);
-  const resolvedTheme=mode==='system'?(systemDark?'dark':'light'):mode;
-  useEffect(()=>{
-    const r=document.documentElement;
-    r.setAttribute('data-theme',resolvedTheme);
-    r.classList.toggle('dark',resolvedTheme==='dark');
-    r.style.colorScheme=resolvedTheme;
-    const meta=document.querySelector('meta[name="theme-color"]');
-    if(meta)meta.setAttribute('content',THEME_COLORS[resolvedTheme]);
-  },[resolvedTheme]);
-  const setMode=useCallback(m=>{
-    if(!['light','dark','system'].includes(m))return;
-    setModeState(m);
-    try{localStorage.setItem(KEY,m)}catch{}
-  },[]);
-  const value=useMemo(()=>({mode,resolvedTheme,setMode,isDark:resolvedTheme==='dark'}),[mode,resolvedTheme,setMode]);
+export function ThemeProvider({ children }) {
+  useEffect(() => {
+    const root = document.documentElement;
+    root.setAttribute('data-theme', 'light');
+    root.classList.remove('dark');
+    root.style.colorScheme = 'light';
+
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) {
+      const brandColor = getComputedStyle(root).getPropertyValue('--deep-lagoon').trim();
+      if (brandColor) meta.setAttribute('content', brandColor);
+    }
+  }, []);
+
+  const value = useMemo(() => ({ ...LIGHT_THEME, setMode: noOp }), []);
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
-export function useTheme(){
-  const v=useContext(ThemeContext);
-  if(!v)throw new Error('useTheme must be used inside ThemeProvider');
-  return v;
+
+export function useTheme() {
+  return useContext(ThemeContext);
 }

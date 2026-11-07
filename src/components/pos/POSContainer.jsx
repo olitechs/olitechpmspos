@@ -45,7 +45,7 @@ function buildKitchenTicketText(center, lines, { orderNumber, table, propertyNam
 	const divider = '-'.repeat(THERMAL_COLUMNS);
 	const itemRows = lines.flatMap((line) => wrapTicketLine(`${line.qty}x ${line.name}`));
 	return [
-		String(propertyName || 'OLITECHS PMS & POS').toUpperCase(),
+		String(propertyName || 'OliTechs PMS + POS').toUpperCase(),
 		divider,
 		`${center.toUpperCase()} ORDER TICKET`,
 		`ORDER: ${orderNumber}`,
@@ -68,7 +68,7 @@ export default function POSContainer() {
 	const sessionStaff = (() => { try { return JSON.parse(sessionStorage.getItem('olitech_active_staff_v2') || 'null'); } catch { return null; } })();
 	const posRole = String(sessionStaff?.role || user?.staff?.role || user?.propertyRole || '').toLowerCase().replace(/\s+/g,'_');
 	const canCloseShift = Boolean(user?.isPlatformOwner || ['hotel_admin','super_admin','cashier','fb_manager','owner','admin','manager','property_manager','general_manager'].includes(posRole));
-	const propertyName = user?.property?.name || user?.property?.business_name || 'OliTechs PMS & POS';
+	const propertyName = user?.property?.name || user?.property?.business_name || 'OliTechs PMS + POS';
 	const supabaseStoreHydrate = async (propertyId) => { try { const { data } = await (await import('@/lib/supabaseClient')).supabase.from('stores').select('*').eq('property_id', propertyId).order('is_default',{ascending:false}).limit(1).maybeSingle(); if (data?.id) await usePrinterStoreV2.getState().hydrate(data.id); } catch (e) { console.warn('[POS] printer routing store unavailable; keeping legacy printer flow.', e?.message); } };
 	useEffect(() => { if (!propertyId || !isPrinterGroupRoutingEnabled()) return; supabaseStoreHydrate(propertyId); }, [propertyId]);
 	const [posStaff, setPosStaff] = useState([]);
@@ -383,7 +383,7 @@ export default function POSContainer() {
 	if (shiftLoading) return <div className="flex h-full items-center justify-center bg-[var(--canvas)] text-sm text-[var(--text-muted)]">Loading POS shift…</div>;
 	if (!posUnlocked) return <>
 		<POSAccessGate propertyName={propertyName} logoUrl={user?.property?.logo_url} error={posAccessError} busy={posAccessBusy} canManagePin={canManagePosPin} onAdminReset={() => setPinSettingsOpen(true)} onSubmit={verifyPosAccess} />
-		{pinSettingsOpen && <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-3"><div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-[var(--surface)] p-4 shadow-2xl sm:p-6"><div className="mb-4 flex items-center justify-between gap-3"><div><h2 className="text-lg font-bold text-[var(--text)]">Reset property POS PIN</h2><p className="text-xs text-[var(--text-muted)]">Administrator access required</p></div><button type="button" onClick={() => setPinSettingsOpen(false)} className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-semibold text-[var(--text)]">Close</button></div><AccessPinTab /></div></div>}
+		{pinSettingsOpen && <div className="fixed inset-0 z-[120] flex items-center justify-center bg-[var(--overlay-scrim)] p-3"><div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-[var(--surface)] p-4 shadow-2xl sm:p-6"><div className="mb-4 flex items-center justify-between gap-3"><div><h2 className="text-lg font-bold text-[var(--text)]">Reset property POS PIN</h2><p className="text-xs text-[var(--text-muted)]">Administrator access required</p></div><button type="button" onClick={() => setPinSettingsOpen(false)} className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-semibold text-[var(--text)]">Close</button></div><AccessPinTab /></div></div>}
 	</> ;
 	if (!currentShift) return <OpenShiftModal propertyId={propertyId} onOpened={(shift) => setCurrentShift(shift)} />;
 
@@ -440,7 +440,7 @@ export default function POSContainer() {
 									const selected = tableTransferTarget?.table.id === t.id;
 									return (
 										<button key={t.id} onClick={() => { setTableTransferTarget({ table:t, zone, occupied, session }); setTableTransferError(''); }} className="rounded-2xl border-2 p-4 text-left transition hover:-translate-y-0.5" style={{ borderColor: selected ? 'var(--primary)' : occupied ? 'var(--warning)' : 'var(--border)', background: selected ? 'var(--primary-soft)' : 'var(--surface)' }}>
-											<div className="flex items-center justify-between"><span className="text-lg font-black text-foreground">T{t.number}</span>{occupied ? <GitMerge size={17} className="text-amber-600"/> : <MoveRight size={17} className="text-teal-700"/>}</div>
+											<div className="flex items-center justify-between"><span className="text-lg font-black text-foreground">T{t.number}</span>{occupied ? <GitMerge size={17} className="text-[var(--warning-text)]"/> : <MoveRight size={17} className="text-[var(--primary)]"/>}</div>
 											<div className="mt-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{zone.name}</div>
 											<div className="mt-2 text-xs font-semibold text-muted-foreground">{occupied ? `Ongoing · ${session?.orderNumber || 'Open bill'}` : 'Free · Move bill here'}</div>
 										</button>
@@ -454,7 +454,7 @@ export default function POSContainer() {
 									<div className="mt-1 text-xs text-muted-foreground">{tableTransferTarget.occupied ? 'All items and covers will be combined. The destination check remains the active check and the source table is closed.' : 'The complete open bill, waiter, check number and production status move to the new table. No duplicate kitchen ticket is printed.'}</div>
 								</div>
 							)}
-							{tableTransferError && <div className="mt-3 rounded-xl bg-red-50 p-3 text-xs font-bold text-red-700">{tableTransferError}</div>}
+							{tableTransferError && <div className="mt-3 rounded-xl bg-[var(--danger-soft)] p-3 text-xs font-bold text-[var(--danger-text)]">{tableTransferError}</div>}
 						</div>
 						<div className="flex items-center justify-between gap-3 border-t border-border px-5 py-4">
 							<div className="text-[11px] font-semibold text-muted-foreground">{tableTransferTarget ? (tableTransferTarget.occupied ? 'Join keeps the destination table open.' : 'Move preserves the current check.') : 'Choose a destination table.'}</div>

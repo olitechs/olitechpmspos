@@ -1,6 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  darkMode: ['class'],
+  darkMode: 'class',
   content: ['./index.html', './src/**/*.{ts,tsx,js,jsx}'],
   theme: {
     extend: {
@@ -8,11 +8,18 @@ module.exports = {
       borderRadius: { lg: 'var(--radius)', md: 'var(--radius-control)', sm: '6px' },
       boxShadow: { card: 'none', overlay: 'var(--shadow-overlay)' },
       colors: {
-        brand: { dark: 'var(--text)', charcoal: 'var(--sidebar)', primary: 'var(--primary)', hover: 'var(--primary-hover)', soft: 'var(--primary-soft)' },
+        brand: { dark: 'var(--deep-lagoon)', charcoal: 'var(--sidebar)', primary: 'var(--primary)', hover: 'var(--primary-hover)', soft: 'var(--primary-soft)' },
         action: { DEFAULT: 'var(--primary)', hover: 'var(--primary-hover)', foreground: 'var(--on-primary)' },
         table: { free: 'var(--table-free-bg)', occupied: 'var(--table-occupied-bg)', bill: 'var(--table-bill-bg)' },
-        info: 'var(--info)', success: 'var(--success)', warning: 'var(--warning)', danger: 'var(--danger)',
+        room: { clean: 'var(--room-clean)', dirty: 'var(--room-dirty)', occupied: 'var(--room-occupied)', checkout: 'var(--room-checkout)', 'out-of-order': 'var(--room-out-of-order)' },
+        payment: { paid: 'var(--status-paid)', deposit: 'var(--status-deposit-paid)', unpaid: 'var(--status-not-paid)' },
+        info: 'var(--info)',
+        success: { DEFAULT: 'var(--success)', foreground: 'var(--success-text)', soft: 'var(--success-soft)' },
+        warning: { DEFAULT: 'var(--warning)', foreground: 'var(--warning-text)', soft: 'var(--warning-soft)' },
+        danger: { DEFAULT: 'var(--danger)', foreground: 'var(--danger-foreground)', text: 'var(--danger-text)', soft: 'var(--danger-soft)' },
         surface: { DEFAULT: 'var(--surface)', secondary: 'var(--sidebar)' },
+        canvas: 'var(--canvas)',
+        'soft-white': 'var(--soft-white)',
         text: { DEFAULT: 'var(--text)', muted: 'var(--text-muted)' },
         background: 'var(--background)', foreground: 'var(--foreground)',
         card: { DEFAULT: 'var(--card)', foreground: 'var(--card-foreground)' },

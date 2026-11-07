@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Circle, Grid2X2, Move, Pencil, Save, X } from 'lucide-react';
 import { useStore } from '@/data/AppStore';
 import { RESERVATIONS_TONIGHT, tableLabel } from '@/data/mockData';
-import { BORDER, MUTED_DARK } from '@/data/themePalette';
 
 const SHAPE_KEY = 'tableShapeMode';
 const POSITION_KEY = 'tableLayoutPositions';
@@ -28,12 +27,12 @@ function Tile({ table, session, shape, designMode, onSelect, onMove, now }) {
   const rawStatus = session?.status || table.status || 'free';
   const status = rawStatus === 'unsettled' ? 'bill' : rawStatus;
   const statusMeta = {
-    free: { bg:'var(--table-free-bg)', fg:'var(--table-free-fg)', border:'var(--table-free-border)', label:'Open' },
-    occupied: { bg:'var(--table-occupied-bg)', fg:'var(--table-occupied-fg)', border:'var(--table-occupied-border)', label:'Occupied' },
-    bill: { bg:'var(--table-bill-bg)', fg:'var(--table-bill-fg)', border:'var(--table-bill-border)', label:'Bill printed' },
-    reserved: { bg:'var(--room-checkout)', fg:'var(--primary-foreground)', border:'var(--room-checkout)', label:'Reserved' },
-    paid: { bg:'var(--success)', fg:'var(--primary-foreground)', border:'var(--success)', label:'Paid / closing' },
-  }[status] || { bg:'var(--table-free-bg)', fg:'var(--table-free-fg)', border:'var(--table-free-border)', label:'Open' };
+    free: { bg: 'var(--room-clean)', fg: 'var(--room-clean-foreground)', border: 'var(--room-clean)', label: 'Open' },
+    occupied: { bg: 'var(--room-occupied)', fg: 'var(--on-primary)', border: 'var(--room-occupied)', label: 'Occupied' },
+    bill: { bg: 'var(--danger)', fg: 'var(--danger-foreground)', border: 'var(--danger)', label: 'Bill printed' },
+    reserved: { bg: 'var(--room-checkout)', fg: 'var(--on-primary)', border: 'var(--room-checkout)', label: 'Reserved' },
+    paid: { bg: 'var(--success)', fg: 'var(--on-primary)', border: 'var(--success)', label: 'Paid / closing' },
+  }[status] || { bg: 'var(--room-clean)', fg: 'var(--room-clean-foreground)', border: 'var(--room-clean)', label: 'Open' };
   const geometry = SHAPES[shape] || SHAPES.square;
   const orderCount = Number(session?.orderCount || 0);
   const guests = Number(session?.guests || 0);
@@ -61,21 +60,23 @@ function Tile({ table, session, shape, designMode, onSelect, onMove, now }) {
     onClick={()=>{if(!designMode||!movedRef.current)onSelect(table)}}
     title={designMode?`Drag ${tableLabel(table)}`:`Open ${tableLabel(table)} — ${statusMeta.label}`}
     aria-label={`${tableLabel(table)}, ${statusMeta.label}`}
-    className="floor-table-tile absolute flex flex-col items-stretch justify-start select-none transition-shadow min-h-28"
+    className="floor-table-tile absolute flex min-h-28 select-none flex-col items-stretch justify-start overflow-hidden rounded-xl p-2 transition-shadow"
     style={{left:designMode?table.x:undefined,top:designMode?table.y:undefined,width:geometry.width,minHeight:geometry.height,borderRadius:geometry.radius,
       background:statusMeta.bg,color:statusMeta.fg,
       border:`2px solid ${statusMeta.border}`,boxShadow:table.selected?'0 0 0 3px var(--focus), var(--shadow)':'none',
-      position:designMode?'absolute':'relative',cursor:designMode?'grab':'pointer',padding:8,touchAction:'none'}}>
-    <div className="flex w-full min-w-0 items-center justify-between gap-1">
-      <span className="truncate text-[15px] font-bold leading-tight">{tableLabel(table)}</span>
-      <span className="shrink-0 text-[11px] font-medium">{table.seats} seats</span>
+      position:designMode?'absolute':'relative',cursor:designMode?'grab':'pointer',touchAction:'none'}}>
+    <div className="flex w-full min-w-0 items-start justify-between gap-2">
+      <span className="min-w-0 truncate text-[15px] font-bold leading-tight">{tableLabel(table)}</span>
+      <span className="shrink-0 text-[11px] font-semibold">{table.seats} seats</span>
     </div>
-    <div className="mt-1 text-[12px] font-semibold leading-tight">{statusMeta.label}</div>
+    <div className="mt-2 flex min-w-0 items-center justify-between gap-1">
+      <span className="truncate text-sm font-bold leading-tight">{statusMeta.label}</span>
+      {status === 'occupied' && orderCount > 0 && <span className="shrink-0 rounded-full bg-[var(--primary-soft)] px-2 py-1 text-[11px] font-bold text-[var(--primary)]">{orderCount} items</span>}
+    </div>
     {waiterName && <div className="mt-1 max-w-full truncate text-[12px] leading-tight" title={waiterName}>{waiterName}</div>}
     {status === 'occupied' && <div className="mt-1 text-[12px] font-medium leading-tight">{guests}p • {elapsedLabel(session?.openedAt, now)}</div>}
-    {status === 'bill' && <span className="mt-1 max-w-full truncate rounded px-1.5 py-0.5 text-[12px] font-bold uppercase leading-tight" style={{background:'var(--border)',color:'var(--text)'}}>Bill printed</span>}
-    {designMode&&<Move size={14} className="absolute bottom-1 right-1 opacity-70"/>}
-    {status==='occupied'&&orderCount>0&&<span className="absolute top-1 right-1 min-w-5 h-5 px-1 rounded-full text-[12px] font-bold flex items-center justify-center" style={{background:'var(--primary-soft)',color:'var(--primary)'}}>{orderCount}</span>}
+    {status === 'bill' && <span className="mt-1 max-w-full truncate rounded bg-[var(--danger-soft)] px-1.5 py-1 text-[11px] font-bold uppercase leading-tight text-[var(--danger-text)]">Bill printed</span>}
+    {designMode&&<Move size={14} className="absolute bottom-1 right-1 opacity-80"/>}
   </button>;
 }
 export default function FloorPlan({ onTableSelect }) {
@@ -127,52 +128,56 @@ export default function FloorPlan({ onTableSelect }) {
   }));
 
   return (
-    <div className="flex flex-col h-full overflow-hidden" style={{ background:'var(--floor-bg)' }}>
-      <div className="flex items-center gap-2 px-4 pt-3 pb-2 shrink-0 overflow-x-auto">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[var(--canvas)] text-[var(--text)]">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 overflow-x-auto border-b border-[var(--border)] bg-[var(--surface)] px-3 pb-2 pt-3 lg:px-4">
         {store.zones.map((z) => (
-          <button key={z.id} onClick={() => setActiveZoneId(z.id)} className="px-5 py-2 rounded-full text-sm font-semibold whitespace-nowrap shrink-0" style={{ background:z.id===zone.id?'var(--action)':'transparent',color:z.id===zone.id?'var(--action-text)':'var(--text)',border:`1.5px solid ${z.id===zone.id?'var(--action)': 'var(--border)'}` }}>{z.name}</button>
+          <button key={z.id} type="button" onClick={() => setActiveZoneId(z.id)} className={`min-h-11 shrink-0 whitespace-nowrap rounded-full border-2 px-5 text-sm font-bold ${z.id===zone.id?'border-[var(--primary)] bg-[var(--primary)] text-[var(--on-primary)]':'border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--primary-soft)]'}`}>{z.name}</button>
         ))}
-        <div className="ml-auto flex items-center gap-1 shrink-0 rounded-xl p-1 bg-[var(--surface)] border-2 border-[var(--border)]">
-          <button type="button" onClick={() => setShape('square')} className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-bold" style={{background:shape==='square'?'var(--action)':'var(--surface)',color:shape==='square'?'var(--action-text)':'var(--text)'}}><Grid2X2 size={14} /> Square</button>
-          <button type="button" onClick={() => setShape('circle')} className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-bold" style={{background:shape==='circle'?'var(--action)':'var(--surface)',color:shape==='circle'?'var(--action-text)':'var(--text)'}}><Circle size={14} /> Circle</button>
-          <button type="button" onClick={() => setDesignMode((v) => !v)} className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-bold border-l-2 border-[var(--border)]" style={{ background:designMode?'var(--primary-soft)':'var(--surface)',color:designMode?'var(--primary)':'var(--text)' }}><Pencil size={14} /> Design Layout</button>
-          {designMode && <button type="button" onClick={saveLayout} className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-bold" style={{ background:'var(--action)',color:'var(--action-text)' }}><Save size={14} /> Save</button>}
-          {designMode && <button type="button" onClick={() => setDesignMode(false)} className="p-2 rounded-lg text-[var(--text)]" title="Close design mode"><X size={14} /></button>}
+        <div className="flex shrink-0 flex-wrap items-center gap-1 rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] p-1 lg:ml-auto">
+          <button type="button" onClick={() => setShape('square')} className={`flex min-h-11 items-center gap-1 rounded-lg px-3 text-xs font-bold ${shape==='square'?'bg-[var(--primary)] text-[var(--on-primary)]':'bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--primary-soft)]'}`}><Grid2X2 size={14} /> Square</button>
+          <button type="button" onClick={() => setShape('circle')} className={`flex min-h-11 items-center gap-1 rounded-lg px-3 text-xs font-bold ${shape==='circle'?'bg-[var(--primary)] text-[var(--on-primary)]':'bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--primary-soft)]'}`}><Circle size={14} /> Circle</button>
+          <button type="button" onClick={() => setDesignMode((v) => !v)} className={`flex min-h-11 items-center gap-1 rounded-lg px-3 text-xs font-bold ${designMode?'bg-[var(--primary-soft)] text-[var(--primary)]':'bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--primary-soft)]'}`}><Pencil size={14} /> Design Layout</button>
+          {designMode && <button type="button" onClick={saveLayout} className="flex min-h-11 items-center gap-1 rounded-lg bg-[var(--primary)] px-3 text-xs font-bold text-[var(--on-primary)]"><Save size={14} /> Save</button>}
+          {designMode && <button type="button" onClick={() => setDesignMode(false)} className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-[var(--text)] hover:bg-[var(--primary-soft)]" title="Close design mode" aria-label="Close design mode"><X size={14} /></button>}
         </div>
       </div>
 
-      {designMode && <div className="mx-4 mb-2 rounded-lg px-3 py-2 text-xs font-bold bg-[var(--text)] text-[var(--action)] shrink-0">Design Layout ON — drag tables to rearrange them. Amounts are intentionally hidden from the floor.</div>}
+      {designMode && <div className="mx-3 mb-2 shrink-0 rounded-lg bg-[var(--primary)] px-3 py-3 text-sm font-bold text-[var(--on-primary)] lg:mx-4">Design Layout ON — drag tables to rearrange them. Amounts are intentionally hidden from the floor.</div>}
 
-      <div className="flex flex-1 gap-4 px-4 pb-4 min-h-0">
-        <div className="flex-1 overflow-auto rounded-xl" style={{ background:'var(--floor-bg)', border: `1px solid ${BORDER}` }}>
+      <div className="flex min-h-0 flex-1 flex-col gap-4 px-3 pb-3 lg:flex-row lg:px-4 lg:pb-4">
+        <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-[var(--border)] bg-[var(--canvas)]">
           {designMode ? (
             <div className="relative" style={{ width: canvasW, height: canvasH, minWidth: '100%' }}>
               {displayTables.map((t) => <Tile key={t.id} table={{ ...t, selected: selectedTableId === t.id }} session={store.getSession(t.id)} shape={shape} designMode={designMode} onSelect={(table) => { setSelectedTableId(table.id); onTableSelect(table); }} onMove={moveTable} now={now} />)}
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 p-5 items-start justify-items-center">
+            <div className="grid grid-cols-2 items-start justify-items-center gap-4 p-4 sm:grid-cols-3 xl:grid-cols-5">
               {displayTables.map((t) => <Tile key={t.id} table={{ ...t, selected: selectedTableId === t.id }} session={store.getSession(t.id)} shape={shape} designMode={false} onSelect={(table) => { setSelectedTableId(table.id); onTableSelect(table); }} onMove={moveTable} now={now} />)}
             </div>
           )}
         </div>
 
-        <div className="hidden xl:flex shrink-0 rounded-xl p-4 flex-col gap-3" style={{ background:'var(--surface)', width: 180 }}>
-          <h3 className="text-xs font-bold uppercase tracking-widest" style={{ color:'var(--action)' }}>Today</h3>
+        <div className="flex shrink-0 flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 lg:hidden">
+          <h3 className="text-xs font-bold uppercase tracking-widest text-[var(--primary)]">Today</h3>
+          <div className="grid grid-cols-2 gap-3"><SummaryRow label="Covers Seated" value={covers} /><SummaryRow label="Tables Occupied" value={occupied} /><SummaryRow label="Open Checks" value={openChecks} /><SummaryRow label="Reservations Tonight" value={RESERVATIONS_TONIGHT} /></div>
+        </div>
+        <aside className="hidden w-48 shrink-0 flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 xl:flex">
+          <h3 className="text-xs font-bold uppercase tracking-widest text-[var(--primary)]">Today</h3>
           <SummaryRow label="Covers Seated" value={covers} />
           <SummaryRow label="Tables Occupied" value={occupied} />
           <SummaryRow label="Open Checks" value={openChecks} />
           <SummaryRow label="Reservations Tonight" value={RESERVATIONS_TONIGHT} />
-          <div className="mt-2 pt-3" style={{ borderTop:'1px solid var(--border)' }}>
-            <h4 className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color:'var(--action)' }}>Legend</h4>
-            <Legend label="Open / Available" fill="var(--table-free-bg)" border="var(--table-free-border)" />
-            <Legend label="Occupied" fill="var(--table-occupied-bg)" border="var(--table-occupied-border)" />
-            <Legend label="Printed / Unsettled" fill="var(--table-bill-bg)" border="var(--table-bill-border)" />
+          <div className="mt-2 border-t border-[var(--border)] pt-3">
+            <h4 className="mb-2 text-xs font-bold uppercase tracking-widest text-[var(--primary)]">Legend</h4>
+            <Legend label="Open / Available" fill="var(--room-clean)" border="var(--room-clean)" />
+            <Legend label="Occupied" fill="var(--room-occupied)" border="var(--room-occupied)" />
+            <Legend label="Printed / Unsettled" fill="var(--danger)" border="var(--danger)" />
           </div>
-        </div>
+        </aside>
       </div>
     </div>
   );
 }
 
-function Legend({ label, fill, border }) { return <div className="flex items-center gap-2 mb-1.5"><span className="w-3.5 h-3.5 rounded shrink-0" style={{ background: fill, border: `2px solid ${border}` }} /><span className="text-xs" style={{ color: MUTED_DARK }}>{label}</span></div>; }
-function SummaryRow({ label, value }) { return <div className="flex flex-col"><span className="text-2xl font-mono font-bold" style={{ color:'var(--text)' }}>{value}</span><span className="text-xs leading-tight" style={{ color: MUTED_DARK }}>{label}</span></div>; }
+function Legend({ label, fill, border }) { return <div className="mb-1.5 flex items-center gap-2"><span className="h-3.5 w-3.5 shrink-0 rounded" style={{ background: fill, border: `2px solid ${border}` }} /><span className="text-xs text-[var(--text-muted)]">{label}</span></div>; }
+function SummaryRow({ label, value }) { return <div className="flex min-w-0 flex-col"><span className="text-2xl font-bold text-[var(--text)]">{value}</span><span className="text-xs leading-tight text-[var(--text-muted)]">{label}</span></div>; }

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { NAVY, TEAL, SAND, SURFACE, SURFACE2, BORDER, MUTED, ERR } from '@/data/themePalette';
 import { tableLabel } from '@/data/mockData';
 
 export default function OpenTableDialog({ open, table, staff, onCancel, onStart }) {
@@ -29,55 +28,73 @@ export default function OpenTableDialog({ open, table, staff, onCancel, onStart 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(14,39,64,0.6)' }}>
-      <div className="w-full max-w-sm rounded-2xl overflow-hidden" style={{ background: SURFACE, border: `1px solid ${BORDER}` }}>
-        <div className="flex items-center justify-between px-5 py-3" style={{ background: NAVY }}>
-          <div className="text-sm font-semibold" style={{ color: SAND }}>Open Table</div>
-          <button onClick={onCancel} aria-label="Close"><X size={16} style={{ color: 'rgba(234,227,210,0.7)' }} /></button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--overlay-scrim)] p-4" role="presentation">
+      <div className="overlay-surface max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--surface)]" role="dialog" aria-modal="true" aria-labelledby="open-table-title" aria-describedby="open-table-guidance">
+        <div className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--sidebar)] px-5 py-3">
+          <div id="open-table-title" className="text-base font-bold text-[var(--text)]">Open Table</div>
+          <button type="button" onClick={onCancel} aria-label="Close open table dialog" className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--primary-soft)]"><X size={18} /></button>
         </div>
 
         <div className="p-5">
-          <div className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: MUTED }}>
+          <div id="open-table-guidance" className="mb-4 rounded-xl border border-[var(--border)] bg-[var(--primary-soft)] p-3 text-sm text-[var(--text)]">
+            <div className="font-bold">Before you start</div>
+            <div className="mt-1 text-[var(--text-muted)]">Enter the number of guests and assign a waiter. Both fields are required.</div>
+          </div>
+
+          <div className="mb-4 text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">
             {table.zoneName} · Table {tableLabel(table)} · {table.seats} seats
           </div>
 
-          <label className="block text-xs font-semibold mb-1" style={{ color: NAVY }}>Number of guests *</label>
+          <label className="mb-1 block text-sm font-bold text-[var(--text)]" htmlFor="open-table-guests">Number of guests <span aria-hidden="true">*</span><span className="sr-only">required</span></label>
           <input
-            type="number" min="1" value={guests} placeholder="e.g. 4"
+            id="open-table-guests"
+            type="number"
+            min="1"
+            value={guests}
+            placeholder="e.g. 4"
             onChange={(e) => setGuests(e.target.value)}
-            className="w-full px-3 py-2.5 rounded-lg mb-4 text-base font-mono font-bold outline-none"
-            style={{ background: SURFACE2, border: `1.5px solid ${BORDER}`, color: NAVY }}
+            aria-required="true"
+            aria-invalid={Boolean(guests) && Number(guests) <= 0}
+            aria-describedby="guest-guidance"
+            className="mb-1 min-h-12 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-base font-bold text-[var(--text)] outline-none focus:border-[var(--primary)]"
           />
+          <div id="guest-guidance" className="mb-4 text-xs text-[var(--text-muted)]">Use a whole number of at least 1.</div>
 
-          <label className="block text-xs font-semibold mb-1" style={{ color: NAVY }}>Waiter *</label>
+          <label className="mb-1 block text-sm font-bold text-[var(--text)]" htmlFor="open-table-waiter">Waiter <span aria-hidden="true">*</span><span className="sr-only">required</span></label>
           <select
-            value={waiter} onChange={(e) => setWaiter(e.target.value)}
-            className="w-full px-3 py-2.5 rounded-lg mb-2 text-base outline-none"
-            style={{ background: SURFACE2, border: `1.5px solid ${BORDER}`, color: NAVY }}
+            id="open-table-waiter"
+            value={waiter}
+            onChange={(e) => setWaiter(e.target.value)}
+            aria-required="true"
+            aria-invalid={!waiter}
+            aria-describedby="waiter-guidance"
+            className="min-h-12 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-base text-[var(--text)] outline-none focus:border-[var(--primary)]"
           >
             <option value="">Select waiter…</option>
             {staff.map((s) => (
               <option key={s.id} value={s.name}>{s.name}</option>
             ))}
           </select>
+          <div id="waiter-guidance" className="mt-1 text-xs text-[var(--text-muted)]">Choose the staff member responsible for this table.</div>
           {staff.length === 0 && (
-            <div className="text-xs mb-1" style={{ color: ERR }}>No waiters configured — add staff in the Staff screen first.</div>
+            <div className="mt-2 rounded-lg border border-[var(--danger)] bg-[var(--danger-soft)] p-2 text-sm font-semibold text-[var(--danger-text)]">No waiters configured — add staff in the Staff screen first.</div>
           )}
 
-          {error && <div className="text-xs mt-2" style={{ color: ERR }}>{error}</div>}
+          {error && <div role="alert" className="mt-3 rounded-lg border border-[var(--danger)] bg-[var(--danger-soft)] p-3 text-sm font-semibold text-[var(--danger-text)]">{error}</div>}
 
-          <div className="flex gap-2 mt-4">
+          <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row">
             <button
+              type="button"
               onClick={onCancel}
-              className="flex-1 py-3 rounded-xl text-sm font-semibold"
-              style={{ background: SURFACE, border: `1.5px solid ${BORDER}`, color: NAVY }}
+              className="min-h-12 flex-1 rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-bold text-[var(--text)] hover:bg-[var(--primary-soft)]"
             >
               Cancel
             </button>
             <button
-              onClick={submit} disabled={!valid}
-              className="flex-1 py-3 rounded-xl text-sm font-bold"
-              style={{ background: valid ? TEAL : 'var(--border)', color: 'var(--primary-foreground)', cursor: valid ? 'pointer' : 'not-allowed' }}
+              type="button"
+              onClick={submit}
+              disabled={!valid}
+              className="min-h-12 flex-1 rounded-xl bg-[var(--primary)] px-3 text-sm font-bold text-[var(--on-primary)] hover:bg-[var(--primary-hover)] disabled:cursor-not-allowed disabled:bg-[var(--sidebar)] disabled:text-[var(--text-muted)]"
             >
               Start Order
             </button>

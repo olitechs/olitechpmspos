@@ -1,4 +1,5 @@
 import { buildEscPosPayload } from './escposJob.js';
+import { getPrintColor } from '../utils/printTheme.js';
 export { finishPrintJob } from './escposJob.js';
 
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({
@@ -379,7 +380,9 @@ export function buildFinalReceiptText(settings = {}, data = {}, { printer = {}, 
   return lines.join('\n');
 }
 export function thermalTextToHtml(text) {
-  return '<pre style="margin:0;padding:0 0 2em;background:white;color:black;white-space:pre-wrap;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:400;line-height:1.35;letter-spacing:0.05px;font-kerning:normal;-webkit-font-smoothing:antialiased">' + escapeHtml(text) + '</pre>';
+  const paper = getPrintColor('--print-paper');
+  const ink = getPrintColor('--print-ink');
+  return '<pre style="margin:0;padding:0 0 2em;background:' + paper + ';color:' + ink + ';white-space:pre-wrap;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:400;line-height:1.35;letter-spacing:0.05px;font-kerning:normal;-webkit-font-smoothing:antialiased">' + escapeHtml(text) + '</pre>';
 }
 
 export function estimateThermalFeedLines() {

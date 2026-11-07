@@ -33,7 +33,7 @@ export default function HelpCentre() {
       <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--brand-soft)] text-[var(--brand-primary)]"><LifeBuoy size={23}/></div>
       <p className="mb-2 text-xs font-semibold uppercase tracking-[.16em] text-[var(--brand-primary)]">OliTechs support</p>
       <h1 className="text-2xl font-semibold tracking-tight text-[var(--text)] sm:text-3xl">How can we help?</h1>
-      <p className="mt-2 max-w-2xl text-sm text-[var(--text-muted)]">Search answers, learn the main workflows and find practical guidance for using OliTechs PMS & POS.</p>
+      <p className="mt-2 max-w-2xl text-sm text-[var(--text-muted)]">Search answers, learn the main workflows and find practical guidance for using OliTechs PMS + POS.</p>
       <label className="relative mt-6 block max-w-2xl">
         <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"/>
         <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search questions, modules or tasks..." className="h-12 w-full rounded-xl border border-[var(--border)] bg-[var(--canvas)] pl-10 pr-4 text-sm text-[var(--text)] outline-none focus:ring-2 focus:ring-[var(--focus)]"/>

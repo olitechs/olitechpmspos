@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/assets/olitechs-horizontal-light.svg" alt="OliTechs" width="360" />
+# OliTechs
 
 <br />
 
@@ -8,11 +8,7 @@
 
 A multi-workspace Property Management System and Point of Sale for hotels, resorts, lodges, restaurants and serviced apartments.
 
-[![Live application](https://img.shields.io/badge/Live_application-olitechpmspos.vercel.app-0F7C86?style=for-the-badge&labelColor=0A3F4A)](https://olitechpmspos.vercel.app)
-![React](https://img.shields.io/badge/React-18-0A3F4A?style=flat-square&logo=react)
-![Vite](https://img.shields.io/badge/Vite-6-0A3F4A?style=flat-square&logo=vite)
-![Supabase](https://img.shields.io/badge/Supabase-Postgres-0F7C86?style=flat-square&logo=supabase)
-![License](https://img.shields.io/badge/License-MIT-0A3F4A?style=flat-square)
+[Live application](https://olitechpmspos.vercel.app) · **React 18** · **Vite 6** · **Supabase/Postgres** · **MIT**
 
 [Overview](#1-product-overview) · [Workflows](#3-end-to-end-workflows) · [Modules](#4-module-by-module-guide) · [Architecture](#5-technical-architecture) · [Setup](#9-local-development-setup)
 
@@ -433,14 +429,7 @@ The repository includes a source-controlled engineering handbook so a coding age
 
 ## Brand identity
 
-| Token | Value | Intended use |
-|---|---|---|
-| Deep Lagoon | `#0A3F4A` | Brand dark, headers and primary dark surfaces |
-| Coastal Teal | `#0F7C86` | Primary brand accent and interactive highlights |
-| White | `#FFFFFF` | Clean surfaces and reverse wordmark |
-| Soft White | `#F5F8F8` | Page and card surfaces |
-
-Use the supplied SVG logo assets to preserve the original vector mark and outlined wordmark. Keep clear space around the logo of at least one quarter of the icon height.
+The product name is always spelled **OliTechs**. Application color values are defined once in `src/index.css` as the Coastal Linen theme tokens; Tailwind utilities and compatibility exports map to those variables. Public logo, favicon, app-icon, and manifest assets are generated from the theme tokens while `npm run dev` or `npm run build` runs, then their tracked paths are restored to placeholder templates when the dev wrapper exits or the postbuild hook completes. The production `dist/` output contains the rendered assets, so source files and documentation do not carry duplicate palette values.
 
 ## License
 

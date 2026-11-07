@@ -4,8 +4,8 @@ import { ERR } from '@/data/themePalette';
 
 export default function PrintWarn({ message }) {
   return (
-    <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium" style={{ background: 'rgba(154,102,22,0.12)', color: ERR, border: `1px solid ${ERR}55` }}>
-      <AlertTriangle size={14} style={{ flexShrink: 0 }} /> <span>{message}</span>
+    <div className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium" style={{ background: 'var(--warning-soft)', color: 'var(--warning-text)', border: `1px solid ${ERR}` }}>
+      <AlertTriangle size={14} style={{ flexShrink: 0, color: ERR }} /> <span>{message}</span>
     </div>
   );
 }

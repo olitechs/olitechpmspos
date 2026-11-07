@@ -73,6 +73,6 @@ test('printer assignment embedding explicitly selects the property-scoped foreig
 
 test('Windows print-agent test aliases use the normalized route to send the test receipt', () => {
   const agent = read('../../tools/print-agent/server.mjs');
-  assert.match(agent, /escPosPayload\(body\.text, route === ['"]\/windows-test['"]\)/);
+  assert.match(agent, /escPosPayload\(body\.text,\s*route\s*===\s*['"]\/windows-test['"],/);
   assert.doesNotMatch(agent, /escPosPayload\(body\.text, url\.pathname === ['"]\/windows-test['"]\)/);
 });

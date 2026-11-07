@@ -1,73 +1,53 @@
-# OliTechs PMS + POS — Brand and theme system
+# OliTechs — Brand and theme system
 
 ## Design intent
-A professional, accessible hotel operations interface with clear hierarchy and consistent semantic surfaces. The application supports **Light**, **Dark** and **System** modes. Theme work is presentation-only: domain behaviour, data, routes, permissions, stores, receipts and print templates remain unchanged.
+OliTechs is a professional hospitality operations interface with a light-only Coastal Linen palette, calm hierarchy, clear semantic surfaces and touch-first workflows. Theme work is presentation-only: preserve domain behavior, data, routes, permissions, stores, receipts, printer routing and payment functionality.
 
 ## Canonical colour source
-All canonical application colours are defined in `src/index.css`. Tailwind and shadcn variables are mappings to these tokens; do not add a second palette or hard-code colour values in components. Legacy semantic names remain aliases for compatibility while modules are migrated.
+`src/index.css` is the single source of application colour values. Components, Tailwind and shadcn use CSS variables and semantic aliases only. Do not introduce a second palette, palette-specific utility classes, inline colour literals or a dark/system theme.
 
-### Light palette
+### Brand and Coastal Linen tokens
 
-| Token | Value |
+| Purpose | Token |
 |---|---|
-| `--canvas` | `#F4F7F8` |
-| `--surface` | `#FFFFFF` |
-| `--sidebar` | `#E6EFF0` |
-| `--border` / `--input-border` | `#C9D6DA` / `#7C9199` |
-| `--panel-head` | `#E6EFF0` |
-| `--text` / `--text-muted` | `#14232B` / `#4F646D` |
-| `--primary` / `--on-primary` | `#0F7C86` / `#FFFFFF` |
-| `--primary-hover` / `--primary-text` / `--primary-soft` | `#0B6169` / `#0B6169` / `#DDF0F1` |
-| `--accent` | `#9A5F2B` |
-| `--success` / `--success-soft` | `#1B7A57` / `#E3F3EC` |
-| `--danger` / `--danger-soft` | `#B42318` / `#FBE8E6` |
-| `--warning` / `--warning-soft` | `#8F5400` / `#FBEFD9` |
-| `--info` / `--info-soft` | `#2A5AA7` / `#E4EDF9` |
+| Deep Lagoon | `--deep-lagoon` |
+| Coastal Teal / primary | `--coastal-teal`, `--primary` |
+| White / Soft White | `--white`, `--soft-white` |
+| Canvas / surface / sidebar | `--canvas`, `--surface`, `--sidebar` |
+| Text / muted text / border | `--text`, `--text-muted`, `--border` |
+| Small highlights and warnings only | `--accent`, `--warning`, `--warning-soft` |
 
-### Dark palette
+Use the official brand tokens for the logo, headers, primary buttons, active states, links and key accents. Do not use the warning accent as a large surface or in the logo. The canvas and normal working surfaces remain light; do not introduce black areas.
 
-| Token | Value |
-|---|---|
-| `--canvas` | `#10171A` |
-| `--surface` | `#172126` |
-| `--sidebar` | `#131C20` |
-| `--border` / `--input-border` | `#2C3B42` / `#5A6F77` |
-| `--panel-head` | `#1E2B31` |
-| `--text` / `--text-muted` | `#E3EBED` / `#9DB0B8` |
-| `--primary` / `--on-primary` | `#137682` / `#F2F8F9` |
-| `--primary-hover` / `--primary-text` / `--primary-soft` | `#0E6A75` / `#5CC6D0` / `#17353B` |
-| `--accent` | `#D4A06E` |
-| `--success` / `--success-soft` | `#4CC39A` / `#143A2D` |
-| `--danger` / `--danger-soft` | `#FF8A84` / `#3E1E1E` |
-| `--warning` / `--warning-soft` | `#F0A56F` / `#3F2318` |
-| `--info` / `--info-soft` | `#8DB4F0` / `#1A2E52` |
+## Functional status tokens
 
-Dark-theme text and foreground tokens must remain light/off-white; never use black or near-black text on dark surfaces. Use separate fill and foreground tokens for buttons, links and status chips. Bright status colours are limited to appropriate fills, borders and icons.
+| State | Fill token | Foreground token |
+|---|---|---|
+| Paid | `--status-paid` | white (`--white`) |
+| Deposit paid | `--status-deposit-paid` | `--status-deposit-foreground` |
+| Not paid | `--status-not-paid` | white (`--status-not-paid-foreground`) |
+| Vacant clean | `--room-clean` | semantic foreground |
+| Vacant dirty | `--room-dirty` | semantic foreground |
+| Occupied | `--room-occupied` | white |
+| Checking out today | `--room-checkout` | white |
+| Out of order | `--room-out-of-order` with `--room-out-of-order-stripe` | semantic foreground |
 
-## Room Planner semantic tokens
-The planner uses the `--cal-*` family for page, header, grid, weekend, today, room and scrollbar colours. Payment/booking status uses the same fill, foreground and border triplets across bars, legend, hover summaries and reservation forms:
+Status must also be identifiable by a text label or icon, not colour alone. Keep room-status colors distinct from payment-status semantics.
 
-| State | Fill | Foreground | Border |
-|---|---|---|---|
-| No amount paid | `--pay-none` | `--pay-none-fg` | `--pay-none-bd` |
-| Partially paid | `--pay-part` | `--pay-part-fg` | `--pay-part-bd` |
-| Total paid / confirmed | `--pay-paid` | `--pay-paid-fg` | `--pay-paid-bd` |
-| Optioned | `--pay-opt` | `--pay-opt-fg` | `--pay-opt-bd` |
-| Cancelled | `--st-cancel` | `--st-cancel-fg` | `--st-cancel-bd` |
+## Room Planner
+The planner uses the `--cal-*` family for page, header, grid, weekend, today, room and scrollbar colors. Payment/booking status uses consistent fill, foreground and border triplets: `--pay-none`, `--pay-part`, `--pay-paid`, `--pay-opt`, and `--st-cancel` with their matching `-fg` / `-bd` aliases. These planner aliases remain scoped to the planner.
 
-## Restaurant floor table colours
-Table status tokens remain semantic and theme-aware. Status must also be identifiable by text or icon, not colour alone. POS controls retain touch targets of at least 44px.
+## Light-only theme behavior
+The whole app uses a light appearance. There is no theme selector, saved dark mode, system-color-mode listener, `.dark` palette, or dark Tailwind variant. The provider may set the light browser color-scheme and read brand metadata from the canonical CSS tokens.
 
-## Theme selection and persistence
-The shared theme control offers **Light**, **Dark** and **System**. `ThemeProvider` stores the selected mode under `olitech_theme_mode`, synchronizes `.dark` with `data-theme="dark"`, and follows `prefers-color-scheme` in System mode. The inline script in `index.html` applies the saved/system choice before React mounts to avoid a flash of the wrong theme. Tailwind remains configured with `darkMode: ['class']`.
-
-## Component rules
-- Define canonical colour literals only in `src/index.css`; map Tailwind/shadcn semantic values to CSS variables.
-- Use `--surface` for cards and dialogs, `--border` for outlines, and semantic tokens for status.
-- Keep normal text contrast at WCAG AA (4.5:1) and UI boundaries/icons at least 3:1; validate actual component pairings during rollout.
-- Use labels/icons in addition to colour for operational states.
+## Component and accessibility rules
+- Define canonical colour literals only in `src/index.css`; public logo/PWA assets are generated from those tokens during `npm run dev` and `npm run build`.
+- Use semantic foregrounds on colored buttons and status fills; never pair body text with a primary fill without the matching foreground token.
+- Maintain WCAG AA contrast for normal text and at least 3:1 for UI boundaries/icons; validate actual component pairings. The fixed user-mandated white text on Paid and Not paid fills is an exception: measured contrast is 2.99:1 and 2.52:1 respectively. Preserve those exact pairs, render these status labels explicitly in bold high-emphasis text, and never rely on color alone; do not silently adjust the specified fill or foreground.
+- POS controls use touch targets of at least 44px, preferably 48px for frequent actions.
+- Keep normal text contrast readable at tablet viewing distance; labels and icons supplement color.
 - Respect reduced-motion preferences and visible keyboard focus.
-- Preserve thermal receipts and print templates as black-on-white; in dark mode receipt previews should use a white paper surface.
+- Printed receipts retain legible paper/ink styling through `--print-*` aliases; printer/receipt logic remains unchanged.
 
 ## Scope and rollout
-Phase 1 establishes the canonical light/dark token layer and semantic Tailwind/shadcn mappings. It does not claim that every legacy utility class or component has already been migrated. The app-wide component sweep, planner geometry, reservation form and screenshot verification remain later phases. Do not modify `v6/`, booking/billing logic, routes, permissions or database schema as part of theme work.
+Apply this system to the active root Vite application. Do not modify the historical `v6/` duplicate. Preserve routes, role/permission checks, reservation/billing logic, POS/PMS workflows, printer behavior and database schema while migrating presentation.

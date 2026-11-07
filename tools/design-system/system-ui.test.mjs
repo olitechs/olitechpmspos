@@ -112,55 +112,47 @@ test('official OliTechs identity is shared across all application workspaces and
   }
   assert.match(brandLogo, /olitechs-logo\.svg/);
   assert.match(brandLogo, /app-icon\.svg/);
-  assert.ok(theme.includes('--primary:#0F7C86'));
-  assert.ok(theme.includes('--primary-hover:#0A3F4A'));
-  assert.ok(theme.includes('--pos-gate-accent:#58AEB0'));
+  assert.match(theme, /--primary:\s*var\(--coastal-teal\)/);
+  assert.match(theme, /--primary-hover:\s*var\(--deep-lagoon\)/);
+  assert.match(theme, /--pos-gate-accent:\s*var\(--primary\)/);
+  assert.match(html, /<title>OliTechs PMS \+ POS \| Hospitality Operations<\/title>/);
 });
 
-test('theme foundation defines canonical light and dark palettes with reduced-motion handling', () => {
+test('theme foundation defines exact light-only brand, Coastal Linen, payment and room tokens', () => {
   for (const token of [
-    '--canvas:#F3F7F7', '--surface:#FFFFFF', '--primary:#0F7C86',
-    '--on-primary:#FFFFFF', '--text:#173D40', '--text-muted:#557477',
-    '--table-free-bg:#74C365', '--table-occupied-bg:#FA003F', '--table-bill-bg:#FAFAFA',
-  ]) assert.ok(theme.includes(token), 'missing light token ' + token);
-  assert.ok(theme.includes(':root[data-theme="dark"]'));
-  for (const token of [
-    '--canvas:#081E22', '--surface:#102B30', '--primary:#0F7C86',
-    '--on-primary:#FFFFFF', '--text:#EAF5F3', '--text-muted:#B1CECA',
-  ]) assert.ok(theme.includes(token), 'missing dark token ' + token);
-  assert.ok(theme.includes('--primary-soft:#E2F1F0'));
-  assert.ok(theme.includes('--accent:#58AEB0'));
-  assert.ok(theme.includes('--primary-text:#0A6871'));
-  assert.ok(theme.includes('--font-body:Inter,ui-sans-serif'));
+    '--deep-lagoon: #0A3F4A', '--coastal-teal: #0F7C86', '--white: #FFFFFF', '--soft-white: #F5F8F8',
+    '--canvas: #F6F9F9', '--sidebar: #EAF3F3', '--text: #223039', '--accent: #E8955A',
+    '--status-paid: #3FA77A', '--status-deposit-paid: #F2C14E', '--status-deposit-foreground: #5A4310',
+    '--status-not-paid: #EE8A3C', '--room-occupied: #2F6F9F', '--room-checkout: #3949AB', '--room-out-of-order: #65727A',
+    '--print-ink: #000000', '--print-void: #DC2626',
+  ]) assert.ok(theme.includes(token), 'missing canonical token ' + token);
+  assert.match(theme, /--primary:\s*var\(--coastal-teal\)/);
+  assert.match(theme, /--on-primary:\s*var\(--white\)/);
+  assert.match(theme, /--pay-none:\s*var\(--status-not-paid\)/);
+  assert.match(theme, /--pay-part:\s*var\(--status-deposit-paid\)/);
+  assert.match(theme, /--pay-paid:\s*var\(--status-paid\)/);
+  assert.match(theme, /--room-out-of-order-stripe:\s*repeating-linear-gradient\(135deg/);
+  assert.doesNotMatch(theme, /data-theme=["']dark|color-scheme\s*:\s*dark/);
+  assert.match(theme, /color-scheme:\s*light/);
+  assert.match(theme, /prefers-reduced-motion:\s*reduce/);
+  assert.match(theme, /--pay-opt:\s*var\(--primary-soft\)/);
   assert.ok(html.includes('https://fonts.googleapis.com/css2?family=Inter'));
-  assert.ok(theme.includes('.room-planner {') && theme.includes('--font-body:Inter,ui-sans-serif'));
-  assert.ok(theme.includes('.room-planner .legend-optioned { color:#0F7C86; }'));
-  assert.ok(theme.includes('--table-free-bg:#74C365'));
-  assert.ok(theme.includes('--table-occupied-bg:#FA003F'));
-  assert.ok(theme.includes('--table-bill-bg:#FAFAFA'));
-  assert.ok(theme.includes('color-scheme: light'));
-  assert.ok(theme.includes('color-scheme:dark'));
-  assert.ok(theme.includes('prefers-reduced-motion:reduce'));
   for (const token of ['--surface', '--surface-2', '--border', '--text', '--muted', '--focus']) {
     assert.match(theme, new RegExp(token + ':'));
   }
 });
 
-test('legacy palette fallbacks preserve readable foregrounds and surfaces in both themes', () => {
-  for (const selector of [
-    ':root:not([data-theme="dark"])',
-    ':root[data-theme="dark"]',
-    '.bg-gray-900',
-    '.bg-slate-900',
-    '.text-gray-900',
-    '.text-slate-900',
-    '.text-gray-500',
-    'background-color: var(--surface)',
-    'background-color: var(--sidebar)',
-    'color: var(--text-muted)',
-    'color: #FFFFFF',
-  ]) assert.ok(theme.includes(selector), 'missing contrast fallback: ' + selector);
-  assert.match(theme, /:not\(\.room-planner\):not\(\.floor-table-tile\)/);
+test('light-only theme maps every major surface and foreground through semantic variables', () => {
+  for (const declaration of [
+    '--background: var(--canvas)',
+    '--foreground: var(--text)',
+    '--card: var(--surface)',
+    '--secondary: var(--sidebar)',
+    '--muted-foreground: var(--text-muted)',
+    '--ring: var(--primary)',
+  ]) assert.ok(theme.includes(declaration), 'missing semantic mapping: ' + declaration);
+  assert.doesNotMatch(theme, /data-theme=["']dark|color-scheme\s*:\s*dark/);
+  assert.doesNotMatch(theme, /\.bg-(?:gray|slate)-(?:50|100|200|300|400|500|600|700|800|900)/);
 });
 
 test('mobile sidebar exposes expanded state and closes with Escape', () => {

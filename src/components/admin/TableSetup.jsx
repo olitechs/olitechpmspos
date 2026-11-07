@@ -2,7 +2,14 @@ import React, { useRef, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { useStore } from '@/data/AppStore';
 import { TABLE_CARD, tableLabel } from '@/data/mockData';
-import { NAVY, TEAL, SAND, SURFACE, SURFACE2, BORDER, MUTED, DESTRUCTIVE } from '@/data/themePalette';
+const NAVY = 'var(--text)';
+const TEAL = 'var(--primary)';
+const SAND = 'var(--canvas)';
+const SURFACE = 'var(--surface)';
+const SURFACE2 = 'var(--sidebar)';
+const BORDER = 'var(--border)';
+const MUTED = 'var(--text-muted)';
+const DESTRUCTIVE = 'var(--danger)';
 
 const MIN_W = Math.round(TABLE_CARD.w * 0.6);
 const MIN_H = Math.round(TABLE_CARD.h * 0.6);
@@ -70,8 +77,8 @@ export default function TableSetup() {
             onClick={() => { setActiveZoneId(z.id); setSelectedId(null); }}
             className="px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap shrink-0"
             style={{
-              background: z.id === zone.id ? TEAL : 'transparent',
-              color: z.id === zone.id ? '#fff' : MUTED,
+              background: z.id === zone.id ? TEAL : SURFACE,
+              color: z.id === zone.id ? 'var(--on-primary)' : MUTED,
               border: `1.5px solid ${z.id === zone.id ? TEAL : BORDER}`,
             }}
           >
@@ -87,7 +94,7 @@ export default function TableSetup() {
           <button
             onClick={() => { if (newZoneName.trim()) { store.addZone(newZoneName.trim()); setNewZoneName(''); } }}
             className="px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-1"
-            style={{ background: TEAL, color: '#090C11' }}
+            style={{ background: TEAL, color: 'var(--on-primary)' }}
           >
             <Plus size={14} /> Add
           </button>
@@ -114,7 +121,7 @@ export default function TableSetup() {
                     background: SURFACE, border: `2px solid ${selectedId === t.id ? TEAL : BORDER}`, borderRadius: 10,
                     display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
                     cursor: 'grab', touchAction: 'none',
-                    boxShadow: selectedId === t.id ? '0 4px 10px rgba(0,0,0,0.12)' : 'none',
+                    boxShadow: selectedId === t.id ? 'var(--shadow-overlay)' : 'none',
                   }}
                 >
                   <span className="font-bold font-mono" style={{ color: NAVY, fontSize: Math.max(12, Math.min(16, w / 6)) }}>{tableLabel(t, zone.id)}</span>
@@ -167,7 +174,7 @@ export default function TableSetup() {
           <button
             onClick={() => store.addTable(zone.id)}
             className="w-full py-3 rounded-xl text-sm font-bold mb-4 flex items-center justify-center gap-1"
-            style={{ background: TEAL, color: '#090C11' }}
+            style={{ background: TEAL, color: 'var(--on-primary)' }}
           >
             <Plus size={16} /> Add Table
           </button>

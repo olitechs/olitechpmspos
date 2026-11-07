@@ -6,7 +6,7 @@ import{pmsService}from'@/services/pmsService';
 const STATUS={
  trial:{label:'Trial',className:'bg-[var(--warning-soft)] text-[var(--warning-text)] border-[var(--warning)]'},
  active:{label:'Active',className:'bg-[var(--success-soft)] text-[var(--success-text)] border-[var(--success)]'},
- past_due:{label:'Past due',className:'bg-orange-50 text-orange-700 border-orange-200'},
+ past_due:{label:'Past due',className:'bg-[var(--warning-soft)] text-[var(--warning-text)] border-[var(--warning)]'},
  suspended:{label:'Suspended',className:'bg-[var(--danger-soft)] text-[var(--danger-text)] border-[var(--danger)]'},
  cancelled:{label:'Cancelled',className:'bg-secondary text-muted-foreground border-border'},
 };
@@ -72,7 +72,7 @@ export default function SubscriptionPanel(){
      <div className="rounded-3xl border border-border bg-surface p-5 md:p-6">
        <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
          <div className="flex gap-4">
-           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary"><Hotel size={22}/></div>
+           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary"><Hotel size={22} className="text-primary-foreground"/></div>
            <div>
              <p className="text-[11px] font-black uppercase tracking-[.16em] text-muted-foreground">Your property</p>
              <h1 className="mt-1 text-2xl font-black text-foreground">{overview.property_name||'Unnamed property'}</h1>

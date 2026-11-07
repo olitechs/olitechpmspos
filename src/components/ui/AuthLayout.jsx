@@ -60,35 +60,35 @@ export default function AuthLayout({ title, subtitle, footer, children }) {
 
               <div className="relative flex h-full items-center justify-center p-10 xl:p-16">
                 <div className="relative w-full max-w-[610px]">
-                  <div className="absolute left-[8%] top-[5%] flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--surface)] text-[var(--primary)] shadow-[0_12px_30px_rgba(34,48,57,.08)]">
+                  <div className="absolute left-[8%] top-[5%] flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--surface)] text-[var(--primary)] shadow-[var(--shadow-overlay)]">
                     <Sparkles className="h-5 w-5" />
                   </div>
 
-                  <div className="absolute right-[7%] top-[12%] flex h-11 w-11 items-center justify-center rounded-full bg-[var(--surface)] text-[var(--text-muted)] shadow-[0_12px_30px_rgba(34,48,57,.08)]">
+                  <div className="absolute right-[7%] top-[12%] flex h-11 w-11 items-center justify-center rounded-full bg-[var(--surface)] text-[var(--text-muted)] shadow-[var(--shadow-overlay)]">
                     <CheckCircle2 className="h-5 w-5" />
                   </div>
 
-                  <div className="relative mx-auto flex aspect-[1.08/1] w-[76%] items-center justify-center rounded-full bg-[var(--primary-soft)] shadow-[0_30px_70px_rgba(34,48,57,.08)]">
-                    <div className="absolute inset-[8%] rounded-full border-[18px] border-white/35" />
+                  <div className="relative mx-auto flex aspect-[1.08/1] w-[76%] items-center justify-center rounded-full bg-[var(--primary-soft)] shadow-[var(--shadow-overlay)]">
+                    <div className="absolute inset-[8%] rounded-full border-[18px] border-[var(--border)]" />
 
-                    <div className="relative w-[48%] rounded-[22px] border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[0_25px_50px_rgba(34,48,57,.08)]">
+                    <div className="relative w-[48%] rounded-[22px] border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-overlay)]">
                       <div className="flex h-9 items-center justify-center rounded-lg bg-[var(--primary-soft)]">
                         <div className="h-2 w-14 rounded-full bg-[var(--primary-soft)]" />
                       </div>
                       <div className="mt-4 space-y-2">
-                        <div className="h-2.5 w-4/5 rounded bg-[#E5E7EB]" />
+                        <div className="h-2.5 w-4/5 rounded bg-[var(--border)]" />
                         <div className="h-8 rounded-lg border border-[var(--border)] bg-[var(--canvas)]" />
                         <div className="h-8 rounded-lg border border-[var(--border)] bg-[var(--canvas)]" />
                         <div className="h-8 rounded-lg bg-[var(--primary-soft)]" />
                       </div>
-                      <div className="mx-auto mt-4 h-1.5 w-10 rounded-full bg-[#D1D5DB]" />
+                      <div className="mx-auto mt-4 h-1.5 w-10 rounded-full bg-[var(--text-muted)]" />
                     </div>
 
                     <div className="absolute -bottom-[3%] right-[12%] h-[45%] w-[20%] rounded-t-[45%] bg-[var(--primary-soft)]" />
                     <div className="absolute bottom-[12%] right-[20%] h-[32%] w-[9%] rounded-full bg-[var(--primary-soft)] shadow-none" />
                   </div>
 
-                  <div className="absolute bottom-[4%] left-[3%] rounded-2xl border border-white bg-[var(--surface)] px-4 py-3 shadow-[0_16px_35px_rgba(34,48,57,.08)]">
+                  <div className="absolute bottom-[4%] left-[3%] rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 shadow-[var(--shadow-overlay)]">
                     <div className="flex items-center gap-3">
                       <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--primary-soft)] text-[var(--primary)]">
                         <KeyRound className="h-4 w-4" />

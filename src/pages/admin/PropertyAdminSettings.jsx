@@ -1,7 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Printer, ReceiptText, FileText, ChevronRight, ShieldCheck } from 'lucide-react';
-import ThemeToggle from '@/components/ui/ThemeToggle';
+import { Printer, ReceiptText, FileText, ChevronRight, ShieldCheck, Sun } from 'lucide-react';
 
 const ITEMS = [
   {
@@ -29,19 +28,17 @@ export default function PropertyAdminSettings() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <div className="flex items-center gap-3">
-          <div className="rounded-2xl bg-primary p-3 text-primary-foreground"><ShieldCheck size={20} /></div>
-          <div>
-            <h1 className="text-2xl font-black text-foreground">Property Settings</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Manage the operational settings available to your property administrator.</p>
-          </div>
+      <div className="flex items-center gap-3">
+        <div className="rounded-2xl bg-primary p-3 text-primary-foreground"><ShieldCheck size={20} /></div>
+        <div>
+          <h1 className="text-2xl font-black text-foreground">Property Settings</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Manage the operational settings available to your property administrator.</p>
         </div>
       </div>
 
-      <section className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-5 sm:flex-row sm:items-center sm:justify-between">
-        <div><h2 className="text-base font-medium text-foreground">Appearance</h2><p className="mt-1 text-sm text-muted-foreground">Choose light, dark or follow your device theme.</p></div>
-        <ThemeToggle />
+      <section className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-5 sm:flex-row sm:items-center">
+        <div className="rounded-xl bg-secondary p-3 text-primary"><Sun size={20} /></div>
+        <div><h2 className="text-base font-medium text-foreground">Appearance</h2><p className="mt-1 text-sm text-muted-foreground">OliTechs uses the Coastal Linen light theme throughout the workspace.</p></div>
       </section>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -53,9 +50,7 @@ export default function PropertyAdminSettings() {
             className="group rounded-2xl border border-border bg-card p-5 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lg"
           >
             <div className="flex items-start justify-between gap-4">
-              <div className="rounded-xl bg-secondary p-3 text-foreground">
-                <Icon size={20} />
-              </div>
+              <div className="rounded-xl bg-secondary p-3 text-foreground"><Icon size={20} /></div>
               <ChevronRight size={18} className="text-muted-foreground transition-transform group-hover:translate-x-1" />
             </div>
             <h2 className="mt-5 text-base font-black text-foreground">{title}</h2>

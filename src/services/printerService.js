@@ -449,7 +449,7 @@ export async function sendPrintJob(printer, text, { title, thermal = false, prin
 export function buildTestPageText(printer) {
 	const now = new Date();
 	return [
-		'OLITECHS PMS + POS',
+		'OliTechs PMS + POS',
 		'',
 		'      PRINTER TEST',
 		'',

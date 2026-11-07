@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, User, Phone, Calendar, DoorOpen, LogOut } from 'lucide-react';
 import { usePms } from '@/data/PmsStore';
-import { NAVY, TEAL, DESTRUCTIVE, SAND, SURFACE, SURFACE2, BORDER, MUTED } from '@/data/palette';
+import { NAVY, TEAL, DESTRUCTIVE, SURFACE, SURFACE2, BORDER, MUTED } from '@/data/palette';
 
 function fmtKes(n) {
 	return `KES ${Number(n || 0).toLocaleString('en-KE')}`;
@@ -60,14 +60,14 @@ export default function RoomPanel({ room, onClose }) {
 	};
 
 	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(14,39,64,0.6)' }}>
+		<div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'var(--overlay-scrim)' }}>
 			<div className="w-full max-w-md rounded-2xl overflow-hidden" style={{ background: SURFACE, border: `1px solid ${BORDER}` }}>
-				<div className="flex items-center justify-between px-5 py-3" style={{ background: NAVY }}>
-					<div className="text-sm font-semibold" style={{ color: SAND }}>
+				<div className="flex items-center justify-between px-5 py-3" style={{ background: 'var(--deep-lagoon)' }}>
+					<div className="text-sm font-semibold" style={{ color: 'var(--white)' }}>
 						Room {room.number} · {room.roomTypeName || room.room_type || 'Unassigned'} · Floor {room.floor}
 					</div>
 					<button onClick={onClose} aria-label="Close">
-						<X size={16} style={{ color: 'rgba(234,227,210,0.7)' }} />
+						<X size={16} style={{ color: 'var(--text-muted)' }} />
 					</button>
 				</div>
 
@@ -106,7 +106,7 @@ export default function RoomPanel({ room, onClose }) {
 							disabled={busy}
 							onClick={async () => { setBusy(true); setError(''); try { await pms.checkInReservation(room.reservationId); onClose(); } catch (err) { setError(err.message || 'Unable to check in reservation.'); } finally { setBusy(false); } }}
 							className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold"
-							style={{ background: TEAL, color: 'var(--text)' }}
+							style={{ background: TEAL, color: 'var(--on-primary)' }}
 						>
 							<DoorOpen size={16} /> {busy ? 'Processing…' : 'Check In Now'}
 						</button>
@@ -123,7 +123,7 @@ export default function RoomPanel({ room, onClose }) {
 								</button>
 							)}
 							{(room.status === 'dirty' || room.status === 'cleaning') && (
-								<button onClick={() => setStatus('available')} className="w-full py-2.5 rounded-xl text-sm font-bold" style={{ background: TEAL, color: 'var(--text)' }}>
+								<button onClick={() => setStatus('available')} className="w-full py-2.5 rounded-xl text-sm font-bold" style={{ background: TEAL, color: 'var(--on-primary)' }}>
 									Mark Clean &amp; Available
 								</button>
 							)}
@@ -133,7 +133,7 @@ export default function RoomPanel({ room, onClose }) {
 								</button>
 							)}
 							{(room.status === 'maintenance' || room.status === 'out_of_service' || room.status === 'blocked') && (
-								<button onClick={() => setStatus('available')} className="w-full py-2.5 rounded-xl text-sm font-bold" style={{ background: TEAL, color: 'var(--text)' }}>
+								<button onClick={() => setStatus('available')} className="w-full py-2.5 rounded-xl text-sm font-bold" style={{ background: TEAL, color: 'var(--on-primary)' }}>
 									Return to Service
 								</button>
 							)}
@@ -203,7 +203,7 @@ export default function RoomPanel({ room, onClose }) {
 								disabled={busy}
 								onClick={submitCheckIn}
 								className="w-full py-3 rounded-xl text-sm font-bold"
-								style={{ background: TEAL, color: 'var(--text)' }}
+								style={{ background: TEAL, color: 'var(--on-primary)' }}
 							>
 								Check In
 							</button>

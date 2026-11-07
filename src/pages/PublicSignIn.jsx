@@ -35,9 +35,9 @@ export default function PublicSignIn() {
     <main className="min-h-screen bg-[var(--canvas)] px-4 py-8 sm:px-6 lg:flex lg:items-center lg:justify-center lg:py-10">
       <div className="relative w-full max-w-6xl">
         <section className="relative min-h-[620px] overflow-hidden rounded-[28px] bg-[var(--surface)] shadow-none lg:min-h-[560px]">
-          <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full border border-white/[0.035] bg-[var(--surface)]/[0.012]" />
+          <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full border border-[var(--border)]/20 bg-[var(--surface)]/[0.012]" />
           <div className="absolute -bottom-40 left-8 h-96 w-96 rounded-full bg-[var(--primary-soft)]/[0.035]" />
-          <div className="absolute right-[-180px] top-20 h-[420px] w-[420px] rounded-full border border-white/[0.04]" />
+          <div className="absolute right-[-180px] top-20 h-[420px] w-[420px] rounded-full border border-[var(--border)]/25" />
 
           <div className="relative flex min-h-[620px] flex-col lg:min-h-[560px] lg:flex-row">
             <div className="flex w-full flex-col justify-center px-7 pb-10 pt-10 text-[var(--text)] sm:px-12 lg:w-[60%] lg:px-16 lg:py-16">
@@ -46,9 +46,9 @@ export default function PublicSignIn() {
               </Link>
 
               <div className="max-w-[500px]">
-                <p className="mb-4 text-xs font-medium  text-[var(--primary)]">OliTechs PMS &amp; POS</p>
+                <p className="mb-4 text-xs font-medium  text-[var(--primary)]">OliTechs PMS + POS</p>
                 <h1 className="text-4xl font-medium  text-[var(--text)] sm:text-5xl">Welcome</h1>
-                <p className="mt-4 max-w-lg text-base font-medium text-[var(--text)]/85 sm:text-lg">OliTechs PMS &amp; POS</p>
+                <p className="mt-4 max-w-lg text-base font-medium text-[var(--text)]/85 sm:text-lg">OliTechs PMS + POS</p>
                 <p className="mt-4 max-w-lg text-sm leading-7 text-[var(--text)]/60 sm:text-[15px]">
                   Manage your hotel operations, reservations, and point of sale from one powerful dashboard.
                 </p>

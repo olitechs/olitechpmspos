@@ -38,7 +38,7 @@ export default function POSAccessGate({ propertyName, error, busy, canManagePin,
           {busy && <p aria-live="polite" className="mt-2 text-xs text-[var(--pos-gate-muted)]">Verifying PIN…</p>}
         </div>
 
-        <div className="grid h-[min(49vh,440px)] min-h-[300px] w-full grid-cols-3 grid-rows-4 overflow-hidden rounded-lg border-l border-t border-[var(--pos-gate-border)] bg-[var(--pos-gate-surface)] shadow-[0_18px_48px_rgba(0,0,0,.22)] sm:h-[min(52vh,480px)] sm:min-h-[340px]">
+        <div className="grid h-[min(49vh,440px)] min-h-[300px] w-full grid-cols-3 grid-rows-4 overflow-hidden rounded-lg border-l border-t border-[var(--pos-gate-border)] bg-[var(--pos-gate-surface)] shadow-[var(--shadow-overlay)] sm:h-[min(52vh,480px)] sm:min-h-[340px]">
           {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit) => (
             <button key={digit} type="button" onClick={() => enterDigit(digit)} disabled={busy || pin.length >= 4} className={keyClass}>
               {digit}

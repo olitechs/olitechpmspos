@@ -77,7 +77,7 @@ function buildPayload({ text, test = false, printSettings = {} }: { text?: unkno
         escPos.init,
         escPos.alignCenter,
         escPos.boldOn,
-        encoder.encode('OLITECHS PMS + POS\n'),
+        encoder.encode('OliTechs PMS + POS\n'),
         escPos.boldOff,
         encoder.encode('PRINTER TEST\n\n'),
         escPos.alignLeft,

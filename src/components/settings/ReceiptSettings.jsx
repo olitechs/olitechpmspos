@@ -74,7 +74,7 @@ export default function ReceiptSettings() {
       </div>
       <div className="mt-6 rounded-2xl border border-[var(--danger)] bg-[var(--danger-soft)] p-4">
         <label className="flex cursor-pointer items-start gap-3">
-          <input type="checkbox" checked={form.print_void_slips !== false} onChange={e=>update('print_void_slips',e.target.checked)} className="mt-1 h-4 w-4 accent-red-600"/>
+          <input type="checkbox" checked={form.print_void_slips !== false} onChange={e=>update('print_void_slips',e.target.checked)} className="mt-1 h-4 w-4 accent-[var(--danger)]"/>
           <span className="flex-1"><span className="flex items-center gap-2 text-sm font-black text-foreground"><ShieldAlert size={16} className="text-[var(--danger-text)]"/>Print void slips to kitchen/bar on deletion</span><span className="mt-1 block text-xs leading-5 text-muted-foreground">When an item has already been sent to production or an unsettled bill exists, deleting it creates a control slip for the assigned Kitchen or Bar printer.</span></span>
         </label>
       </div>

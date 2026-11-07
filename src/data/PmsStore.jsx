@@ -83,7 +83,7 @@ function mapReservation(r, roomsById, roomTypesById = new Map()) {
 		kidsAges: Array.isArray(r.kids_ages) ? r.kids_ages : [],
 		totalAmount: Number(r.total_amount ?? r.rate ?? 0),
 		amountPaid: Number(r.amount_paid ?? 0),
-		color: paymentStatus === 'fully_paid' ? '#2E7D32' : paymentStatus === 'partially_paid' ? '#F9A825' : '#EF6C00',
+		color: paymentStatus === 'fully_paid' ? 'var(--pay-paid)' : paymentStatus === 'partially_paid' ? 'var(--pay-part)' : 'var(--pay-none)',
 		rate: Number(r.rate || 0),
 		partySize: Number(r.party_size || (Number(r.adults || 1) + Number(r.kids_count ?? r.children ?? 0))),
 		notes: r.special_requests || r.notes || '',

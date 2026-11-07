@@ -2,6 +2,7 @@ import { getPrinterPrintSettings } from '@/services/printerPrintSettings';
 import { testConnection as testBrowserPrinterConnection, pairUsbDevice, pairBluetoothDevice, pairSerialDevice, sendPrintJob as sendBrowserPrintJob, buildTestPageText, PrinterStatus } from '@/services/printerService';
 import { supabase } from '@/lib/supabaseClient';
 import { buildOrderTicketText, buildUnsettledReceiptText, buildFinalReceiptText, toEscPosPayload, thermalTextToHtml } from '@/services/printTemplates';
+import { getPrintColor } from '@/utils/printTheme';
 
 const normalizeNetworkEndpoint = (value, fallbackPort = 9100) => {
   let host = String(value || '').trim();
@@ -457,8 +458,10 @@ export async function printOrderByCategory(order) {
 function voidTicketHtml(data) {
   const area = String(data.category || '').toLowerCase() === 'drinks' ? 'BAR' : 'KITCHEN';
   const stamp = data.timestamp ? new Date(data.timestamp).toLocaleString('en-KE', { dateStyle: 'medium', timeStyle: 'short' }) : new Date().toLocaleString('en-KE', { dateStyle: 'medium', timeStyle: 'short' });
+  const voidFill = getPrintColor('--print-void');
+  const voidText = getPrintColor('--print-void-foreground');
   return `<div class="receipt">
-    <div style="background:#DC2626;color:#fff;padding:10px 4px;text-align:center;font-size:18px;font-weight:900;line-height:1.15">!!! VOID / CANCELLATION !!!<br><span style="font-size:13px">${esc(area)}</span></div>
+    <div style="background:${voidFill};color:${voidText};padding:10px 4px;text-align:center;font-size:18px;font-weight:900;line-height:1.15">!!! VOID / CANCELLATION !!!<br><span style="font-size:13px">${esc(area)}</span></div>
     <div class="divider"></div>
     <div class="bold">Table: ${esc(data.tableNo || '—')} &nbsp;&nbsp; Waiter: ${esc(data.waiterName || '—')}</div>
     <div>Date: ${esc(stamp)}</div>
@@ -569,7 +572,7 @@ async function buildLogoEscPosBase64(logoUrl, printer = {}, text = '', options =
     canvas.height = height;
     const context = canvas.getContext('2d', { willReadFrequently: true });
     if (!context) return fallbackTextBuffer();
-    context.fillStyle = '#fff';
+    context.fillStyle = getPrintColor('--print-paper');
     context.fillRect(0, 0, width, height);
     context.drawImage(image, 0, 0, width, height);
     const pixels = context.getImageData(0, 0, width, height).data;
@@ -623,7 +626,7 @@ async function buildLogoEscPosBase64(logoUrl, printer = {}, text = '', options =
 
 export async function printCutCalibrationTest(printer, propertyId = null, settings = {}) {
   const thermalText = [
-    'OLITECHS CUT CALIBRATION',
+    'OliTechs CUT CALIBRATION',
     'Keep all five numbered lines intact',
     '1. CALIBRATION LINE ONE',
     '2. CALIBRATION LINE TWO',
@@ -654,7 +657,7 @@ export async function printTestOrder(printer, assignmentTypes = [], propertyId =
   const isBar = printer?.type === 'bar' || assignmentTypes.includes('drinks_orders') || assignmentTypes.includes('void_drinks_orders');
   const center = isBar ? 'BAR' : 'KITCHEN';
   const order = {
-    propertyName: 'OLITECHS PMS + POS',
+    propertyName: 'OliTechs PMS + POS',
     orderNumber: 'TEST-ORDER-001',
     table: 'TEST-01',
     waiter: 'Print Test',
@@ -860,7 +863,7 @@ function shiftReportHtml(data, copyLabel) {
   const grossRow = (label, key) => '<div style="display:flex;justify-content:space-between;gap:8px"><span>'+esc(label)+'</span><span>'+money(data.grossPayments?.[key]?.amount)+'</span></div>';
   const refundRow = (label, key) => '<div style="display:flex;justify-content:space-between;gap:8px"><span>'+esc(label)+'</span><span>- '+money(data.refundsByMethod?.[key])+'</span></div>';
   const stamp = data.shift?.closed_at ? new Date(data.shift.closed_at).toLocaleString('en-KE',{dateStyle:'medium',timeStyle:'short'}) : new Date().toLocaleString('en-KE',{dateStyle:'medium',timeStyle:'short'});
-  return `<div class="receipt"><div class="copy">${esc(copyLabel)}</div>${data.settings?.logo_url ? `<img class="logo" src="${esc(data.settings.logo_url)}">` : ''}<div class="center bold">${esc(data.settings?.property_name || data.propertyName || 'OLITECHS PMS & POS')}</div><div class="center">${esc(data.settings?.address_line1 || '')}<br>${esc(data.settings?.address_line2 || '')}<br>${esc(data.settings?.phone || '')}</div><div class="divider"></div><div class="center bold" style="font-size:15px">SHIFT CLOSING REPORT</div><div>Shift No: <b>${esc(data.shift?.shift_no)}</b></div><div>Date: ${esc(new Date(data.shift?.date+'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}))}</div><div>Opened by: ${esc(data.openedBy || 'Staff')}</div><div>Opened at: ${esc(data.shift?.opened_at ? new Date(data.shift.opened_at).toLocaleTimeString('en-KE',{hour:'2-digit',minute:'2-digit'}) : '—')}</div><div>Closed by: ${esc(data.closedBy || 'Staff')}</div><div>Closed at: ${esc(stamp)}</div><div class="divider"></div><div class="bold">OPENING CASH (Float): KES ${money(data.shift?.opening_cash)}</div><div>NET CASH SALES: KES ${money(p.cash?.amount)}</div><div class="section">GROSS TENDERS</div>${grossRow('Cash','cash')}${grossRow('M-Pesa','mpesa')}${grossRow('Card Payment','card')}${grossRow('Bank Transfer','bank')}${grossRow('Room Charge','room_charge')}${grossRow('Other','other')}<div class="section">REFUNDS BY METHOD</div>${refundRow('Cash Refunds','cash')}${refundRow('M-Pesa Refunds','mpesa')}${refundRow('Card Refunds','card')}${refundRow('Bank Refunds','bank')}${refundRow('Room Charge Refunds','room_charge')}${refundRow('Other Refunds','other')}<div class="section">NET SALES BY METHOD</div>${row('Cash','cash')}${row('M-Pesa','mpesa')}${row('Card Payment','card')}${row('Bank Transfer','bank')}${row('Room Charge','room_charge')}${row('Other','other')}<div>GROSS SALES: KES ${money(data.grossSales)}</div><div>REFUNDS: - KES ${money(data.refundsTotal)}</div><div>VOIDED RECEIPTS: ${esc(data.voidedOrders?.length || 0)} · KES ${money(data.voidedValue)}</div><div class="total">NET SALES: KES ${money(data.totalSales)}</div><div>TOTAL RECEIPTS: ${esc(data.totalTransactions || 0)}</div><div>GUESTS DINED / COVERS: ${esc(data.totalCovers || 0)}</div><div>ITEMS SOLD (QTY): ${esc(data.itemsSold || 0)}</div><div class="section">ITEM CATEGORY SUMMARY (GROSS)</div><div style="display:flex;justify-content:space-between"><span>Food (${esc(data.categories?.food?.qty || 0)} items)</span><span>KES ${money(data.categories?.food?.amount)}</span></div><div style="display:flex;justify-content:space-between"><span>Drinks (${esc(data.categories?.drinks?.qty || 0)} items)</span><span>KES ${money(data.categories?.drinks?.amount)}</span></div><div class="divider"></div><div class="bold">NET CASH EXPECTED IN DRAWER: KES ${money(data.expectedCash)}</div><div>Cash Entered: KES ${money(data.countedCash)}</div><div>Variance: KES ${money(data.variance)}</div><div>Room Charges Total: KES ${money(p.room_charge?.amount)}</div><div class="divider"></div><div class="footer">Thank you<br>Shift closed at ${esc(stamp)}<br>Generated by Olitech PMS POS</div><div class="right bold" style="font-size:9px">Report ID: ${esc(data.reportId || ('RPT-'+String(data.shift?.id || '').slice(0,8).toUpperCase()))}</div><div class="divider"></div><div style="margin-top:10px">Cashier Signature: __________________</div><div style="margin-top:12px">Manager Signature: __________________</div></div>`;
+  return `<div class="receipt"><div class="copy">${esc(copyLabel)}</div>${data.settings?.logo_url ? `<img class="logo" src="${esc(data.settings.logo_url)}">` : ''}<div class="center bold">${esc(data.settings?.property_name || data.propertyName || 'OliTechs PMS + POS')}</div><div class="center">${esc(data.settings?.address_line1 || '')}<br>${esc(data.settings?.address_line2 || '')}<br>${esc(data.settings?.phone || '')}</div><div class="divider"></div><div class="center bold" style="font-size:15px">SHIFT CLOSING REPORT</div><div>Shift No: <b>${esc(data.shift?.shift_no)}</b></div><div>Date: ${esc(new Date(data.shift?.date+'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}))}</div><div>Opened by: ${esc(data.openedBy || 'Staff')}</div><div>Opened at: ${esc(data.shift?.opened_at ? new Date(data.shift.opened_at).toLocaleTimeString('en-KE',{hour:'2-digit',minute:'2-digit'}) : '—')}</div><div>Closed by: ${esc(data.closedBy || 'Staff')}</div><div>Closed at: ${esc(stamp)}</div><div class="divider"></div><div class="bold">OPENING CASH (Float): KES ${money(data.shift?.opening_cash)}</div><div>NET CASH SALES: KES ${money(p.cash?.amount)}</div><div class="section">GROSS TENDERS</div>${grossRow('Cash','cash')}${grossRow('M-Pesa','mpesa')}${grossRow('Card Payment','card')}${grossRow('Bank Transfer','bank')}${grossRow('Room Charge','room_charge')}${grossRow('Other','other')}<div class="section">REFUNDS BY METHOD</div>${refundRow('Cash Refunds','cash')}${refundRow('M-Pesa Refunds','mpesa')}${refundRow('Card Refunds','card')}${refundRow('Bank Refunds','bank')}${refundRow('Room Charge Refunds','room_charge')}${refundRow('Other Refunds','other')}<div class="section">NET SALES BY METHOD</div>${row('Cash','cash')}${row('M-Pesa','mpesa')}${row('Card Payment','card')}${row('Bank Transfer','bank')}${row('Room Charge','room_charge')}${row('Other','other')}<div>GROSS SALES: KES ${money(data.grossSales)}</div><div>REFUNDS: - KES ${money(data.refundsTotal)}</div><div>VOIDED RECEIPTS: ${esc(data.voidedOrders?.length || 0)} · KES ${money(data.voidedValue)}</div><div class="total">NET SALES: KES ${money(data.totalSales)}</div><div>TOTAL RECEIPTS: ${esc(data.totalTransactions || 0)}</div><div>GUESTS DINED / COVERS: ${esc(data.totalCovers || 0)}</div><div>ITEMS SOLD (QTY): ${esc(data.itemsSold || 0)}</div><div class="section">ITEM CATEGORY SUMMARY (GROSS)</div><div style="display:flex;justify-content:space-between"><span>Food (${esc(data.categories?.food?.qty || 0)} items)</span><span>KES ${money(data.categories?.food?.amount)}</span></div><div style="display:flex;justify-content:space-between"><span>Drinks (${esc(data.categories?.drinks?.qty || 0)} items)</span><span>KES ${money(data.categories?.drinks?.amount)}</span></div><div class="divider"></div><div class="bold">NET CASH EXPECTED IN DRAWER: KES ${money(data.expectedCash)}</div><div>Cash Entered: KES ${money(data.countedCash)}</div><div>Variance: KES ${money(data.variance)}</div><div>Room Charges Total: KES ${money(p.room_charge?.amount)}</div><div class="divider"></div><div class="footer">Thank you<br>Shift closed at ${esc(stamp)}<br>Generated by OliTechs PMS + POS</div><div class="right bold" style="font-size:9px">Report ID: ${esc(data.reportId || ('RPT-'+String(data.shift?.id || '').slice(0,8).toUpperCase()))}</div><div class="divider"></div><div style="margin-top:10px">Cashier Signature: __________________</div><div style="margin-top:12px">Manager Signature: __________________</div></div>`;
 }
 
 export async function printShiftReport(shiftData, printer) {

@@ -73,7 +73,7 @@ export default function PageNotFound() {
           background-color: var(--primary);
           background-image: linear-gradient(to left, var(--primary-hover), var(--primary));
           overflow: hidden;
-          box-shadow: 0 24px 60px rgba(9, 12, 17, .16);
+          box-shadow: 0 24px 60px var(--tooltip-shadow);
         }
 
         .ot404-layer { position: absolute; }
@@ -86,12 +86,12 @@ export default function PageNotFound() {
         .ot404-shelf__handle_front { position:absolute; top:149px; left:13px; width:30px; height:10px; background:var(--primary-soft); border:1px solid color-mix(in srgb, var(--primary) 50%, transparent); transform:skewY(30deg); }
         .ot404-shelf__handle_right { position:absolute; top:155px; left:43px; width:6px; height:10px; background:var(--primary); transform:skewY(-30deg); }
 
-        .ot404-shadow { z-index:15; top:0; right:0; bottom:0; width:150px; height:100%; background-image:linear-gradient(to right,rgba(1,20,61,0),rgba(1,20,61,.8) 65%,rgba(1,20,61,1)); }
+        .ot404-shadow { z-index:15; top:0; right:0; bottom:0; width:150px; height:100%; background-image:linear-gradient(to right,transparent,color-mix(in srgb,var(--deep-lagoon) 78%,transparent) 65%,var(--deep-lagoon)); }
 
         .ot404-case { position:absolute; transform:translateY(0); transition:.3s transform ease-in; }
         .ot404-case:hover { transform:translateY(-5px); }
-        .ot404-case__front { position:absolute; top:3px; left:0; width:70px; height:55px; background:var(--accent); transform:skewY(25deg); }
-        .ot404-case__label { position:absolute; top:-12px; left:5px; width:10px; height:7px; background:var(--accent); transform:skewY(25deg); }
+        .ot404-case__front { position:absolute; top:3px; left:0; width:70px; height:55px; background:var(--sidebar); transform:skewY(25deg); }
+        .ot404-case__label { position:absolute; top:-12px; left:5px; width:10px; height:7px; background:var(--sidebar); transform:skewY(25deg); }
         .ot404-case__label_left { top:-12px; left:5px; }
         .ot404-case__label_right { top:12px; left:55px; }
         .ot404-case__top { position:absolute; top:0; left:2px; width:70px; height:4px; background-image:linear-gradient(to top,var(--border),var(--border) 50%,var(--border)); transform:skewY(25deg) skewX(-45deg); }
@@ -116,8 +116,8 @@ export default function PageNotFound() {
         .ot404-case_46 { top:62px; right:-155px; } .ot404-case_47 { top:65px; right:-148px; }
 
         .ot404-glow { position:absolute; }
-        .ot404-glow__bottom { position:absolute; top:60px; left:5px; width:135px; height:120px; background-image:linear-gradient(to top,rgba(132,255,242,1),rgba(132,255,242,1) 30%,rgba(132,255,242,0)); transform:perspective(120px) rotateX(-20deg); }
-        .ot404-glow__top { position:absolute; top:-25px; left:7px; width:130px; height:180px; background-image:linear-gradient(to top,rgba(132,255,242,1),rgba(132,255,242,1) 20%,rgba(132,255,242,0)); transform:perspective(150px) rotateX(-20deg); }
+        .ot404-glow__bottom { position:absolute; top:60px; left:5px; width:135px; height:120px; background-image:linear-gradient(to top,color-mix(in srgb,var(--coastal-teal) 65%,var(--white)),color-mix(in srgb,var(--coastal-teal) 65%,var(--white)) 30%,transparent); transform:perspective(120px) rotateX(-20deg); }
+        .ot404-glow__top { position:absolute; top:-25px; left:7px; width:130px; height:180px; background-image:linear-gradient(to top,color-mix(in srgb,var(--coastal-teal) 65%,var(--white)),color-mix(in srgb,var(--coastal-teal) 65%,var(--white)) 20%,transparent); transform:perspective(150px) rotateX(-20deg); }
         .ot404-glow__ball { position:absolute; top:0; left:0; width:10px; height:10px; border-radius:10px; background:var(--primary-soft); transform:translateY(160px); }
         .ot404-glow__ball_1 { animation:ot404-fadeUp 5s infinite; animation-delay:.5s; }
         .ot404-glow__ball_2 { left:10px; width:5px; height:5px; animation:ot404-fadeUp 4s infinite; animation-delay:.8s; }
@@ -138,7 +138,7 @@ export default function PageNotFound() {
         .ot404-copy__code { font:700 11px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.24em; opacity:.72; }
         .ot404-copy__title { margin-top:4px; font:700 24px/1.15 var(--font-heading),ui-sans-serif,sans-serif; }
         .ot404-copy__text { margin-top:5px; font:500 12px/1.4 ui-sans-serif,system-ui,sans-serif; opacity:.82; }
-        .ot404-copy__link { display:inline-flex; margin-top:10px; padding:8px 13px; border-radius:8px; background:var(--primary); color:var(--text); text-decoration:none; font:700 12px/1 ui-sans-serif,system-ui,sans-serif; }
+        .ot404-copy__link { display:inline-flex; margin-top:10px; padding:8px 13px; border-radius:8px; background:var(--primary); color:var(--on-primary); text-decoration:none; font:700 12px/1 ui-sans-serif,system-ui,sans-serif; }
         .ot404-copy__link:hover { background:var(--primary-soft); }
 
         @keyframes ot404-fadeUp { 0% { transform:translateY(160px); opacity:1; } 60% { opacity:1; } 100% { transform:translateY(-10px); opacity:0; } }

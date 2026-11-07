@@ -45,7 +45,7 @@ export class ErrorBoundary extends React.Component {
                 <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words font-mono text-[11px]">{message}</pre>
               </details>
               <div className="mt-4 flex flex-wrap gap-2">
-                <button type="button" onClick={this.reset} className="inline-flex items-center gap-2 rounded-lg bg-[var(--danger)] px-3 py-2 text-xs font-semibold text-white hover:opacity-90">
+                <button type="button" onClick={this.reset} className="inline-flex items-center gap-2 rounded-lg bg-[var(--danger)] px-3 py-2 text-xs font-semibold text-[var(--danger-foreground)] hover:opacity-90">
                   <RefreshCw size={14} aria-hidden="true" />
                   Try again
                 </button>

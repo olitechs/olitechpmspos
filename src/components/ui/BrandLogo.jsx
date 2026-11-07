@@ -1,9 +1,6 @@
 import React from 'react';
 
-/**
- * Official OliTechs identity.
- * Use the horizontal logo on light surfaces and the app icon where space is tight.
- */
+/** Official OliTechs identity; public SVG assets are generated from src/index.css tokens. */
 export default function BrandLogo({ compact = false, className = '', alt = 'OliTechs' }) {
   return (
     <img
