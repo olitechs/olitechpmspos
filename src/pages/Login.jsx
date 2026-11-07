@@ -1,6 +1,6 @@
 import React,{useState}from"react";
 import{Link}from"react-router-dom";
-import{Building2,Mail,Lock,Eye,EyeOff,Loader2}from"lucide-react";
+import{Mail,Lock,Eye,EyeOff,Loader2}from"lucide-react";
 import{useAuth}from"@/lib/AuthContext";
 import BrandLogo from"@/components/ui/BrandLogo";
 
