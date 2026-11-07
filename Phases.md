@@ -69,7 +69,7 @@ Phase 0 is documentation only. No application code is authorized until all seven
 - RLS can expose latent assumptions in existing services.
 - Existing local stores contain UI behavior that can be lost in a premature rewrite.
 - Duplicate migration prefixes make deployment order ambiguous.
-- Existing yellow/black UI tokens differ from the proposed target design palette.
+- Legacy consumers can drift from the approved Coastal Linen theme if they bypass the canonical token layer.
 
 ---
 
@@ -203,13 +203,13 @@ Phase 0 is documentation only. No application code is authorized until all seven
 
 ### Gate 0 — Documentation approval
 
-- [ ] `PRD.md`
-- [ ] `Architecture.md`
-- [ ] `Rules.md`
-- [ ] `Phases.md`
-- [ ] `Design.md`
-- [ ] `Memory.md`
-- [ ] `AGENTS.md`
+- [x] `PRD.md`
+- [x] `Architecture.md`
+- [x] `Rules.md`
+- [x] `Phases.md`
+- [x] `Design.md`
+- [x] `Memory.md`
+- [x] `AGENTS.md`
 
 **No Phase 1 coding before all seven are approved.**
 
@@ -229,4 +229,4 @@ PMS/POS/housekeeping/cashier workflows must pass before advanced reporting.
 
 Security, performance, accessibility, offline behavior, financial reconciliation and regression testing must pass.
 
-**Status: DRAFT - Awaiting Approval**
+**Status: APPROVED BY USER on 2026-11-07**

@@ -2,7 +2,7 @@
 
 > **Repository:** `olitechs/olitechpmspos`  
 > **Baseline:** `main`  
-> **Status:** DRAFT — Phase 0 documentation only. No application code is changed by this document.
+> **Status:** APPROVED BY USER on 2026-11-07; Phase 0 foundation approved.
 
 ## 1. Product Definition
 
@@ -192,4 +192,4 @@ The product must not become a visual-only dashboard. Reservation, room inventory
 - [x] References the existing design-system directory
 - [x] Separates current state from target state
 
-**Status: DRAFT - Awaiting Approval**
+**Status: APPROVED BY USER on 2026-11-07**
