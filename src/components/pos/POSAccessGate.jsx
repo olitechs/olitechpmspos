@@ -1,21 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import BrandLogo from '@/components/ui/BrandLogo';
 
 const POS_ACCESS_KEY = 'olitech_pos_window_access_v1';
-
-function OliTechsBrand() {
-  return (
-    <div className="flex items-center gap-3" aria-label="OliTechs Point of Sale">
-      <svg viewBox="0 0 56 56" className="h-11 w-11 shrink-0 sm:h-12 sm:w-12" role="img" aria-label="OliTechs logo">
-        <path d="M8 8h16v16H8zM32 8h16v16H32zM8 32h16v16H8zM32 32h16v16H32z" fill="none" stroke="var(--pos-gate-accent)" strokeWidth="4" strokeLinejoin="round"/>
-        <path d="M24 16h8M16 24v8M40 24v8M24 40h8" stroke="var(--pos-gate-accent)" strokeWidth="3" strokeLinecap="round"/>
-      </svg>
-      <div className="leading-none">
-        <div className="font-display text-[27px] font-extrabold tracking-[-.055em] text-[var(--pos-gate-text)] sm:text-[31px]">OliTechs</div>
-        <div className="mt-1.5 text-[9px] font-semibold uppercase tracking-[.34em] text-[var(--pos-gate-accent)] sm:text-[10px]">Point of Sale</div>
-      </div>
-    </div>
-  );
-}
 
 export default function POSAccessGate({ propertyName, error, busy, canManagePin, onAdminReset, onSubmit }) {
   const [pin, setPin] = useState('');
@@ -36,7 +22,7 @@ export default function POSAccessGate({ propertyName, error, busy, canManagePin,
   return (
     <main className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen flex-col items-center overflow-y-auto bg-[var(--pos-gate-bg)] px-4 py-5 font-body text-[var(--pos-gate-text)] sm:justify-center sm:px-6 sm:py-6">
       <header className="mb-5 flex w-full max-w-[760px] shrink-0 items-center justify-center sm:mb-6">
-        <OliTechsBrand />
+        <div className="rounded-xl bg-[var(--surface)] px-4 py-2 shadow-sm"><BrandLogo className="h-9 w-auto max-w-[158px] object-contain" /></div>
       </header>
 
       <section className="flex w-full max-w-[760px] flex-col items-center">

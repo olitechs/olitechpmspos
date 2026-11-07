@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Building2, ScrollText, ShieldCheck, LogOut, UsersRound, Settings } from 'lucide-react';
+import { LayoutDashboard, Building2, ScrollText, LogOut, UsersRound, Settings } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
+import BrandLogo from '@/components/ui/BrandLogo';
 
 const PLATFORM_NAV = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -26,8 +27,8 @@ export default function AdminLayout() {
     <div className="min-h-screen flex bg-background">
       <aside className="w-64 shrink-0 border-r border-border bg-card flex flex-col">
         <div className="h-16 flex items-center gap-2 px-5 border-b border-border">
-          <ShieldCheck className="w-5 h-5 text-primary" aria-hidden="true" />
-          <span className="font-bold text-foreground">{title}</span>
+          <BrandLogo compact className="h-9 w-9 shrink-0 object-contain" />
+          <span className="font-semibold text-foreground">{title}</span>
         </div>
         <nav className="flex-1 p-3 space-y-1">
           {navItems.map(({ to, label, icon: Icon, end }) => (

@@ -182,12 +182,15 @@ test('database subscription access normalizes screen ids and legacy workspace na
 });
 
 
-test('POS access screen uses OliTechs branding, a compact keypad and four blue PIN indicators', () => {
-  assert.match(posAccessGate, /bg-\[var\(--pos-gate-bg\)\]/);\n  assert.match(posAccessGate, /OliTechsBrand/);\n  assert.match(posAccessGate, /font-heading/);\n  assert.match(posAccessGate, /h-\[min\(49vh,440px\)\]/);\n  assert.match(posAccessGate, /var\(--pos-gate-accent\)/);
+test('POS access screen uses the official OliTechs logo, compact keypad and brand colours', () => {
+  assert.match(posAccessGate, /bg-\[var\(--pos-gate-bg\)\]/);
+  assert.match(posAccessGate, /BrandLogo/);
+  assert.match(posAccessGate, /h-\[min\(49vh,440px\)\]/);
+  assert.match(posAccessGate, /var\(--pos-gate-accent\)/);
   assert.match(posAccessGate, /grid-cols-3 grid-rows-4/);
   assert.match(posAccessGate, /Array\.from\(\{ length: 4 \}/);
   assert.match(posAccessGate, /onClick=\{\(\) => enterDigit\(digit\)\}/);
-  assert.match(posAccessGate, />Clear</);
+  assert.match(posAccessGate, /Clear/);
   assert.match(posAccessGate, /next\.length === 4/);
 });
 

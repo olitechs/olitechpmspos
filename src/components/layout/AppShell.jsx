@@ -11,6 +11,7 @@ import { BACK_OFFICE_NAV, FRONT_OFFICE_NAV, STORES_NAV, normalizeAppPath, normal
 import { useAuth } from '@/lib/AuthContext';
 import { getSessionStaff, normalizeStaffRole } from '@/services/authService';
 import TopAppNav from './TopAppNav';
+import BrandLogo from '@/components/ui/BrandLogo';
 
 const FRONT_ICONS = {
   dashboard: LayoutDashboard, 'room-planner': BedDouble, rooms: BedDouble,
@@ -94,8 +95,7 @@ export default function AppShell({ workspace = 'backoffice' }) {
           mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
         ].join(' ')}>
           <div className="flex h-14 shrink-0 items-center gap-2 border-b border-[var(--border)] px-3">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[var(--brand-dark)] text-xs font-bold text-[var(--action)]">OT</span>
-            {!collapsed && <div className="min-w-0 flex-1"><div className="truncate text-sm font-semibold">OliTechs</div><div className="text-[11px] text-[var(--text-muted)]">PMS &amp; POS</div></div>}
+            <BrandLogo compact={collapsed} className={collapsed ? "h-9 w-9 shrink-0 object-contain" : "h-9 w-auto max-w-[142px] shrink-0 object-contain object-left"} />
             <button type="button" onClick={() => setCollapsed(value => !value)} className="hidden rounded-md p-1.5 text-[var(--text-muted)] hover:bg-[var(--surface-2)] md:inline-flex" aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>{collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}</button>
             <button type="button" onClick={() => setMobileOpen(false)} className="ml-auto rounded-md p-1.5 text-[var(--text-muted)] md:hidden" aria-label="Close sidebar"><X size={17} /></button>
           </div>

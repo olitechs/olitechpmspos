@@ -1,7 +1,8 @@
 import React from "react";
+import BrandLogo from "@/components/ui/BrandLogo";
 import { ArrowUpRight, CheckCircle2, KeyRound, ShieldCheck, Sparkles } from "lucide-react";
 
-export default function AuthLayout({ icon: Icon = ShieldCheck, title, subtitle, footer, children }) {
+export default function AuthLayout({ title, subtitle, footer, children }) {
   return (
     <main className="min-h-screen bg-[var(--canvas)] px-4 py-6 text-[var(--text)] sm:px-6 lg:px-10">
       <div className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-[1320px] items-center justify-center">
@@ -14,15 +15,7 @@ export default function AuthLayout({ icon: Icon = ShieldCheck, title, subtitle, 
           <div className="relative grid min-h-[760px] lg:grid-cols-[44%_56%]">
             <section className="flex flex-col px-7 py-8 sm:px-12 sm:py-10 lg:px-16 lg:py-12">
               <header className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--primary-soft)] text-[var(--text)] shadow-sm">
-                    <Icon className="h-6 w-6" aria-hidden="true" />
-                  </div>
-                  <div>
-                    <div className="text-base font-medium tracking-tight">OliTechs</div>
-                    <div className="text-[9px] font-medium  text-[var(--text-muted)]">PMS & POS</div>
-                  </div>
-                </div>
+                <BrandLogo className="h-11 w-auto max-w-[184px] object-contain object-left" />
                 <div className="hidden items-center gap-1 text-xs font-medium text-[var(--text-muted)] sm:flex">
                   <span>Secure access</span>
                   <ShieldCheck className="h-4 w-4" />

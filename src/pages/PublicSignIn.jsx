@@ -2,19 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, Lock, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
-
-function BrandMark() {
-  return (
-    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--primary-soft)] text-[var(--text)] shadow-sm" aria-hidden="true">
-      <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M4 21h16" />
-        <path d="M6 21V9l6-4 6 4v12" />
-        <path d="M9 21v-5h6v5" />
-        <path d="M9 11h1M14 11h1M9 14h1M14 14h1" />
-      </svg>
-    </span>
-  );
-}
+import BrandLogo from '@/components/ui/BrandLogo';
 
 function FieldIcon({ children }) {
   return <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">{children}</span>;
@@ -54,8 +42,7 @@ export default function PublicSignIn() {
           <div className="relative flex min-h-[620px] flex-col lg:min-h-[560px] lg:flex-row">
             <div className="flex w-full flex-col justify-center px-7 pb-10 pt-10 text-[var(--text)] sm:px-12 lg:w-[60%] lg:px-16 lg:py-16">
               <Link to="/" className="mb-12 flex w-fit items-center gap-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2 focus:ring-offset-[var(--surface)]">
-                <BrandMark />
-                <span className="text-base font-medium tracking-tight">OliTechs</span>
+                <BrandLogo className="h-11 w-auto max-w-[190px] object-contain object-left" />
               </Link>
 
               <div className="max-w-[500px]">

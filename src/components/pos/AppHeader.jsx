@@ -2,6 +2,7 @@ import React from 'react';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import { Settings } from 'lucide-react';
 import { SURFACE, TEAL, TEAL_LIGHT } from '@/data/themePalette';
+import BrandLogo from '@/components/ui/BrandLogo';
 
 const TABS = [
   { id: 'floor', label: 'Floor Plan', icon: '⬛' },
@@ -17,12 +18,8 @@ export default function AppHeader({ activeTab, onTabChange, activeTable, onClose
   return (
     <header className="flex items-center justify-between px-4 py-0 shrink-0" style={{ background: SURFACE, height: '56px', borderBottom: '1px solid var(--border)' }}>
       <div className="flex items-center gap-2">
-        <div className="flex flex-col leading-none">
-          <span className="font-bold text-[var(--primary)] tracking-wide text-base font-mono tracking-[0.05em]">
-            OliTechs POS
-          </span>
-          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{propertyName || 'Restaurant POS'}</span>
-        </div>
+        <BrandLogo className="h-9 w-auto max-w-[138px] object-contain object-left" />
+        <div className="flex min-w-0 flex-col leading-tight"><span className="text-[11px] font-semibold uppercase tracking-[.14em] text-[var(--primary)]">Point of Sale</span><span className="max-w-[180px] truncate text-[11px]" style={{ color: 'var(--text-muted)' }}>{propertyName || 'Restaurant POS'}</span></div>
       </div>
 
       <nav className="flex gap-1">
