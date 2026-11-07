@@ -3,8 +3,8 @@ import AppShell from './AppShell';
 
 /**
  * POS keeps its own floor/order/bill controls inside POSContainer.
- * The workspace shell supplies the global workspace switcher only; hiding
- * its generic sidebar prevents a second, unrelated navigation system.
+ * The workspace shell intentionally supplies no global workspace switcher or
+ * generic sidebar; POS navigation and content remain entirely self-contained.
  */
 export default function POSLayout() {
   return <AppShell workspace="pos" />;
