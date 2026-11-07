@@ -34,6 +34,7 @@ export default function PinPad({
 
   useEffect(() => {
     if (!error) return undefined;
+    setPin('');
     setShake(true);
     const timer = window.setTimeout(() => setShake(false), 450);
     return () => window.clearTimeout(timer);
@@ -83,7 +84,8 @@ export default function PinPad({
             <button type="button" onClick={() => append(0)} disabled={busy || pin.length >= pinLength} className="h-14 rounded-xl bg-[var(--primary)] text-xl font-black text-[var(--primary-foreground)] hover:hover:brightness-95 active:scale-95 disabled:opacity-50">0</button>
             <button type="button" onClick={() => setPin((v) => v.slice(0, -1))} disabled={busy || !pin.length} className="h-14 rounded-xl border border-[var(--border)] bg-[var(--canvas)] text-[var(--text)] disabled:opacity-50" aria-label="Delete last digit"><Delete className="mx-auto" size={19}/></button>
           </div>
-          <button type="button" onClick={() => (pinLength === 6 ? pin.length >= 4 : pin.length === pinLength) && !busy && onSubmit(pin)} disabled={busy || (pinLength === 6 ? pin.length < 4 : pin.length !== pinLength)} className="mt-3 w-full rounded-xl bg-[var(--surface)] py-3 text-sm font-black text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-40">{busy ? 'Verifying…' : 'Submit PIN'}</button>
+          {!autoSubmit && <button type="button" onClick={() => (pinLength === 6 ? pin.length >= 4 : pin.length === pinLength) && !busy && onSubmit(pin)} disabled={busy || (pinLength === 6 ? pin.length < 4 : pin.length !== pinLength)} className="mt-3 w-full rounded-xl bg-[var(--surface)] py-3 text-sm font-black text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-40">{busy ? 'Verifying…' : 'Submit PIN'}</button>}
+          {autoSubmit && <div className="mt-3 w-full rounded-xl bg-[var(--surface)] py-3 text-center text-sm font-semibold text-[var(--text-muted)]" aria-live="polite">{busy ? 'Verifying…' : 'Enter all 4 digits to continue automatically'}</div>}
           <div className="mt-3 text-center text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">{helperText || (pinLength === 4 ? '4-digit property POS access PIN' : '4–6 digit secure staff PIN')}</div>
           {footerAction && <div className="mt-3 text-center">{footerAction}</div>}
         </div>

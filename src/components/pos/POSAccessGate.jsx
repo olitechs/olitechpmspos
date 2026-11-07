@@ -5,6 +5,7 @@ export default function POSAccessGate({ propertyName, logoUrl, error, busy, canM
   return <PinPad
     fullscreen
     pinLength={4}
+    autoSubmit
     title="POS Access"
     staffName={propertyName || 'Restaurant POS'}
     brandLogo={logoUrl}
