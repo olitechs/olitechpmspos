@@ -110,8 +110,8 @@ test('official OliTechs identity is shared across all application workspaces and
   for (const source of [appShell, sidebar, posHeader, posGate, login, publicSignIn, authLayout, adminLayout, publicHomeBrand]) {
     assert.match(source, /BrandLogo/);
   }
-  assert.match(brandLogo, /olitechs-logo\\.svg/);
-  assert.match(brandLogo, /app-icon\\.svg/);
+  assert.match(brandLogo, /olitechs-logo\.svg/);
+  assert.match(brandLogo, /app-icon\.svg/);
   assert.ok(theme.includes('--primary:#0F7C86'));
   assert.ok(theme.includes('--primary-hover:#0A3F4A'));
   assert.ok(theme.includes('--pos-gate-accent:#2A9AA0'));
@@ -132,7 +132,7 @@ test('theme foundation defines canonical light and dark palettes with reduced-mo
   assert.ok(theme.includes('--accent:#58AEB0'));
   assert.ok(theme.includes('--primary-text:#0A6871'));
   assert.ok(theme.includes('--font-body:Inter,ui-sans-serif'));
-  assert.ok(html.includes('https://fonts.googleapis.com/css2?family=Inter'));\n  assert.match(brandLogo, /\/olitechs-logo\\.svg/);\n  assert.match(brandLogo, /\/app-icon\\.svg/);
+  assert.ok(html.includes('https://fonts.googleapis.com/css2?family=Inter'));
   assert.ok(theme.includes('.room-planner {') && theme.includes('--font-body:Inter,ui-sans-serif'));
   assert.ok(theme.includes('.room-planner .legend-optioned { color:#0F7C86; }'));
   assert.ok(theme.includes('--table-free-bg:#74C365'));
