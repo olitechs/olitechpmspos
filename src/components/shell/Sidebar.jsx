@@ -4,6 +4,7 @@ import{ChevronLeft,ChevronRight,ChevronDown,Menu,X,Building2,Search,LogOut}from"
 import{useAuth}from"@/lib/AuthContext";
 import{getDefaultModulesForRole,getSessionStaff,normalizeStaffRole,canUseModule}from"@/services/authService";
 import{MASTER_ROLES,SIDEBAR_SECTIONS}from"@/data/modules/sidebarNavigation";
+import BrandLogo from"@/components/ui/BrandLogo";
 
 
 function getRole(user){const s=getSessionStaff();return normalizeStaffRole(s?.role||user?.staff?.role||user?.propertyRole||user?.role||"")}
@@ -28,8 +29,7 @@ export default function Sidebar({activeModule,onModuleChange,staffRole}){
 
  const sidebar=<aside className={`z-50 flex h-[calc(100vh-16px)] flex-none flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-none transition-all duration-150 ease-in-out m-2 md:relative md:translate-x-0 fixed top-0 left-0 ${collapsed?"w-[88px]":"w-[280px]"} ${mobileOpen?"translate-x-0":"-translate-x-[calc(100%+16px)] md:translate-x-0"}`} aria-label="OliTechs dashboard navigation">
   <div className={`flex h-[72px] shrink-0 items-center border-b border-[var(--border)] ${collapsed?"justify-center px-3":"gap-3 px-4"}`}>
-   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--primary-soft)] text-sm font-medium text-[var(--primary)]">OT</div>
-   {!collapsed&&<div className="min-w-0"><div className="text-[14px] font-medium tracking-tight text-[var(--text)]">OliTechs</div><div className="text-[9px] font-medium  text-[var(--text-muted)]">PMS & POS</div></div>}
+   <BrandLogo compact={collapsed} className={collapsed ? "h-10 w-10 shrink-0 object-contain" : "h-9 w-auto max-w-[154px] shrink-0 object-contain object-left"} />
    <button type="button" onClick={()=>setCollapsed(!collapsed)} className={`rounded-lg border border-[var(--border)] bg-[var(--canvas)] p-2 text-[var(--text-muted)] hover:bg-[var(--primary-soft)] hover:text-[var(--text)] ${collapsed?"absolute right-2 top-4":"ml-auto"}`} title={collapsed?"Expand sidebar":"Collapse sidebar"}>{collapsed?<ChevronRight size={16}/>:<ChevronLeft size={16}/>}</button>
   </div>
   <div className="shrink-0 px-3 pt-4">
