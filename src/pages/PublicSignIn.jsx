@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, Lock, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
+import BrandLogo from '@/components/ui/BrandLogo';
 
 function BrandMark() {
   return (
@@ -54,8 +55,7 @@ export default function PublicSignIn() {
           <div className="relative flex min-h-[620px] flex-col lg:min-h-[560px] lg:flex-row">
             <div className="flex w-full flex-col justify-center px-7 pb-10 pt-10 text-[var(--text)] sm:px-12 lg:w-[60%] lg:px-16 lg:py-16">
               <Link to="/" className="mb-12 flex w-fit items-center gap-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2 focus:ring-offset-[var(--surface)]">
-                <BrandMark />
-                <span className="text-base font-medium tracking-tight">OliTechs</span>
+                <BrandLogo className="h-11 w-auto max-w-[190px] object-contain object-left" />
               </Link>
 
               <div className="max-w-[500px]">
