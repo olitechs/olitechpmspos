@@ -5,6 +5,8 @@ import { readFile } from 'node:fs/promises';
 const read = (path) => readFile(new URL(path, import.meta.url), 'utf8');
 const billPayment = await read('../../src/components/pos/BillPayment.jsx');
 const orderTaking = await read('../../src/components/pos/OrderTaking.jsx');
+const floorPlan = await read('../../src/components/pos/FloorPlan.jsx');
+const shiftReport = await read('../../src/pages/ShiftReport.jsx');
 const pmsService = await read('../../src/services/pmsService.js');
 const inventory = await read('../../src/components/modules/Inventory.jsx');
 const ledger = await read('../../supabase/migrations/20261008120000_phase4_authoritative_inventory_ledger.sql');
@@ -71,6 +73,16 @@ test('POS product grid supports search and explicit catalog loading, empty, erro
   assert.match(orderTaking, /role="alert"/);
   assert.match(orderTaking, /Retry menu/);
   assert.match(orderTaking, /setMenuError\('The menu could not be loaded/);
+});
+
+test('floor, payment and shift-report screens expose meaningful waiting, empty or error feedback', () => {
+  assert.match(floorPlan, /No floor zones configured/);
+  assert.match(floorPlan, /No tables in \{zone\.name\}/);
+  assert.match(billPayment, /Loading payment settings/);
+  assert.match(shiftReport, /Loading shift reports/);
+  assert.match(shiftReport, /Retry reports/);
+  assert.match(shiftReport, /No shifts recorded yet/);
+  assert.match(shiftReport, /role="alert"/);
 });
 
 // This is an application/SQL-source contract suite. Database behavior still

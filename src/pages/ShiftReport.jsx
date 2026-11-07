@@ -1,13 +1,117 @@
-import React,{useEffect,useState}from'react';
-import{CalendarDays,Download,Printer}from'lucide-react';
-import{useAuth}from'@/lib/AuthContext';
-import{shiftService,exportShiftToExcel}from'@/services/shiftService';
-import{getPrinters,getAssignments,printShiftReport}from'@/services/printService';
-import{supabase}from'@/lib/supabaseClient';
+import React, { useCallback, useEffect, useState } from 'react';
+import { CalendarDays, Download, Printer } from 'lucide-react';
+import { useAuth } from '@/lib/AuthContext';
+import { shiftService, exportShiftToExcel } from '@/services/shiftService';
+import { getPrinters, getAssignments, printShiftReport } from '@/services/printService';
+import { supabase } from '@/lib/supabaseClient';
 
-export default function ShiftReport(){
- const{user}=useAuth();const propertyId=user?.property?.id;const date=new Intl.DateTimeFormat('en-CA',{timeZone:'Africa/Nairobi'}).format(new Date());const[shifts,setShifts]=useState([]);const[error,setError]=useState('');
- useEffect(()=>{if(propertyId)shiftService.listShifts(propertyId).then(setShifts).catch(e=>setError(e.message));},[propertyId]);
- const action=async(s,type)=>{try{const report=await shiftService.getShiftReport(s.id);report.propertyId=propertyId;if(type==='excel')return exportShiftToExcel(report);const{data:settings}=await supabase.from('property_settings').select('*').eq('property_id',propertyId).maybeSingle();report.settings=settings;const[printers,assignments]=await Promise.all([getPrinters(propertyId),getAssignments(propertyId)]);const printer=assignments.filter(a=>a.assignment_type==='shift_reports'||a.assignment_type==='reports').map(a=>printers.find(p=>p.id===a.printer_id)).find(Boolean);if(!printer)throw new Error('No shift report printer assigned.');await printShiftReport(report,printer);}catch(e){setError(e.message||'Shift report action failed.')}};
- return <div className="flex-1 overflow-y-auto bg-canvas p-5"><div className="mx-auto max-w-5xl"><div className="mb-5 flex items-center justify-between"><div><div className="text-xl font-black text-foreground">Shift Reports</div><div className="text-sm text-muted-foreground">Closing receipts and Excel sales breakdowns.</div></div><div className="flex items-center gap-2 rounded-xl border bg-surface px-3 py-2 text-xs font-bold"><CalendarDays size={15}/>{date}</div></div>{error&&<div className="mb-4 rounded-xl bg-[var(--danger-soft)] p-3 text-sm font-bold text-[var(--danger-text)]">{error}</div>}<div className="overflow-hidden rounded-2xl border bg-surface">{shifts.map(s=><div key={s.id} className="flex flex-wrap items-center justify-between gap-3 border-b p-4 last:border-b-0"><div><div className="font-black text-foreground">{s.shift_no}</div><div className="text-xs text-muted-foreground">{s.status} · {new Date(s.opened_at).toLocaleString('en-KE')}</div></div><div className="flex gap-2"><button onClick={()=>action(s,'print')} className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold"><Printer size={15}/>Re-print</button><button onClick={()=>action(s,'excel')} className="inline-flex items-center gap-2 rounded-xl bg-[var(--primary)] px-3 py-2 text-xs font-bold text-foreground"><Download size={15}/>Export Excel</button></div></div>)}{!shifts.length&&<div className="p-10 text-center text-sm text-muted-foreground">No shifts recorded.</div>}</div></div></div>;
+export default function ShiftReport() {
+  const { user } = useAuth();
+  const propertyId = user?.property?.id;
+  const date = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Nairobi' }).format(new Date());
+  const [shifts, setShifts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [actionError, setActionError] = useState('');
+
+  const loadShifts = useCallback(async () => {
+    if (!propertyId) {
+      setShifts([]);
+      setLoadError('');
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setLoadError('');
+    try {
+      const rows = await shiftService.listShifts(propertyId);
+      setShifts(Array.isArray(rows) ? rows : []);
+    } catch (error) {
+      setLoadError(error.message || 'Could not load shift reports.');
+    } finally {
+      setLoading(false);
+    }
+  }, [propertyId]);
+
+  useEffect(() => {
+    loadShifts();
+  }, [loadShifts]);
+
+  const action = async (shift, type) => {
+    setActionError('');
+    try {
+      const report = await shiftService.getShiftReport(shift.id);
+      report.propertyId = propertyId;
+      if (type === 'excel') return exportShiftToExcel(report);
+      const { data: settings } = await supabase
+        .from('property_settings')
+        .select('*')
+        .eq('property_id', propertyId)
+        .maybeSingle();
+      report.settings = settings;
+      const [printers, assignments] = await Promise.all([
+        getPrinters(propertyId),
+        getAssignments(propertyId),
+      ]);
+      const printer = assignments
+        .filter((item) => item.assignment_type === 'shift_reports' || item.assignment_type === 'reports')
+        .map((item) => printers.find((candidate) => candidate.id === item.printer_id))
+        .find(Boolean);
+      if (!printer) throw new Error('No shift report printer assigned.');
+      await printShiftReport(report, printer);
+    } catch (error) {
+      setActionError(error.message || 'Shift report action failed.');
+    }
+  };
+
+  return (
+    <div className="flex-1 overflow-y-auto bg-[var(--canvas)] p-4 text-[var(--text)] sm:p-5">
+      <div className="mx-auto max-w-5xl">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-black text-[var(--text)]">Shift Reports</h1>
+            <p className="text-sm text-[var(--text-muted)]">Closing receipts and Excel sales breakdowns.</p>
+          </div>
+          <div className="flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-bold">
+            <CalendarDays size={15} aria-hidden="true" />{date}
+          </div>
+        </div>
+
+        {actionError && <div role="alert" className="mb-4 rounded-xl bg-[var(--danger-soft)] p-3 text-sm font-bold text-[var(--danger-text)]">{actionError}</div>}
+        {loadError && (
+          <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] p-3 text-sm font-bold text-[var(--danger-text)]">
+            <span>{loadError}</span>
+            <button type="button" disabled={loading} onClick={loadShifts} className="min-h-11 rounded-lg bg-[var(--primary)] px-4 text-[var(--on-primary)] disabled:opacity-60">{loading ? 'Loading…' : 'Retry reports'}</button>
+          </div>
+        )}
+
+        {loading ? (
+          <div role="status" aria-live="polite" className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-10 text-center text-sm font-semibold text-[var(--text-muted)]">Loading shift reports…</div>
+        ) : loadError ? null : shifts.length === 0 ? (
+          <div role="status" aria-live="polite" className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface)] p-10 text-center text-sm text-[var(--text-muted)]">
+            {propertyId ? 'No shifts recorded yet. Closed shift reports will appear here.' : 'Select a property to view shift reports.'}
+          </div>
+        ) : (
+          <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
+            {shifts.map((shift) => (
+              <div key={shift.id} className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] p-4 last:border-b-0">
+                <div>
+                  <div className="font-black text-[var(--text)]">{shift.shift_no}</div>
+                  <div className="text-xs text-[var(--text-muted)]">{shift.status} · {new Date(shift.opened_at).toLocaleString('en-KE')}</div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => action(shift, 'print')} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-xs font-bold text-[var(--text)] hover:bg-[var(--primary-soft)]">
+                    <Printer size={15} aria-hidden="true" />Re-print
+                  </button>
+                  <button type="button" onClick={() => action(shift, 'excel')} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[var(--primary)] px-3 text-xs font-bold text-[var(--on-primary)] hover:bg-[var(--primary-hover)]">
+                    <Download size={15} aria-hidden="true" />Export Excel
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }

@@ -114,7 +114,14 @@ export default function FloorPlan({ onTableSelect }) {
     setDesignMode(false);
   };
 
-  if (!zone) return null;
+  if (!zone) return (
+    <div role="status" aria-live="polite" className="flex h-full min-h-48 items-center justify-center bg-[var(--canvas)] p-6 text-center">
+      <div className="max-w-md rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6">
+        <h2 className="text-lg font-black text-[var(--text)]">No floor zones configured</h2>
+        <p className="mt-2 text-sm text-[var(--text-muted)]">Add a floor zone and tables in Settings → Table Setup before seating guests.</p>
+      </div>
+    </div>
+  );
 
   const geometry = SHAPES[shape] || SHAPES.square;
   const canvasW = Math.max(620, ...displayTables.map((t) => t.x + geometry.width + 24));
@@ -146,7 +153,12 @@ export default function FloorPlan({ onTableSelect }) {
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 px-3 pb-3 lg:flex-row lg:px-4 lg:pb-4">
         <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-[var(--border)] bg-[var(--canvas)]">
-          {designMode ? (
+          {displayTables.length === 0 ? (
+            <div role="status" aria-live="polite" className="flex min-h-64 flex-col items-center justify-center gap-2 p-6 text-center">
+              <h2 className="text-base font-black text-[var(--text)]">No tables in {zone.name}</h2>
+              <p className="max-w-md text-sm text-[var(--text-muted)]">Add tables in Settings → Table Setup, then return to the floor to start service.</p>
+            </div>
+          ) : designMode ? (
             <div className="relative" style={{ width: canvasW, height: canvasH, minWidth: '100%' }}>
               {displayTables.map((t) => <Tile key={t.id} table={{ ...t, selected: selectedTableId === t.id }} session={store.getSession(t.id)} shape={shape} designMode={designMode} onSelect={(table) => { setSelectedTableId(table.id); onTableSelect(table); }} onMove={moveTable} now={now} />)}
             </div>
