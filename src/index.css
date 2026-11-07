@@ -7,7 +7,7 @@
     color-scheme: light;
     /* Canonical light palette — keep all colour literals in this token layer. */
     --canvas:#E3F2FD; --surface:#FFFFFF; --sidebar:#EAF4FD; --border:#B8D7F2; --input-border:#6F9FC7;
-    --pos-gate-bg:#303030; --pos-gate-border:#494949; --pos-gate-accent:#43b653; --pos-gate-text:#FFFFFF; --pos-gate-muted:#B8B8B8; --pos-gate-hover:rgba(255,255,255,.06); --pos-gate-active:rgba(255,255,255,.12);
+    --pos-gate-bg:#0B1726; --pos-gate-surface:#12243A; --pos-gate-border:#2C4F70; --pos-gate-accent:#2196F3; --pos-gate-text:#EAF4FD; --pos-gate-muted:#B4CDE3; --pos-gate-hover:rgba(144,202,249,.09); --pos-gate-active:rgba(144,202,249,.16);
     --panel-head:#E3F2FD;
     --text:#123B63; --text-muted:#456987;
     --primary:#2196F3; --on-primary:#062C50; --primary-foreground:var(--on-primary);
