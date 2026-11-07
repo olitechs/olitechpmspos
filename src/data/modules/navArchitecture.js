@@ -11,6 +11,7 @@ export const BACK_OFFICE_NAV = [
   { id:'items', label:'Items', icon:ShoppingBag, expanded:true, children:[['Item list','/backoffice/items/list'],['Categories','/backoffice/items/categories'],['Modifiers','/backoffice/items/modifiers'],['Discounts','/backoffice/items/discounts']] },
   { id:'inventory', label:'Inventory management', icon:ShoppingCart, expanded:true, children:[['Purchase orders','/backoffice/inventory/purchase-orders'],['Transfer orders','/backoffice/inventory/transfer-orders'],['Stock adjustments','/backoffice/inventory/stock-adjustments'],['Inventory counts','/backoffice/inventory/counts'],['Productions','/backoffice/inventory/productions'],['Suppliers','/backoffice/inventory/suppliers'],['Inventory history','/backoffice/inventory/history'],['Inventory valuation','/backoffice/inventory/valuation']] },
   { id:'employees', label:'Employees', icon:Users, expanded:true, children:[['Employee list','/backoffice/employees/list'],['Access rights','/backoffice/employees/access-rights'],['Timecards','/backoffice/employees/timecards'],['Total hours worked','/backoffice/employees/hours']] },
+  { id:'store-admin', label:'Store administration', icon:Store, expanded:true, children:[['Manage stores','/backoffice/stores'],['POS Devices','/backoffice/pos-devices'],['Printers','/backoffice/printers']] },
   { id:'customers', label:'Customers', icon:Users, path:'/backoffice/customers' },
   { id:'integrations', label:'Integrations', icon:PlugZap, path:'/backoffice/integrations' },
   { id:'settings', label:'Settings', icon:Settings, path:'/backoffice/settings/features', children:[['Features','/backoffice/settings/features'],['Billing & subscriptions','/backoffice/settings/billing'],['Payment types','/backoffice/settings/payment-types'],['Loyalty','/backoffice/settings/loyalty'],['Taxes','/backoffice/settings/taxes'],['Receipt','/backoffice/settings/receipt'],['Open tickets','/backoffice/settings/open-tickets'],['Kitchen printers','/backoffice/settings/kitchen-printers'],['Dining options','/backoffice/settings/dining-options']] },
@@ -23,9 +24,6 @@ export const STORES_NAV = [
   ['Transfers','/stores/transfers','transfers',['admin','owner','store_manager']],
   ['Counts','/stores/inventory/counts','counts',['admin','owner','store_manager']],
   ['Reports','/stores/reports/inventory','reports',['admin','owner','store_manager']],
-  ['Manage stores','/stores/manage','store',['admin','owner']],
-  ['POS Devices','/stores/pos-devices','devices',['admin','owner','store_manager']],
-  ['Printers','/stores/printers','printers',['admin','owner','store_manager']],
   ['KDS Screens','/stores/kds','kds',['admin','owner','store_manager']],
 ];
 export const FRONT_OFFICE_NAV = [['Dashboard','/frontoffice','dashboard',['admin','owner','front_office_manager','front_desk','housekeeping']],['Room Planner','/frontoffice/room-planner','room-planner',['admin','owner','front_office_manager','front_desk','housekeeping']],['Reservations','/frontoffice/reservations','reservations',['admin','owner','front_office_manager','front_desk']],['Folio','/frontoffice/folio','folio',['admin','owner','front_office_manager','front_desk']],['Housekeeping','/frontoffice/housekeeping','housekeeping',['admin','owner','front_office_manager','front_desk','housekeeping']],['Night Audit','/frontoffice/night-audit','night-audit',['admin','owner','front_office_manager']]];

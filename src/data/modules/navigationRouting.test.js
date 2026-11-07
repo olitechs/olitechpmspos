@@ -24,6 +24,7 @@ const authService = read('../../services/authService.js');
 const storekeeperDashboard = read('../../pages/StorekeeperDashboard.jsx');
 const storekeeperService = read('../../services/storekeeperDashboardService.js');
 const storePage = read('../../pages/Store.jsx');
+const alertDetails = read('../../components/store/StorekeeperAlertDetails.jsx');
 
 function routePathExists(path) {
   if (path === '/backoffice') return /path="\/backoffice"/.test(app);
@@ -81,11 +82,21 @@ test('POSApp contains resolved source and preserves route and subscription guard
   assert.match(posApp, /useEffect\(\(\) => \{\s*setActiveModule\(routeModule\);\s*\}, \[routeModule\]\)/);
 });
 
-test('legacy Store Settings URL redirects while the Stores dashboard has a separate management route', () => {
+test('store administration, devices and printers are Back Office-only destinations', () => {
   assert.ok(app.includes('<Route path="settings" element={<Navigate to="/stores" replace/>}/>'));
   assert.ok(!navArchitecture.includes('Store Settings'));
   assert.ok(navArchitecture.includes("['Dashboard','/stores','dashboard'"));
-  assert.ok(navArchitecture.includes("['Manage stores','/stores/manage','store'"));
+  assert.ok(navArchitecture.includes("['Manage stores','/backoffice/stores']"));
+  assert.ok(navArchitecture.includes("['POS Devices','/backoffice/pos-devices']"));
+  assert.ok(navArchitecture.includes("['Printers','/backoffice/printers']"));
+  const storesNav = navArchitecture.split('export const STORES_NAV = [')[1].split('];')[0];
+  for (const item of ['Manage stores', 'POS Devices', 'Printers']) assert.ok(!storesNav.includes(item), `${item} must not appear in Stores navigation`);
+  assert.match(app, /path="stores" element={<StoresPage\/>}/);
+  assert.match(app, /path="pos-devices" element={<POSDevicesPage\/>}/);
+  assert.match(app, /path="printers" element={<KitchenPrintersPage\/>}/);
+  assert.match(app, /path="manage" element={<Navigate to="\/backoffice\/stores" replace\/>}/);
+  assert.match(app, /path="pos-devices" element={<Navigate to="\/backoffice\/pos-devices" replace\/>}/);
+  assert.match(app, /path="printers" element={<Navigate to="\/backoffice\/printers" replace\/>}/);
   assert.match(app, /index element={<StorekeeperDashboard\/>}/);
   assert.match(shell, /STORES_NAV\.filter\(\(\[, , , roles\]\) => !roles \|\| roles\.includes\(role\)\)/);
 });
@@ -110,6 +121,11 @@ test('Storekeeper dashboard exposes required filters, operational sections and h
   assert.match(storekeeperDashboard, /function KpiCard\([\s\S]*?<Link/);
   assert.match(storekeeperDashboard, /COGS snapshots are missing/);
   assert.match(storekeeperDashboard, /Dismiss with note/);
+  assert.match(storekeeperDashboard, /Inspect item details/);
+  assert.match(storekeeperDashboard, /<StorekeeperAlertDetails/);
+  assert.match(alertDetails, /DialogTitle/);
+  assert.match(alertDetails, /Saved stock location/);
+  assert.match(alertDetails, /canSeeCosts/);
   assert.match(storekeeperDashboard, /No requisition entity\/workflow/);
   assert.match(storekeeperDashboard, /to="\/stores\/stock\?tab=products/);
   assert.doesNotMatch(storekeeperDashboard, /\/stores\/manage\?tab=products/);

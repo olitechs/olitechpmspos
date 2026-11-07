@@ -20,6 +20,7 @@ const FRONT_ICONS = {
 const STORE_ICONS = { store: Store, dashboard: LayoutDashboard, inventory: Boxes, purchasing: ShoppingCart, transfers: ArrowRightLeft, counts: ClipboardCheck, reports: BarChart3, settings: Settings, devices: MonitorCog, printers: Printer, kds: LayoutGrid };
 const BACK_ICONS = {
   reports: BarChart3, items: ShoppingBag, inventory: ShoppingCart, employees: Users,
+  'store-admin': Store,
   customers: Users, integrations: PlugZap, settings: Settings, help: HelpCircle,
 };
 const ROLE_ICON = { items: Package, inventory: Boxes, purchasing: ShoppingCart, transfers: ArrowRightLeft,
