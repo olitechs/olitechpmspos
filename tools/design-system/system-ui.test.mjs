@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const source = readFileSync(new URL('../../src/components/ui/system.jsx', import.meta.url), 'utf8');
-const sidebar = readFileSync(new URL('../../src/components/shell/Sidebar.jsx', import.meta.url), 'utf8');
+const sidebar = readFileSync(new URL('../../src/components/shell/Sidebar.jsx', import.meta.url), 'utf8');\nconst brandLogo = readFileSync(new URL('../../src/components/ui/BrandLogo.jsx', import.meta.url), 'utf8');
 const theme = readFileSync(new URL('../../src/index.css', import.meta.url), 'utf8');
 const html = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
 const roomPlanner = readFileSync(new URL('../../src/components/pms/RoomPlanner.jsx', import.meta.url), 'utf8');
@@ -100,20 +100,20 @@ test('sidebar has accessible mobile open/close controls and a scrollable navigat
 
 test('theme foundation defines canonical light and dark palettes with reduced-motion handling', () => {
   for (const token of [
-    '--canvas:#E3F2FD', '--surface:#FFFFFF', '--primary:#2196F3',
-    '--on-primary:#FFFFFF', '--text:#123B63', '--text-muted:#456987',
+    '--canvas:#F3F7F7', '--surface:#FFFFFF', '--primary:#0F7C86',
+    '--on-primary:#FFFFFF', '--text:#173D40', '--text-muted:#557477',
     '--table-free-bg:#74C365', '--table-occupied-bg:#FA003F', '--table-bill-bg:#FAFAFA',
   ]) assert.ok(theme.includes(token), 'missing light token ' + token);
   assert.ok(theme.includes(':root[data-theme="dark"]'));
   for (const token of [
-    '--canvas:#0B1726', '--surface:#12243A', '--primary:#0D47A1',
-    '--on-primary:#FFFFFF', '--text:#EAF4FD', '--text-muted:#B4CDE3',
+    '--canvas:#081E22', '--surface:#102B30', '--primary:#15919A',
+    '--on-primary:#FFFFFF', '--text:#EAF5F3', '--text-muted:#B1CECA',
   ]) assert.ok(theme.includes(token), 'missing dark token ' + token);
-  assert.ok(theme.includes('--primary-soft:#E3F2FD'));
-  assert.ok(theme.includes('--accent:#90CAF9'));
-  assert.ok(theme.includes('--primary-text:#0D47A1'));
+  assert.ok(theme.includes('--primary-soft:#E2F1F0'));
+  assert.ok(theme.includes('--accent:#58AEB0'));
+  assert.ok(theme.includes('--primary-text:#0A6871'));
   assert.ok(theme.includes('--font-body:Inter,ui-sans-serif'));
-  assert.ok(html.includes('https://fonts.googleapis.com/css2?family=Inter'));
+  assert.ok(html.includes('https://fonts.googleapis.com/css2?family=Inter'));\n  assert.match(brandLogo, /\/olitechs-logo\\.svg/);\n  assert.match(brandLogo, /\/app-icon\\.svg/);
   assert.ok(theme.includes('.room-planner {') && theme.includes('--font-body:Inter,ui-sans-serif'));
   assert.ok(theme.includes('.room-planner .legend-optioned { color:#0F7C86; }'));
   assert.ok(theme.includes('--table-free-bg:#74C365'));
