@@ -183,7 +183,7 @@ test('database subscription access normalizes screen ids and legacy workspace na
 
 
 test('POS access screen uses the full-screen three-column keypad and four green PIN indicators', () => {
-  assert.match(posAccessGate, /bg-\[#303030\]/);
+  assert.match(posAccessGate, /bg-\[var\(--pos-gate-bg\)\]/);
   assert.match(posAccessGate, /grid-cols-3 grid-rows-4/);
   assert.match(posAccessGate, /Array\.from\(\{ length: 4 \}/);
   assert.match(posAccessGate, /onClick=\{\(\) => enterDigit\(digit\)\}/);
