@@ -22,7 +22,7 @@ const ITEMS = [
 
 function roleFor(user) {
   const staff = getSessionStaff();
-  return normalizeStaffRole(staff?.role || user?.staff?.role || user?.propertyRole || user?.role || '');
+  return normalizeStaffRole(staff?.role || user?.staff?.role || user?.propertyRole || user?.role || 'front_desk');
 }
 
 export default function FrontOfficeShell() {
