@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Activity, AlertCircle, CheckCircle2, Clock3, Link2, Plus, RefreshCw, Trash2, Unplug, X } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Clock3, Link2, Plus, RefreshCw, Trash2, Unplug, X } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { usePms } from '@/data/PmsStore';
 import { pmsService } from '@/services/pmsService';
