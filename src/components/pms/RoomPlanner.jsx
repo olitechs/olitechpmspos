@@ -152,6 +152,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   const [paymentFilter, setPaymentFilter] = useState('all');
   const [sourceFilter, setSourceFilter] = useState('all');
   const [roomTypeFilter, setRoomTypeFilter] = useState('all');
+  const [floorFilter, setFloorFilter] = useState('all');
   const [viewLength, setViewLength] = useState('15');
   const [selectedReservation, setSelectedReservation] = useState(null);
   const [closures, setClosures] = useState([]);
@@ -186,15 +187,16 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     const status = getPaymentStatusFromAmounts(rv.amountPaid, rv.totalAmount);
     const query = searchQuery.trim().toLowerCase();
     const matchesQuery = !query || [rv.guestName, rv.id, rv.reservationNumber, rv.reservation_number, rv.bookingReference, rv.booking_reference, rv.channel, room?.number, room?.name].some(value => String(value || '').toLowerCase().includes(query));
-    return matchesQuery && (paymentFilter === 'all' || status === paymentFilter) && (sourceFilter === 'all' || (rv.channel || 'direct') === sourceFilter) && (roomTypeFilter === 'all' || roomTypeMap.get(room?.room_type_id) === roomTypeFilter);
-  }), [normalizedReservations, plannerRooms, searchQuery, paymentFilter, sourceFilter, roomTypeFilter, roomTypeMap]);
+    return matchesQuery && (paymentFilter === 'all' || status === paymentFilter) && (sourceFilter === 'all' || (rv.channel || 'direct') === sourceFilter) && (roomTypeFilter === 'all' || roomTypeMap.get(room?.room_type_id) === roomTypeFilter) && (floorFilter === 'all' || String(room?.floor ?? 'Unassigned') === floorFilter);
+  }), [normalizedReservations, plannerRooms, searchQuery, paymentFilter, sourceFilter, roomTypeFilter, floorFilter, roomTypeMap]);
   const filteredRooms = useMemo(() => plannerRooms.filter(room => {
     const type = roomTypeMap.get(room.room_type_id) || room.roomTypeName || room.room_type || 'Unassigned';
     if (roomTypeFilter !== 'all' && type !== roomTypeFilter) return false;
+    if (floorFilter !== 'all' && String(room.floor ?? 'Unassigned') !== floorFilter) return false;
     const query = searchQuery.trim().toLowerCase();
     if (!query) return true;
     return [room.number, room.name, type].some(value => String(value || '').toLowerCase().includes(query)) || filteredReservations.some(rv => rv.roomId === room.id);
-  }), [plannerRooms, roomTypeMap, roomTypeFilter, searchQuery, filteredReservations]);
+  }), [plannerRooms, roomTypeMap, roomTypeFilter, floorFilter, searchQuery, filteredReservations]);
   const groupedRooms = useMemo(() => {
     const groups = new Map();
     [...filteredRooms].sort((a,b) => Number(a.number) - Number(b.number)).forEach(r => { const key = roomTypeMap.get(r.room_type_id) || r.roomTypeName || r.room_type || 'Unassigned'; if (!groups.has(key)) groups.set(key, []); groups.get(key).push(r); });
@@ -592,6 +594,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
         <select aria-label="Filter by payment status" value={paymentFilter} onChange={e=>setPaymentFilter(e.target.value)} className="room-planner-filter"><option value="all">All payment statuses</option><option value="not_paid">No Amount Paid</option><option value="partially_paid">Partially Paid</option><option value="fully_paid">Total Paid</option></select>
         <select aria-label="Filter by booking source" value={sourceFilter} onChange={e=>setSourceFilter(e.target.value)} className="room-planner-filter"><option value="all">All sources</option><option value="direct">Direct</option><option value="booking_com">Booking.com</option><option value="unknown">Other / Unknown</option></select>
         <select aria-label="Filter by room type" value={roomTypeFilter} onChange={e=>setRoomTypeFilter(e.target.value)} className="room-planner-filter"><option value="all">All room types</option>{[...new Set(plannerRooms.map(room=>roomTypeMap.get(room.room_type_id)||room.roomTypeName||room.room_type||'Unassigned'))].sort().map(type=><option key={type} value={type}>{type}</option>)}</select>
+        <select aria-label="Filter by floor" value={floorFilter} onChange={e=>setFloorFilter(e.target.value)} className="room-planner-filter"><option value="all">All floors</option>{[...new Set(plannerRooms.map(room=>String(room.floor ?? 'Unassigned')))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})).map(floor=><option key={floor} value={floor}>{floor === 'Unassigned' ? floor : `Floor ${floor}`}</option>)}</select>
         <span className="room-planner-filter-count">{filteredRooms.length} rooms · {filteredReservations.length} reservations</span>
       </div>
       {plannerToolsOpen && <div className="room-planner-settings-panel">
