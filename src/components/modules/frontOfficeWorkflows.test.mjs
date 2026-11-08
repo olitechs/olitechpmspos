@@ -4,14 +4,14 @@ import { readFile } from 'node:fs/promises';
 
 const read = (path) => readFile(new URL(path, import.meta.url), 'utf8');
 const [app, posApp, reservations, channels, registration, service, store, shell] = await Promise.all([
-  read('../../src/App.jsx'),
-  read('../../src/pages/POSApp.jsx'),
-  read('../../src/components/modules/Reservations.jsx'),
-  read('../../src/components/modules/ChannelManager.jsx'),
-  read('../../src/components/modules/RegistrationCards.jsx'),
-  read('../../src/services/pmsService.js'),
-  read('../../src/data/PmsStore.jsx'),
-  read('../../src/components/layout/FrontOfficeShell.jsx'),
+  read('../../App.jsx'),
+  read('../../pages/POSApp.jsx'),
+  read('../../components/modules/Reservations.jsx'),
+  read('../../components/modules/ChannelManager.jsx'),
+  read('../../components/modules/RegistrationCards.jsx'),
+  read('../../services/pmsService.js'),
+  read('../../data/PmsStore.jsx'),
+  read('../../components/layout/FrontOfficeShell.jsx'),
 ]);
 
 test('Front Office routes open the real reservation, check-in, registration and channel modules', () => {
