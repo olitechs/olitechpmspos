@@ -65,6 +65,7 @@ set search_path = public, pg_temp
 as $function$
 declare
   v_res public.reservations;
+  v_group_id uuid;
 begin
   select r.* into v_res
     from public.reservations r
@@ -79,28 +80,57 @@ begin
     raise exception 'Only a booked reservation can be optioned or confirmed.';
   end if;
 
-  if coalesce(p_optioned, false) then
-    if v_res.option_expires_at is not null then
-      if v_res.option_expires_at <= now() then
-        raise exception 'This option has expired. Create a new reservation option if needed.';
-      end if;
-      return v_res; -- Repeated requests never extend the original 24-hour window.
+  v_group_id := v_res.group_id;
+  if v_group_id is not null then
+    perform 1 from public.reservations r
+     where r.group_id = v_group_id
+       and r.property_id = v_res.property_id
+     for update;
+    if exists (
+      select 1 from public.reservations r
+       where r.group_id = v_group_id
+         and r.property_id = v_res.property_id
+         and r.status <> 'booked'
+    ) then
+      raise exception 'Every room in a joint reservation must be booked before changing its option status.';
     end if;
-
-    update public.reservations
-       set option_expires_at = now() + interval '24 hours'
-     where id = p_reservation_id
-     returning * into v_res;
-  else
-    if v_res.option_expires_at is not null and v_res.option_expires_at <= now() then
-      raise exception 'This option has expired and can no longer be confirmed.';
-    end if;
-    update public.reservations
-       set option_expires_at = null
-     where id = p_reservation_id
-     returning * into v_res;
   end if;
 
+  if coalesce(p_optioned, false) then
+    if exists (
+      select 1 from public.reservations r
+       where (r.id = p_reservation_id or (v_group_id is not null and r.group_id = v_group_id))
+         and r.property_id = v_res.property_id
+         and r.option_expires_at is not null
+         and r.option_expires_at <= now()
+    ) then
+      raise exception 'This option has expired. Create a new reservation option if needed.';
+    end if;
+
+    update public.reservations r
+       set option_expires_at = coalesce(r.option_expires_at, now() + interval '24 hours')
+     where r.property_id = v_res.property_id
+       and (r.id = p_reservation_id or (v_group_id is not null and r.group_id = v_group_id));
+  else
+    if exists (
+      select 1 from public.reservations r
+       where (r.id = p_reservation_id or (v_group_id is not null and r.group_id = v_group_id))
+         and r.property_id = v_res.property_id
+         and r.option_expires_at is not null
+         and r.option_expires_at <= now()
+    ) then
+      raise exception 'This option has expired and can no longer be confirmed.';
+    end if;
+
+    update public.reservations r
+       set option_expires_at = null
+     where r.property_id = v_res.property_id
+       and (r.id = p_reservation_id or (v_group_id is not null and r.group_id = v_group_id));
+  end if;
+
+  select r.* into v_res
+    from public.reservations r
+   where r.id = p_reservation_id;
   return v_res;
 end;
 $function$;
