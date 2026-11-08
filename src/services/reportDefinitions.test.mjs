@@ -167,6 +167,7 @@ test('final settlement invoice includes editable header, stay identity, full fol
   assert.equal(sections['folio-ledger'].rows.length, 3);
   assert.equal(sections['pos-receipts'].rows[0].receipt_number, '701');
   assert.equal(sections['pos-receipts'].rows[0].receipt_id, 'receipt-701');
+  assert.equal(sections['pos-receipts'].rows[0].room, '8');
   assert.equal(sections['pos-consumed-items'].rows.length, 2);
   assert.equal(sections['pos-consumed-items'].rows[0].modifiers, 'Extra sauce');
   assert.equal(sections['pos-consumed-items'].rows[0].line_total, 1000);
