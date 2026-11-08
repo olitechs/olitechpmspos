@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { usePms } from '@/data/PmsStore';
 import RoomPanel from '@/components/pms/RoomPanel';
 import RoomManagement from '@/components/pms/RoomManagement';
@@ -22,6 +22,35 @@ export default function Rooms() {
 
   return (
     <div className={`flex h-full min-h-0 w-full flex-col overflow-hidden ${isDedicatedPlanner ? 'h-[100dvh]' : ''}`} style={{ background: 'var(--bg)' }}>
+      {isDedicatedPlanner && (
+        <nav aria-label="Front Office navigation" className="z-10 flex min-h-12 shrink-0 items-center gap-1 overflow-x-auto border-b border-[var(--border)] bg-[var(--surface)] px-2 sm:px-4">
+          {[
+            ['Front Office', '/frontoffice'],
+            ['Room Planner', '/frontoffice/room-planner'],
+            ['Reservations', '/frontoffice/reservations'],
+            ['Housekeeping', '/frontoffice/housekeeping'],
+          ].map(([label, path]) => {
+            const active = pathname.replace(/\\/$/, '') === path;
+            return (
+              <Link
+                key={path}
+                to={path}
+                aria-current={active ? 'page' : undefined}
+                className="min-h-10 shrink-0 rounded-lg px-3 py-2 text-xs font-semibold transition-colors sm:px-4"
+                style={{
+                  background: active ? 'var(--brand-soft)' : 'transparent',
+                  color: active ? 'var(--text)' : 'var(--muted)',
+                  border: `1px solid ${active ? 'var(--brand)' : 'transparent'}`,
+                }}
+              >
+                {label}
+              </Link>
+            );
+          })}
+          <span className="ml-auto hidden shrink-0 pr-2 text-[11px] font-medium text-[var(--muted)] sm:block">Front Office</span>
+        </nav>
+      )}
+
       {!isDedicatedPlanner && (
         <div className="flex shrink-0 items-center gap-2 overflow-x-auto border-b border-[var(--border)] bg-[var(--surface)] px-3 py-2.5">
           {['planner', 'reservations', 'management'].map((t) => (
