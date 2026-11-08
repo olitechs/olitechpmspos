@@ -86,7 +86,7 @@ export default function AppShell({ workspace = 'backoffice' }) {
   const email = user?.email || getSessionStaff()?.email || '';
 
   return (
-    <div className="flex h-screen min-h-0 flex-col overflow-hidden bg-[var(--bg)] text-[var(--text)]">
+    <div className="flex h-screen supports-[height:100dvh]:h-[100dvh] min-h-0 flex-col overflow-hidden bg-[var(--bg)] text-[var(--text)]">
       <TopAppNav workspace={workspace} />
       <div className="flex min-h-0 flex-1">
         {workspace !== 'pos' && mobileOpen && <button type="button" aria-label="Close navigation" onClick={() => setMobileOpen(false)} className="fixed inset-0 z-40 bg-[var(--overlay-scrim)] md:hidden" />}

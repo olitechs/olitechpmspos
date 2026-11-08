@@ -194,12 +194,12 @@
 
   *, *::before, *::after { box-sizing: border-box; }
   html, body, #root { min-height: 100%; }
-  html { font-family: var(--font-body); font-synthesis: none; text-rendering: optimizeLegibility; }
+  html { font-family: var(--font-body); font-synthesis: none; text-rendering: optimizeLegibility; -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; }
   body { margin: 0; background: var(--canvas); color: var(--text); font-family: var(--font-body); font-size: 14px; font-weight: 400; }
   h1, h2, h3, h4, .font-heading { font-family: var(--font-heading); font-weight: 600; }
   :where(*):not(svg):not(path) { font-synthesis: none; }
   button, a, input, select, textarea { transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease, opacity 150ms ease, transform 150ms ease; }
-  button { min-height: 44px; font-weight: 600; }
+  button { min-height: 44px; font-weight: 600; touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }\n  [role="button"] { touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   input, select, textarea { border-color: var(--input-border); color: var(--text); }
   input, select, textarea { font-size: max(16px, 1em); }
   input::placeholder, textarea::placeholder { color: var(--text-muted); opacity: 1; }
