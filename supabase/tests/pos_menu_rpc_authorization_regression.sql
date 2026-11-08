@@ -55,12 +55,6 @@ select set_config('request.jwt.claims', '{"sub":"aaaaaaaa-0000-4000-8000-0000000
 select set_config('test.platform_owner', 'false', true);
 select set_config('test.member_property', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', true);
 select set_config('test.property_role', 'housekeeping', true);
-select
-  current_setting('test.property_role', true) as configured_property_role,
-  public.property_role('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa') as effective_property_role,
-  public.is_platform_owner() as platform_owner,
-  public.is_member_of_property('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa') as is_member,
-  public.current_staff_role('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa') as current_staff_role;
 set local role authenticated;
 do $non_pos_member$
 begin
