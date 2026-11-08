@@ -135,3 +135,7 @@ Both migrations are additive/re-runnable. Test them on a non-production Supabase
 Adds guest profile metadata (alternative contact, residence country, identity type and structured guest details) and reservation booking metadata without removing or renaming existing columns. The new 17-argument `fn_create_reservation_bundle` overload persists the extended metadata in the same transaction by delegating to the established 16-argument bundle RPC. The legacy signature remains available for existing clients.
 
 The migration also retains the property/room advisory transaction lock in `fn_check_room_availability` and rejects room assignments while a room is `maintenance`, `out_of_service`, or `blocked`. Reservation creation continues to use the existing overlap and closure checks. Apply and validate on a disposable PostgreSQL/Supabase environment before production; do not apply directly to production as part of the frontend deployment.
+
+
+### 20261108100000 — Room Planner 24-hour option expiry
+Adds the nullable `reservations.option_expires_at` timestamp, property-scoped RPCs for creating, confirming and reconciling options, and audit events for option lifecycle changes. Optioned reservations expire 24 hours after creation; editing does not restart the deadline. Expired options are marked cancelled and release their rooms when the planner loads, while it remains open, or before room-availability checks. Check-in requires explicit confirmation. Apply this additive migration before using Optioned bookings.
