@@ -63,9 +63,23 @@ No category or product has been renamed, merged, hidden or deleted. The editor's
 - A local checkout could not be obtained because the execution environment cannot resolve `github.com`; therefore no lint/build/test result is claimed.
 - No Supabase branch, migration execution, production deployment, or printer job was initiated.
 
+## Phase 1 implementation update
+
+Implemented in `src/components/pos/OrderTaking.jsx`:
+
+- Replaced the single-level category strip with a responsive root category tile grid.
+- Added category-to-product navigation with a back action and category item counts.
+- Added all-menu product search from the root view and category-scoped search inside a category.
+- Added category labels, price, stock state, out-of-stock blocking, and aggregate in-order quantity badges to product tiles.
+- Preserved the existing `addItem`, modifier selection, `commitItem`, order-line callbacks, ticket totals, send-to-kitchen, bill, table move and control-void flows.
+- Kept product production-center metadata on order lines so existing Kitchen/Bar routing remains in control.
+
+**Verification status:** source changes are committed to the feature branch. No local lint/build/test run or browser interaction test is claimed because a working checkout/runtime is unavailable in this session. GitHub Actions has not yet reported a PR run for this commit.
+
 ## Implementation sequence
 
-1. Add reusable category/product tile browser and two-level navigation while preserving the current order panel API.
+1. ~~Add reusable category/product tile browser and two-level navigation while preserving the current order panel API.~~
+2. Restyle the order panel and add the phone bottom-sheet behavior.
 2. Restyle the order panel and add the phone bottom-sheet behavior.
 3. Add fast normalized search and SKU/barcode resolution using the existing product data.
 4. Extend the current menu manager and add additive, property-scoped layout metadata only after schema/authorization review.
