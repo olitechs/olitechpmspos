@@ -30,7 +30,7 @@ begin
   end if;
 
   -- Trusted backend calls may read the requested property's menu.
-  if auth.role() <> 'service_role' then
+  if coalesce(auth.role(), '') <> 'service_role' then
     if auth.uid() is null then
       raise exception 'Authentication required.'
         using errcode = '42501';
