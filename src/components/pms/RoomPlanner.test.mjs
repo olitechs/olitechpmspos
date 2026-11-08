@@ -78,7 +78,7 @@ test('planner exposes compact, comfortable and large row density settings', () =
 });
 
 test('room rows are rendered through a bounded virtual window', () => {
-  assert.ok(source.includes('const virtualRooms = orderedRooms.slice(virtualStart, virtualEnd)'));
+  assert.ok(source.includes('const virtualRows = orderedRows.slice(virtualStart, virtualEnd)'));
   assert.ok(source.includes('topSpacerHeight'));
   assert.ok(source.includes('bottomSpacerHeight'));
 });
