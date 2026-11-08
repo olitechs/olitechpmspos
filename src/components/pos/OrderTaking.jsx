@@ -48,13 +48,20 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
     setMenuLoading(true);
     setMenuError('');
     try {
-      const rows = await inventoryService.listPosMenu(propertyId);
+      const [rows, categoryRows] = await Promise.all([
+        inventoryService.listPosMenu(propertyId),
+        inventoryService.listPosCategories(propertyId).catch((error) => {
+          console.warn('[POS] category catalogue unavailable; deriving categories from products', error);
+          return [];
+        })
+      ]);
       if (rows.length) {
         setMenuItems(rows.map((p) => ({ ...p, id: p.id, productId: p.id, name: p.name, price: Number(p.selling_price || 0), category: p.category || 'General', center: p.production_center || 'Kitchen', stock: Number(p.current_stock ?? 0), minimumStock: Number(p.min_stock ?? 0), unit: p.unit || 'pcs' })));
-        setMenuCategories([...new Set(rows.map((p) => p.category || 'General'))]);
       } else {
-        setMenuItems([]); setMenuCategories(CATEGORIES);
+        setMenuItems([]);
       }
+      const configuredCategories = categoryRows.map((category) => category.name).filter(Boolean);
+      setMenuCategories(configuredCategories.length ? configuredCategories : [...new Set(rows.map((p) => p.category || 'General'))]);
     } catch (error) {
       console.warn('[POS] menu catalogue unavailable', error);
       setMenuItems([]); setMenuCategories(CATEGORIES);
@@ -392,7 +399,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
                         <span className="flex h-7 min-w-7 items-center justify-center rounded-full bg-[var(--primary)] px-1.5 text-xs font-extrabold text-[var(--on-primary)]">{inOrderQty}</span>
                       )}
                     </div>
-                    <div className="my-3 w-full text-sm font-bold leading-snug text-[var(--text)]">{item.name}</div>
+                    <div className="my-3 w-full text-sm font-bold leading-snug text-[var(--text)]">{item.name}{item.sku && <span className="mt-1 block text-[10px] font-semibold tracking-wide text-[var(--text-muted)]">SKU {item.sku}</span>}</div>
                     <div className="flex w-full items-end justify-between gap-2">
                       <span className="text-sm font-extrabold text-[var(--primary)]">{fmt(item.price)}</span>
                       {stockStatus !== 'unknown' && (
