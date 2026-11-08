@@ -310,8 +310,13 @@ export const authService = {
 
 
 	async requestPasswordReset({ email }) {
-		const redirectTo = 'https://olitechpmspos.vercel.app/reset-password';
-		await supabase.auth.resetPasswordForEmail((email || '').trim().toLowerCase(), { redirectTo });
+		// Use the canonical production app URL for every recovery email.
+		const redirectTo = 'https://app.olitechs.co.ke/reset-password';
+		const { error } = await supabase.auth.resetPasswordForEmail(
+			(email || '').trim().toLowerCase(),
+			{ redirectTo }
+		);
+		if (error) throw new Error(error.message);
 		// Always resolve successfully — don't reveal whether the email exists.
 		return { sent: true };
 	},
