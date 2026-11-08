@@ -154,6 +154,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   const [roomTypeFilter, setRoomTypeFilter] = useState('all');
   const [floorFilter, setFloorFilter] = useState('all');
   const [mobileListMode, setMobileListMode] = useState(false);
+  const [collapsedRoomTypes, setCollapsedRoomTypes] = useState([]);
   const [viewLength, setViewLength] = useState('15');
   const [selectedReservation, setSelectedReservation] = useState(null);
   const [closures, setClosures] = useState([]);
@@ -206,7 +207,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     return [...groups.entries()];
   }, [filteredRooms, roomTypeMap]);
 
-  const orderedRooms = useMemo(() => groupedRooms.flatMap(([typeName, group]) => group.map(room => ({ room, typeName }))), [groupedRooms]);
+  const orderedRooms = useMemo(() => groupedRooms.flatMap(([typeName, group]) => collapsedRoomTypes.includes(typeName) ? [] : group.map(room => ({ room, typeName }))), [groupedRooms, collapsedRoomTypes]);
   const ROOM_ROW_HEIGHT = 54;
   const VIRTUAL_OVERSCAN = 6;
   const virtualStart = Math.max(0, Math.floor(Math.max(0, plannerScrollTop - 78) / ROOM_ROW_HEIGHT) - VIRTUAL_OVERSCAN);
@@ -616,6 +617,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
         {onRefresh && <button onClick={onRefresh} className="room-planner-toolbar-button room-planner-neutral"><RefreshCw size={15}/>Refresh reservations</button>}
         <button onClick={undoPlannerMove} disabled={!undoStack.length} className="room-planner-toolbar-button room-planner-neutral disabled:opacity-40" title="Undo last planner move (Ctrl+Z)">Undo</button>
         <button onClick={redoPlannerMove} disabled={!redoStack.length} className="room-planner-toolbar-button room-planner-neutral disabled:opacity-40" title="Redo planner move (Ctrl+Shift+Z)">Redo</button>
+        <div className="flex flex-wrap items-center gap-2"><span className="text-xs font-semibold" style={{color:'var(--muted)'}}>Room groups</span>{groupedRooms.map(([typeName,group])=>{const collapsed=collapsedRoomTypes.includes(typeName);return <button key={typeName} type="button" onClick={()=>setCollapsedRoomTypes(current=>collapsed?current.filter(item=>item!==typeName):[...current,typeName])} className="room-planner-toolbar-button room-planner-neutral">{collapsed?'Show':'Hide'} {typeName} ({group.length})</button>})}</div>
         <span className="text-xs" style={{color:'var(--muted)'}}>Shortcuts: T today · Esc close · ←/→ scroll · Ctrl/Cmd+Z undo</span>
         <button onClick={clearRange} className="room-planner-toolbar-button room-planner-neutral">Clear date range</button>
       </div>}
