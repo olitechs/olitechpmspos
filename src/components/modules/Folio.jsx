@@ -108,7 +108,7 @@ export default function Folio() {
   const grossPayments = positivePayments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
   const netPayments = payments.filter((p) => p.status === 'posted').reduce((sum, p) => sum + Number(p.amount || 0), 0);
   const postedAccommodation = charges.filter((c) => c.category === 'accommodation' || c.source === 'room').reduce((sum, c) => sum + Number(c.amount || 0), 0);
-  const accommodation = postedAccommodation || Math.max(0, chargeTotal - charges.filter((c) => c.category !== 'accommodation' && c.source !== 'room').reduce((sum, c) => sum + Number(c.amount || 0), 0));
+  const accommodation = postedAccommodation + Math.max(0, chargeTotal - postedChargeTotal);
   const posCharges = charges.filter((c) => c.source === 'pos' || ['restaurant', 'bar', 'room_service'].includes(c.category)).reduce((sum, c) => sum + Number(c.amount || 0), 0);
   const discounts = Math.abs(charges.filter((c) => c.category === 'discount').reduce((sum, c) => sum + Math.min(0, Number(c.amount || 0)), 0));
   const additionalCharges = charges.filter((c) => c.category !== 'accommodation' && c.category !== 'discount' && c.source !== 'pos').reduce((sum, c) => sum + Number(c.amount || 0), 0);
