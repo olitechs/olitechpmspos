@@ -195,6 +195,25 @@ test('final settlement invoice reconciles a reservation booking total when legac
   assert.equal(definition.summary.find((row) => row.label === 'Final balance due').value, 10000);
 });
 
+test('final settlement invoice adds only the missing accommodation residual when some room charges already exist', () => {
+  const definition = buildFinalSettlementInvoiceDefinition({
+    selected: { id: 'reservation-partial', guest_name: 'Partial Legacy Guest', arrival: '2026-11-01', departure: '2026-11-04', total_amount: 15000 },
+    room: { number: 14 },
+    charges: [
+      { id: 'room-charge', created_at: '2026-11-01T08:00:00Z', category: 'accommodation', source: 'room', description: 'Partial room posting', amount: 10000 },
+      { id: 'pos-charge', created_at: '2026-11-02T10:00:00Z', category: 'restaurant', source: 'pos', description: 'Restaurant order', amount: 3000 },
+    ],
+    payments: [],
+    receipts: [],
+    totals: { chargeTotal: 15000, netPayments: 0, balance: 15000 },
+  });
+  const sections = Object.fromEntries(definition.sections.map((section) => [section.name, section]));
+  const adjustment = sections['folio-ledger'].rows.find((row) => row.type === 'Booking reconciliation');
+  assert.equal(adjustment.amount, 2000);
+  assert.equal(definition.summary.find((row) => row.label === 'Accommodation').value, 12000);
+  assert.equal(sections['folio-ledger'].rows.reduce((sum, row) => sum + row.amount, 0), 15000);
+});
+
 test('Room Planner exports local calendar dates and active reservation fields only', () => {
   const definition = buildRoomPlannerDefinition({
     rooms: [{ id: 'room-6', number: '6', room_type: 'Standard' }],
