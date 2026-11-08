@@ -66,26 +66,38 @@ as $function$
 declare
   v_res public.reservations;
   v_group_id uuid;
+  v_property_id uuid;
 begin
-  select r.* into v_res
+  select r.property_id, r.group_id
+    into v_property_id, v_group_id
     from public.reservations r
-   where r.id = p_reservation_id
-   for update;
+   where r.id = p_reservation_id;
 
-  if v_res.id is null then raise exception 'Reservation not found.'; end if;
-  if not public.is_member_of_property(v_res.property_id) and not public.is_platform_owner() then
+  if v_property_id is null then raise exception 'Reservation not found.'; end if;
+  if not public.is_member_of_property(v_property_id) and not public.is_platform_owner() then
     raise exception 'Access denied.';
   end if;
+
+  -- Lock group members in a stable order to avoid concurrent group-action deadlocks.
+  if v_group_id is not null then
+    perform 1 from public.reservations r
+     where r.group_id = v_group_id
+       and r.property_id = v_property_id
+     order by r.id
+     for update;
+  else
+    perform 1 from public.reservations r where r.id = p_reservation_id for update;
+  end if;
+
+  select r.* into v_res
+    from public.reservations r
+   where r.id = p_reservation_id;
+
   if v_res.status <> 'booked' then
     raise exception 'Only a booked reservation can be optioned or confirmed.';
   end if;
 
-  v_group_id := v_res.group_id;
   if v_group_id is not null then
-    perform 1 from public.reservations r
-     where r.group_id = v_group_id
-       and r.property_id = v_res.property_id
-     for update;
     if exists (
       select 1 from public.reservations r
        where r.group_id = v_group_id
