@@ -75,6 +75,8 @@ function mapReservation(r, roomsById, roomTypesById = new Map()) {
 		departure: r.departure,
 		bookingStatus: String(r.status || 'booked').replace('-', '_'),
 		status: r.status,
+		optionExpiresAt: r.option_expires_at || null,
+		plannerStatus: r.option_expires_at && new Date(r.option_expires_at).getTime() > Date.now() ? 'optioned' : undefined,
 		paymentStatus,
 		channel: r.channel || 'direct',
 		mealPlan: r.meal_plan || 'bed_only',
