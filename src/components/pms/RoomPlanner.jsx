@@ -168,14 +168,6 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   }, [plannerRooms, roomTypeMap]);
 
   const dayWidth = DAY_WIDTH;
-  const monthSegments = useMemo(() => columns.reduce((segments, day) => {
-    const key = format(day, 'yyyy-MM');
-    const last = segments[segments.length - 1];
-    if (last?.key === key) last.span += 1;
-    else segments.push({ key, label: format(day, 'MMMM yyyy'), span: 1 });
-    return segments;
-  }, []), [columns]);
-
   const columns = useMemo(() => {
     if (range) return eachDayOfInterval({ start: parseDate(range.from), end: parseDate(range.to) });
     if (viewMode === 'rolling') {
@@ -188,6 +180,15 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     }
     return monthDays;
   }, [range, month, focusToday, todayDate, viewMode, windowStart]);
+
+  const monthSegments = useMemo(() => columns.reduce((segments, day) => {
+    const key = format(day, 'yyyy-MM');
+    const last = segments[segments.length - 1];
+    if (last?.key === key) last.span += 1;
+    else segments.push({ key, label: format(day, 'MMMM yyyy'), span: 1 });
+    return segments;
+  }, []), [columns]);
+
 
   useEffect(() => {
     if (modal?.reservationId) setLinked(normalizedReservations.filter(r => r.groupId && r.groupId === modal.groupId));
