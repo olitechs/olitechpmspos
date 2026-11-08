@@ -407,7 +407,7 @@ export function buildFolioStatementDefinition({ selected = {}, charges = [], pay
       source: cleanText(charge.source_module || charge.source), quantity: toNumber(charge.quantity ?? 1),
       amount: toNumber(charge.amount), recorded_by: employeeName(charge.created_by), status: charge.reversal_of_id ? 'Reversal' : 'Posted',
     })),
-    ...(payments || []).map((payment) => ({
+    ...(payments || []).filter((payment) => payment.status === 'posted').map((payment) => ({
       date: dateLabel(payment.created_at), type: toNumber(payment.amount) < 0 ? 'Refund' : 'Payment',
       description: cleanText(payment.method, 'Payment'), reference: cleanText(payment.reference, String(payment.id || '').slice(0, 8)),
       source: 'Cashier', quantity: 1, amount: toNumber(payment.amount), recorded_by: employeeName(payment.created_by), status: cleanText(payment.status),
@@ -506,7 +506,6 @@ export function buildFinalSettlementInvoiceDefinition({
     ['Additional header details', header.headerNote],
   ].filter(([, value]) => value !== null && value !== undefined && String(value).trim() !== '')
     .map(([field, value]) => ({ field, value: String(value) }));
-  const posTotal = (receipts || []).reduce((sum, receipt) => sum + toNumber(receipt.total), 0);
   const accommodation = (charges || []).filter((charge) => charge.category === 'accommodation' || charge.source === 'room').reduce((sum, charge) => sum + toNumber(charge.amount), 0);
   const posCharges = (charges || []).filter((charge) => charge.source === 'pos' || ['restaurant', 'bar', 'room_service'].includes(charge.category)).reduce((sum, charge) => sum + toNumber(charge.amount), 0);
 
