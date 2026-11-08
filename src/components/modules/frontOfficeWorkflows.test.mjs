@@ -3,12 +3,14 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const read = (path) => readFile(new URL(path, import.meta.url), 'utf8');
-const [app, posApp, reservations, channels, registration, service, store, shell] = await Promise.all([
+const [app, posApp, reservations, channels, registration, walkIn, expressCheckout, service, store, shell] = await Promise.all([
   read('../../App.jsx'),
   read('../../pages/POSApp.jsx'),
   read('../../components/modules/Reservations.jsx'),
   read('../../components/modules/ChannelManager.jsx'),
   read('../../components/modules/RegistrationCards.jsx'),
+  read('../../components/modules/WalkInCheckIn.jsx'),
+  read('../../components/modules/ExpressCheckOut.jsx'),
   read('../../services/pmsService.js'),
   read('../../data/PmsStore.jsx'),
   read('../../components/layout/FrontOfficeShell.jsx'),
@@ -21,6 +23,10 @@ test('Front Office routes open the real reservation, check-in, registration and 
   assert.match(app, /path="channels" element={<POSApp initialModule="channels"/);
   assert.match(app, /path="check-in\/registration-cards" element={<POSApp initialModule="registration-cards"/);
   assert.match(posApp, /case 'registration-cards':[\s\S]*?<RegistrationCards \/>/);
+  assert.match(app, /path="check-in\\/walk-in" element={<POSApp initialModule="walk-in-checkin"/);
+  assert.match(app, /path="check-in\\/express-checkout" element={<POSApp initialModule="express-checkout"/);
+  assert.match(posApp, /case 'walk-in-checkin':[\\s\\S]*?<WalkInCheckIn \/>/);
+  assert.match(posApp, /case 'express-checkout':[\\s\\S]*?<ExpressCheckOut \/>/);
   assert.match(shell, /Sparkles, Tags, Users/);
   assert.match(posApp, /flex h-full min-h-0 w-full flex-col bg-\[var\(--bg\)\]/);
   assert.match(posApp, /flex min-h-0 min-w-0 flex-1 flex-col/);
@@ -58,4 +64,20 @@ test('registration cards use saved guest data and the audited PDF export engine'
   assert.match(registration, /formats=\{\['pdf', 'print'\]\}/);
   assert.match(registration, /createReportDefinition/);
   assert.match(registration, /Missing information is shown as —/);
+});
+
+
+test('walk-in check-in validates room capacity and uses the transactional PMS walk-in RPC', () => {
+  assert.match(walkIn, /arrival !== today/);
+  assert.match(walkIn, /Number\(partySize\) > Number\(room\.capacity/);
+  assert.match(walkIn, /pms\.checkInRoom\(room\.id/);
+  assert.match(walkIn, /The room charge is posted to the guest folio/);
+});
+
+test('express checkout verifies posted payments and requires a zero folio balance', () => {
+  assert.match(expressCheckout, /pmsService\.listPayments/);
+  assert.match(expressCheckout, /row\.status === 'posted'/);
+  assert.match(expressCheckout, /pms\.checkOutRoom\(selected\.roomId\)/);
+  assert.match(expressCheckout, /balance <= 0\.005/);
+  assert.match(expressCheckout, /outstanding balance/);
 });
