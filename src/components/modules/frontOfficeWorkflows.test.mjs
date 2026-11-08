@@ -51,9 +51,9 @@ test('channel workspace manages profiles, room mappings and real activity feeds 
 });
 
 test('registration cards use saved guest data and the audited PDF export engine', () => {
-  assert.match(registration, /guest\.guest_details/);
-  assert.match(registration, /guest\.id_number/);
-  assert.match(registration, /reservation\.bookingDetails/);
+  assert.match(registration, /guest\?\.guest_details/);
+  assert.match(registration, /guest\?\.id_number/);
+  assert.match(registration, /reservation\?\.bookingDetails/);
   assert.match(registration, /DocumentExportMenu/);
   assert.match(registration, /formats=\{\['pdf', 'print'\]\}/);
   assert.match(registration, /createReportDefinition/);
