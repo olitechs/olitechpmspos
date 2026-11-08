@@ -57,10 +57,12 @@ test('planner filters by floor and can switch to a date-grouped day list', () =>
   assert.ok(source.includes('Room groups'));
   assert.ok(source.includes('const [mobileListMode, setMobileListMode]'));
   assert.ok(source.includes('filteredReservations.filter(rv=>rv.checkIn<=key&&rv.checkOut>key)'));
-  assert.ok(source.includes('Show timeline'));
+  assert.ok(source.includes('Day list'));
+  assert.ok(source.includes('All tags'));
+  assert.ok(source.includes('Filter by tag'));
 });
 
-test('room rows are rendered through a bounded virtual window', () => {
+test('planner toolbar wraps and all three view modes remain reachable', () => {\n  assert.ok(source.includes('Planner</button>'));\n  assert.ok(source.includes('List</button>'));\n  assert.ok(source.includes('Day list</button>'));\n  assert.ok(source.includes('flex-wrap:wrap;min-width:0'));\n  assert.ok(source.includes('Clear filters'));\n});\n\ntest('planner exposes compact, comfortable and large row density settings', () => {\n  assert.ok(source.includes("const [density, setDensity] = useState('compact')"));\n  assert.ok(source.includes('value="comfortable">Comfortable'));\n  assert.ok(source.includes('value="large">Large'));\n  assert.ok(source.includes('const ROOM_ROW_HEIGHT = density === \'large\' ? 80 : density === \'comfortable\' ? 48 : 30'));\n});\n\ntest('room rows are rendered through a bounded virtual window', () => {
   assert.ok(source.includes('const virtualRooms = orderedRooms.slice(virtualStart, virtualEnd)'));
   assert.ok(source.includes('topSpacerHeight'));
   assert.ok(source.includes('bottomSpacerHeight'));
