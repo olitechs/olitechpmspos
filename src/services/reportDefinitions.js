@@ -437,6 +437,7 @@ export function buildFinalSettlementInvoiceDefinition({
     receipt_number: cleanText(receipt.receipt_number ?? receipt.order_number, String(receipt.id || '').slice(0, 8)),
     receipt_id: String(receipt.id || ''),
     order_number: cleanText(receipt.order_number, '—'),
+    room: cleanText(receipt.room_number, roomLabel),
     date: dateLabel(receipt.created_at),
     table: cleanText(receipt.table_number, '—'),
     payment_method: cleanText(receipt.payment_method, '—'),
@@ -551,7 +552,7 @@ export function buildFinalSettlementInvoiceDefinition({
       {
         name: 'pos-receipts',
         title: 'POS Receipts Posted to This Stay',
-        columns: [textColumn('receipt_number', 'POS receipt no.', 20), textColumn('receipt_id', 'Receipt record ID', 34), textColumn('order_number', 'Order no.', 18), dateTimeColumn('date', 'Date / time', 22), textColumn('table', 'Table', 10), textColumn('payment_method', 'Tender', 14), numberColumn('subtotal', 'Subtotal', 'currency', 16), numberColumn('discount', 'Discount', 'currency', 16), numberColumn('tax', 'VAT / tax', 'currency', 16), numberColumn('total', 'Receipt total', 'currency', 16), textColumn('folio_charge', 'Linked folio charge', 34)],
+        columns: [textColumn('receipt_number', 'POS receipt no.', 20), textColumn('receipt_id', 'Receipt record ID', 34), textColumn('order_number', 'Order no.', 18), textColumn('room', 'Room', 10), dateTimeColumn('date', 'Date / time', 22), textColumn('table', 'Table', 10), textColumn('payment_method', 'Tender', 14), numberColumn('subtotal', 'Subtotal', 'currency', 16), numberColumn('discount', 'Discount', 'currency', 16), numberColumn('tax', 'VAT / tax', 'currency', 16), numberColumn('total', 'Receipt total', 'currency', 16), textColumn('folio_charge', 'Linked folio charge', 34)],
         rows: receiptRows,
       },
       {
