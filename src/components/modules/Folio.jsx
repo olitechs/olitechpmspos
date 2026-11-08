@@ -3,7 +3,7 @@ import { ArrowLeftRight, Banknote, Plus, RefreshCw, Search, ShieldCheck, Undo2, 
 import { useAuth } from '@/lib/AuthContext';
 import { pmsService } from '@/services/pmsService';
 import DocumentExportMenu from '@/components/shared/DocumentExportMenu';
-import { buildFolioStatementDefinition, buildPaymentReceiptDefinition } from '@/services/reportDefinitions';
+import { buildFolioStatementDefinition, buildFinalSettlementInvoiceDefinition, buildPaymentReceiptDefinition } from '@/services/reportDefinitions';
 
 const money = (v) => `KES ${Number(v || 0).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const input = "w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-sm text-[var(--text)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]";
@@ -37,6 +37,9 @@ export default function Folio() {
   const [targetPayment, setTargetPayment] = useState(null);
   const [selectedChargeIds, setSelectedChargeIds] = useState([]);
   const [targetReservationId, setTargetReservationId] = useState('');
+  const [showInvoiceEditor, setShowInvoiceEditor] = useState(false);
+  const [invoiceHeader, setInvoiceHeader] = useState({});
+  const [invoiceDefinition, setInvoiceDefinition] = useState(null);
 
   const loadReservations = async () => {
     if (!propertyId) return;
@@ -49,7 +52,16 @@ export default function Folio() {
   };
 
   const loadFolio = async (reservation) => {
-    setSelected(reservation); setError(''); setNotice(''); setSelectedChargeIds([]);
+    setSelected(reservation); setError(''); setNotice(''); setSelectedChargeIds([]); setShowInvoiceEditor(false); setInvoiceDefinition(null);
+    setInvoiceHeader({
+      invoiceTitle: 'Final Settlement Invoice',
+      invoiceReference: `FOL-${String(reservation.id || '').slice(0, 8).toUpperCase()}`,
+      businessName: user?.property?.business_name || user?.property?.name || 'OliTechs',
+      businessAddress: user?.property?.address || '', businessPhone: '', businessEmail: '', businessTaxPin: '',
+      billTo: reservation.guest_name || '', guestAddress: reservation.guest_address || reservation.address || '',
+      guestPhone: reservation.phone || '', guestEmail: reservation.email || reservation.guest_email || '', guestTaxPin: '',
+      headerNote: '', footerNote: 'Thank you for staying with us.',
+    });
     try {
       const [f, p, r, receipts] = await Promise.all([
         pmsService.getFolio(reservation.id), pmsService.listPayments(reservation.id), pmsService.listFolioRefunds(reservation.id), pmsService.listReceiptsForReservation(reservation.id),
@@ -107,6 +119,10 @@ export default function Folio() {
   const propertyName = user?.property?.business_name || user?.property?.name || 'OliTechs';
   const generatedBy = user?.full_name || user?.staff?.full_name || user?.email || 'Authorized staff';
   const statementDefinition = useMemo(() => selected ? buildFolioStatementDefinition({ selected, charges, payments, employees, propertyName, generatedBy, totals: { chargeTotal, netPayments, balance } }) : null, [selected, charges, payments, employees, propertyName, generatedBy, chargeTotal, netPayments, balance]);
+  const prepareFinalInvoice = (header) => {
+    const definition = buildFinalSettlementInvoiceDefinition({ selected, room: folio?.room, charges, payments, receipts: posReceipts, employees, propertyName, generatedBy, totals: { chargeTotal, netPayments, balance }, header });
+    setInvoiceHeader(header); setInvoiceDefinition(definition); setShowInvoiceEditor(false);
+  };
 
   return (
     <div className="flex-1 overflow-y-auto bg-canvas p-4 lg:p-6">
@@ -135,6 +151,8 @@ export default function Folio() {
                 <div><h2 className="text-xl font-bold text-foreground">{selected.guest_name}</h2><div className="mt-1 text-xs text-[var(--text-muted)]">Reservation #{selected.id.slice(0,8)} · Room {roomLabel} · {selected.status}</div><div className="text-xs text-[var(--text-muted)]">{selected.arrival} → {selected.departure} · {selected.channel || 'direct'} · {selected.meal_plan || 'bed_only'}</div></div>
                 <div className="flex flex-wrap gap-2">
                   <DocumentExportMenu definition={statementDefinition} label="Folio statement" disabled={!statementDefinition} />
+                  <button className={btn+" border border-[var(--border)]"} onClick={()=>setShowInvoiceEditor(true)} disabled={!folio}>Edit invoice header</button>
+                  {invoiceDefinition && <DocumentExportMenu definition={invoiceDefinition} label="Final settlement invoice" formats={['pdf','print']} disabled={!invoiceDefinition}/> }
                   <button className={btn+" border border-[var(--border)]"} onClick={()=>setModal('transfer')} disabled={!charges.length}><ArrowLeftRight size={15}/> Split / transfer</button>
                   <button className={btn+" border border-[var(--border)]"} onClick={()=>setModal('discount')} disabled={!canManage}><ShieldCheck size={15}/> Discount</button>
                   <button className={btn+" border border-[var(--border)]"} onClick={()=>setModal('charge')}><Plus size={15}/> Add charge</button>
@@ -169,6 +187,7 @@ export default function Folio() {
         </div>
       </div>
 
+      {showInvoiceEditor && <FinalInvoiceHeaderModal selected={selected} defaults={invoiceHeader} onClose={()=>setShowInvoiceEditor(false)} onSubmit={prepareFinalInvoice}/>}
       {modal==='charge'&&<ChargeModal busy={busy} onClose={()=>setModal('')} onSubmit={submitCharge}/>}
       {modal==='payment'&&<PaymentModal balance={balance} charges={charges} busy={busy} onClose={()=>setModal('')} onSubmit={submitPayment}/>}
       {modal==='refund'&&targetPayment&&<RefundModal payment={targetPayment} refundable={Math.max(0,Number(targetPayment.amount)-refundedByPayment(targetPayment.id))} busy={busy} onClose={()=>setModal('')} onSubmit={submitRefund}/>}
@@ -176,6 +195,41 @@ export default function Folio() {
       {modal==='transfer'&&<TransferModal reservations={reservations.filter((r)=>r.id!==selected.id&&r.status!=='cancelled')} selectedCount={selectedChargeIds.length} selectedIds={selectedChargeIds} onToggle={(id)=>setSelectedChargeIds((current)=>current.includes(id)?current.filter((x)=>x!==id):[...current,id])} charges={charges} targetReservationId={targetReservationId} setTargetReservationId={setTargetReservationId} busy={busy} onClose={()=>setModal('')} onSubmit={(reason)=>run(async()=>{await pmsService.transferFolioCharges({propertyId,chargeIds:selectedChargeIds,targetReservationId,reason});setModal('');setTargetReservationId('');},'Selected charges transferred. Both account histories retain the audit trail.')}/>}
     </div>
   );
+}
+
+
+function FinalInvoiceHeaderModal({selected,defaults,onClose,onSubmit}) {
+  const [form,setForm]=useState(defaults || {});
+  const update=(key,value)=>setForm((current)=>({...current,[key]:value}));
+  return <Modal title="Edit final invoice header" onClose={onClose}>
+    <form onSubmit={(event)=>{event.preventDefault();onSubmit(form);}} className="max-h-[75vh] space-y-3 overflow-y-auto pr-1">
+      <p className="text-xs text-[var(--text-muted)]">These details appear on the printable final invoice. Editing this header does not change posted POS receipts, folio charges or payments.</p>
+      <Field label="Invoice title"><input className={input} value={form.invoiceTitle||''} onChange={(e)=>update('invoiceTitle',e.target.value)}/></Field>
+      <Field label="Invoice reference"><input className={input} value={form.invoiceReference||''} onChange={(e)=>update('invoiceReference',e.target.value)}/></Field>
+      <Field label="Business / property name"><input required className={input} value={form.businessName||''} onChange={(e)=>update('businessName',e.target.value)}/></Field>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field label="Business address"><input className={input} value={form.businessAddress||''} onChange={(e)=>update('businessAddress',e.target.value)}/></Field>
+        <Field label="Business phone"><input className={input} value={form.businessPhone||''} onChange={(e)=>update('businessPhone',e.target.value)}/></Field>
+        <Field label="Business email"><input type="email" className={input} value={form.businessEmail||''} onChange={(e)=>update('businessEmail',e.target.value)}/></Field>
+        <Field label="Business KRA PIN / tax ID"><input className={input} value={form.businessTaxPin||''} onChange={(e)=>update('businessTaxPin',e.target.value)}/></Field>
+      </div>
+      <div className="border-t border-[var(--border)] pt-3"><h3 className="mb-2 text-sm font-semibold text-[var(--text)]">Guest / bill-to details</h3>
+        <div className="space-y-3">
+          <Field label="Bill to / guest name"><input required className={input} value={form.billTo||''} onChange={(e)=>update('billTo',e.target.value)}/></Field>
+          <Field label="Guest billing address"><input className={input} value={form.guestAddress||''} onChange={(e)=>update('guestAddress',e.target.value)}/></Field>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field label="Guest phone"><input className={input} value={form.guestPhone||''} onChange={(e)=>update('guestPhone',e.target.value)}/></Field>
+            <Field label="Guest email"><input type="email" className={input} value={form.guestEmail||''} onChange={(e)=>update('guestEmail',e.target.value)}/></Field>
+          </div>
+          <Field label="Guest KRA PIN / tax ID"><input className={input} value={form.guestTaxPin||''} onChange={(e)=>update('guestTaxPin',e.target.value)}/></Field>
+        </div>
+      </div>
+      <Field label="Additional header details / company or booking information"><textarea rows="2" className={input} value={form.headerNote||''} onChange={(e)=>update('headerNote',e.target.value)}/></Field>
+      <Field label="Invoice footer note"><textarea rows="2" className={input} value={form.footerNote||''} onChange={(e)=>update('footerNote',e.target.value)}/></Field>
+      <div className="rounded-lg bg-[var(--canvas)] p-3 text-xs text-[var(--text-muted)]">Room {selected?.room_id || '—'} · {selected?.arrival || '—'} to {selected?.departure || '—'} · Reservation {String(selected?.id||'').slice(0,8)}</div>
+      <div className="flex justify-end gap-2 pt-1"><button type="button" className={btn+" border border-[var(--border)]"} onClick={onClose}>Cancel</button><button type="submit" className={btn+" bg-primary text-primary-foreground"}>Prepare invoice</button></div>
+    </form>
+  </Modal>;
 }
 
 function Metric({label,value,alert}){return <div className="rounded-lg bg-[var(--canvas)] p-3"><div className="text-[10px] font-medium uppercase tracking-wide text-[var(--text-muted)]">{label}</div><div className={`mt-1 text-base font-bold ${alert?'text-[var(--warning-text)]':'text-[var(--text)]'}`}>{value}</div></div>}
