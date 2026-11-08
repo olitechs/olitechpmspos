@@ -155,11 +155,20 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   const [viewLength, setViewLength] = useState('15');
   const [selectedReservation, setSelectedReservation] = useState(null);
   const [closures, setClosures] = useState([]);
+  const [closureModal, setClosureModal] = useState(false);
+  const [closureForm, setClosureForm] = useState({ roomId: plannerRooms[0]?.id || '', startDate: dateKey(addDays(todayDate, 2)), endDate: dateKey(addDays(todayDate, 4)), reason: 'Out of order' });
+  const [closureSaving, setClosureSaving] = useState(false);
   const scrollRef = useRef(null);
   const todayRef = useRef(null);
   const suppressCellClick = useRef(false);
 
   const normalizedReservations = useMemo(() => plannerReservations.filter(r => r.status !== 'cancelled').map(normalizeReservation), [plannerReservations]);
+  useEffect(() => {
+    if (!propertyId) { setClosures([]); return; }
+    let active = true;
+    pmsService.listRoomClosures(propertyId).then(rows => { if (active) setClosures(rows || []); }).catch(error => { if (active) toast.error(`Room closures could not be loaded: ${error.message}`); });
+    return () => { active = false; };
+  }, [propertyId]);
   useEffect(() => {
     if (!propertyId) return;
     let active = true;
@@ -350,7 +359,33 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     setFromInput(nextFrom); setToInput(nextTo); setRange({ from: nextFrom, to: nextTo });
     setRangeError(''); setFocusToday(false); setViewMode('rolling');
   };
-  const addClosure = () => { const room=plannerRooms[0]; if(!room) return; const start=addDays(todayDate,2); const end=addDays(start,2); setClosures(prev=>[...prev,{id:`closure-${Date.now()}`,roomId:room.id,start:dateKey(start),end:dateKey(end),label:'Out of order'}]); toast.success(`Closure added to Room ${room.number}`); };
+  const addClosure = () => {
+    if (!plannerRooms.length || !propertyId) return;
+    const start = addDays(todayDate, 2);
+    setClosureForm({ roomId: plannerRooms[0].id, startDate: dateKey(start), endDate: dateKey(addDays(start, 2)), reason: 'Out of order' });
+    setClosureModal(true);
+  };
+  const saveClosure = async () => {
+    if (!closureForm.roomId || !closureForm.startDate || !closureForm.endDate || closureForm.endDate <= closureForm.startDate || !closureForm.reason.trim()) {
+      toast.error('Choose a room, a valid date range and a reason.'); return;
+    }
+    setClosureSaving(true);
+    try {
+      const created = await pmsService.createRoomClosure({ property_id: propertyId, room_id: closureForm.roomId, start_date: closureForm.startDate, end_date: closureForm.endDate, reason: closureForm.reason.trim() });
+      setClosures(current => [...current, created].sort((a, b) => String(a.start_date).localeCompare(String(b.start_date))));
+      setClosureModal(false);
+      toast.success('Room closure saved. New reservations in this period will be blocked.');
+    } catch (error) { toast.error(error.message || 'Could not save room closure.'); }
+    finally { setClosureSaving(false); }
+  };
+  const deleteClosure = async (closure) => {
+    if (!confirm(`Remove the closure for Room ${plannerRooms.find(room => room.id === closure.room_id)?.number || ''} (${closure.start_date} to ${closure.end_date})?`)) return;
+    try {
+      await pmsService.deleteRoomClosure(closure.id);
+      setClosures(current => current.filter(item => item.id !== closure.id));
+      toast.success('Room closure removed.');
+    } catch (error) { toast.error(error.message || 'Could not remove room closure.'); }
+  };
   const clearRange = () => { setRange(null); setRangeError(''); setFromInput(''); setToInput(''); setMonth(startOfMonth(todayDate)); setWindowStart(todayDate); setFocusToday(true); };
   const goToday = () => {
     const { from, to } = getRollingPlannerRange(todayDate);
@@ -489,7 +524,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
         {groupedRooms.map(([typeName, group])=><React.Fragment key={typeName}>
           {group.map(room=>{const roomReservations=filteredReservationsByRoom.get(room.id)||[]; return <div key={room.id} className="room-planner-grid-row grid relative" style={{gridTemplateColumns:`${ROOM_COL_WIDTH}px repeat(${columns.length}, ${dayWidth}px)`, minHeight: 48}}>
             <div className="room-planner-room-cell sticky left-0 z-20 px-3 py-2 flex items-center gap-2" style={{background:'var(--surface)',borderRight:`2px solid var(--border)`,borderBottom:`1px solid var(--border)`}}><div><div className="flex items-center gap-2"><div className="font-medium text-[13px] leading-4" style={{color:'var(--text)'}}>{room.number}</div><span className="rounded-full px-1.5 py-0.5 text-[9px] font-medium" style={{background:'var(--bg)',color:'var(--muted)'}}>{roomReservations.length} stay{roomReservations.length===1?'':'s'}</span></div><div className="text-[10px] font-semibold truncate max-w-[160px]" style={{color:'var(--muted)'}}>{room.name || typeName}</div></div></div>
-            {columns.map(d=>{const weekend=d.getDay()===0||d.getDay()===6;const key=dateKey(d);const target=dragTarget?.roomId===room.id&&dragTarget?.date===key;return <div key={key} onClick={()=>{if(!drag&&!suppressCellClick.current)openCreate(room,d)}} onDragOver={e=>handleCellDragOver(e,room,d)} onDrop={e=>handleCellDrop(e,room,d)} className={`room-planner-day-cell cursor-pointer ${weekend?'room-planner-weekend':''} ${key===today?'room-planner-today-cell':''}`} style={{background:target?'color-mix(in srgb, var(--primary) 28%, var(--surface))':key===today?'color-mix(in srgb, var(--primary) 9%, var(--surface))':weekend?'color-mix(in srgb, var(--grid-weekend) 78%, var(--surface))':'var(--surface)',borderRight:`1px solid var(--border)`,borderBottom:`1px solid var(--border)`, minHeight:48}}/>})}
+            {columns.map(d=>{const weekend=d.getDay()===0||d.getDay()===6;const key=dateKey(d);const target=dragTarget?.roomId===room.id&&dragTarget?.date===key;return <div key={key} onClick={()=>{if(!drag&&!suppressCellClick.current)openCreate(room,d)}} onDragOver={e=>handleCellDragOver(e,room,d)} onDrop={e=>handleCellDrop(e,room,d)} className={`room-planner-day-cell cursor-pointer ${weekend?'room-planner-weekend':''} ${key===today?'room-planner-today-cell':''}`} style={{background:target?'color-mix(in srgb, var(--primary) 28%, var(--surface))':closures.some(item => item.room_id === room.id && item.start_date <= key && key < item.end_date) ? 'repeating-linear-gradient(135deg, color-mix(in srgb, var(--stay-closed) 72%, var(--surface)) 0 5px, var(--surface) 5px 10px)' : key===today?'color-mix(in srgb, var(--primary) 9%, var(--surface))':weekend?'color-mix(in srgb, var(--grid-weekend) 78%, var(--surface))':'var(--surface)',borderRight:`1px solid var(--border)`,borderBottom:`1px solid var(--border)`, minHeight:48}} title={closures.filter(item => item.room_id === room.id && item.start_date <= key && key < item.end_date).map(item => `${item.reason} · ${item.start_date} to ${item.end_date}`).join(' | ') || undefined}}/>})}
             {roomReservations.filter(rv=>filteredReservations.some(item=>item.id===rv.id)).map(rv=>{
               const l=visibleReservation(rv);if(!l)return null;
               const stayStatus=rv.plannerStatus || (rv.bookingStatus==='checked_out'?'checked_out':rv.bookingStatus==='checked_in'?'occupied':'confirmed');
@@ -511,6 +546,15 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
         </div>
       </div>
     </div>
+
+    {closureModal && <Modal title="Add room closure" onClose={() => setClosureModal(false)}><div className="p-5 space-y-4">
+      <p className="text-sm" style={{color:MUTED}}>The end date is exclusive, matching reservation check-out dates. Existing reservations are not changed.</p>
+      <Field label="Room"><select className="w-full h-10 rounded-lg px-3 text-sm" value={closureForm.roomId} onChange={e=>setClosureForm(current=>({...current,roomId:e.target.value}))} style={{background:SURFACE2,border:`1px solid ${BORDER}`,color:NAVY}}>{plannerRooms.map(room=><option key={room.id} value={room.id}>Room {room.number} · {room.name || roomTypeMap.get(room.room_type_id) || 'Room'}</option>)}</select></Field>
+      <div className="grid grid-cols-2 gap-3"><Field label="Start date"><InputField type="date" value={closureForm.startDate} onChange={e=>setClosureForm(current=>({...current,startDate:e.target.value}))}/></Field><Field label="End date (exclusive)"><InputField type="date" value={closureForm.endDate} min={closureForm.startDate} onChange={e=>setClosureForm(current=>({...current,endDate:e.target.value}))}/></Field></div>
+      <Field label="Reason"><InputField value={closureForm.reason} maxLength={160} onChange={e=>setClosureForm(current=>({...current,reason:e.target.value}))} placeholder="Maintenance, repair, owner use…"/></Field>
+      <div className="flex justify-between items-center gap-3"><span className="text-xs" style={{color:MUTED}}>{closures.length} saved closure{closures.length===1?'':'s'}</span><div className="flex gap-2"><button onClick={()=>setClosureModal(false)} className="px-4 py-2 rounded-lg" style={{border:`1px solid ${BORDER}`}}>Cancel</button><button disabled={closureSaving} onClick={saveClosure} className="px-4 py-2 rounded-lg font-medium disabled:opacity-60" style={{background:TEAL,color:'var(--on-primary)'}}>{closureSaving?'Saving…':'Save closure'}</button></div></div>
+      {closures.length>0 && <div className="border-t pt-3 space-y-2" style={{borderColor:BORDER}}><h3 className="text-xs font-semibold" style={{color:NAVY}}>Existing closures</h3>{closures.map(item=><div key={item.id} className="flex items-center justify-between gap-3 rounded-lg p-2 text-xs" style={{background:SURFACE2}}><span>Room {plannerRooms.find(room=>room.id===item.room_id)?.number || '—'} · {item.start_date} to {item.end_date} · {item.reason}</span><button onClick={()=>deleteClosure(item)} className="shrink-0 font-semibold" style={{color:DESTRUCTIVE}}>Remove</button></div>)}</div>}
+    </div></Modal>}
 
     {selectedReservation && <div className="room-planner-detail" role="dialog" aria-modal="true" aria-label="Reservation details">
       <div className="sticky top-0 z-10 flex items-center justify-between gap-3 px-4 py-3" style={{background:'var(--deep-lagoon)',color:'var(--white)'}}><div><div className="text-xs opacity-80">Reservation details</div><h2 className="font-semibold text-base">{selectedReservation.guestName || 'Guest'}</h2></div><button type="button" aria-label="Close reservation details" onClick={()=>setSelectedReservation(null)} className="room-planner-close-button rounded-lg p-2"><X size={18}/></button></div>
