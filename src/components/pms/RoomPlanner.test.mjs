@@ -65,3 +65,26 @@ test('room rows are rendered through a bounded virtual window', () => {
   assert.ok(source.includes('topSpacerHeight'));
   assert.ok(source.includes('bottomSpacerHeight'));
 });
+
+test('option reservations persist a 24-hour expiry and require explicit confirmation', () => {
+  assert.ok(source.includes('Optioned · valid for 24 hours'));
+  assert.ok(source.includes('pmsService.createOptionedReservationBundle(createPayload)'));
+  assert.ok(source.includes('pmsService.setReservationOption(selectedReservation.id,true)'));
+  assert.ok(source.includes('pmsService.setReservationOption(selectedReservation.id,false)'));
+  assert.ok(source.includes('Expires in'));
+  assert.ok(source.includes('!selectedReservation.optionExpiresAt'));
+});
+
+test('option expiry is server-authoritative and does not silently extend on edits', () => {
+  const service = readFileSync(new URL('../../services/pmsService.js', import.meta.url), 'utf8');
+  const migration = readFileSync(new URL('../../../supabase/migrations/20261108100000_room_planner_option_expiry.sql', import.meta.url), 'utf8');
+  assert.ok(service.includes("'fn_create_optioned_reservation_bundle'"));
+  assert.ok(service.includes("'fn_set_reservation_option'"));
+  assert.ok(service.includes("'fn_expire_room_planner_options'"));
+  assert.ok(migration.includes("now() + interval '24 hours'"));
+  assert.ok(migration.includes('coalesce(option_expires_at, now() + interval'));
+  assert.ok(migration.includes("set status = 'cancelled'"));
+  assert.ok(migration.includes('fn_check_room_availability'));
+  assert.ok(migration.includes('pms_reservation_option_created'));
+  assert.ok(migration.includes('pms_reservation_option_confirmed'));
+});
