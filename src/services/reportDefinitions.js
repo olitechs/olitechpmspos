@@ -473,9 +473,8 @@ export function buildFinalSettlementInvoiceDefinition({
   const postedChargeTotal = (charges || []).reduce((sum, charge) => sum + toNumber(charge.amount), 0);
   const reconciledChargeTotal = Math.max(postedChargeTotal, bookingTotal);
   const accommodationCharges = (charges || []).filter((charge) => charge.category === 'accommodation' || charge.source === 'room');
-  const nonAccommodationTotal = (charges || []).filter((charge) => charge.category !== 'accommodation' && charge.source !== 'room').reduce((sum, charge) => sum + toNumber(charge.amount), 0);
-  const accommodationReconciliation = accommodationCharges.length
-    ? 0 : Math.max(0, reconciledChargeTotal - nonAccommodationTotal);
+  const postedAccommodationTotal = accommodationCharges.reduce((sum, charge) => sum + toNumber(charge.amount), 0);
+  const accommodationReconciliation = Math.max(0, reconciledChargeTotal - postedChargeTotal);
   const ledgerRows = [
     ...(charges || []).map((charge) => ({
       date: dateLabel(charge.created_at),
@@ -529,9 +528,7 @@ export function buildFinalSettlementInvoiceDefinition({
     ['Additional header details', header.headerNote],
   ].filter(([, value]) => value !== null && value !== undefined && String(value).trim() !== '')
     .map(([field, value]) => ({ field, value: String(value) }));
-  const accommodation = accommodationCharges.length
-    ? accommodationCharges.reduce((sum, charge) => sum + toNumber(charge.amount), 0)
-    : accommodationReconciliation;
+  const accommodation = postedAccommodationTotal + accommodationReconciliation;
   const posCharges = (charges || []).filter((charge) => charge.source === 'pos' || ['restaurant', 'bar', 'room_service'].includes(charge.category)).reduce((sum, charge) => sum + toNumber(charge.amount), 0);
   const posDiscounts = (receipts || []).reduce((sum, receipt) => sum + toNumber(receipt.discount_amount), 0);
   const posTax = (receipts || []).reduce((sum, receipt) => sum + toNumber(receipt.vat), 0);
