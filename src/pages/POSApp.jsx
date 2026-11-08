@@ -26,6 +26,7 @@ import Laundry from '@/components/modules/Laundry';
 import Transfers from '@/components/modules/Transfers';
 import BookingEngine from '@/components/modules/BookingEngine';
 import ChannelManager from '@/components/modules/ChannelManager';
+import RegistrationCards from '@/components/modules/RegistrationCards';
 import DistributionOps from '@/components/modules/DistributionOps';
 import Inventory from '@/components/modules/Inventory';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
@@ -134,6 +135,9 @@ export default function POSApp({
       case 'channels':
         content = <ChannelManager />;
         break;
+      case 'registration-cards':
+        content = <RegistrationCards />;
+        break;
       case 'distribution-ops':
         content = <DistributionOps />;
         break;
@@ -162,7 +166,7 @@ export default function POSApp({
       ? 'pos'
       : ['store', 'inventory', 'purchasing', 'recipes', 'transfers', 'channels'].includes(activeModule)
         ? 'store'
-        : ['reservations', 'rooms', 'guests', 'folio', 'housekeeping', 'night-audit'].includes(activeModule)
+        : ['reservations', 'rooms', 'guests', 'folio', 'housekeeping', 'night-audit', 'registration-cards'].includes(activeModule)
           ? 'frontoffice'
           : 'backoffice'
   );
