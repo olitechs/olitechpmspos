@@ -68,6 +68,21 @@ $test$;
 
 reset role;
 select set_config('request.jwt.claim.sub', '', true);
+select set_config('request.jwt.claim.role', '', true);
+select set_config('request.jwt.claims', '{}', true);
+set local role authenticated;
+do $anonymous$
+begin
+  begin
+    perform 1 from public.fn_list_pos_menu('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
+    raise exception 'FAIL: missing JWT role was allowed';
+  exception when sqlstate '42501' then
+    raise notice 'PASS: missing JWT role is rejected';
+  end;
+end
+$anonymous$;
+reset role;
+select set_config('request.jwt.claim.sub', '', true);
 select set_config('request.jwt.claim.role', 'service_role', true);
 select set_config('request.jwt.claims', '{"role":"service_role"}', true);
 set local role service_role;
