@@ -152,7 +152,7 @@ export default function FrontOfficeStructure() {
         floor_id: edit.floor_id || null,
         floor: floor ? floor.floor_number : null,
         room_type_id: edit.room_type_id || null,
-        room_type: roomTypes.find(type => type.id === edit.room_type_id)?.name || room.room_type || null,
+        room_type: roomTypes.find(type => type.id === edit.room_type_id)?.name || null,
       }).eq('id', room.id).eq('property_id', propertyId);
       if (error) throw error;
       toast.success('Room organisation saved.');
