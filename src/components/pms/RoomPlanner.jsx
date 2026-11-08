@@ -158,6 +158,8 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   const [closureModal, setClosureModal] = useState(false);
   const [closureForm, setClosureForm] = useState({ roomId: plannerRooms[0]?.id || '', startDate: dateKey(addDays(todayDate, 2)), endDate: dateKey(addDays(todayDate, 4)), reason: 'Out of order' });
   const [closureSaving, setClosureSaving] = useState(false);
+  const [undoStack, setUndoStack] = useState([]);
+  const [redoStack, setRedoStack] = useState([]);
   const scrollRef = useRef(null);
   const todayRef = useRef(null);
   const suppressCellClick = useRef(false);
@@ -312,6 +314,27 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   const splitGroup = async () => { if (!modal?.groupId || !confirm('Split this joint reservation into independent plannerReservations?')) return; try { await pmsService.splitReservationGroup(modal.groupId); toast.success('Joint reservation split'); setModal(null); onRefresh?.(); } catch (e) { toast.error(e.message); } };
   const handleDelete = async () => { if (!modal?.reservationId || !confirm('Delete this reservation?')) return; try { await pmsService.deletePlannerReservation(modal.reservationId); toast.success('Reservation deleted'); setModal(null); onRefresh?.(); } catch (e) { toast.error(e.message); } };
 
+  const recordPlannerMove = (reservation, target) => {
+    setUndoStack(current => [...current.slice(-19), { reservationId: reservation.id, from: { roomId: reservation.roomId, checkIn: reservation.checkIn, checkOut: reservation.checkOut }, to: target }]);
+    setRedoStack([]);
+  };
+  const undoPlannerMove = async () => {
+    const action = undoStack[undoStack.length - 1]; if (!action) return;
+    try {
+      await pmsService.movePlannerReservation({ reservationId: action.reservationId, ...action.from });
+      setUndoStack(current => current.slice(0, -1)); setRedoStack(current => [...current, action]);
+      toast.success('Last planner move undone.'); onRefresh?.();
+    } catch (error) { toast.error(error.message || 'Undo failed. The room may no longer be available.'); }
+  };
+  const redoPlannerMove = async () => {
+    const action = redoStack[redoStack.length - 1]; if (!action) return;
+    try {
+      await pmsService.movePlannerReservation({ reservationId: action.reservationId, ...action.to });
+      setRedoStack(current => current.slice(0, -1)); setUndoStack(current => [...current, action]);
+      toast.success('Planner move redone.'); onRefresh?.();
+    } catch (error) { toast.error(error.message || 'Redo failed. The room may no longer be available.'); }
+  };
+
   const beginDrag = (e, r) => { e.stopPropagation(); setDrag({ reservation: r, originalRoomId: r.roomId, originalCheckIn: r.checkIn, originalCheckOut: r.checkOut }); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', r.id); };
   const handleCellDragOver = (e, room, day) => { if (!drag) return; e.preventDefault(); setDragTarget({ roomId: room.id, date: dateKey(day) }); };
   const beginCreateDrag = (event, room, day) => {
@@ -379,7 +402,9 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     const conflict = checkOverlap(normalizedReservations, reservation.roomId, reservation.checkIn, nextCheckOut, reservation.id);
     if (conflict) { toast.error(`Cannot resize: the room is already booked from ${conflict.checkIn} to ${conflict.checkOut}.`); return; }
     try {
-      await pmsService.movePlannerReservation({ reservationId: reservation.id, roomId: reservation.roomId, checkIn: reservation.checkIn, checkOut: nextCheckOut });
+      const target = { roomId: reservation.roomId, checkIn: reservation.checkIn, checkOut: nextCheckOut };
+      await pmsService.movePlannerReservation({ reservationId: reservation.id, ...target });
+      recordPlannerMove(reservation, target);
       toast.success(`Reservation extended to ${nextCheckOut}.`); onRefresh?.();
     } catch (error) { toast.error(error.message || 'Could not resize reservation.'); onRefresh?.(); }
   };
@@ -394,7 +419,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   const confirmMove = async (moveGroup = false) => {
     const { reservation, target } = moveConfirmation;
     if (moveGroup && reservation.groupId) { setGroupMoveConfirmation({ reservation, target }); setMoveConfirmation(null); return; }
-    try { await pmsService.movePlannerReservation({ reservationId: reservation.id, roomId: target.roomId, checkIn: target.checkIn, checkOut: target.checkOut }); toast.success('Reservation moved'); setMoveConfirmation(null); onRefresh?.(); } catch (e) { toast.error(e.message); setMoveConfirmation(null); onRefresh?.(); }
+    try { await pmsService.movePlannerReservation({ reservationId: reservation.id, roomId: target.roomId, checkIn: target.checkIn, checkOut: target.checkOut }); recordPlannerMove(reservation, target); toast.success('Reservation moved'); setMoveConfirmation(null); onRefresh?.(); } catch (e) { toast.error(e.message); setMoveConfirmation(null); onRefresh?.(); }
   };
   const performGroupMove = async (all) => { const { reservation, target } = groupMoveConfirmation; try { if (!all) await pmsService.movePlannerReservation({ reservationId: reservation.id, roomId: target.roomId, checkIn: target.checkIn, checkOut: target.checkOut }); else await pmsService.moveReservationGroup({ groupId: reservation.groupId, movedReservationId: reservation.id, roomId: target.roomId, checkIn: target.checkIn, checkOut: target.checkOut }); toast.success('Reservation moved'); setGroupMoveConfirmation(null); onRefresh?.(); } catch (e) { toast.error(e.message); setGroupMoveConfirmation(null); onRefresh?.(); } };
 
@@ -572,12 +597,14 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
       {plannerToolsOpen && <div className="room-planner-settings-panel">
         <span>{plannerRooms.length} rooms · {normalizedReservations.length} active stays</span>
         {onRefresh && <button onClick={onRefresh} className="room-planner-toolbar-button room-planner-neutral"><RefreshCw size={15}/>Refresh reservations</button>}
+        <button onClick={undoPlannerMove} disabled={!undoStack.length} className="room-planner-toolbar-button room-planner-neutral disabled:opacity-40" title="Undo last planner move (Ctrl+Z)">Undo</button>
+        <button onClick={redoPlannerMove} disabled={!redoStack.length} className="room-planner-toolbar-button room-planner-neutral disabled:opacity-40" title="Redo planner move (Ctrl+Shift+Z)">Redo</button>
         <button onClick={clearRange} className="room-planner-toolbar-button room-planner-neutral">Clear date range</button>
       </div>}
       {rangeError && <div className="mt-2 flex items-center gap-2 text-xs font-semibold" style={{color:'var(--danger-text)'}}><AlertTriangle size={14}/>{rangeError}</div>}
     </div>
 
-    <div ref={scrollRef} tabIndex={0} role="region" aria-label="Room availability timeline. Use arrow keys to navigate, T for today and Escape to close details." onKeyDown={e=>{if(['INPUT','SELECT','TEXTAREA'].includes(e.target?.tagName))return;if(e.key.toLowerCase()==='t'){e.preventDefault();goToday()}else if(e.key==='Escape'){setSelectedReservation(null);setModal(null);setActionModal(null)}else if(e.key==='ArrowLeft'){e.preventDefault();scrollRef.current.scrollBy({left:-dayWidth,behavior:'smooth'})}else if(e.key==='ArrowRight'){e.preventDefault();scrollRef.current.scrollBy({left:dayWidth,behavior:'smooth'})}else if(e.key==='ArrowUp'){e.preventDefault();scrollRef.current.scrollBy({top:-54,behavior:'smooth'})}else if(e.key==='ArrowDown'){e.preventDefault();scrollRef.current.scrollBy({top:54,behavior:'smooth'})}}} className="room-planner-scroll flex-1 min-h-0 overflow-auto px-4 pb-4">
+    <div ref={scrollRef} tabIndex={0} role="region" aria-label="Room availability timeline. Use arrow keys to navigate, T for today and Escape to close details." onKeyDown={e=>{if(['INPUT','SELECT','TEXTAREA'].includes(e.target?.tagName))return;if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();if(e.shiftKey)redoPlannerMove();else undoPlannerMove()}else if(e.key.toLowerCase()==='t'){e.preventDefault();goToday()}else if(e.key==='Escape'){setSelectedReservation(null);setModal(null);setActionModal(null)}else if(e.key==='ArrowLeft'){e.preventDefault();scrollRef.current.scrollBy({left:-dayWidth,behavior:'smooth'})}else if(e.key==='ArrowRight'){e.preventDefault();scrollRef.current.scrollBy({left:dayWidth,behavior:'smooth'})}else if(e.key==='ArrowUp'){e.preventDefault();scrollRef.current.scrollBy({top:-54,behavior:'smooth'})}else if(e.key==='ArrowDown'){e.preventDefault();scrollRef.current.scrollBy({top:54,behavior:'smooth'})}}} className="room-planner-scroll flex-1 min-h-0 overflow-auto px-4 pb-4">
       <div className="room-planner-grid-frame rounded-xl shadow-sm" style={{background:'var(--surface)',border:`1px solid var(--border)`, minWidth: `${ROOM_COL_WIDTH + columns.length * dayWidth}px`}}>
         <div className="grid sticky top-0 z-40" style={{gridTemplateColumns:`${ROOM_COL_WIDTH}px repeat(${columns.length}, ${dayWidth}px)`,gridTemplateRows:'34px 44px'}}>
           <div className="room-planner-room-cell sticky left-0 z-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide flex items-center" style={{gridRow:'span 2',background:'var(--deep-lagoon)',color:'var(--white)',borderRight:`1px solid var(--border)`,borderBottom:`1px solid var(--border)`}}>Rooms</div>
