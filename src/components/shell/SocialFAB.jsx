@@ -2,9 +2,8 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, X as CloseIcon } from 'lucide-react';
 
-// TODO: swap these for OliTechs' real profile URLs — only WhatsApp below is confirmed real.
+// Social profile shortcuts; customer support is handled by the site-wide Tawk.to widget.
 const SOCIALS = [
-  { key: 'whatsapp', label: 'WhatsApp', href: 'https://wa.me/254745043121', kind: 'icon' },
   { key: 'instagram', label: 'Instagram', href: 'https://instagram.com/olitechs', kind: 'mono', mono: 'IG' },
   { key: 'tiktok', label: 'TikTok', href: 'https://tiktok.com/@olitechs', kind: 'mono', mono: 'TT' },
   { key: 'linkedin', label: 'LinkedIn', href: 'https://linkedin.com/company/olitechs', kind: 'mono', mono: 'in' },
@@ -19,7 +18,7 @@ export default function SocialFAB() {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="fixed bottom-5 right-5 z-[60] flex flex-col items-center gap-3 sm:bottom-6 sm:right-6">
+    <div className="fixed bottom-5 left-5 right-auto z-[60] flex flex-col items-center gap-3 sm:bottom-6 sm:left-6">
       <AnimatePresence>
         {open &&
           SOCIALS.map((s, i) => (
@@ -46,7 +45,7 @@ export default function SocialFAB() {
                   {s.mono}
                 </span>
               )}
-              <span className="pointer-events-none absolute right-full mr-3 whitespace-nowrap rounded-md bg-surface px-2.5 py-1 text-xs font-bold text-foreground opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
+              <span className="pointer-events-none absolute left-full ml-3 right-auto mr-0 whitespace-nowrap rounded-md bg-surface px-2.5 py-1 text-xs font-bold text-foreground opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
                 {s.label}
               </span>
             </motion.a>

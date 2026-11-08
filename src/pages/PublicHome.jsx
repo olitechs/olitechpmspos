@@ -13,7 +13,6 @@ const CONTACT = {
   phone: '+254 745 043 121',
   phoneHref: 'tel:+254745043121',
   email: 'info@olitech.co.ke',
-  whatsapp: 'https://wa.me/254745043121',
 };
 
 const features = [
@@ -87,7 +86,7 @@ const pricing = [
     monthly: 'KES 15,000',
     annual: 'KES 149,000',
     note: '/year',
-    features: ['Unlimited rooms & users', 'Multi-property', 'API access', 'Custom branding', 'Dedicated manager', '24/7 WhatsApp', 'Training & onboarding'],
+    features: ['Unlimited rooms & users', 'Multi-property', 'API access', 'Custom branding', 'Dedicated manager', '24/7 live chat', 'Training & onboarding'],
     button: 'Get Started',
     style: 'muted',
   },
@@ -110,7 +109,7 @@ const faqs = [
   ['Do you support M-Pesa?', 'Yes. OliTechs is designed around Kenyan hospitality workflows and supports M-Pesa alongside card, cash and charge-to-room payments.'],
   ['Can I migrate data from Excel?', 'Yes. The platform supports import workflows so you can bring existing operational data into your hotel system.'],
   ['Does the system work for restaurants too?', 'Yes. POS includes tables, checks, covers, KOT, kitchen workflow, payments and room-charge posting.'],
-  ['What support do I get?', 'Trial users get email support. Professional and Enterprise plans include priority support, with Enterprise also receiving dedicated management and WhatsApp support.'],
+  ['What support do I get?', 'Trial users get email support. Professional and Enterprise plans include priority support, with Enterprise also receiving dedicated management and live chat support.'],
 ];
 
 /* ---------- shared motion helpers ---------- */
@@ -341,7 +340,7 @@ export default function PublicHome() {
             <div className="flex flex-col items-center justify-between gap-5 sm:flex-row">
               <p className="text-sm font-bold text-foreground">Talk to the team directly — no ticket queue.</p>
               <div className="flex flex-wrap items-center justify-center gap-3">
-                <a href={CONTACT.whatsapp} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2 text-xs font-black text-foreground hover:border-[var(--primary)]"><MessageCircle className="h-4 w-4 text-primary" /> WhatsApp</a>
+                <button type="button" onClick={() => window.Tawk_API?.maximize?.()} className="flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2 text-xs font-black text-foreground hover:border-[var(--primary)]"><MessageCircle className="h-4 w-4 text-primary" /> Live chat</button>
                 <a href={CONTACT.phoneHref} className="flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2 text-xs font-black text-foreground hover:border-[var(--primary)]"><Phone className="h-4 w-4 text-primary" /> {CONTACT.phone}</a>
                 <a href={`mailto:${CONTACT.email}`} className="flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2 text-xs font-black text-foreground hover:border-[var(--primary)]"><Mail className="h-4 w-4 text-primary" /> {CONTACT.email}</a>
               </div>
@@ -467,7 +466,7 @@ export default function PublicHome() {
           </Reveal>
           <div className="mt-10 grid gap-5 md:grid-cols-3">
             {[
-              { icon: MessageCircle, label: 'WhatsApp', value: CONTACT.phone, href: CONTACT.whatsapp, external: true },
+              { icon: MessageCircle, label: 'Live chat', value: 'Open support chat', chat: true },
               { icon: Phone, label: 'Call', value: CONTACT.phone, href: CONTACT.phoneHref },
               { icon: Mail, label: 'Email', value: CONTACT.email, href: `mailto:${CONTACT.email}` },
             ].map((c, i) => {
@@ -475,7 +474,7 @@ export default function PublicHome() {
               return (
                 <Reveal key={c.label} delay={i * 0.08}>
                   <Tilt max={6}>
-                    <a href={c.href} target={c.external ? '_blank' : undefined} rel={c.external ? 'noreferrer' : undefined} className="block rounded-2xl border border-border bg-surface p-6 transition hover:border-[var(--primary)]/40">
+                    <a href={c.chat ? '#contact' : c.href} onClick={c.chat ? (e) => { e.preventDefault(); window.Tawk_API?.maximize?.(); } : undefined} target={c.external ? '_blank' : undefined} rel={c.external ? 'noreferrer' : undefined} className="block rounded-2xl border border-border bg-surface p-6 transition hover:border-[var(--primary)]/40">
                       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground"><Icon className="h-5 w-5" /></div>
                       <p className="mt-5 text-xs font-black uppercase tracking-[0.15em] text-muted-foreground">{c.label}</p>
                       <p className="mt-1 text-lg font-black text-foreground">{c.value}</p>
@@ -486,7 +485,7 @@ export default function PublicHome() {
             })}
           </div>
           <Reveal delay={0.2} className="mt-6 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-            <Clock3 className="h-3.5 w-3.5 text-primary" /> Fastest response is usually via WhatsApp.
+            <Clock3 className="h-3.5 w-3.5 text-primary" /> Fastest response is usually via live chat.
           </Reveal>
         </section>
 
@@ -530,7 +529,7 @@ export default function PublicHome() {
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 border-t border-border px-5 py-6 text-center sm:px-6 md:flex-row md:text-left">
           <p className="text-xs text-muted-foreground">© 2026 OliTechs. All rights reserved.</p>
           <div className="flex flex-wrap items-center justify-center gap-4 text-xs">
-            <a href={CONTACT.whatsapp} target="_blank" rel="noreferrer" className="font-black text-primary hover:text-foreground"><MessageCircle className="mr-1 inline h-4 w-4" />Designed by Shadrack — WhatsApp {CONTACT.phone}</a>
+            <button type="button" onClick={() => window.Tawk_API?.maximize?.()} className="font-black text-primary hover:text-foreground"><MessageCircle className="mr-1 inline h-4 w-4" />Designed by Shadrack — Live chat</button>
           </div>
         </div>
       </footer>
