@@ -23,10 +23,10 @@ test('Front Office routes open the real reservation, check-in, registration and 
   assert.match(app, /path="channels" element={<POSApp initialModule="channels"/);
   assert.match(app, /path="check-in\/registration-cards" element={<POSApp initialModule="registration-cards"/);
   assert.match(posApp, /case 'registration-cards':[\s\S]*?<RegistrationCards \/>/);
-  assert.match(app, /path="check-in\\/walk-in" element={<POSApp initialModule="walk-in-checkin"/);
-  assert.match(app, /path="check-in\\/express-checkout" element={<POSApp initialModule="express-checkout"/);
-  assert.match(posApp, /case 'walk-in-checkin':[\\s\\S]*?<WalkInCheckIn \/>/);
-  assert.match(posApp, /case 'express-checkout':[\\s\\S]*?<ExpressCheckOut \/>/);
+  assert.ok(app.includes('path="check-in/walk-in" element={<POSApp initialModule="walk-in-checkin"')));
+  assert.ok(app.includes('path="check-in/express-checkout" element={<POSApp initialModule="express-checkout"')));
+  assert.ok(posApp.includes("case 'walk-in-checkin':\n        content = <WalkInCheckIn />;"));
+  assert.ok(posApp.includes("case 'express-checkout':\n        content = <ExpressCheckOut />;"));
   assert.match(shell, /Sparkles, Tags, Users/);
   assert.match(posApp, /flex h-full min-h-0 w-full flex-col bg-\[var\(--bg\)\]/);
   assert.match(posApp, /flex min-h-0 min-w-0 flex-1 flex-col/);
