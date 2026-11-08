@@ -381,16 +381,16 @@ function PrintGrid({ rooms, groupedRooms, reservations, columns, title, subtitle
         <div style={{ gridColumn:'1 / -1', background:'#f0f3f4', color:'#64748b', padding:'3px 5px', minHeight:15, fontWeight:700, borderBottom:'1px solid #d7dce0' }}>{type}</div>
         {group.map((room) => {
           const bookings = visibleForRoom(room);
-          return <React.Fragment key={room.id}>
-            <div style={{ gridColumn:'1', padding:'3px 5px', minHeight:19, display:'flex', alignItems:'center', borderBottom:'1px solid #dfe3e6', color:'#52616b', fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{room.number || room.name || room.id}</div>
-            {columns.map((day) => <div key={dateKey(day)} style={{ minWidth:0, minHeight:19, background:day.getDay()===0||day.getDay()===6?'#d9edf6':'#fff', borderLeft:'1px solid #e1e5e8', borderBottom:'1px solid #dfe3e6' }} />)}
+          return <div key={room.id} style={{ gridColumn:'1 / -1', display:'grid', gridTemplateColumns:gridColumns, position:'relative', minWidth:0 }}>
+            <div style={{ gridColumn:'1', gridRow:1, padding:'3px 5px', minHeight:19, display:'flex', alignItems:'center', borderBottom:'1px solid #dfe3e6', color:'#52616b', fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{room.number || room.name || room.id}</div>
+            {columns.map((day,index) => <div key={dateKey(day)} style={{ gridColumn:index+2, gridRow:1, minWidth:0, minHeight:19, background:day.getDay()===0||day.getDay()===6?'#d9edf6':'#fff', borderLeft:'1px solid #e1e5e8', borderBottom:'1px solid #dfe3e6' }} />)}
             {bookings.map((booking) => {
               const style=getReservationBarStyle(booking.paymentStatus);
-              return <div key={booking.id} title={`${booking.guestName || 'Reserved'} · ${booking.checkIn} – ${booking.checkOut}`} style={{ gridColumn:`${2+booking.start} / span ${Math.min(booking.span,days-booking.start)}`, alignSelf:'center', minWidth:0, height:14, margin:'1px 2px', padding:'1px 4px', borderRadius:'8px 3px 8px 3px', background:style.background, color:style.color, opacity:getBarOpacity(booking.bookingStatus), fontSize:7, lineHeight:'12px', fontWeight:700, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', zIndex:1 }}>
+              return <div key={booking.id} title={`${booking.guestName || 'Reserved'} · ${booking.checkIn} – ${booking.checkOut}`} style={{ gridColumn:`${2+booking.start} / span ${Math.min(booking.span,days-booking.start)}`, gridRow:1, alignSelf:'center', minWidth:0, height:14, margin:'1px 2px', padding:'1px 4px', borderRadius:'8px 3px 8px 3px', background:style.background, color:style.color, opacity:getBarOpacity(booking.bookingStatus), fontSize:7, lineHeight:'12px', fontWeight:700, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', zIndex:1 }}>
                 {booking.guestName || 'Reserved'} · {booking.adults || 1}
               </div>;
             })}
-          </React.Fragment>;
+          </div>;
         })}
       </React.Fragment>)}
       {['arrivals','inHouse','checkOuts'].map((kind) => <React.Fragment key={kind}>
