@@ -20,7 +20,7 @@ Existing PMS reservation, group, folio, room-charge, POS and print-agent workflo
 
 ### Planner interactions
 - Existing drag-to-move uses overlap checks and the server-side move RPC, with a confirmation step and joint-reservation handling.
-- Pointer-based resize changes the check-out date, checks minimum stay, selected range and room overlap, then uses the existing move RPC.
+- Pointer-based resize changes either check-in or check-out, checks minimum stay, selected range and room overlap, then uses the existing move RPC.
 - Touch pointer movement is supported for reservation moves.
 - A day-list presentation can be toggled for phone-oriented use; it groups filtered stays and closures by visible date and opens the reservation detail panel.
 - Keyboard shortcut hints are shown in planner settings.
