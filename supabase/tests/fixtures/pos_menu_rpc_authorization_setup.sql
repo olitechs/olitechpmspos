@@ -93,6 +93,7 @@ insert into public.products(
 
 grant usage on schema public, auth to authenticated, service_role;
 grant select on public.staff, public.products to authenticated, service_role;
+grant insert on public.staff to authenticated, service_role;
 grant execute on function auth.uid() to authenticated, service_role;
 grant execute on function auth.role() to authenticated, service_role;
 grant execute on function auth.jwt() to authenticated, service_role;
