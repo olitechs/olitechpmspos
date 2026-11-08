@@ -27,6 +27,8 @@ import Transfers from '@/components/modules/Transfers';
 import BookingEngine from '@/components/modules/BookingEngine';
 import ChannelManager from '@/components/modules/ChannelManager';
 import RegistrationCards from '@/components/modules/RegistrationCards';
+import WalkInCheckIn from '@/components/modules/WalkInCheckIn';
+import ExpressCheckOut from '@/components/modules/ExpressCheckOut';
 import DistributionOps from '@/components/modules/DistributionOps';
 import Inventory from '@/components/modules/Inventory';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
@@ -138,6 +140,12 @@ export default function POSApp({
       case 'registration-cards':
         content = <RegistrationCards />;
         break;
+      case 'walk-in-checkin':
+        content = <WalkInCheckIn />;
+        break;
+      case 'express-checkout':
+        content = <ExpressCheckOut />;
+        break;
       case 'distribution-ops':
         content = <DistributionOps />;
         break;
@@ -166,7 +174,7 @@ export default function POSApp({
       ? 'pos'
       : ['store', 'inventory', 'purchasing', 'recipes', 'transfers', 'channels'].includes(activeModule)
         ? 'store'
-        : ['reservations', 'rooms', 'guests', 'folio', 'housekeeping', 'night-audit', 'registration-cards'].includes(activeModule)
+        : ['reservations', 'rooms', 'guests', 'folio', 'housekeeping', 'night-audit', 'registration-cards', 'walk-in-checkin', 'express-checkout'].includes(activeModule)
           ? 'frontoffice'
           : 'backoffice'
   );
