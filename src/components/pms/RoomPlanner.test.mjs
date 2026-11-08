@@ -31,3 +31,33 @@ test('new reservation payment status uses three clean BB Planner legend buttons'
   assert.ok(source.includes('background:style.background,color:style.color'));
   assert.ok(source.includes('Amount received: KES'));
 });
+
+test('room closures use the persisted property-scoped closure service', () => {
+  assert.ok(source.includes('pmsService.listRoomClosures(propertyId)'));
+  assert.ok(source.includes('pmsService.createRoomClosure({ property_id: propertyId'));
+  assert.ok(source.includes('pmsService.deleteRoomClosure(closure.id)'));
+  assert.ok(source.includes('item.start_date <= key && key < item.end_date'));
+  assert.ok(!source.includes('closure-${Date.now()}'));
+});
+
+test('planner supports resize, touch moves, drag-to-create and move undo/redo', () => {
+  assert.ok(source.includes('const beginResize ='));
+  assert.ok(source.includes('const beginTouchDrag ='));
+  assert.ok(source.includes('const beginCreateDrag ='));
+  assert.ok(source.includes('const undoPlannerMove ='));
+  assert.ok(source.includes('const redoPlannerMove ='));
+  assert.ok(source.includes('recordPlannerMove(reservation, target)'));
+});
+
+test('planner filters by floor and can switch to a date-grouped day list', () => {
+  assert.ok(source.includes('Filter by floor'));
+  assert.ok(source.includes('const [mobileListMode, setMobileListMode]'));
+  assert.ok(source.includes('filteredReservations.filter(rv=>rv.checkIn<=key&&rv.checkOut>key)'));
+  assert.ok(source.includes('Show timeline'));
+});
+
+test('room rows are rendered through a bounded virtual window', () => {
+  assert.ok(source.includes('const virtualRooms = orderedRooms.slice(virtualStart, virtualEnd)'));
+  assert.ok(source.includes('topSpacerHeight'));
+  assert.ok(source.includes('bottomSpacerHeight'));
+});
