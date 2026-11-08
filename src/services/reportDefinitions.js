@@ -423,6 +423,154 @@ export function buildFolioStatementDefinition({ selected = {}, charges = [], pay
   });
 }
 
+
+export function buildFinalSettlementInvoiceDefinition({
+  selected = {}, room = {}, charges = [], payments = [], receipts = [], employees = [],
+  propertyName, generatedBy, totals = {}, header = {},
+}) {
+  const employeeName = (id) => employees.find((employee) => employee.user_id === id || employee.id === id)?.full_name || (id ? String(id).slice(0, 8) : 'System');
+  const arrival = cleanText(selected.arrival ?? selected.check_in ?? selected.checkIn);
+  const departure = cleanText(selected.departure ?? selected.check_out ?? selected.checkOut);
+  const roomLabel = cleanText(room.number ?? selected.room_number ?? header.roomNumber, cleanText(selected.room_id, '—'));
+  const reservationRef = String(selected.id || '');
+  const receiptRows = (receipts || []).map((receipt) => ({
+    receipt_number: cleanText(receipt.receipt_number ?? receipt.order_number, String(receipt.id || '').slice(0, 8)),
+    receipt_id: String(receipt.id || ''),
+    order_number: cleanText(receipt.order_number, '—'),
+    room: cleanText(receipt.room_number, roomLabel),
+    date: dateLabel(receipt.created_at),
+    table: cleanText(receipt.table_number, '—'),
+    payment_method: cleanText(receipt.payment_method, '—'),
+    subtotal: toNumber(receipt.subtotal),
+    discount: toNumber(receipt.discount_amount),
+    tax: toNumber(receipt.vat),
+    total: toNumber(receipt.total),
+    folio_charge: cleanText(receipt.folio_charge_id, 'Not linked'),
+  }));
+  const itemRows = (receipts || []).flatMap((receipt) => (Array.isArray(receipt.items) ? receipt.items : []).map((item) => {
+    const quantity = toNumber(item.qty ?? item.quantity ?? item.count ?? 1);
+    const unitPrice = toNumber(item.unit_price ?? item.price ?? item.selling_price ?? 0);
+    const lineTotal = toNumber(item.total ?? item.line_total ?? item.amount ?? unitPrice * quantity);
+    const modifiers = Array.isArray(item.modifiers)
+      ? item.modifiers.map((modifier) => typeof modifier === 'string' ? modifier : cleanText(modifier.name ?? modifier.label ?? modifier.value)).filter(Boolean).join(', ')
+      : '';
+    return {
+      receipt_number: cleanText(receipt.receipt_number ?? receipt.order_number, String(receipt.id || '').slice(0, 8)),
+      order_number: cleanText(receipt.order_number, '—'),
+      date: dateLabel(receipt.created_at),
+      item: cleanText(item.name ?? item.item_name ?? item.product_name, 'Unnamed item'),
+      modifiers,
+      quantity,
+      unit_price: unitPrice,
+      line_total: lineTotal,
+    };
+  }));
+  const ledgerRows = [
+    ...(charges || []).map((charge) => ({
+      date: dateLabel(charge.created_at),
+      type: charge.reversal_of_id ? 'Reversal' : 'Charge',
+      description: cleanText(charge.description, cleanText(charge.category, 'Charge')),
+      reference: cleanText(charge.reference, String(charge.id || '').slice(0, 8)),
+      source: cleanText(charge.source_module || charge.source),
+      quantity: toNumber(charge.quantity ?? 1),
+      amount: toNumber(charge.amount),
+      recorded_by: employeeName(charge.created_by),
+      status: charge.reversal_of_id ? 'Reversal' : 'Posted',
+    })),
+    ...(payments || []).filter((payment) => payment.status === 'posted').map((payment) => ({
+      date: dateLabel(payment.created_at),
+      type: toNumber(payment.amount) < 0 ? 'Refund' : 'Payment',
+      description: cleanText(payment.method, 'Payment'),
+      reference: cleanText(payment.reference, String(payment.id || '').slice(0, 8)),
+      source: payment.folio_charge_id ? 'Allocated cashier payment' : 'Cashier',
+      quantity: 1,
+      amount: toNumber(payment.amount),
+      recorded_by: employeeName(payment.created_by),
+      status: cleanText(payment.status),
+    })),
+  ].sort((a, b) => a.date.localeCompare(b.date));
+  const headerRows = [
+    ['Invoice reference', header.invoiceReference],
+    ['Bill to', header.billTo ?? selected.guest_name],
+    ['Guest address', header.guestAddress],
+    ['Guest phone', header.guestPhone ?? selected.phone],
+    ['Guest email', header.guestEmail ?? selected.email],
+    ['Guest tax PIN', header.guestTaxPin],
+    ['Business address', header.businessAddress],
+    ['Business phone', header.businessPhone],
+    ['Business email', header.businessEmail],
+    ['Business tax PIN', header.businessTaxPin],
+    ['Room', roomLabel],
+    ['Reservation', reservationRef],
+    ['Check-in', arrival],
+    ['Check-out', departure],
+    ['Additional header details', header.headerNote],
+  ].filter(([, value]) => value !== null && value !== undefined && String(value).trim() !== '')
+    .map(([field, value]) => ({ field, value: String(value) }));
+  const accommodation = (charges || []).filter((charge) => charge.category === 'accommodation' || charge.source === 'room').reduce((sum, charge) => sum + toNumber(charge.amount), 0);
+  const posCharges = (charges || []).filter((charge) => charge.source === 'pos' || ['restaurant', 'bar', 'room_service'].includes(charge.category)).reduce((sum, charge) => sum + toNumber(charge.amount), 0);
+  const posDiscounts = (receipts || []).reduce((sum, receipt) => sum + toNumber(receipt.discount_amount), 0);
+  const posTax = (receipts || []).reduce((sum, receipt) => sum + toNumber(receipt.vat), 0);
+
+  return createReportDefinition({
+    key: 'folio-final-settlement-invoice',
+    title: cleanText(header.invoiceTitle, 'Final Settlement Invoice'),
+    subtitle: `Room ${roomLabel} · Stay ${arrival || '—'} to ${departure || '—'} · Reservation ${reservationRef.slice(0, 8)}`,
+    propertyName: cleanText(header.businessName, propertyName || 'OliTechs'),
+    period: { from: arrival, to: departure },
+    filters: {
+      reservation: reservationRef.slice(0, 8),
+      room: roomLabel,
+      stay: arrival && departure ? `${arrival} to ${departure}` : '',
+      invoice_reference: cleanText(header.invoiceReference),
+    },
+    generatedBy,
+    summary: [
+      metric('Accommodation', accommodation, 'currency'),
+      metric('POS charges on folio', posCharges, 'currency'),
+      metric('POS receipt discounts', posDiscounts, 'currency'),
+      metric('POS receipt VAT / tax', posTax, 'currency'),
+      metric('Total charges', totals.chargeTotal, 'currency'),
+      metric('Net payments received', totals.netPayments, 'currency'),
+      metric('Final balance due', totals.balance, 'currency'),
+      metric('POS receipts attached', receiptRows.length),
+      metric('Consumed product lines', itemRows.length),
+    ],
+    sections: [
+      {
+        name: 'invoice-header',
+        title: 'Invoice and Guest Details',
+        columns: [textColumn('field', 'Field', 26), textColumn('value', 'Details', 58)],
+        rows: headerRows,
+      },
+      {
+        name: 'folio-ledger',
+        title: 'Complete PMS Folio Ledger',
+        columns: [dateTimeColumn('date', 'Date / time', 22), textColumn('type', 'Type', 14), textColumn('description', 'Description', 30), textColumn('reference', 'Transaction / receipt reference', 28), textColumn('source', 'Source', 20), numberColumn('quantity', 'Qty', 'quantity'), numberColumn('amount', 'Amount', 'currency', 18), textColumn('recorded_by', 'Recorded by', 22), textColumn('status', 'Status', 14)],
+        rows: ledgerRows,
+      },
+      {
+        name: 'pos-receipts',
+        title: 'POS Receipts Posted to This Stay',
+        columns: [textColumn('receipt_number', 'POS receipt no.', 20), textColumn('receipt_id', 'Receipt record ID', 34), textColumn('order_number', 'Order no.', 18), textColumn('room', 'Room', 10), dateTimeColumn('date', 'Date / time', 22), textColumn('table', 'Table', 10), textColumn('payment_method', 'Tender', 14), numberColumn('subtotal', 'Subtotal', 'currency', 16), numberColumn('discount', 'Discount', 'currency', 16), numberColumn('tax', 'VAT / tax', 'currency', 16), numberColumn('total', 'Receipt total', 'currency', 16), textColumn('folio_charge', 'Linked folio charge', 34)],
+        rows: receiptRows,
+      },
+      {
+        name: 'pos-consumed-items',
+        title: 'Consumed POS Products and Services',
+        columns: [textColumn('receipt_number', 'POS receipt no.', 20), textColumn('order_number', 'Order no.', 18), dateTimeColumn('date', 'Date / time', 22), textColumn('item', 'Consumed product / service', 30), textColumn('modifiers', 'Modifiers / options', 26), numberColumn('quantity', 'Qty', 'quantity'), numberColumn('unit_price', 'Unit price', 'currency', 16), numberColumn('line_total', 'Line total', 'currency', 16)],
+        rows: itemRows,
+      },
+    ],
+    notes: [
+      cleanText(header.footerNote, 'Thank you for staying with us.'),
+      'This invoice is assembled from the selected reservation’s PMS folio, posted payments/refunds and linked POS receipts for the recorded room and stay dates.',
+      'POS receipt and consumed-item sections provide source detail only. Their totals are already represented by linked folio charges and are not added a second time to the final balance.',
+      'Only posted ledger entries are included in the final settlement calculation. Review the outstanding balance before accepting final payment.',
+    ],
+  });
+}
+
 export function buildPaymentReceiptDefinition({ selected = {}, payment = {}, propertyName, generatedBy }) {
   return createReportDefinition({
     key: 'guest-payment-receipt', title: 'Guest Payment Receipt',

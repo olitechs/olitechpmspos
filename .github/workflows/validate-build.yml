@@ -53,6 +53,9 @@ jobs:
       - name: Test navigation and role access
         run: npm run test:architecture
 
+      - name: Test report and invoice document definitions
+        run: node --test src/services/reportDefinitions.test.mjs
+
       - name: Audit theme contrast
         run: npm run check:contrast
 
