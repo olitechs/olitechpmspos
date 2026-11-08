@@ -261,7 +261,7 @@ function NewReservationModal({ rooms, reservations, ratePlans, onClose, onCreate
   const [submissionId, setSubmissionId] = useState(() => crypto.randomUUID());
   const nights = dateNights(data.arrival, data.departure);
   const selectedRooms = rooms.filter((room) => data.roomIds.includes(room.id));
-  const selectableRooms = rooms.filter((room) => room.active !== false && !['maintenance', 'out_of_service', 'blocked'].includes(room.status) && !reservations.some((reservation) => reservation.roomId === room.id && !['cancelled', 'checked-out'].includes(reservation.status) && reservation.checkIn < data.departure && data.arrival < reservation.checkOut));
+  const selectableRooms = rooms.filter((room) => room.active !== false && !['maintenance', 'out_of_service', 'blocked'].includes(room.status) && !reservations.some((reservation) => reservation.roomId === room.id && !['cancelled', 'checked-out', 'checked_out'].includes(reservation.status) && reservation.checkIn < data.departure && data.arrival < reservation.checkOut));
   const conflictingSelectedRooms = selectedRooms.filter((room) => !selectableRooms.some((candidate) => candidate.id === room.id));
   const nightlyRate = Math.max(0, Number(data.rate) || 0);
   const accommodation = nightlyRate * nights * Math.max(1, selectedRooms.length);
@@ -375,6 +375,12 @@ function ReservationDrawer({ reservation: r, rooms, pms, propertyId, busy, onClo
   const [newDeparture, setNewDeparture] = useState(r.checkOut || '');
   const [auditEvents, setAuditEvents] = useState([]);
   const [auditLoading, setAuditLoading] = useState(false);
+  const guest = (pms.guests || []).find((row) => row.id === r.guestId) || null;
+  const [guestForm, setGuestForm] = useState({ name: '', phone: '', email: '', alternative_phone: '', nationality: '', residence_country: '', id_type: 'passport', id_number: '', address: '', notes: '' });
+  useEffect(() => {
+    if (!guest) return;
+    setGuestForm({ name: guest.name || r.guestName || '', phone: guest.phone || r.phone || '', email: guest.email || '', alternative_phone: guest.alternative_phone || '', nationality: guest.nationality || '', residence_country: guest.residence_country || '', id_type: guest.id_type || 'passport', id_number: guest.id_number || '', address: guest.address || '', notes: guest.notes || '' });
+  }, [guest, r.guestName, r.phone]);
   const [auditError, setAuditError] = useState('');
 
   useEffect(() => {
@@ -416,6 +422,19 @@ function ReservationDrawer({ reservation: r, rooms, pms, propertyId, busy, onClo
     await onRun(() => pms.movePlannerReservation({ reservationId: r.id, roomId: moveRoomId, checkIn: r.checkIn, checkOut: r.checkOut }));
   };
 
+  const saveGuest = async () => {
+    if (!guest?.id || !propertyId) return;
+    await onRun(async () => {
+      const patch = { ...guestForm, guest_details: { ...(guest.guest_details || {}), alternativePhone: guestForm.alternative_phone, residenceCountry: guestForm.residence_country, idType: guestForm.id_type, idNumber: guestForm.id_number } };
+      await pmsService.updateGuestProfile({ propertyId, guestId: guest.id, patch });
+      if (guestForm.name.trim() && guestForm.name.trim() !== r.guestName) {
+        await pms.updatePlannerReservation(r.id, { guestName: guestForm.name.trim() });
+      } else {
+        await pms.reload();
+      }
+    });
+  };
+
   const checkIn = () => onRun(() => pms.checkInReservation(r.id));
   const checkOut = () => onRun(() => pms.checkOutRoom(r.roomId));
   const cancel = () => onRun(() => pms.removeReservation(r.id));
@@ -434,6 +453,23 @@ function ReservationDrawer({ reservation: r, rooms, pms, propertyId, busy, onClo
             <Info label="Arrival" value={r.checkIn} />
             <Info label="Departure" value={r.checkOut} />
           </div>
+
+          <section className="rounded-xl border border-border p-4">
+            <div className="mb-3 flex items-center justify-between gap-2"><h3 className="text-sm font-bold text-foreground">Guest profile</h3><span className="text-[10px] text-muted-foreground">Saved guest record</span></div>
+            {guest ? <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Guest name"><input className={inputClass} value={guestForm.name} onChange={(e) => setGuestForm((v) => ({...v,name:e.target.value}))}/></Field>
+              <Field label="Primary phone"><input className={inputClass} value={guestForm.phone} onChange={(e) => setGuestForm((v) => ({...v,phone:e.target.value}))}/></Field>
+              <Field label="Email"><input type="email" className={inputClass} value={guestForm.email} onChange={(e) => setGuestForm((v) => ({...v,email:e.target.value}))}/></Field>
+              <Field label="Alternative phone"><input className={inputClass} value={guestForm.alternative_phone} onChange={(e) => setGuestForm((v) => ({...v,alternative_phone:e.target.value}))}/></Field>
+              <Field label="Nationality"><input className={inputClass} value={guestForm.nationality} onChange={(e) => setGuestForm((v) => ({...v,nationality:e.target.value}))}/></Field>
+              <Field label="Country of residence"><input className={inputClass} value={guestForm.residence_country} onChange={(e) => setGuestForm((v) => ({...v,residence_country:e.target.value}))}/></Field>
+              <Field label="ID type"><select className={inputClass} value={guestForm.id_type} onChange={(e) => setGuestForm((v) => ({...v,id_type:e.target.value}))}><option value="passport">Passport</option><option value="national_id">National ID</option><option value="other">Other</option></select></Field>
+              <Field label="ID / passport number"><input className={inputClass} value={guestForm.id_number} onChange={(e) => setGuestForm((v) => ({...v,id_number:e.target.value}))}/></Field>
+              <div className="sm:col-span-2"><Field label="Address"><input className={inputClass} value={guestForm.address} onChange={(e) => setGuestForm((v) => ({...v,address:e.target.value}))}/></Field></div>
+              <div className="sm:col-span-2"><Field label="Guest notes"><textarea rows={2} className={inputClass} value={guestForm.notes} onChange={(e) => setGuestForm((v) => ({...v,notes:e.target.value}))}/></Field></div>
+              <div className="sm:col-span-2"><button disabled={busy} className={buttonClass + " bg-primary text-primary-foreground"} onClick={saveGuest}>Save guest profile</button></div>
+            </div> : <p className="text-xs text-muted-foreground">This reservation has no linked guest profile available to edit.</p>}
+          </section>
 
           <section className="rounded-xl border border-border p-4">
             <h3 className="mb-3 text-sm font-bold text-foreground">Stay dates</h3>
