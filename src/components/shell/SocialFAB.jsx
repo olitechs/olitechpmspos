@@ -2,9 +2,8 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, X as CloseIcon } from 'lucide-react';
 
-// TODO: swap these for OliTechs' real profile URLs — only WhatsApp below is confirmed real.
+// Social profile shortcuts; customer support is handled by the site-wide Tawk.to widget.
 const SOCIALS = [
-  { key: 'whatsapp', label: 'WhatsApp', href: 'https://wa.me/254745043121', kind: 'icon' },
   { key: 'instagram', label: 'Instagram', href: 'https://instagram.com/olitechs', kind: 'mono', mono: 'IG' },
   { key: 'tiktok', label: 'TikTok', href: 'https://tiktok.com/@olitechs', kind: 'mono', mono: 'TT' },
   { key: 'linkedin', label: 'LinkedIn', href: 'https://linkedin.com/company/olitechs', kind: 'mono', mono: 'in' },
