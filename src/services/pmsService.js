@@ -267,6 +267,14 @@ export const pmsService = {
 		return data;
 	},
 
+	async updateGuestProfile({ propertyId, guestId, patch }) {
+		const allowed = ['name','phone','email','nationality','id_number','address','notes','alternative_phone','residence_country','id_type','guest_details'];
+		const safePatch = Object.fromEntries(Object.entries(patch || {}).filter(([key]) => allowed.includes(key)));
+		const { data, error } = await supabase.from('guests').update(safePatch).eq('id', guestId).eq('property_id', propertyId).select().single();
+		if (error) throw new Error(error.message);
+		return data;
+	},
+
 	async listGuestSummaries(propertyId) {
 		const { data, error } = await supabase.from('guest_summary').select('*').eq('property_id', propertyId).order('name');
 		if (error) throw new Error(error.message);
