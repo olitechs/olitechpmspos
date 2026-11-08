@@ -75,12 +75,12 @@ BEGIN
   PERFORM 1 FROM public.fn_list_pos_menu(v_own);
   RAISE NOTICE 'PASS: authenticated owner can invoke own-property POS menu RPC';
 
-  PERFORM 1 FROM public.fn_list_pos_menu(v_other);
-  GET DIAGNOSTICS v_rows = ROW_COUNT;
-  IF v_rows <> 0 THEN
-    RAISE EXCEPTION 'FAIL: cross-property POS menu exposed % rows', v_rows;
-  END IF;
-  RAISE NOTICE 'PASS: cross-property POS menu exposes no rows to a non-member';
+  BEGIN
+    PERFORM 1 FROM public.fn_list_pos_menu(v_other);
+    RAISE EXCEPTION 'FAIL: cross-property POS menu call was allowed';
+  EXCEPTION WHEN SQLSTATE '42501' THEN
+    RAISE NOTICE 'PASS: cross-property POS menu access is rejected';
+  END;
 
   BEGIN
     PERFORM public.create_pending_property_for_user(
