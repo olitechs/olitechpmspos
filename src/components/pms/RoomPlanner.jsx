@@ -161,6 +161,8 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   const [closureSaving, setClosureSaving] = useState(false);
   const [undoStack, setUndoStack] = useState([]);
   const [redoStack, setRedoStack] = useState([]);
+  const [plannerScrollTop, setPlannerScrollTop] = useState(0);
+  const [plannerViewportHeight, setPlannerViewportHeight] = useState(600);
   const scrollRef = useRef(null);
   const todayRef = useRef(null);
   const suppressCellClick = useRef(false);
@@ -202,6 +204,15 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     [...filteredRooms].sort((a,b) => Number(a.number) - Number(b.number)).forEach(r => { const key = roomTypeMap.get(r.room_type_id) || r.roomTypeName || r.room_type || 'Unassigned'; if (!groups.has(key)) groups.set(key, []); groups.get(key).push(r); });
     return [...groups.entries()];
   }, [filteredRooms, roomTypeMap]);
+
+  const orderedRooms = useMemo(() => groupedRooms.flatMap(([typeName, group]) => group.map(room => ({ room, typeName }))), [groupedRooms]);
+  const ROOM_ROW_HEIGHT = 54;
+  const VIRTUAL_OVERSCAN = 6;
+  const virtualStart = Math.max(0, Math.floor(Math.max(0, plannerScrollTop - 78) / ROOM_ROW_HEIGHT) - VIRTUAL_OVERSCAN);
+  const virtualEnd = Math.min(orderedRooms.length, Math.ceil((plannerViewportHeight + Math.max(0, plannerScrollTop - 78)) / ROOM_ROW_HEIGHT) + VIRTUAL_OVERSCAN);
+  const virtualRooms = orderedRooms.slice(virtualStart, virtualEnd);
+  const topSpacerHeight = virtualStart * ROOM_ROW_HEIGHT;
+  const bottomSpacerHeight = Math.max(0, orderedRooms.length - virtualEnd) * ROOM_ROW_HEIGHT;
 
   const dayWidth = DAY_WIDTH;
   const columns = useMemo(() => {
@@ -607,7 +618,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
       {rangeError && <div className="mt-2 flex items-center gap-2 text-xs font-semibold" style={{color:'var(--danger-text)'}}><AlertTriangle size={14}/>{rangeError}</div>}
     </div>
 
-    <div ref={scrollRef} tabIndex={0} role="region" aria-label="Room availability timeline. Use arrow keys to navigate, T for today and Escape to close details." onKeyDown={e=>{if(['INPUT','SELECT','TEXTAREA'].includes(e.target?.tagName))return;if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();if(e.shiftKey)redoPlannerMove();else undoPlannerMove()}else if(e.key.toLowerCase()==='t'){e.preventDefault();goToday()}else if(e.key==='Escape'){setSelectedReservation(null);setModal(null);setActionModal(null)}else if(e.key==='ArrowLeft'){e.preventDefault();scrollRef.current.scrollBy({left:-dayWidth,behavior:'smooth'})}else if(e.key==='ArrowRight'){e.preventDefault();scrollRef.current.scrollBy({left:dayWidth,behavior:'smooth'})}else if(e.key==='ArrowUp'){e.preventDefault();scrollRef.current.scrollBy({top:-54,behavior:'smooth'})}else if(e.key==='ArrowDown'){e.preventDefault();scrollRef.current.scrollBy({top:54,behavior:'smooth'})}}} className="room-planner-scroll flex-1 min-h-0 overflow-auto px-4 pb-4">
+    <div ref={scrollRef} onScroll={e=>{setPlannerScrollTop(e.currentTarget.scrollTop);setPlannerViewportHeight(e.currentTarget.clientHeight || 600)}} tabIndex={0} role="region" aria-label="Room availability timeline. Use arrow keys to navigate, T for today and Escape to close details." onKeyDown={e=>{if(['INPUT','SELECT','TEXTAREA'].includes(e.target?.tagName))return;if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();if(e.shiftKey)redoPlannerMove();else undoPlannerMove()}else if(e.key.toLowerCase()==='t'){e.preventDefault();goToday()}else if(e.key==='Escape'){setSelectedReservation(null);setModal(null);setActionModal(null)}else if(e.key==='ArrowLeft'){e.preventDefault();scrollRef.current.scrollBy({left:-dayWidth,behavior:'smooth'})}else if(e.key==='ArrowRight'){e.preventDefault();scrollRef.current.scrollBy({left:dayWidth,behavior:'smooth'})}else if(e.key==='ArrowUp'){e.preventDefault();scrollRef.current.scrollBy({top:-54,behavior:'smooth'})}else if(e.key==='ArrowDown'){e.preventDefault();scrollRef.current.scrollBy({top:54,behavior:'smooth'})}}} className="room-planner-scroll flex-1 min-h-0 overflow-auto px-4 pb-4">
       <div className="room-planner-grid-frame rounded-xl shadow-sm" style={{background:'var(--surface)',border:`1px solid var(--border)`, minWidth: `${ROOM_COL_WIDTH + columns.length * dayWidth}px`}}>
         <div className="grid sticky top-0 z-40" style={{gridTemplateColumns:`${ROOM_COL_WIDTH}px repeat(${columns.length}, ${dayWidth}px)`,gridTemplateRows:'34px 44px'}}>
           <div className="room-planner-room-cell sticky left-0 z-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide flex items-center" style={{gridRow:'span 2',background:'var(--deep-lagoon)',color:'var(--white)',borderRight:`1px solid var(--border)`,borderBottom:`1px solid var(--border)`}}>Rooms</div>
@@ -615,8 +626,8 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
           {columns.map(d=>{const weekend=d.getDay()===0||d.getDay()===6;const isT=dateKey(d)===today;return <div key={dateKey(d)} ref={isT?todayRef:null} className={`room-planner-date-cell text-center relative ${isT?'room-planner-today':weekend?'room-planner-weekend':''}`} style={{background:isT?'var(--cal-today)':weekend?'var(--cal-weekend)':'var(--soft-white)',color:'var(--text)',borderRight:`1px solid var(--border)`,borderBottom:`1px solid var(--border)`,height:44,fontWeight:isT?800:600}}><div className="text-[10px] uppercase tracking-wide">{format(d,'EEE')}</div><div className="text-sm leading-5 font-semibold">{d.getDate()}</div>{isT&&<span className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 text-[8px] px-2 py-0.5 rounded-full font-semibold" style={{background:'var(--coastal-teal)',color:'var(--white)'}}>TODAY</span>}</div>})}
         </div>
 
-        {groupedRooms.map(([typeName, group])=><React.Fragment key={typeName}>
-          {group.map(room=>{const roomReservations=filteredReservationsByRoom.get(room.id)||[]; return <div key={room.id} className="room-planner-grid-row grid relative" style={{gridTemplateColumns:`${ROOM_COL_WIDTH}px repeat(${columns.length}, ${dayWidth}px)`, minHeight: 48}}>
+        {topSpacerHeight > 0 && <div aria-hidden="true" style={{height:topSpacerHeight,gridColumn:'1 / -1'}}/>}
+        {virtualRooms.map(({room,typeName})=>{const roomReservations=filteredReservationsByRoom.get(room.id)||[]; return <div key={room.id} className="room-planner-grid-row grid relative" style={{gridTemplateColumns:`${ROOM_COL_WIDTH}px repeat(${columns.length}, ${dayWidth}px)`, height:54,minHeight:54}}>
             <div className="room-planner-room-cell sticky left-0 z-20 px-3 py-2 flex items-center gap-2" style={{background:'var(--surface)',borderRight:`2px solid var(--border)`,borderBottom:`1px solid var(--border)`}}><div><div className="flex items-center gap-2"><div className="font-medium text-[13px] leading-4" style={{color:'var(--text)'}}>{room.number}</div><span className="rounded-full px-1.5 py-0.5 text-[9px] font-medium" style={{background:'var(--bg)',color:'var(--muted)'}}>{roomReservations.length} stay{roomReservations.length===1?'':'s'}</span></div><div className="text-[10px] font-semibold truncate max-w-[160px]" style={{color:'var(--muted)'}}>{room.name || typeName}</div></div></div>
             {columns.map(d=>{const weekend=d.getDay()===0||d.getDay()===6;const key=dateKey(d);const target=dragTarget?.roomId===room.id&&dragTarget?.date===key;return <div key={key} data-room-id={room.id} data-date={key} onPointerDown={e=>beginCreateDrag(e,room,d)} onPointerUp={finishCreateDrag} onPointerCancel={()=>{createDragRef.current=null}} onClick={()=>{if(!drag&&!suppressCellClick.current)openCreate(room,d)}} onDragOver={e=>handleCellDragOver(e,room,d)} onDrop={e=>handleCellDrop(e,room,d)} className={`room-planner-day-cell cursor-pointer ${weekend?'room-planner-weekend':''} ${key===today?'room-planner-today-cell':''}`} style={{background:target?'color-mix(in srgb, var(--primary) 28%, var(--surface))':closures.some(item => item.room_id === room.id && item.start_date <= key && key < item.end_date) ? 'repeating-linear-gradient(135deg, color-mix(in srgb, var(--stay-closed) 72%, var(--surface)) 0 5px, var(--surface) 5px 10px)' : key===today?'color-mix(in srgb, var(--primary) 9%, var(--surface))':weekend?'color-mix(in srgb, var(--grid-weekend) 78%, var(--surface))':'var(--surface)',borderRight:`1px solid var(--border)`,borderBottom:`1px solid var(--border)`, minHeight:48}} title={closures.filter(item => item.room_id === room.id && item.start_date <= key && key < item.end_date).map(item => `${item.reason} · ${item.start_date} to ${item.end_date}`).join(' | ') || undefined}/>})}
             {roomReservations.filter(rv=>filteredReservations.some(item=>item.id===rv.id)).map(rv=>{
@@ -634,7 +645,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
               <span role="separator" aria-label={`Resize ${rv.guestName || 'reservation'} stay`} title="Drag to change check-out date" onPointerDown={e=>beginResize(e,rv)} onPointerUp={finishResize} onPointerCancel={()=>{resizeStartRef.current=null}} onClick={e=>e.stopPropagation()} className="absolute right-0 top-0 h-full w-2 cursor-ew-resize touch-none rounded-r" style={{background:'color-mix(in srgb,var(--text) 22%,transparent)',zIndex:20}}/>
             </div>})}
           </div>})}
-        </React.Fragment>)}
+        {bottomSpacerHeight > 0 && <div aria-hidden="true" style={{height:bottomSpacerHeight,gridColumn:'1 / -1'}}/>}
 
         <div className="grid sticky bottom-0 z-30" style={{gridTemplateColumns:`${ROOM_COL_WIDTH}px repeat(${columns.length}, ${dayWidth}px)`,background:'var(--bg)',borderTop:'2px solid var(--text)'}}>
           {['arrivals','inHouse','checkOuts'].map((kind,idx)=><React.Fragment key={kind}><div className="room-planner-room-cell sticky left-0 z-40 px-3 py-2 text-xs font-medium" style={{background:'var(--primary)',color:'var(--on-primary)',borderBottom:idx===2?'none':`1px solid var(--border)`}}>{kind==='arrivals'?'Arrivals':kind==='inHouse'?'In-House':'Departures'}</div>{columns.map(d=>{const s=calculateDailyStats(normalizedReservations,d);const value=s[kind];return <div key={`${kind}-${dateKey(d)}`} className="text-center py-2 text-xs font-medium" style={{color:'var(--text)',background:'var(--surface)',borderRight:`1px solid var(--border)`,borderBottom:idx===2?'none':`1px solid var(--border)`}}>{value}</div>})}</React.Fragment>)}
