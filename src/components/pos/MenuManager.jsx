@@ -16,6 +16,7 @@ export default function MenuManager({ open, onClose, embedded = false }) {
   const [editing,setEditing]=useState(null);
   const [categoryName,setCategoryName]=useState('');
   const [categoryStyle,setCategoryStyle]=useState({tile_color:'#F97316',tile_text_color:'#FFFFFF',tile_image_url:''});
+  const [categoryDrafts,setCategoryDrafts]=useState({});
   const [loading,setLoading]=useState(false);
   const [search,setSearch]=useState('');
 
@@ -35,14 +36,15 @@ export default function MenuManager({ open, onClose, embedded = false }) {
   const save=async()=>{
     if(!editing?.name?.trim())return;
     try{
-      await inventoryService.upsertPosMenuItem({
+      const saved = await inventoryService.upsertPosMenuItem({
         propertyId,id:editing.id,sku:editing.sku,name:editing.name,category:editing.category||'General',
         unit:editing.unit||'pcs',sellingPrice:editing.selling_price,currentStock:editing.current_stock,
         minStock:editing.min_stock,maxStock:editing.max_stock,productionCenter:editing.production_center||'Kitchen',
         sortOrder:editing.pos_sort,active:true
       });
-      if (editing.id) {
-        const { error: visualError } = await inventoryService.updatePosMenuItemVisuals({ propertyId, id: editing.id, tile_color: editing.tile_color, tile_text_color: editing.tile_text_color, tile_image_url: editing.tile_image_url });
+      const savedId = editing.id || saved?.id || saved?.product_id;
+      if (savedId) {
+        const { error: visualError } = await inventoryService.updatePosMenuItemVisuals({ propertyId, id: savedId, tile_color: editing.tile_color, tile_text_color: editing.tile_text_color, tile_image_url: editing.tile_image_url });
         if (visualError) throw new Error(visualError.message);
       }
       toast.success(editing.id?'Menu item updated.':'Menu item added to POS.');
@@ -54,6 +56,14 @@ export default function MenuManager({ open, onClose, embedded = false }) {
     if(!categoryName.trim())return;
     try{await inventoryService.upsertPosCategory({propertyId,name:categoryName,productionCenter:'Kitchen',...categoryStyle});setCategoryName('');await reload();toast.success('Category added.');}
     catch(e){toast.error(e.message);}
+  };
+
+  const saveCategoryVisuals=async(category)=>{
+    const draft=categoryDrafts[category.id]||category;
+    try{
+      await inventoryService.upsertPosCategory({propertyId,name:category.name,productionCenter:category.production_center||'Kitchen',sortOrder:category.sort_order||0,tile_color:draft.tile_color||null,tile_text_color:draft.tile_text_color||null,tile_image_url:draft.tile_image_url||null});
+      await reload(); window.dispatchEvent(new Event('olitech:menu-updated')); toast.success(`${category.name} appearance saved.`);
+    }catch(e){toast.error(e.message);}
   };
 
   const moveCategory=async(index,direction)=>{
@@ -105,7 +115,7 @@ export default function MenuManager({ open, onClose, embedded = false }) {
       <div className="grid min-h-0 flex-1 lg:grid-cols-[250px_1fr]">
         <aside className="border-b border-[var(--border)] bg-[var(--surface)] p-4 lg:border-b-0 lg:border-r">
           <div className="flex items-center justify-between gap-2"><div className="text-[10px] font-bold uppercase tracking-wide text-[var(--text-muted)]">Categories</div><div className="text-[10px] text-[var(--text-muted)]">Display order</div></div>
-          <div className="mt-3 space-y-1">{categories.map((c,index)=><div key={c.id} className="flex items-center gap-2 rounded-xl border border-transparent px-2 py-2 text-sm hover:border-[var(--border)] hover:bg-[var(--canvas)]"><div className="min-w-0 flex-1"><div className="truncate font-semibold text-[var(--text)]">{c.name}</div><div className="text-[10px] text-[var(--text-muted)]">{c.production_center} · {menu.filter(item=>item.category===c.name).length} products</div></div><div className="flex shrink-0 flex-col"><button type="button" onClick={()=>moveCategory(index,-1)} disabled={loading||index===0} aria-label={`Move ${c.name} up`} title="Move up" className="flex h-7 w-7 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--primary-soft)] disabled:opacity-30"><ChevronUp size={15}/></button><button type="button" onClick={()=>moveCategory(index,1)} disabled={loading||index===categories.length-1} aria-label={`Move ${c.name} down`} title="Move down" className="flex h-7 w-7 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--primary-soft)] disabled:opacity-30"><ChevronDown size={15}/></button></div></div>)}</div>
+          <div className="mt-3 space-y-2">{categories.map((c,index)=>{const draft=categoryDrafts[c.id]||c;return <div key={c.id} className="rounded-xl border border-[var(--border)] p-2 text-sm"><div className="flex items-center gap-2"><div className="min-w-0 flex-1"><div className="truncate font-semibold text-[var(--text)]">{c.name}</div><div className="text-[10px] text-[var(--text-muted)]">{c.production_center} · {menu.filter(item=>item.category===c.name).length} products</div></div><button type="button" onClick={()=>moveCategory(index,-1)} disabled={loading||index===0} aria-label={`Move ${c.name} up`} className="h-7 w-7"><ChevronUp size={15}/></button><button type="button" onClick={()=>moveCategory(index,1)} disabled={loading||index===categories.length-1} aria-label={`Move ${c.name} down`} className="h-7 w-7"><ChevronDown size={15}/></button></div><div className="mt-2 grid grid-cols-2 gap-2"><label className="text-[10px]">Tile<input type="color" value={draft.tile_color||'#F97316'} onChange={e=>setCategoryDrafts({...categoryDrafts,[c.id]:{...draft,tile_color:e.target.value}})} className="mt-1 h-8 w-full"/></label><label className="text-[10px]">Text<input type="color" value={draft.tile_text_color||'#FFFFFF'} onChange={e=>setCategoryDrafts({...categoryDrafts,[c.id]:{...draft,tile_text_color:e.target.value}})} className="mt-1 h-8 w-full"/></label></div><input value={draft.tile_image_url||''} onChange={e=>setCategoryDrafts({...categoryDrafts,[c.id]:{...draft,tile_image_url:e.target.value}})} placeholder="Optional image URL" className="mt-2 w-full rounded-lg border border-[var(--border)] px-2 py-1.5 text-xs"/><button type="button" onClick={()=>saveCategoryVisuals(c)} className="mt-2 w-full rounded-lg bg-[var(--primary)] px-2 py-1.5 text-xs text-primary-foreground">Save appearance</button></div>})}</div>
           <div className="mt-5 border-t pt-4"><div className="text-xs font-medium">Add category</div><input value={categoryName} onChange={e=>setCategoryName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addCategory()} placeholder="e.g. Cocktails" className="mt-2 w-full rounded-xl border border-[var(--border)] px-3 py-2 text-sm"/><div className="mt-2 grid grid-cols-2 gap-2"><label className="text-[10px]">Tile colour<input type="color" value={categoryStyle.tile_color} onChange={e=>setCategoryStyle({...categoryStyle,tile_color:e.target.value})} className="mt-1 h-9 w-full"/></label><label className="text-[10px]">Text colour<input type="color" value={categoryStyle.tile_text_color} onChange={e=>setCategoryStyle({...categoryStyle,tile_text_color:e.target.value})} className="mt-1 h-9 w-full"/></label></div><input value={categoryStyle.tile_image_url} onChange={e=>setCategoryStyle({...categoryStyle,tile_image_url:e.target.value})} placeholder="Optional image URL" className="mt-2 w-full rounded-xl border border-[var(--border)] px-3 py-2 text-xs"/><button onClick={addCategory} className="mt-2 w-full rounded-xl bg-[var(--primary)] px-3 py-2 text-sm text-primary-foreground"><Plus size={16} className="mr-1 inline"/> Add category</button></div>
         </aside>
         <main className="min-h-0 overflow-y-auto p-4">
