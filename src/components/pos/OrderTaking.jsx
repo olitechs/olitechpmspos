@@ -25,6 +25,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
   const activeStaff = (() => { try { return JSON.parse(sessionStorage.getItem('olitech_active_staff_v2') || 'null'); } catch { return null; } })();
   const currentRole = String(activeStaff?.role || user?.staff?.role || user?.propertyRole || user?.role || '').toLowerCase();
   const [activeCategory, setActiveCategory] = useState(null);
+  const [orderPanelExpanded, setOrderPanelExpanded] = useState(false);
   const [removeTarget, setRemoveTarget] = useState(null);
   const [removeReason, setRemoveReason] = useState('');
   const [removeError, setRemoveError] = useState('');
@@ -408,7 +409,24 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
         )}
       </main>
 
-      <aside className="pos-ticket order-3 flex h-[42vh] min-h-[18rem] max-h-96 shrink-0 flex-col border-t border-[var(--border)] bg-[var(--surface)] text-[var(--text)] lg:order-none lg:h-full lg:max-h-none lg:w-[22rem] lg:border-l lg:border-t-0">
+      <aside className={`pos-ticket order-3 flex shrink-0 flex-col border-t border-[var(--border)] bg-[var(--surface)] text-[var(--text)] transition-[height] duration-200 lg:order-none lg:h-full lg:max-h-none lg:w-[22rem] lg:border-l lg:border-t-0 ${orderPanelExpanded ? 'h-[58vh] min-h-[19rem] max-h-[72vh]' : 'h-[4.75rem] min-h-[4.75rem] max-h-[4.75rem] lg:h-full'}`}>
+        <button
+          type="button"
+          onClick={() => setOrderPanelExpanded((expanded) => !expanded)}
+          aria-expanded={orderPanelExpanded}
+          aria-controls="pos-order-panel-content"
+          className="flex min-h-[4.75rem] w-full items-center justify-between gap-3 px-4 text-left lg:hidden"
+        >
+          <span className="min-w-0">
+            <span className="block text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">Current order · {tableLabel(table)}</span>
+            <span className="mt-1 block truncate text-sm font-extrabold text-[var(--text)]">{orderLines.length} items · {fmt(total)}</span>
+          </span>
+          <span className="flex shrink-0 items-center gap-2 rounded-xl bg-[var(--primary)] px-4 py-2.5 text-xs font-bold text-[var(--on-primary)]">
+            {orderPanelExpanded ? 'Hide order' : 'View order'}
+            <ChevronLeft className={`h-4 w-4 transition-transform ${orderPanelExpanded ? '-rotate-90' : 'rotate-90'}`} aria-hidden="true" />
+          </span>
+        </button>
+        <div id="pos-order-panel-content" className={orderPanelExpanded ? 'flex min-h-0 flex-1 flex-col' : 'hidden lg:flex lg:min-h-0 lg:flex-1 lg:flex-col'}>
         <div className="border-b border-dashed border-[var(--border)] px-4 py-3">
           <div className="text-center text-xs font-bold uppercase tracking-widest text-[var(--primary)]">Visiwa Beach Resort</div>
           <div className="mt-1 text-center text-xs text-[var(--text-muted)]">{orderNumber}</div>
@@ -479,6 +497,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
           >
             Move / Join Table
           </button>
+        </div>
         </div>
       </aside>
 
