@@ -205,6 +205,7 @@ export const pmsService = {
 	},
 
 	async listReservations(propertyId) {
+		await this.expireRoomPlannerOptions(propertyId);
 		const { data, error } = await supabase
 			.from('reservations')
 			.select('*')
@@ -212,6 +213,31 @@ export const pmsService = {
 			.order('arrival');
 		if (error) throw new Error(error.message);
 		return data;
+	},
+
+	async expireRoomPlannerOptions(propertyId) {
+		const { data, error } = await supabase.rpc('fn_expire_room_planner_options', { p_property_id: propertyId });
+		if (error) throw new Error(error.message);
+		return Number(data || 0);
+	},
+
+	async setReservationOption(reservationId, optioned) {
+		const { data, error } = await supabase.rpc('fn_set_reservation_option', { p_reservation_id: reservationId, p_optioned: !!optioned });
+		if (error) throw new Error(error.message);
+		return data;
+	},
+
+	async createOptionedReservationBundle(payload) {
+		const { data, error } = await supabase.rpc('fn_create_optioned_reservation_bundle', {
+			p_property_id: payload.propertyId, p_room_ids: payload.roomIds, p_group_id: payload.groupId,
+			p_guest_name: payload.guestName, p_phone: payload.phone || null, p_arrival: payload.checkIn,
+			p_departure: payload.checkOut, p_payment_status: payload.paymentStatus, p_channel: payload.channel,
+			p_meal_plan: payload.mealPlan, p_adults: payload.adults, p_kids_count: payload.kidsCount,
+			p_kids_ages: payload.kidsAges || [], p_total_amount: payload.totalAmount, p_amount_paid: payload.amountPaid,
+			p_notes: payload.notes || null, p_details: payload.details || {},
+		});
+		if (error) throw new Error(error.message);
+		return data || [];
 	},
 
 	async listGuests(propertyId) {
