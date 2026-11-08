@@ -96,8 +96,8 @@ function AppRoutes(){return <AuthProvider><Suspense fallback={<AuthLoading/>}><R
 <Route path="check-in/arrivals" element={<POSApp initialModule="reservations" embedded workspaceModule="frontoffice"/>}/>
 <Route path="check-in/in-house" element={<POSApp initialModule="reservations" embedded workspaceModule="frontoffice"/>}/>
 <Route path="check-in/departures" element={<POSApp initialModule="reservations" embedded workspaceModule="frontoffice"/>}/>
-<Route path="check-in/walk-in" element={<POSApp initialModule="rooms" embedded workspaceModule="frontoffice"/>}/>
-<Route path="check-in/express-checkout" element={<POSApp initialModule="folio" embedded workspaceModule="frontoffice"/>}/>
+<Route path="check-in/walk-in" element={<POSApp initialModule="walk-in-checkin" embedded workspaceModule="frontoffice"/>}/>
+<Route path="check-in/express-checkout" element={<POSApp initialModule="express-checkout" embedded workspaceModule="frontoffice"/>}/>
 <Route path="check-in/registration-cards" element={<POSApp initialModule="registration-cards" embedded workspaceModule="frontoffice"/>}/>
 <Route path="statistics/:report" element={<ModuleStatusPage title="Statistics" description="Property performance reporting with period filters and document exports." module="statistics" back="/frontoffice"/>}/>
 <Route path="services/housekeeping" element={<POSApp initialModule="housekeeping" embedded workspaceModule="frontoffice"/>}/>
