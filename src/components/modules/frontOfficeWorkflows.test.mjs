@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const read = (path) => readFile(new URL(path, import.meta.url), 'utf8');
-const [app, posApp, reservations, channels, registration, walkIn, expressCheckout, service, store, shell] = await Promise.all([
+const [app, posApp, reservations, channels, registration, walkIn, expressCheckout, service, store, shell, styles] = await Promise.all([
   read('../../App.jsx'),
   read('../../pages/POSApp.jsx'),
   read('../../components/modules/Reservations.jsx'),
@@ -14,6 +14,7 @@ const [app, posApp, reservations, channels, registration, walkIn, expressCheckou
   read('../../services/pmsService.js'),
   read('../../data/PmsStore.jsx'),
   read('../../components/layout/FrontOfficeShell.jsx'),
+  read('../../index.css'),
 ]);
 
 test('Front Office routes open the real reservation, check-in, registration and channel modules', () => {
@@ -80,4 +81,13 @@ test('express checkout verifies posted payments and requires a zero folio balanc
   assert.match(expressCheckout, /pms\.checkOutRoom\(selected\.roomId\)/);
   assert.match(expressCheckout, /balance <= 0\.005/);
   assert.match(expressCheckout, /outstanding balance/);
+});
+
+
+test('responsive CSS keeps the planner toolbar usable at tablet and phone widths', () => {
+  assert.match(shell, /min-\[1100px\]:hidden/);
+  assert.match(styles, /@media \(max-width: 900px\)/);
+  assert.match(styles, /@media \(max-width: 560px\)/);
+  assert.match(styles, /\.room-planner-toolbar-actions \{ width: 100%; \}/);
+  assert.match(styles, /\.room-planner-tool-button \{ min-height: 44px; \}/);
 });
