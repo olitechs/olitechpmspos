@@ -508,6 +508,8 @@ export function buildFinalSettlementInvoiceDefinition({
     .map(([field, value]) => ({ field, value: String(value) }));
   const accommodation = (charges || []).filter((charge) => charge.category === 'accommodation' || charge.source === 'room').reduce((sum, charge) => sum + toNumber(charge.amount), 0);
   const posCharges = (charges || []).filter((charge) => charge.source === 'pos' || ['restaurant', 'bar', 'room_service'].includes(charge.category)).reduce((sum, charge) => sum + toNumber(charge.amount), 0);
+  const posDiscounts = (receipts || []).reduce((sum, receipt) => sum + toNumber(receipt.discount_amount), 0);
+  const posTax = (receipts || []).reduce((sum, receipt) => sum + toNumber(receipt.vat), 0);
 
   return createReportDefinition({
     key: 'folio-final-settlement-invoice',
@@ -525,6 +527,8 @@ export function buildFinalSettlementInvoiceDefinition({
     summary: [
       metric('Accommodation', accommodation, 'currency'),
       metric('POS charges on folio', posCharges, 'currency'),
+      metric('POS receipt discounts', posDiscounts, 'currency'),
+      metric('POS receipt VAT / tax', posTax, 'currency'),
       metric('Total charges', totals.chargeTotal, 'currency'),
       metric('Net payments received', totals.netPayments, 'currency'),
       metric('Final balance due', totals.balance, 'currency'),
