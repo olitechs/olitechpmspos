@@ -1,0 +1,41 @@
+# OliTechs PMS + POS — Apache configuration for cPanel shared hosting
+# This file is copied from public/ into the Vite dist/ output.
+
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # Serve existing files and directories directly.
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # React Router deep links must resolve through the Vite entry point.
+  RewriteRule ^ index.html [L]
+</IfModule>
+
+# Keep the application shell fresh after deployments.
+<IfModule mod_headers.c>
+  <FilesMatch "^index\\.html$">
+    Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+  </FilesMatch>
+
+  # Vite assets are content-hashed and safe to cache for a long time.
+  <FilesMatch "\\.(?:js|mjs|css|woff2?|ttf|otf|svg|png|jpe?g|webp|avif|ico)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+
+  <FilesMatch "\\.(?:json|webmanifest)$">
+    Header set Cache-Control "public, max-age=3600"
+  </FilesMatch>
+</IfModule>
+
+# Compression is enabled only when the hosting server provides mod_deflate.
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/plain text/css text/javascript
+  AddOutputFilterByType DEFLATE application/javascript application/json application/manifest+json
+  AddOutputFilterByType DEFLATE image/svg+xml
+</IfModule>
