@@ -1,8 +1,10 @@
 -- Run only against the disposable fixture in pos-menu-rpc-authorization.yml.
--- Each authorization context is a separate SQL statement because fn_list_pos_menu
--- is STABLE and request claims must not be mutated within one calling statement.
-begin;
+-- Reconnect between authorization contexts so the STABLE RPC's cached plan never
+-- observes mutated JWT/session claims in one database session.
 
+\set ON_ERROR_STOP on
+
+begin;
 select set_config('request.jwt.claim.sub', 'aaaaaaaa-0000-4000-8000-000000000001', true);
 select set_config('request.jwt.claim.role', 'authenticated', true);
 select set_config('request.jwt.claims', '{"sub":"aaaaaaaa-0000-4000-8000-000000000001","role":"authenticated","email":"pos@example.invalid"}', true);
@@ -12,7 +14,6 @@ select set_config('test.property_role', 'owner', true);
 select set_config('test.staff_property', '', true);
 select set_config('test.staff_role', '', true);
 set local role authenticated;
-
 do $owner$
 declare v_rows integer;
 begin
@@ -21,7 +22,18 @@ begin
   raise notice 'PASS: property owner can read own menu';
 end
 $owner$;
+rollback;
 
+\connect
+
+begin;
+select set_config('request.jwt.claim.sub', 'aaaaaaaa-0000-4000-8000-000000000001', true);
+select set_config('request.jwt.claim.role', 'authenticated', true);
+select set_config('request.jwt.claims', '{"sub":"aaaaaaaa-0000-4000-8000-000000000001","role":"authenticated","email":"pos@example.invalid"}', true);
+select set_config('test.platform_owner', 'false', true);
+select set_config('test.member_property', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', true);
+select set_config('test.property_role', 'owner', true);
+set local role authenticated;
 do $cross_property$
 begin
   begin
@@ -32,8 +44,18 @@ begin
   end;
 end
 $cross_property$;
+rollback;
 
+\connect
+
+begin;
+select set_config('request.jwt.claim.sub', 'aaaaaaaa-0000-4000-8000-000000000001', true);
+select set_config('request.jwt.claim.role', 'authenticated', true);
+select set_config('request.jwt.claims', '{"sub":"aaaaaaaa-0000-4000-8000-000000000001","role":"authenticated","email":"pos@example.invalid"}', true);
+select set_config('test.platform_owner', 'false', true);
+select set_config('test.member_property', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', true);
 select set_config('test.property_role', 'housekeeping', true);
+set local role authenticated;
 do $non_pos_member$
 begin
   begin
@@ -44,10 +66,20 @@ begin
   end;
 end
 $non_pos_member$;
+rollback;
 
+\connect
+
+begin;
+select set_config('request.jwt.claim.sub', 'aaaaaaaa-0000-4000-8000-000000000001', true);
+select set_config('request.jwt.claim.role', 'authenticated', true);
+select set_config('request.jwt.claims', '{"sub":"aaaaaaaa-0000-4000-8000-000000000001","role":"authenticated","email":"pos@example.invalid"}', true);
+select set_config('test.platform_owner', 'false', true);
+select set_config('test.member_property', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', true);
 select set_config('test.property_role', '', true);
 select set_config('test.staff_property', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', true);
 select set_config('test.staff_role', 'housekeeping_supervisor', true);
+set local role authenticated;
 do $unrelated_staff$
 begin
   begin
@@ -58,8 +90,20 @@ begin
   end;
 end
 $unrelated_staff$;
+rollback;
 
+\connect
+
+begin;
+select set_config('request.jwt.claim.sub', 'aaaaaaaa-0000-4000-8000-000000000001', true);
+select set_config('request.jwt.claim.role', 'authenticated', true);
+select set_config('request.jwt.claims', '{"sub":"aaaaaaaa-0000-4000-8000-000000000001","role":"authenticated","email":"pos@example.invalid"}', true);
+select set_config('test.platform_owner', 'false', true);
+select set_config('test.member_property', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', true);
+select set_config('test.property_role', '', true);
+select set_config('test.staff_property', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', true);
 select set_config('test.staff_role', 'front_desk', true);
+set local role authenticated;
 do $allowed_staff$
 declare v_rows integer;
 begin
@@ -68,13 +112,22 @@ begin
   raise notice 'PASS: allowed front desk POS role can read menu';
 end
 $allowed_staff$;
+rollback;
 
+\connect
+
+begin;
+select set_config('request.jwt.claim.sub', 'aaaaaaaa-0000-4000-8000-000000000001', true);
+select set_config('request.jwt.claim.role', 'authenticated', true);
+select set_config('request.jwt.claims', '{"sub":"aaaaaaaa-0000-4000-8000-000000000001","role":"authenticated","email":"pos@example.invalid"}', true);
+select set_config('test.platform_owner', 'false', true);
+select set_config('test.member_property', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', true);
+select set_config('test.property_role', '', true);
+select set_config('test.staff_property', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', true);
 select set_config('test.staff_role', 'housekeeping_supervisor', true);
 insert into public.staff(property_id, is_active, user_id, email, assigned_modules)
-values (
-  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', true,
-  auth.uid(), 'pos@example.invalid', array['frontoffice','pos']
-);
+values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', true, auth.uid(), 'pos@example.invalid', array['frontoffice','pos']);
+set local role authenticated;
 do $module_assignment$
 declare v_rows integer;
 begin
@@ -83,8 +136,11 @@ begin
   raise notice 'PASS: explicit POS module assignment grants menu read';
 end
 $module_assignment$;
+rollback;
 
-reset role;
+\connect
+
+begin;
 select set_config('request.jwt.claim.sub', '', true);
 select set_config('request.jwt.claim.role', '', true);
 select set_config('request.jwt.claims', '{}', true);
@@ -99,8 +155,11 @@ begin
   end;
 end
 $missing_identity$;
+rollback;
 
-reset role;
+\connect
+
+begin;
 select set_config('request.jwt.claim.sub', '', true);
 select set_config('request.jwt.claim.role', 'service_role', true);
 select set_config('request.jwt.claims', '{"role":"service_role"}', true);
@@ -113,5 +172,4 @@ begin
   raise notice 'PASS: service role retains trusted access';
 end
 $service$;
-
 rollback;
