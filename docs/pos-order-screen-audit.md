@@ -94,6 +94,17 @@ Implemented in `src/components/pos/OrderTaking.jsx`:
 
 **Verification limitation:** GitHub reports no workflow runs for the latest commit in the PR. The test has been added but has not been executed in this session. No lint/build/test pass is claimed.
 
+## Phase 4 implementation update — existing Menu Manager
+
+Implemented in `src/components/pos/MenuManager.jsx` using the existing category service and schema:
+
+- Added up/down controls to change category display order.
+- Saves the reordered categories through `inventoryService.upsertPosCategory`, which updates the existing `sort_order` field.
+- Shows each category's production center and current product count.
+- Dispatches the existing `olitech:menu-updated` event after a successful reorder so the active POS refreshes its catalogue.
+
+No new table, column, migration, or browser-local persistence was introduced. Category rename/merge/delete and per-outlet/terminal overrides remain out of scope because they require explicit data cleanup policy and a verified outlet/terminal ownership model. The existing schema provides property-level category order only.
+
 ## Implementation sequence
 
 1. ~~Add reusable category/product tile browser and two-level navigation while preserving the current order panel API.~~
