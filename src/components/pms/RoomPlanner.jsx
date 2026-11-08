@@ -162,6 +162,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   const todayRef = useRef(null);
   const suppressCellClick = useRef(false);
   const resizeStartRef = useRef(null);
+  const touchDragRef = useRef(null);
 
   const normalizedReservations = useMemo(() => plannerReservations.filter(r => r.status !== 'cancelled').map(normalizeReservation), [plannerReservations]);
   useEffect(() => {
@@ -312,6 +313,31 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
 
   const beginDrag = (e, r) => { e.stopPropagation(); setDrag({ reservation: r, originalRoomId: r.roomId, originalCheckIn: r.checkIn, originalCheckOut: r.checkOut }); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', r.id); };
   const handleCellDragOver = (e, room, day) => { if (!drag) return; e.preventDefault(); setDragTarget({ roomId: room.id, date: dateKey(day) }); };
+  const beginTouchDrag = (event, reservation) => {
+    if (event.pointerType !== 'touch') return;
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    touchDragRef.current = { reservation, pointerId: event.pointerId };
+  };
+  const finishTouchDrag = (event) => {
+    if (event.pointerType !== 'touch') return;
+    event.stopPropagation();
+    const active = touchDragRef.current; touchDragRef.current = null;
+    if (!active) return;
+    const cell = document.elementsFromPoint(event.clientX, event.clientY).find(element => element?.dataset?.roomId && element?.dataset?.date);
+    if (!cell) return;
+    const room = plannerRooms.find(item => item.id === cell.dataset.roomId);
+    const reservation = active.reservation;
+    if (!room) return;
+    const nights = differenceInCalendarDays(parseDate(reservation.checkOut), parseDate(reservation.checkIn));
+    const checkIn = cell.dataset.date;
+    const checkOut = dateKey(addDays(parseDate(checkIn), Math.max(1, nights)));
+    if (room.id === reservation.roomId && checkIn === reservation.checkIn) return;
+    if (range && (checkIn < range.from || checkOut > dateKey(addDays(parseDate(range.to), 1)))) { toast.error('Cannot move reservation outside the selected date range.'); return; }
+    const overlap = checkOverlap(normalizedReservations, room.id, checkIn, checkOut, reservation.id);
+    if (overlap) { toast.error(`Cannot move: Room ${room.number || room.id} already booked from ${overlap.checkIn} to ${overlap.checkOut}.`); return; }
+    setMoveConfirmation({ reservation, target: { roomId: room.id, checkIn, checkOut }, nights });
+  };
   const beginResize = (event, reservation) => {
     event.stopPropagation(); event.preventDefault();
     event.currentTarget.setPointerCapture?.(event.pointerId);
@@ -548,7 +574,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
         {groupedRooms.map(([typeName, group])=><React.Fragment key={typeName}>
           {group.map(room=>{const roomReservations=filteredReservationsByRoom.get(room.id)||[]; return <div key={room.id} className="room-planner-grid-row grid relative" style={{gridTemplateColumns:`${ROOM_COL_WIDTH}px repeat(${columns.length}, ${dayWidth}px)`, minHeight: 48}}>
             <div className="room-planner-room-cell sticky left-0 z-20 px-3 py-2 flex items-center gap-2" style={{background:'var(--surface)',borderRight:`2px solid var(--border)`,borderBottom:`1px solid var(--border)`}}><div><div className="flex items-center gap-2"><div className="font-medium text-[13px] leading-4" style={{color:'var(--text)'}}>{room.number}</div><span className="rounded-full px-1.5 py-0.5 text-[9px] font-medium" style={{background:'var(--bg)',color:'var(--muted)'}}>{roomReservations.length} stay{roomReservations.length===1?'':'s'}</span></div><div className="text-[10px] font-semibold truncate max-w-[160px]" style={{color:'var(--muted)'}}>{room.name || typeName}</div></div></div>
-            {columns.map(d=>{const weekend=d.getDay()===0||d.getDay()===6;const key=dateKey(d);const target=dragTarget?.roomId===room.id&&dragTarget?.date===key;return <div key={key} onClick={()=>{if(!drag&&!suppressCellClick.current)openCreate(room,d)}} onDragOver={e=>handleCellDragOver(e,room,d)} onDrop={e=>handleCellDrop(e,room,d)} className={`room-planner-day-cell cursor-pointer ${weekend?'room-planner-weekend':''} ${key===today?'room-planner-today-cell':''}`} style={{background:target?'color-mix(in srgb, var(--primary) 28%, var(--surface))':closures.some(item => item.room_id === room.id && item.start_date <= key && key < item.end_date) ? 'repeating-linear-gradient(135deg, color-mix(in srgb, var(--stay-closed) 72%, var(--surface)) 0 5px, var(--surface) 5px 10px)' : key===today?'color-mix(in srgb, var(--primary) 9%, var(--surface))':weekend?'color-mix(in srgb, var(--grid-weekend) 78%, var(--surface))':'var(--surface)',borderRight:`1px solid var(--border)`,borderBottom:`1px solid var(--border)`, minHeight:48}} title={closures.filter(item => item.room_id === room.id && item.start_date <= key && key < item.end_date).map(item => `${item.reason} · ${item.start_date} to ${item.end_date}`).join(' | ') || undefined}}/>})}
+            {columns.map(d=>{const weekend=d.getDay()===0||d.getDay()===6;const key=dateKey(d);const target=dragTarget?.roomId===room.id&&dragTarget?.date===key;return <div key={key} data-room-id={room.id} data-date={key} onClick={()=>{if(!drag&&!suppressCellClick.current)openCreate(room,d)}} onDragOver={e=>handleCellDragOver(e,room,d)} onDrop={e=>handleCellDrop(e,room,d)} className={`room-planner-day-cell cursor-pointer ${weekend?'room-planner-weekend':''} ${key===today?'room-planner-today-cell':''}`} style={{background:target?'color-mix(in srgb, var(--primary) 28%, var(--surface))':closures.some(item => item.room_id === room.id && item.start_date <= key && key < item.end_date) ? 'repeating-linear-gradient(135deg, color-mix(in srgb, var(--stay-closed) 72%, var(--surface)) 0 5px, var(--surface) 5px 10px)' : key===today?'color-mix(in srgb, var(--primary) 9%, var(--surface))':weekend?'color-mix(in srgb, var(--grid-weekend) 78%, var(--surface))':'var(--surface)',borderRight:`1px solid var(--border)`,borderBottom:`1px solid var(--border)`, minHeight:48}} title={closures.filter(item => item.room_id === room.id && item.start_date <= key && key < item.end_date).map(item => `${item.reason} · ${item.start_date} to ${item.end_date}`).join(' | ') || undefined}}/>})}
             {roomReservations.filter(rv=>filteredReservations.some(item=>item.id===rv.id)).map(rv=>{
               const l=visibleReservation(rv);if(!l)return null;
               const stayStatus=rv.plannerStatus || (rv.bookingStatus==='checked_out'?'checked_out':rv.bookingStatus==='checked_in'?'occupied':'confirmed');
@@ -558,7 +584,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
               const left=geometry.left;
               const width=geometry.width;
               const pastOpacity=getBarOpacity(rv.bookingStatus,rv.checkOut,today);
-              return <div key={rv.id} draggable onDragStart={e=>beginDrag(e,rv)} onDragEnd={()=>{setDrag(null);setDragTarget(null)}} onClick={e=>{e.stopPropagation();setSelectedReservation(rv)}} className="reservation-bar absolute top-[11px] h-[23px] cursor-grab active:cursor-grabbing group" style={{left,width,background:stayStatus==='optioned'?'var(--pay-opt)':pastOpacity<1?`color-mix(in srgb, ${pay.background} 55%, transparent)`:pay.background,color:stayStatus==='optioned'?'var(--pay-opt-fg)':pay.color,border:`1.5px ${stayStatus==='optioned'?'dashed':'solid'} ${stayStatus==='optioned'?'var(--pay-opt-bd)':pay.border}`,borderLeft:stayStatus==='optioned'?'1.5px dashed var(--pay-opt-bd)':`1.5px solid ${pay.border}`,zIndex:10}} title={`${rv.guestName} · ${ps.label} · ${rv.checkIn} → ${rv.checkOut}`}>
+              return <div key={rv.id} draggable onPointerDown={e=>beginTouchDrag(e,rv)} onPointerUp={finishTouchDrag} onPointerCancel={()=>{touchDragRef.current=null}} onDragStart={e=>beginDrag(e,rv)} onDragEnd={()=>{setDrag(null);setDragTarget(null)}} onClick={e=>{e.stopPropagation();setSelectedReservation(rv)}} className="reservation-bar absolute top-[11px] h-[23px] cursor-grab active:cursor-grabbing group" style={{left,width,background:stayStatus==='optioned'?'var(--pay-opt)':pastOpacity<1?`color-mix(in srgb, ${pay.background} 55%, transparent)`:pay.background,color:stayStatus==='optioned'?'var(--pay-opt-fg)':pay.color,border:`1.5px ${stayStatus==='optioned'?'dashed':'solid'} ${stayStatus==='optioned'?'var(--pay-opt-bd)':pay.border}`,borderLeft:stayStatus==='optioned'?'1.5px dashed var(--pay-opt-bd)':`1.5px solid ${pay.border}`,zIndex:10}} title={`${rv.guestName} · ${ps.label} · ${rv.checkIn} → ${rv.checkOut}`}>
               <span className="truncate font-medium text-[11px] italic" title={`${rv.guestName} · ${rv.checkIn} → ${rv.checkOut}`}>{geometry.continuesBefore?'‹ ':''}{rv.guestName || 'Guest'}{geometry.continuesAfter?' ›':''}</span><span className="ml-1.5 shrink-0 text-[10px] opacity-90 font-medium">♙ {formatGuests(rv)}</span>
               <span className="ml-auto hidden group-hover:flex items-center gap-1"><button onClick={e=>{e.stopPropagation();openFolio(rv)}} className="w-5 h-5 rounded flex items-center justify-center" style={{background:'color-mix(in srgb,var(--text) 12%,transparent)'}}><BedDouble size={10}/></button></span>
               <span role="separator" aria-label={`Resize ${rv.guestName || 'reservation'} stay`} title="Drag to change check-out date" onPointerDown={e=>beginResize(e,rv)} onPointerUp={finishResize} onPointerCancel={()=>{resizeStartRef.current=null}} onClick={e=>e.stopPropagation()} className="absolute right-0 top-0 h-full w-2 cursor-ew-resize touch-none rounded-r" style={{background:'color-mix(in srgb,var(--text) 22%,transparent)',zIndex:20}}/>
