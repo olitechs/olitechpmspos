@@ -37,7 +37,7 @@ test('POS menu RPC retains trusted service-role access and denies public/anonymo
 });
 
 test('POS menu authorization migration is transactional and read-only apart from function/grants', () => {
-  assert.match(migration, /^begin;/i);
+  assert.match(migration, /\\bbegin;/i);
   assert.match(migration, /notify pgrst, 'reload schema'/i);
   assert.match(migration, /commit;\s*$/i);
   assert.doesNotMatch(migration, /insert into public\.(products|pos_menu_categories)|update public\.(products|pos_menu_categories)|delete from public\.(products|pos_menu_categories)/i);
