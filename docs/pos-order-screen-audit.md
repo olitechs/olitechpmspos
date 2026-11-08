@@ -76,6 +76,24 @@ Implemented in `src/components/pos/OrderTaking.jsx`:
 
 **Verification status:** source changes are committed to the feature branch. No local lint/build/test run or browser interaction test is claimed because a working checkout/runtime is unavailable in this session. GitHub Actions has not yet reported a PR run for this commit.
 
+## Phase 2 and Phase 3 implementation update
+
+**Phase 2 — responsive order panel**
+- Added a compact mobile order summary bar with item count and total.
+- Added a collapsible mobile order sheet; desktop keeps the full-height ticket panel.
+- Kept line quantity controls, VAT/totals, Send & Print Ticket, Request Bill, and Move/Join Table actions inside the existing panel.
+- The mobile sheet is a presentation-only state; it does not own or persist the order.
+
+**Phase 3 — menu search and catalogue ordering**
+- POS now loads active category rows through `inventoryService.listPosCategories(propertyId)` and uses their configured sort order, with product-derived categories as a fallback.
+- Search normalizes case and diacritics, matches all query tokens, and includes product name, SKU and category.
+- Product tiles show SKU when configured.
+- The current schema/API exposes SKU but no verified barcode field or scanner contract. Barcode input is therefore not claimed or implemented.
+
+**Tests added:** `src/components/pos/stockStatus.test.mjs` now covers accent-insensitive, SKU and multi-token category search. The test is part of the repository's `test:architecture` script.
+
+**Verification limitation:** GitHub reports no workflow runs for the latest commit in the PR. The test has been added but has not been executed in this session. No lint/build/test pass is claimed.
+
 ## Implementation sequence
 
 1. ~~Add reusable category/product tile browser and two-level navigation while preserving the current order panel API.~~
