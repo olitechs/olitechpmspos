@@ -547,21 +547,13 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     return { start: differenceInCalendarDays(clippedStart, viewStart), span: Math.max(1, differenceInCalendarDays(clippedEnd, clippedStart)), continuesBefore: arrival < viewStart, continuesAfter: departure > viewEndExclusive };
   };
 
-  const openFolio = async (rv) => {
+  const openFolio = (rv) => {
     if (rv.groupId) { setActionModal({ type: 'groupFolioChoice', reservation: rv }); return; }
-    try {
-      const [data, receipts, payments] = await Promise.all([pmsService.getFolio(rv.id), pmsService.listReceiptsForReservation(rv.id), pmsService.listPayments(rv.id)]);
-      setFolio({ reservation: rv, ...data, posReceipts: receipts || [], payments: payments || [] });
-      setActionModal({ type: 'folio', reservation: rv });
-    } catch (e) { toast.error(e.message); }
+    setActionModal({ type: 'folio', reservation: rv });
   };
-  const openRoomFolio = async (rv, entireGroup = false) => {
+  const openRoomFolio = (rv, entireGroup = false) => {
     if (entireGroup && rv.groupId) { setActionModal(null); setFolio({ reservation: rv, group: normalizedReservations.filter(x => x.groupId === rv.groupId) }); setActionModal({ type: 'groupFolio', reservation: rv }); return; }
-    try {
-      const [data, receipts, payments] = await Promise.all([pmsService.getFolio(rv.id), pmsService.listReceiptsForReservation(rv.id), pmsService.listPayments(rv.id)]);
-      setFolio({ reservation: rv, ...data, posReceipts: receipts || [], payments: payments || [] });
-      setActionModal({ type: 'folio', reservation: rv });
-    } catch (e) { toast.error(e.message); }
+    setActionModal({ type: 'folio', reservation: rv });
   };
   const submitCharge = async () => { const rv = actionModal.reservation; const amount = Number(chargeAmount); if (!(amount > 0)) { toast.error('Enter a charge amount greater than 0.'); return; } try { await pmsService.chargeToRoom({ propertyId, reservationId: rv.id, description: chargeDescription || 'Room charge', amount }); toast.success(`KES ${amount.toLocaleString()} posted to Room ${rv.roomNumber || plannerRooms.find(x => x.id === rv.roomId)?.number}`); setActionModal(null); } catch (e) { toast.error(e.message); } };
 
