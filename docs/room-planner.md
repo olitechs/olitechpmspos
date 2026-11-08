@@ -51,3 +51,20 @@ The current page receives the full room and reservation arrays from `PmsStore`; 
 - Export engine exists; planner-specific landscape PDF and multi-sheet Excel output still require verification and may need a dedicated report definition.
 - Desktop/tablet/phone screenshots and end-to-end interaction screenshots have not been generated in this source-only workflow. Pixel verification and live data testing are still required.
 - No Supabase migration, production deployment, main-branch push or merge was performed.
+
+
+## Phase 2 — Toolbar and reservation details update
+- Added guest / reservation reference / room search.
+- Added payment status, booking source and room-type filters; room filtering respects the selected room type and search.
+- Added 7 / 15 / 30 day visible-range selector.
+- Added a reservation detail side panel with reservation reference, guest, dates, nights, room, guest count, source, total, paid amount, balance and notes.
+- Added detail actions that reuse existing PMS operations for edit, folio/payment, room charge, check-in, check-out, one-night extension and room change.
+- Added Escape, T, and arrow-key navigation for closing overlays, jumping to today and scrolling the planner.
+- Indexed visible reservations by room and date window to avoid scanning the full reservation list for every rendered room.
+- The existing cancellation path is not exposed as a quick action because the inspected service only exposes a delete RPC; a dedicated, audited cancellation operation must be confirmed before surfacing it as “Cancel”.
+
+## Phase 3 / 4 — Interaction and data status
+- Existing server-side move RPC and client overlap guard remain in place.
+- The planner now indexes reservations to the visible date window before drawing bars, but the page still receives the full property-scoped reservation collection from the shared PMS store. Query buffering and true row/column virtualisation are not complete.
+- Drag-to-resize, touch drag, drag-to-create, persisted closure CRUD, option expiry/countdown, undo/redo, role-specific planner permissions and complete audit-write coverage remain outstanding.
+- No database schema changes were made. Current tenant scoping continues to rely on the existing property_id/RLS contract; no unverified business_id/branch_id columns are assumed.
