@@ -82,18 +82,33 @@ export default function Folio() {
   const refresh = async () => { await loadReservations(); if (selected) await loadFolio(selected); };
   const run = async (fn, success) => {
     setBusy(true); setError(''); setNotice('');
-    try { await fn(); await loadFolio(selected); if (success) setNotice(success); }
-    catch (e) { setError(e.message || 'The folio operation failed. No success was assumed.'); }
+    try {
+      const result = await fn();
+      await loadFolio(selected);
+      if (success) setNotice(typeof success === 'function' ? success(result) : success);
+      return result;
+    } catch (e) {
+      setError(e.message || 'The folio operation failed. No success was assumed.');
+      return null;
+    }
     finally { setBusy(false); }
   };
 
   const charges = folio?.charges || [];
   const positivePayments = payments.filter((p) => Number(p.amount) > 0 && p.status === 'posted');
   const refundsTotal = Math.abs(payments.filter((p) => Number(p.amount) < 0 && p.status === 'posted').reduce((sum, p) => sum + Number(p.amount), 0));
-  const chargeTotal = charges.reduce((sum, c) => sum + Number(c.amount || 0), 0);
+  const postedChargeTotal = charges.reduce((sum, c) => sum + Number(c.amount || 0), 0);
+  const arrivalMs = selected?.arrival ? Date.parse(`${selected.arrival}T00:00:00Z`) : NaN;
+  const departureMs = selected?.departure ? Date.parse(`${selected.departure}T00:00:00Z`) : NaN;
+  const stayNights = Number.isFinite(arrivalMs) && Number.isFinite(departureMs)
+    ? Math.max(1, Math.round((departureMs - arrivalMs) / 86400000)) : 1;
+  const bookingTotal = Number(selected?.total_amount || 0) || (Number(selected?.rate || 0) * stayNights);
+  // Match fn_post_folio_payment: the greater of the posted folio ledger and reservation booking total.
+  const chargeTotal = Math.max(postedChargeTotal, bookingTotal);
   const grossPayments = positivePayments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
   const netPayments = payments.filter((p) => p.status === 'posted').reduce((sum, p) => sum + Number(p.amount || 0), 0);
-  const accommodation = charges.filter((c) => c.category === 'accommodation' || c.source === 'room').reduce((sum, c) => sum + Number(c.amount || 0), 0);
+  const postedAccommodation = charges.filter((c) => c.category === 'accommodation' || c.source === 'room').reduce((sum, c) => sum + Number(c.amount || 0), 0);
+  const accommodation = postedAccommodation || Math.max(0, chargeTotal - charges.filter((c) => c.category !== 'accommodation' && c.source !== 'room').reduce((sum, c) => sum + Number(c.amount || 0), 0));
   const posCharges = charges.filter((c) => c.source === 'pos' || ['restaurant', 'bar', 'room_service'].includes(c.category)).reduce((sum, c) => sum + Number(c.amount || 0), 0);
   const discounts = Math.abs(charges.filter((c) => c.category === 'discount').reduce((sum, c) => sum + Math.min(0, Number(c.amount || 0)), 0));
   const additionalCharges = charges.filter((c) => c.category !== 'accommodation' && c.category !== 'discount' && c.source !== 'pos').reduce((sum, c) => sum + Number(c.amount || 0), 0);
@@ -109,12 +124,14 @@ export default function Folio() {
   }, 'Charge posted to the guest ledger.');
   const submitPayment = (data) => run(async () => {
     const saved = await pmsService.postFolioPayment({ propertyId, reservationId: selected.id, ...data, idempotencyKey: crypto.randomUUID() });
-    setModal(''); setNotice(`Payment recorded: ${saved.reference || saved.id}. Print the saved receipt from payment history.`);
-  });
+    setModal('');
+    return saved;
+  }, (saved) => `Payment recorded: ${saved?.reference || saved?.id}. Print the saved receipt from payment history.`);
   const submitRefund = (data) => run(async () => {
     const saved = await pmsService.refundFolioPayment({ propertyId, paymentId: targetPayment.id, ...data, idempotencyKey: crypto.randomUUID() });
-    setModal(''); setTargetPayment(null); setNotice(`Refund recorded: ${saved.reference || saved.id}.`);
-  });
+    setModal(''); setTargetPayment(null);
+    return saved;
+  }, (saved) => `Refund recorded: ${saved?.reference || saved?.id}.`);
   const grouped = categories.map((category) => ({ category, rows: charges.filter((c) => (c.category || (c.source === 'room' ? 'accommodation' : c.source === 'pos' ? 'restaurant' : 'other_services')) === category) })).filter((group) => group.rows.length);
   const propertyName = user?.property?.business_name || user?.property?.name || 'OliTechs';
   const generatedBy = user?.full_name || user?.staff?.full_name || user?.email || 'Authorized staff';
