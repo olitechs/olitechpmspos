@@ -37,3 +37,20 @@ Several labels from the requested baseline are not dedicated reports or controls
 - Real workbook exports found include `src/services/shiftService.js` and primary Store movement XLSX in `src/services/inventoryService.js`. Shift XLSX must be retained and hardened, not replaced with page capture.
 - The active Sales Summary settings tab is a placeholder, monthly subreports and X/Z/EOD screens are absent, and requisitions lack a backing schema/workflow. Adding exports requires a real data source first; no zero rows or guessed queries should be presented as report output.
 - Phase 1 was a source-only audit. Authenticated browser checks, large live dataset validation, the PDF screenshot comparison and production DB reconciliation require an authorized test property/session and are not inferred from static review.
+
+## Implementation status after the report-engine pass
+
+| Report family / point | Current action after conversion | Data / scope retained | Still unavailable or limited |
+|---|---|---|---|
+| Management Sales Summary | Shared PDF, XLSX and generated-PDF preview | `fn_management_report` plus `fn_management_sales_detail`; selected property and dates; costless explicit report rows | Native management summary values are not item-level ledger reconciliation; source definitions distinguish gross/net/refunds and state the accounting scope. |
+| Transactional Sales Report | Shared PDF/XLSX/preview | Same report data and selected date/property; daily, department, payment, discount, void and refund breakdowns | No settlement reconciliation. |
+| Monthly Sales by Item / Category / Shift | New source-backed definitions and screens, shared PDF/XLSX/preview | Posted POS receipt item JSON, actual linked POS shifts; combined sheets plus Bar/Kitchen sheets when department markers are present | Item-line amounts do not allocate receipt-level tax/discount; categories absent in source use an explicit fallback. |
+| Sales by Payment Type | Shared document output from the management detail RPC | Payment-method aggregate only | Not a settlement report; no card, M-Pesa, guest or payment-reference data. |
+| Stock Control | Shared PDF/XLSX/preview; movement list is paginated with a hard fail above its explicit cap | Products plus property-scoped stock movement rows; date/category/location; role-filtered cost | Product expiry is a product-level field, not batch-level history; no new purchasing/requisition/count/wastage datasets were fabricated. |
+| Folio statements / receipt | Data-native customer document exports | Selected reservation ledger entries and explicit field allowlist | Authenticated customer-document browser validation remains open. |
+| Room Planner | Data-native schedule PDF/XLSX/preview; DOM screenshot export removed | Visible date range, active stays, limited reservation fields | Not a broad arrivals/departures/guest-list export. |
+| Shift Report / Close Shift | Shared XLSX/PDF and preview document action where present; thermal reprint/close path kept separate | Existing shift dataset and historic workbook sections | Must confirm thermal hardware output in authorized environment. |
+| Existing page/document screen-print paths | App-screen print and html2canvas PDF paths removed from active report views; `html2canvas` dependency removed | Grep scan retained only printer service commentary and thermal/reprint actions | Browser-generated PDF download and print preview need a signed-in desktop/tablet session. |
+| Dashboard, X/Z/EOD, GRN/PO, requisitions, transfer/count/wastage dedicated reports, arrivals/departures, user directory, settings placeholder | No fabricated report created | Phase 1 describes actual screens and source gaps | Dedicated exports remain unimplemented until a report-specific query, field policy and permission-backed view exists. |
+
+Synthetic samples for the seven requested core families are under `docs/report-samples/`; they are not production records. Visual PNGs are rendered from the new generated PDFs. No authentic old-screen screenshot was available, so a before image is deliberately not invented. See `docs/reporting-engine.md` for details and remaining risks.

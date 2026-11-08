@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowLeftRight, Banknote, FileDown, Plus, Printer, RefreshCw, Search, ShieldCheck, Undo2, X } from 'lucide-react';
+import { ArrowLeftRight, Banknote, Plus, RefreshCw, Search, ShieldCheck, Undo2, X } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { pmsService } from '@/services/pmsService';
-import { getPrintColor } from '@/utils/printTheme';
+import DocumentExportMenu from '@/components/shared/DocumentExportMenu';
+import { buildFolioStatementDefinition, buildPaymentReceiptDefinition } from '@/services/reportDefinitions';
 
 const money = (v) => `KES ${Number(v || 0).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const input = "w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-sm text-[var(--text)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-soft)]";
@@ -89,28 +90,6 @@ export default function Folio() {
   const employeeName = (actorId) => employees.find((employee) => employee.user_id === actorId || employee.id === actorId)?.full_name || (actorId ? actorId.slice(0, 8) : 'System');
   const refundedByPayment = (paymentId) => refunds.filter((r) => r.target_type === 'payment' && r.target_id === paymentId).reduce((sum, r) => sum + Number(r.amount || 0), 0);
 
-  const printStatement = () => window.print();
-  const printPaymentReceipt = (payment) => {
-    const popup = window.open('', '_blank', 'width=720,height=760');
-    if (!popup) { setError('Receipt window was blocked. Allow pop-ups to print the saved receipt.'); return; }
-    const safe = (value) => String(value ?? '').replace(/[&<>\"']/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '\"':'&quot;', "'":'&#39;' }[char]));
-    const printInk = getPrintColor('--print-ink');
-    const printPaper = getPrintColor('--print-paper');
-    const printBorder = getPrintColor('--print-border');
-    const html = '<!doctype html><html><head><title>Payment receipt</title><style>:root{--print-ink:'+printInk+';--print-paper:'+printPaper+';--print-border:'+printBorder+'}body{font:14px Arial,sans-serif;color:var(--print-ink);background:var(--print-paper);padding:32px 32px calc(32px + 2em);max-width:620px;margin:auto}.row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--print-border)}.total{font-size:20px;font-weight:bold}</style></head><body><h1>Guest Payment Receipt</h1><p>OliTechs PMS · Guest Folio</p><div class="row"><span>Guest</span><b>'+safe(selected.guest_name)+'</b></div><div class="row"><span>Reservation</span><b>'+safe(selected.id)+'</b></div><div class="row"><span>Receipt reference</span><b>'+safe(payment.reference || payment.id)+'</b></div><div class="row"><span>Date</span><b>'+safe(new Date(payment.created_at).toLocaleString('en-KE'))+'</b></div><div class="row"><span>Method</span><b>'+safe(payment.method)+'</b></div><div class="row"><span>Transaction</span><b>'+(Number(payment.amount)<0?'Refund':'Payment')+'</b></div><div class="row total"><span>Amount</span><b>'+safe(money(Math.abs(payment.amount)))+'</b></div><p>Status: '+safe(payment.status)+'. This receipt reflects a transaction already saved in the guest ledger.</p><script>window.onload=function(){window.print();};</script></body></html>';
-    popup.document.write(html); popup.document.close(); popup.focus();
-  };
-  const exportStatement = () => {
-    const rows = [
-      ['Date','Category','Description','Reference','Source','Quantity','Unit price','Amount','Employee','Status'],
-      ...charges.map((c) => [c.created_at, categoryLabels[c.category] || c.category || c.source, c.description, c.reference || '', c.source_module || c.source, c.quantity ?? 1, c.unit_price ?? c.amount, c.amount, employeeName(c.created_by), c.reversal_of_id ? 'Reversal' : 'Posted']),
-      ...payments.map((p) => [p.created_at, Number(p.amount) < 0 ? 'Refund' : 'Payment', p.method, p.reference || '', 'Cashier', 1, Math.abs(p.amount), p.amount, employeeName(p.created_by), p.status]),
-    ];
-    const csv = rows.map((row) => row.map((v) => `"${String(v ?? '').replaceAll('"','""')}"`).join(',')).join('\r\n');
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
-    const a = document.createElement('a'); a.href = url; a.download = `folio-${selected.id.slice(0,8)}.csv`; a.click(); URL.revokeObjectURL(url);
-  };
-
   const openRefund = (payment) => { setTargetPayment(payment); setModal('refund'); };
   const submitCharge = (data) => run(async () => {
     await pmsService.postFolioCharge({ propertyId, reservationId: selected.id, ...data, idempotencyKey: crypto.randomUUID() });
@@ -125,18 +104,21 @@ export default function Folio() {
     setModal(''); setTargetPayment(null); setNotice(`Refund recorded: ${saved.reference || saved.id}.`);
   });
   const grouped = categories.map((category) => ({ category, rows: charges.filter((c) => (c.category || (c.source === 'room' ? 'accommodation' : c.source === 'pos' ? 'restaurant' : 'other_services')) === category) })).filter((group) => group.rows.length);
+  const propertyName = user?.property?.business_name || user?.property?.name || 'OliTechs';
+  const generatedBy = user?.full_name || user?.staff?.full_name || user?.email || 'Authorized staff';
+  const statementDefinition = useMemo(() => selected ? buildFolioStatementDefinition({ selected, charges, payments, employees, propertyName, generatedBy, totals: { chargeTotal, netPayments, balance } }) : null, [selected, charges, payments, employees, propertyName, generatedBy, chargeTotal, netPayments, balance]);
 
   return (
-    <div className="flex-1 overflow-y-auto bg-canvas p-4 lg:p-6 print:bg-[var(--print-paper)] print:p-0">
-      <div className="mx-auto max-w-[1600px] space-y-4 print:max-w-none print:space-y-2">
-        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between print:hidden">
+    <div className="flex-1 overflow-y-auto bg-canvas p-4 lg:p-6">
+      <div className="mx-auto max-w-[1600px] space-y-4">
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div><h1 className="text-xl font-bold text-foreground">Guest Folio & Account Management</h1><p className="mt-1 text-sm text-[var(--text-muted)]">Audited guest charges, tender, refunds and account statements.</p></div>
           <button className={btn + " border border-[var(--border)] bg-[var(--surface)] text-[var(--text)]"} onClick={refresh} disabled={loading || busy}><RefreshCw size={15}/> Refresh</button>
         </header>
         {error && <div className="rounded-lg border border-[var(--danger)] bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger-text)]">{error}</div>}
         {notice && <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text)]">{notice}</div>}
-        <div className="grid gap-4 lg:grid-cols-[330px_minmax(0,1fr)] print:block">
-          <aside className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] print:hidden">
+        <div className="grid gap-4 lg:grid-cols-[330px_minmax(0,1fr)]">
+          <aside className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
             <div className="border-b border-[var(--border)] p-3"><div className="relative"><Search size={15} className="absolute left-3 top-3 text-muted-foreground"/><input className={input+" pl-9"} placeholder="Search guest, phone, room or reference" value={query} onChange={(e)=>setQuery(e.target.value)}/></div></div>
             <div className="max-h-[720px] overflow-y-auto">
               {loading ? <div className="p-6 text-center text-sm text-[var(--text-muted)]">Loading guest accounts…</div> : filtered.map((r) => <button key={r.id} onClick={()=>loadFolio(r)} className={`w-full border-b border-[var(--border)] p-4 text-left hover:bg-[var(--canvas)] ${selected?.id===r.id?'bg-[var(--canvas)]':''}`}>
@@ -147,13 +129,12 @@ export default function Folio() {
             </div>
           </aside>
 
-          <main className="min-h-[600px] rounded-xl border border-[var(--border)] bg-[var(--surface)] print:border-0">
+          <main className="min-h-[600px] rounded-xl border border-[var(--border)] bg-[var(--surface)]">
             {!selected ? <div className="flex min-h-[600px] items-center justify-center text-sm text-[var(--text-muted)]">Select a guest account to open its folio.</div> : <>
-              <div className="flex flex-col gap-3 border-b border-[var(--border)] p-4 sm:flex-row sm:items-start sm:justify-between print:border-b-2 print:border-[var(--print-border)]">
+              <div className="flex flex-col gap-3 border-b border-[var(--border)] p-4 sm:flex-row sm:items-start sm:justify-between">
                 <div><h2 className="text-xl font-bold text-foreground">{selected.guest_name}</h2><div className="mt-1 text-xs text-[var(--text-muted)]">Reservation #{selected.id.slice(0,8)} · Room {roomLabel} · {selected.status}</div><div className="text-xs text-[var(--text-muted)]">{selected.arrival} → {selected.departure} · {selected.channel || 'direct'} · {selected.meal_plan || 'bed_only'}</div></div>
-                <div className="flex flex-wrap gap-2 print:hidden">
-                  <button className={btn+" border border-[var(--border)]"} onClick={printStatement}><Printer size={15}/> Print statement</button>
-                  <button className={btn+" border border-[var(--border)]"} onClick={exportStatement}><FileDown size={15}/> Export CSV</button>
+                <div className="flex flex-wrap gap-2">
+                  <DocumentExportMenu definition={statementDefinition} label="Folio statement" disabled={!statementDefinition} />
                   <button className={btn+" border border-[var(--border)]"} onClick={()=>setModal('transfer')} disabled={!charges.length}><ArrowLeftRight size={15}/> Split / transfer</button>
                   <button className={btn+" border border-[var(--border)]"} onClick={()=>setModal('discount')} disabled={!canManage}><ShieldCheck size={15}/> Discount</button>
                   <button className={btn+" border border-[var(--border)]"} onClick={()=>setModal('charge')}><Plus size={15}/> Add charge</button>
@@ -170,7 +151,7 @@ export default function Folio() {
                 {grouped.length ? grouped.map(({category,rows})=><div key={category} className="mb-5 last:mb-0">
                   <div className="mb-2 flex items-center justify-between"><h4 className="text-sm font-semibold text-[var(--text)]">{categoryLabels[category]}</h4><span className="text-xs text-[var(--text-muted)]">{rows.length} transactions</span></div>
                   <div className="overflow-x-auto"><table className="w-full min-w-[900px] text-xs"><thead><tr className="border-b border-[var(--border)] text-left text-[10px] uppercase text-[var(--text-muted)]">{['Date & time','Reference','Source','Description','Qty','Unit price','Total','Employee','Status','Action'].map(h=><th key={h} className="px-2 py-2">{h}</th>)}</tr></thead><tbody>
-                    {rows.map((c)=><tr key={c.id} className="border-b border-[var(--border)]"><td className="px-2 py-2 text-[var(--text-muted)]">{new Date(c.created_at).toLocaleString('en-KE')}</td><td className="px-2 py-2 font-mono">{c.reference || c.id.slice(0,8)}</td><td className="px-2 py-2 capitalize">{c.source_module || c.source}</td><td className="px-2 py-2 font-medium">{c.description}{posReceipts.filter((receipt)=>receipt.folio_charge_id===c.id).map((receipt)=><details key={receipt.id} className="mt-2 rounded-md border border-[var(--border)] p-2 font-normal"><summary className="cursor-pointer text-[11px] font-semibold">Open POS receipt · Order {receipt.order_number||receipt.id.slice(0,8)}</summary><div className="mt-2 space-y-1 text-[11px]">{(Array.isArray(receipt.items)?receipt.items:[]).map((item,index)=><div key={item.id||item.product_id||index} className="flex justify-between gap-2"><span>{item.name||item.item_name||'Item'} × {item.qty??item.quantity??1}{Array.isArray(item.modifiers)&&item.modifiers.length?' · '+item.modifiers.map((modifier)=>modifier.name||modifier.label||modifier).join(', '):''}</span><span>{money(item.total??item.line_total??(Number(item.price??item.unit_price??0)*Number(item.qty??item.quantity??1)))}</span></div>)}<div className="border-t border-[var(--border)] pt-1">Subtotal {money(receipt.subtotal)} · Discount {money(receipt.discount_amount)} · Tax {money(receipt.vat)} · Total {money(receipt.total)}</div><div>Receipt {receipt.id} · {new Date(receipt.created_at).toLocaleString('en-KE')}</div><div>Cashier ID: {receipt.created_by||'—'} · Waiter: {receipt.waiter||'—'} · Payment: {receipt.payment_method}</div></div></details>)}</td><td className="px-2 py-2 text-right">{c.quantity ?? 1}</td><td className="px-2 py-2 text-right">{money(c.unit_price ?? c.amount)}</td><td className="px-2 py-2 text-right font-semibold">{money(c.amount)}</td><td className="px-2 py-2 font-mono">{employeeName(c.created_by)}</td><td className="px-2 py-2">{c.reversal_of_id ? 'Reversal' : 'Posted'}</td><td className="px-2 py-2 print:hidden">{canManage && Number(c.amount)>0 && !c.reversal_of_id && !charges.some((x)=>x.reversal_of_id===c.id) ? <button className="text-xs font-semibold text-[var(--danger)]" disabled={busy} onClick={()=>{const reason=window.prompt('Reason for reversing this charge:');if(reason?.trim())run(()=>pmsService.reverseFolioCharge({propertyId,chargeId:c.id,reason}), 'Charge reversal posted.')}}>Reverse</button> : '—'}</td></tr>)}
+                    {rows.map((c)=><tr key={c.id} className="border-b border-[var(--border)]"><td className="px-2 py-2 text-[var(--text-muted)]">{new Date(c.created_at).toLocaleString('en-KE')}</td><td className="px-2 py-2 font-mono">{c.reference || c.id.slice(0,8)}</td><td className="px-2 py-2 capitalize">{c.source_module || c.source}</td><td className="px-2 py-2 font-medium">{c.description}{posReceipts.filter((receipt)=>receipt.folio_charge_id===c.id).map((receipt)=><details key={receipt.id} className="mt-2 rounded-md border border-[var(--border)] p-2 font-normal"><summary className="cursor-pointer text-[11px] font-semibold">Open POS receipt · Order {receipt.order_number||receipt.id.slice(0,8)}</summary><div className="mt-2 space-y-1 text-[11px]">{(Array.isArray(receipt.items)?receipt.items:[]).map((item,index)=><div key={item.id||item.product_id||index} className="flex justify-between gap-2"><span>{item.name||item.item_name||'Item'} × {item.qty??item.quantity??1}{Array.isArray(item.modifiers)&&item.modifiers.length?' · '+item.modifiers.map((modifier)=>modifier.name||modifier.label||modifier).join(', '):''}</span><span>{money(item.total??item.line_total??(Number(item.price??item.unit_price??0)*Number(item.qty??item.quantity??1)))}</span></div>)}<div className="border-t border-[var(--border)] pt-1">Subtotal {money(receipt.subtotal)} · Discount {money(receipt.discount_amount)} · Tax {money(receipt.vat)} · Total {money(receipt.total)}</div><div>Receipt {receipt.id} · {new Date(receipt.created_at).toLocaleString('en-KE')}</div><div>Cashier ID: {receipt.created_by||'—'} · Waiter: {receipt.waiter||'—'} · Payment: {receipt.payment_method}</div></div></details>)}</td><td className="px-2 py-2 text-right">{c.quantity ?? 1}</td><td className="px-2 py-2 text-right">{money(c.unit_price ?? c.amount)}</td><td className="px-2 py-2 text-right font-semibold">{money(c.amount)}</td><td className="px-2 py-2 font-mono">{employeeName(c.created_by)}</td><td className="px-2 py-2">{c.reversal_of_id ? 'Reversal' : 'Posted'}</td><td className="px-2 py-2">{canManage && Number(c.amount)>0 && !c.reversal_of_id && !charges.some((x)=>x.reversal_of_id===c.id) ? <button className="text-xs font-semibold text-[var(--danger)]" disabled={busy} onClick={()=>{const reason=window.prompt('Reason for reversing this charge:');if(reason?.trim())run(()=>pmsService.reverseFolioCharge({propertyId,chargeId:c.id,reason}), 'Charge reversal posted.')}}>Reverse</button> : '—'}</td></tr>)}
                   </tbody></table></div>
                 </div>) : <div className="rounded-lg bg-[var(--canvas)] p-6 text-center text-sm text-[var(--text-muted)]">No charge transactions have been posted to this folio.</div>}
               </section>
@@ -178,7 +159,7 @@ export default function Folio() {
               <section className="p-4">
                 <div className="mb-3 flex items-center justify-between"><h3 className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">Payment, refund & receipt history</h3><span className="text-xs text-[var(--text-muted)]">{payments.length} ledger entries</span></div>
                 <div className="overflow-x-auto"><table className="w-full min-w-[750px] text-xs"><thead><tr className="border-b border-[var(--border)] text-left text-[10px] uppercase text-[var(--text-muted)]">{['Date & time','Receipt / reference','Method','Allocation','Transaction','Amount','Status','Receipt'].map(h=><th key={h} className="px-2 py-2">{h}</th>)}</tr></thead><tbody>
-                  {payments.map((p)=><tr key={p.id} className="border-b border-[var(--border)]"><td className="px-2 py-3 text-[var(--text-muted)]">{new Date(p.created_at).toLocaleString('en-KE')}</td><td className="px-2 py-3 font-mono">{p.reference || p.id.slice(0,8)}</td><td className="px-2 py-3 capitalize">{String(p.method).replace('_',' ')}</td><td className="px-2 py-3">{p.folio_charge_id ? (charges.find((c)=>c.id===p.folio_charge_id)?.description || p.folio_charge_id.slice(0,8)) : 'General folio'}</td><td className="px-2 py-3">{Number(p.amount)<0?'Refund':'Payment'}</td><td className="px-2 py-3 text-right font-semibold">{money(Math.abs(p.amount))}</td><td className="px-2 py-3">{p.status}</td><td className="px-2 py-3 print:hidden"><div className="flex gap-2">{Number(p.amount)>0 && p.status==='posted' && canManage && <button className="font-semibold text-[var(--danger)]" onClick={()=>openRefund(p)} disabled={busy || refundedByPayment(p.id)>=Number(p.amount)-0.005}>Refund</button>}<button className="font-semibold text-[var(--primary)]" onClick={()=>printPaymentReceipt(p)}><Printer size={13}/></button></div></td></tr>)}
+                  {payments.map((p)=><tr key={p.id} className="border-b border-[var(--border)]"><td className="px-2 py-3 text-[var(--text-muted)]">{new Date(p.created_at).toLocaleString('en-KE')}</td><td className="px-2 py-3 font-mono">{p.reference || p.id.slice(0,8)}</td><td className="px-2 py-3 capitalize">{String(p.method).replace('_',' ')}</td><td className="px-2 py-3">{p.folio_charge_id ? (charges.find((c)=>c.id===p.folio_charge_id)?.description || p.folio_charge_id.slice(0,8)) : 'General folio'}</td><td className="px-2 py-3">{Number(p.amount)<0?'Refund':'Payment'}</td><td className="px-2 py-3 text-right font-semibold">{money(Math.abs(p.amount))}</td><td className="px-2 py-3">{p.status}</td><td className="px-2 py-3"><div className="flex gap-2">{Number(p.amount)>0 && p.status==='posted' && canManage && <button className="font-semibold text-[var(--danger)]" onClick={()=>openRefund(p)} disabled={busy || refundedByPayment(p.id)>=Number(p.amount)-0.005}>Refund</button>}<DocumentExportMenu definition={buildPaymentReceiptDefinition({selected,payment:p,propertyName,generatedBy})} label="Receipt" formats={['pdf','print']} /></div></td></tr>)}
                   {!payments.length&&<tr><td colSpan="8" className="px-3 py-8 text-center text-sm text-[var(--text-muted)]">No payments recorded.</td></tr>}
                 </tbody></table></div>
                 {refunds.length>0&&<div className="mt-4 rounded-lg border border-[var(--border)] p-3"><h4 className="mb-2 text-xs font-semibold text-[var(--text)]">Refund audit records</h4>{refunds.map((r)=><div key={r.id} className="flex flex-wrap justify-between gap-2 border-b border-[var(--border)] py-2 text-xs last:border-0"><span>{r.method} · {r.target_type} · {r.target_id?.slice(0,8)}</span><strong>{money(r.amount)}</strong></div>)}</div>}

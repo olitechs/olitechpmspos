@@ -1,8 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { CalendarDays, Download, Printer, RefreshCw, TrendingUp, Hotel, ShoppingCart, ShieldCheck } from 'lucide-react';
+import { CalendarDays, RefreshCw, TrendingUp, Hotel, ShoppingCart, ShieldCheck, BarChart3 } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { reportingService } from '@/services/reportingService';
+import { buildManagementReportDefinition, buildSalesReportDefinition, buildSalesSummaryDefinition } from '@/services/reportDefinitions';
+import DocumentExportMenu from '@/components/shared/DocumentExportMenu';
+import SalesBreakdown from '@/components/modules/SalesBreakdown';
 import { NAVY, TEAL_DARK, BORDER, SAND, SURFACE, MUTED } from '@/data/themePalette';
 
 const money = (value) => `KES ${Number(value || 0).toLocaleString('en-KE', { maximumFractionDigits: 0 })}`;
@@ -25,13 +28,6 @@ function Section({ title, children }) {
 function Table({ columns, rows, empty = 'No transactional data for this period.' }) {
   return <div className="overflow-x-auto"><table className="w-full min-w-[520px] text-sm"><thead><tr style={{ borderBottom: `1px solid ${BORDER}` }}>{columns.map(c => <th key={c.key} className="px-3 py-2 text-left text-[11px] font-medium " style={{ color: MUTED }}>{c.label}</th>)}</tr></thead><tbody>{rows.length ? rows.map((row, i) => <tr key={row.id || row.key || i} style={{ borderBottom: `1px solid ${BORDER}` }}>{columns.map(c => <td key={c.key} className="px-3 py-2" style={{ color: NAVY }}>{c.render ? c.render(row) : row[c.key]}</td>)}</tr>) : <tr><td colSpan={columns.length} className="px-3 py-8 text-center text-sm" style={{ color: MUTED }}>{empty}</td></tr>}</tbody></table></div>;
 }
-function downloadCsv(filename, rows) {
-  const csv = rows.map(row => row.map(value => `"${String(value ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
-}
-
 export default function Reports() {
   const { user } = useAuth();
   const propertyId = user?.property?.id;
@@ -60,57 +56,14 @@ export default function Reports() {
 
   useEffect(() => { load(); }, [propertyId, from, to]);
 
-  const exportCsv = () => {
-    if (!report || !sales) return;
-    const rows = [
-      ['OliTechs Management Report', from, to],
-      [],
-      ['Hotel KPI','Value'],
-      ['Sellable rooms',report.hotel?.sellable_rooms || 0],
-      ['Available room nights',report.hotel?.available_room_nights || 0],
-      ['Occupied room nights',report.hotel?.occupied_room_nights || 0],
-      ['Occupancy %',report.hotel?.occupancy_percent || 0],
-      ['Room revenue',report.hotel?.room_revenue || 0],
-      ['ADR',report.hotel?.adr || 0],
-      ['RevPAR',report.hotel?.revpar || 0],
-      ['Arrivals',report.hotel?.arrivals || 0],
-      ['Departures',report.hotel?.departures || 0],
-      [],
-      ['Sales KPI','Value'],
-      ['POS gross',report.sales?.pos_gross || 0],
-      ['POS tax',report.sales?.pos_tax || 0],
-      ['Discounts',report.sales?.discounts || 0],
-      ['Refunds',report.sales?.refunds || 0],
-      ['Voids',report.sales?.voids || 0],
-      ['POS net',report.sales?.pos_net || 0],
-      [],
-      ['Payment method','Transactions','Amount'],
-      ...(sales.payments || []).map(x => [x.method,x.transactions,x.amount]),
-      [],
-      ['Department','Quantity','Revenue'],
-      ...(sales.departments || []).map(x => [x.department,x.qty,x.revenue]),
-      [],
-      ['Inventory KPI','Value'],
-      ['Valuation',report.inventory?.valuation || 0],
-      ['Purchases',report.inventory?.purchases || 0],
-      ['Consumption quantity',report.inventory?.consumption_qty || 0],
-      ['Wastage quantity',report.inventory?.wastage_qty || 0],
-      ['Stock movements',report.inventory?.stock_movements || 0],
-      ['Transfer orders',report.inventory?.transfer_orders || 0],
-      [],
-      ['Cashier KPI','Value'],
-      ['Open shifts',report.cashier?.open_shifts || 0],
-      ['Closed shifts',report.cashier?.closed_shifts || 0],
-      ['Cash variance',report.cashier?.cash_variance || 0],
-    ];
-    downloadCsv(`olitech-management-report-${from}-to-${to}.csv`, rows);
-  };
-
-  const printReport = () => window.print();
-
   const daily = useMemo(() => sales?.daily || [], [sales]);
+  const propertyName = user?.property?.business_name || user?.property?.name || 'OliTechs';
+  const generatedBy = user?.full_name || user?.staff?.full_name || 'Authorized staff';
+  const managementDefinition = useMemo(() => report && sales ? buildManagementReportDefinition({ report, sales, from, to, propertyName, generatedBy }) : null, [report, sales, from, to, propertyName, generatedBy]);
+  const salesSummaryDefinition = useMemo(() => report && sales ? buildSalesSummaryDefinition({ report, sales, from, to, propertyName, generatedBy }) : null, [report, sales, from, to, propertyName, generatedBy]);
+  const salesReportDefinition = useMemo(() => report && sales ? buildSalesReportDefinition({ report, sales, from, to, propertyName, generatedBy }) : null, [report, sales, from, to, propertyName, generatedBy]);
   const tabs = [
-    ['overview','Overview',TrendingUp], ['sales','Sales',ShoppingCart], ['hotel','Hotel',Hotel], ['inventory','Inventory',ShoppingCart], ['controls','Controls',ShieldCheck],
+    ['overview','Overview',TrendingUp], ['sales','Sales',ShoppingCart], ['sales-analysis','Sales breakdown',BarChart3], ['hotel','Hotel',Hotel], ['inventory','Inventory',ShoppingCart], ['controls','Controls',ShieldCheck],
   ];
 
   return <div className="flex-1 overflow-y-auto p-4 sm:p-5 lg:p-6" style={{ background: SAND }}>
@@ -121,8 +74,9 @@ export default function Reports() {
           <label className="flex min-h-11 items-center gap-2 rounded-xl border bg-surface px-3" style={{ borderColor: BORDER }}><CalendarDays size={15} style={{ color: TEAL_DARK }} /><input aria-label="From date" type="date" value={from} onChange={e=>setFrom(e.target.value)} className="bg-transparent text-sm font-medium outline-none" /></label>
           <label className="flex min-h-11 items-center gap-2 rounded-xl border bg-surface px-3" style={{ borderColor: BORDER }}><span className="text-xs font-medium" style={{ color: MUTED }}>TO</span><input aria-label="To date" type="date" value={to} onChange={e=>setTo(e.target.value)} className="bg-transparent text-sm font-medium outline-none" /></label>
           <button type="button" onClick={load} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium disabled:opacity-50" style={{ background: 'var(--primary)', color: 'var(--primary-foreground)' }}><RefreshCw size={15} className={loading?'animate-spin':''}/>Refresh</button>
-          <button type="button" onClick={exportCsv} disabled={!report || loading} className="inline-flex min-h-11 items-center gap-2 rounded-xl border bg-surface px-3 text-sm font-medium disabled:opacity-50" style={{ borderColor: BORDER, color: NAVY }}><Download size={15}/>CSV</button>
-          <button type="button" onClick={printReport} className="inline-flex min-h-11 items-center gap-2 rounded-xl border bg-surface px-3 text-sm font-medium" style={{ borderColor: BORDER, color: NAVY }}><Printer size={15}/>Print</button>
+          <DocumentExportMenu definition={managementDefinition} label="Management report" disabled={!managementDefinition || loading} />
+          <DocumentExportMenu definition={salesSummaryDefinition} label="Sales summary" disabled={!salesSummaryDefinition || loading} />
+          <DocumentExportMenu definition={salesReportDefinition} label="Sales report" disabled={!salesReportDefinition || loading} />
         </div>
       </div>
 
@@ -155,6 +109,8 @@ export default function Reports() {
           <Section title="Voids"><Table columns={[{key:'reason',label:'Reason'},{key:'transactions',label:'Transactions'},{key:'amount',label:'Amount',render:r=>money(r.amount)}]} rows={sales?.voids||[]} /></Section>
           <Section title="Refunds"><Table columns={[{key:'method',label:'Method'},{key:'transactions',label:'Transactions'},{key:'amount',label:'Amount',render:r=>money(r.amount)}]} rows={sales?.refunds||[]} /></Section>
         </div>}
+
+        {tab==='sales-analysis' && <SalesBreakdown propertyId={propertyId} propertyName={propertyName} generatedBy={generatedBy} from={from} to={to} paymentRows={sales?.payments || []} />}
 
         {tab==='hotel' && <div className="grid grid-cols-2 gap-3 md:grid-cols-4"><Stat label="Sellable rooms" value={report.hotel?.sellable_rooms}/><Stat label="Available room nights" value={report.hotel?.available_room_nights}/><Stat label="Occupied room nights" value={report.hotel?.occupied_room_nights}/><Stat label="Reservations" value={report.hotel?.reservations}/><Stat label="Arrivals" value={report.hotel?.arrivals}/><Stat label="Departures" value={report.hotel?.departures}/><Stat label="ADR" value={money(report.hotel?.adr)}/><Stat label="RevPAR" value={money(report.hotel?.revpar)}/><Stat label="Room revenue" value={money(report.hotel?.room_revenue)}/></div>}
 

@@ -1,0 +1,117 @@
+{
+  "note": "Synthetic test fixtures only; no production data.",
+  "reports": [
+    {
+      "file": "OliTechs_Sales-Summary_2026-10-01-to-2026-10-31.pdf",
+      "bytes": 38897,
+      "report": "Sales Summary",
+      "format": "pdf",
+      "rows": 10,
+      "synthetic": true
+    },
+    {
+      "file": "OliTechs_Sales-Summary_2026-10-01-to-2026-10-31.xlsx",
+      "bytes": 12195,
+      "report": "Sales Summary",
+      "format": "xlsx",
+      "rows": 10,
+      "synthetic": true
+    },
+    {
+      "file": "OliTechs_Sales-Report_2026-10-01-to-2026-10-31.pdf",
+      "bytes": 41235,
+      "report": "Sales Report",
+      "format": "pdf",
+      "rows": 18,
+      "synthetic": true
+    },
+    {
+      "file": "OliTechs_Sales-Report_2026-10-01-to-2026-10-31.xlsx",
+      "bytes": 17788,
+      "report": "Sales Report",
+      "format": "xlsx",
+      "rows": 18,
+      "synthetic": true
+    },
+    {
+      "file": "OliTechs_Stock-Control_2026-10-01-to-2026-10-31.pdf",
+      "bytes": 41016,
+      "report": "Stock Control",
+      "format": "pdf",
+      "rows": 5,
+      "synthetic": true
+    },
+    {
+      "file": "OliTechs_Stock-Control_2026-10-01-to-2026-10-31.xlsx",
+      "bytes": 10945,
+      "report": "Stock Control",
+      "format": "xlsx",
+      "rows": 5,
+      "synthetic": true
+    },
+    {
+      "file": "OliTechs_Monthly-Sales-by-Item_2026-10-01-to-2026-10-31.pdf",
+      "bytes": 40387,
+      "report": "Monthly Sales by Item",
+      "format": "pdf",
+      "rows": 12,
+      "synthetic": true
+    },
+    {
+      "file": "OliTechs_Monthly-Sales-by-Item_2026-10-01-to-2026-10-31.xlsx",
+      "bytes": 11778,
+      "report": "Monthly Sales by Item",
+      "format": "xlsx",
+      "rows": 12,
+      "synthetic": true
+    },
+    {
+      "file": "OliTechs_Monthly-Sales-by-Category_2026-10-01-to-2026-10-31.pdf",
+      "bytes": 38880,
+      "report": "Monthly Sales by Category",
+      "format": "pdf",
+      "rows": 8,
+      "synthetic": true
+    },
+    {
+      "file": "OliTechs_Monthly-Sales-by-Category_2026-10-01-to-2026-10-31.xlsx",
+      "bytes": 11198,
+      "report": "Monthly Sales by Category",
+      "format": "xlsx",
+      "rows": 8,
+      "synthetic": true
+    },
+    {
+      "file": "OliTechs_Monthly-Sales-by-Shift_2026-10-01-to-2026-10-31.pdf",
+      "bytes": 38734,
+      "report": "Monthly Sales by Shift",
+      "format": "pdf",
+      "rows": 9,
+      "synthetic": true
+    },
+    {
+      "file": "OliTechs_Monthly-Sales-by-Shift_2026-10-01-to-2026-10-31.xlsx",
+      "bytes": 11510,
+      "report": "Monthly Sales by Shift",
+      "format": "xlsx",
+      "rows": 9,
+      "synthetic": true
+    },
+    {
+      "file": "OliTechs_Sales-by-Payment-Type_2026-10-01-to-2026-10-31.pdf",
+      "bytes": 37872,
+      "report": "Sales by Payment Type",
+      "format": "pdf",
+      "rows": 2,
+      "synthetic": true
+    },
+    {
+      "file": "OliTechs_Sales-by-Payment-Type_2026-10-01-to-2026-10-31.xlsx",
+      "bytes": 8814,
+      "report": "Sales by Payment Type",
+      "format": "xlsx",
+      "rows": 2,
+      "synthetic": true
+    }
+  ]
+}

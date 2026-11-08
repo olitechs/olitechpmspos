@@ -41,10 +41,11 @@ test('service layer calls the authoritative folio RPCs and reads existing accoun
 });
 
 test('guest folio screen exposes statement, receipt, transaction categories and account operations', () => {
-  for (const value of ['Accommodation','Restaurant','Bar','Laundry','Airport transfers','Excursions','Room service','Other services','Taxes and adjustments','Print statement','Export CSV','Refund','Reverse','Split / transfer','Take payment','Outstanding balance','Allocate payment to charge']) {
+  for (const value of ['Accommodation','Restaurant','Bar','Laundry','Airport transfers','Excursions','Room service','Other services','Taxes and adjustments','Folio statement','Receipt','Refund','Reverse','Split / transfer','Take payment','Outstanding balance','Allocate payment to charge']) {
     assert.ok(screen.includes(value), 'Missing folio UI feature: ' + value);
   }
-  assert.match(screen, /printPaymentReceipt/);
+  assert.match(screen, /DocumentExportMenu/);
+  assert.doesNotMatch(screen, /window\.print\(\)|html2canvas|Export CSV|Print statement/);
   assert.match(screen, /source_module/);
   assert.match(screen, /created_by/);
 });

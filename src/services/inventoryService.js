@@ -192,6 +192,40 @@ export const inventoryService = {
     return data || [];
   },
 
+  async listMovementsForReport(propertyId, { from, to, category = 'all', location = 'all' } = {}, onProgress = () => {}) {
+    if (!propertyId) throw new Error('An active property is required to export stock movements.');
+    if (from && to && from > to) throw new Error('The stock report start date must be on or before the end date.');
+    const pageSize = 500;
+    const maxRows = 10_000;
+    const nextDate = (value) => {
+      const date = new Date(`${String(value).slice(0, 10)}T00:00:00Z`);
+      if (Number.isNaN(date.getTime())) throw new Error('Select a valid stock report end date.');
+      date.setUTCDate(date.getUTCDate() + 1);
+      return date.toISOString().slice(0, 10);
+    };
+    const rows = [];
+    let offset = 0;
+    while (offset <= maxRows) {
+      let query = supabase.from('stock_movements')
+        .select('*, product:products(id,name,sku,category,unit,location), user_profile:profiles(full_name)')
+        .eq('property_id', propertyId)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + pageSize - 1);
+      if (from) query = query.gte('created_at', `${from}T00:00:00+03:00`);
+      if (to) query = query.lt('created_at', `${nextDate(to)}T00:00:00+03:00`);
+      const { data, error } = await query;
+      if (error) throw new Error(error.message);
+      const page = data || [];
+      rows.push(...page);
+      onProgress(rows.length);
+      if (rows.length > maxRows) throw new Error(`This stock report contains more than ${maxRows.toLocaleString()} movements. Narrow the date range so all source rows can be included.`);
+      if (page.length < pageSize) break;
+      offset += pageSize;
+    }
+    return rows.filter((movement) => (category === 'all' || movement.product?.category === category)
+      && (location === 'all' || movement.product?.location === location));
+  },
+
   async listUsage(propertyId) {
     const { data, error } = await supabase.from('stock_usage').select('*, product:products(name,sku,unit)').eq('property_id', propertyId).order('created_at', { ascending: false }).limit(500);
     if (error) throw new Error(error.message);
@@ -300,13 +334,6 @@ export const inventoryService = {
       if (expiry && expiry <= in30) return { id: `exp-${p.id}`, product: p, type: 'expiry', severity: 'warning', message: `Expires ${expiry.toLocaleDateString('en-KE')}` };
       return null;
     }).filter(Boolean);
-  },
-
-  async exportStockReport(movements, filename = 'olitechs-stock-report.xlsx') {
-    const rows = movements.map((m) => ({ Date: m.created_at, Product: m.product?.name || '', SKU: m.product?.sku || '', Category: m.product?.category || '', Type: m.type || (Number(m.qty) >= 0 ? 'in' : 'out'), Qty: Math.abs(Number(m.qty) || 0), Reason: m.reason || '', User: m.user_profile?.full_name || '' }));
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(rows), 'Stock Report');
-    XLSX.writeFile(workbook, filename);
   },
 
   async exportPosMenu(menu, filename = 'olitechs-pos-menu.xlsx') {

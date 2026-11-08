@@ -1,5 +1,4 @@
 import { supabase } from '@/lib/supabaseClient';
-import * as XLSX from 'xlsx';
 import { buildShiftSalesSummary, normalizeShiftPaymentMethod } from '@/services/shiftReportCore';
 
 export const shiftService = {
@@ -131,73 +130,3 @@ export const shiftService = {
     return this.getShiftReport(shiftId);
   },
 };
-
-export function exportShiftToExcel(report) {
-  const shift = report.shift;
-  const money = (value) => Number(value || 0);
-  const workbook = XLSX.utils.book_new();
-  const summary = [
-    ['Metric', 'Amount', 'Count'],
-    ['Opening Cash', money(shift.opening_cash), 1],
-    ['Cash', money(report.payments.cash.amount), report.payments.cash.count],
-    ['M-Pesa', money(report.payments.mpesa.amount), report.payments.mpesa.count],
-    ['Card', money(report.payments.card.amount), report.payments.card.count],
-    ['Bank', money(report.payments.bank.amount), report.payments.bank.count],
-    ['Room Charge', money(report.payments.room_charge.amount), report.payments.room_charge.count],
-    ['Other', money(report.payments.other.amount), report.payments.other.count],
-    ['Gross Sales', money(report.grossSales), report.totalTransactions],
-    ['Refunds', money(report.refundsTotal), ''],
-    ['Voided Value', money(report.voidedValue), ''],
-    ['Net Sales', money(report.totalSales), report.totalTransactions],
-    ['Guest Covers', money(report.totalCovers), ''],
-    ['Items Sold', money(report.itemsSold), ''],
-    ['Expected Cash', money(report.expectedCash), ''],
-    ['Counted Cash', report.countedCash == null ? '' : money(report.countedCash), ''],
-    ['Variance', report.variance == null ? '' : money(report.variance), ''],
-  ];
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(summary), 'Summary');
-
-  const detailed = [['Receipt No', 'Table', 'Waiter', 'Time', 'Items', 'Payment Method', 'Amount', 'Guest', 'Covers']];
-  report.orders.forEach((receipt) => detailed.push([
-    receipt.order_number || '',
-    receipt.table_number || '',
-    receipt.waiter || '',
-    new Date(receipt.created_at).toLocaleString('en-KE'),
-    (Array.isArray(receipt.items) ? receipt.items : []).map((item) => `${item.name || ''} x${item.qty || item.quantity || 1}`).join(', '),
-    receipt.payment_method === 'split' ? 'Split Payment' : normalizeShiftPaymentMethod(receipt.payment_method),
-    money(receipt.total),
-    receipt.guest_name || '',
-    Number(receipt.covers || 1),
-  ]));
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(detailed), 'Detailed Receipts');
-
-  const voided = [['Voided Receipt', 'Table', 'Time', 'Voided Value']];
-  (report.voidedOrders || []).forEach((receipt) => voided.push([
-    receipt.order_number || '', receipt.table_number || '', new Date(receipt.created_at).toLocaleString('en-KE'), money(receipt.total),
-  ]));
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(voided), 'Voided Receipts');
-
-  const sales = report.totalSales || 0;
-  const breakdown = [['Payment Method', 'Receipt Count', 'Gross Amount', 'Refunds', 'Net Amount', '% of Net Sales']];
-  Object.entries(report.payments).forEach(([method, values]) => breakdown.push([
-    method, values.count, money(report.grossPayments?.[method]?.amount), money(report.refundsByMethod?.[method]), money(values.amount), sales ? money(values.amount) / sales : 0,
-  ]));
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(breakdown), 'Payment Breakdown');
-  const receiptNames = new Map(report.orders.map((receipt) => [receipt.id, receipt.order_number || receipt.id]));
-  const refundDetails = [['Receipt No', 'Settlement Method', 'Refund Amount']];
-  (report.refunds || []).forEach((refund) => refundDetails.push([
-    receiptNames.get(refund.receipt_id) || refund.receipt_id || '',
-    normalizeShiftPaymentMethod(refund.settlement_method || refund.method),
-    money(refund.amount),
-  ]));
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(refundDetails), 'Refund Details');
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
-    ['Category', 'Qty Sold', 'Gross Amount'],
-    ['Food', report.categories.food.qty, report.categories.food.amount],
-    ['Drinks', report.categories.drinks.qty, report.categories.drinks.amount],
-    ['All Items', report.itemsSold, money(report.grossSales)],
-  ]), 'Items Sold');
-
-  const dateLabel = new Date(shift.date + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '');
-  XLSX.writeFile(workbook, `Shift-Report-${shift.shift_no}-${dateLabel}.xlsx`);
-}

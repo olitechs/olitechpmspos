@@ -1,11 +1,13 @@
 import React,{useEffect,useMemo,useState}from'react';
-import{Download,X,LockKeyhole,AlertTriangle}from'lucide-react';
+import{X,LockKeyhole,AlertTriangle}from'lucide-react';
 import{toast}from'sonner';
 import{useAuth}from'@/lib/AuthContext';
 import{authService,getSessionStaff}from'@/services/authService';
-import{shiftService,exportShiftToExcel}from'@/services/shiftService';
+import{shiftService}from'@/services/shiftService';
 import{getPrinters,getAssignments,printShiftReport}from'@/services/printService';
 import PinPad from'@/components/auth/PinPad';
+import DocumentExportMenu from'@/components/shared/DocumentExportMenu';
+import{buildShiftReportDefinition}from'@/services/reportDefinitions';
 
 const money=n=>Number(n||0).toLocaleString('en-KE',{minimumFractionDigits:2,maximumFractionDigits:2});
 const managerRoles = new Set(['hotel_admin','super_admin','fb_manager','owner','admin','manager','property_manager','general_manager']);
@@ -62,6 +64,7 @@ export default function CloseShiftModal({shift,onClosed,onClose}){
  
  useEffect(()=>{if(!shift)return;shiftService.getShiftReport(shift.id).then(setReport).catch(e=>setError(e.message));shiftService.getOpenTables(propertyId).then(setOpenTables).catch(e=>setTableLoadError(e.message||'Could not verify open tables.')).finally(()=>setTablesLoaded(true));},[shift,propertyId]);
  const variance=useMemo(()=>report?Number(counted||0)-Number(report.expectedCash||0):0,[counted,report]);
+ const propertyName=user?.property?.business_name||user?.property?.name||'OliTechs';const generatedBy=user?.full_name||staff?.full_name||user?.email||'Authorized staff';const shiftExportDefinition=useMemo(()=>report?buildShiftReportDefinition({...report,countedCash:counted.trim()===''?report.countedCash:Number(counted),variance:counted.trim()===''?report.variance:variance},{propertyName,generatedBy}):null,[report,counted,variance,propertyName,generatedBy]);
  const doClose=async(approved=managerApproved)=>{
    if(!tablesLoaded||tableLoadError){setError(tableLoadError||'Checking open tables. Please wait.');return;}
    if(openTables.length){setError('Clear or settle every active table before closing this shift.');return;}
@@ -95,6 +98,6 @@ export default function CloseShiftModal({shift,onClosed,onClose}){
    <textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Closing notes (optional)" className="mt-4 min-h-20 w-full rounded-xl border border-[var(--border)] p-3 text-sm"/>
    </>}
   </div>
-  <div className="flex flex-wrap justify-between gap-2 border-t border-[var(--border)] px-5 py-4"><button disabled={!report||busy} onClick={()=>{const r={...report,countedCash:Number(counted||0),variance};exportShiftToExcel(r)}} className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] px-4 py-2.5 text-sm font-medium disabled:opacity-40"><Download size={16}/>Export Excel</button><div className="flex gap-2"><button onClick={onClose} className="rounded-xl border border-[var(--border)] px-4 py-2.5 text-sm font-medium">Cancel</button><button disabled={!report||busy||counted===''||!tablesLoaded||!!tableLoadError||openTables.length>0} onClick={()=>Math.abs(variance)>500&&!canApproveWithoutStaffPin?setPinOpen(true):doClose(Math.abs(variance)>500&&canApproveWithoutStaffPin)} className="inline-flex items-center gap-2 rounded-xl bg-[var(--primary)] px-5 py-2.5 text-sm font-medium text-primary-foreground disabled:opacity-40"><LockKeyhole size={16}/>{busy?'Closing…':Math.abs(variance)>500&&!canApproveWithoutStaffPin?'Manager PIN · Print & Close':'Print & Close Shift'}</button></div></div>
+  <div className="flex flex-wrap justify-between gap-2 border-t border-[var(--border)] px-5 py-4"><div className="flex flex-col gap-1"><span className="text-[10px] text-[var(--text-muted)]">Digital documents are separate from assigned thermal copies.</span><DocumentExportMenu definition={shiftExportDefinition} label="Shift report" disabled={!shiftExportDefinition||busy}/></div><div className="flex gap-2"><button onClick={onClose} className="rounded-xl border border-[var(--border)] px-4 py-2.5 text-sm font-medium">Cancel</button><button disabled={!report||busy||counted===''||!tablesLoaded||!!tableLoadError||openTables.length>0} onClick={()=>Math.abs(variance)>500&&!canApproveWithoutStaffPin?setPinOpen(true):doClose(Math.abs(variance)>500&&canApproveWithoutStaffPin)} className="inline-flex items-center gap-2 rounded-xl bg-[var(--primary)] px-5 py-2.5 text-sm font-medium text-primary-foreground disabled:opacity-40"><LockKeyhole size={16}/>{busy?'Closing…':Math.abs(variance)>500&&!canApproveWithoutStaffPin?'Manager PIN · Print & Close':'Print & Close Shift'}</button></div></div>
  </div></div>;
 }

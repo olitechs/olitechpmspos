@@ -37,11 +37,20 @@ This feature branch contains the route/link audit fixes, POS-to-stock workflow d
 - Kept the existing database schema unchanged. The current account context exposes one property, not a business/branch switcher; saved stock locations are product filters and movement rows do not consistently carry branch/location. COGS, historical valuation changes, expected/late deliveries, requisition queues, batch expiry, par levels, dismissal notes, price-jump baselines and several unusual-activity baselines remain unavailable or explicitly qualified because the current schema/APIs do not support them.
 - Moved **Manage stores**, **POS Devices** and **Printers** out of Stores navigation into a Back Office-only Store administration group. Former Stores URLs redirect to the Back Office destinations to preserve bookmarks. Dashboard alert rows now include a keyboard-accessible inspection action and a role-aware item detail dialog with recorded stock thresholds, SKU/barcode, category, saved location, supplier and expiry details where available, plus supported follow-up actions.
 
+## Part 5 — Data-native report documents
+
+- Replaced application-screen printing and Room Planner screenshot PDF capture with shared report definitions, a data-native PDF/XLSX engine and accessible Download PDF / Download Excel / Print PDF Preview menu. Preview opens the generated PDF, not the app DOM. Removed `html2canvas` as a direct app dependency; jsPDF still installs it transitively, but no active report code uses it.
+- Converted the active Management Sales Summary/Report, Stock Control, monthly POS sales by item/category/shift, payment-type aggregate, Folio statement/receipt, Room Planner calendar and supported Shift Report document paths. Existing POS receipt, kitchen/bar ticket, local Print Agent/ESC/POS and shift thermal printing remain separate.
+- Added property/date-scoped paginated receipt/movement adapters; Excel Summary/detail sheets, formulas, formats, safe formula escaping and applicable conditional formatting; conditional Bar/Kitchen sheets; embedded Noto Sans PDFs; append-only export audit metadata and progress/error messaging.
+- Added implementation status to `docs/audit/PRINT_EXPORT_AUDIT.md`, `docs/reporting-engine.md`, and synthetic sample PDFs/XLSX (seven core families × two formats) plus rendered new-document PNGs in `docs/report-samples/`. No production data is included.
+- Dedicated X/Z/EOD, PO/GRN, requisition/count/wastage/transfer, user-directory, generic arrival/departure and Settings report exports remain unavailable where the screen/query is absent or not sufficient. Live financial reconciliation and authenticated desktop/tablet download/share/print-preview validation remain open.
+
 ## Validation
 
 - `npm run lint` — passed.
 - `npm run typecheck` — passed.
 - `npm run test:architecture` — 179 passed, 0 failed.
+- `npm run test:reports` — 11 report-definition, safe-filter and synthetic document tests passed; PDF/XLSX generation covered 1/50/500 rows. Samples opened/converted with LibreOffice and PDFs rendered for visual inspection.
 - `npm run build` — passed. Vite still reports a large-main-chunk advisory (>500 kB).
 - `npm run check:contrast` — required body/surface/room/deposit pairs passed. The user-mandated white-on-Paid and white-on-Not-paid pairs measure 2.99:1 and 2.52:1; they cannot meet WCAG AA without changing the specified colors, so they are explicitly flagged.
 - Local HTTP: `/`, `/manus-routes.json`, `/manifest.json` and `/olitechs-logo.svg` returned 200; all 65 source routes matched the manifest.

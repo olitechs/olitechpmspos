@@ -1,9 +1,22 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { CalendarDays, Download, Printer } from 'lucide-react';
+import { CalendarDays, Printer } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
-import { shiftService, exportShiftToExcel } from '@/services/shiftService';
+import { shiftService } from '@/services/shiftService';
 import { getPrinters, getAssignments, printShiftReport } from '@/services/printService';
 import { supabase } from '@/lib/supabaseClient';
+import DocumentExportMenu from '@/components/shared/DocumentExportMenu';
+import { buildShiftReportDefinition } from '@/services/reportDefinitions';
+
+function ShiftReportDocumentExport({ shift, propertyName, generatedBy }) {
+  const getDefinition = async (onProgress) => {
+    onProgress?.('Loading shift transactions…');
+    const report = await shiftService.getShiftReport(shift.id);
+    onProgress?.('Building shift report…');
+    return buildShiftReportDefinition(report, { propertyName, generatedBy });
+  };
+
+  return <DocumentExportMenu getDefinition={getDefinition} label="Shift report" />;
+}
 
 export default function ShiftReport() {
   const { user } = useAuth();
@@ -37,12 +50,11 @@ export default function ShiftReport() {
     loadShifts();
   }, [loadShifts]);
 
-  const action = async (shift, type) => {
+  const action = async (shift) => {
     setActionError('');
     try {
       const report = await shiftService.getShiftReport(shift.id);
       report.propertyId = propertyId;
-      if (type === 'excel') return exportShiftToExcel(report);
       const { data: settings } = await supabase
         .from('property_settings')
         .select('*')
@@ -70,7 +82,7 @@ export default function ShiftReport() {
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-xl font-black text-[var(--text)]">Shift Reports</h1>
-            <p className="text-sm text-[var(--text-muted)]">Closing receipts and Excel sales breakdowns.</p>
+            <p className="text-sm text-[var(--text-muted)]">Structured shift financial reports; thermal reprints stay on assigned receipt printers.</p>
           </div>
           <div className="flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-bold">
             <CalendarDays size={15} aria-hidden="true" />{date}
@@ -100,12 +112,10 @@ export default function ShiftReport() {
                   <div className="text-xs text-[var(--text-muted)]">{shift.status} · {new Date(shift.opened_at).toLocaleString('en-KE')}</div>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={() => action(shift, 'print')} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-xs font-bold text-[var(--text)] hover:bg-[var(--primary-soft)]">
+                  <button type="button" onClick={() => action(shift)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-xs font-bold text-[var(--text)] hover:bg-[var(--primary-soft)]">
                     <Printer size={15} aria-hidden="true" />Re-print
                   </button>
-                  <button type="button" onClick={() => action(shift, 'excel')} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[var(--primary)] px-3 text-xs font-bold text-[var(--on-primary)] hover:bg-[var(--primary-hover)]">
-                    <Download size={15} aria-hidden="true" />Export Excel
-                  </button>
+                  <ShiftReportDocumentExport shift={shift} propertyName={user?.property?.business_name || user?.property?.name || 'OliTechs'} generatedBy={user?.full_name || user?.staff?.full_name || user?.email || 'Authorized staff'} />
                 </div>
               </div>
             ))}
