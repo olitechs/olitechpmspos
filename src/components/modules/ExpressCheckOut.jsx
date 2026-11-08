@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, LogOut, RefreshCw } from 'lucide-react';
+import { CheckCircle2, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { usePms } from '@/data/PmsStore';
 import { pmsService } from '@/services/pmsService';
