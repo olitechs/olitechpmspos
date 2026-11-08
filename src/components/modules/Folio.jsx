@@ -165,6 +165,32 @@ export default function Folio() {
               </section>
 
               <section className="border-b border-[var(--border)] p-4">
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <div><h3 className="text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">POS receipts sent to this room</h3><p className="mt-1 text-xs text-[var(--text-muted)]">Original POS receipt numbers and consumed items linked to this guest stay.</p></div>
+                  <span className="rounded-full bg-[var(--canvas)] px-2.5 py-1 text-xs font-semibold text-[var(--text)]">{posReceipts.length} receipts</span>
+                </div>
+                {posReceipts.length ? <div className="space-y-2">
+                  {posReceipts.map((receipt)=>(
+                    <details key={receipt.id} className="rounded-lg border border-[var(--border)] bg-[var(--surface)]">
+                      <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-3 p-3 text-xs">
+                        <span className="min-w-0"><strong className="text-[var(--text)]">Receipt {receipt.order_number || receipt.id.slice(0,8)}</strong><span className="ml-2 font-mono text-[var(--text-muted)]">{receipt.id}</span><span className="ml-2 text-[var(--text-muted)]">{new Date(receipt.created_at).toLocaleString('en-KE')}</span></span>
+                        <span className="flex items-center gap-3"><span className="capitalize text-[var(--text-muted)]">{receipt.payment_method || '—'}</span><strong className="text-sm text-[var(--text)]">{money(receipt.total)}</strong></span>
+                      </summary>
+                      <div className="border-t border-[var(--border)] p-3">
+                        <div className="mb-2 flex flex-wrap justify-between gap-2 text-[11px] text-[var(--text-muted)]"><span>Room {receipt.room_number || roomLabel} · Table {receipt.table_number || '—'} · Order {receipt.order_number || '—'}</span><span>Cashier {employeeName(receipt.created_by)}</span></div>
+                        <div className="overflow-x-auto"><table className="w-full min-w-[420px] text-xs"><thead><tr className="border-b border-[var(--border)] text-left text-[10px] uppercase text-[var(--text-muted)]"><th className="py-2">Consumed product / service</th><th className="px-2 py-2 text-right">Qty</th><th className="px-2 py-2 text-right">Unit price</th><th className="px-2 py-2 text-right">Line total</th></tr></thead><tbody>
+                          {(Array.isArray(receipt.items)?receipt.items:[]).map((item,index)=>{const qty=Number(item.qty??item.quantity??1);const unit=Number(item.unit_price??item.price??0);return <tr key={item.id||item.product_id||index} className="border-b border-[var(--border)]"><td className="py-2"><div className="font-medium text-[var(--text)]">{item.name||item.item_name||'Item'}</div>{Array.isArray(item.modifiers)&&item.modifiers.length>0&&<div className="text-[10px] text-[var(--text-muted)]">{item.modifiers.map((modifier)=>modifier.name||modifier.label||modifier).join(' · ')}</div>}</td><td className="px-2 py-2 text-right">{qty}</td><td className="px-2 py-2 text-right">{money(unit)}</td><td className="px-2 py-2 text-right font-semibold">{money(item.total??item.line_total??item.amount??unit*qty)}</td></tr>;})}
+                          {!Array.isArray(receipt.items)||!receipt.items.length ? <tr><td colSpan="4" className="py-4 text-center text-[var(--text-muted)]">No item lines were stored on this receipt.</td></tr> : null}
+                        </tbody></table></div>
+                        <div className="mt-3 flex flex-wrap justify-end gap-x-5 gap-y-1 border-t border-[var(--border)] pt-2 text-xs"><span>Subtotal <strong>{money(receipt.subtotal)}</strong></span><span>Discount <strong>{money(receipt.discount_amount)}</strong></span><span>VAT / tax <strong>{money(receipt.vat)}</strong></span><span>Receipt total <strong>{money(receipt.total)}</strong></span></div>
+                        <div className="mt-2 text-[10px] text-[var(--text-muted)]">Linked folio charge: {receipt.folio_charge_id || 'Not linked'} · This receipt remains the original POS source record.</div>
+                      </div>
+                    </details>
+                  ))}
+                </div> : <div className="rounded-lg bg-[var(--canvas)] p-5 text-center text-sm text-[var(--text-muted)]">No POS receipts are linked to this room stay yet.</div>}
+              </section>
+
+              <section className="border-b border-[var(--border)] p-4">
                 <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">Transaction ledger by category</h3>
                 {grouped.length ? grouped.map(({category,rows})=><div key={category} className="mb-5 last:mb-0">
                   <div className="mb-2 flex items-center justify-between"><h4 className="text-sm font-semibold text-[var(--text)]">{categoryLabels[category]}</h4><span className="text-xs text-[var(--text-muted)]">{rows.length} transactions</span></div>
@@ -187,7 +213,7 @@ export default function Folio() {
         </div>
       </div>
 
-      {showInvoiceEditor && <FinalInvoiceHeaderModal selected={selected} defaults={invoiceHeader} onClose={()=>setShowInvoiceEditor(false)} onSubmit={prepareFinalInvoice}/>}
+      {showInvoiceEditor && <FinalInvoiceHeaderModal selected={selected} roomLabel={roomLabel} defaults={invoiceHeader} onClose={()=>setShowInvoiceEditor(false)} onSubmit={prepareFinalInvoice}/>}
       {modal==='charge'&&<ChargeModal busy={busy} onClose={()=>setModal('')} onSubmit={submitCharge}/>}
       {modal==='payment'&&<PaymentModal balance={balance} charges={charges} busy={busy} onClose={()=>setModal('')} onSubmit={submitPayment}/>}
       {modal==='refund'&&targetPayment&&<RefundModal payment={targetPayment} refundable={Math.max(0,Number(targetPayment.amount)-refundedByPayment(targetPayment.id))} busy={busy} onClose={()=>setModal('')} onSubmit={submitRefund}/>}
@@ -198,7 +224,7 @@ export default function Folio() {
 }
 
 
-function FinalInvoiceHeaderModal({selected,defaults,onClose,onSubmit}) {
+function FinalInvoiceHeaderModal({selected,roomLabel,defaults,onClose,onSubmit}) {
   const [form,setForm]=useState(defaults || {});
   const update=(key,value)=>setForm((current)=>({...current,[key]:value}));
   return <Modal title="Edit final invoice header" onClose={onClose}>
@@ -226,7 +252,7 @@ function FinalInvoiceHeaderModal({selected,defaults,onClose,onSubmit}) {
       </div>
       <Field label="Additional header details / company or booking information"><textarea rows="2" className={input} value={form.headerNote||''} onChange={(e)=>update('headerNote',e.target.value)}/></Field>
       <Field label="Invoice footer note"><textarea rows="2" className={input} value={form.footerNote||''} onChange={(e)=>update('footerNote',e.target.value)}/></Field>
-      <div className="rounded-lg bg-[var(--canvas)] p-3 text-xs text-[var(--text-muted)]">Room {selected?.room_id || '—'} · {selected?.arrival || '—'} to {selected?.departure || '—'} · Reservation {String(selected?.id||'').slice(0,8)}</div>
+      <div className="rounded-lg bg-[var(--canvas)] p-3 text-xs text-[var(--text-muted)]">Room {roomLabel || '—'} · {selected?.arrival || '—'} to {selected?.departure || '—'} · Reservation {String(selected?.id||'').slice(0,8)}</div>
       <div className="flex justify-end gap-2 pt-1"><button type="button" className={btn+" border border-[var(--border)]"} onClick={onClose}>Cancel</button><button type="submit" className={btn+" bg-primary text-primary-foreground"}>Prepare invoice</button></div>
     </form>
   </Modal>;
