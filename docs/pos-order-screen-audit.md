@@ -92,7 +92,7 @@ Implemented in `src/components/pos/OrderTaking.jsx`:
 
 **Tests added:** `src/components/pos/stockStatus.test.mjs` now covers accent-insensitive, SKU and multi-token category search. The test is part of the repository's `test:architecture` script.
 
-**Verification limitation:** GitHub reports no workflow runs for the latest commit in the PR. The test has been added but has not been executed in this session. No lint/build/test pass is claimed.
+**Verification limitation:** A GitHub Actions run (`42464846213`, POS Menu Import SKU Regression) has started for the branch and is currently in progress. It includes an ephemeral PostgreSQL regression, build, lint/design checks, typecheck and architecture/import-contract tests. Results are pending; no pass is claimed yet. No lint/build/test pass is claimed.
 
 ## Phase 4 implementation update — existing Menu Manager
 
