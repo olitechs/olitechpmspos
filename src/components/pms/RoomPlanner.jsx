@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import {
   CalendarDays, ChevronLeft, ChevronRight, Link2, Plus, RefreshCw, X, Save, Trash2, Ban,
-  FileDown, BedDouble, AlertTriangle, Settings2,
+  FileDown, BedDouble, AlertTriangle, Settings2, Search, Users, CreditCard, StickyNote, Clock, LogIn, LogOut, Pencil, SlidersHorizontal,
 } from 'lucide-react';
 import {
   format, addDays, differenceInCalendarDays, eachDayOfInterval, endOfMonth, startOfMonth, subDays,
@@ -148,6 +148,12 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   const [chargeDescription, setChargeDescription] = useState('Room charge');
   const [exportPreview, setExportPreview] = useState(false);
   const [plannerToolsOpen, setPlannerToolsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [paymentFilter, setPaymentFilter] = useState('all');
+  const [sourceFilter, setSourceFilter] = useState('all');
+  const [roomTypeFilter, setRoomTypeFilter] = useState('all');
+  const [viewLength, setViewLength] = useState('15');
+  const [selectedReservation, setSelectedReservation] = useState(null);
   const [closures, setClosures] = useState([]);
   const scrollRef = useRef(null);
   const todayRef = useRef(null);
@@ -161,11 +167,25 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     return () => { active = false; };
   }, [propertyId]);
   const roomTypeMap = useMemo(() => new Map(plannerRooms.map(r => [r.room_type_id, r.roomTypeName || r.room_type || 'Unassigned'])), [plannerRooms]);
+  const filteredReservations = useMemo(() => normalizedReservations.filter(rv => {
+    const room = plannerRooms.find(item => item.id === rv.roomId);
+    const status = getPaymentStatusFromAmounts(rv.amountPaid, rv.totalAmount);
+    const query = searchQuery.trim().toLowerCase();
+    const matchesQuery = !query || [rv.guestName, rv.id, rv.reservationNumber, rv.reservation_number, rv.bookingReference, rv.booking_reference, rv.channel, room?.number, room?.name].some(value => String(value || '').toLowerCase().includes(query));
+    return matchesQuery && (paymentFilter === 'all' || status === paymentFilter) && (sourceFilter === 'all' || (rv.channel || 'direct') === sourceFilter) && (roomTypeFilter === 'all' || roomTypeMap.get(room?.room_type_id) === roomTypeFilter);
+  }), [normalizedReservations, plannerRooms, searchQuery, paymentFilter, sourceFilter, roomTypeFilter, roomTypeMap]);
+  const filteredRooms = useMemo(() => plannerRooms.filter(room => {
+    const type = roomTypeMap.get(room.room_type_id) || room.roomTypeName || room.room_type || 'Unassigned';
+    if (roomTypeFilter !== 'all' && type !== roomTypeFilter) return false;
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return true;
+    return [room.number, room.name, type].some(value => String(value || '').toLowerCase().includes(query)) || filteredReservations.some(rv => rv.roomId === room.id);
+  }), [plannerRooms, roomTypeMap, roomTypeFilter, searchQuery, filteredReservations]);
   const groupedRooms = useMemo(() => {
     const groups = new Map();
-    [...plannerRooms].sort((a,b) => Number(a.number) - Number(b.number)).forEach(r => { const key = roomTypeMap.get(r.room_type_id) || r.roomTypeName || r.room_type || 'Unassigned'; if (!groups.has(key)) groups.set(key, []); groups.get(key).push(r); });
+    [...filteredRooms].sort((a,b) => Number(a.number) - Number(b.number)).forEach(r => { const key = roomTypeMap.get(r.room_type_id) || r.roomTypeName || r.room_type || 'Unassigned'; if (!groups.has(key)) groups.set(key, []); groups.get(key).push(r); });
     return [...groups.entries()];
-  }, [plannerRooms, roomTypeMap]);
+  }, [filteredRooms, roomTypeMap]);
 
   const dayWidth = DAY_WIDTH;
   const columns = useMemo(() => {
@@ -207,6 +227,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
 
   const openCreate = (room, date) => { const next = emptyForm(room, date); setForm(next); setFormError(''); setLinked([]); setAddGroupRoomId(''); setModal({ mode: 'create' }); };
   const openEdit = (r) => {
+    setSelectedReservation(null);
     setForm({ guestName: r.guestName, phone: r.phone || '', checkIn: r.checkIn, checkOut: r.checkOut, paymentStatus: r.paymentStatus, channel: r.channel, mealPlan: r.mealPlan, adults: r.adults || 1, kidsCount: r.kidsCount || 0, kidsAges: r.kidsAges || [], totalAmount: r.totalAmount, amountPaid: r.amountPaid, roomTypeId: r.roomTypeId || plannerRooms.find(x => x.id === r.roomId)?.room_type_id || '', roomId: r.roomId, joint: !!r.groupId, selectedRoomIds: [r.roomId], notes: r.notes || '' });
     setFormError(''); setAddGroupRoomId(''); setModal({ mode: 'edit', reservationId: r.id, groupId: r.groupId });
   };
@@ -284,6 +305,15 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     try { await pmsService.movePlannerReservation({ reservationId: reservation.id, roomId: target.roomId, checkIn: target.checkIn, checkOut: target.checkOut }); toast.success('Reservation moved'); setMoveConfirmation(null); onRefresh?.(); } catch (e) { toast.error(e.message); setMoveConfirmation(null); onRefresh?.(); }
   };
   const performGroupMove = async (all) => { const { reservation, target } = groupMoveConfirmation; try { if (!all) await pmsService.movePlannerReservation({ reservationId: reservation.id, roomId: target.roomId, checkIn: target.checkIn, checkOut: target.checkOut }); else await pmsService.moveReservationGroup({ groupId: reservation.groupId, movedReservationId: reservation.id, roomId: target.roomId, checkIn: target.checkIn, checkOut: target.checkOut }); toast.success('Reservation moved'); setGroupMoveConfirmation(null); onRefresh?.(); } catch (e) { toast.error(e.message); setGroupMoveConfirmation(null); onRefresh?.(); } };
+
+  const applyViewLength = (days) => {
+    const count = Number(days);
+    const start = range?.from || dateKey(columns[0] || todayDate);
+    const nextEnd = dateKey(addDays(parseDate(start), count - 1));
+    setViewLength(String(count));
+    setFromInput(start); setToInput(nextEnd); setRange({ from: start, to: nextEnd });
+    setRangeError(''); setFocusToday(false); setViewMode('rolling');
+  };
 
   const applyRange = (from = fromInput, to = toInput) => {
     setRangeError('');
@@ -371,6 +401,22 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     .room-planner-date-input input{min-width:0;width:100%;height:34px;background:transparent;border:0;outline:0;color:var(--btn-neutral-fg);font-size:16px;font-family:inherit}
     .room-planner-month-select{font-family:inherit;font-weight:500}
     .room-planner-settings-panel{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 0;color:var(--cal-text);font-size:13px}
+    .room-planner-filter-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .room-planner-search{height:36px;min-width:230px;flex:1 1 250px;display:flex;align-items:center;gap:8px;padding:0 10px;border:1px solid var(--btn-neutral-bd);border-radius:6px;background:var(--surface);color:var(--muted)}
+    .room-planner-search input{width:100%;min-width:0;border:0;outline:0;background:transparent;color:var(--text);font:inherit;font-size:13px}
+    .room-planner-filter{height:36px;min-width:145px;max-width:220px;padding:0 9px;border:1px solid var(--btn-neutral-bd);border-radius:6px;background:var(--surface);color:var(--text);font-size:12px}
+    .room-planner-filter-count{margin-left:auto;color:var(--muted);font-size:11px;font-weight:600}
+    .room-planner-detail{position:absolute;right:16px;top:16px;bottom:16px;z-index:80;width:min(420px,calc(100vw - 32px));overflow:auto;border:1px solid var(--border);border-radius:14px;background:var(--surface);box-shadow:0 18px 50px color-mix(in srgb,var(--deep-lagoon) 22%,transparent)}
+    .room-planner-detail-action{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border);border-radius:8px;padding:9px 11px;font-size:12px;font-weight:600;color:var(--text);background:var(--surface)}
+    @media(max-width:600px){.room-planner-filter-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.room-planner-search{grid-column:span 2;min-width:0}.room-planner-filter{width:100%;max-width:none}.room-planner-filter-count{grid-column:span 2;margin-left:0}}
+    .room-planner-filter-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .room-planner-search{height:36px;min-width:230px;flex:1 1 250px;display:flex;align-items:center;gap:8px;padding:0 10px;border:1px solid var(--btn-neutral-bd);border-radius:6px;background:var(--surface);color:var(--muted)}
+    .room-planner-search input{width:100%;min-width:0;border:0;outline:0;background:transparent;color:var(--text);font:inherit;font-size:13px}
+    .room-planner-filter{height:36px;min-width:145px;max-width:220px;padding:0 9px;border:1px solid var(--btn-neutral-bd);border-radius:6px;background:var(--surface);color:var(--text);font-size:12px}
+    .room-planner-filter-count{margin-left:auto;color:var(--muted);font-size:11px;font-weight:600}
+    .room-planner-detail{position:absolute;right:16px;top:16px;bottom:16px;z-index:80;width:min(420px,calc(100vw - 32px));overflow:auto;border:1px solid var(--border);border-radius:14px;background:var(--surface);box-shadow:0 18px 50px color-mix(in srgb,var(--deep-lagoon) 22%,transparent)}
+    .room-planner-detail-action{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border);border-radius:8px;padding:9px 11px;font-size:12px;font-weight:600;color:var(--text);background:var(--surface)}
+    @media(max-width:600px){.room-planner-filter-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.room-planner-search{grid-column:span 2;min-width:0}.room-planner-filter{width:100%;max-width:none}.room-planner-filter-count{grid-column:span 2;margin-left:0}}
     @media(max-width:1099px){.room-planner-toolbar-date-row{flex-wrap:wrap}.room-planner-toolbar-date-row>*{flex:0 0 auto}}
     @media(max-width:600px){.room-planner-toolbar-date-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.room-planner-toolbar-date-row>*{width:100%!important;min-width:0}.room-planner-date-input{width:100%!important}.room-planner-month-select{grid-column:span 2}.room-planner-toolbar-top>*{flex:1 1 0}.room-planner-toolbar-button{font-size:14px}}`}
 </style>
@@ -397,6 +443,22 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
         <button title="Export calendar" aria-label="Export calendar" onClick={()=>setExportPreview(true)} className="room-planner-toolbar-button room-planner-neutral room-planner-icon-button" style={{width:131}}><FileDown size={18}/></button>
         <button title="Planner settings and date range" aria-label="Planner settings and date range" aria-expanded={plannerToolsOpen} onClick={()=>setPlannerToolsOpen(v=>!v)} className="room-planner-toolbar-button room-planner-action" style={{width:130}}><Settings2 size={18}/></button>
       </div>
+      <div className="room-planner-filter-row">
+        <label className="room-planner-search"><Search size={15}/><input aria-label="Search guest, reservation number or room" placeholder="Search guest, reservation no. or room" value={searchQuery} onChange={e=>setSearchQuery(e.target.value)}/></label>
+        <select aria-label="View length" value={viewLength} onChange={e=>applyViewLength(e.target.value)} className="room-planner-filter"><option value="7">7 days</option><option value="15">15 days</option><option value="30">30 days</option></select>
+        <select aria-label="Filter by payment status" value={paymentFilter} onChange={e=>setPaymentFilter(e.target.value)} className="room-planner-filter"><option value="all">All payment statuses</option><option value="not_paid">No Amount Paid</option><option value="partially_paid">Partially Paid</option><option value="fully_paid">Total Paid</option></select>
+        <select aria-label="Filter by booking source" value={sourceFilter} onChange={e=>setSourceFilter(e.target.value)} className="room-planner-filter"><option value="all">All sources</option><option value="direct">Direct</option><option value="booking_com">Booking.com</option><option value="unknown">Other / Unknown</option></select>
+        <select aria-label="Filter by room type" value={roomTypeFilter} onChange={e=>setRoomTypeFilter(e.target.value)} className="room-planner-filter"><option value="all">All room types</option>{[...new Set(plannerRooms.map(room=>roomTypeMap.get(room.room_type_id)||room.roomTypeName||room.room_type||'Unassigned'))].sort().map(type=><option key={type} value={type}>{type}</option>)}</select>
+        <span className="room-planner-filter-count">{filteredRooms.length} rooms · {filteredReservations.length} reservations</span>
+      </div>
+      <div className="room-planner-filter-row">
+        <label className="room-planner-search"><Search size={15}/><input aria-label="Search guest, reservation number or room" placeholder="Search guest, reservation no. or room" value={searchQuery} onChange={e=>setSearchQuery(e.target.value)}/></label>
+        <select aria-label="View length" value={viewLength} onChange={e=>applyViewLength(e.target.value)} className="room-planner-filter"><option value="7">7 days</option><option value="15">15 days</option><option value="30">30 days</option></select>
+        <select aria-label="Filter by payment status" value={paymentFilter} onChange={e=>setPaymentFilter(e.target.value)} className="room-planner-filter"><option value="all">All payment statuses</option><option value="not_paid">No Amount Paid</option><option value="partially_paid">Partially Paid</option><option value="fully_paid">Total Paid</option></select>
+        <select aria-label="Filter by booking source" value={sourceFilter} onChange={e=>setSourceFilter(e.target.value)} className="room-planner-filter"><option value="all">All sources</option><option value="direct">Direct</option><option value="booking_com">Booking.com</option><option value="unknown">Other / Unknown</option></select>
+        <select aria-label="Filter by room type" value={roomTypeFilter} onChange={e=>setRoomTypeFilter(e.target.value)} className="room-planner-filter"><option value="all">All room types</option>{[...new Set(plannerRooms.map(room=>roomTypeMap.get(room.room_type_id)||room.roomTypeName||room.room_type||'Unassigned'))].sort().map(type=><option key={type} value={type}>{type}</option>)}</select>
+        <span className="room-planner-filter-count">{filteredRooms.length} rooms · {filteredReservations.length} reservations</span>
+      </div>
       {plannerToolsOpen && <div className="room-planner-settings-panel">
         <span>{plannerRooms.length} rooms · {normalizedReservations.length} active stays</span>
         {onRefresh && <button onClick={onRefresh} className="room-planner-toolbar-button room-planner-neutral"><RefreshCw size={15}/>Refresh reservations</button>}
@@ -417,7 +479,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
           {group.map(room=>{const roomReservations=normalizedReservations.filter(r=>r.roomId===room.id); return <div key={room.id} className="room-planner-grid-row grid relative" style={{gridTemplateColumns:`${ROOM_COL_WIDTH}px repeat(${columns.length}, ${dayWidth}px)`, minHeight: 48}}>
             <div className="room-planner-room-cell sticky left-0 z-20 px-3 py-2 flex items-center gap-2" style={{background:'var(--surface)',borderRight:`2px solid var(--border)`,borderBottom:`1px solid var(--border)`}}><div><div className="flex items-center gap-2"><div className="font-medium text-[13px] leading-4" style={{color:'var(--text)'}}>{room.number}</div><span className="rounded-full px-1.5 py-0.5 text-[9px] font-medium" style={{background:'var(--bg)',color:'var(--muted)'}}>{roomReservations.length} stay{roomReservations.length===1?'':'s'}</span></div><div className="text-[10px] font-semibold truncate max-w-[160px]" style={{color:'var(--muted)'}}>{room.name || typeName}</div></div></div>
             {columns.map(d=>{const weekend=d.getDay()===0||d.getDay()===6;const key=dateKey(d);const target=dragTarget?.roomId===room.id&&dragTarget?.date===key;return <div key={key} onClick={()=>{if(!drag&&!suppressCellClick.current)openCreate(room,d)}} onDragOver={e=>handleCellDragOver(e,room,d)} onDrop={e=>handleCellDrop(e,room,d)} className={`room-planner-day-cell cursor-pointer ${weekend?'room-planner-weekend':''} ${key===today?'room-planner-today-cell':''}`} style={{background:target?'color-mix(in srgb, var(--primary) 28%, var(--surface))':key===today?'color-mix(in srgb, var(--primary) 9%, var(--surface))':weekend?'color-mix(in srgb, var(--grid-weekend) 78%, var(--surface))':'var(--surface)',borderRight:`1px solid var(--border)`,borderBottom:`1px solid var(--border)`, minHeight:48}}/>})}
-            {roomReservations.map(rv=>{
+            {roomReservations.filter(rv=>filteredReservations.some(item=>item.id===rv.id)).map(rv=>{
               const l=visibleReservation(rv);if(!l)return null;
               const stayStatus=rv.plannerStatus || (rv.bookingStatus==='checked_out'?'checked_out':rv.bookingStatus==='checked_in'?'occupied':'confirmed');
               const ps=getReservationBarStyle(stayStatus); const pay=getPaymentStyle(getPaymentStatusFromAmounts(rv.amountPaid, rv.totalAmount));
@@ -426,7 +488,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
               const left=geometry.left;
               const width=geometry.width;
               const pastOpacity=getBarOpacity(rv.bookingStatus,rv.checkOut,today);
-              return <div key={rv.id} draggable onDragStart={e=>beginDrag(e,rv)} onDragEnd={()=>{setDrag(null);setDragTarget(null)}} onClick={e=>{e.stopPropagation();openEdit(rv)}} className="reservation-bar absolute top-[11px] h-[23px] cursor-grab active:cursor-grabbing group" style={{left,width,background:stayStatus==='optioned'?'var(--pay-opt)':pastOpacity<1?`color-mix(in srgb, ${pay.background} 55%, transparent)`:pay.background,color:stayStatus==='optioned'?'var(--pay-opt-fg)':pay.color,border:`1.5px ${stayStatus==='optioned'?'dashed':'solid'} ${stayStatus==='optioned'?'var(--pay-opt-bd)':pay.border}`,borderLeft:stayStatus==='optioned'?'1.5px dashed var(--pay-opt-bd)':`1.5px solid ${pay.border}`,zIndex:10}} title={`${rv.guestName} · ${ps.label} · ${rv.checkIn} → ${rv.checkOut}`}>
+              return <div key={rv.id} draggable onDragStart={e=>beginDrag(e,rv)} onDragEnd={()=>{setDrag(null);setDragTarget(null)}} onClick={e=>{e.stopPropagation();setSelectedReservation(rv)}} className="reservation-bar absolute top-[11px] h-[23px] cursor-grab active:cursor-grabbing group" style={{left,width,background:stayStatus==='optioned'?'var(--pay-opt)':pastOpacity<1?`color-mix(in srgb, ${pay.background} 55%, transparent)`:pay.background,color:stayStatus==='optioned'?'var(--pay-opt-fg)':pay.color,border:`1.5px ${stayStatus==='optioned'?'dashed':'solid'} ${stayStatus==='optioned'?'var(--pay-opt-bd)':pay.border}`,borderLeft:stayStatus==='optioned'?'1.5px dashed var(--pay-opt-bd)':`1.5px solid ${pay.border}`,zIndex:10}} title={`${rv.guestName} · ${ps.label} · ${rv.checkIn} → ${rv.checkOut}`}>
               <span className="truncate font-medium text-[11px] italic" title={`${rv.guestName} · ${rv.checkIn} → ${rv.checkOut}`}>{geometry.continuesBefore?'‹ ':''}{rv.guestName || 'Guest'}{geometry.continuesAfter?' ›':''}</span><span className="ml-1.5 shrink-0 text-[10px] opacity-90 font-medium">♙ {formatGuests(rv)}</span>
               <span className="ml-auto hidden group-hover:flex items-center gap-1"><button onClick={e=>{e.stopPropagation();openFolio(rv)}} className="w-5 h-5 rounded flex items-center justify-center" style={{background:'color-mix(in srgb,var(--text) 12%,transparent)'}}><BedDouble size={10}/></button></span>
             </div>})}
@@ -438,6 +500,32 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
         </div>
       </div>
     </div>
+
+    {selectedReservation && <div className="room-planner-detail" role="dialog" aria-modal="true" aria-label="Reservation details">
+      <div className="sticky top-0 z-10 flex items-center justify-between gap-3 px-4 py-3" style={{background:'var(--deep-lagoon)',color:'var(--white)'}}><div><div className="text-xs opacity-80">Reservation details</div><h2 className="font-semibold text-base">{selectedReservation.guestName || 'Guest'}</h2></div><button type="button" aria-label="Close reservation details" onClick={()=>setSelectedReservation(null)} className="rounded-lg p-2 hover:bg-white/10"><X size={18}/></button></div>
+      <div className="space-y-4 p-4">
+        <div className="grid grid-cols-2 gap-2 text-sm">
+          <div className="rounded-lg p-3" style={{background:'var(--surface-2)'}}><div className="text-[10px] uppercase" style={{color:'var(--muted)'}}>Reservation no.</div><b>{selectedReservation.reservationNumber || selectedReservation.reservation_number || selectedReservation.bookingReference || selectedReservation.id}</b></div>
+          <div className="rounded-lg p-3" style={{background:'var(--surface-2)'}}><div className="text-[10px] uppercase" style={{color:'var(--muted)'}}>Room</div><b>{plannerRooms.find(room=>room.id===selectedReservation.roomId)?.number || selectedReservation.roomNumber || '—'}</b></div>
+          <div className="rounded-lg p-3" style={{background:'var(--surface-2)'}}><div className="text-[10px] uppercase" style={{color:'var(--muted)'}}>Check-in</div><b>{selectedReservation.checkIn}</b></div>
+          <div className="rounded-lg p-3" style={{background:'var(--surface-2)'}}><div className="text-[10px] uppercase" style={{color:'var(--muted)'}}>Check-out</div><b>{selectedReservation.checkOut}</b></div>
+          <div className="rounded-lg p-3" style={{background:'var(--surface-2)'}}><div className="text-[10px] uppercase" style={{color:'var(--muted)'}}>Nights</div><b>{differenceInCalendarDays(parseDate(selectedReservation.checkOut),parseDate(selectedReservation.checkIn))}</b></div>
+          <div className="rounded-lg p-3" style={{background:'var(--surface-2)'}}><div className="text-[10px] uppercase" style={{color:'var(--muted)'}}>Guests</div><b><Users size={13} className="inline mr-1"/>{formatGuests(selectedReservation)}</b></div>
+        </div>
+        <div className="space-y-2 text-sm"><div className="flex justify-between gap-3"><span style={{color:'var(--muted)'}}>Source</span><b>{channelLabel[selectedReservation.channel] || selectedReservation.channel || '—'}</b></div><div className="flex justify-between gap-3"><span style={{color:'var(--muted)'}}>Total</span><b>KES {Number(selectedReservation.totalAmount||0).toLocaleString('en-KE')}</b></div><div className="flex justify-between gap-3"><span style={{color:'var(--muted)'}}>Paid</span><b>KES {Number(selectedReservation.amountPaid||0).toLocaleString('en-KE')}</b></div><div className="flex justify-between gap-3"><span style={{color:'var(--muted)'}}>Balance</span><b>KES {Math.max(0,Number(selectedReservation.totalAmount||0)-Number(selectedReservation.amountPaid||0)).toLocaleString('en-KE')}</b></div><div className="flex justify-between gap-3"><span style={{color:'var(--muted)'}}>Payment</span><b>{getPaymentStyle(getPaymentStatusFromAmounts(selectedReservation.amountPaid,selectedReservation.totalAmount)).label}</b></div></div>
+        <div className="rounded-lg p-3" style={{background:'var(--surface-2)'}}><div className="flex items-center gap-2 text-xs font-semibold mb-1"><StickyNote size={14}/>Notes</div><p className="text-sm whitespace-pre-wrap" style={{color:'var(--muted)'}}>{selectedReservation.notes || selectedReservation.specialRequests || 'No notes recorded.'}</p></div>
+        <div className="grid grid-cols-2 gap-2">
+          <button className="room-planner-detail-action" onClick={()=>openEdit(selectedReservation)}><Pencil size={14}/>Edit reservation</button>
+          <button className="room-planner-detail-action" onClick={()=>openFolio(selectedReservation)}><CreditCard size={14}/>Open folio / payment</button>
+          <button className="room-planner-detail-action" onClick={()=>{setActionModal({type:'charge',reservation:selectedReservation});setSelectedReservation(null)}}><Plus size={14}/>Add charge</button>
+          {selectedReservation.bookingStatus!=='checked_in' && <button className="room-planner-detail-action" onClick={async()=>{try{await pmsService.checkInReservation(selectedReservation.id);toast.success('Guest checked in');setSelectedReservation(null);onRefresh?.()}catch(error){toast.error(error.message)}}}><LogIn size={14}/>Check in</button>}
+          {selectedReservation.bookingStatus==='checked_in' && <button className="room-planner-detail-action" onClick={async()=>{try{await pmsService.checkOutRoom(selectedReservation.roomId);toast.success('Guest checked out');setSelectedReservation(null);onRefresh?.()}catch(error){toast.error(error.message)}}}><LogOut size={14}/>Check out</button>}
+          <button className="room-planner-detail-action" onClick={()=>{const next={...selectedReservation,checkOut:dateKey(addDays(parseDate(selectedReservation.checkOut),1))};setSelectedReservation(null);openEdit(next);setForm(current=>({...current,checkOut:next.checkOut}))}}><Clock size={14}/>Extend one night</button>
+          <button className="room-planner-detail-action" onClick={()=>{setSelectedReservation(null);openEdit(selectedReservation)}}><SlidersHorizontal size={14}/>Move / change room</button>
+          <button className="room-planner-detail-action" style={{color:'var(--danger-text)',borderColor:'var(--danger)'}} onClick={async()=>{if(!confirm('Cancel this reservation? This action follows the existing reservation deletion workflow.'))return;try{await pmsService.deletePlannerReservation(selectedReservation.id);toast.success('Reservation cancelled');setSelectedReservation(null);onRefresh?.()}catch(error){toast.error(error.message)}}}>Cancel reservation</button>
+        </div>
+      </div>
+    </div>}
 
     {modal && <Modal wide title={modal.mode==='create'?'New Reservation':'Edit Reservation'} onClose={()=>setModal(null)}><div className="p-5 space-y-4">
       {modal.mode==='edit'&&form.joint&&<div className="rounded-xl p-3" style={{background:'color-mix(in srgb,var(--primary-soft) 78%,var(--surface))',border:`1px solid ${TEAL}`,color:NAVY}}><div className="flex items-start gap-2"><Link2 size={17}/><div className="flex-1"><div className="font-medium text-sm">Joint Reservation - Group #{String(modal.groupId).slice(0,6).toUpperCase()} - {linked.length} plannerRooms linked</div></div><button onClick={splitGroup} className="text-xs font-medium px-2 py-1 rounded-lg" style={{border:`1px solid ${BORDER}`}}>Split Group</button></div></div>}
