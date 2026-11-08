@@ -615,6 +615,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
         {onRefresh && <button onClick={onRefresh} className="room-planner-toolbar-button room-planner-neutral"><RefreshCw size={15}/>Refresh reservations</button>}
         <button onClick={undoPlannerMove} disabled={!undoStack.length} className="room-planner-toolbar-button room-planner-neutral disabled:opacity-40" title="Undo last planner move (Ctrl+Z)">Undo</button>
         <button onClick={redoPlannerMove} disabled={!redoStack.length} className="room-planner-toolbar-button room-planner-neutral disabled:opacity-40" title="Redo planner move (Ctrl+Shift+Z)">Redo</button>
+        <span className="text-xs" style={{color:'var(--muted)'}}>Shortcuts: T today · Esc close · ←/→ scroll · Ctrl/Cmd+Z undo</span>
         <button onClick={clearRange} className="room-planner-toolbar-button room-planner-neutral">Clear date range</button>
       </div>}
       {rangeError && <div className="mt-2 flex items-center gap-2 text-xs font-semibold" style={{color:'var(--danger-text)'}}><AlertTriangle size={14}/>{rangeError}</div>}
