@@ -225,6 +225,57 @@ begin
 end;
 $function$;
 
+-- An option must be explicitly confirmed before check-in. Expired options are
+-- reconciled to cancelled and cannot be checked in.
+create or replace function public.fn_check_in_reservation(p_reservation_id uuid)
+returns public.reservations
+language plpgsql
+security invoker
+set search_path = public, pg_temp
+as $function$
+declare
+  v_res public.reservations;
+begin
+  select r.* into v_res
+    from public.reservations r
+   where r.id = p_reservation_id
+     and (public.is_member_of_property(r.property_id) or public.is_platform_owner())
+   for update;
+
+  if v_res.id is null then raise exception 'Reservation not found or not allowed.'; end if;
+  if v_res.option_expires_at is not null then
+    if v_res.option_expires_at <= now() then
+      perform public.fn_expire_room_planner_options(v_res.property_id);
+      raise exception 'This reservation option has expired.';
+    else
+      raise exception 'Confirm the reservation option before check-in.';
+    end if;
+  end if;
+  if v_res.status <> 'booked' then raise exception 'Reservation is not in a bookable state.'; end if;
+  if v_res.arrival >= v_res.departure then raise exception 'Reservation dates are invalid.'; end if;
+  if not exists (
+    select 1 from public.rooms rm
+     where rm.id = v_res.room_id and rm.property_id = v_res.property_id
+       and rm.status in ('available','booked')
+  ) then raise exception 'Assigned room is not available for check-in.'; end if;
+
+  update public.reservations set status = 'checked-in'
+   where id = v_res.id returning * into v_res;
+  update public.rooms set status = 'occupied'
+   where id = v_res.room_id and property_id = v_res.property_id;
+
+  if not exists (
+    select 1 from public.folio_charges
+     where reservation_id = v_res.id and source = 'room'
+  ) then
+    insert into public.folio_charges(property_id,reservation_id,source,description,amount)
+    values (v_res.property_id,v_res.id,'room','Room charge',
+      v_res.rate * greatest(1,(v_res.departure-v_res.arrival)));
+  end if;
+  return v_res;
+end;
+$function$;
+
 -- Dedicated audit record for option creation and explicit confirmation.
 create or replace function public.fn_audit_room_planner_option_change()
 returns trigger
@@ -269,6 +320,7 @@ grant execute on function public.fn_set_reservation_option(uuid, boolean) to aut
 grant execute on function public.fn_create_optioned_reservation_bundle(uuid,uuid[],uuid,text,text,date,date,text,text,text,integer,integer,jsonb,numeric,numeric,text,jsonb) to authenticated, service_role;
 grant execute on function public.fn_audit_room_planner_option_change() to authenticated, service_role;
 grant execute on function public.fn_check_room_availability(uuid,uuid,date,date,uuid) to authenticated, service_role;
+grant execute on function public.fn_check_in_reservation(uuid) to authenticated, service_role;
 
 notify pgrst, 'reload schema';
 commit;
