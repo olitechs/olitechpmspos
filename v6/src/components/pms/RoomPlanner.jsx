@@ -254,8 +254,8 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   const submitCharge = async () => { const rv = actionModal.reservation; const amount = Number(chargeAmount); if (!(amount > 0)) { toast.error('Enter a charge amount greater than 0.'); return; } try { await pmsService.chargeToRoom({ propertyId, reservationId: rv.id, description: chargeDescription || 'Room charge', amount }); toast.success(`KES ${amount.toLocaleString()} posted to Room ${rv.roomNumber || rooms.find(x => x.id === rv.roomId)?.number}`); setActionModal(null); } catch (e) { toast.error(e.message); } };
 
   const printRange = columns;
-  const printTitle = `${user?.property?.name || 'OliTechs Grand Hotel'} - Room Planner - ${format(printRange[0], 'd MMM')} - ${format(printRange[printRange.length - 1], 'd MMM yyyy')}`;
-  const printSubtitle = `Printed by ${user?.full_name || user?.name || user?.email || 'Staff'} on ${format(new Date(), 'd MMM yyyy HH:mm')}`;
+  const printTitle = `${user?.property?.name || 'OliTechs'} - Reservation Calendar`;
+  const printSubtitle = `Period: ${format(printRange[0], 'dd/MM/yyyy')} - ${format(printRange[printRange.length - 1], 'dd/MM/yyyy')}`;
   const downloadPdf = async () => {
     try {
       const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import('html2canvas'), import('jspdf')]);
