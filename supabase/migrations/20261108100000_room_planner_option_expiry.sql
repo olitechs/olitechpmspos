@@ -82,7 +82,6 @@ begin
   if coalesce(p_optioned, false) then
     if v_res.option_expires_at is not null then
       if v_res.option_expires_at <= now() then
-        perform public.fn_expire_room_planner_options(v_res.property_id);
         raise exception 'This option has expired. Create a new reservation option if needed.';
       end if;
       return v_res; -- Repeated requests never extend the original 24-hour window.
@@ -94,7 +93,6 @@ begin
      returning * into v_res;
   else
     if v_res.option_expires_at is not null and v_res.option_expires_at <= now() then
-      perform public.fn_expire_room_planner_options(v_res.property_id);
       raise exception 'This option has expired and can no longer be confirmed.';
     end if;
     update public.reservations
@@ -245,7 +243,6 @@ begin
   if v_res.id is null then raise exception 'Reservation not found or not allowed.'; end if;
   if v_res.option_expires_at is not null then
     if v_res.option_expires_at <= now() then
-      perform public.fn_expire_room_planner_options(v_res.property_id);
       raise exception 'This reservation option has expired.';
     else
       raise exception 'Confirm the reservation option before check-in.';
