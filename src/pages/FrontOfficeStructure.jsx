@@ -41,7 +41,7 @@ export default function FrontOfficeStructure() {
         floor_id: room.floor_id || '',
         room_type_id: room.room_type_id || '',
       }])));
-      if (!floorForm.building_id && b.data?.length) setFloorForm(current => ({ ...current, building_id: b.data[0].id }));
+      if (b.data?.length) setFloorForm(current => current.building_id ? current : ({ ...current, building_id: b.data[0].id }));
     } catch (error) {
       toast.error(error.message || 'Unable to load property structure.');
     } finally { setLoading(false); }
@@ -91,7 +91,6 @@ export default function FrontOfficeStructure() {
 
   const saveRoom = async room => {
     const edit = roomEdits[room.id] || {};
-    const building = buildings.find(item => item.id === edit.building_id);
     const floor = floors.find(item => item.id === edit.floor_id);
     if (edit.floor_id && (!floor || floor.building_id !== edit.building_id)) {
       toast.error('Choose a floor belonging to the selected building.');
