@@ -397,10 +397,10 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     if (overlap) { toast.error(`Cannot move: Room ${room.number || room.id} already booked from ${overlap.checkIn} to ${overlap.checkOut}.`); return; }
     setMoveConfirmation({ reservation, target: { roomId: room.id, checkIn, checkOut }, nights });
   };
-  const beginResize = (event, reservation) => {
+  const beginResize = (event, reservation, edge = 'end') => {
     event.stopPropagation(); event.preventDefault();
     event.currentTarget.setPointerCapture?.(event.pointerId);
-    resizeStartRef.current = { reservation, startX: event.clientX };
+    resizeStartRef.current = { reservation, startX: event.clientX, edge };
   };
   const finishResize = async (event) => {
     event.stopPropagation();
@@ -410,16 +410,17 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     const delta = Math.round((event.clientX - active.startX) / dayWidth);
     if (!delta) return;
     const { reservation } = active;
-    const nextCheckOut = dateKey(addDays(parseDate(reservation.checkOut), delta));
-    if (nextCheckOut <= reservation.checkIn) { toast.error('A reservation must be at least one night.'); return; }
-    if (range && (nextCheckOut > dateKey(addDays(parseDate(range.to), 1)) || reservation.checkIn < range.from)) { toast.error('Resize must stay within the selected date range.'); return; }
-    const conflict = checkOverlap(normalizedReservations, reservation.roomId, reservation.checkIn, nextCheckOut, reservation.id);
+    const nextCheckIn = active.edge === 'start' ? dateKey(addDays(parseDate(reservation.checkIn), delta)) : reservation.checkIn;
+    const nextCheckOut = active.edge === 'end' ? dateKey(addDays(parseDate(reservation.checkOut), delta)) : reservation.checkOut;
+    if (nextCheckOut <= nextCheckIn) { toast.error('A reservation must be at least one night.'); return; }
+    if (range && (nextCheckOut > dateKey(addDays(parseDate(range.to), 1)) || nextCheckIn < range.from)) { toast.error('Resize must stay within the selected date range.'); return; }
+    const conflict = checkOverlap(normalizedReservations, reservation.roomId, nextCheckIn, nextCheckOut, reservation.id);
     if (conflict) { toast.error(`Cannot resize: the room is already booked from ${conflict.checkIn} to ${conflict.checkOut}.`); return; }
     try {
-      const target = { roomId: reservation.roomId, checkIn: reservation.checkIn, checkOut: nextCheckOut };
+      const target = { roomId: reservation.roomId, checkIn: nextCheckIn, checkOut: nextCheckOut };
       await pmsService.movePlannerReservation({ reservationId: reservation.id, ...target });
       recordPlannerMove(reservation, target);
-      toast.success(`Reservation extended to ${nextCheckOut}.`); onRefresh?.();
+      toast.success(`Reservation dates updated to ${nextCheckIn} – ${nextCheckOut}.`); onRefresh?.();
     } catch (error) { toast.error(error.message || 'Could not resize reservation.'); onRefresh?.(); }
   };
   const handleCellDrop = (e, room, day) => {
@@ -645,7 +646,8 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
               return <div key={rv.id} draggable onPointerDown={e=>beginTouchDrag(e,rv)} onPointerUp={finishTouchDrag} onPointerCancel={()=>{touchDragRef.current=null}} onDragStart={e=>beginDrag(e,rv)} onDragEnd={()=>{setDrag(null);setDragTarget(null)}} onClick={e=>{e.stopPropagation();setSelectedReservation(rv)}} className="reservation-bar absolute top-[11px] h-[23px] cursor-grab active:cursor-grabbing group" style={{left,width,background:stayStatus==='optioned'?'var(--pay-opt)':pastOpacity<1?`color-mix(in srgb, ${pay.background} 55%, transparent)`:pay.background,color:stayStatus==='optioned'?'var(--pay-opt-fg)':pay.color,border:`1.5px ${stayStatus==='optioned'?'dashed':'solid'} ${stayStatus==='optioned'?'var(--pay-opt-bd)':pay.border}`,borderLeft:stayStatus==='optioned'?'1.5px dashed var(--pay-opt-bd)':`1.5px solid ${pay.border}`,zIndex:10}} title={`${rv.guestName} · ${ps.label} · ${rv.checkIn} → ${rv.checkOut}`}>
               <span className="truncate font-medium text-[11px] italic" title={`${rv.guestName} · ${rv.checkIn} → ${rv.checkOut}`}>{geometry.continuesBefore?'‹ ':''}{rv.guestName || 'Guest'}{geometry.continuesAfter?' ›':''}</span><span className="ml-1.5 shrink-0 text-[10px] opacity-90 font-medium">♙ {formatGuests(rv)}</span>
               <span className="ml-auto hidden group-hover:flex items-center gap-1"><button onClick={e=>{e.stopPropagation();openFolio(rv)}} className="w-5 h-5 rounded flex items-center justify-center" style={{background:'color-mix(in srgb,var(--text) 12%,transparent)'}}><BedDouble size={10}/></button></span>
-              <span role="separator" aria-label={`Resize ${rv.guestName || 'reservation'} stay`} title="Drag to change check-out date" onPointerDown={e=>beginResize(e,rv)} onPointerUp={finishResize} onPointerCancel={()=>{resizeStartRef.current=null}} onClick={e=>e.stopPropagation()} className="absolute right-0 top-0 h-full w-2 cursor-ew-resize touch-none rounded-r" style={{background:'color-mix(in srgb,var(--text) 22%,transparent)',zIndex:20}}/>
+              <span role="separator" aria-label={`Resize ${rv.guestName || 'reservation'} check-in`} title="Drag to change check-in date" onPointerDown={e=>beginResize(e,rv,'start')} onPointerUp={finishResize} onPointerCancel={()=>{resizeStartRef.current=null}} onClick={e=>e.stopPropagation()} className="absolute left-0 top-0 h-full w-2 cursor-ew-resize touch-none rounded-l" style={{background:'color-mix(in srgb,var(--text) 22%,transparent)',zIndex:20}}/>
+              <span role="separator" aria-label={`Resize ${rv.guestName || 'reservation'} check-out`} title="Drag to change check-out date" onPointerDown={e=>beginResize(e,rv,'end')} onPointerUp={finishResize} onPointerCancel={()=>{resizeStartRef.current=null}} onClick={e=>e.stopPropagation()} className="absolute right-0 top-0 h-full w-2 cursor-ew-resize touch-none rounded-r" style={{background:'color-mix(in srgb,var(--text) 22%,transparent)',zIndex:20}}/>
             </div>})}
           </div>})}
         {bottomSpacerHeight > 0 && <div aria-hidden="true" style={{height:bottomSpacerHeight,gridColumn:'1 / -1'}}/>}
