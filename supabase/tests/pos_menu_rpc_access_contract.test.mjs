@@ -31,7 +31,7 @@ test('POS menu RPC checks POS roles or explicit POS module assignment', () => {
 });
 
 test('POS menu RPC retains trusted service-role access and denies public/anonymous execution', () => {
-  assert.match(menuRpc, /if auth\.role\(\) <> 'service_role' then/i);
+  assert.match(menuRpc, /if coalesce(auth\.role\(\), '') <> 'service_role' then/i);
   assert.match(migration, /revoke all on function public\.fn_list_pos_menu\(uuid\) from public, anon/i);
   assert.match(migration, /grant execute on function public\.fn_list_pos_menu\(uuid\) to authenticated, service_role/i);
 });
