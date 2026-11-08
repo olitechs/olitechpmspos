@@ -167,6 +167,14 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   const [floorFilter, setFloorFilter] = useState('all');
   const [tagFilter, setTagFilter] = useState('all');
   const [mobileListMode, setMobileListMode] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return undefined;
+    const media = window.matchMedia('(max-width: 767px)');
+    const syncMobileView = () => setMobileListMode(media.matches);
+    syncMobileView();
+    media.addEventListener?.('change', syncMobileView);
+    return () => media.removeEventListener?.('change', syncMobileView);
+  }, []);
   const [reservationListMode, setReservationListMode] = useState(false);
   const [collapsedRoomTypes, setCollapsedRoomTypes] = useState([]);
   const [viewLength, setViewLength] = useState('15');
@@ -675,7 +683,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
               const firstTag = Array.isArray(rv.tags) ? rv.tags[0] : rv.tag;
               const tagName = typeof firstTag === 'string' ? firstTag : firstTag?.name;
               const tagColor = typeof firstTag === 'object' ? firstTag?.color : null;
-              return <div key={rv.id} draggable onPointerDown={e=>beginTouchDrag(e,rv)} onPointerUp={finishTouchDrag} onPointerCancel={()=>{touchDragRef.current=null}} onDragStart={e=>beginDrag(e,rv)} onDragEnd={()=>{setDrag(null);setDragTarget(null)}} onClick={e=>{e.stopPropagation();setSelectedReservation(rv)}} className="reservation-bar absolute top-[11px] h-[23px] cursor-grab active:cursor-grabbing group" style={{left,width,background:stayStatus==='optioned'?'var(--pay-opt)':pastOpacity<1?`color-mix(in srgb, ${pay.background} 55%, transparent)`:pay.background,color:stayStatus==='optioned'?'var(--pay-opt-fg)':pay.color,border:`1.5px ${stayStatus==='optioned'?'dashed':'solid'} ${stayStatus==='optioned'?'var(--pay-opt-bd)':pay.border}`,borderLeft:stayStatus==='optioned'?'1.5px dashed var(--pay-opt-bd)':`1.5px solid ${pay.border}`,zIndex:10}} title={`${rv.guestName} · ${ps.label} · ${rv.checkIn} → ${rv.checkOut}${rv.optionExpiresAt ? ` · Option expires ${new Date(rv.optionExpiresAt).toLocaleString()}` : ''}`}>
+              return <div key={rv.id} draggable onPointerDown={e=>beginTouchDrag(e,rv)} onPointerUp={finishTouchDrag} onPointerCancel={()=>{touchDragRef.current=null}} onDragStart={e=>beginDrag(e,rv)} onDragEnd={()=>{setDrag(null);setDragTarget(null)}} onClick={e=>{e.stopPropagation();setSelectedReservation(rv)}} className="reservation-bar absolute h-[23px] cursor-grab active:cursor-grabbing group" style={{top:Math.max(2,(ROOM_ROW_HEIGHT-23)/2),left,width,background:stayStatus==='optioned'?'var(--pay-opt)':pastOpacity<1?`color-mix(in srgb, ${pay.background} 55%, transparent)`:pay.background,color:stayStatus==='optioned'?'var(--pay-opt-fg)':pay.color,border:`1.5px ${stayStatus==='optioned'?'dashed':'solid'} ${stayStatus==='optioned'?'var(--pay-opt-bd)':pay.border}`,borderLeft:stayStatus==='optioned'?'1.5px dashed var(--pay-opt-bd)':`1.5px solid ${pay.border}`,zIndex:10}} title={`${rv.guestName} · ${ps.label} · ${rv.checkIn} → ${rv.checkOut}${rv.optionExpiresAt ? ` · Option expires ${new Date(rv.optionExpiresAt).toLocaleString()}` : ''}`}>
               {tagName && <span aria-label={`Tag: ${tagName}`} title={tagName} className="mr-1 inline-block h-2 w-2 shrink-0 rounded-full" style={{background:tagColor || 'var(--accent)'}}/>}<span className="truncate font-medium text-[11px] italic" title={`${rv.guestName} · ${rv.checkIn} → ${rv.checkOut}`}>{geometry.continuesBefore?'‹ ':''}{rv.guestName || 'Guest'}{geometry.continuesAfter?' ›':''}</span><span className="ml-1.5 shrink-0 text-[10px] opacity-90 font-medium">♙ {formatGuests(rv)}</span>
               <span className="ml-auto hidden group-hover:flex items-center gap-1"><button onClick={e=>{e.stopPropagation();openFolio(rv)}} className="w-5 h-5 rounded flex items-center justify-center" style={{background:'color-mix(in srgb,var(--text) 12%,transparent)'}}><BedDouble size={10}/></button></span>
               <span role="separator" aria-label={`Resize ${rv.guestName || 'reservation'} check-in`} title="Drag to change check-in date" onPointerDown={e=>beginResize(e,rv,'start')} onPointerUp={finishResize} onPointerCancel={()=>{resizeStartRef.current=null}} onClick={e=>e.stopPropagation()} className="absolute left-0 top-0 h-full w-2 cursor-ew-resize touch-none rounded-l" style={{background:'color-mix(in srgb,var(--text) 22%,transparent)',zIndex:20}}/>
