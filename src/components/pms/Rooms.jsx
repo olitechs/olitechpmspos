@@ -30,7 +30,7 @@ export default function Rooms() {
             ['Reservations', '/frontoffice/reservations'],
             ['Housekeeping', '/frontoffice/housekeeping'],
           ].map(([label, path]) => {
-            const active = pathname.replace(/\\/$/, '') === path;
+            const active = (pathname.endsWith('/') ? pathname.slice(0, -1) : pathname) === path;
             return (
               <Link
                 key={path}
