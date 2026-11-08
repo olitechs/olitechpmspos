@@ -89,16 +89,16 @@ function AppRoutes(){return <AuthProvider><Suspense fallback={<AuthLoading/>}><R
 <Route path="manuals" element={<HelpCentre/>}/>
 <Route path="assistance" element={<ModuleStatusPage title="Assistance" description="Support contacts, service requests, ticket history and system status." module="assistance" back="/frontoffice"/>}/>
 <Route path="dashboard" element={<FrontOfficeDashboard/>}/>
-<Route path="channels" element={<ModuleStatusPage title="Channels" description="Manage booking sources, channel commission and channel colours. Channel manager integration is coming soon." module="channels" back="/frontoffice"/>}/>
+<Route path="channels" element={<POSApp initialModule="channels" embedded workspaceModule="frontoffice"/>}/>
 <Route path="structure" element={<ModuleStatusPage title="Structure" description="Manage properties, buildings, floors, room types and room organisation." module="structure" back="/frontoffice"/>}/>
 <Route path="configuration" element={<ModuleStatusPage title="Configuration" description="Rates, seasons, VAT, payment methods, policies, templates, users, roles and planner settings." module="configuration" back="/frontoffice"/>}/>
 <Route path="tags" element={<ModuleStatusPage title="Tags" description="Create and assign coloured tags for reservations, guests and rooms." module="tags" back="/frontoffice"/>}/>
-<Route path="check-in/arrivals" element={<ModuleStatusPage title="Arrivals" description="Today's and upcoming guest arrivals." module="arrivals" back="/frontoffice"/>}/>
-<Route path="check-in/in-house" element={<ModuleStatusPage title="In-House" description="Guests currently staying at the property." module="in-house" back="/frontoffice"/>}/>
-<Route path="check-in/departures" element={<ModuleStatusPage title="Departures" description="Today's and upcoming guest departures." module="departures" back="/frontoffice"/>}/>
+<Route path="check-in/arrivals" element={<POSApp initialModule="reservations" embedded workspaceModule="frontoffice"/>}/>
+<Route path="check-in/in-house" element={<POSApp initialModule="reservations" embedded workspaceModule="frontoffice"/>}/>
+<Route path="check-in/departures" element={<POSApp initialModule="reservations" embedded workspaceModule="frontoffice"/>}/>
 <Route path="check-in/walk-in" element={<POSApp initialModule="rooms" embedded workspaceModule="frontoffice"/>}/>
 <Route path="check-in/express-checkout" element={<POSApp initialModule="folio" embedded workspaceModule="frontoffice"/>}/>
-<Route path="check-in/registration-cards" element={<ModuleStatusPage title="Registration Cards" description="Guest registration card PDF generation and document templates." module="registration-cards" back="/frontoffice"/>}/>
+<Route path="check-in/registration-cards" element={<POSApp initialModule="registration-cards" embedded workspaceModule="frontoffice"/>}/>
 <Route path="statistics/:report" element={<ModuleStatusPage title="Statistics" description="Property performance reporting with period filters and document exports." module="statistics" back="/frontoffice"/>}/>
 <Route path="services/housekeeping" element={<POSApp initialModule="housekeeping" embedded workspaceModule="frontoffice"/>}/>
 <Route path="services/room-charges" element={<POSApp initialModule="folio" embedded workspaceModule="frontoffice"/>}/>
