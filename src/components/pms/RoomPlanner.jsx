@@ -181,17 +181,6 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     if (!query) return true;
     return [room.number, room.name, type].some(value => String(value || '').toLowerCase().includes(query)) || filteredReservations.some(rv => rv.roomId === room.id);
   }), [plannerRooms, roomTypeMap, roomTypeFilter, searchQuery, filteredReservations]);
-  const filteredReservationsByRoom = useMemo(() => {
-    const byRoom = new Map();
-    const firstDay = dateKey(columns[0] || todayDate);
-    const lastDayExclusive = dateKey(addDays(columns[columns.length - 1] || todayDate, 1));
-    filteredReservations.forEach(rv => {
-      if (!rv.checkIn || !rv.checkOut || rv.checkOut <= firstDay || rv.checkIn >= lastDayExclusive) return;
-      if (!byRoom.has(rv.roomId)) byRoom.set(rv.roomId, []);
-      byRoom.get(rv.roomId).push(rv);
-    });
-    return byRoom;
-  }, [filteredReservations, columns, todayDate]);
   const groupedRooms = useMemo(() => {
     const groups = new Map();
     [...filteredRooms].sort((a,b) => Number(a.number) - Number(b.number)).forEach(r => { const key = roomTypeMap.get(r.room_type_id) || r.roomTypeName || r.room_type || 'Unassigned'; if (!groups.has(key)) groups.set(key, []); groups.get(key).push(r); });
@@ -220,6 +209,17 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     return segments;
   }, []), [columns]);
 
+  const filteredReservationsByRoom = useMemo(() => {
+    const byRoom = new Map();
+    const firstDay = dateKey(columns[0] || todayDate);
+    const lastDayExclusive = dateKey(addDays(columns[columns.length - 1] || todayDate, 1));
+    filteredReservations.forEach(rv => {
+      if (!rv.checkIn || !rv.checkOut || rv.checkOut <= firstDay || rv.checkIn >= lastDayExclusive) return;
+      if (!byRoom.has(rv.roomId)) byRoom.set(rv.roomId, []);
+      byRoom.get(rv.roomId).push(rv);
+    });
+    return byRoom;
+  }, [filteredReservations, columns, todayDate]);
 
   useEffect(() => {
     if (modal?.reservationId) setLinked(normalizedReservations.filter(r => r.groupId && r.groupId === modal.groupId));
