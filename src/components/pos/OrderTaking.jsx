@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle, Search, X, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, Search, X, ShieldCheck, ChevronLeft, Folder, ArrowRight } from 'lucide-react';
 import { CATEGORIES, MENU_ITEMS, VAT_RATE, tableLabel, CATEGORY_CENTER } from '@/data/mockData';
 import { useStore } from '@/data/AppStore';
 import PrintWarn from '@/components/pos/PrintWarn';
@@ -24,7 +24,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
   const propertyId = user?.property?.id;
   const activeStaff = (() => { try { return JSON.parse(sessionStorage.getItem('olitech_active_staff_v2') || 'null'); } catch { return null; } })();
   const currentRole = String(activeStaff?.role || user?.staff?.role || user?.propertyRole || user?.role || '').toLowerCase();
-  const [activeCategory, setActiveCategory] = useState(CATEGORIES[0]);
+  const [activeCategory, setActiveCategory] = useState(null);
   const [removeTarget, setRemoveTarget] = useState(null);
   const [removeReason, setRemoveReason] = useState('');
   const [removeError, setRemoveError] = useState('');
@@ -263,49 +263,71 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
   const orderCenters = [...new Set(orderLines.map((l) => l.center).filter(Boolean))];
   const missingCenters = isPrinterGroupRoutingEnabled() || assignedOrderCenters === null ? [] : orderCenters
     .filter(center => !assignedOrderCenters.includes(/bar|drink/i.test(String(center)) ? 'bar' : 'kitchen'));
-  const demoMenuItems = (MENU_ITEMS[activeCategory] || []).map((item) => ({ ...item, category: activeCategory, center: CATEGORY_CENTER[activeCategory] || 'Kitchen', stock: null }));
-  const categoryMenuItems = propertyId ? menuItems.filter((item) => item.category === activeCategory) : demoMenuItems;
+  const demoMenuItems = Object.entries(MENU_ITEMS).flatMap(([category, items]) => items.map((item) => ({
+    ...item, category, center: CATEGORY_CENTER[category] || 'Kitchen', stock: null, minimumStock: 0
+  })));
+  const allMenuItems = propertyId ? menuItems : demoMenuItems;
+  const categoryMenuItems = activeCategory ? allMenuItems.filter((item) => item.category === activeCategory) : allMenuItems;
   const visibleMenuItems = filterPosMenuItems(categoryMenuItems, menuSearch);
+  const categoryCounts = allMenuItems.reduce((counts, item) => {
+    counts[item.category] = (counts[item.category] || 0) + 1;
+    return counts;
+  }, {});
+  const categoryTileStyles = [
+    'border-[var(--primary)] bg-[var(--primary-soft)]',
+    'border-[var(--accent)] bg-[var(--warning-soft)]',
+    'border-[var(--info)] bg-[var(--info-soft)]',
+    'border-[var(--success)] bg-[var(--success-soft)]',
+    'border-[var(--border)] bg-[var(--sidebar)]',
+    'border-[var(--room-occupied)] bg-[var(--primary-soft)]'
+  ];
 
   return (
     <div className="pos-shell flex h-full min-h-0 flex-col overflow-hidden bg-[var(--canvas)] lg:flex-row">
-      <nav aria-label="Menu categories" className="order-1 flex shrink-0 gap-2 overflow-x-auto border-b border-[var(--border)] bg-[var(--sidebar)] p-2 lg:order-none lg:h-full lg:w-36 lg:flex-col lg:overflow-y-auto lg:border-b-0 lg:border-r lg:p-3">
-        {menuCategories.map((cat) => (
-          <button
-            key={cat}
-            type="button"
-            onClick={() => setActiveCategory(cat)}
-            aria-pressed={activeCategory === cat}
-            className={`min-h-12 shrink-0 rounded-xl border px-4 text-sm font-semibold transition-colors lg:w-full lg:px-2 ${activeCategory === cat ? 'border-[var(--primary)] bg-[var(--primary)] text-[var(--on-primary)]' : 'border-transparent bg-transparent text-[var(--text)] hover:border-[var(--border)] hover:bg-[var(--primary-soft)]'}`}
-          >
-            {cat}
-          </button>
-        ))}
-      </nav>
-
-      <main className="order-2 flex min-h-0 flex-1 flex-col overflow-y-auto p-3 lg:order-none lg:p-4">
-        <div className="mb-3 flex items-center justify-between gap-3 px-1">
-          <div className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">{activeCategory}</div>
-          <div className="text-xs text-[var(--text-muted)]">Tap an item to add it</div>
+      <main className="order-1 flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto p-3 lg:order-none lg:p-5">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            {activeCategory && (
+              <button
+                type="button"
+                onClick={() => { setActiveCategory(null); setMenuSearch(''); }}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] transition-colors hover:bg-[var(--primary-soft)]"
+                aria-label="Back to menu categories"
+              >
+                <ChevronLeft size={20} aria-hidden="true" />
+              </button>
+            )}
+            <div className="min-w-0">
+              <div className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">Order menu</div>
+              <h2 className="truncate text-xl font-extrabold text-[var(--text)]">{activeCategory || 'Browse categories'}</h2>
+              <p className="mt-0.5 text-xs text-[var(--text-muted)]">
+                {activeCategory ? `${categoryCounts[activeCategory] || 0} items in this category` : `${menuCategories.length} categories · ${allMenuItems.length} menu items`}
+              </p>
+            </div>
+          </div>
+          <div className="text-xs font-semibold text-[var(--text-muted)]">Table {tableLabel(table)} · Tap a tile to add</div>
         </div>
+
         {missingCenters.length > 0 && (
           <div className="mb-3">
             <PrintWarn message={`No order printer set for ${missingCenters.join(', ')} — configure in Settings`} />
           </div>
         )}
-        <div className="relative mb-3">
+
+        <div className="relative mb-4">
           <Search aria-hidden="true" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
-          <label htmlFor="pos-menu-search" className="sr-only">Search menu items in {activeCategory}</label>
+          <label htmlFor="pos-menu-search" className="sr-only">Search menu items and categories</label>
           <input
             id="pos-menu-search"
             type="search"
             value={menuSearch}
             onChange={(event) => setMenuSearch(event.target.value)}
-            placeholder={`Search ${activeCategory.toLowerCase()} items`}
+            placeholder={activeCategory ? `Search ${activeCategory.toLowerCase()} items` : 'Search all menu items or categories'}
             autoComplete="off"
             className="h-12 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-10 pr-3 text-base text-[var(--text)] placeholder:text-[var(--text-muted)] focus-visible:border-[var(--primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--canvas)]"
           />
         </div>
+
         {menuLoading ? (
           <div role="status" aria-live="polite" className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 text-center text-sm font-semibold text-[var(--text-muted)]">Loading menu items…</div>
         ) : menuError ? (
@@ -313,44 +335,76 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
             <p className="text-sm font-semibold text-[var(--danger-text)]">{menuError}</p>
             <button type="button" onClick={loadPosMenu} className="min-h-11 rounded-lg bg-[var(--primary)] px-4 text-sm font-bold text-[var(--on-primary)] hover:bg-[var(--primary-hover)]">Retry menu</button>
           </div>
+        ) : !activeCategory && !menuSearch.trim() ? (
+          <section aria-label="Menu categories" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            {menuCategories.map((cat, index) => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setActiveCategory(cat)}
+                className={`group flex min-h-36 flex-col justify-between rounded-2xl border-2 p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 ${categoryTileStyles[index % categoryTileStyles.length]}`}
+                aria-label={`Open ${cat}, ${categoryCounts[cat] || 0} products`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--surface)]/80 text-[var(--primary)]">
+                    <Folder size={22} aria-hidden="true" />
+                  </div>
+                  <ArrowRight size={18} className="mt-1 text-[var(--text-muted)] transition-transform group-hover:translate-x-1" aria-hidden="true" />
+                </div>
+                <div className="mt-4">
+                  <div className="text-base font-extrabold leading-tight text-[var(--text)]">{cat}</div>
+                  <div className="mt-1 text-xs font-semibold text-[var(--text-muted)]">{categoryCounts[cat] || 0} products</div>
+                </div>
+              </button>
+            ))}
+            {menuCategories.length === 0 && (
+              <div className="col-span-full rounded-xl border border-dashed border-[var(--border)] p-8 text-center text-sm text-[var(--text-muted)]">No menu categories are configured yet.</div>
+            )}
+          </section>
         ) : visibleMenuItems.length === 0 ? (
           <div role="status" aria-live="polite" className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] p-6 text-center text-sm text-[var(--text-muted)]">
-            {menuSearch.trim() ? `No menu items match “${menuSearch.trim()}” in ${activeCategory}.` : propertyId ? `No POS items are available in ${activeCategory}. Add or enable products in Stores.` : `No demo menu items are available in ${activeCategory}.`}
+            {menuSearch.trim() ? `No menu items match “${menuSearch.trim()}”.` : `No POS items are available in ${activeCategory}.`}
           </div>
         ) : (
-          <div id="pos-product-grid" className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(160px,1fr))]">
-          {visibleMenuItems.map((item) => {
-            const inOrder = orderLines.find((l) => l.id === item.id);
-            const stockStatus = menuItems.length > 0 ? getPosStockStatus(item.stock, item.minimumStock) : 'unknown';
-            const outOfStock = stockStatus === 'out-of-stock';
-            const lowStock = stockStatus === 'low-stock';
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => addItem(item)}
-                disabled={outOfStock}
-                aria-label={`${item.name}, ${outOfStock ? 'out of stock' : lowStock ? 'low stock' : fmt(item.price)}`}
-                className={`relative min-h-28 rounded-xl border-2 p-3 text-left transition-colors active:scale-[.98] ${outOfStock ? 'border-[var(--danger)] bg-[var(--danger-soft)]' : inOrder ? 'border-[var(--primary)] bg-[var(--primary-soft)]' : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--primary)] hover:bg-[var(--primary-soft)]'}`}
-              >
-                {inOrder && (
-                  <span className="absolute right-2 top-2 flex h-7 min-w-7 items-center justify-center rounded-full bg-[var(--primary)] px-1.5 text-xs font-bold text-[var(--on-primary)]">
-                    {inOrder.qty}
-                  </span>
-                )}
-                <div className="pr-8 text-sm font-semibold leading-tight text-[var(--text)]">{item.name}</div>
-                <div className="mt-2 text-sm font-bold text-[var(--primary)]">{fmt(item.price)}</div>
-                {propertyId && menuItems.length > 0 && (
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    {outOfStock && <span className="rounded-full bg-[var(--danger-soft)] px-2 py-1 text-[11px] font-extrabold text-[var(--danger-text)]">OUT OF STOCK</span>}
-                    {lowStock && <span className="rounded-full bg-[var(--warning-soft)] px-2 py-1 text-[11px] font-extrabold text-[var(--warning-text)]">LOW STOCK</span>}
-                    <span className={`text-xs font-bold ${outOfStock ? 'text-[var(--danger-text)]' : lowStock ? 'text-[var(--warning-text)]' : 'text-[var(--text-muted)]'}`}>Stock {item.stock} {item.unit}</span>
-                  </div>
-                )}
-              </button>
-            );
-          })}
-          </div>
+          <section aria-label={activeCategory ? `${activeCategory} products` : 'Menu search results'}>
+            {!activeCategory && menuSearch.trim() && (
+              <div className="mb-3 text-xs font-semibold text-[var(--text-muted)]">{visibleMenuItems.length} matching products across all categories</div>
+            )}
+            <div id="pos-product-grid" className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(155px,1fr))]">
+              {visibleMenuItems.map((item) => {
+                const inOrder = orderLines.find((line) => (line.baseProductId || line.productId || line.id) === (item.productId || item.id));
+                const stockStatus = propertyId && menuItems.length > 0 ? getPosStockStatus(item.stock, item.minimumStock) : 'unknown';
+                const outOfStock = stockStatus === 'out-of-stock';
+                const lowStock = stockStatus === 'low-stock';
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => addItem(item)}
+                    disabled={outOfStock || modifierLoading}
+                    aria-label={`${item.name}, ${outOfStock ? 'out of stock' : lowStock ? 'low stock' : fmt(item.price)}`}
+                    className={`relative flex min-h-36 flex-col justify-between rounded-2xl border-2 p-3 text-left transition-all active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 ${outOfStock ? 'cursor-not-allowed border-[var(--danger)] bg-[var(--danger-soft)] opacity-75' : inOrder ? 'border-[var(--primary)] bg-[var(--primary-soft)] shadow-sm' : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--primary)] hover:bg-[var(--primary-soft)]'}`}
+                  >
+                    <div className="flex w-full items-start justify-between gap-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wide text-[var(--text-muted)]">{item.category}</span>
+                      {inOrder && (
+                        <span className="flex h-7 min-w-7 items-center justify-center rounded-full bg-[var(--primary)] px-1.5 text-xs font-extrabold text-[var(--on-primary)]">{inOrder.qty}</span>
+                      )}
+                    </div>
+                    <div className="my-3 w-full text-sm font-bold leading-snug text-[var(--text)]">{item.name}</div>
+                    <div className="flex w-full items-end justify-between gap-2">
+                      <span className="text-sm font-extrabold text-[var(--primary)]">{fmt(item.price)}</span>
+                      {stockStatus !== 'unknown' && (
+                        <span className={`text-[10px] font-bold ${outOfStock ? 'text-[var(--danger-text)]' : lowStock ? 'text-[var(--warning-text)]' : 'text-[var(--text-muted)]'}`}>
+                          {outOfStock ? 'OUT OF STOCK' : lowStock ? `LOW · ${item.stock} ${item.unit}` : `${item.stock} ${item.unit}`}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
         )}
       </main>
 
