@@ -217,7 +217,14 @@ export const pmsService = {
 
 	async expireRoomPlannerOptions(propertyId) {
 		const { data, error } = await supabase.rpc('fn_expire_room_planner_options', { p_property_id: propertyId });
-		if (error) throw new Error(error.message);
+		if (error) {
+			// Keep legacy deployments usable until the additive option-expiry migration is applied.
+			if (error.code === 'PGRST202' || /fn_expire_room_planner_options.*(not found|does not exist)|could not find the function/i.test(error.message || '')) {
+				console.warn('[Room Planner] Apply migration 20261108100000_room_planner_option_expiry.sql to enable 24-hour options.');
+				return null;
+			}
+			throw new Error(error.message);
+		}
 		return Number(data || 0);
 	},
 
