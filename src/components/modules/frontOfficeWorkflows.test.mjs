@@ -22,6 +22,8 @@ test('Front Office routes open the real reservation, check-in, registration and 
   assert.match(app, /path="check-in\/registration-cards" element={<POSApp initialModule="registration-cards"/);
   assert.match(posApp, /case 'registration-cards':[\s\S]*?<RegistrationCards \/>/);
   assert.match(shell, /Sparkles, Tags, Users/);
+  assert.match(posApp, /flex h-full min-h-0 w-full flex-col bg-\[var\(--bg\)\]/);
+  assert.match(posApp, /flex min-h-0 min-w-0 flex-1 flex-col/);
 });
 
 test('reservation views provide separate arrivals, in-house and departures queues', () => {
