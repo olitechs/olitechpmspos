@@ -44,6 +44,11 @@ export default function FrontOfficeShell() {
   useEffect(() => { try { localStorage.setItem(key, collapsed ? '1' : '0'); } catch {} }, [collapsed, key]);
   useEffect(() => { setDrawer(false); }, [location.pathname]);
   useEffect(() => {
+    const currentItem = ITEMS.find(item => item.path === location.pathname || item.children?.some(([,path]) => path === location.pathname));
+    if (currentItem?.roles && !currentItem.roles.includes(role)) navigate('/frontoffice/dashboard', { replace: true });
+  }, [location.pathname, role, navigate]);
+
+  useEffect(() => {
     const onKey = event => { if (event.key === 'Escape') { setDrawer(false); setUserMenu(false); setHelpOpen(false); setNoticeOpen(false); } };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -71,7 +76,7 @@ export default function FrontOfficeShell() {
         return <div key={item.id} className="mb-1">
           {item.path ? (disabled ? <div aria-disabled="true" title="Requires Manager" className={['flex min-h-11 items-center gap-3 rounded-lg px-2 text-[13px] opacity-55',collapsed?'justify-center':''].join(' ')}><Icon size={17}/>{!collapsed && <><span className="min-w-0 flex-1 truncate">{item.label}</span><LockKeyhole size={13}/></>}</div> : <NavLink to={item.path} title={collapsed ? item.label : undefined} className={({isActive}) => ['flex min-h-11 items-center gap-3 rounded-lg px-2 text-[13px] transition-colors',isActive?'bg-[var(--brand-primary)] font-semibold text-[var(--white)]':'text-[var(--text)] hover:bg-[var(--soft-white)]',collapsed?'justify-center':''].join(' ')}><Icon size={17}/>{!collapsed && <span className="min-w-0 flex-1 truncate">{item.label}</span>}</NavLink>) :
           <button type="button" disabled={disabled} title={collapsed ? item.label : disabled ? 'Requires Manager' : undefined} onClick={() => setExpanded(v => v.includes(item.id) ? v.filter(x => x !== item.id) : [...v,item.id])} className={['flex min-h-11 w-full items-center gap-3 rounded-lg px-2 text-left text-[13px]',active?'font-semibold text-[var(--text)]':'text-[var(--text-muted)] hover:bg-[var(--surface)]/80',disabled?'opacity-55':'',collapsed?'justify-center':''].join(' ')}><Icon size={17}/>{!collapsed && <><span className="min-w-0 flex-1 truncate">{item.label}</span>{disabled?<LockKeyhole size={13}/>:<ChevronDown size={14} className={open?'rotate-180 transition-transform':'transition-transform'}/>}</>}</button>}
-          {!collapsed && item.children && open && <div className="ml-4 border-l border-[var(--brand-primary)]/20 py-1 pl-3">{item.children.map(([label,path]) => <NavLink key={path} to={path} className={({isActive}) => ['block rounded-md px-2 py-2 text-xs',isActive?'bg-[var(--surface)] font-semibold text-[var(--brand-dark)]':'text-[var(--text-muted)] hover:bg-[var(--surface)]/70'].join(' ')}>{label}</NavLink>)}</div>}
+          {!collapsed && item.children && open && <div className="ml-4 border-l border-[var(--brand-primary)]/20 py-1 pl-3">{item.children.map(([label,path]) => disabled ? <span key={path} aria-disabled="true" title="Requires Manager" className="flex items-center justify-between rounded-md px-2 py-2 text-xs text-[var(--text-muted)] opacity-55">{label}<LockKeyhole size={12}/></span> : <NavLink key={path} to={path} className={({isActive}) => ['block rounded-md px-2 py-2 text-xs',isActive?'bg-[var(--surface)] font-semibold text-[var(--brand-dark)]':'text-[var(--text-muted)] hover:bg-[var(--surface)]/70'].join(' ')}>{label}</NavLink>)}</div>}
         </div>;
       })}
     </nav>
