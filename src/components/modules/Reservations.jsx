@@ -51,6 +51,7 @@ export default function Reservations() {
   const [selected, setSelected] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  useEffect(() => { setFilter(view === 'arrivals' ? 'booked' : view === 'in-house' || view === 'departures' ? 'checked-in' : 'all'); }, [view]);
 
   const reservations = pms.reservations || [];
   const rooms = pms.rooms || [];
