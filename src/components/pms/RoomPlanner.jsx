@@ -161,6 +161,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   const scrollRef = useRef(null);
   const todayRef = useRef(null);
   const suppressCellClick = useRef(false);
+  const resizeStartRef = useRef(null);
 
   const normalizedReservations = useMemo(() => plannerReservations.filter(r => r.status !== 'cancelled').map(normalizeReservation), [plannerReservations]);
   useEffect(() => {
@@ -311,6 +312,29 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
 
   const beginDrag = (e, r) => { e.stopPropagation(); setDrag({ reservation: r, originalRoomId: r.roomId, originalCheckIn: r.checkIn, originalCheckOut: r.checkOut }); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', r.id); };
   const handleCellDragOver = (e, room, day) => { if (!drag) return; e.preventDefault(); setDragTarget({ roomId: room.id, date: dateKey(day) }); };
+  const beginResize = (event, reservation) => {
+    event.stopPropagation(); event.preventDefault();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    resizeStartRef.current = { reservation, startX: event.clientX };
+  };
+  const finishResize = async (event) => {
+    event.stopPropagation();
+    const active = resizeStartRef.current;
+    resizeStartRef.current = null;
+    if (!active) return;
+    const delta = Math.round((event.clientX - active.startX) / dayWidth);
+    if (!delta) return;
+    const { reservation } = active;
+    const nextCheckOut = dateKey(addDays(parseDate(reservation.checkOut), delta));
+    if (nextCheckOut <= reservation.checkIn) { toast.error('A reservation must be at least one night.'); return; }
+    if (range && (nextCheckOut > dateKey(addDays(parseDate(range.to), 1)) || reservation.checkIn < range.from)) { toast.error('Resize must stay within the selected date range.'); return; }
+    const conflict = checkOverlap(normalizedReservations, reservation.roomId, reservation.checkIn, nextCheckOut, reservation.id);
+    if (conflict) { toast.error(`Cannot resize: the room is already booked from ${conflict.checkIn} to ${conflict.checkOut}.`); return; }
+    try {
+      await pmsService.movePlannerReservation({ reservationId: reservation.id, roomId: reservation.roomId, checkIn: reservation.checkIn, checkOut: nextCheckOut });
+      toast.success(`Reservation extended to ${nextCheckOut}.`); onRefresh?.();
+    } catch (error) { toast.error(error.message || 'Could not resize reservation.'); onRefresh?.(); }
+  };
   const handleCellDrop = (e, room, day) => {
     e.preventDefault(); if (!drag) return;
     const r = drag.reservation; const nights = differenceInCalendarDays(parseDate(r.checkOut), parseDate(r.checkIn)); const newCheckIn = dateKey(day); const newCheckOut = dateKey(addDays(day, Math.max(1, nights)));
@@ -537,6 +561,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
               return <div key={rv.id} draggable onDragStart={e=>beginDrag(e,rv)} onDragEnd={()=>{setDrag(null);setDragTarget(null)}} onClick={e=>{e.stopPropagation();setSelectedReservation(rv)}} className="reservation-bar absolute top-[11px] h-[23px] cursor-grab active:cursor-grabbing group" style={{left,width,background:stayStatus==='optioned'?'var(--pay-opt)':pastOpacity<1?`color-mix(in srgb, ${pay.background} 55%, transparent)`:pay.background,color:stayStatus==='optioned'?'var(--pay-opt-fg)':pay.color,border:`1.5px ${stayStatus==='optioned'?'dashed':'solid'} ${stayStatus==='optioned'?'var(--pay-opt-bd)':pay.border}`,borderLeft:stayStatus==='optioned'?'1.5px dashed var(--pay-opt-bd)':`1.5px solid ${pay.border}`,zIndex:10}} title={`${rv.guestName} · ${ps.label} · ${rv.checkIn} → ${rv.checkOut}`}>
               <span className="truncate font-medium text-[11px] italic" title={`${rv.guestName} · ${rv.checkIn} → ${rv.checkOut}`}>{geometry.continuesBefore?'‹ ':''}{rv.guestName || 'Guest'}{geometry.continuesAfter?' ›':''}</span><span className="ml-1.5 shrink-0 text-[10px] opacity-90 font-medium">♙ {formatGuests(rv)}</span>
               <span className="ml-auto hidden group-hover:flex items-center gap-1"><button onClick={e=>{e.stopPropagation();openFolio(rv)}} className="w-5 h-5 rounded flex items-center justify-center" style={{background:'color-mix(in srgb,var(--text) 12%,transparent)'}}><BedDouble size={10}/></button></span>
+              <span role="separator" aria-label={`Resize ${rv.guestName || 'reservation'} stay`} title="Drag to change check-out date" onPointerDown={e=>beginResize(e,rv)} onPointerUp={finishResize} onPointerCancel={()=>{resizeStartRef.current=null}} onClick={e=>e.stopPropagation()} className="absolute right-0 top-0 h-full w-2 cursor-ew-resize touch-none rounded-r" style={{background:'color-mix(in srgb,var(--text) 22%,transparent)',zIndex:20}}/>
             </div>})}
           </div>})}
         </React.Fragment>)}
