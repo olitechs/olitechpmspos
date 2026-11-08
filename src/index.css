@@ -94,7 +94,7 @@
     --pay-paid: var(--status-paid);
     --pay-paid-fg: var(--white);
     --pay-paid-bd: var(--status-paid);
-    --status-optioned: #CFE8EA;
+    --status-optioned: color-mix(in srgb, var(--coastal-teal) 18%, var(--white));
     --pay-opt: var(--status-optioned);
     --pay-opt-fg: var(--deep-lagoon);
     --pay-opt-bd: var(--coastal-teal);
