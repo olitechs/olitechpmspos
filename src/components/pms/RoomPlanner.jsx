@@ -165,6 +165,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   const [sourceFilter, setSourceFilter] = useState('all');
   const [roomTypeFilter, setRoomTypeFilter] = useState('all');
   const [floorFilter, setFloorFilter] = useState('all');
+  const [tagFilter, setTagFilter] = useState('all');
   const [mobileListMode, setMobileListMode] = useState(false);
   const [collapsedRoomTypes, setCollapsedRoomTypes] = useState([]);
   const [viewLength, setViewLength] = useState('15');
@@ -205,8 +206,9 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     const status = getPaymentStatusFromAmounts(rv.amountPaid, rv.totalAmount);
     const query = searchQuery.trim().toLowerCase();
     const matchesQuery = !query || [rv.guestName, rv.id, rv.reservationNumber, rv.reservation_number, rv.bookingReference, rv.booking_reference, rv.channel, room?.number, room?.name].some(value => String(value || '').toLowerCase().includes(query));
-    return matchesQuery && (paymentFilter === 'all' || status === paymentFilter) && (sourceFilter === 'all' || (rv.channel || 'direct') === sourceFilter) && (roomTypeFilter === 'all' || roomTypeMap.get(room?.room_type_id) === roomTypeFilter) && (floorFilter === 'all' || String(room?.floor ?? 'Unassigned') === floorFilter);
-  }), [normalizedReservations, plannerRooms, searchQuery, paymentFilter, sourceFilter, roomTypeFilter, floorFilter, roomTypeMap]);
+    const reservationTags = Array.isArray(rv.tags) ? rv.tags.map(tag => typeof tag === 'string' ? tag : tag?.name).filter(Boolean) : rv.tag ? [String(rv.tag)] : [];
+    return matchesQuery && (paymentFilter === 'all' || status === paymentFilter) && (sourceFilter === 'all' || (rv.channel || 'direct') === sourceFilter) && (roomTypeFilter === 'all' || roomTypeMap.get(room?.room_type_id) === roomTypeFilter) && (floorFilter === 'all' || String(room?.floor ?? 'Unassigned') === floorFilter) && (tagFilter === 'all' || reservationTags.includes(tagFilter));
+  }), [normalizedReservations, plannerRooms, searchQuery, paymentFilter, sourceFilter, roomTypeFilter, floorFilter, tagFilter, roomTypeMap]);
   const filteredRooms = useMemo(() => plannerRooms.filter(room => {
     const type = roomTypeMap.get(room.room_type_id) || room.roomTypeName || room.room_type || 'Unassigned';
     if (roomTypeFilter !== 'all' && type !== roomTypeFilter) return false;
@@ -625,6 +627,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
         <select aria-label="Filter by booking source" value={sourceFilter} onChange={e=>setSourceFilter(e.target.value)} className="room-planner-filter"><option value="all">All sources</option><option value="direct">Direct</option><option value="booking_com">Booking.com</option><option value="unknown">Other / Unknown</option></select>
         <select aria-label="Filter by room type" value={roomTypeFilter} onChange={e=>setRoomTypeFilter(e.target.value)} className="room-planner-filter"><option value="all">All room types</option>{[...new Set(plannerRooms.map(room=>roomTypeMap.get(room.room_type_id)||room.roomTypeName||room.room_type||'Unassigned'))].sort().map(type=><option key={type} value={type}>{type}</option>)}</select>
         <select aria-label="Filter by floor" value={floorFilter} onChange={e=>setFloorFilter(e.target.value)} className="room-planner-filter"><option value="all">All floors</option>{[...new Set(plannerRooms.map(room=>String(room.floor ?? 'Unassigned')))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})).map(floor=><option key={floor} value={floor}>{floor === 'Unassigned' ? floor : `Floor ${floor}`}</option>)}</select>
+        <select aria-label="Filter by tag" value={tagFilter} onChange={e=>setTagFilter(e.target.value)} className="room-planner-filter"><option value="all">All tags</option>{[...new Set(normalizedReservations.flatMap(rv => Array.isArray(rv.tags) ? rv.tags.map(tag => typeof tag === 'string' ? tag : tag?.name).filter(Boolean) : rv.tag ? [String(rv.tag)] : []))].sort().map(tag=><option key={tag} value={tag}>{tag}</option>)}</select>
         <button type="button" onClick={()=>setMobileListMode(value=>!value)} className="room-planner-filter" aria-pressed={mobileListMode}>{mobileListMode ? 'Show timeline' : 'Day list'}</button>
         <span className="room-planner-filter-count">{filteredRooms.length} rooms · {filteredReservations.length} reservations</span>
       </div>
