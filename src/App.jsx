@@ -59,6 +59,7 @@ import TimecardsPage from "@/components/settings/TimecardsPage";
 import EmployeeListPage from "@/components/settings/EmployeeListPage";
 import HelpCentre from "@/pages/HelpCentre";
 import FrontOfficeDashboard from "@/pages/FrontOfficeDashboard";
+import FrontOfficeStructure from "@/pages/FrontOfficeStructure";
 
 const POSApp = lazyWithRetry(() => import('@/pages/POSApp'), 'app-pos-app');
 const Reports = lazyWithRetry(() => import('@/components/modules/Reports'), 'app-reports');
@@ -90,7 +91,7 @@ function AppRoutes(){return <AuthProvider><Suspense fallback={<AuthLoading/>}><R
 <Route path="assistance" element={<ModuleStatusPage title="Assistance" description="Support contacts, service requests, ticket history and system status." module="assistance" back="/frontoffice"/>}/>
 <Route path="dashboard" element={<FrontOfficeDashboard/>}/>
 <Route path="channels" element={<POSApp initialModule="channels" embedded workspaceModule="frontoffice"/>}/>
-<Route path="structure" element={<ModuleStatusPage title="Structure" description="Manage properties, buildings, floors, room types and room organisation." module="structure" back="/frontoffice"/>}/>
+<Route path="structure" element={<FrontOfficeStructure/>}/>
 <Route path="configuration" element={<ModuleStatusPage title="Configuration" description="Rates, seasons, VAT, payment methods, policies, templates, users, roles and planner settings." module="configuration" back="/frontoffice"/>}/>
 <Route path="tags" element={<ModuleStatusPage title="Tags" description="Create and assign coloured tags for reservations, guests and rooms." module="tags" back="/frontoffice"/>}/>
 <Route path="check-in/arrivals" element={<POSApp initialModule="reservations" embedded workspaceModule="frontoffice"/>}/>
