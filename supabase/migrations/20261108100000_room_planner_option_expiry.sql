@@ -122,6 +122,7 @@ set search_path = public, pg_temp
 as $function$
 declare
   v_res public.reservations;
+  v_reservation_id uuid;
 begin
   if not public.is_member_of_property(p_property_id) and not public.is_platform_owner() then
     raise exception 'You do not have access to this property.';
@@ -135,15 +136,18 @@ begin
       p_notes, p_details
     )
   loop
+    v_reservation_id := v_res.id;
     update public.reservations
        set option_expires_at = coalesce(option_expires_at, now() + interval '24 hours')
-     where id = v_res.id
+     where id = v_reservation_id
        and property_id = p_property_id
        and status = 'booked'
        and option_expires_at is null
      returning * into v_res;
-    if v_res.id is null then
-      select r.* into v_res from public.reservations r where r.id = v_res.id;
+    if not found then
+      select r.* into v_res
+        from public.reservations r
+       where r.id = v_reservation_id and r.property_id = p_property_id;
     end if;
     return next v_res;
   end loop;
