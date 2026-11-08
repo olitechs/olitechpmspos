@@ -83,7 +83,7 @@ export function OpenShiftModal({ propertyId, onOpened }) {
           <div>
             <div className="text-[11px] font-bold uppercase tracking-[.2em] text-white/70">Start of business</div>
             <h1 className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">Open your shift</h1>
-            <p className="mt-3 max-w-sm text-sm leading-6 text-white/80">Verify the cashier on duty and record the cash float before accepting POS payments.</p>
+            <p className="mt-3 max-w-sm text-sm leading-6 text-white/80">Verify the cashier on duty and record the opening cash float. POS payments remain locked until the shift is opened.</p>
           </div>
           <div className="mt-8 space-y-3">
             <div className="flex items-center gap-3 rounded-xl border border-white/20 bg-white/10 p-3"><span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 text-sm font-bold">1</span><div><div className="text-sm font-semibold">Staff verification</div><div className="text-xs text-white/70">Your personal POS PIN</div></div></div>
@@ -111,7 +111,7 @@ export function OpenShiftModal({ propertyId, onOpened }) {
               </div>
               {error && <p role="alert" className="mt-3 text-center text-xs font-semibold text-[var(--danger-text)]">{error}</p>}
               {busy && <p aria-live="polite" className="mt-3 text-center text-xs text-[var(--pos-gate-muted)]">Verifying cashier…</p>}
-              <p className="mt-4 text-center text-[11px] text-[var(--pos-gate-muted)]">Only an authorised staff PIN can open a shift.</p>
+              <p className="mt-4 text-center text-[11px] text-[var(--pos-gate-muted)]">Opening a shift is required before the POS can accept orders and payments.</p>
             </>
           ) : (
             <>
