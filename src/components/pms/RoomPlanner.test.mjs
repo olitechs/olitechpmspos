@@ -108,3 +108,13 @@ test('option expiry is server-authoritative and does not silently extend on edit
   assert.ok(migration.includes('coalesce(r.option_expires_at, now() + interval'));
   assert.ok(migration.includes('Confirm the reservation option before check-in.'));
 });
+
+
+test('room-type groups render visible collapsible headers and stay inside virtual row geometry', () => {
+  assert.ok(source.includes("kind: 'group', typeName, count: group.length"));
+  assert.ok(source.includes('virtualRows.map((entry)'));
+  assert.ok(source.includes('aria-expanded={!collapsed}'));
+  assert.ok(source.includes('setCollapsedRoomTypes(current=>collapsed?'));
+  assert.ok(source.includes('minHeight:ROOM_ROW_HEIGHT'));
+  assert.ok(source.includes('orderedRows.length - virtualEnd'));
+});
