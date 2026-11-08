@@ -123,7 +123,7 @@ test('room-type groups render visible collapsible headers and stay inside virtua
 
 test('phone widths default to day-list mode and reservation bars stay within row density', () => {
   assert.ok(source.includes("window.matchMedia('(max-width: 767px)')"));
-  assert.ok(source.includes('const syncMobileView = () => setMobileListMode(media.matches)'));
+  assert.ok(source.includes("const syncMobileView = () => setMobileListMode(getRoomPlannerResponsiveMode(window.innerWidth).planner === 'day-list')"));
   assert.ok(source.includes('top:Math.max(2,(ROOM_ROW_HEIGHT-23)/2)'));
   assert.ok(source.includes('minHeight:ROOM_ROW_HEIGHT'));
 });
