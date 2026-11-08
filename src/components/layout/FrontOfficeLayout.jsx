@@ -1,11 +1,7 @@
 import React from 'react';
-import AppShell from './AppShell';
+import FrontOfficeShell from './FrontOfficeShell';
 
-/**
- * All Front Office routes share the same OliTechs application shell.
- * The Room Planner owns its internal grid scrollport; it must not bypass
- * the PMS navigation or create a second application sidebar.
- */
+/** Shared shell for every Front Office / PMS route, including the planner. */
 export default function FrontOfficeLayout() {
-  return <AppShell workspace="frontoffice" />;
+  return <FrontOfficeShell />;
 }
