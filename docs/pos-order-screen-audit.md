@@ -150,3 +150,8 @@ The isolated authorization workflow applied the new migration to an ephemeral Po
 The disposable run also exposed a SQL three-valued-logic edge case: nullable role lookups could make a PL/pgSQL `IF NOT (...)` condition evaluate to NULL and skip the denial. The migration now wraps both nullable role-membership expressions in `coalesce(..., false)`, so missing role values fail closed. The regression test verifies these checks.
 
 **Final boundary:** automated build, lint, typecheck, architecture tests, isolated PostgreSQL authorization tests and SKU regression are green. No live Supabase migration was applied, no production deployment was performed, and desktop/tablet/mobile browser acceptance plus real-property Kitchen/Bar/KDS, room-charge, receipt and cashier-shift integration checks remain outstanding. Earlier pending verification notes in this audit are historical snapshots; this section records the latest result.
+
+
+## Operational acceptance handoff
+
+The device and real-property acceptance matrix is maintained in [`docs/pos-order-screen-acceptance.md`](./pos-order-screen-acceptance.md). It covers phone/tablet/desktop layouts, category ordering and property isolation, Kitchen/Bar/KDS routing, modifiers, repeat sends, control voids, table transfers, payments, receipts, room charges, stock-ledger deductions, cashier reconciliation and Shift Report. These are explicitly marked pending until executed against a dedicated QA property and its integrations; automated CI is not treated as proof of live operational behavior.
