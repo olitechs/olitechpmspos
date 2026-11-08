@@ -431,6 +431,11 @@ export function buildFinalSettlementInvoiceDefinition({
   const employeeName = (id) => employees.find((employee) => employee.user_id === id || employee.id === id)?.full_name || (id ? String(id).slice(0, 8) : 'System');
   const arrival = cleanText(selected.arrival ?? selected.check_in ?? selected.checkIn);
   const departure = cleanText(selected.departure ?? selected.check_out ?? selected.checkOut);
+  const arrivalMs = arrival ? Date.parse(`${arrival}T00:00:00Z`) : NaN;
+  const departureMs = departure ? Date.parse(`${departure}T00:00:00Z`) : NaN;
+  const stayNights = Number.isFinite(arrivalMs) && Number.isFinite(departureMs)
+    ? Math.max(1, Math.round((departureMs - arrivalMs) / 86400000)) : 1;
+  const bookingTotal = toNumber(selected.total_amount) || (toNumber(selected.rate) * stayNights);
   const roomLabel = cleanText(room.number ?? selected.room_number ?? header.roomNumber, cleanText(selected.room_id, '—'));
   const reservationRef = String(selected.id || '');
   const receiptRows = (receipts || []).map((receipt) => ({
@@ -465,6 +470,12 @@ export function buildFinalSettlementInvoiceDefinition({
       line_total: lineTotal,
     };
   }));
+  const postedChargeTotal = (charges || []).reduce((sum, charge) => sum + toNumber(charge.amount), 0);
+  const reconciledChargeTotal = Math.max(postedChargeTotal, bookingTotal);
+  const accommodationCharges = (charges || []).filter((charge) => charge.category === 'accommodation' || charge.source === 'room');
+  const nonAccommodationTotal = (charges || []).filter((charge) => charge.category !== 'accommodation' && charge.source !== 'room').reduce((sum, charge) => sum + toNumber(charge.amount), 0);
+  const accommodationReconciliation = accommodationCharges.length
+    ? 0 : Math.max(0, reconciledChargeTotal - nonAccommodationTotal);
   const ledgerRows = [
     ...(charges || []).map((charge) => ({
       date: dateLabel(charge.created_at),
@@ -477,6 +488,17 @@ export function buildFinalSettlementInvoiceDefinition({
       recorded_by: employeeName(charge.created_by),
       status: charge.reversal_of_id ? 'Reversal' : 'Posted',
     })),
+    ...(accommodationReconciliation > 0 ? [{
+      date: dateLabel(selected.created_at || selected.arrival),
+      type: 'Booking reconciliation',
+      description: 'Accommodation / reservation booking total',
+      reference: cleanText(header.invoiceReference, reservationRef.slice(0, 8)),
+      source: 'Reservation booking total',
+      quantity: stayNights,
+      amount: accommodationReconciliation,
+      recorded_by: 'Reservation record',
+      status: 'Reconciled',
+    }] : []),
     ...(payments || []).filter((payment) => payment.status === 'posted').map((payment) => ({
       date: dateLabel(payment.created_at),
       type: toNumber(payment.amount) < 0 ? 'Refund' : 'Payment',
@@ -507,7 +529,9 @@ export function buildFinalSettlementInvoiceDefinition({
     ['Additional header details', header.headerNote],
   ].filter(([, value]) => value !== null && value !== undefined && String(value).trim() !== '')
     .map(([field, value]) => ({ field, value: String(value) }));
-  const accommodation = (charges || []).filter((charge) => charge.category === 'accommodation' || charge.source === 'room').reduce((sum, charge) => sum + toNumber(charge.amount), 0);
+  const accommodation = accommodationCharges.length
+    ? accommodationCharges.reduce((sum, charge) => sum + toNumber(charge.amount), 0)
+    : accommodationReconciliation;
   const posCharges = (charges || []).filter((charge) => charge.source === 'pos' || ['restaurant', 'bar', 'room_service'].includes(charge.category)).reduce((sum, charge) => sum + toNumber(charge.amount), 0);
   const posDiscounts = (receipts || []).reduce((sum, receipt) => sum + toNumber(receipt.discount_amount), 0);
   const posTax = (receipts || []).reduce((sum, receipt) => sum + toNumber(receipt.vat), 0);
