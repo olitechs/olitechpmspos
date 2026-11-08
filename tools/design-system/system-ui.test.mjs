@@ -135,7 +135,8 @@ test('theme foundation defines exact light-only brand, Coastal Linen, payment an
   assert.doesNotMatch(theme, /data-theme=["']dark|color-scheme\s*:\s*dark/);
   assert.match(theme, /color-scheme:\s*light/);
   assert.match(theme, /prefers-reduced-motion:\s*reduce/);
-  assert.match(theme, /--status-optioned:\s*color-mix\(in srgb, var\(--coastal-teal\) 18%, var\(--white\)\)/);\n  assert.match(theme, /--pay-opt:\s*var\(--status-optioned\)/);
+  assert.match(theme, /--status-optioned:\s*color-mix\(in srgb, var\(--coastal-teal\) 18%, var\(--white\)\)/);
+  assert.match(theme, /--pay-opt:\s*var\(--status-optioned\)/);
   assert.ok(html.includes('https://fonts.googleapis.com/css2?family=Inter'));
   for (const token of ['--surface', '--surface-2', '--border', '--text', '--muted', '--focus']) {
     assert.match(theme, new RegExp(token + ':'));
