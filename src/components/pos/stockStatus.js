@@ -9,13 +9,13 @@ export function getPosStockStatus(stock, minimumStock = 0) {
 }
 
 function normalizePosSearch(value) {
-  return String(value ?? '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLocaleLowerCase().trim();
+  return String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase().trim();
 }
 
 export function filterPosMenuItems(items, query) {
   const search = normalizePosSearch(query);
   if (!search) return items;
-  const tokens = search.split(/\\s+/).filter(Boolean);
+  const tokens = search.split(/\s+/).filter(Boolean);
   return items.filter((item) => {
     const searchable = normalizePosSearch([item?.name, item?.sku, item?.category].filter(Boolean).join(' '));
     return tokens.every((token) => searchable.includes(token));
