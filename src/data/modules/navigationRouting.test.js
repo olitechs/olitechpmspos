@@ -8,6 +8,7 @@ const app = read('../../App.jsx');
 const shell = read('../../components/layout/AppShell.jsx');
 const topNav = read('../../components/layout/TopAppNav.jsx');
 const frontLayout = read('../../components/layout/FrontOfficeLayout.jsx');
+const frontShell = read('../../components/layout/FrontOfficeShell.jsx');
 const posLayout = read('../../components/layout/POSLayout.jsx');
 const posApp = read('../../pages/POSApp.jsx');
 const posContainer = read('../../components/pos/POSContainer.jsx');
@@ -159,7 +160,9 @@ test('workspace layouts own one shell and embedded module routes suppress legacy
   assert.match(shell, /workspace !== 'pos' && <aside/);
   assert.match(shell, /workspace === 'pos' \? 'w-full min-h-full'/);
   assert.match(shell, /<TopAppNav workspace=\{workspace\} \/>/);
-  assert.match(frontLayout, /return <AppShell workspace="frontoffice" \/>/);
+  assert.match(frontLayout, /<FrontOfficeShell \/>/);
+  assert.match(frontShell, /ITEMS = \[/);
+  assert.match(frontShell, /Front Office navigation/);
   assert.match(posApp, /!embedded && <Sidebar/);
   assert.match(posApp, /showTopBar && !embedded && <TopBar/);
   assert.match(posApp, /isMobile && !embedded && <POSTabs/);
@@ -172,11 +175,12 @@ test('only the main Back Office shell exposes the workspace launcher; Front Offi
   assert.match(shell, /workspace !== 'pos' && <aside/);
 });
 
-test('Room Planner is the deliberate full-screen shell exception, including trailing slash', () => {
-  assert.match(frontLayout, /room-planner/);
-  assert.match(frontLayout, /pathname/);
-  assert.match(frontLayout, /fixed inset-0 z-50 h-\[100dvh\] w-screen/);
-  assert.match(frontLayout, /if \(isDedicatedPlanner\)[\s\S]*?<Outlet \/>[\s\S]*?return <AppShell workspace="frontoffice" \/>/);
+test('Room Planner shares the PMS shell and retains a full-height internal scroll layout', () => {
+  assert.match(frontLayout, /<FrontOfficeShell \/>/);
+  assert.match(frontShell, /isPlanner = location\.pathname\.includes\('\/room-planner'\)/);
+  assert.match(frontShell, /h-\[100dvh\]/);
+  assert.match(frontShell, /min-\[1100px\]:hidden/);
+  assert.match(frontShell, /room-planner/);
 });
 
 test('active navigation comparisons use normalized paths for direct URLs and trailing slashes', () => {
@@ -218,11 +222,11 @@ test('separate workspace buttons highlight the active workspace and retain neste
   assert.match(shell, /pathname === path \|\| pathname\.startsWith\(path \+ '\/'\)/);
 });
 
-test('mobile sidebar closes after selection and Escape without affecting planner full-screen layout', () => {
-  assert.match(shell, /onClick=\{\(\) => setMobileOpen\(false\)\}/);
-  assert.match(shell, /event\.key === 'Escape'/);
-  assert.match(frontLayout, /if \(isDedicatedPlanner\)/);
-  assert.match(frontLayout, /fixed inset-0 z-50 h-\[100dvh\] w-screen/);
+test('mobile PMS drawer closes after selection and Escape; collapsed sidebar is remembered', () => {
+  assert.match(frontShell, /setDrawer\(false\)/);
+  assert.match(frontShell, /event\.key === 'Escape'/);
+  assert.match(frontShell, /localStorage\.setItem\(key/);
+  assert.match(frontShell, /min-\[1100px\]:hidden/);
 });
 
 

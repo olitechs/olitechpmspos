@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import {
   CalendarDays, CheckCircle2, ChevronRight, DoorOpen, LogOut, MoveRight,
   Plus, RefreshCw, Search, Trash2, X
@@ -13,6 +14,7 @@ const STATUS = {
   'checked-in': 'In House',
   cancelled: 'Cancelled',
   checked_out: 'Checked Out',
+  'checked-out': 'Checked Out',
 };
 
 function money(value) {
@@ -37,15 +39,19 @@ const buttonClass = "inline-flex items-center justify-center gap-2 rounded-lg px
 
 export default function Reservations() {
   const pms = usePms();
+  const location = useLocation();
+  const path = location.pathname;
+  const view = path.endsWith('/check-in/arrivals') ? 'arrivals' : path.endsWith('/check-in/in-house') ? 'in-house' : path.endsWith('/check-in/departures') ? 'departures' : 'all';
   const { user } = useAuth();
   const propertyId = user?.property?.id;
   const [selectedDate, setSelectedDate] = useState(todayIso());
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState(view === 'arrivals' ? 'booked' : view === 'in-house' || view === 'departures' ? 'checked-in' : 'all');
   const [showNew, setShowNew] = useState(false);
   const [selected, setSelected] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  useEffect(() => { setFilter(view === 'arrivals' ? 'booked' : view === 'in-house' || view === 'departures' ? 'checked-in' : 'all'); }, [view]);
 
   const reservations = pms.reservations || [];
   const rooms = pms.rooms || [];
@@ -66,10 +72,11 @@ export default function Reservations() {
   const rows = useMemo(() => {
     const term = search.trim().toLowerCase();
     return reservations
-      .filter((r) => filter === 'all' || r.status === filter)
-      .filter((r) => !term || [r.guestName, r.phone, r.roomNumber, r.channel].some((v) => String(v || '').toLowerCase().includes(term)))
+      .filter((r) => filter === 'all' || r.status === filter || (filter === 'checked_out' && r.status === 'checked-out'))
+      .filter((r) => view === 'arrivals' ? r.checkIn === selectedDate && r.status === 'booked' : view === 'in-house' ? r.status === 'checked-in' : view === 'departures' ? r.checkOut === selectedDate && r.status === 'checked-in' : true)
+      .filter((r) => !term || [r.guestName, r.phone, r.roomNumber, r.channel, r.id].some((v) => String(v || '').toLowerCase().includes(term)))
       .sort((a, b) => String(a.checkIn || '').localeCompare(String(b.checkIn || '')));
-  }, [reservations, search, filter]);
+  }, [reservations, search, filter, view, selectedDate]);
 
   const arrivals = reservations.filter((r) => r.checkIn === selectedDate && r.status === 'booked');
   const departures = reservations.filter((r) => r.checkOut === selectedDate && r.status === 'checked-in');
@@ -113,13 +120,14 @@ export default function Reservations() {
       <div className="mx-auto max-w-[1500px] space-y-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground">Front Desk & Reservations</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Manage arrivals, departures, room assignments and reservation status from one workspace.</p>
+            <h1 className="text-xl font-bold tracking-tight text-foreground">{view === 'arrivals' ? 'Arrivals' : view === 'in-house' ? 'In-House Guests' : view === 'departures' ? 'Departures' : 'Reservations'}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{view === 'arrivals' ? 'Review scheduled arrivals and complete check-in.' : view === 'in-house' ? 'Review current guests and room assignments.' : view === 'departures' ? 'Review guests due to depart and complete checkout.' : 'Manage bookings, room assignments, guest details and reservation status.'}</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button className={buttonClass + " border border-[var(--border)] bg-surface text-[var(--text)]"} onClick={refresh} disabled={busy}>
               <RefreshCw size={15} /> Refresh
             </button>
+            <Link className={buttonClass + " border border-[var(--border)] bg-surface text-[var(--text)]"} to="/frontoffice/check-in/registration-cards">Registration cards</Link>
             <button className={buttonClass + " bg-primary text-primary-foreground"} onClick={() => setShowNew(true)}>
               <Plus size={15} /> New reservation
             </button>
@@ -161,7 +169,8 @@ export default function Reservations() {
                 <option value="all">All reservations</option>
                 <option value="booked">Booked</option>
                 <option value="checked-in">In house</option>
-                <option value="checked-out">Checked out</option>
+                <option value="checked_out">Checked out</option>
+                <option value="cancelled">Cancelled</option>
               </select>
               <div className="relative sm:w-44">
                 <CalendarDays size={15} className="absolute left-3 top-3 text-muted-foreground" />
@@ -192,20 +201,21 @@ export default function Reservations() {
                       <span className="rounded-full bg-secondary px-2 py-1 text-[11px] font-semibold text-foreground">{r.paymentStatus?.replace('_', ' ')}</span>
                       <div className="mt-1 text-xs text-muted-foreground">{money(r.amountPaid)} / {money(r.totalAmount)}</div>
                     </td>
-                    <td className="px-4 py-3"><span className="rounded-full bg-primary px-2 py-1 text-[11px] font-semibold text-primary-foreground">{STATUS[r.status] || r.status}</span></td>
+                    <td className="px-4 py-3"><span className="rounded-full bg-secondary px-2 py-1 text-[11px] font-semibold text-foreground">{STATUS[r.status] || r.status}</span></td>
                     <td className="px-4 py-3 text-right"><button className="text-muted-foreground hover:text-foreground" onClick={() => setSelected(r)}><ChevronRight size={17} /></button></td>
                   </tr>
                 ))}
-                {!rows.length && <tr><td colSpan={8} className="px-4 py-12 text-center text-sm text-muted-foreground">No reservations match the current filters.</td></tr>}
+                {!rows.length && <tr><td colSpan={8} className="px-4 py-12 text-center text-sm text-muted-foreground">{view === 'arrivals' ? 'No arrivals are scheduled for this date.' : view === 'in-house' ? 'There are no guests currently in house.' : view === 'departures' ? 'No departures are scheduled for this date.' : 'No reservations match the current filters.'}</td></tr>}
               </tbody>
             </table>
           </div>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-2">
+        {view === 'all' && <div className="grid gap-4 lg:grid-cols-2">
           <QueueCard title={`Arrivals · ${selectedDate}`} items={arrivals} actionLabel="Check in" onAction={(r) => run(() => pms.checkInReservation(r.id))} />
           <QueueCard title={`Departures · ${selectedDate}`} items={departures} actionLabel="Check out" onAction={(r) => run(() => pms.checkOutRoom(r.roomId))} />
-        </div>
+        </div>}
+        {view !== 'all' && <div className="flex flex-wrap gap-2 text-xs"><Link className="rounded-lg border border-[var(--border)] bg-surface px-3 py-2" to="/frontoffice/check-in/arrivals">Arrivals</Link><Link className="rounded-lg border border-[var(--border)] bg-surface px-3 py-2" to="/frontoffice/check-in/in-house">In-House</Link><Link className="rounded-lg border border-[var(--border)] bg-surface px-3 py-2" to="/frontoffice/check-in/departures">Departures</Link></div>}
       </div>
 
       {showNew && <NewReservationModal rooms={rooms} reservations={reservations} ratePlans={pms.ratePlans || []} onClose={() => setShowNew(false)} onCreate={createReservation} busy={busy} />}
@@ -222,7 +232,7 @@ function QueueCard({ title, items, actionLabel, onAction }) {
         {items.slice(0, 6).map((r) => (
           <div key={r.id} className="flex items-center justify-between gap-3 px-4 py-3">
             <div><div className="font-semibold text-foreground">{r.guestName}</div><div className="text-xs text-muted-foreground">Room {r.roomNumber} · {r.partySize} guests</div></div>
-            <button className={buttonClass + " border border-[var(--border)] bg-surface text-[var(--text)]"} onClick={() => onAction(r)}><CheckCircle2 size={14} /> {actionLabel}</button>
+            <button disabled={r.plannerStatus === 'optioned'} title={r.plannerStatus === 'optioned' ? 'Confirm the 24-hour option in the Room Planner before check-in.' : undefined} className={buttonClass + " border border-[var(--border)] bg-surface text-[var(--text)]"} onClick={() => onAction(r)}><CheckCircle2 size={14} /> {r.plannerStatus === 'optioned' ? 'Optioned' : actionLabel}</button>
           </div>
         ))}
         {!items.length && <div className="px-4 py-6 text-sm text-muted-foreground">Nothing queued for this date.</div>}
@@ -252,7 +262,7 @@ function NewReservationModal({ rooms, reservations, ratePlans, onClose, onCreate
   const [submissionId, setSubmissionId] = useState(() => crypto.randomUUID());
   const nights = dateNights(data.arrival, data.departure);
   const selectedRooms = rooms.filter((room) => data.roomIds.includes(room.id));
-  const selectableRooms = rooms.filter((room) => room.active !== false && !['maintenance', 'out_of_service', 'blocked'].includes(room.status) && !reservations.some((reservation) => reservation.roomId === room.id && !['cancelled', 'checked-out'].includes(reservation.status) && reservation.checkIn < data.departure && data.arrival < reservation.checkOut));
+  const selectableRooms = rooms.filter((room) => room.active !== false && !['maintenance', 'out_of_service', 'blocked'].includes(room.status) && !reservations.some((reservation) => reservation.roomId === room.id && !['cancelled', 'checked-out', 'checked_out'].includes(reservation.status) && reservation.checkIn < data.departure && data.arrival < reservation.checkOut));
   const conflictingSelectedRooms = selectedRooms.filter((room) => !selectableRooms.some((candidate) => candidate.id === room.id));
   const nightlyRate = Math.max(0, Number(data.rate) || 0);
   const accommodation = nightlyRate * nights * Math.max(1, selectedRooms.length);
@@ -366,6 +376,12 @@ function ReservationDrawer({ reservation: r, rooms, pms, propertyId, busy, onClo
   const [newDeparture, setNewDeparture] = useState(r.checkOut || '');
   const [auditEvents, setAuditEvents] = useState([]);
   const [auditLoading, setAuditLoading] = useState(false);
+  const guest = (pms.guests || []).find((row) => row.id === r.guestId) || null;
+  const [guestForm, setGuestForm] = useState({ name: '', phone: '', email: '', alternative_phone: '', nationality: '', residence_country: '', id_type: 'passport', id_number: '', address: '', notes: '' });
+  useEffect(() => {
+    if (!guest) return;
+    setGuestForm({ name: guest.name || r.guestName || '', phone: guest.phone || r.phone || '', email: guest.email || '', alternative_phone: guest.alternative_phone || '', nationality: guest.nationality || '', residence_country: guest.residence_country || '', id_type: guest.id_type || 'passport', id_number: guest.id_number || '', address: guest.address || '', notes: guest.notes || '' });
+  }, [guest, r.guestName, r.phone]);
   const [auditError, setAuditError] = useState('');
 
   useEffect(() => {
@@ -407,6 +423,19 @@ function ReservationDrawer({ reservation: r, rooms, pms, propertyId, busy, onClo
     await onRun(() => pms.movePlannerReservation({ reservationId: r.id, roomId: moveRoomId, checkIn: r.checkIn, checkOut: r.checkOut }));
   };
 
+  const saveGuest = async () => {
+    if (!guest?.id || !propertyId) return;
+    await onRun(async () => {
+      const patch = { ...guestForm, guest_details: { ...(guest.guest_details || {}), alternativePhone: guestForm.alternative_phone, residenceCountry: guestForm.residence_country, idType: guestForm.id_type, idNumber: guestForm.id_number } };
+      await pmsService.updateGuestProfile({ propertyId, guestId: guest.id, patch });
+      if (guestForm.name.trim() && guestForm.name.trim() !== r.guestName) {
+        await pms.updatePlannerReservation(r.id, { guestName: guestForm.name.trim() });
+      } else {
+        await pms.reload();
+      }
+    });
+  };
+
   const checkIn = () => onRun(() => pms.checkInReservation(r.id));
   const checkOut = () => onRun(() => pms.checkOutRoom(r.roomId));
   const cancel = () => onRun(() => pms.removeReservation(r.id));
@@ -425,6 +454,23 @@ function ReservationDrawer({ reservation: r, rooms, pms, propertyId, busy, onClo
             <Info label="Arrival" value={r.checkIn} />
             <Info label="Departure" value={r.checkOut} />
           </div>
+
+          <section className="rounded-xl border border-border p-4">
+            <div className="mb-3 flex items-center justify-between gap-2"><h3 className="text-sm font-bold text-foreground">Guest profile</h3><span className="text-[10px] text-muted-foreground">Saved guest record</span></div>
+            {guest ? <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Guest name"><input className={inputClass} value={guestForm.name} onChange={(e) => setGuestForm((v) => ({...v,name:e.target.value}))}/></Field>
+              <Field label="Primary phone"><input className={inputClass} value={guestForm.phone} onChange={(e) => setGuestForm((v) => ({...v,phone:e.target.value}))}/></Field>
+              <Field label="Email"><input type="email" className={inputClass} value={guestForm.email} onChange={(e) => setGuestForm((v) => ({...v,email:e.target.value}))}/></Field>
+              <Field label="Alternative phone"><input className={inputClass} value={guestForm.alternative_phone} onChange={(e) => setGuestForm((v) => ({...v,alternative_phone:e.target.value}))}/></Field>
+              <Field label="Nationality"><input className={inputClass} value={guestForm.nationality} onChange={(e) => setGuestForm((v) => ({...v,nationality:e.target.value}))}/></Field>
+              <Field label="Country of residence"><input className={inputClass} value={guestForm.residence_country} onChange={(e) => setGuestForm((v) => ({...v,residence_country:e.target.value}))}/></Field>
+              <Field label="ID type"><select className={inputClass} value={guestForm.id_type} onChange={(e) => setGuestForm((v) => ({...v,id_type:e.target.value}))}><option value="passport">Passport</option><option value="national_id">National ID</option><option value="other">Other</option></select></Field>
+              <Field label="ID / passport number"><input className={inputClass} value={guestForm.id_number} onChange={(e) => setGuestForm((v) => ({...v,id_number:e.target.value}))}/></Field>
+              <div className="sm:col-span-2"><Field label="Address"><input className={inputClass} value={guestForm.address} onChange={(e) => setGuestForm((v) => ({...v,address:e.target.value}))}/></Field></div>
+              <div className="sm:col-span-2"><Field label="Guest notes"><textarea rows={2} className={inputClass} value={guestForm.notes} onChange={(e) => setGuestForm((v) => ({...v,notes:e.target.value}))}/></Field></div>
+              <div className="sm:col-span-2"><button disabled={busy} className={buttonClass + " bg-primary text-primary-foreground"} onClick={saveGuest}>Save guest profile</button></div>
+            </div> : <p className="text-xs text-muted-foreground">This reservation has no linked guest profile available to edit.</p>}
+          </section>
 
           <section className="rounded-xl border border-border p-4">
             <h3 className="mb-3 text-sm font-bold text-foreground">Stay dates</h3>
@@ -470,7 +516,8 @@ function ReservationDrawer({ reservation: r, rooms, pms, propertyId, busy, onClo
               })}</ol> : <p className="text-sm text-muted-foreground">No recorded changes for this reservation.</p>}
           </section>
           <div className="flex flex-wrap gap-2 border-t border-border pt-4">
-            {r.status === 'booked' && <button disabled={busy} className={buttonClass + " bg-primary text-primary-foreground"} onClick={checkIn}><DoorOpen size={15} /> Check in</button>}
+            {r.status === 'booked' && r.plannerStatus !== 'optioned' && <button disabled={busy} className={buttonClass + " bg-primary text-primary-foreground"} onClick={checkIn}><DoorOpen size={15} /> Check in</button>}
+            {r.status === 'booked' && r.plannerStatus === 'optioned' && <span className="rounded-lg border border-[var(--pay-opt-bd)] bg-[var(--pay-opt)] px-3 py-2 text-xs font-semibold text-[var(--pay-opt-fg)]">Confirm option before check-in</span>}
             {r.status === 'checked-in' && <button disabled={busy} className={buttonClass + " bg-primary text-primary-foreground"} onClick={checkOut}><LogOut size={15} /> Check out</button>}
             {r.status === 'booked' && <button disabled={busy} className={buttonClass + " border border-[var(--danger)] bg-[var(--danger-soft)] text-[var(--danger-text)]"} onClick={cancel}><Trash2 size={15} /> Remove reservation</button>}
           </div>

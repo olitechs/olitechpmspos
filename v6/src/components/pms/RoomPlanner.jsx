@@ -19,7 +19,6 @@ export const BOOKING_STATUSES = ['booked', 'checked_in', 'checked_out'];
 
 const DAY_WIDTH = 110;
 const ROOM_COL_WIDTH = 210;
-const PRINT_MAX_DAYS = 30;
 
 // CALENDAR THEME: Green/Yellow/Orange - Rectangle bars, English
 export const getReservationBarStyle = (paymentStatus) => ({
@@ -254,9 +253,9 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   };
   const submitCharge = async () => { const rv = actionModal.reservation; const amount = Number(chargeAmount); if (!(amount > 0)) { toast.error('Enter a charge amount greater than 0.'); return; } try { await pmsService.chargeToRoom({ propertyId, reservationId: rv.id, description: chargeDescription || 'Room charge', amount }); toast.success(`KES ${amount.toLocaleString()} posted to Room ${rv.roomNumber || rooms.find(x => x.id === rv.roomId)?.number}`); setActionModal(null); } catch (e) { toast.error(e.message); } };
 
-  const printRange = range ? columns : columns.slice(0, PRINT_MAX_DAYS);
-  const printTitle = `${user?.property?.name || 'OliTechs Grand Hotel'} - Room Planner - ${format(printRange[0], 'd MMM')} - ${format(printRange[printRange.length - 1], 'd MMM yyyy')}`;
-  const printSubtitle = `Printed by ${user?.full_name || user?.name || user?.email || 'Staff'} on ${format(new Date(), 'd MMM yyyy HH:mm')}`;
+  const printRange = columns;
+  const printTitle = `${user?.property?.name || 'OliTechs'} - Reservation Calendar`;
+  const printSubtitle = `Period: ${format(printRange[0], 'dd/MM/yyyy')} - ${format(printRange[printRange.length - 1], 'dd/MM/yyyy')}`;
   const downloadPdf = async () => {
     try {
       const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import('html2canvas'), import('jspdf')]);
@@ -268,7 +267,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   };
 
   return <div className="flex flex-col h-full min-h-0" style={{ background: SAND }}>
-    <style>{`@media print { @page { size: landscape; margin: 8mm; } body * { visibility: hidden !important; } #room-planner-print-grid, #room-planner-print-grid * { visibility: visible !important; } #room-planner-print-grid { position: absolute; left: 0; top: 0; width: 100%; } .print-hidden { display:none !important; } .print-color-exact { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } } .reservation-bar { display:flex; align-items:center; padding:0 8px; font-size:11px; font-weight:700; border-radius:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-height:24px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }`}</style>
+    <style>{`@media print { @page { size: landscape; margin: 5mm; } body * { visibility: hidden !important; } #room-planner-print-grid, #room-planner-print-grid * { visibility: visible !important; } #room-planner-print-grid { position: absolute; left: 0; top: 0; width: 100%; } .print-hidden { display:none !important; } .print-color-exact { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } } .reservation-bar { display:flex; align-items:center; padding:0 8px; font-size:11px; font-weight:700; border-radius:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-height:24px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }`}</style>
     <div className="px-4 pt-3 pb-2 shrink-0 print-hidden">
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: '#090C11', border: `1px solid #090C11`, color: '#FFD300' }}><CalendarDays size={17}/><span className="font-bold text-sm">Room Planner</span></div>
@@ -338,7 +337,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     {actionModal?.type==='groupFolio'&&<Modal title="Joint Reservation Folio" onClose={()=>setActionModal(null)}><div className="p-5"><p className="text-sm mb-3" style={{color:NAVY}}>Group #{String(actionModal.reservation.groupId).slice(0,6).toUpperCase()}</p><div className="space-y-2">{folio?.group?.map(r=><div key={r.id} className="flex justify-between p-3 rounded-lg" style={{background:SURFACE2}}><span className="text-sm">Room {r.roomNumber || rooms.find(x=>x.id===r.roomId)?.number} · {r.guestName}</span><span className="text-xs" style={{color:MUTED}}>{mealLabel[r.mealPlan]}</span></div>)}</div></div></Modal>}
     {actionModal?.type==='charge'&&<Modal title={`Post Room Charge · Room ${actionModal.reservation.roomNumber || rooms.find(x=>x.id===actionModal.reservation.roomId)?.number || ''}`} onClose={()=>setActionModal(null)}><div className="p-5 space-y-4"><div className="rounded-xl p-3" style={{background:SURFACE2}}><div className="font-bold text-sm" style={{color:NAVY}}>{actionModal.reservation.guestName}</div><div className="text-xs mt-1" style={{color:MUTED}}>Meal Plan: {mealLabel[actionModal.reservation.mealPlan] || 'Bed Only'}</div></div><Field label="Description"><InputField value={chargeDescription} onChange={e=>setChargeDescription(e.target.value)}/></Field><Field label="Amount (KES)"><InputField type="number" min="0.01" step="0.01" value={chargeAmount} onChange={e=>setChargeAmount(e.target.value)} autoFocus/></Field><div className="flex justify-end gap-2"><button onClick={()=>setActionModal(null)} className="px-4 py-2 rounded-lg" style={{border:`1px solid ${BORDER}`}}>Cancel</button><button onClick={submitCharge} className="px-4 py-2 rounded-lg font-bold" style={{background:TEAL,color:'#090C11'}}>Post Charge</button></div></div></Modal>}
 
-    {printPreview&&<Modal wide title="Print Calendar Preview" onClose={()=>setPrintPreview(false)} print><div className="p-5"><div className="mb-4"><h1 className="text-lg font-bold" style={{color:NAVY}}>{printTitle}</h1><p className="text-xs mt-1" style={{color:MUTED}}>{printSubtitle}</p>{!range&&columns.length>PRINT_MAX_DAYS&&<p className="text-xs mt-1" style={{color:'#9A6616'}}>Print preview is limited to the first 30 days of the current month.</p>}</div><PrintGrid rooms={rooms} groupedRooms={groupedRooms} reservations={normalizedReservations} columns={printRange}/><div className="flex justify-end gap-2 mt-4 print:hidden"><button onClick={()=>setPrintPreview(false)} className="px-4 py-2 rounded-lg" style={{border:`1px solid ${BORDER}`}}>Close</button><button onClick={downloadPdf} className="flex items-center gap-2 px-4 py-2 rounded-lg" style={{border:`1px solid ${BORDER}`,color:NAVY}}><Download size={15}/> Download PDF</button><button onClick={()=>setPrintNow(true)} className="flex items-center gap-2 px-4 py-2 rounded-lg font-bold" style={{background:TEAL,color:'#090C11'}}><Printer size={15}/> Print</button></div></div></Modal>}
+    {printPreview&&<Modal wide title="Print Calendar Preview" onClose={()=>setPrintPreview(false)} print><div className="p-5"><div className="mb-4"><h1 className="text-lg font-bold" style={{color:NAVY}}>{printTitle}</h1><p className="text-xs mt-1" style={{color:MUTED}}>{printSubtitle}</p></div><PrintGrid rooms={rooms} groupedRooms={groupedRooms} reservations={normalizedReservations} columns={printRange} title={printTitle} subtitle={printSubtitle}/><div className="flex justify-end gap-2 mt-4 print:hidden"><button onClick={()=>setPrintPreview(false)} className="px-4 py-2 rounded-lg" style={{border:`1px solid ${BORDER}`}}>Close</button><button onClick={downloadPdf} className="flex items-center gap-2 px-4 py-2 rounded-lg" style={{border:`1px solid ${BORDER}`,color:NAVY}}><Download size={15}/> Download PDF</button><button onClick={()=>setPrintNow(true)} className="flex items-center gap-2 px-4 py-2 rounded-lg font-bold" style={{background:TEAL,color:'#090C11'}}><Printer size={15}/> Print</button></div></div></Modal>}
 
     <div className="px-4 py-3 flex items-center gap-3 text-xs font-black border-t-2 print-hidden" style={{background:'#FFFFFF',borderColor:'#090C11'}}>
       <span className="flex items-center gap-1.5"><i className="w-4 h-4 rounded" style={{background:'#F97316'}}/> Not Paid</span>
@@ -349,14 +348,59 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   </div>;
 }
 
-function PrintGrid({ rooms, groupedRooms, reservations, columns }) {
-  const roomWidth = 130; const dayWidth = Math.max(48, Math.floor(770 / Math.max(1, columns.length)));
-  return <div id="room-planner-print-grid" className="print-color-exact" style={{background:'#fff',color:'#111',fontSize:8}}>
-    <div style={{display:'grid',gridTemplateColumns:`${roomWidth}px repeat(${columns.length},${dayWidth}px)`}}>
-      <div style={{background:'#090C11',color:'#fff',fontWeight:700,padding:'5px'}}>ROOM</div>{columns.map(d=><div key={dateKey(d)} style={{background:d.getDay()===0||d.getDay()===6?'#F2F2F2':'#262B32',color:d.getDay()===0||d.getDay()===6?'#090C11':'#fff',textAlign:'center',padding:'5px 1px',fontWeight:700}}>{format(d,'EE').slice(0,2)}<br/>{format(d,'d MMM')}</div>)}
-      {groupedRooms.map(([type, group])=><React.Fragment key={type}><div style={{gridColumn:'1 / -1',background:'#F1F0E8',fontWeight:700,padding:'4px'}}>{type}</div>{group.map(room=>{const rs=reservations.filter(r=>r.roomId===room.id && r.checkIn<dateKey(addDays(columns[columns.length-1],1)) && r.checkOut>dateKey(columns[0]));return <React.Fragment key={room.id}><div style={{padding:'4px',borderBottom:'1px solid #ddd',fontWeight:700}}>Room {room.number}</div>{columns.map(d=>{const rv=rs.find(r=>r.checkIn<=dateKey(d)&&r.checkOut>dateKey(d));const ps=rv?getReservationBarStyle(rv.paymentStatus):null;return <div key={dateKey(d)} className="print-color-exact" style={{minHeight:32,padding:'3px',borderLeft:'1px solid #ddd',borderBottom:'1px solid #ddd',background:rv?(ps.background):((d.getDay()===0||d.getDay()===6)?'#F2F2F2':'#fff'),color:rv?ps.color:'#090C11',fontWeight:rv?700:400,opacity:rv?.bookingStatus==='checked_out'?0.45:1}}>{rv&&rv.checkIn===dateKey(d)?rv.guestName:''}</div>})}</React.Fragment>})}</React.Fragment>)}
-      <div style={{gridColumn:'1 / -1',borderTop:'2px solid #FFD300',background:'#202020',padding:'4px',fontWeight:700}}>Daily Summary</div>
-      {['arrivals','inHouse','checkOuts'].map(kind=><React.Fragment key={kind}><div style={{background:'#202020',color:'#FFFFFF',padding:'3px',fontWeight:700}}>{kind==='arrivals'?'Arrivals':kind==='inHouse'?'In-House':'Check-Outs'}</div>{columns.map(d=>{const s=calculateDailyStats(reservations,d);const v=s[kind];return <div key={`${kind}-${dateKey(d)}`} style={{background:'#202020',textAlign:'center',padding:'3px',fontWeight:v?700:400,color:v?(kind==='arrivals'?'#FFD300':kind==='inHouse'?'#FFFFFF':'#757B81'):'#757B81'}}>{v}</div>})}</React.Fragment>)}
+function PrintGrid({ rooms, groupedRooms, reservations, columns, title, subtitle }) {
+  const days = columns.length;
+  const firstDay = columns[0];
+  const lastDay = columns[days - 1];
+  const dateKeys = columns.map(dateKey);
+  const gridColumns = `minmax(112px, 1.45fr) repeat(${days}, minmax(0, 1fr))`;
+  const visibleForRoom = (room) => reservations
+    .filter((r) => r.roomId === room.id && r.checkIn < dateKey(addDays(lastDay, 1)) && r.checkOut > dateKey(firstDay))
+    .map((r) => {
+      const startIndex = dateKeys.findIndex((key) => key >= r.checkIn);
+      const endIndex = dateKeys.findIndex((key) => key >= r.checkOut);
+      const start = startIndex < 0 ? 0 : startIndex;
+      const end = endIndex < 0 ? days : endIndex;
+      return { ...r, start, span: Math.max(1, end - start) };
+    });
+  return <div id="room-planner-print-grid" className="print-color-exact" style={{ width:'100%', background:'#fff', color:'#334155', fontFamily:'Arial, sans-serif', fontSize:8 }}>
+    <div style={{ display:'flex', alignItems:'center', gap:12, padding:'0 0 8px', borderBottom:'1px solid #d7dce0', marginBottom:7 }}>
+      <div style={{ width:34, height:34, borderRadius:6, background:'#0F7C86', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, fontWeight:800 }}>O</div>
+      <div style={{ minWidth:0 }}>
+        <div style={{ fontSize:19, lineHeight:1.1, fontWeight:400, color:'#64748b' }}>{title || 'Room Planner'}</div>
+        <div style={{ fontSize:11, color:'#64748b', marginTop:3 }}>{subtitle || (firstDay && lastDay ? `Period: ${format(firstDay,'dd/MM/yyyy')} - ${format(lastDay,'dd/MM/yyyy')}` : '')}</div>
+      </div>
+    </div>
+    <div style={{ display:'grid', gridTemplateColumns:gridColumns, width:'100%' }}>
+      <div style={{ gridColumn:'1 / -1', textAlign:'center', padding:'4px 2px', background:'#fff', border:'1px solid #d7dce0', color:'#64748b', fontSize:10, fontWeight:600 }}>{firstDay && format(firstDay,'MMMM yyyy')}</div>
+      <div style={{ background:'#f5f7f8', borderBottom:'1px solid #cfd5d9', padding:'5px 4px', fontWeight:700, textAlign:'center' }}>Rooms</div>
+      {columns.map((day) => <div key={dateKey(day)} style={{ textAlign:'center', padding:'3px 0', minWidth:0, background:day.getDay()===0||day.getDay()===6?'#d9edf6':'#fff', borderLeft:'1px solid #d9dee2', borderBottom:'1px solid #cfd5d9', color:'#64748b', lineHeight:1.25 }}>
+        <div>{format(day,'d')}</div><div style={{ fontSize:7 }}>{format(day,'EEE')}</div>
+      </div>)}
+      {groupedRooms.map(([type, group]) => <React.Fragment key={type}>
+        <div style={{ gridColumn:'1 / -1', background:'#f0f3f4', color:'#64748b', padding:'3px 5px', minHeight:15, fontWeight:700, borderBottom:'1px solid #d7dce0' }}>{type}</div>
+        {group.map((room) => {
+          const bookings = visibleForRoom(room);
+          return <div key={room.id} style={{ gridColumn:'1 / -1', display:'grid', gridTemplateColumns:gridColumns, position:'relative', minWidth:0 }}>
+            <div style={{ gridColumn:'1', gridRow:1, padding:'3px 5px', minHeight:19, display:'flex', alignItems:'center', borderBottom:'1px solid #dfe3e6', color:'#52616b', fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{room.number || room.name || room.id}</div>
+            {columns.map((day,index) => <div key={dateKey(day)} style={{ gridColumn:index+2, gridRow:1, minWidth:0, minHeight:19, background:day.getDay()===0||day.getDay()===6?'#d9edf6':'#fff', borderLeft:'1px solid #e1e5e8', borderBottom:'1px solid #dfe3e6' }} />)}
+            {bookings.map((booking) => {
+              const style=getReservationBarStyle(booking.paymentStatus);
+              return <div key={booking.id} title={`${booking.guestName || 'Reserved'} · ${booking.checkIn} – ${booking.checkOut}`} style={{ gridColumn:`${2+booking.start} / span ${Math.min(booking.span,days-booking.start)}`, gridRow:1, alignSelf:'center', minWidth:0, height:14, margin:'1px 2px', padding:'1px 4px', borderRadius:'8px 3px 8px 3px', background:style.background, color:style.color, opacity:getBarOpacity(booking.bookingStatus), fontSize:7, lineHeight:'12px', fontWeight:700, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', zIndex:1 }}>
+                {booking.guestName || 'Reserved'} · {booking.adults || 1}
+              </div>;
+            })}
+          </div>;
+        })}
+      </React.Fragment>)}
+      {['arrivals','inHouse','checkOuts'].map((kind) => <React.Fragment key={kind}>
+        <div style={{ background:'#eef1f2', padding:'3px 5px', fontWeight:700, borderTop:'1px solid #cbd2d7', borderBottom:'1px solid #dfe3e6', whiteSpace:'nowrap' }}>{kind==='arrivals'?'Arrivals':kind==='inHouse'?'In-House':'Departures'}</div>
+        {columns.map((day) => <div key={`${kind}-${dateKey(day)}`} style={{ textAlign:'center', padding:'3px 0', minWidth:0, background:'#f7f8f9', borderLeft:'1px solid #e1e5e8', borderTop:'1px solid #cbd2d7', borderBottom:'1px solid #dfe3e6', fontWeight:700, color:'#52616b' }}>{calculateDailyStats(reservations,day)[kind]}</div>)}
+      </React.Fragment>)}
+    </div>
+    <div style={{ display:'flex', gap:14, paddingTop:6, fontSize:7, color:'#64748b' }}>
+      {['not_paid','partially_paid','fully_paid'].map((status) => <span key={status} style={{ display:'flex', alignItems:'center', gap:4 }}><i style={{ width:8,height:8,display:'inline-block',borderRadius:2,background:getReservationBarStyle(status).background }} />{paymentLabel[status]}</span>)}
+      <span style={{ marginLeft:'auto' }}>{rooms.length} rooms · {reservations.length} reservations</span>
     </div>
   </div>;
 }

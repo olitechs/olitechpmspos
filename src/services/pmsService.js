@@ -1,5 +1,7 @@
 import { supabase } from '@/lib/supabaseClient';
 
+let warnedOptionExpiryMigrationMissing = false;
+
 export const pmsService = {
 
 	async removeOrderItem({ propertyId, tableKey, itemId, removeQty, reason, removedByName }) {
@@ -99,8 +101,11 @@ export const pmsService = {
 	async getBookingEngineConfig(propertyId) { const { data,error }=await supabase.rpc('fn_public_booking_engine_config',{p_property_id:propertyId}); if(error) throw new Error(error.message); return data; },
 	async listChannelConnections(propertyId) { const { data,error }=await supabase.from('channel_connections').select('*').eq('property_id',propertyId).order('channel'); if(error) throw new Error(error.message); return data||[]; },
 	async upsertChannelConnection({propertyId,channel,externalPropertyId}) { const { data,error }=await supabase.rpc('fn_channel_connection_upsert',{p_property_id:propertyId,p_channel:channel,p_external_property_id:externalPropertyId||null}); if(error) throw new Error(error.message); return data; },
-
-	async queueChannelSync({propertyId,connectionId,eventType,payload,idempotencyKey}) { const {data,error}=await supabase.rpc('fn_queue_channel_sync',{p_property_id:propertyId,p_connection_id:connectionId,p_event_type:eventType,p_payload:payload||{},p_idempotency_key:idempotencyKey}); if(error) throw new Error(error.message); return data; },
+	async listChannelRoomMappings(connectionId) { const { data,error }=await supabase.from('channel_room_mappings').select('*, room_type:room_types(id,name,code)').eq('connection_id',connectionId).order('room_type_id'); if(error) throw new Error(error.message); return data||[]; },
+	async createChannelRoomMapping(payload) { const { data,error }=await supabase.from('channel_room_mappings').insert(payload).select('*, room_type:room_types(id,name,code)').single(); if(error) throw new Error(error.message); return data; },
+	async updateChannelRoomMapping(id,patch) { const { data,error }=await supabase.from('channel_room_mappings').update(patch).eq('id',id).select('*, room_type:room_types(id,name,code)').single(); if(error) throw new Error(error.message); return data; },
+	async deleteChannelRoomMapping(id) { const { error }=await supabase.from('channel_room_mappings').delete().eq('id',id); if(error) throw new Error(error.message); },
+	async listChannelSyncQueue({propertyId,connectionId,eventType,payload,idempotencyKey}) { const {data,error}=await supabase.rpc('fn_queue_channel_sync',{p_property_id:propertyId,p_connection_id:connectionId,p_event_type:eventType,p_payload:payload||{},p_idempotency_key:idempotencyKey}); if(error) throw new Error(error.message); return data; },
 	async listChannelSyncQueue(propertyId) { const {data,error}=await supabase.from('channel_sync_queue').select('*').eq('property_id',propertyId).order('created_at',{ascending:false}).limit(100); if(error) throw new Error(error.message); return data||[]; },
 	async listChannelReservationEvents(propertyId) { const {data,error}=await supabase.from('channel_reservation_events').select('*').eq('property_id',propertyId).order('received_at',{ascending:false}).limit(100); if(error) throw new Error(error.message); return data||[]; },
 	async listConfirmationMessages(propertyId) { const {data,error}=await supabase.from('confirmation_messages').select('*').eq('property_id',propertyId).order('created_at',{ascending:false}).limit(100); if(error) throw new Error(error.message); return data||[]; },
@@ -205,6 +210,7 @@ export const pmsService = {
 	},
 
 	async listReservations(propertyId) {
+		await this.expireRoomPlannerOptions(propertyId);
 		const { data, error } = await supabase
 			.from('reservations')
 			.select('*')
@@ -214,8 +220,57 @@ export const pmsService = {
 		return data;
 	},
 
+	async expireRoomPlannerOptions(propertyId) {
+		const { data, error } = await supabase.rpc('fn_expire_room_planner_options', { p_property_id: propertyId });
+		if (error) {
+			// Keep legacy deployments usable until the additive option-expiry migration is applied.
+			if (error.code === 'PGRST202' || /fn_expire_room_planner_options.*(not found|does not exist)|could not find the function/i.test(error.message || '')) {
+				if (!warnedOptionExpiryMigrationMissing) {
+					console.warn('[Room Planner] Apply migration 20261108100000_room_planner_option_expiry.sql to enable 24-hour options.');
+					warnedOptionExpiryMigrationMissing = true;
+				}
+				return null;
+			}
+			throw new Error(error.message);
+		}
+		return Number(data || 0);
+	},
+
+	async setReservationOption(reservationId, optioned) {
+		const { data, error } = await supabase.rpc('fn_set_reservation_option', { p_reservation_id: reservationId, p_optioned: !!optioned });
+		if (error) {
+			if (error.code === 'PGRST202' || /fn_set_reservation_option.*(not found|does not exist)|could not find the function/i.test(error.message || '')) throw new Error('The 24-hour option migration has not been applied to this database yet.');
+			throw new Error(error.message);
+		}
+		return data;
+	},
+
+	async createOptionedReservationBundle(payload) {
+		const { data, error } = await supabase.rpc('fn_create_optioned_reservation_bundle', {
+			p_property_id: payload.propertyId, p_room_ids: payload.roomIds, p_group_id: payload.groupId,
+			p_guest_name: payload.guestName, p_phone: payload.phone || null, p_arrival: payload.checkIn,
+			p_departure: payload.checkOut, p_payment_status: payload.paymentStatus, p_channel: payload.channel,
+			p_meal_plan: payload.mealPlan, p_adults: payload.adults, p_kids_count: payload.kidsCount,
+			p_kids_ages: payload.kidsAges || [], p_total_amount: payload.totalAmount, p_amount_paid: payload.amountPaid,
+			p_notes: payload.notes || null, p_details: payload.details || {},
+		});
+		if (error) {
+			if (error.code === 'PGRST202' || /fn_create_optioned_reservation_bundle.*(not found|does not exist)|could not find the function/i.test(error.message || '')) throw new Error('The 24-hour option migration has not been applied to this database yet.');
+			throw new Error(error.message);
+		}
+		return data || [];
+	},
+
 	async listGuests(propertyId) {
 		const { data, error } = await supabase.from('guests').select('*').eq('property_id', propertyId).order('name');
+		if (error) throw new Error(error.message);
+		return data;
+	},
+
+	async updateGuestProfile({ propertyId, guestId, patch }) {
+		const allowed = ['name','phone','email','nationality','id_number','address','notes','alternative_phone','residence_country','id_type','guest_details'];
+		const safePatch = Object.fromEntries(Object.entries(patch || {}).filter(([key]) => allowed.includes(key)));
+		const { data, error } = await supabase.from('guests').update(safePatch).eq('id', guestId).eq('property_id', propertyId).select().single();
 		if (error) throw new Error(error.message);
 		return data;
 	},

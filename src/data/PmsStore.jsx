@@ -61,6 +61,8 @@ function mapReservation(r, roomsById, roomTypesById = new Map()) {
 	const paymentStatus = r.payment_status || (Number(r.amount_paid || 0) >= Number(r.total_amount || r.rate || 0) && Number(r.total_amount || r.rate || 0) > 0 ? 'fully_paid' : Number(r.amount_paid || 0) > 0 ? 'partially_paid' : 'not_paid');
 	return {
 		id: r.id,
+		guestId: r.guest_id || null,
+		bookingDetails: r.booking_details || {},
 		groupId: r.group_id || undefined,
 		roomId: r.room_id,
 		roomNumber: room?.number,
@@ -75,6 +77,8 @@ function mapReservation(r, roomsById, roomTypesById = new Map()) {
 		departure: r.departure,
 		bookingStatus: String(r.status || 'booked').replace('-', '_'),
 		status: r.status,
+		optionExpiresAt: r.option_expires_at || null,
+		plannerStatus: r.option_expires_at && new Date(r.option_expires_at).getTime() > Date.now() ? 'optioned' : undefined,
 		paymentStatus,
 		channel: r.channel || 'direct',
 		mealPlan: r.meal_plan || 'bed_only',

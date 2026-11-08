@@ -79,8 +79,8 @@
     --cal-head: var(--surface);
     --cal-grid: var(--border);
     --cal-group: var(--sidebar);
-    --cal-weekend: color-mix(in srgb, var(--primary) 6%, var(--surface));
-    --cal-today: color-mix(in srgb, var(--status-paid) 10%, var(--surface));
+    --cal-weekend: color-mix(in srgb, var(--coastal-teal) 7%, var(--surface));
+    --cal-today: color-mix(in srgb, var(--coastal-teal) 15%, var(--surface));
     --cal-text: var(--text-muted);
     --cal-room: var(--text);
     --cal-scroll: var(--text-muted);
@@ -94,9 +94,10 @@
     --pay-paid: var(--status-paid);
     --pay-paid-fg: var(--white);
     --pay-paid-bd: var(--status-paid);
-    --pay-opt: var(--primary-soft);
+    --status-optioned: color-mix(in srgb, var(--coastal-teal) 18%, var(--white));
+    --pay-opt: var(--status-optioned);
     --pay-opt-fg: var(--deep-lagoon);
-    --pay-opt-bd: var(--primary);
+    --pay-opt-bd: var(--coastal-teal);
     --st-cancel: var(--status-not-paid);
     --st-cancel-fg: var(--white);
     --st-cancel-bd: var(--status-not-paid);
@@ -302,3 +303,6 @@
 }
 
 .floor-table-tile .font-bold, .floor-table-tile .font-black { font-weight: 700 !important; }
+
+.room-planner-close-button:hover { background: color-mix(in srgb, var(--white) 10%, transparent); }
+.room-planner-close-button:focus-visible { outline: 2px solid var(--white); outline-offset: 2px; }

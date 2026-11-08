@@ -26,6 +26,9 @@ import Laundry from '@/components/modules/Laundry';
 import Transfers from '@/components/modules/Transfers';
 import BookingEngine from '@/components/modules/BookingEngine';
 import ChannelManager from '@/components/modules/ChannelManager';
+import RegistrationCards from '@/components/modules/RegistrationCards';
+import WalkInCheckIn from '@/components/modules/WalkInCheckIn';
+import ExpressCheckOut from '@/components/modules/ExpressCheckOut';
 import DistributionOps from '@/components/modules/DistributionOps';
 import Inventory from '@/components/modules/Inventory';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
@@ -134,6 +137,15 @@ export default function POSApp({
       case 'channels':
         content = <ChannelManager />;
         break;
+      case 'registration-cards':
+        content = <RegistrationCards />;
+        break;
+      case 'walk-in-checkin':
+        content = <WalkInCheckIn />;
+        break;
+      case 'express-checkout':
+        content = <ExpressCheckOut />;
+        break;
       case 'distribution-ops':
         content = <DistributionOps />;
         break;
@@ -162,7 +174,7 @@ export default function POSApp({
       ? 'pos'
       : ['store', 'inventory', 'purchasing', 'recipes', 'transfers', 'channels'].includes(activeModule)
         ? 'store'
-        : ['reservations', 'rooms', 'guests', 'folio', 'housekeeping', 'night-audit'].includes(activeModule)
+        : ['reservations', 'rooms', 'guests', 'folio', 'housekeeping', 'night-audit', 'registration-cards', 'walk-in-checkin', 'express-checkout'].includes(activeModule)
           ? 'frontoffice'
           : 'backoffice'
   );
@@ -170,9 +182,9 @@ export default function POSApp({
   return (
     <StoreProvider>
       <PmsProvider>
-        <div className={embedded ? 'min-h-full w-full bg-[var(--bg)]' : 'app-shell flex min-h-screen w-full bg-[var(--bg)]'}>
+        <div className={embedded ? 'flex h-full min-h-0 w-full flex-col bg-[var(--bg)]' : 'app-shell flex min-h-screen w-full bg-[var(--bg)]'}>
           {!embedded && <Sidebar activeModule={activeModule} onModuleChange={setActiveModule} />}
-          <div className={embedded ? 'min-w-0' : 'flex min-w-0 flex-1 flex-col'}>
+          <div className={embedded ? 'flex min-h-0 min-w-0 flex-1 flex-col' : 'flex min-w-0 flex-1 flex-col'}>
             {showTopBar && !embedded && <TopBar moduleLabel={currentModule?.label || ''} />}
             <div className="min-h-0 flex-1 overflow-y-auto">
               <ErrorBoundary label={currentModule?.label || 'This section'}>
