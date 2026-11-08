@@ -87,4 +87,7 @@ test('option expiry is server-authoritative and does not silently extend on edit
   assert.ok(migration.includes('fn_check_room_availability'));
   assert.ok(migration.includes('pms_reservation_option_created'));
   assert.ok(migration.includes('pms_reservation_option_confirmed'));
+  assert.ok(migration.includes('Every room in a joint reservation'));
+  assert.ok(migration.includes('coalesce(r.option_expires_at, now() + interval'));
+  assert.ok(migration.includes('Confirm the reservation option before check-in.'));
 });
