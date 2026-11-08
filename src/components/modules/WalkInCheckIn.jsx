@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from 'react';
 import { DoorOpen, RefreshCw, UserRound } from 'lucide-react';
-import { useAuth } from '@/lib/AuthContext';
 import { usePms } from '@/data/PmsStore';
 import { getPmsDateKey } from '@/lib/pmsDateUtils';
 
@@ -10,7 +9,6 @@ const button = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-l
 const nextDay = (key) => { const date = new Date(key + 'T12:00:00'); date.setDate(date.getDate() + 1); return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`; };
 
 export default function WalkInCheckIn() {
-  const { user } = useAuth();
   const pms = usePms();
   const today = getPmsDateKey();
   const availableRooms = useMemo(() => (pms.rooms || []).filter((room) => room.active !== false && room.status === 'available'), [pms.rooms]);
