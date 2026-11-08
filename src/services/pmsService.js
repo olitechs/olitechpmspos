@@ -1,5 +1,7 @@
 import { supabase } from '@/lib/supabaseClient';
 
+let warnedOptionExpiryMigrationMissing = false;
+
 export const pmsService = {
 
 	async removeOrderItem({ propertyId, tableKey, itemId, removeQty, reason, removedByName }) {
@@ -220,7 +222,10 @@ export const pmsService = {
 		if (error) {
 			// Keep legacy deployments usable until the additive option-expiry migration is applied.
 			if (error.code === 'PGRST202' || /fn_expire_room_planner_options.*(not found|does not exist)|could not find the function/i.test(error.message || '')) {
-				console.warn('[Room Planner] Apply migration 20261108100000_room_planner_option_expiry.sql to enable 24-hour options.');
+				if (!warnedOptionExpiryMigrationMissing) {
+					console.warn('[Room Planner] Apply migration 20261108100000_room_planner_option_expiry.sql to enable 24-hour options.');
+					warnedOptionExpiryMigrationMissing = true;
+				}
 				return null;
 			}
 			throw new Error(error.message);
