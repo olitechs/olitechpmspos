@@ -52,7 +52,7 @@ export default function Folio() {
   };
 
   const loadFolio = async (reservation) => {
-    setSelected(reservation); setError(''); setNotice(''); setSelectedChargeIds([]); setShowInvoiceEditor(false); setInvoiceDefinition(null);
+    setSelected(reservation); setFolio(null); setPayments([]); setRefunds([]); setPosReceipts([]); setError(''); setNotice(''); setSelectedChargeIds([]); setShowInvoiceEditor(false); setInvoiceDefinition(null);
     setInvoiceHeader({
       invoiceTitle: 'Final Settlement Invoice',
       invoiceReference: `FOL-${String(reservation.id || '').slice(0, 8).toUpperCase()}`,
@@ -151,7 +151,7 @@ export default function Folio() {
                 <div><h2 className="text-xl font-bold text-foreground">{selected.guest_name}</h2><div className="mt-1 text-xs text-[var(--text-muted)]">Reservation #{selected.id.slice(0,8)} · Room {roomLabel} · {selected.status}</div><div className="text-xs text-[var(--text-muted)]">{selected.arrival} → {selected.departure} · {selected.channel || 'direct'} · {selected.meal_plan || 'bed_only'}</div></div>
                 <div className="flex flex-wrap gap-2">
                   <DocumentExportMenu definition={statementDefinition} label="Folio statement" disabled={!statementDefinition} />
-                  <button className={btn+" border border-[var(--border)]"} onClick={()=>setShowInvoiceEditor(true)} disabled={!folio}>Edit invoice header</button>
+                  <button className={btn+" border border-[var(--border)]"} onClick={()=>setShowInvoiceEditor(true)} disabled={!folio}>{invoiceDefinition ? 'Edit invoice header' : 'Prepare final invoice'}</button>
                   {invoiceDefinition && <DocumentExportMenu definition={invoiceDefinition} label="Final settlement invoice" formats={['pdf','print']} disabled={!invoiceDefinition}/> }
                   <button className={btn+" border border-[var(--border)]"} onClick={()=>setModal('transfer')} disabled={!charges.length}><ArrowLeftRight size={15}/> Split / transfer</button>
                   <button className={btn+" border border-[var(--border)]"} onClick={()=>setModal('discount')} disabled={!canManage}><ShieldCheck size={15}/> Discount</button>
