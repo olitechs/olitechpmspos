@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle, Search, X, ShieldCheck, ChevronLeft, Folder, ArrowRight } from 'lucide-react';
+import { AlertTriangle, Search, X, ShieldCheck, ChevronLeft, Folder } from 'lucide-react';
 import { CATEGORIES, MENU_ITEMS, VAT_RATE, tableLabel, CATEGORY_CENTER } from '@/data/mockData';
 import { useStore } from '@/data/AppStore';
 import PrintWarn from '@/components/pos/PrintWarn';
@@ -34,6 +34,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
   const [pinError, setPinError] = useState('');
   const [menuItems, setMenuItems] = useState([]);
   const [menuCategories, setMenuCategories] = useState(CATEGORIES);
+  const [menuCategoryStyles, setMenuCategoryStyles] = useState({});
   const [menuLoading, setMenuLoading] = useState(true);
   const [menuError, setMenuError] = useState('');
   const [menuSearch, setMenuSearch] = useState('');
@@ -61,6 +62,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
         setMenuItems([]);
       }
       const configuredCategories = categoryRows.map((category) => category.name).filter(Boolean);
+      setMenuCategoryStyles(Object.fromEntries(categoryRows.map((category) => [category.name, category])));
       setMenuCategories(configuredCategories.length ? configuredCategories : [...new Set(rows.map((p) => p.category || 'General'))]);
     } catch (error) {
       console.warn('[POS] menu catalogue unavailable', error);
@@ -344,25 +346,19 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
             <button type="button" onClick={loadPosMenu} className="min-h-11 rounded-lg bg-[var(--primary)] px-4 text-sm font-bold text-[var(--on-primary)] hover:bg-[var(--primary-hover)]">Retry menu</button>
           </div>
         ) : !activeCategory && !menuSearch.trim() ? (
-          <section aria-label="Menu categories" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          <section aria-label="Menu categories" className="grid grid-cols-5 gap-2">
             {menuCategories.map((cat, index) => (
               <button
                 key={cat}
                 type="button"
                 onClick={() => setActiveCategory(cat)}
-                className={`group flex min-h-36 flex-col justify-between rounded-2xl border-2 p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 ${categoryTileStyles[index % categoryTileStyles.length]}`}
+                style={{ backgroundColor: menuCategoryStyles[cat]?.tile_color || undefined, color: menuCategoryStyles[cat]?.tile_text_color || undefined, borderColor: menuCategoryStyles[cat]?.tile_color || undefined, ...(menuCategoryStyles[cat]?.tile_image_url ? { backgroundImage: `linear-gradient(var(--overlay-scrim),var(--overlay-scrim)),url("${menuCategoryStyles[cat].tile_image_url}")`, backgroundSize: "cover", backgroundPosition: "center" } : {}) }}
+                className={`group relative flex aspect-square min-w-0 flex-col justify-end overflow-hidden rounded-xl border-2 p-2 text-center shadow-sm transition-all hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 ${categoryTileStyles[index % categoryTileStyles.length]}`}
                 aria-label={`Open ${cat}, ${categoryCounts[cat] || 0} products`}
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--surface)] text-[var(--primary)]">
-                    <Folder size={22} aria-hidden="true" />
-                  </div>
-                  <ArrowRight size={18} className="mt-1 text-[var(--text-muted)] transition-transform group-hover:translate-x-1" aria-hidden="true" />
-                </div>
-                <div className="mt-4">
-                  <div className="text-base font-extrabold leading-tight text-[var(--text)]">{cat}</div>
-                  <div className="mt-1 text-xs font-semibold text-[var(--text-muted)]">{categoryCounts[cat] || 0} products</div>
-                </div>
+                <Folder size={16} className="absolute right-2 top-2" aria-hidden="true" />
+                <div className="line-clamp-2 break-words text-xs font-extrabold leading-tight sm:text-sm">{cat}</div>
+                <div className="mt-1 text-[9px] font-semibold opacity-80">{categoryCounts[cat] || 0} items</div>
               </button>
             ))}
             {menuCategories.length === 0 && (
@@ -378,7 +374,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
             {!activeCategory && menuSearch.trim() && (
               <div className="mb-3 text-xs font-semibold text-[var(--text-muted)]">{visibleMenuItems.length} matching products across all categories</div>
             )}
-            <div id="pos-product-grid" className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(155px,1fr))]">
+            <div id="pos-product-grid" className="grid grid-cols-5 gap-2">
               {visibleMenuItems.map((item) => {
                 const inOrderQty = orderLines.reduce((qty, line) => qty + ((line.baseProductId || line.productId || line.id) === (item.productId || item.id) ? Number(line.qty || 0) : 0), 0);
                 const stockStatus = propertyId && menuItems.length > 0 ? getPosStockStatus(item.stock, item.minimumStock) : 'unknown';
@@ -391,7 +387,8 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
                     onClick={() => addItem(item)}
                     disabled={outOfStock || modifierLoading}
                     aria-label={`${item.name}, ${outOfStock ? 'out of stock' : lowStock ? 'low stock' : fmt(item.price)}`}
-                    className={`relative flex min-h-36 flex-col justify-between rounded-2xl border-2 p-3 text-left transition-all active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 ${outOfStock ? 'cursor-not-allowed border-[var(--danger)] bg-[var(--danger-soft)] opacity-75' : inOrder ? 'border-[var(--primary)] bg-[var(--primary-soft)] shadow-sm' : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--primary)] hover:bg-[var(--primary-soft)]'}`}
+                    style={{ backgroundColor: item.tile_color || undefined, color: item.tile_text_color || undefined, borderColor: item.tile_color || undefined, ...(item.tile_image_url ? { backgroundImage: `linear-gradient(var(--overlay-scrim),var(--overlay-scrim)),url("${item.tile_image_url}")`, backgroundSize: "cover", backgroundPosition: "center" } : {}) }}
+                    className={`relative flex aspect-square min-w-0 flex-col justify-between overflow-hidden rounded-xl border-2 p-2 text-left transition-all active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 ${outOfStock ? 'cursor-not-allowed border-[var(--danger)] bg-[var(--danger-soft)] opacity-75' : inOrderQty > 0 ? 'border-[var(--primary)] bg-[var(--primary-soft)] shadow-sm' : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--primary)] hover:bg-[var(--primary-soft)]'}`}
                   >
                     <div className="flex w-full items-start justify-between gap-2">
                       <span className="text-[10px] font-bold uppercase tracking-wide text-[var(--text-muted)]">{item.category}</span>
@@ -399,7 +396,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
                         <span className="flex h-7 min-w-7 items-center justify-center rounded-full bg-[var(--primary)] px-1.5 text-xs font-extrabold text-[var(--on-primary)]">{inOrderQty}</span>
                       )}
                     </div>
-                    <div className="my-3 w-full text-sm font-bold leading-snug text-[var(--text)]">{item.name}{item.sku && <span className="mt-1 block text-[10px] font-semibold tracking-wide text-[var(--text-muted)]">SKU {item.sku}</span>}</div>
+                    <div className="my-2 w-full break-words text-center text-[11px] font-bold leading-tight sm:text-xs">{item.name}{item.sku && <span className="mt-1 block text-[9px] font-semibold tracking-wide opacity-80">SKU {item.sku}</span>}</div>
                     <div className="flex w-full items-end justify-between gap-2">
                       <span className="text-sm font-extrabold text-[var(--primary)]">{fmt(item.price)}</span>
                       {stockStatus !== 'unknown' && (

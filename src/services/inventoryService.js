@@ -52,14 +52,19 @@ export const inventoryService = {
     return data || [];
   },
 
-  async upsertPosCategory({ propertyId, name, productionCenter = 'Kitchen', sortOrder = 0 }) {
+  async upsertPosCategory({ propertyId, name, productionCenter = 'Kitchen', sortOrder = 0, tile_color = null, tile_text_color = null, tile_image_url = null }) {
     const clean = String(name || '').trim();
     if (!clean) throw new Error('Category name is required.');
     const { data, error } = await supabase.from('pos_menu_categories').upsert({
       property_id: propertyId, name: clean, production_center: productionCenter || 'Kitchen', sort_order: Number(sortOrder) || 0, active: true,
+      tile_color, tile_text_color, tile_image_url,
     }, { onConflict: 'property_id,name' }).select('*').single();
     if (error) throw new Error(error.message);
     return data;
+  },
+
+  async updatePosMenuItemVisuals({ propertyId, id, tile_color, tile_text_color, tile_image_url }) {
+    return supabase.from('products').update({ tile_color: tile_color || null, tile_text_color: tile_text_color || null, tile_image_url: tile_image_url || null }).eq('property_id', propertyId).eq('id', id);
   },
 
   async upsertPosMenuItem(item) {
