@@ -8,8 +8,16 @@ export function getPosStockStatus(stock, minimumStock = 0) {
   return 'available';
 }
 
+function normalizePosSearch(value) {
+  return String(value ?? '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLocaleLowerCase().trim();
+}
+
 export function filterPosMenuItems(items, query) {
-  const search = String(query ?? '').trim().toLocaleLowerCase();
+  const search = normalizePosSearch(query);
   if (!search) return items;
-  return items.filter((item) => String(item?.name ?? '').toLocaleLowerCase().includes(search));
+  const tokens = search.split(/\\s+/).filter(Boolean);
+  return items.filter((item) => {
+    const searchable = normalizePosSearch([item?.name, item?.sku, item?.category].filter(Boolean).join(' '));
+    return tokens.every((token) => searchable.includes(token));
+  });
 }
