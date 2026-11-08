@@ -1,70 +1,69 @@
 # OliTechs Room Planner V2
 
-## Phase 1 — Audit
+## Scope and compatibility
 
-### Existing implementation
-- `src/components/pms/RoomPlanner.jsx` owns the planner toolbar, date range, room-type grouping, grid, reservation bars, create/edit form, drag-and-drop move confirmation, group handling, folio actions, room charges, and export preview.
-- `src/data/PmsStore.jsx` maps reservation rows into the planner model. It already maps adults, children and child ages, channel, group ID, payment amounts/status, and notes.
-- `src/services/pmsService.js` reads rooms and reservations scoped by the signed-in `property_id`. Existing create, update and move operations use server RPCs; folio, payments, receipts and room-charge operations are separate existing services.
-- Existing schema migrations `0013`–`0016` provide room types, rate plans, group/channel/payment fields, child counts/ages, amounts, notes and date-based room closures.
-- `src/services/reportDocumentEngine.js` and `src/services/reportDefinitions.js` are already present. The planner currently builds a report definition and uses the shared export menu rather than a screenshot export.
-- Existing planner geometry was 190px room rail, 92px month / 110px rolling day columns, a single 60px day header, 48px room rows and 34px rectangular bars.
+The Room Planner V2 work is isolated on `feat/room-planner-v2`. It keeps the existing `property_id` tenancy contract and relies on existing RLS and server-side reservation RPCs. It does not add assumed `business_id` or `branch_id` fields, paid Supabase branches, or new paid services.
 
-### Data-field audit
-| Field | Existing source | Status |
+Existing PMS reservation, group, folio, room-charge, POS and print-agent workflows remain the mutation and billing boundaries. The planner does not treat destructive reservation deletion as cancellation.
+
+## Current implementation
+
+### Layout and data presentation
+- Sticky month and day headers, frozen 225px room column, 56px day cells and fixed 54px room rows.
+- Reservation bars use midday check-in/check-out geometry, continuation markers and a lighter past-stay treatment.
+- Search covers guest, reservation reference and room.
+- Filters cover payment state, booking source, room type and floor.
+- Visible range presets are 7, 15 and 30 days, with date-range navigation.
+- Reservation detail side panel shows reference, guest, dates, nights, room, guest count, source, total, paid amount, balance and notes.
+- Quick actions reuse existing edit, folio/payment, room charge, check-in, check-out, one-night extension and room-change paths.
+- Payment state is derived from amounts; Optioned stays retain their distinct pale-teal dashed treatment.
+
+### Planner interactions
+- Existing drag-to-move uses overlap checks and the server-side move RPC, with a confirmation step and joint-reservation handling.
+- Pointer-based resize changes the check-out date, checks minimum stay, selected range and room overlap, then uses the existing move RPC.
+- Touch pointer movement is supported for reservation moves.
+- Dragging across date cells in one room opens a new reservation form prefilled with the selected stay range.
+- Undo/redo is available for individual move and resize actions. Undo/redo replays the existing server-side move operation; it is not a general history for edits, payments, check-in/out, or group moves.
+- Keyboard shortcuts: T for today, Escape to close overlays, arrow keys to scroll, Ctrl/Cmd+Z to undo and Ctrl/Cmd+Shift+Z to redo.
+
+### Room closures
+- Existing `room_closures` table and service methods are used; no new table is introduced.
+- Closures load by signed-in `property_id`, are created with `property_id`, `room_id`, `start_date`, `end_date` and `reason`, and can be removed.
+- The end date is exclusive, matching reservation check-out semantics.
+- Closure dates render with a striped background and tooltip reason. Existing reservations are not silently changed; server-side reservation validation remains authoritative for new bookings.
+
+### Performance
+- Reservations are indexed by room and clipped to the visible date window before bar rendering.
+- Room rows are vertically virtualised with a fixed row height and overscan.
+- The shared PMS store still supplies the full property-scoped reservation collection; a server-side date-window query plus buffer is not implemented.
+- Horizontal day columns are not virtualised. The planner limits its selectable range to 31 days, so this remains a bounded grid.
+
+### Export
+- The planner uses the shared report definition, report data table and document export menu.
+- PDF landscape layout and multi-sheet Excel output have not yet been manually verified against live planner data.
+
+## Data model findings and known gaps
+
+| Area | Current source | Status |
 |---|---|---|
-| Guest / pax | `guest_name`, `adults`, `kids_count`, `kids_ages` | Present |
-| Channel / source | `channel` and `source` in booking details | Present, mapping should be normalised consistently |
-| Group booking | `group_id` | Present |
-| Notes | `special_requests` / `notes` | Present |
-| Payment | `total_amount`, `amount_paid`, folio totals and payment rows | Present; UI derives a display state from amounts |
-| Option expiry | No confirmed expiry timestamp in the inspected reservation mapping/schema | Missing |
-| Closure dates | `room_closures` with room/date/reason | Present in schema; current toolbar handler still adds a temporary local closure |
-| Audit before/after | reservation audit event reader exists | Verify write coverage for every planner mutation |
+| Guest and occupancy | `guest_name`, adults, child count and ages | Existing mapping |
+| Channel and group | Existing channel/source and group fields | Existing mapping |
+| Payment | Reservation amounts and folio/payment services | Display state is amount-derived |
+| Room closures | `room_closures` with room/date/reason | Persistent CRUD wired in planner |
+| Option expiry | No confirmed expiry timestamp in the inspected reservation model/schema | Not implemented; do not simulate expiry in the client |
+| Audit | Existing audit reader / server-side mutation functions | Full planner before/after audit coverage not verified |
+| Permissions | Existing app roles and RLS | Planner-specific action matrix not fully audited |
 
-### Tenancy and query safety
-The current client contract is `property_id` plus existing RLS and property-scoped RPCs. The inspected planner data model does not expose `business_id` and `branch_id`. Do not add client filters for columns that are not established in the live schema; map property-to-business/branch only after the platform tenancy contract is confirmed. No database migration or production data change is part of this branch's initial UI work.
+## Remaining work before marking complete
 
-### Current rendering and performance
-The current page receives the full room and reservation arrays from `PmsStore`; it does not request a visible date window plus buffer. The grid creates approximately `rooms × visibleDays` day cells, and filters reservations for each room before drawing bars. Rendering work is therefore roughly O(R×D + R×N) in the current component (R rooms, D visible days, N reservations), with no row/column virtualisation. Actual production R/N counts were not available from source inspection, so no runtime count is claimed.
+1. Define and verify a persisted option-expiry field and server-side expiry/confirmation workflow. Existing schema inspection did not confirm an expiry timestamp, so this needs a reviewed additive migration and RPC integration rather than a client-only countdown.
+2. Design a property-scoped server-side visible-range query with buffer before changing the shared PMS store data contract.
+3. Complete planner-specific role permissions and verify before/after audit events for each mutation.
+4. Add a phone-oriented day-list presentation and complete keyboard, screen-reader and responsive accessibility review.
+5. Verify PDF and Excel exports end-to-end, including landscape output and the daily room matrix.
+6. Run lint, typecheck, architecture tests, Vercel preview build and manual regression against reservations, groups, folios, payments, POS room charges and printing.
+7. Capture desktop, tablet and phone screenshots and test closure, create, move, resize, touch, undo and redo interactions.
 
-## Phase 2 — Layout work in this branch
-- Narrowed day columns to 56px and widened the frozen room rail to 225px.
-- Added a sticky two-level header: month spans above weekday/date cells.
-- Increased room row minimum height to 54px.
-- Changed reservation bars to 23px parallelogram-shaped chips with half-day check-in/check-out geometry. Stays clipped by the visible range use a flush edge and continuation chevron.
-- Past stays use a 55% fill tint while preserving foreground text opacity.
-- Added a dedicated optioned token and adjusted today/weekend tints to the requested Coastal Teal values.
-- Updated the legend labels to No Amount Paid, Partially Paid, Total Paid and Optioned. Payment states continue to derive from amount paid versus total amount.
+## Verification boundary
 
-## Component and geometry notes
-- Main component remains `src/components/pms/RoomPlanner.jsx`; no route, POS, folio, print-agent or thermal-printing code is changed.
-- Pure date geometry and payment mapping helpers are in `src/lib/roomPlannerGeometry.js`.
-- Check-in begins at 12:00 and check-out ends at 12:00. For a stay with N nights, the visible bar spans N full day widths, with a half-day offset at each un-clipped boundary.
-- Payment mapping: zero paid → No Amount Paid; positive amount below total → Partially Paid; paid amount at or above total → Total Paid. Optioned stays use the dashed Coastal Teal outline and pale teal fill, independent of the payment state.
-
-## Remaining phases / risks
-- Toolbar search, source/payment/room-type/floor filters and 7/15/30-day selector are not yet implemented.
-- Reservation detail is still the existing edit modal, not the requested side panel with all quick actions.
-- Resize handles, touch drag, drag-to-create, persisted closure CRUD, option expiry/countdown/confirmation, undo/redo, keyboard shortcut help and role-specific planner actions remain outstanding.
-- Visible-range query buffering and row/column virtualisation remain outstanding. The existing global property-scoped reservation query should not be replaced until a safe date-range API is designed.
-- Export engine exists; planner-specific landscape PDF and multi-sheet Excel output still require verification and may need a dedicated report definition.
-- Desktop/tablet/phone screenshots and end-to-end interaction screenshots have not been generated in this source-only workflow. Pixel verification and live data testing are still required.
-- No Supabase migration, production deployment, main-branch push or merge was performed.
-
-
-## Phase 2 — Toolbar and reservation details update
-- Added guest / reservation reference / room search.
-- Added payment status, booking source and room-type filters; room filtering respects the selected room type and search.
-- Added 7 / 15 / 30 day visible-range selector.
-- Added a reservation detail side panel with reservation reference, guest, dates, nights, room, guest count, source, total, paid amount, balance and notes.
-- Added detail actions that reuse existing PMS operations for edit, folio/payment, room charge, check-in, check-out, one-night extension and room change.
-- Added Escape, T, and arrow-key navigation for closing overlays, jumping to today and scrolling the planner.
-- Indexed visible reservations by room and date window to avoid scanning the full reservation list for every rendered room.
-- The existing cancellation path is not exposed as a quick action because the inspected service only exposes a delete RPC; a dedicated, audited cancellation operation must be confirmed before surfacing it as “Cancel”.
-
-## Phase 3 / 4 — Interaction and data status
-- Existing server-side move RPC and client overlap guard remain in place.
-- The planner now indexes reservations to the visible date window before drawing bars, but the page still receives the full property-scoped reservation collection from the shared PMS store. Query buffering and true row/column virtualisation are not complete.
-- Drag-to-resize, touch drag, drag-to-create, persisted closure CRUD, option expiry/countdown, undo/redo, role-specific planner permissions and complete audit-write coverage remain outstanding.
-- No database schema changes were made. Current tenant scoping continues to rely on the existing property_id/RLS contract; no unverified business_id/branch_id columns are assumed.
+No production database migration, production data change, main-branch push, merge or production deployment is included in this branch's current implementation. Preview build success alone is not a substitute for live PMS regression.
