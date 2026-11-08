@@ -16,7 +16,7 @@ const categoryLabels = {
 const categories = Object.keys(categoryLabels);
 const managerRoles = ['owner', 'admin', 'manager', 'hotel_admin', 'super_admin', 'fb_manager', 'general_manager', 'front_office_manager'];
 
-export default function Folio() {
+export default function Folio({ initialReservationId = null, embedded = false }) {
   const { user } = useAuth();
   const propertyId = user?.property?.id;
   const roles = [user?.role, user?.staff?.role, user?.property?.role, user?.staff_role].filter(Boolean);
@@ -45,8 +45,13 @@ export default function Folio() {
     if (!propertyId) return;
     setLoading(true); setError('');
     try {
-      const rows = await pmsService.listReservations(propertyId);
-      setReservations((rows || []).filter((r) => r.status !== 'cancelled'));
+      const activeRows = (await pmsService.listReservations(propertyId) || []).filter((r) => r.status !== 'cancelled');
+      setReservations(activeRows);
+      if (initialReservationId) {
+        const initial = activeRows.find((r) => String(r.id) === String(initialReservationId));
+        if (initial) await loadFolio(initial);
+        else setError('The selected room reservation could not be found in this property.');
+      }
     } catch (e) { setError(e.message || 'Guest accounts could not be loaded.'); }
     finally { setLoading(false); }
   };
@@ -73,7 +78,7 @@ export default function Folio() {
   useEffect(() => {
     loadReservations();
     if (propertyId) pmsService.listFolioEmployees(propertyId).then(setEmployees).catch(() => setEmployees([]));
-  }, [propertyId]);
+  }, [propertyId, initialReservationId]);
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return reservations.filter((r) => !q || [r.guest_name, r.phone, r.room_id, r.id, r.channel].some((v) => String(v || '').toLowerCase().includes(q)));
@@ -125,16 +130,16 @@ export default function Folio() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto bg-canvas p-4 lg:p-6">
+    <div className={embedded ? "h-full min-h-0 overflow-y-auto bg-canvas p-3" : "flex-1 overflow-y-auto bg-canvas p-4 lg:p-6"}>
       <div className="mx-auto max-w-[1600px] space-y-4">
-        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        {!embedded && <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div><h1 className="text-xl font-bold text-foreground">Guest Folio & Account Management</h1><p className="mt-1 text-sm text-[var(--text-muted)]">Audited guest charges, tender, refunds and account statements.</p></div>
           <button className={btn + " border border-[var(--border)] bg-[var(--surface)] text-[var(--text)]"} onClick={refresh} disabled={loading || busy}><RefreshCw size={15}/> Refresh</button>
-        </header>
+        </header>}
         {error && <div className="rounded-lg border border-[var(--danger)] bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger-text)]">{error}</div>}
         {notice && <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text)]">{notice}</div>}
-        <div className="grid gap-4 lg:grid-cols-[330px_minmax(0,1fr)]">
-          <aside className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+        <div className={embedded ? "grid gap-4 grid-cols-1" : "grid gap-4 lg:grid-cols-[330px_minmax(0,1fr)]"}>
+          {!embedded && <aside className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
             <div className="border-b border-[var(--border)] p-3"><div className="relative"><Search size={15} className="absolute left-3 top-3 text-muted-foreground"/><input className={input+" pl-9"} placeholder="Search guest, phone, room or reference" value={query} onChange={(e)=>setQuery(e.target.value)}/></div></div>
             <div className="max-h-[720px] overflow-y-auto">
               {loading ? <div className="p-6 text-center text-sm text-[var(--text-muted)]">Loading guest accounts…</div> : filtered.map((r) => <button key={r.id} onClick={()=>loadFolio(r)} className={`w-full border-b border-[var(--border)] p-4 text-left hover:bg-[var(--canvas)] ${selected?.id===r.id?'bg-[var(--canvas)]':''}`}>
@@ -143,7 +148,7 @@ export default function Folio() {
               </button>)}
               {!loading && !filtered.length && <div className="p-6 text-center text-sm text-[var(--text-muted)]">No guest accounts found.</div>}
             </div>
-          </aside>
+          </aside>}
 
           <main className="min-h-[600px] rounded-xl border border-[var(--border)] bg-[var(--surface)]">
             {!selected ? <div className="flex min-h-[600px] items-center justify-center text-sm text-[var(--text-muted)]">Select a guest account to open its folio.</div> : <>
