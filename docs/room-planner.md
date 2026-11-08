@@ -17,6 +17,9 @@ Existing PMS reservation, group, folio, room-charge, POS and print-agent workflo
 - Reservation detail side panel shows reference, guest, dates, nights, room, guest count, source, total, paid amount, balance and notes.
 - Quick actions reuse existing edit, folio/payment, room charge, check-in, check-out, one-night extension and room-change paths.
 - Payment state is derived from amounts; Optioned stays retain their distinct pale-teal dashed treatment.
+- Optioned reservations receive a persisted 24-hour expiry timestamp at creation. The detail panel shows a live countdown and explicit confirmation action; edits do not restart the deadline.
+- Expired options are reconciled to cancelled by the property-scoped expiry RPC when the planner loads, every 60 seconds while open, and before room-availability checks. Cancelled options release their rooms when no other active reservation remains.
+- Check-in is blocked until an option is explicitly confirmed. Option creation, confirmation and expiry status changes are written to the existing PMS audit stream.
 
 ### Planner interactions
 - Existing drag-to-move uses overlap checks and the server-side move RPC, with a confirmation step and joint-reservation handling.
@@ -52,13 +55,13 @@ Existing PMS reservation, group, folio, room-charge, POS and print-agent workflo
 | Channel and group | Existing channel/source and group fields | Existing mapping |
 | Payment | Reservation amounts and folio/payment services | Display state is amount-derived |
 | Room closures | `room_closures` with room/date/reason | Persistent CRUD wired in planner |
-| Option expiry | No confirmed expiry timestamp in the inspected reservation model/schema | Not implemented; do not simulate expiry in the client |
+| Option expiry | Additive `option_expires_at` timestamp + property-scoped RPCs | 24-hour server timestamp, explicit confirmation, automatic reconciliation on planner/availability access; no paid scheduler dependency |
 | Audit | Existing audit reader / server-side mutation functions | Full planner before/after audit coverage not verified |
 | Permissions | Existing app roles and RLS | Planner-specific action matrix not fully audited |
 
 ## Remaining work before marking complete
 
-1. Define and verify a persisted option-expiry field and server-side expiry/confirmation workflow. Existing schema inspection did not confirm an expiry timestamp, so this needs a reviewed additive migration and RPC integration rather than a client-only countdown.
+1. Apply and verify `20261108100000_room_planner_option_expiry.sql` in the target Supabase project before enabling Optioned bookings there. Expiry is reconciled on planner refresh/availability checks and while the planner remains open; no independent background cron is configured.
 2. Design a property-scoped server-side visible-range query with buffer before changing the shared PMS store data contract.
 3. Complete planner-specific role permissions and verify before/after audit events for each mutation.
 4. Complete keyboard, screen-reader and responsive accessibility review of both timeline and day-list presentations.
