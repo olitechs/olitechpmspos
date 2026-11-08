@@ -20,6 +20,8 @@ export default function FrontOfficeStructure() {
   const [buildingForm, setBuildingForm] = useState({ code: '', name: '', description: '' });
   const [floorForm, setFloorForm] = useState({ building_id: '', floor_number: '0', name: '', description: '' });
   const [roomEdits, setRoomEdits] = useState({});
+  const [editingRoomType, setEditingRoomType] = useState(null);
+  const [roomTypeForm, setRoomTypeForm] = useState({ code: '', name: '', description: '', view_type: '', bed_configuration: '', max_occupancy: '2', base_rate: '0', active: true });
 
   const load = useCallback(async () => {
     if (!propertyId) { setLoading(false); return; }
@@ -89,6 +91,53 @@ export default function FrontOfficeStructure() {
     finally { setBusy(false); }
   };
 
+  const saveRoomType = async event => {
+    event.preventDefault();
+    if (!propertyId) return;
+    const payload = {
+      property_id: propertyId,
+      code: roomTypeForm.code.trim().toUpperCase(),
+      name: roomTypeForm.name.trim(),
+      description: roomTypeForm.description.trim() || null,
+      view_type: roomTypeForm.view_type.trim() || null,
+      bed_configuration: roomTypeForm.bed_configuration.trim() || null,
+      max_occupancy: Number(roomTypeForm.max_occupancy),
+      base_rate: Number(roomTypeForm.base_rate),
+      active: Boolean(roomTypeForm.active),
+    };
+    if (!payload.code || !payload.name || !Number.isInteger(payload.max_occupancy) || payload.max_occupancy < 1 || !Number.isFinite(payload.base_rate) || payload.base_rate < 0) {
+      toast.error('Enter a code, name, valid guest capacity and non-negative base rate.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const query = editingRoomType
+        ? supabase.from('room_types').update(payload).eq('id', editingRoomType).eq('property_id', propertyId)
+        : supabase.from('room_types').insert(payload);
+      const { error } = await query;
+      if (error) throw error;
+      toast.success(editingRoomType ? 'Room type updated.' : 'Room type created.');
+      setEditingRoomType(null);
+      setRoomTypeForm({ code: '', name: '', description: '', view_type: '', bed_configuration: '', max_occupancy: '2', base_rate: '0', active: true });
+      await load();
+    } catch (error) { toast.error(error.message || 'Unable to save room type.'); }
+    finally { setBusy(false); }
+  };
+
+  const editRoomType = type => {
+    setEditingRoomType(type.id);
+    setRoomTypeForm({
+      code: type.code || '',
+      name: type.name || '',
+      description: type.description || '',
+      view_type: type.view_type || '',
+      bed_configuration: type.bed_configuration || '',
+      max_occupancy: String(type.max_occupancy || 2),
+      base_rate: String(type.base_rate || 0),
+      active: type.active !== false,
+    });
+  };
+
   const saveRoom = async room => {
     const edit = roomEdits[room.id] || {};
     const floor = floors.find(item => item.id === edit.floor_id);
@@ -140,7 +189,21 @@ export default function FrontOfficeStructure() {
           <section className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]"><div className="border-b border-[var(--border)] p-4 font-bold">Floors by building</div>{buildings.map(building => <div key={building.id} className="border-b border-[var(--border)] last:border-0"><div className="bg-[var(--surface-2)] px-4 py-2 text-sm font-bold">{building.name}</div>{floorsFor(building.id).map(floor => <div key={floor.id} className="flex justify-between gap-3 px-4 py-3 text-sm"><span>{floor.name}</span><span className="text-xs text-[var(--text-muted)]">Level {floor.floor_number} · {rooms.filter(room => room.floor_id === floor.id).length} rooms</span></div>)}{!floorsFor(building.id).length && <p className="px-4 py-3 text-xs text-[var(--text-muted)]">No floors added.</p>}</div>)}</section>
           <form onSubmit={createFloor} className="h-fit rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"><h2 className="mb-3 font-bold">Add floor</h2><label className="mb-1 block text-xs font-semibold">Building</label><select className={inputClass} value={floorForm.building_id} onChange={e => setFloorForm(v => ({...v,building_id:e.target.value}))}><option value="">Select building</option>{buildings.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select><label className="mb-1 mt-3 block text-xs font-semibold">Floor number</label><input type="number" step="1" className={inputClass} value={floorForm.floor_number} onChange={e => setFloorForm(v => ({...v,floor_number:e.target.value}))}/><label className="mb-1 mt-3 block text-xs font-semibold">Display name</label><input className={inputClass} value={floorForm.name} onChange={e => setFloorForm(v => ({...v,name:e.target.value}))} placeholder="Ground Floor / First Floor"/><label className="mb-1 mt-3 block text-xs font-semibold">Description</label><textarea className="min-h-20 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 text-sm" value={floorForm.description} onChange={e => setFloorForm(v => ({...v,description:e.target.value}))}/><button className={buttonClass+' mt-4 w-full'} disabled={busy || !buildings.length}><Plus size={15}/> Create floor</button></form>
         </div>}
-        {tab === 'types' && <section className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]"><div className="border-b border-[var(--border)] p-4"><h2 className="font-bold">Room types</h2><p className="mt-1 text-xs text-[var(--text-muted)]">Room types are shared with the Room Planner and reservation workflows. Create and edit them through the existing room inventory workflow.</p></div><div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-[var(--brand-dark)] text-[var(--on-dark)]"><tr><th className="p-3 text-left">Code</th><th className="p-3 text-left">Room type</th><th className="p-3 text-left">Beds</th><th className="p-3 text-right">Max guests</th><th className="p-3 text-right">Base rate</th><th className="p-3 text-right">Status</th></tr></thead><tbody>{roomTypes.map(type => <tr key={type.id} className="border-b border-[var(--border)]"><td className="p-3 font-mono text-xs">{type.code}</td><td className="p-3 font-semibold">{type.name}</td><td className="p-3">{type.bed_configuration || '—'}</td><td className="p-3 text-right">{type.max_occupancy}</td><td className="p-3 text-right tabular-nums">{Number(type.base_rate || 0).toLocaleString()}</td><td className="p-3 text-right">{type.active ? 'Active' : 'Inactive'}</td></tr>)}{!roomTypes.length && <tr><td colSpan="6" className="p-8 text-center text-[var(--text-muted)]">No room types found. Add room types through the existing room inventory workflow.</td></tr>}</tbody></table></div></section>}
+        {tab === 'types' && <div className="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
+          <form onSubmit={saveRoomType} className="h-fit rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+            <h2 className="font-bold">{editingRoomType ? 'Edit room type' : 'Add room type'}</h2>
+            <p className="mb-3 mt-1 text-xs text-[var(--text-muted)]">Room types are shared with reservations and the Room Planner.</p>
+            <label className="mb-1 block text-xs font-semibold">Code</label><input required className={inputClass} value={roomTypeForm.code} onChange={e => setRoomTypeForm(v => ({...v,code:e.target.value}))} placeholder="STD-GV"/>
+            <label className="mb-1 mt-3 block text-xs font-semibold">Name</label><input required className={inputClass} value={roomTypeForm.name} onChange={e => setRoomTypeForm(v => ({...v,name:e.target.value}))} placeholder="Standard Garden View"/>
+            <label className="mb-1 mt-3 block text-xs font-semibold">Description</label><textarea className="min-h-16 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 text-sm" value={roomTypeForm.description} onChange={e => setRoomTypeForm(v => ({...v,description:e.target.value}))}/>
+            <label className="mb-1 mt-3 block text-xs font-semibold">View type</label><input className={inputClass} value={roomTypeForm.view_type} onChange={e => setRoomTypeForm(v => ({...v,view_type:e.target.value}))} placeholder="Garden View"/>
+            <label className="mb-1 mt-3 block text-xs font-semibold">Bed configuration</label><input className={inputClass} value={roomTypeForm.bed_configuration} onChange={e => setRoomTypeForm(v => ({...v,bed_configuration:e.target.value}))} placeholder="1 King Bed"/>
+            <div className="mt-3 grid grid-cols-2 gap-3"><div><label className="mb-1 block text-xs font-semibold">Max guests</label><input required type="number" min="1" step="1" className={inputClass} value={roomTypeForm.max_occupancy} onChange={e => setRoomTypeForm(v => ({...v,max_occupancy:e.target.value}))}/></div><div><label className="mb-1 block text-xs font-semibold">Base rate</label><input required type="number" min="0" step="0.01" className={inputClass} value={roomTypeForm.base_rate} onChange={e => setRoomTypeForm(v => ({...v,base_rate:e.target.value}))}/></div></div>
+            <label className="mt-3 flex items-center gap-2 text-sm"><input type="checkbox" checked={roomTypeForm.active} onChange={e => setRoomTypeForm(v => ({...v,active:e.target.checked}))}/> Active room type</label>
+            <div className="mt-4 flex gap-2"><button className={buttonClass+' flex-1'} disabled={busy}><Plus size={15}/>{editingRoomType ? 'Save changes' : 'Create room type'}</button>{editingRoomType && <button type="button" onClick={() => {setEditingRoomType(null);setRoomTypeForm({code:'',name:'',description:'',view_type:'',bed_configuration:'',max_occupancy:'2',base_rate:'0',active:true});}} className="rounded-lg border border-[var(--border)] px-3 text-sm">Cancel</button>}</div>
+          </form>
+          <section className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]"><div className="border-b border-[var(--border)] p-4"><h2 className="font-bold">Room types</h2><p className="mt-1 text-xs text-[var(--text-muted)]">Changes affect the room type catalogue used by the Front Office.</p></div><div className="overflow-x-auto"><table className="w-full min-w-[700px] text-sm"><thead className="bg-[var(--brand-dark)] text-[var(--on-dark)]"><tr><th className="p-3 text-left">Code</th><th className="p-3 text-left">Room type</th><th className="p-3 text-left">Beds</th><th className="p-3 text-right">Max guests</th><th className="p-3 text-right">Base rate</th><th className="p-3 text-right">Status</th><th className="p-3 text-right">Action</th></tr></thead><tbody>{roomTypes.map(type => <tr key={type.id} className="border-b border-[var(--border)]"><td className="p-3 font-mono text-xs">{type.code}</td><td className="p-3 font-semibold">{type.name}</td><td className="p-3">{type.bed_configuration || '—'}</td><td className="p-3 text-right">{type.max_occupancy}</td><td className="p-3 text-right tabular-nums">{Number(type.base_rate || 0).toLocaleString()}</td><td className="p-3 text-right">{type.active ? 'Active' : 'Inactive'}</td><td className="p-3 text-right"><button type="button" onClick={() => editRoomType(type)} className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-bold">Edit</button></td></tr>)}{!roomTypes.length && <tr><td colSpan="7" className="p-8 text-center text-[var(--text-muted)]">No room types configured yet. Create the first room type using the form.</td></tr>}</tbody></table></div></section>
+        </div>}
         {tab === 'rooms' && <section className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]"><div className="border-b border-[var(--border)] p-4"><h2 className="font-bold">Room organisation</h2><p className="mt-1 text-xs text-[var(--text-muted)]">Assign each room to a building, floor and room type. Existing room numbers, reservations and statuses are preserved.</p></div><div className="overflow-x-auto"><table className="w-full min-w-[900px] text-sm"><thead className="bg-[var(--brand-dark)] text-[var(--on-dark)]"><tr><th className="p-3 text-left">Room</th><th className="p-3 text-left">Building</th><th className="p-3 text-left">Floor</th><th className="p-3 text-left">Room type</th><th className="p-3 text-left">Status</th><th className="p-3 text-right">Action</th></tr></thead><tbody>{rooms.map(room => { const edit = roomEdits[room.id] || {}; const availableFloors = floorsFor(edit.building_id); return <tr key={room.id} className="border-b border-[var(--border)]"><td className="p-3 font-bold">{room.name || 'Room '+room.number}<div className="text-xs font-normal text-[var(--text-muted)]">#{room.number}</div></td><td className="p-3"><select className={inputClass} value={edit.building_id || ''} onChange={e => setRoomEdits(v => ({...v,[room.id]:{...v[room.id],building_id:e.target.value,floor_id:''}}))}><option value="">Unassigned</option>{buildings.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></td><td className="p-3"><select className={inputClass} value={edit.floor_id || ''} onChange={e => setRoomEdits(v => ({...v,[room.id]:{...v[room.id],floor_id:e.target.value}}))} disabled={!edit.building_id}><option value="">Unassigned</option>{availableFloors.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}</select></td><td className="p-3"><select className={inputClass} value={edit.room_type_id || ''} onChange={e => setRoomEdits(v => ({...v,[room.id]:{...v[room.id],room_type_id:e.target.value}}))}><option value="">No type</option>{roomTypes.map(type => <option key={type.id} value={type.id}>{type.name}</option>)}</select></td><td className="p-3 capitalize">{room.status || '—'}</td><td className="p-3 text-right"><button type="button" disabled={busy} onClick={() => saveRoom(room)} className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[var(--border)] px-3 text-xs font-bold"><Save size={14}/> Save</button></td></tr>; })}{!rooms.length && <tr><td colSpan="6" className="p-8 text-center text-[var(--text-muted)]">No rooms in this property yet. Add rooms through the existing Rooms / Apartments workflow.</td></tr>}</tbody></table></div></section>}
       </>}
     </div>
