@@ -89,6 +89,8 @@ const normalizeReservation = (r) => ({
   checkIn: (r.checkIn || r.arrival || r.check_in || '')?.slice(0, 10),
   checkOut: (r.checkOut || r.departure || r.check_out || '')?.slice(0, 10),
   bookingStatus: r.bookingStatus || normalizeBookingStatus(r.status),
+  optionExpiresAt: r.optionExpiresAt || r.option_expires_at || null,
+  plannerStatus: r.plannerStatus || ((r.optionExpiresAt || r.option_expires_at) && new Date(r.optionExpiresAt || r.option_expires_at).getTime() > Date.now() ? 'optioned' : undefined),
   paymentStatus: r.paymentStatus || 'not_paid',
   channel: r.channel || 'direct',
   mealPlan: r.mealPlan || 'bed_only',
@@ -107,7 +109,7 @@ function Modal({ title, children, onClose, wide = false }) { return <div classNa
 
 const emptyForm = (room, date) => ({
   guestName: '', firstName: '', lastName: '', phone: '', alternativePhone: '', email: '', nationality: '', residenceCountry: '', address: '', idType: 'passport', idNumber: '', guestNotes: '',
-  checkIn: dateKey(date), checkOut: dateKey(addDays(date, 1)), arrivalTime: '14:00', departureTime: '10:00', paymentStatus: 'not_paid', channel: 'direct', mealPlan: 'bed_only',
+  checkIn: dateKey(date), checkOut: dateKey(addDays(date, 1)), arrivalTime: '14:00', departureTime: '10:00', paymentStatus: 'not_paid', bookingStatus: 'confirmed', channel: 'direct', mealPlan: 'bed_only',
   adults: 1, kidsCount: 0, kidsAges: [], totalAmount: Number(room?.base_rate || 0), amountPaid: 0, depositRequired: 0, depositMethod: 'cash', rate: Number(room?.base_rate || 0), ratePlanId: '', services: 0, discount: 0, tax: 0,
   company: '', agent: '', externalReference: '', groupReference: '', specialRequests: '', bookingNotes: '',
   roomTypeId: room?.room_type_id || '', roomId: room?.id || '', joint: false, selectedRoomIds: room?.id ? [room.id] : [], notes: '',
@@ -123,6 +125,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   const today = dateKey(todayDate);
     const initialRange = useMemo(() => getRollingPlannerRange(todayDate), [todayDate]);
   const [month, setMonth] = useState(startOfMonth(todayDate));
+  const [clockNow, setClockNow] = useState(Date.now());
   const [viewMode, setViewMode] = useState('rolling');
   const [windowStart, setWindowStart] = useState(subDays(todayDate, 2));
   const [range, setRange] = useState(initialRange);
@@ -268,7 +271,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   const openCreate = (room, date) => { const next = emptyForm(room, date); setForm(next); setFormError(''); setLinked([]); setAddGroupRoomId(''); setModal({ mode: 'create' }); };
   const openEdit = (r) => {
     setSelectedReservation(null);
-    setForm({ guestName: r.guestName, phone: r.phone || '', checkIn: r.checkIn, checkOut: r.checkOut, paymentStatus: r.paymentStatus, channel: r.channel, mealPlan: r.mealPlan, adults: r.adults || 1, kidsCount: r.kidsCount || 0, kidsAges: r.kidsAges || [], totalAmount: r.totalAmount, amountPaid: r.amountPaid, roomTypeId: r.roomTypeId || plannerRooms.find(x => x.id === r.roomId)?.room_type_id || '', roomId: r.roomId, joint: !!r.groupId, selectedRoomIds: [r.roomId], notes: r.notes || '' });
+    setForm({ guestName: r.guestName, phone: r.phone || '', checkIn: r.checkIn, checkOut: r.checkOut, paymentStatus: r.paymentStatus, bookingStatus: r.plannerStatus === 'optioned' ? 'optioned' : 'confirmed', channel: r.channel, mealPlan: r.mealPlan, adults: r.adults || 1, kidsCount: r.kidsCount || 0, kidsAges: r.kidsAges || [], totalAmount: r.totalAmount, amountPaid: r.amountPaid, roomTypeId: r.roomTypeId || plannerRooms.find(x => x.id === r.roomId)?.room_type_id || '', roomId: r.roomId, joint: !!r.groupId, selectedRoomIds: [r.roomId], notes: r.notes || '' });
     setFormError(''); setAddGroupRoomId(''); setModal({ mode: 'edit', reservationId: r.id, groupId: r.groupId });
   };
 
@@ -313,7 +316,9 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
           guest: { firstName: form.firstName.trim(), lastName: form.lastName.trim(), email: form.email.trim(), alternativePhone: form.alternativePhone.trim(), nationality: form.nationality.trim(), residenceCountry: form.residenceCountry.trim(), address: form.address.trim(), idType: form.idType, idNumber: form.idNumber.trim(), notes: form.guestNotes.trim() },
           booking: { submissionId: crypto.randomUUID(), ratePlanId: form.ratePlanId || null, source: form.channel, company: form.company.trim(), agent: form.agent.trim(), externalReference: form.externalReference.trim(), groupReference: form.groupReference.trim(), accommodationSubtotal: Number(form.rate || 0) * nights * roomIds.length, services: Number(form.services || 0), discount: Number(form.discount || 0), tax: Number(form.tax || 0), depositRequired: Number(form.depositRequired || 0), depositMethod: form.depositMethod, specialRequests: form.specialRequests.trim(), arrivalTime: form.arrivalTime, departureTime: form.departureTime, roomCount: roomIds.length, nightlyRate: Number(form.rate || 0) },
         };
-        await pmsService.createReservationBundle({ propertyId, groupId: roomIds.length > 1 ? crypto.randomUUID() : null, roomIds, guestName: form.guestName.trim(), phone: form.phone.trim(), checkIn: form.checkIn, checkOut: form.checkOut, paymentStatus, channel: form.channel, mealPlan: form.mealPlan, adults: Number(form.adults), kidsCount: Number(form.kidsCount), kidsAges: form.kidsAges.map(Number), totalAmount, amountPaid, notes: form.bookingNotes || form.notes, details });
+        const createPayload = { propertyId, groupId: roomIds.length > 1 ? crypto.randomUUID() : null, roomIds, guestName: form.guestName.trim(), phone: form.phone.trim(), checkIn: form.checkIn, checkOut: form.checkOut, paymentStatus, channel: form.channel, mealPlan: form.mealPlan, adults: Number(form.adults), kidsCount: Number(form.kidsCount), kidsAges: form.kidsAges.map(Number), totalAmount, amountPaid, notes: form.bookingNotes || form.notes, details };
+        if (form.bookingStatus === 'optioned') await pmsService.createOptionedReservationBundle(createPayload);
+        else await pmsService.createReservationBundle(createPayload);
         toast.success('Reservation created');
       } else {
         const totalAmount = Number(form.totalAmount || 0); const amountPaid = Number(form.amountPaid || 0); const paymentStatus = getPaymentStatusFromAmounts(amountPaid, totalAmount);
