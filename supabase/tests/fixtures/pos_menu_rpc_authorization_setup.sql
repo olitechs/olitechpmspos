@@ -52,24 +52,24 @@ create table public.products (
 );
 
 create or replace function public.is_platform_owner()
-returns boolean language sql volatile as $
+returns boolean language sql volatile as $$
   select coalesce(current_setting('test.platform_owner', true), 'false') = 'true';
 $$;
 
 create or replace function public.is_member_of_property(p_property_id uuid)
-returns boolean language sql volatile as $
+returns boolean language sql volatile as $$
   select public.is_platform_owner()
     or coalesce(current_setting('test.member_property', true), '') = p_property_id::text;
 $$;
 
 create or replace function public.property_role(p_property_id uuid)
-returns text language sql volatile as $
+returns text language sql volatile as $$
   select case when public.is_member_of_property(p_property_id)
     then nullif(current_setting('test.property_role', true), '') else null end;
 $$;
 
 create or replace function public.current_staff_role(p_property_id uuid)
-returns text language sql volatile as $
+returns text language sql volatile as $$
   select case when coalesce(current_setting('test.staff_property', true), '') = p_property_id::text
     then nullif(current_setting('test.staff_role', true), '') else null end;
 $$;
