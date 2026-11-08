@@ -53,6 +53,8 @@ test('planner supports resize, touch moves, drag-to-create and move undo/redo', 
 
 test('planner filters by floor and can switch to a date-grouped day list', () => {
   assert.ok(source.includes('Filter by floor'));
+  assert.ok(source.includes('collapsedRoomTypes.includes(typeName)'));
+  assert.ok(source.includes('Room groups'));
   assert.ok(source.includes('const [mobileListMode, setMobileListMode]'));
   assert.ok(source.includes('filteredReservations.filter(rv=>rv.checkIn<=key&&rv.checkOut>key)'));
   assert.ok(source.includes('Show timeline'));
