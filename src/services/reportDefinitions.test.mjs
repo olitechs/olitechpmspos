@@ -141,7 +141,7 @@ test('final settlement invoice includes editable header, stay identity, full fol
       { id: 'charge-room', created_at: '2026-11-01T08:00:00Z', category: 'accommodation', source: 'room', description: 'Room 8 · 3 nights', quantity: 3, amount: 15000, reference: 'ROOM-8', created_by: 'staff-1' },
       { id: 'charge-pos', created_at: '2026-11-02T13:00:00Z', category: 'restaurant', source: 'pos', description: 'POS order 701', quantity: 1, amount: 1250, reference: 'POS receipt receipt-701', created_by: 'staff-2' },
     ],
-    payments: [{ id: 'payment-1', created_at: '2026-11-03T10:00:00Z', amount: 5000, method: 'mpesa', reference: 'QWERTY123', status: 'posted', created_by: 'staff-1' }],
+    payments: [{ id: 'payment-1', created_at: '2026-11-03T10:00:00Z', amount: 5000, method: 'mpesa', reference: 'QWERTY123', status: 'posted', created_by: 'staff-1' }, { id: 'payment-pending', created_at: '2026-11-03T11:00:00Z', amount: 999, method: 'cash', status: 'pending' }],
     receipts: [{
       id: 'receipt-701', order_number: '701', created_at: '2026-11-02T13:00:00Z', table_number: 'Room 8',
       payment_method: 'room', subtotal: 1100, discount_amount: 0, vat: 150, total: 1250,
