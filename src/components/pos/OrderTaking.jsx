@@ -346,7 +346,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
             <button type="button" onClick={loadPosMenu} className="min-h-11 rounded-lg bg-[var(--primary)] px-4 text-sm font-bold text-[var(--on-primary)] hover:bg-[var(--primary-hover)]">Retry menu</button>
           </div>
         ) : !activeCategory && !menuSearch.trim() ? (
-          <section aria-label="Menu categories" className="grid grid-cols-5 gap-2">
+          <section aria-label="Menu categories" className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-1.5">
             {menuCategories.map((cat, index) => (
               <button
                 key={cat}
@@ -374,7 +374,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
             {!activeCategory && menuSearch.trim() && (
               <div className="mb-3 text-xs font-semibold text-[var(--text-muted)]">{visibleMenuItems.length} matching products across all categories</div>
             )}
-            <div id="pos-product-grid" className="grid grid-cols-5 gap-2">
+            <div id="pos-product-grid" className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-1.5">
               {visibleMenuItems.map((item) => {
                 const inOrderQty = orderLines.reduce((qty, line) => qty + ((line.baseProductId || line.productId || line.id) === (item.productId || item.id) ? Number(line.qty || 0) : 0), 0);
                 const stockStatus = propertyId && menuItems.length > 0 ? getPosStockStatus(item.stock, item.minimumStock) : 'unknown';
