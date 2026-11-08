@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Download, Edit3, Plus, Settings2, Upload, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Download, Edit3, Plus, Settings2, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { inventoryService } from '@/services/inventoryService';
 import { useAuth } from '@/lib/AuthContext';
@@ -51,6 +51,29 @@ export default function MenuManager({ open, onClose, embedded = false }) {
     catch(e){toast.error(e.message);}
   };
 
+  const moveCategory=async(index,direction)=>{
+    const target=index+direction;
+    if(target<0||target>=categories.length)return;
+    const reordered=[...categories];
+    [reordered[index],reordered[target]]=[reordered[target],reordered[index]];
+    setLoading(true);
+    try{
+      for(const [sortOrder,category] of reordered.entries()){
+        await inventoryService.upsertPosCategory({
+          propertyId,name:category.name,
+          productionCenter:category.production_center||'Kitchen',
+          sortOrder
+        });
+      }
+      await reload();
+      window.dispatchEvent(new Event('olitech:menu-updated'));
+      toast.success('Menu category order updated.');
+    }catch(e){
+      await reload();
+      toast.error(e.message||'Could not update category order.');
+    }
+  };
+
   const importFile=async(e)=>{
     const f=e.target.files?.[0]; if(!f)return;
     try{
@@ -73,8 +96,8 @@ export default function MenuManager({ open, onClose, embedded = false }) {
       </div>
       <div className="grid min-h-0 flex-1 lg:grid-cols-[250px_1fr]">
         <aside className="border-b border-[var(--border)] bg-[var(--surface)] p-4 lg:border-b-0 lg:border-r">
-          <div className="text-[10px] font-medium  text-[var(--text-muted)]">Categories</div>
-          <div className="mt-3 space-y-1">{categories.map(c=><div key={c.id} className="flex items-center justify-between rounded-xl px-3 py-2 text-sm font-medium hover:bg-[var(--canvas)]"><span>{c.name}</span><span className="text-[10px] text-[var(--text-muted)]">{c.production_center}</span></div>)}</div>
+          <div className="flex items-center justify-between gap-2"><div className="text-[10px] font-bold uppercase tracking-wide text-[var(--text-muted)]">Categories</div><div className="text-[10px] text-[var(--text-muted)]">Display order</div></div>
+          <div className="mt-3 space-y-1">{categories.map((c,index)=><div key={c.id} className="flex items-center gap-2 rounded-xl border border-transparent px-2 py-2 text-sm hover:border-[var(--border)] hover:bg-[var(--canvas)]"><div className="min-w-0 flex-1"><div className="truncate font-semibold text-[var(--text)]">{c.name}</div><div className="text-[10px] text-[var(--text-muted)]">{c.production_center} · {menu.filter(item=>item.category===c.name).length} products</div></div><div className="flex shrink-0 flex-col"><button type="button" onClick={()=>moveCategory(index,-1)} disabled={loading||index===0} aria-label={`Move ${c.name} up`} title="Move up" className="flex h-7 w-7 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--primary-soft)] disabled:opacity-30"><ChevronUp size={15}/></button><button type="button" onClick={()=>moveCategory(index,1)} disabled={loading||index===categories.length-1} aria-label={`Move ${c.name} down`} title="Move down" className="flex h-7 w-7 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--primary-soft)] disabled:opacity-30"><ChevronDown size={15}/></button></div></div>)}</div>
           <div className="mt-5 border-t pt-4"><div className="text-xs font-medium">Add category</div><div className="mt-2 flex gap-2"><input value={categoryName} onChange={e=>setCategoryName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addCategory()} placeholder="e.g. Cocktails" className="min-w-0 flex-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm"/><button onClick={addCategory} className="rounded-xl bg-[var(--primary)] px-3 text-primary-foreground"><Plus size={16}/></button></div></div>
         </aside>
         <main className="min-h-0 overflow-y-auto p-4">
