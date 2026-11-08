@@ -48,6 +48,9 @@ test('guest folio screen exposes statement, receipt, transaction categories and 
   assert.doesNotMatch(screen, /window\.print\(\)|html2canvas|Export CSV|Print statement/);
   assert.match(screen, /source_module/);
   assert.match(screen, /created_by/);
+  assert.match(screen, /Math\.max\(postedChargeTotal, bookingTotal\)/);
+  assert.match(screen, /Payment recorded:/);
+  assert.match(screen, /typeof success === 'function'/);
 });
 
 test('disposable database regression covers the requested accounting acceptance paths', () => {
