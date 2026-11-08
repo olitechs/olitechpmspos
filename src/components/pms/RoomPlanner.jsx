@@ -513,7 +513,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     </div>
 
     {selectedReservation && <div className="room-planner-detail" role="dialog" aria-modal="true" aria-label="Reservation details">
-      <div className="sticky top-0 z-10 flex items-center justify-between gap-3 px-4 py-3" style={{background:'var(--deep-lagoon)',color:'var(--white)'}}><div><div className="text-xs opacity-80">Reservation details</div><h2 className="font-semibold text-base">{selectedReservation.guestName || 'Guest'}</h2></div><button type="button" aria-label="Close reservation details" onClick={()=>setSelectedReservation(null)} className="rounded-lg p-2 hover:bg-white/10"><X size={18}/></button></div>
+      <div className="sticky top-0 z-10 flex items-center justify-between gap-3 px-4 py-3" style={{background:'var(--deep-lagoon)',color:'var(--white)'}}><div><div className="text-xs opacity-80">Reservation details</div><h2 className="font-semibold text-base">{selectedReservation.guestName || 'Guest'}</h2></div><button type="button" aria-label="Close reservation details" onClick={()=>setSelectedReservation(null)} className="room-planner-close-button rounded-lg p-2"><X size={18}/></button></div>
       <div className="space-y-4 p-4">
         <div className="grid grid-cols-2 gap-2 text-sm">
           <div className="rounded-lg p-3" style={{background:'var(--surface-2)'}}><div className="text-[10px] uppercase" style={{color:'var(--muted)'}}>Reservation no.</div><b>{selectedReservation.reservationNumber || selectedReservation.reservation_number || selectedReservation.bookingReference || selectedReservation.id}</b></div>
