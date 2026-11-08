@@ -45,8 +45,8 @@ test('channel workspace manages profiles, room mappings and real activity feeds 
   assert.match(channels, /External room-type ID/);
   assert.match(channels, /Outbound queue/);
   assert.match(channels, /Inbound events/);
-  assert.match(channels, /Confirmation messages/);
-  assert.match(channels, /Pending is not live inventory synchronisation/);
+  assert.match(channels, /Confirmations/);
+  assert.match(channels, /profile marked Pending is not live inventory synchronisation/);
   assert.doesNotMatch(channels, /credentials.*password/i);
 });
 
