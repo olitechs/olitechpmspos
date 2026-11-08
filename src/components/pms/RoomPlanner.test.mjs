@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { getRoomPlannerResponsiveMode } from '../../lib/roomPlannerResponsive.js';
 
 const source = readFileSync(new URL('./RoomPlanner.jsx', import.meta.url), 'utf8');
 
@@ -125,4 +126,20 @@ test('phone widths default to day-list mode and reservation bars stay within row
   assert.ok(source.includes('const syncMobileView = () => setMobileListMode(media.matches)'));
   assert.ok(source.includes('top:Math.max(2,(ROOM_ROW_HEIGHT-23)/2)'));
   assert.ok(source.includes('minHeight:ROOM_ROW_HEIGHT'));
+});
+
+
+test('target viewport widths select the correct navigation, toolbar and planner modes', () => {
+  const cases = [
+    [1920, 'rail', 'inline', 'timeline', 'inline'],
+    [1440, 'rail', 'inline', 'timeline', 'inline'],
+    [1366, 'rail', 'inline', 'timeline', 'inline'],
+    [1280, 'rail', 'inline', 'timeline', 'inline'],
+    [1024, 'drawer', 'inline', 'timeline', 'inline'],
+    [768, 'drawer', 'stacked', 'timeline', 'inline'],
+    [390, 'drawer', 'stacked', 'day-list', 'full-width'],
+  ];
+  for (const [width, navigation, toolbar, planner, toolbarActions] of cases) {
+    assert.deepEqual(getRoomPlannerResponsiveMode(width), { navigation, toolbar, planner, toolbarActions }, `Unexpected layout mode at ${width}px`);
+  }
 });
