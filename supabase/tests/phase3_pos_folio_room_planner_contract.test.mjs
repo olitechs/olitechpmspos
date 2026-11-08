@@ -7,6 +7,7 @@ const posIntegration = await readFile(new URL('../migrations/20261008041101_phas
 const splitPayments = await readFile(new URL('../migrations/20261008071500_phase3_split_payments_and_indexes.sql', import.meta.url), 'utf8');
 const service = await readFile(new URL('../../src/services/pmsService.js', import.meta.url), 'utf8');
 const planner = await readFile(new URL('../../src/components/pms/RoomPlanner.jsx', import.meta.url), 'utf8');
+const folio = await readFile(new URL('../../src/components/modules/Folio.jsx', import.meta.url), 'utf8');
 const billPayment = await readFile(new URL('../../src/components/pos/BillPayment.jsx', import.meta.url), 'utf8');
 
 test('room-charge validation locks the reservation and rejects cross-property or checked-out stays', () => {
@@ -31,12 +32,19 @@ test('receipt and folio charge retain reciprocal references in the existing ledg
   assert.match(service, /async listReceiptsForReservation\(reservationId\)/);
 });
 
-test('room planner folio can display saved itemised POS receipt data without changing calendar layout', () => {
-  assert.match(planner, /pmsService\.getFolio\(rv\.id\)/);
-  assert.match(planner, /listReceiptsForReservation/);
-  assert.match(planner, /items/);
-  assert.match(planner, /folio_charge_id/);
-});
+test('Room Planner opens the shared full Folio component for the selected reservation', () => {
+  assert.match(planner, /import Folio from ['"]@\/components\/modules\/Folio['"]/);
+  assert.match(planner, /<Folio key=\{actionModal\.reservation\.id\} initialReservationId=\{actionModal\.reservation\.id\} embedded \/>/);
+  assert.doesNotMatch(planner, /pmsService\.getFolio\(rv\.id\)/);
+  assert.doesNotMatch(planner, /pmsService\.listReceiptsForReservation\(rv\.id\)/);
+  assert.match(folio, /initialReservationId/);
+  assert.match(folio, /pmsService\.getFolio\(reservation\.id\)/);
+  assert.match(folio, /pmsService\.listReceiptsForReservation\(reservation\.id\)/);
+  assert.match(folio, /pmsService\.listPayments\(reservation\.id\)/);
+  assert.match(folio, /pmsService\.listFolioRefunds\(reservation\.id\)/);
+  assert.match(folio, /embedded &&/);
+  assert.match(folio, /folio_charge_id/);
+});;
 
 test('POS room charge picker preserves room metadata, supports searching, and confirms the guest', () => {
   assert.match(service, /room_number: row\.room_number/);

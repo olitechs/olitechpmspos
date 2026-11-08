@@ -16,7 +16,7 @@ const categoryLabels = {
 const categories = Object.keys(categoryLabels);
 const managerRoles = ['owner', 'admin', 'manager', 'hotel_admin', 'super_admin', 'fb_manager', 'general_manager', 'front_office_manager'];
 
-export default function Folio() {
+export default function Folio({ initialReservationId = null, embedded = false }) {
   const { user } = useAuth();
   const propertyId = user?.property?.id;
   const roles = [user?.role, user?.staff?.role, user?.property?.role, user?.staff_role].filter(Boolean);
@@ -45,8 +45,13 @@ export default function Folio() {
     if (!propertyId) return;
     setLoading(true); setError('');
     try {
-      const rows = await pmsService.listReservations(propertyId);
-      setReservations((rows || []).filter((r) => r.status !== 'cancelled'));
+      const activeRows = (await pmsService.listReservations(propertyId) || []).filter((r) => r.status !== 'cancelled');
+      setReservations(activeRows);
+      if (initialReservationId) {
+        const initial = activeRows.find((r) => String(r.id) === String(initialReservationId));
+        if (initial) await loadFolio(initial);
+        else setError('The selected room reservation could not be found in this property.');
+      }
     } catch (e) { setError(e.message || 'Guest accounts could not be loaded.'); }
     finally { setLoading(false); }
   };
@@ -73,7 +78,7 @@ export default function Folio() {
   useEffect(() => {
     loadReservations();
     if (propertyId) pmsService.listFolioEmployees(propertyId).then(setEmployees).catch(() => setEmployees([]));
-  }, [propertyId]);
+  }, [propertyId, initialReservationId]);
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return reservations.filter((r) => !q || [r.guest_name, r.phone, r.room_id, r.id, r.channel].some((v) => String(v || '').toLowerCase().includes(q)));
@@ -125,16 +130,16 @@ export default function Folio() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto bg-canvas p-4 lg:p-6">
+    <div className={embedded ? "h-full min-h-0 overflow-y-auto bg-canvas p-3" : "flex-1 overflow-y-auto bg-canvas p-4 lg:p-6"}>
       <div className="mx-auto max-w-[1600px] space-y-4">
-        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        {!embedded && <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div><h1 className="text-xl font-bold text-foreground">Guest Folio & Account Management</h1><p className="mt-1 text-sm text-[var(--text-muted)]">Audited guest charges, tender, refunds and account statements.</p></div>
           <button className={btn + " border border-[var(--border)] bg-[var(--surface)] text-[var(--text)]"} onClick={refresh} disabled={loading || busy}><RefreshCw size={15}/> Refresh</button>
-        </header>
+        </header>}
         {error && <div className="rounded-lg border border-[var(--danger)] bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger-text)]">{error}</div>}
         {notice && <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text)]">{notice}</div>}
-        <div className="grid gap-4 lg:grid-cols-[330px_minmax(0,1fr)]">
-          <aside className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+        <div className={embedded ? "grid gap-4 grid-cols-1" : "grid gap-4 lg:grid-cols-[330px_minmax(0,1fr)]"}>
+          {!embedded && <aside className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
             <div className="border-b border-[var(--border)] p-3"><div className="relative"><Search size={15} className="absolute left-3 top-3 text-muted-foreground"/><input className={input+" pl-9"} placeholder="Search guest, phone, room or reference" value={query} onChange={(e)=>setQuery(e.target.value)}/></div></div>
             <div className="max-h-[720px] overflow-y-auto">
               {loading ? <div className="p-6 text-center text-sm text-[var(--text-muted)]">Loading guest accounts…</div> : filtered.map((r) => <button key={r.id} onClick={()=>loadFolio(r)} className={`w-full border-b border-[var(--border)] p-4 text-left hover:bg-[var(--canvas)] ${selected?.id===r.id?'bg-[var(--canvas)]':''}`}>
@@ -143,7 +148,7 @@ export default function Folio() {
               </button>)}
               {!loading && !filtered.length && <div className="p-6 text-center text-sm text-[var(--text-muted)]">No guest accounts found.</div>}
             </div>
-          </aside>
+          </aside>}
 
           <main className="min-h-[600px] rounded-xl border border-[var(--border)] bg-[var(--surface)]">
             {!selected ? <div className="flex min-h-[600px] items-center justify-center text-sm text-[var(--text-muted)]">Select a guest account to open its folio.</div> : <>
@@ -259,7 +264,7 @@ function FinalInvoiceHeaderModal({selected,roomLabel,defaults,onClose,onSubmit})
 }
 
 function Metric({label,value,alert}){return <div className="rounded-lg bg-[var(--canvas)] p-3"><div className="text-[10px] font-medium uppercase tracking-wide text-[var(--text-muted)]">{label}</div><div className={`mt-1 text-base font-bold ${alert?'text-[var(--warning-text)]':'text-[var(--text)]'}`}>{value}</div></div>}
-function Modal({title,children,onClose}){return <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--overlay-scrim)] p-4"><div className="w-full max-w-lg rounded-xl bg-[var(--surface)] shadow-2xl"><div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4"><h2 className="font-bold text-foreground">{title}</h2><button onClick={onClose} aria-label="Close"><X size={18}/></button></div><div className="p-5">{children}</div></div></div>}
+function Modal({title,children,onClose}){return <div className="fixed inset-0 z-[120] flex items-center justify-center bg-[var(--overlay-scrim)] p-4"><div className="w-full max-w-lg rounded-xl bg-[var(--surface)] shadow-2xl"><div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4"><h2 className="font-bold text-foreground">{title}</h2><button onClick={onClose} aria-label="Close"><X size={18}/></button></div><div className="p-5">{children}</div></div></div>}
 function ChargeModal({onClose,onSubmit,busy}){const [description,setDescription]=useState('');const [category,setCategory]=useState('other_services');const [quantity,setQuantity]=useState('1');const [unitPrice,setUnitPrice]=useState('');const [reference,setReference]=useState('');const total=Number(quantity||0)*Number(unitPrice||0);return <Modal title="Post a folio charge" onClose={onClose}><form onSubmit={(e)=>{e.preventDefault();onSubmit({description,category,quantity:Number(quantity),unitPrice:Number(unitPrice),reference})}} className="space-y-3"><Field label="Transaction category"><select className={input} value={category} onChange={(e)=>setCategory(e.target.value)}>{categories.map((c)=><option key={c} value={c}>{categoryLabels[c]}</option>)}</select></Field><Field label="Description"><input required className={input} value={description} onChange={(e)=>setDescription(e.target.value)}/></Field><div className="grid grid-cols-2 gap-3"><Field label="Quantity"><input required type="number" min="0.001" step="0.001" className={input} value={quantity} onChange={(e)=>setQuantity(e.target.value)}/></Field><Field label="Unit price (KES)"><input required type="number" min="0.01" step="0.01" className={input} value={unitPrice} onChange={(e)=>setUnitPrice(e.target.value)}/></Field></div><Field label="External reference (optional)"><input className={input} value={reference} onChange={(e)=>setReference(e.target.value)}/></Field><div className="rounded-lg bg-[var(--canvas)] p-3 text-sm">Charge total: <strong>{money(total)}</strong></div><button disabled={busy||!description.trim()||total<=0} className={btn+" w-full bg-primary text-primary-foreground"}><Plus size={15}/> Post charge</button></form></Modal>}
 function PaymentModal({balance,charges,onClose,onSubmit,busy}){const [amount,setAmount]=useState(String(balance>0?balance:''));const [method,setMethod]=useState('cash');const [reference,setReference]=useState('');const [chargeId,setChargeId]=useState('');return <Modal title="Record guest payment" onClose={onClose}><form onSubmit={(e)=>{e.preventDefault();onSubmit({amount:Number(amount),method,reference,chargeId:chargeId||null})}} className="space-y-3"><div className="rounded-lg bg-[var(--canvas)] p-3 text-sm">Outstanding balance: <strong>{money(balance)}</strong></div><Field label="Amount (KES)"><input required type="number" min="0.01" max={balance} step="0.01" className={input} value={amount} onChange={(e)=>setAmount(e.target.value)}/></Field><Field label="Allocate payment to charge (optional)"><select className={input} value={chargeId} onChange={(e)=>setChargeId(e.target.value)}><option value="">General folio balance</option>{charges.filter((c)=>Number(c.amount)>0).map((c)=><option key={c.id} value={c.id}>{c.description} · {money(c.amount)}</option>)}</select></Field><Field label="Payment method"><select className={input} value={method} onChange={(e)=>setMethod(e.target.value)}><option value="cash">Cash</option><option value="mpesa">M-Pesa</option><option value="card">Card</option><option value="bank_transfer">Bank transfer</option><option value="other">Other configured method</option></select></Field><Field label="Reference / confirmation reference (optional)"><input className={input} value={reference} onChange={(e)=>setReference(e.target.value)} placeholder="Enter reference only after confirming receipt"/></Field><p className="text-xs text-[var(--text-muted)]">This records a payment confirmed by staff. It does not contact M-Pesa, a bank or a card processor.</p><button disabled={busy||Number(amount)<=0||Number(amount)>balance+0.005} className={btn+" w-full bg-primary text-primary-foreground"}><Banknote size={15}/> Save payment</button></form></Modal>}
 function RefundModal({payment,refundable,onClose,onSubmit,busy}){const [amount,setAmount]=useState(String(refundable));const [method,setMethod]=useState(payment.method||'cash');const [reason,setReason]=useState('');return <Modal title="Authorise payment refund" onClose={onClose}><form onSubmit={(e)=>{e.preventDefault();onSubmit({amount:Number(amount),method,reason})}} className="space-y-3"><div className="rounded-lg bg-[var(--canvas)] p-3 text-sm">Original payment: {money(payment.amount)} · Remaining refundable: <strong>{money(refundable)}</strong></div><Field label="Refund amount"><input required type="number" min="0.01" max={refundable} step="0.01" className={input} value={amount} onChange={(e)=>setAmount(e.target.value)}/></Field><Field label="Refund method"><select className={input} value={method} onChange={(e)=>setMethod(e.target.value)}><option value="cash">Cash</option><option value="mpesa">M-Pesa</option><option value="card">Card</option><option value="bank_transfer">Bank transfer</option><option value="other">Other</option></select></Field><Field label="Reason"><textarea required className={input} rows="3" value={reason} onChange={(e)=>setReason(e.target.value)}/></Field><p className="text-xs text-[var(--text-muted)]">Refunds are manager-authorised and create a separate negative ledger entry. The original payment remains in history.</p><button disabled={busy||!reason.trim()||Number(amount)<=0||Number(amount)>refundable+0.005} className={btn+" w-full bg-primary text-primary-foreground"}><Undo2 size={15}/> Record refund</button></form></Modal>}
