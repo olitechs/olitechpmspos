@@ -235,7 +235,10 @@ export const pmsService = {
 
 	async setReservationOption(reservationId, optioned) {
 		const { data, error } = await supabase.rpc('fn_set_reservation_option', { p_reservation_id: reservationId, p_optioned: !!optioned });
-		if (error) throw new Error(error.message);
+		if (error) {
+			if (error.code === 'PGRST202' || /fn_set_reservation_option.*(not found|does not exist)|could not find the function/i.test(error.message || '')) throw new Error('The 24-hour option migration has not been applied to this database yet.');
+			throw new Error(error.message);
+		}
 		return data;
 	},
 
@@ -248,7 +251,10 @@ export const pmsService = {
 			p_kids_ages: payload.kidsAges || [], p_total_amount: payload.totalAmount, p_amount_paid: payload.amountPaid,
 			p_notes: payload.notes || null, p_details: payload.details || {},
 		});
-		if (error) throw new Error(error.message);
+		if (error) {
+			if (error.code === 'PGRST202' || /fn_create_optioned_reservation_bundle.*(not found|does not exist)|could not find the function/i.test(error.message || '')) throw new Error('The 24-hour option migration has not been applied to this database yet.');
+			throw new Error(error.message);
+		}
 		return data || [];
 	},
 
