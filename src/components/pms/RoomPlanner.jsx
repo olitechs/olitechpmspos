@@ -153,6 +153,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   const [sourceFilter, setSourceFilter] = useState('all');
   const [roomTypeFilter, setRoomTypeFilter] = useState('all');
   const [floorFilter, setFloorFilter] = useState('all');
+  const [mobileListMode, setMobileListMode] = useState(false);
   const [viewLength, setViewLength] = useState('15');
   const [selectedReservation, setSelectedReservation] = useState(null);
   const [closures, setClosures] = useState([]);
@@ -606,6 +607,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
         <select aria-label="Filter by booking source" value={sourceFilter} onChange={e=>setSourceFilter(e.target.value)} className="room-planner-filter"><option value="all">All sources</option><option value="direct">Direct</option><option value="booking_com">Booking.com</option><option value="unknown">Other / Unknown</option></select>
         <select aria-label="Filter by room type" value={roomTypeFilter} onChange={e=>setRoomTypeFilter(e.target.value)} className="room-planner-filter"><option value="all">All room types</option>{[...new Set(plannerRooms.map(room=>roomTypeMap.get(room.room_type_id)||room.roomTypeName||room.room_type||'Unassigned'))].sort().map(type=><option key={type} value={type}>{type}</option>)}</select>
         <select aria-label="Filter by floor" value={floorFilter} onChange={e=>setFloorFilter(e.target.value)} className="room-planner-filter"><option value="all">All floors</option>{[...new Set(plannerRooms.map(room=>String(room.floor ?? 'Unassigned')))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})).map(floor=><option key={floor} value={floor}>{floor === 'Unassigned' ? floor : `Floor ${floor}`}</option>)}</select>
+        <button type="button" onClick={()=>setMobileListMode(value=>!value)} className="room-planner-filter" aria-pressed={mobileListMode}>{mobileListMode ? 'Show timeline' : 'Day list'}</button>
         <span className="room-planner-filter-count">{filteredRooms.length} rooms · {filteredReservations.length} reservations</span>
       </div>
       {plannerToolsOpen && <div className="room-planner-settings-panel">
@@ -619,7 +621,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     </div>
 
     <div ref={scrollRef} onScroll={e=>{setPlannerScrollTop(e.currentTarget.scrollTop);setPlannerViewportHeight(e.currentTarget.clientHeight || 600)}} tabIndex={0} role="region" aria-label="Room availability timeline. Use arrow keys to navigate, T for today and Escape to close details." onKeyDown={e=>{if(['INPUT','SELECT','TEXTAREA'].includes(e.target?.tagName))return;if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();if(e.shiftKey)redoPlannerMove();else undoPlannerMove()}else if(e.key.toLowerCase()==='t'){e.preventDefault();goToday()}else if(e.key==='Escape'){setSelectedReservation(null);setModal(null);setActionModal(null)}else if(e.key==='ArrowLeft'){e.preventDefault();scrollRef.current.scrollBy({left:-dayWidth,behavior:'smooth'})}else if(e.key==='ArrowRight'){e.preventDefault();scrollRef.current.scrollBy({left:dayWidth,behavior:'smooth'})}else if(e.key==='ArrowUp'){e.preventDefault();scrollRef.current.scrollBy({top:-54,behavior:'smooth'})}else if(e.key==='ArrowDown'){e.preventDefault();scrollRef.current.scrollBy({top:54,behavior:'smooth'})}}} className="room-planner-scroll flex-1 min-h-0 overflow-auto px-4 pb-4">
-      <div className="room-planner-grid-frame rounded-xl shadow-sm" style={{background:'var(--surface)',border:`1px solid var(--border)`, minWidth: `${ROOM_COL_WIDTH + columns.length * dayWidth}px`}}>
+      {!mobileListMode && <div className="room-planner-grid-frame rounded-xl shadow-sm" style={{background:'var(--surface)',border:`1px solid var(--border)`, minWidth: `${ROOM_COL_WIDTH + columns.length * dayWidth}px`}}>
         <div className="grid sticky top-0 z-40" style={{gridTemplateColumns:`${ROOM_COL_WIDTH}px repeat(${columns.length}, ${dayWidth}px)`,gridTemplateRows:'34px 44px'}}>
           <div className="room-planner-room-cell sticky left-0 z-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide flex items-center" style={{gridRow:'span 2',background:'var(--deep-lagoon)',color:'var(--white)',borderRight:`1px solid var(--border)`,borderBottom:`1px solid var(--border)`}}>Rooms</div>
           {monthSegments.map(segment=><div key={segment.key} className="flex items-center justify-center text-xs font-semibold" style={{gridColumn:`span ${segment.span}`,background:'var(--coastal-teal)',color:'var(--white)',borderRight:`1px solid var(--border)`,borderBottom:`1px solid var(--border)`}}>{segment.label}</div>)}
@@ -650,7 +652,27 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
         <div className="grid sticky bottom-0 z-30" style={{gridTemplateColumns:`${ROOM_COL_WIDTH}px repeat(${columns.length}, ${dayWidth}px)`,background:'var(--bg)',borderTop:'2px solid var(--text)'}}>
           {['arrivals','inHouse','checkOuts'].map((kind,idx)=><React.Fragment key={kind}><div className="room-planner-room-cell sticky left-0 z-40 px-3 py-2 text-xs font-medium" style={{background:'var(--primary)',color:'var(--on-primary)',borderBottom:idx===2?'none':`1px solid var(--border)`}}>{kind==='arrivals'?'Arrivals':kind==='inHouse'?'In-House':'Departures'}</div>{columns.map(d=>{const s=calculateDailyStats(normalizedReservations,d);const value=s[kind];return <div key={`${kind}-${dateKey(d)}`} className="text-center py-2 text-xs font-medium" style={{color:'var(--text)',background:'var(--surface)',borderRight:`1px solid var(--border)`,borderBottom:idx===2?'none':`1px solid var(--border)`}}>{value}</div>})}</React.Fragment>)}
         </div>
-      </div>
+      </div>}
+      {mobileListMode && <div className="space-y-3 py-2">
+        {columns.map(day=>{
+          const key=dateKey(day);
+          const dayReservations=filteredReservations.filter(rv=>rv.checkIn<=key&&rv.checkOut>key);
+          const dayClosures=closures.filter(item=>item.start_date<=key&&key<item.end_date);
+          return <section key={key} className="overflow-hidden rounded-xl" style={{background:'var(--surface)',border:'1px solid var(--border)'}}>
+            <div className="flex items-center justify-between gap-3 px-4 py-3" style={{background:'var(--deep-lagoon)',color:'var(--white)'}}><strong>{format(day,'EEEE, d MMMM yyyy')}</strong><span className="text-xs">{dayReservations.length} stay{dayReservations.length===1?'':'s'}</span></div>
+            {dayClosures.map(item=><div key={item.id} className="px-4 py-2 text-xs font-medium" style={{background:'repeating-linear-gradient(135deg, color-mix(in srgb, var(--stay-closed) 72%, var(--surface)) 0 5px, var(--surface) 5px 10px)',color:'var(--text)'}}>Room {plannerRooms.find(room=>room.id===item.room_id)?.number || '—'} · {item.reason} · Closed</div>)}
+            {dayReservations.length===0&&dayClosures.length===0&&<div className="px-4 py-4 text-sm" style={{color:'var(--muted)'}}>No stays or closures.</div>}
+            {dayReservations.map(rv=>{
+              const room=plannerRooms.find(item=>item.id===rv.roomId);
+              const payment=getPaymentStyle(getPaymentStatusFromAmounts(rv.amountPaid,rv.totalAmount));
+              return <button key={rv.id} type="button" onClick={()=>setSelectedReservation(rv)} className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left" style={{borderTop:'1px solid var(--border)',color:'var(--text)'}}>
+                <span className="min-w-0"><span className="block truncate text-sm font-semibold">{rv.guestName || 'Guest'} · Room {room?.number || '—'}</span><span className="block text-xs" style={{color:'var(--muted)'}}>{rv.checkIn} → {rv.checkOut} · {formatGuests(rv)} · {channelLabel[rv.channel] || rv.channel || '—'}</span></span>
+                <span className="shrink-0 rounded-md px-2 py-1 text-[10px] font-semibold" style={{background:payment.background,color:payment.color}}>{payment.label}</span>
+              </button>;
+            })}
+          </section>;
+        })}
+      </div>}
     </div>
 
     {closureModal && <Modal title="Add room closure" onClose={() => setClosureModal(false)}><div className="p-5 space-y-4">
