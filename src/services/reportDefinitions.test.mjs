@@ -177,6 +177,24 @@ test('final settlement invoice includes editable header, stay identity, full fol
   assert.equal(sections['pos-consumed-items'].columns.find((column) => column.key === 'line_total').total, undefined);
 });
 
+test('final settlement invoice reconciles a reservation booking total when legacy folios have no room charge row', () => {
+  const definition = buildFinalSettlementInvoiceDefinition({
+    selected: { id: 'reservation-legacy', guest_name: 'Legacy Guest', arrival: '2026-11-01', departure: '2026-11-04', total_amount: 15000 },
+    room: { number: 12 },
+    charges: [{ id: 'pos-charge', created_at: '2026-11-02T10:00:00Z', category: 'restaurant', source: 'pos', description: 'Restaurant order', amount: 3000 }],
+    payments: [{ id: 'paid-1', created_at: '2026-11-03T10:00:00Z', amount: 5000, method: 'cash', status: 'posted' }],
+    receipts: [],
+    totals: { chargeTotal: 15000, netPayments: 5000, balance: 10000 },
+  });
+  const sections = Object.fromEntries(definition.sections.map((section) => [section.name, section]));
+  const accommodation = sections['folio-ledger'].rows.find((row) => row.type === 'Booking reconciliation');
+  assert.equal(accommodation.amount, 12000);
+  assert.equal(accommodation.quantity, 3);
+  assert.equal(definition.summary.find((row) => row.label === 'Accommodation').value, 12000);
+  assert.equal(definition.summary.find((row) => row.label === 'Total charges').value, 15000);
+  assert.equal(definition.summary.find((row) => row.label === 'Final balance due').value, 10000);
+});
+
 test('Room Planner exports local calendar dates and active reservation fields only', () => {
   const definition = buildRoomPlannerDefinition({
     rooms: [{ id: 'room-6', number: '6', room_type: 'Standard' }],
