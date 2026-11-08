@@ -48,11 +48,11 @@ begin
     -- Do not treat any active staff session as POS authorization.
     if not (
       public.is_platform_owner()
-      or public.property_role(p_property_id) in ('owner', 'admin', 'manager', 'cashier', 'waiter')
-      or public.current_staff_role(p_property_id) in (
+      or coalesce(public.property_role(p_property_id) in ('owner', 'admin', 'manager', 'cashier', 'waiter'), false)
+      or coalesce(public.current_staff_role(p_property_id) in (
         'hotel_admin', 'super_admin', 'cashier', 'waiter', 'pos_staff',
         'fb_manager', 'receptionist', 'front_desk'
-      )
+      ), false)
       or exists (
         select 1
         from public.staff s
