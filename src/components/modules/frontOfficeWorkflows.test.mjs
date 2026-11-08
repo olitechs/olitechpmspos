@@ -23,8 +23,8 @@ test('Front Office routes open the real reservation, check-in, registration and 
   assert.match(app, /path="channels" element={<POSApp initialModule="channels"/);
   assert.match(app, /path="check-in\/registration-cards" element={<POSApp initialModule="registration-cards"/);
   assert.match(posApp, /case 'registration-cards':[\s\S]*?<RegistrationCards \/>/);
-  assert.ok(app.includes('path="check-in/walk-in" element={<POSApp initialModule="walk-in-checkin"')));
-  assert.ok(app.includes('path="check-in/express-checkout" element={<POSApp initialModule="express-checkout"')));
+  assert.ok(app.includes('path="check-in/walk-in" element={<POSApp initialModule="walk-in-checkin"'));
+  assert.ok(app.includes('path="check-in/express-checkout" element={<POSApp initialModule="express-checkout"'));
   assert.ok(posApp.includes("case 'walk-in-checkin':\n        content = <WalkInCheckIn />;"));
   assert.ok(posApp.includes("case 'express-checkout':\n        content = <ExpressCheckOut />;"));
   assert.match(shell, /Sparkles, Tags, Users/);
