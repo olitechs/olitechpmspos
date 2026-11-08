@@ -22,6 +22,8 @@ Existing PMS reservation, group, folio, room-charge, POS and print-agent workflo
 - Existing drag-to-move uses overlap checks and the server-side move RPC, with a confirmation step and joint-reservation handling.
 - Pointer-based resize changes the check-out date, checks minimum stay, selected range and room overlap, then uses the existing move RPC.
 - Touch pointer movement is supported for reservation moves.
+- A day-list presentation can be toggled for phone-oriented use; it groups filtered stays and closures by visible date and opens the reservation detail panel.
+- Keyboard shortcut hints are shown in planner settings.
 - Dragging across date cells in one room opens a new reservation form prefilled with the selected stay range.
 - Undo/redo is available for individual move and resize actions. Undo/redo replays the existing server-side move operation; it is not a general history for edits, payments, check-in/out, or group moves.
 - Keyboard shortcuts: T for today, Escape to close overlays, arrow keys to scroll, Ctrl/Cmd+Z to undo and Ctrl/Cmd+Shift+Z to redo.
@@ -59,7 +61,7 @@ Existing PMS reservation, group, folio, room-charge, POS and print-agent workflo
 1. Define and verify a persisted option-expiry field and server-side expiry/confirmation workflow. Existing schema inspection did not confirm an expiry timestamp, so this needs a reviewed additive migration and RPC integration rather than a client-only countdown.
 2. Design a property-scoped server-side visible-range query with buffer before changing the shared PMS store data contract.
 3. Complete planner-specific role permissions and verify before/after audit events for each mutation.
-4. Add a phone-oriented day-list presentation and complete keyboard, screen-reader and responsive accessibility review.
+4. Complete keyboard, screen-reader and responsive accessibility review of both timeline and day-list presentations.
 5. Verify PDF and Excel exports end-to-end, including landscape output and the daily room matrix.
 6. Run lint, typecheck, architecture tests, Vercel preview build and manual regression against reservations, groups, folios, payments, POS room charges and printing.
 7. Capture desktop, tablet and phone screenshots and test closure, create, move, resize, touch, undo and redo interactions.
