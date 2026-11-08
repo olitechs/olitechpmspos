@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Activity, BarChart3, BedDouble, Bell, BookOpen, Building2, CalendarDays, ChevronDown, ChevronRight, ClipboardCheck, ClipboardList, Grid3X3, HelpCircle, LayoutDashboard, LockKeyhole, LogOut, Menu, MessageCircle, Package, Receipt, Settings, Sparkles, Tags, Users, X } from 'lucide-react';
+import { Activity, BarChart3, BedDouble, Bell, BookOpen, Building2, CalendarDays, ChevronDown, ChevronRight, ClipboardCheck, HelpCircle, LayoutDashboard, LockKeyhole, LogOut, Menu, MessageCircle, Settings, Sparkles, Users } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { getSessionStaff, normalizeStaffRole } from '@/services/authService';
 
