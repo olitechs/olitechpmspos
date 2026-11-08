@@ -152,7 +152,7 @@ export default function Folio() {
                 <div className="flex flex-wrap gap-2">
                   <DocumentExportMenu definition={statementDefinition} label="Folio statement" disabled={!statementDefinition} />
                   <button className={btn+" border border-[var(--border)]"} onClick={()=>setShowInvoiceEditor(true)} disabled={!folio}>{invoiceDefinition ? 'Edit invoice header' : 'Prepare final invoice'}</button>
-                  {invoiceDefinition && <DocumentExportMenu definition={invoiceDefinition} label="Final settlement invoice" formats={['pdf','print']} disabled={!invoiceDefinition}/> }
+                  {invoiceDefinition && <DocumentExportMenu definition={invoiceDefinition} label="Final settlement invoice" formats={['pdf','excel','print']} disabled={!invoiceDefinition}/> }
                   <button className={btn+" border border-[var(--border)]"} onClick={()=>setModal('transfer')} disabled={!charges.length}><ArrowLeftRight size={15}/> Split / transfer</button>
                   <button className={btn+" border border-[var(--border)]"} onClick={()=>setModal('discount')} disabled={!canManage}><ShieldCheck size={15}/> Discount</button>
                   <button className={btn+" border border-[var(--border)]"} onClick={()=>setModal('charge')}><Plus size={15}/> Add charge</button>
