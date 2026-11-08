@@ -1,11 +1,17 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Download, Edit3, Plus, Settings2, Upload, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Download, Edit3, Plus, Settings2, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { inventoryService } from '@/services/inventoryService';
 import { useAuth } from '@/lib/AuthContext';
 
 const CENTER_OPTIONS = ['Kitchen','Bar'];
 const UNIT_OPTIONS = ['pcs','bottle','glass','plate','portion','kg','ltr'];
+
+function getColorToken(token) {
+  if (typeof window === 'undefined') return '';
+  const value = window.getComputedStyle(document.documentElement).getPropertyValue(token).trim();
+  return /^#[0-9a-f]{6}$/i.test(value) ? value : '';
+}
 
 export default function MenuManager({ open, onClose, embedded = false }) {
   const { user } = useAuth();
@@ -15,6 +21,8 @@ export default function MenuManager({ open, onClose, embedded = false }) {
   const [categories,setCategories]=useState([]);
   const [editing,setEditing]=useState(null);
   const [categoryName,setCategoryName]=useState('');
+  const [categoryStyle,setCategoryStyle]=useState(()=>({tile_color:getColorToken('--accent'),tile_text_color:getColorToken('--white'),tile_image_url:''}));
+  const [categoryDrafts,setCategoryDrafts]=useState({});
   const [loading,setLoading]=useState(false);
   const [search,setSearch]=useState('');
 
@@ -34,12 +42,17 @@ export default function MenuManager({ open, onClose, embedded = false }) {
   const save=async()=>{
     if(!editing?.name?.trim())return;
     try{
-      await inventoryService.upsertPosMenuItem({
+      const saved = await inventoryService.upsertPosMenuItem({
         propertyId,id:editing.id,sku:editing.sku,name:editing.name,category:editing.category||'General',
         unit:editing.unit||'pcs',sellingPrice:editing.selling_price,currentStock:editing.current_stock,
         minStock:editing.min_stock,maxStock:editing.max_stock,productionCenter:editing.production_center||'Kitchen',
         sortOrder:editing.pos_sort,active:true
       });
+      const savedId = editing.id || saved?.id || saved?.product_id;
+      if (savedId) {
+        const { error: visualError } = await inventoryService.updatePosMenuItemVisuals({ propertyId, id: savedId, tile_color: editing.tile_color, tile_text_color: editing.tile_text_color, tile_image_url: editing.tile_image_url });
+        if (visualError) throw new Error(visualError.message);
+      }
       toast.success(editing.id?'Menu item updated.':'Menu item added to POS.');
       setEditing(null); await reload(); window.dispatchEvent(new Event('olitech:menu-updated'));
     }catch(e){toast.error(e.message);}
@@ -47,8 +60,42 @@ export default function MenuManager({ open, onClose, embedded = false }) {
 
   const addCategory=async()=>{
     if(!categoryName.trim())return;
-    try{await inventoryService.upsertPosCategory({propertyId,name:categoryName,productionCenter:'Kitchen'});setCategoryName('');await reload();toast.success('Category added.');}
+    try{await inventoryService.upsertPosCategory({propertyId,name:categoryName,productionCenter:'Kitchen',...categoryStyle});setCategoryName('');await reload();toast.success('Category added.');}
     catch(e){toast.error(e.message);}
+  };
+
+  const saveCategoryVisuals=async(category)=>{
+    const draft=categoryDrafts[category.id]||category;
+    try{
+      await inventoryService.upsertPosCategory({propertyId,name:category.name,productionCenter:category.production_center||'Kitchen',sortOrder:category.sort_order||0,tile_color:draft.tile_color||null,tile_text_color:draft.tile_text_color||null,tile_image_url:draft.tile_image_url||null});
+      await reload(); window.dispatchEvent(new Event('olitech:menu-updated')); toast.success(`${category.name} appearance saved.`);
+    }catch(e){toast.error(e.message);}
+  };
+
+  const moveCategory=async(index,direction)=>{
+    const target=index+direction;
+    if(target<0||target>=categories.length)return;
+    const reordered=[...categories];
+    [reordered[index],reordered[target]]=[reordered[target],reordered[index]];
+    setLoading(true);
+    try{
+      for(const [sortOrder,category] of reordered.entries()){
+        await inventoryService.upsertPosCategory({
+          propertyId,name:category.name,
+          productionCenter:category.production_center||'Kitchen',
+          sortOrder,
+          tile_color:category.tile_color,
+          tile_text_color:category.tile_text_color,
+          tile_image_url:category.tile_image_url
+        });
+      }
+      await reload();
+      window.dispatchEvent(new Event('olitech:menu-updated'));
+      toast.success('Menu category order updated.');
+    }catch(e){
+      await reload();
+      toast.error(e.message||'Could not update category order.');
+    }
   };
 
   const importFile=async(e)=>{
@@ -73,14 +120,14 @@ export default function MenuManager({ open, onClose, embedded = false }) {
       </div>
       <div className="grid min-h-0 flex-1 lg:grid-cols-[250px_1fr]">
         <aside className="border-b border-[var(--border)] bg-[var(--surface)] p-4 lg:border-b-0 lg:border-r">
-          <div className="text-[10px] font-medium  text-[var(--text-muted)]">Categories</div>
-          <div className="mt-3 space-y-1">{categories.map(c=><div key={c.id} className="flex items-center justify-between rounded-xl px-3 py-2 text-sm font-medium hover:bg-[var(--canvas)]"><span>{c.name}</span><span className="text-[10px] text-[var(--text-muted)]">{c.production_center}</span></div>)}</div>
-          <div className="mt-5 border-t pt-4"><div className="text-xs font-medium">Add category</div><div className="mt-2 flex gap-2"><input value={categoryName} onChange={e=>setCategoryName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addCategory()} placeholder="e.g. Cocktails" className="min-w-0 flex-1 rounded-xl border border-[var(--border)] px-3 py-2 text-sm"/><button onClick={addCategory} className="rounded-xl bg-[var(--primary)] px-3 text-primary-foreground"><Plus size={16}/></button></div></div>
+          <div className="flex items-center justify-between gap-2"><div className="text-[10px] font-bold uppercase tracking-wide text-[var(--text-muted)]">Categories</div><div className="text-[10px] text-[var(--text-muted)]">Display order</div></div>
+          <div className="mt-3 space-y-2">{categories.map((c,index)=>{const draft=categoryDrafts[c.id]||c;return <div key={c.id} className="rounded-xl border border-[var(--border)] p-2 text-sm"><div className="flex items-center gap-2"><div className="min-w-0 flex-1"><div className="truncate font-semibold text-[var(--text)]">{c.name}</div><div className="text-[10px] text-[var(--text-muted)]">{c.production_center} · {menu.filter(item=>item.category===c.name).length} products</div></div><button type="button" onClick={()=>moveCategory(index,-1)} disabled={loading||index===0} aria-label={`Move ${c.name} up`} className="h-7 w-7"><ChevronUp size={15}/></button><button type="button" onClick={()=>moveCategory(index,1)} disabled={loading||index===categories.length-1} aria-label={`Move ${c.name} down`} className="h-7 w-7"><ChevronDown size={15}/></button></div><div className="mt-2 grid grid-cols-2 gap-2"><label className="text-[10px]">Tile<input type="color" value={draft.tile_color||getColorToken('--accent')} onChange={e=>setCategoryDrafts({...categoryDrafts,[c.id]:{...draft,tile_color:e.target.value}})} className="mt-1 h-8 w-full"/></label><label className="text-[10px]">Text<input type="color" value={draft.tile_text_color||getColorToken('--white')} onChange={e=>setCategoryDrafts({...categoryDrafts,[c.id]:{...draft,tile_text_color:e.target.value}})} className="mt-1 h-8 w-full"/></label></div><input value={draft.tile_image_url||''} onChange={e=>setCategoryDrafts({...categoryDrafts,[c.id]:{...draft,tile_image_url:e.target.value}})} placeholder="Optional image URL" className="mt-2 w-full rounded-lg border border-[var(--border)] px-2 py-1.5 text-xs"/><button type="button" onClick={()=>saveCategoryVisuals(c)} className="mt-2 w-full rounded-lg bg-[var(--primary)] px-2 py-1.5 text-xs text-primary-foreground">Save appearance</button></div>})}</div>
+          <div className="mt-5 border-t pt-4"><div className="text-xs font-medium">Add category</div><input value={categoryName} onChange={e=>setCategoryName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addCategory()} placeholder="e.g. Cocktails" className="mt-2 w-full rounded-xl border border-[var(--border)] px-3 py-2 text-sm"/><div className="mt-2 grid grid-cols-2 gap-2"><label className="text-[10px]">Tile colour<input type="color" value={categoryStyle.tile_color} onChange={e=>setCategoryStyle({...categoryStyle,tile_color:e.target.value})} className="mt-1 h-9 w-full"/></label><label className="text-[10px]">Text colour<input type="color" value={categoryStyle.tile_text_color} onChange={e=>setCategoryStyle({...categoryStyle,tile_text_color:e.target.value})} className="mt-1 h-9 w-full"/></label></div><input value={categoryStyle.tile_image_url} onChange={e=>setCategoryStyle({...categoryStyle,tile_image_url:e.target.value})} placeholder="Optional image URL" className="mt-2 w-full rounded-xl border border-[var(--border)] px-3 py-2 text-xs"/><button onClick={addCategory} className="mt-2 w-full rounded-xl bg-[var(--primary)] px-3 py-2 text-sm text-primary-foreground"><Plus size={16} className="mr-1 inline"/> Add category</button></div>
         </aside>
         <main className="min-h-0 overflow-y-auto p-4">
           <div className="flex flex-wrap items-center gap-2">
             <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search products / SKU…" className="min-w-[220px] flex-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-sm"/>
-            <button onClick={()=>setEditing({category:categories[0]?.name||'General',unit:'pcs',production_center:categories[0]?.production_center||'Kitchen',current_stock:0,min_stock:0,max_stock:0,selling_price:0,pos_sort:0})} className="inline-flex items-center gap-1 rounded-xl bg-[var(--primary)] px-4 py-2.5 text-xs font-medium text-primary-foreground"><Plus size={15}/> Add Product</button>
+            <button onClick={()=>setEditing({category:categories[0]?.name||'General',unit:'pcs',production_center:categories[0]?.production_center||'Kitchen',tile_color:getColorToken('--room-occupied'),tile_text_color:getColorToken('--white'),tile_image_url:'',current_stock:0,min_stock:0,max_stock:0,selling_price:0,pos_sort:0})} className="inline-flex items-center gap-1 rounded-xl bg-[var(--primary)] px-4 py-2.5 text-xs font-medium text-primary-foreground"><Plus size={15}/> Add Product</button>
             <button onClick={()=>fileRef.current?.click()} className="inline-flex items-center gap-1 rounded-xl bg-[var(--primary)] px-4 py-2.5 text-xs font-medium text-primary-foreground"><Upload size={15}/> Import Excel</button>
             <button onClick={exportFile} className="inline-flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-xs font-medium"><Download size={15}/> Export</button>
             <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv,.xml" onChange={importFile} hidden/>
@@ -88,7 +135,7 @@ export default function MenuManager({ open, onClose, embedded = false }) {
           {loading?<div className="p-12 text-center text-sm font-medium text-[var(--text-muted)]">Loading menu…</div>:<div className="mt-4 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]"><div className="overflow-auto"><table className="w-full min-w-[850px] text-sm"><thead className="bg-[var(--canvas)] text-[var(--text)]"><tr>{['SKU','Product','Category','Center','Price','Stock','Min',''].map(h=><th key={h} className="px-3 py-2 text-left text-[10px] ">{h}</th>)}</tr></thead><tbody>{filtered.map(p=><tr key={p.id} className="border-b border-[var(--border)] hover:bg-[var(--canvas)]"><td className="px-3 py-3 font-mono text-xs">{p.sku||'—'}</td><td className="px-3 py-3 font-medium">{p.name}</td><td className="px-3 py-3">{p.category}</td><td className="px-3 py-3">{p.production_center}</td><td className="px-3 py-3 font-medium">KES {Number(p.selling_price||0).toLocaleString()}</td><td className="px-3 py-3">{Number(p.current_stock||0)} {p.unit}</td><td className="px-3 py-3">{Number(p.min_stock||0)}</td><td className="px-3 py-3"><button onClick={()=>setEditing(p)} className="rounded-lg border p-2 hover:bg-[var(--primary-soft)]"><Edit3 size={14}/></button></td></tr>)}</tbody></table></div></div>}
         </main>
       </div>
-      {editing&&<div className={'fixed inset-0 flex items-center justify-center bg-[var(--overlay-scrim)] p-4 ' + (embedded ? 'z-[550]' : 'z-[450]')}><div className="w-full max-w-2xl rounded-3xl bg-[var(--surface)] p-5 shadow-2xl"><div className="flex items-center justify-between"><h3 className="text-lg font-medium">{editing.id?'Edit POS Product':'Add POS Product'}</h3><button onClick={()=>setEditing(null)}><X size={18}/></button></div><div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3">{[['name','Product Name'],['sku','SKU'],['selling_price','Selling Price'],['current_stock','Current Stock'],['min_stock','Minimum Stock'],['max_stock','Maximum Stock'],['pos_sort','Sort Order']].map(([k,l])=><label key={k} className="text-xs font-medium">{l}<input type={['selling_price','current_stock','min_stock','max_stock','pos_sort'].includes(k)?'number':'text'} value={editing[k]??''} onChange={e=>setEditing({...editing,[k]:e.target.value})} className="mt-1 w-full rounded-xl border border-[var(--border)] px-3 py-2.5"/></label>)}<label className="text-xs font-medium">Category<select value={editing.category||'General'} onChange={e=>setEditing({...editing,category:e.target.value})} className="mt-1 w-full rounded-xl border border-[var(--border)] px-3 py-2.5">{categories.map(c=><option key={c.id}>{c.name}</option>)}{!categories.length&&<option>General</option>}</select></label><label className="text-xs font-medium">Unit<select value={editing.unit||'pcs'} onChange={e=>setEditing({...editing,unit:e.target.value})} className="mt-1 w-full rounded-xl border border-[var(--border)] px-3 py-2.5">{UNIT_OPTIONS.map(x=><option key={x}>{x}</option>)}</select></label><label className="text-xs font-medium">Production Center<select value={editing.production_center||'Kitchen'} onChange={e=>setEditing({...editing,production_center:e.target.value})} className="mt-1 w-full rounded-xl border border-[var(--border)] px-3 py-2.5">{CENTER_OPTIONS.map(x=><option key={x}>{x}</option>)}</select></label></div><div className="mt-5 flex justify-end gap-2"><button onClick={()=>setEditing(null)} className="rounded-xl border px-4 py-2.5 text-sm font-medium">Cancel</button><button onClick={save} className="rounded-xl bg-[var(--primary)] px-5 py-2.5 text-sm font-medium text-primary-foreground">Save Product</button></div></div></div>}
+      {editing&&<div className={'fixed inset-0 flex items-center justify-center bg-[var(--overlay-scrim)] p-4 ' + (embedded ? 'z-[550]' : 'z-[450]')}><div className="w-full max-w-2xl rounded-3xl bg-[var(--surface)] p-5 shadow-2xl"><div className="flex items-center justify-between"><h3 className="text-lg font-medium">{editing.id?'Edit POS Product':'Add POS Product'}</h3><button onClick={()=>setEditing(null)}><X size={18}/></button></div><div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3">{[['name','Product Name'],['sku','SKU'],['selling_price','Selling Price'],['current_stock','Current Stock'],['min_stock','Minimum Stock'],['max_stock','Maximum Stock'],['pos_sort','Sort Order']].map(([k,l])=><label key={k} className="text-xs font-medium">{l}<input type={['selling_price','current_stock','min_stock','max_stock','pos_sort'].includes(k)?'number':'text'} value={editing[k]??''} onChange={e=>setEditing({...editing,[k]:e.target.value})} className="mt-1 w-full rounded-xl border border-[var(--border)] px-3 py-2.5"/></label>)}<label className="text-xs font-medium">Category<select value={editing.category||'General'} onChange={e=>setEditing({...editing,category:e.target.value})} className="mt-1 w-full rounded-xl border border-[var(--border)] px-3 py-2.5">{categories.map(c=><option key={c.id}>{c.name}</option>)}{!categories.length&&<option>General</option>}</select></label><label className="text-xs font-medium">Unit<select value={editing.unit||'pcs'} onChange={e=>setEditing({...editing,unit:e.target.value})} className="mt-1 w-full rounded-xl border border-[var(--border)] px-3 py-2.5">{UNIT_OPTIONS.map(x=><option key={x}>{x}</option>)}</select></label><label className="text-xs font-medium">Production Center<select value={editing.production_center||'Kitchen'} onChange={e=>setEditing({...editing,production_center:e.target.value})} className="mt-1 w-full rounded-xl border border-[var(--border)] px-3 py-2.5">{CENTER_OPTIONS.map(x=><option key={x}>{x}</option>)}</select></label><label className="text-xs font-medium">Tile colour<input type="color" value={editing.tile_color||getColorToken('--room-occupied')} onChange={e=>setEditing({...editing,tile_color:e.target.value})} className="mt-1 h-10 w-full"/></label><label className="text-xs font-medium">Text colour<input type="color" value={editing.tile_text_color||getColorToken('--white')} onChange={e=>setEditing({...editing,tile_text_color:e.target.value})} className="mt-1 h-10 w-full"/></label><label className="col-span-2 text-xs font-medium md:col-span-3">Tile image URL<input value={editing.tile_image_url||''} onChange={e=>setEditing({...editing,tile_image_url:e.target.value})} placeholder="https://…" className="mt-1 w-full rounded-xl border border-[var(--border)] px-3 py-2.5"/></label></div><div className="mt-5 flex justify-end gap-2"><button onClick={()=>setEditing(null)} className="rounded-xl border px-4 py-2.5 text-sm font-medium">Cancel</button><button onClick={save} className="rounded-xl bg-[var(--primary)] px-5 py-2.5 text-sm font-medium text-primary-foreground">Save Product</button></div></div></div>}
     </div>
   </div>;
 }

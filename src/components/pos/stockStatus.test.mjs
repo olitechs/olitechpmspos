@@ -28,3 +28,14 @@ test('blank POS menu search preserves all category items', () => {
   assert.deepEqual(filterPosMenuItems(items, ''), items);
   assert.deepEqual(filterPosMenuItems(items, '   '), items);
 });
+
+test('POS menu search matches normalized accents, SKU and category tokens', () => {
+  const items = [
+    { name: 'Crème Brûlée', sku: 'D-001', category: 'Desserts' },
+    { name: 'Iced Coffee', sku: 'B-014', category: 'Drinks' },
+    { name: 'Tea Cake', sku: 'D-002', category: 'Desserts' }
+  ];
+  assert.deepEqual(filterPosMenuItems(items, 'creme brulee'), [items[0]]);
+  assert.deepEqual(filterPosMenuItems(items, 'b-014'), [items[1]]);
+  assert.deepEqual(filterPosMenuItems(items, 'desserts tea'), [items[2]]);
+});

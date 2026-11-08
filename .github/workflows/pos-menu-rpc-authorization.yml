@@ -1,0 +1,46 @@
+name: POS Menu RPC Authorization Regression
+
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/20261108110000_pos_menu_rpc_authorization.sql"
+      - "supabase/tests/pos_menu_rpc_access_contract.test.mjs"
+      - "supabase/tests/pos_menu_rpc_authorization_regression.sql"
+      - "supabase/tests/fixtures/pos_menu_rpc_authorization_setup.sql"
+      - ".github/workflows/pos-menu-rpc-authorization.yml"
+      - "package.json"
+  workflow_dispatch:
+
+jobs:
+  isolated-pos-menu-authorization:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: pos_menu_authorization_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d pos_menu_authorization_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: pos_menu_authorization_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Create isolated POS authorization fixture
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/fixtures/pos_menu_rpc_authorization_setup.sql
+      - name: Apply POS menu authorization migration to ephemeral database
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261108110000_pos_menu_rpc_authorization.sql
+      - name: Verify tenant, staff-role and module authorization
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/pos_menu_rpc_authorization_regression.sql
