@@ -346,7 +346,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
                 aria-label={`Open ${cat}, ${categoryCounts[cat] || 0} products`}
               >
                 <div className="flex items-start justify-between gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--surface)]/80 text-[var(--primary)]">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--surface)] text-[var(--primary)]">
                     <Folder size={22} aria-hidden="true" />
                   </div>
                   <ArrowRight size={18} className="mt-1 text-[var(--text-muted)] transition-transform group-hover:translate-x-1" aria-hidden="true" />
@@ -372,7 +372,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
             )}
             <div id="pos-product-grid" className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(155px,1fr))]">
               {visibleMenuItems.map((item) => {
-                const inOrder = orderLines.find((line) => (line.baseProductId || line.productId || line.id) === (item.productId || item.id));
+                const inOrderQty = orderLines.reduce((qty, line) => qty + ((line.baseProductId || line.productId || line.id) === (item.productId || item.id) ? Number(line.qty || 0) : 0), 0);
                 const stockStatus = propertyId && menuItems.length > 0 ? getPosStockStatus(item.stock, item.minimumStock) : 'unknown';
                 const outOfStock = stockStatus === 'out-of-stock';
                 const lowStock = stockStatus === 'low-stock';
@@ -387,8 +387,8 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
                   >
                     <div className="flex w-full items-start justify-between gap-2">
                       <span className="text-[10px] font-bold uppercase tracking-wide text-[var(--text-muted)]">{item.category}</span>
-                      {inOrder && (
-                        <span className="flex h-7 min-w-7 items-center justify-center rounded-full bg-[var(--primary)] px-1.5 text-xs font-extrabold text-[var(--on-primary)]">{inOrder.qty}</span>
+                      {inOrderQty > 0 && (
+                        <span className="flex h-7 min-w-7 items-center justify-center rounded-full bg-[var(--primary)] px-1.5 text-xs font-extrabold text-[var(--on-primary)]">{inOrderQty}</span>
                       )}
                     </div>
                     <div className="my-3 w-full text-sm font-bold leading-snug text-[var(--text)]">{item.name}</div>
