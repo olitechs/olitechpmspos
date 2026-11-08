@@ -14,6 +14,7 @@ import DocumentExportMenu from '@/components/shared/DocumentExportMenu';
 import ReportDataTable from '@/components/shared/ReportDataTable';
 import { buildRoomPlannerDefinition } from '@/services/reportDefinitions';
 import { findRoomReservationOverlap, getPmsTodayDate, overlapsStayRanges } from '@/lib/pmsDateUtils';
+import { getRoomPlannerResponsiveMode } from '@/lib/roomPlannerResponsive';
 import { NAVY, TEAL, SAND, SURFACE, SURFACE2, BORDER, MUTED, DESTRUCTIVE } from '@/data/palette';
 import { getStayBarGeometry, getPastStayOpacity, getPaymentStatusFromAmounts as derivePaymentStatus } from '@/lib/roomPlannerGeometry';
 
@@ -170,7 +171,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return undefined;
     const media = window.matchMedia('(max-width: 767px)');
-    const syncMobileView = () => setMobileListMode(media.matches);
+    const syncMobileView = () => setMobileListMode(getRoomPlannerResponsiveMode(window.innerWidth).planner === 'day-list');
     syncMobileView();
     media.addEventListener?.('change', syncMobileView);
     return () => media.removeEventListener?.('change', syncMobileView);
