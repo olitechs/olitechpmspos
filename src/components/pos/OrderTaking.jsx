@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle, Search, X, ShieldCheck, ChevronLeft, Folder, ArrowRight } from 'lucide-react';
+import { AlertTriangle, Search, X, ShieldCheck, ChevronLeft, Folder } from 'lucide-react';
 import { CATEGORIES, MENU_ITEMS, VAT_RATE, tableLabel, CATEGORY_CENTER } from '@/data/mockData';
 import { useStore } from '@/data/AppStore';
 import PrintWarn from '@/components/pos/PrintWarn';
