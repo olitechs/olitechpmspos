@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   aggregatePostedSalesReceipts,
   buildFolioStatementDefinition,
+  buildFinalSettlementInvoiceDefinition,
   buildMonthlySalesByCategoryDefinition,
   buildMonthlySalesByItemDefinition,
   buildMonthlySalesByShiftDefinition,
@@ -127,6 +128,52 @@ test('Folio statements keep the reservation filter and select only ledger fields
   assert.ok(!('guest_email' in definition.sections[0].rows[0]));
   assert.ok(definition.notes[0].includes('Do not distribute outside'));
   assert.equal(normalizeReportExportFilters(definition.filters).reservation, definition.filters.reservation);
+});
+
+
+test('final settlement invoice includes editable header, stay identity, full folio ledger and itemized POS receipt provenance without double counting', () => {
+  const definition = buildFinalSettlementInvoiceDefinition({
+    selected: { id: 'reservation-12345678', guest_name: 'Test Guest', phone: '+254700000000', arrival: '2026-11-01', departure: '2026-11-04', room_id: 'room-8' },
+    room: { number: 8 },
+    propertyName: 'Harbor View Hotel',
+    generatedBy: 'Front Desk',
+    charges: [
+      { id: 'charge-room', created_at: '2026-11-01T08:00:00Z', category: 'accommodation', source: 'room', description: 'Room 8 · 3 nights', quantity: 3, amount: 15000, reference: 'ROOM-8', created_by: 'staff-1' },
+      { id: 'charge-pos', created_at: '2026-11-02T13:00:00Z', category: 'restaurant', source: 'pos', description: 'POS order 701', quantity: 1, amount: 1250, reference: 'POS receipt receipt-701', created_by: 'staff-2' },
+    ],
+    payments: [{ id: 'payment-1', created_at: '2026-11-03T10:00:00Z', amount: 5000, method: 'mpesa', reference: 'QWERTY123', status: 'posted', created_by: 'staff-1' }],
+    receipts: [{
+      id: 'receipt-701', order_number: '701', created_at: '2026-11-02T13:00:00Z', table_number: 'Room 8',
+      payment_method: 'room', subtotal: 1100, discount_amount: 0, vat: 150, total: 1250,
+      folio_charge_id: 'charge-pos',
+      items: [{ name: 'Seafood platter', qty: 1, unit_price: 1000, total: 1000, modifiers: [{ name: 'Extra sauce' }] }, { name: 'Fresh juice', qty: 1, price: 100, line_total: 100 }],
+    }],
+    employees: [{ user_id: 'staff-1', full_name: 'Test Receptionist' }, { user_id: 'staff-2', full_name: 'Test Waiter' }],
+    totals: { chargeTotal: 16250, netPayments: 5000, balance: 11250 },
+    header: {
+      invoiceTitle: 'Final Settlement Invoice', invoiceReference: 'INV-ROOM8-001',
+      businessName: 'Harbor View Hotel', businessAddress: 'Watamu, Kenya', businessTaxPin: 'P051234567A',
+      billTo: 'Test Guest', guestAddress: 'Nairobi, Kenya', guestEmail: 'guest@example.test', guestTaxPin: 'A001234567Z',
+      headerNote: 'Corporate booking · PO 44', footerNote: 'Thank you.',
+    },
+  });
+  const sections = Object.fromEntries(definition.sections.map((section) => [section.name, section]));
+  assert.equal(definition.title, 'Final Settlement Invoice');
+  assert.equal(definition.propertyName, 'Harbor View Hotel');
+  assert.equal(definition.period.from, '2026-11-01');
+  assert.equal(definition.period.to, '2026-11-04');
+  assert.equal(sections['invoice-header'].rows.find((row) => row.field === 'Business tax PIN').value, 'P051234567A');
+  assert.equal(sections['invoice-header'].rows.find((row) => row.field === 'Guest address').value, 'Nairobi, Kenya');
+  assert.equal(sections['folio-ledger'].rows.length, 3);
+  assert.equal(sections['pos-receipts'].rows[0].receipt_number, '701');
+  assert.equal(sections['pos-receipts'].rows[0].receipt_id, 'receipt-701');
+  assert.equal(sections['pos-consumed-items'].rows.length, 2);
+  assert.equal(sections['pos-consumed-items'].rows[0].modifiers, 'Extra sauce');
+  assert.equal(sections['pos-consumed-items'].rows[0].line_total, 1000);
+  assert.equal(definition.summary.find((row) => row.label === 'Total charges').value, 16250);
+  assert.equal(definition.summary.find((row) => row.label === 'Final balance due').value, 11250);
+  assert.ok(definition.notes.some((note) => note.includes('not added a second time')));
+  assert.equal(sections['pos-consumed-items'].columns.find((column) => column.key === 'line_total').total, undefined);
 });
 
 test('Room Planner exports local calendar dates and active reservation fields only', () => {
