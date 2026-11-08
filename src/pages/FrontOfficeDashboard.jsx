@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, ArrowRight, BedDouble, CalendarPlus, ClipboardList, DoorClosed, LogIn, LogOut, Sparkles, Wallet } from 'lucide-react';
+import { AlertTriangle, ArrowRight, BedDouble, CalendarPlus, ClipboardList, LogIn, LogOut, Sparkles, Wallet, Users } from 'lucide-react';
 import { PmsProvider, usePms } from '@/data/PmsStore';
 
 const keyOf = date => { const d=new Date(date); return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-'); };
