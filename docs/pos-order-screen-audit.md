@@ -132,3 +132,21 @@ Added `supabase/tests/pos_menu_rpc_access_contract.test.mjs` and included it in 
 **Verification boundary:** this is a source-level authorization hardening change. The migration has not been applied to a live Supabase project. The two-property SQL regression requires a disposable database seeded with an owner and a second property. CI must pass for the new commits before this phase is considered verified. POS PIN enforcement remains a separate application entry gate; this migration aligns the menu RPC's server-side role/module authorization with the existing POS access policy but does not create a server-side PIN-authenticated session.
 
 - Added `.github/workflows/pos-menu-rpc-authorization.yml`, which applies the migration to a dedicated ephemeral PostgreSQL fixture and exercises owner access, cross-property denial, non-POS member denial, unrelated staff-session denial, allowed front-desk role, explicit POS-module assignment, missing JWT-role denial, and trusted service-role access.
+
+
+## Phase 5 verification result — latest branch commit
+
+Latest reviewed commit: `b2eeb3943a15de5a233c67016370abaacfedb758`.
+
+All five GitHub Actions workflows completed successfully:
+- Validate OliTechs PMS POS — run 1416.
+- OliTechs Production QA — run 1141.
+- Docker Image Validation — run 147.
+- POS Menu Import SKU Regression — run 250.
+- POS Menu RPC Authorization Regression — run 13.
+
+The isolated authorization workflow applied the new migration to an ephemeral PostgreSQL database and passed the tenant and role matrix: own-property owner allowed; cross-property request rejected; non-POS property member rejected; unrelated active staff session rejected; allowed front-desk role allowed; explicit POS-module assignment allowed; missing JWT identity rejected; service-role access retained.
+
+The disposable run also exposed a SQL three-valued-logic edge case: nullable role lookups could make a PL/pgSQL `IF NOT (...)` condition evaluate to NULL and skip the denial. The migration now wraps both nullable role-membership expressions in `coalesce(..., false)`, so missing role values fail closed. The regression test verifies these checks.
+
+**Final boundary:** automated build, lint, typecheck, architecture tests, isolated PostgreSQL authorization tests and SKU regression are green. No live Supabase migration was applied, no production deployment was performed, and desktop/tablet/mobile browser acceptance plus real-property Kitchen/Bar/KDS, room-charge, receipt and cashier-shift integration checks remain outstanding. Earlier pending verification notes in this audit are historical snapshots; this section records the latest result.
