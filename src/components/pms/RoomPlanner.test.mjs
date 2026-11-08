@@ -42,6 +42,8 @@ test('room closures use the persisted property-scoped closure service', () => {
 
 test('planner supports resize, touch moves, drag-to-create and move undo/redo', () => {
   assert.ok(source.includes('const beginResize ='));
+  assert.ok(source.includes("beginResize(e,rv,'start')"));
+  assert.ok(source.includes("beginResize(e,rv,'end')"));
   assert.ok(source.includes('const beginTouchDrag ='));
   assert.ok(source.includes('const beginCreateDrag ='));
   assert.ok(source.includes('const undoPlannerMove ='));
