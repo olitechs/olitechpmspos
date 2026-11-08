@@ -15,13 +15,14 @@ import ReportDataTable from '@/components/shared/ReportDataTable';
 import { buildRoomPlannerDefinition } from '@/services/reportDefinitions';
 import { findRoomReservationOverlap, getPmsTodayDate, overlapsStayRanges } from '@/lib/pmsDateUtils';
 import { NAVY, TEAL, SAND, SURFACE, SURFACE2, BORDER, MUTED, DESTRUCTIVE } from '@/data/palette';
+import { getStayBarGeometry, getPastStayOpacity, getPaymentStatusFromAmounts as derivePaymentStatus } from '@/lib/roomPlannerGeometry';
 
 export const CHANNELS = ['direct', 'booking_com', 'unknown'];
 export const MEAL_PLANS = ['bed_only', 'bb', 'half_board', 'full_board'];
 export const BOOKING_STATUSES = ['booked', 'checked_in', 'checked_out'];
 
-const DAY_WIDTH = 92;
-const ROOM_COL_WIDTH = 190;
+const DAY_WIDTH = 56;
+const ROOM_COL_WIDTH = 225;
 
 // CALENDAR THEME: Green/Yellow/Orange - Rectangle bars, English
 export const getReservationBarStyle = (status = 'occupied') => ({
@@ -33,10 +34,14 @@ export const getReservationBarStyle = (status = 'occupied') => ({
   closed:{background:'var(--stay-closed)',color:'var(--text)',border:'var(--stay-closed)',label:'Out of order / closure'},
 }[status] || {background:'var(--stay-occupied)',color:'var(--payment-text)',border:'var(--stay-occupied)',label:'In-house'});
 
-export const getPaymentStatusFromAmounts = (amountPaid, totalAmount) => { const paid = Number(amountPaid || 0); const total = Number(totalAmount || 0); if (total > 0 && paid >= total) return 'fully_paid'; if (paid > 0) return 'partially_paid'; return 'not_paid'; };
-export const getPaymentStyle=(status)=>({fully_paid:{background:'var(--pay-paid)',color:'var(--payment-status-foreground)',border:'var(--pay-paid)',label:'Paid'},partially_paid:{background:'var(--pay-deposit)',color:'var(--payment-deposit-foreground)',border:'var(--pay-deposit)',label:'Deposit paid'},not_paid:{background:'var(--pay-unpaid)',color:'var(--payment-status-foreground)',border:'var(--pay-unpaid)',label:'Not paid'}}[status]||{background:'var(--pay-unpaid)',color:'var(--payment-status-foreground)',border:'var(--pay-unpaid)',label:'Not paid'});
+export const getPaymentStatusFromAmounts = derivePaymentStatus;
+export const getPaymentStyle = (status) => ({
+  fully_paid: { background: 'var(--pay-paid)', color: 'var(--pay-paid-fg)', border: 'var(--pay-paid-bd)', label: 'Total Paid' },
+  partially_paid: { background: 'var(--pay-part)', color: 'var(--pay-part-fg)', border: 'var(--pay-part-bd)', label: 'Partially Paid' },
+  not_paid: { background: 'var(--pay-none)', color: 'var(--pay-none-fg)', border: 'var(--pay-none-bd)', label: 'No Amount Paid' },
+}[status] || { background: 'var(--pay-none)', color: 'var(--pay-none-fg)', border: 'var(--pay-none-bd)', label: 'No Amount Paid' });
 
-export function getBarOpacity(bookingStatus) { return bookingStatus === 'checked_out' ? 0.5 : 1; }
+export function getBarOpacity(bookingStatus, checkOut, today) { return checkOut && today ? getPastStayOpacity(checkOut, today) : bookingStatus === 'checked_out' ? 0.55 : 1; }
 export function isOverlapping(r1, r2) {
   return r1.roomId === r2.roomId && overlapsStayRanges(r1.checkIn, r1.checkOut, r2.checkIn, r2.checkOut);
 }
@@ -312,7 +317,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     if (departure <= viewStart || arrival >= viewEndExclusive) return null;
     const clippedStart = arrival < viewStart ? viewStart : arrival;
     const clippedEnd = departure > viewEndExclusive ? viewEndExclusive : departure;
-    return { start: differenceInCalendarDays(clippedStart, viewStart), span: Math.max(1, differenceInCalendarDays(clippedEnd, clippedStart)) };
+    return { start: differenceInCalendarDays(clippedStart, viewStart), span: Math.max(1, differenceInCalendarDays(clippedEnd, clippedStart)), continuesBefore: arrival < viewStart, continuesAfter: departure > viewEndExclusive };
   };
 
   const openFolio = async (rv) => {
@@ -407,10 +412,12 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
               const stayStatus=rv.plannerStatus || (rv.bookingStatus==='checked_out'?'checked_out':rv.bookingStatus==='checked_in'?'occupied':'confirmed');
               const ps=getReservationBarStyle(stayStatus); const pay=getPaymentStyle(getPaymentStatusFromAmounts(rv.amountPaid, rv.totalAmount));
               const checked=rv.bookingStatus==='checked_out';
-              const left=ROOM_COL_WIDTH+l.start*dayWidth+4;
-              const width=Math.max(dayWidth*l.span-8,100);
-              return <div key={rv.id} draggable onDragStart={e=>beginDrag(e,rv)} onDragEnd={()=>{setDrag(null);setDragTarget(null)}} onClick={e=>{e.stopPropagation();openEdit(rv)}} className="reservation-bar absolute top-[7px] h-[34px] cursor-grab active:cursor-grabbing group" style={{left,width,background:stayStatus==='optioned'?'var(--stay-optioned)':pay.background,color:stayStatus==='optioned'?'var(--white)':pay.color,border:`1.5px ${stayStatus==='optioned'?'dashed':'solid'} ${stayStatus==='optioned'?'var(--stay-optioned)':pay.border}`,borderLeft:`4px solid ${pay.border}`,opacity:getBarOpacity(rv.bookingStatus),zIndex:10}} title={`${rv.guestName} · ${ps.label} · ${rv.checkIn} → ${rv.checkOut}`}>
-              <span className="truncate font-medium text-[11px]" title={`${rv.guestName} · ${rv.checkIn} → ${rv.checkOut}`}>{rv.guestName || 'Guest'}</span><span className="ml-1.5 shrink-0 text-[10px] opacity-90 font-medium">{formatGuests(rv)}</span>
+              const geometry=getStayBarGeometry({startIndex:l.start,span:l.span,dayWidth,roomColumnWidth:ROOM_COL_WIDTH,continuesBefore:l.continuesBefore,continuesAfter:l.continuesAfter});
+              const left=geometry.left;
+              const width=geometry.width;
+              const pastOpacity=getBarOpacity(rv.bookingStatus,rv.checkOut,today);
+              return <div key={rv.id} draggable onDragStart={e=>beginDrag(e,rv)} onDragEnd={()=>{setDrag(null);setDragTarget(null)}} onClick={e=>{e.stopPropagation();openEdit(rv)}} className="reservation-bar absolute top-[11px] h-[23px] cursor-grab active:cursor-grabbing group" style={{left,width,background:stayStatus==='optioned'?'var(--pay-opt)':pastOpacity<1?`color-mix(in srgb, ${pay.background} 55%, transparent)`:pay.background,color:stayStatus==='optioned'?'var(--pay-opt-fg)':pay.color,border:`1.5px ${stayStatus==='optioned'?'dashed':'solid'} ${stayStatus==='optioned'?'var(--pay-opt-bd)':pay.border}`,borderLeft:stayStatus==='optioned'?'1.5px dashed var(--pay-opt-bd)':`1.5px solid ${pay.border}`,zIndex:10}} title={`${rv.guestName} · ${ps.label} · ${rv.checkIn} → ${rv.checkOut}`}>
+              <span className="truncate font-medium text-[11px] italic" title={`${rv.guestName} · ${rv.checkIn} → ${rv.checkOut}`}>{geometry.continuesBefore?'‹ ':''}{rv.guestName || 'Guest'}{geometry.continuesAfter?' ›':''}</span><span className="ml-1.5 shrink-0 text-[10px] opacity-90 font-medium">♙ {formatGuests(rv)}</span>
               <span className="ml-auto hidden group-hover:flex items-center gap-1"><button onClick={e=>{e.stopPropagation();openFolio(rv)}} className="w-5 h-5 rounded flex items-center justify-center" style={{background:'color-mix(in srgb,var(--text) 12%,transparent)'}}><BedDouble size={10}/></button></span>
             </div>})}
           </div>})}
@@ -509,10 +516,10 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     </Modal>}
 
     <div className="room-planner-payment-legend px-4 py-3 flex flex-wrap items-center gap-2 text-sm font-bold" style={{background:'var(--surface)',borderTop:'1px solid var(--border)'}}>
-      <span className="room-planner-legend-item flex items-center gap-1.5 px-2 py-1.5 rounded-sm" style={{background:'var(--pay-unpaid)',color:'var(--payment-status-foreground)'}}><i className="w-3 h-3 rounded-sm border border-border"/> Not paid</span>
-      <span className="room-planner-legend-item flex items-center gap-1.5 px-2 py-1.5 rounded-sm" style={{background:'var(--pay-deposit)',color:'var(--payment-deposit-foreground)'}}><i className="w-3 h-3 rounded-sm border border-border"/> Deposit paid</span>
-      <span className="room-planner-legend-item flex items-center gap-1.5 px-2 py-1.5 rounded-sm" style={{background:'var(--pay-paid)',color:'var(--payment-status-foreground)'}}><i className="w-3 h-3 rounded-sm border border-border"/> Paid</span>
-      <span className="room-planner-legend-item flex items-center gap-1.5 px-2 py-1.5 rounded-sm" style={{background:'var(--stay-optioned)',color:'var(--primary-foreground)'}}><i className="w-3 h-3 rounded-sm border border-border border-dashed"/> Optioned</span>
+      <span className="room-planner-legend-item flex items-center gap-1.5 px-2 py-1.5 rounded-sm" style={{background:'var(--pay-none)',color:'var(--pay-none-fg)'}}>No Amount Paid</span>
+      <span className="room-planner-legend-item flex items-center gap-1.5 px-2 py-1.5 rounded-sm" style={{background:'var(--pay-part)',color:'var(--pay-part-fg)'}}>Partially Paid</span>
+      <span className="room-planner-legend-item flex items-center gap-1.5 px-2 py-1.5 rounded-sm" style={{background:'var(--pay-paid)',color:'var(--pay-paid-fg)'}}>Total Paid</span>
+      <span className="room-planner-legend-item flex items-center gap-1.5 px-2 py-1.5 rounded-sm" style={{background:'var(--pay-opt)',color:'var(--pay-opt-fg)',border:'1px dashed var(--pay-opt-bd)'}}>Optioned</span>
       <span className="ml-auto text-[11px] font-medium" style={{color:MUTED}}>{plannerRooms.length} rooms · {normalizedReservations.length} reservations</span>
     </div>
   </div>;
