@@ -58,6 +58,7 @@ import CategoriesPage from "@/components/settings/CategoriesPage";
 import TimecardsPage from "@/components/settings/TimecardsPage";
 import EmployeeListPage from "@/components/settings/EmployeeListPage";
 import HelpCentre from "@/pages/HelpCentre";
+import FrontOfficeDashboard from "@/pages/FrontOfficeDashboard";
 
 const POSApp = lazyWithRetry(() => import('@/pages/POSApp'), 'app-pos-app');
 const Reports = lazyWithRetry(() => import('@/components/modules/Reports'), 'app-reports');
@@ -87,7 +88,7 @@ function AppRoutes(){return <AuthProvider><Suspense fallback={<AuthLoading/>}><R
 <Route element={<ProtectedRoute app="frontoffice"/>}><Route path="/frontoffice" element={<FrontOfficeLayout/>}><Route index element={<POSApp initialModule="dashboard" embedded workspaceModule="frontoffice"/>}/><Route path="room-planner" element={<POSApp initialModule="rooms" embedded workspaceModule="frontoffice"/>}/><Route path="rooms" element={<POSApp initialModule="rooms" embedded workspaceModule="frontoffice"/>}/><Route path="reservations" element={<POSApp initialModule="reservations" embedded workspaceModule="frontoffice"/>}/><Route path="folio" element={<POSApp initialModule="folio" embedded workspaceModule="frontoffice"/>}/><Route path="housekeeping" element={<POSApp initialModule="housekeeping" embedded workspaceModule="frontoffice"/>}/><Route path="night-audit" element={<POSApp initialModule="night-audit" embedded workspaceModule="frontoffice"/>}/>
 <Route path="manuals" element={<HelpCentre/>}/>
 <Route path="assistance" element={<ModuleStatusPage title="Assistance" description="Support contacts, service requests, ticket history and system status." module="assistance" back="/frontoffice"/>}/>
-<Route path="dashboard" element={<POSApp initialModule="dashboard" embedded workspaceModule="frontoffice"/>}/>
+<Route path="dashboard" element={<FrontOfficeDashboard/>}/>
 <Route path="channels" element={<ModuleStatusPage title="Channels" description="Manage booking sources, channel commission and channel colours. Channel manager integration is coming soon." module="channels" back="/frontoffice"/>}/>
 <Route path="structure" element={<ModuleStatusPage title="Structure" description="Manage properties, buildings, floors, room types and room organisation." module="structure" back="/frontoffice"/>}/>
 <Route path="configuration" element={<ModuleStatusPage title="Configuration" description="Rates, seasons, VAT, payment methods, policies, templates, users, roles and planner settings." module="configuration" back="/frontoffice"/>}/>
