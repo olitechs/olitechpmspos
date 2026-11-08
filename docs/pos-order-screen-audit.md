@@ -114,3 +114,19 @@ No new table, column, migration, or browser-local persistence was introduced. Ca
 4. Extend the current menu manager and add additive, property-scoped layout metadata only after schema/authorization review.
 5. Verify stock, department routing, room charges, KDS, receipts, cashier and shift-report integrations.
 6. Add component/service tests and run repository checks in a working checkout; capture responsive screenshots after a browser environment is available.
+
+
+## Phase 5 security review — POS menu RPC
+
+The branch review found that the later definition of `fn_list_pos_menu` accepted any active staff session through a generic `current_staff_role(...) IS NOT NULL` check. That was broader than the explicit POS role/module allow-list already used by `fn_verify_pos_access_pin`.
+
+Added forward-only migration `20261108110000_pos_menu_rpc_authorization.sql` to:
+- Reject null property IDs and unauthenticated callers.
+- Require platform-owner or property membership before tenant-specific menu access.
+- Require an allowed POS property role, an allowed active POS staff role, or an active staff record explicitly assigned to the POS module.
+- Preserve the existing menu result shape, property filter, service-role access, and authenticated execution while revoking public/anonymous execution.
+- Avoid changing menu rows, stock quantities, category records, or order/receipt data.
+
+Added `supabase/tests/pos_menu_rpc_access_contract.test.mjs` and included it in `test:architecture`. Updated the disposable two-property SQL regression to expect SQLSTATE `42501` for a cross-property menu request.
+
+**Verification boundary:** this is a source-level authorization hardening change. The migration has not been applied to a live Supabase project. The two-property SQL regression requires a disposable database seeded with an owner and a second property. CI must pass for the new commits before this phase is considered verified. POS PIN enforcement remains a separate application entry gate; this migration aligns the menu RPC's server-side role/module authorization with the existing POS access policy but does not create a server-side PIN-authenticated session.
