@@ -35,7 +35,7 @@ export default function AccessPinTab() {
       setStatus({ configured: true, is_default: false, updated_at: new Date().toISOString() });
       setPin('');
       setConfirmPin('');
-      toast.success('POS access PIN reset successfully.');
+      toast.success(status?.configured ? 'POS access PIN reset successfully.' : 'POS access PIN created successfully.');
     } catch (e) {
       setError(e.message || 'Could not reset the POS PIN.');
     } finally {
@@ -57,16 +57,21 @@ export default function AccessPinTab() {
           <ShieldAlert size={18} className="shrink-0"/>
           <div><b>Default PIN is still active.</b><p className="mt-1">The initial code is 1234. Reset it before normal restaurant operations and share the new code only with authorised POS staff.</p></div>
         </div>
-      ) : (
+      ) : status?.configured ? (
         <div className="mt-5 flex gap-3 rounded-xl border border-[var(--success)] bg-[var(--success-soft)] p-4 text-sm text-[var(--success-text)]">
           <ShieldCheck size={18} className="shrink-0"/>
           <div><b>Custom POS PIN is active.</b><p className="mt-1">The code is stored as a one-way password hash and cannot be viewed here.</p></div>
         </div>
+      ) : (
+        <div className="mt-5 flex gap-3 rounded-xl border border-[var(--warning)] bg-[var(--warning-soft)] p-4 text-sm text-[var(--warning-text)]">
+          <ShieldAlert size={18} className="shrink-0"/>
+          <div><b>No POS PIN has been created yet.</b><p className="mt-1">Create a four-digit PIN now. Staff will not be able to enter the POS until this property PIN is configured.</p></div>
+        </div>
       )}
     </section>
     <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
-      <h4 className="font-bold text-[var(--text)]">Reset POS PIN</h4>
-      <p className="mt-1 text-sm text-[var(--text-muted)]">Choose a new four-digit code. The previous code stops working immediately.</p>
+      <h4 className="font-bold text-[var(--text)]">{status?.configured ? 'Reset POS PIN' : 'Create POS PIN'}</h4>
+      <p className="mt-1 text-sm text-[var(--text-muted)]">{status?.configured ? 'Choose a new four-digit code. The previous code stops working immediately.' : 'Choose a private four-digit code for this property. It will protect POS access for authorised staff.'}</p>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <label className="block text-xs font-semibold text-[var(--text-muted)]">New 4-digit PIN
           <input value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))} inputMode="numeric" autoComplete="new-password" type="password" maxLength={4} className="mt-1 w-full rounded-xl border border-[var(--border)] bg-[var(--canvas)] p-3 text-lg tracking-[.35em] text-[var(--text)]" placeholder="••••"/>
@@ -76,7 +81,7 @@ export default function AccessPinTab() {
         </label>
       </div>
       {error && <p role="alert" className="mt-3 rounded-xl bg-[var(--danger-soft)] p-3 text-sm font-medium text-[var(--danger-text)]">{error}</p>}
-      <button type="button" disabled={busy || loading || pin.length !== 4 || confirmPin.length !== 4} onClick={save} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl bg-[var(--primary)] px-5 py-3 text-sm font-bold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40">{busy ? 'Saving…' : 'Save new POS PIN'}</button>
+      <button type="button" disabled={busy || loading || pin.length !== 4 || confirmPin.length !== 4} onClick={save} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl bg-[var(--primary)] px-5 py-3 text-sm font-bold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40">{busy ? 'Saving…' : status?.configured ? 'Save new POS PIN' : 'Create POS PIN'}</button>
     </section>
   </div>;
 }
