@@ -52,7 +52,7 @@ export default function AccessPinTab() {
           <p className="mt-1 text-sm leading-6 text-[var(--text-muted)]">One four-digit access code protects the POS entry screen for this property. Staff identity and permissions remain controlled by their individual accounts and staff PINs.</p>
         </div>
       </div>
-      {loading ? <p className="mt-5 text-sm text-[var(--text-muted)]">Checking PIN status…</p> : status?.is_default ? (
+      {loading ? <p className="mt-5 text-sm text-[var(--text-muted)]">Checking PIN status…</p> : status?.configured && status?.is_default ? (
         <div className="mt-5 flex gap-3 rounded-xl border border-[var(--warning)] bg-[var(--warning-soft)] p-4 text-sm text-[var(--warning-text)]">
           <ShieldAlert size={18} className="shrink-0"/>
           <div><b>Default PIN is still active.</b><p className="mt-1">The initial code is 1234. Reset it before normal restaurant operations and share the new code only with authorised POS staff.</p></div>
