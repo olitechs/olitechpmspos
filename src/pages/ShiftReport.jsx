@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { CalendarDays, ChevronDown, ChevronUp, FileText, RefreshCw, Search, X } from 'lucide-react';
+import { CalendarDays, ChevronDown, ChevronUp, RefreshCw, Search, X } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { getSessionStaff } from '@/services/authService';
 import { shiftService } from '@/services/shiftService';

@@ -79,9 +79,9 @@ test('floor, payment and shift-report screens expose meaningful waiting, empty o
   assert.match(floorPlan, /No floor zones configured/);
   assert.match(floorPlan, /No tables in \{zone\.name\}/);
   assert.match(billPayment, /Loading payment settings/);
-  assert.match(shiftReport, /Loading shift reports/);
-  assert.match(shiftReport, /Retry reports/);
-  assert.match(shiftReport, /No shifts recorded yet/);
+  assert.match(shiftReport, /Loading shift history/);
+  assert.match(shiftReport, /Retry/);
+  assert.match(shiftReport, /No shift records match the selected filters/);
   assert.match(shiftReport, /role="alert"/);
 });
 
