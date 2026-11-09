@@ -478,7 +478,7 @@ export default function POSContainer() {
 
 			{menuManagerOpen && <MenuManager open={menuManagerOpen} onClose={()=>setMenuManagerOpen(false)} />}
 			{settingsOpen && <POSSettings user={user} onClose={()=>setSettingsOpen(false)} />}
-			{closeShiftOpen && currentShift && <CloseShiftModal shift={currentShift} onClose={()=>setCloseShiftOpen(false)} onClosed={()=>{setCurrentShift(null);setCloseShiftOpen(false);setActiveTable(null);setActiveTab('floor');setPosUnlocked(false);}} />}
+			{closeShiftOpen && currentShift && <CloseShiftModal shift={currentShift} onClose={()=>setCloseShiftOpen(false)} onClosed={()=>{setCurrentShift(null);setCloseShiftOpen(false);setActiveTable(null);setActiveTab('shifts');setPosUnlocked(false);}} />}
 			<OpenTableDialog
 				open={!!pendingTable}
 				table={pendingTable}
