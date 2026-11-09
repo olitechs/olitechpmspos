@@ -60,6 +60,7 @@ import EmployeeListPage from "@/components/settings/EmployeeListPage";
 import HelpCentre from "@/pages/HelpCentre";
 import FrontOfficeDashboard from "@/pages/FrontOfficeDashboard";
 import FrontOfficeStructure from "@/pages/FrontOfficeStructure";
+import ShiftReport from '@/pages/ShiftReport';
 
 const POSApp = lazyWithRetry(() => import('@/pages/POSApp'), 'app-pos-app');
 const Reports = lazyWithRetry(() => import('@/components/modules/Reports'), 'app-reports');
