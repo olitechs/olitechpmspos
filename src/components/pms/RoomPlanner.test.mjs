@@ -16,7 +16,9 @@ test('reservation hover card shows booking, stay, meal plan, payment and Folio d
   assert.ok(source.includes('getPlannerPaymentDetails(rv).method'));
   assert.ok(source.includes('>Folio</button>'));
   assert.ok(source.includes('openFolio(rv)'));
-  assert.ok(source.includes('reservation-bar:hover .reservation-hover-card'));
+  assert.ok(source.includes('data-room-planner-hover-card'));
+  assert.ok(source.includes('createPortal('));
+  assert.ok(source.includes('showReservationHover(e,rv)'));
 });
 
 test('PMS reservation mapping supplies reference, currency and payment metadata to planner cards', () => {
