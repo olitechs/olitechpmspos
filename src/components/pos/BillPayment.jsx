@@ -7,7 +7,7 @@ import{useAuth}from'@/lib/AuthContext';
 import{pmsService}from'@/services/pmsService';
 import{getSessionStaff}from'@/services/authService';
 import{printReceipt,getPrinters,getAssignments,openCashDrawer}from'@/services/printService';
-import{shiftService}from'@/services/shiftService';
+
 import{getUnsettledReceiptSettings}from'@/services/settingsService';
 import{posService}from'@/services/posService';
 import{posPhase3Service}from'@/services/posPhase3Service';
@@ -47,7 +47,7 @@ export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrde
   if(paymentMethod==='room'&&!chargeReservationId){setError('Select the guest/room to charge.');return}if(paymentMethod==='room'&&room&&!window.confirm('Confirm room charge?\nGuest: '+(room.guest_name||'Guest')+'\nRoom: '+(room.room_number||'—')+'\nReservation: '+room.id+'\nAmount: '+fmt(total)))return;if(paymentMethod==='split'&&(Math.round(splitTotal*100)!==Math.round(total*100)||splitPayments.some(p=>p.method==='room'&&Number(p.amount)>0&&!p.reservationId))){setError(splitPayments.some(p=>p.method==='room'&&Number(p.amount)>0&&!p.reservationId)?'Select a checked-in guest for every room-charge portion.':`Split payments must equal ${fmt(total)}.`);return}
   setBusy(true);setError('');
   try{
-   const currentShift=await shiftService.getCurrentShift(propertyId);
+   const currentShift=await pmsService.getOpenCashierShift(propertyId);
    if(!currentShift?.id){setError('No open POS shift. Open a shift before taking payments.');return;}
    const needsRecipeLookup=orderLines.some(line=>!isProductUuid(line.productId||line.product_id));
    let recipeNames=[];let recipeLookupAvailable=true;
