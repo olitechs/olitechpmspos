@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Activity, BarChart3, BedDouble, Bell, BookOpen, Building2, CalendarDays, ChevronDown, ChevronRight, ClipboardCheck, HelpCircle, LayoutDashboard, LockKeyhole, LogOut, Menu, MessageCircle, Settings, Sparkles, Tags, Users, X } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
+import TopAppNav from './TopAppNav';
 import { getSessionStaff, normalizeStaffRole } from '@/services/authService';
 
 const ITEMS = [
@@ -87,6 +88,7 @@ export default function FrontOfficeShell() {
     <div className="hidden shrink-0 min-[1100px]:block">{sidebar}</div>
     {drawer && <div className="fixed inset-0 z-[90] min-[1100px]:hidden"><button aria-label="Close navigation" onClick={() => setDrawer(false)} className="absolute inset-0 bg-[var(--overlay-scrim)]"/><div className="relative h-full w-[min(86vw,300px)]">{sidebar}</div></div>}
     <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+      <TopAppNav workspace="frontoffice" />
       <header className="flex min-h-[60px] shrink-0 flex-wrap items-center gap-2 bg-[var(--brand-primary)] px-3 py-2 text-[var(--white)] sm:px-4">
         <button type="button" onClick={() => { if (window.matchMedia('(min-width: 1100px)').matches) setCollapsed(v => !v); else setDrawer(true); }} aria-label="Toggle navigation" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-[var(--white)]/60 hover:bg-[var(--surface)]/10"><Menu size={19}/></button>
         <div className="min-w-0 flex-1"><div className="truncate text-sm font-semibold">{title}</div><div className="truncate text-[10px] text-[var(--white)]/80">Front Office <span className="px-1">/</span> {title}</div></div>
