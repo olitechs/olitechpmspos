@@ -37,7 +37,7 @@ export default function AppHeader({ activeTab, onTabChange, activeTable, onClose
             <button
               key={tab.id}
               type="button"
-              onClick={() => !isDisabled && onTabChange(tab.id)}
+              onClick={() => { if (tab.id === 'shifts') onOpenShifts?.(); else if (!isDisabled) onTabChange(tab.id); }}
               disabled={isDisabled}
               aria-current={isActive ? 'page' : undefined}
               className="min-h-11 shrink-0 rounded-t px-3 py-2 text-xs font-semibold transition-colors sm:px-4 sm:text-sm"
@@ -69,7 +69,7 @@ export default function AppHeader({ activeTab, onTabChange, activeTable, onClose
     {!hasOpenShift && (
       <button
         type="button"
-        onClick={() => { onOpenShifts?.(); onTabChange('shifts'); }}
+        onClick={() => onOpenShifts?.()}
         className="flex min-h-11 w-full items-center justify-center gap-2 border-b border-[var(--danger)] bg-[var(--danger-soft)] px-4 py-2 text-sm font-bold text-[var(--danger-text)] transition-colors hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--danger)]"
         aria-label="No open shift. Open shift management."
       >
