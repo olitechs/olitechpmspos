@@ -7,14 +7,16 @@ const TABS = [
   { id: 'floor', label: 'Floor Plan', icon: '▦' },
   { id: 'order', label: 'Order Taking', icon: '▤' },
   { id: 'bill', label: 'Bill & Payment', icon: '▧' },
+  { id: 'shifts', label: 'Shifts', icon: '◷' },
 ];
 
-export default function AppHeader({ activeTab, onTabChange, activeTable, onCloseShift, shift, onManageMenu, onOpenSettings, propertyName }) {
+export default function AppHeader({ activeTab, onTabChange, activeTable, onCloseShift, shift, hasOpenShift = false, onOpenShifts, onManageMenu, onOpenSettings, propertyName }) {
   const now = new Date();
   const timeStr = now.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' });
   const dateStr = now.toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'short' });
 
   return (
+    <>
     <header
       className="flex shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 py-2 md:flex-nowrap md:px-4"
       style={{ background: SURFACE, minHeight: '60px', borderBottom: '1px solid var(--border)' }}
@@ -30,7 +32,7 @@ export default function AppHeader({ activeTab, onTabChange, activeTable, onClose
       <nav className="order-3 flex max-w-full gap-1 overflow-x-auto md:order-none" aria-label="POS workflow">
         {TABS.map((tab) => {
           const isActive = activeTab === tab.id;
-          const isDisabled = (tab.id === 'order' || tab.id === 'bill') && !activeTable;
+          const isDisabled = (!hasOpenShift && tab.id !== 'shifts') || ((tab.id === 'order' || tab.id === 'bill') && !activeTable);
           return (
             <button
               key={tab.id}
@@ -64,5 +66,18 @@ export default function AppHeader({ activeTab, onTabChange, activeTable, onClose
         </div>
       </div>
     </header>
+    {!hasOpenShift && (
+      <button
+        type="button"
+        onClick={() => { onOpenShifts?.(); onTabChange('shifts'); }}
+        className="flex min-h-11 w-full items-center justify-center gap-2 border-b border-[var(--danger)] bg-[var(--danger-soft)] px-4 py-2 text-sm font-bold text-[var(--danger-text)] transition-colors hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--danger)]"
+        aria-label="No open shift. Open shift management."
+      >
+        <span aria-hidden="true">●</span>
+        No open shift — open a shift before taking orders
+        <span aria-hidden="true">→</span>
+      </button>
+    )}
+    </>
   );
 }
