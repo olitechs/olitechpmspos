@@ -51,10 +51,10 @@ test('POS PIN reset is routed to an admin-only page with first-time creation cop
   const container = readFileSync(new URL('../../src/components/pos/POSContainer.jsx', import.meta.url), 'utf8');
   const page = readFileSync(new URL('../../src/pages/POSPinSettingsPage.jsx', import.meta.url), 'utf8');
   const pinTab = readFileSync(new URL('../../src/components/pos/AccessPinTab.jsx', import.meta.url), 'utf8');
-  assert.match(app, /path="\\/pos\\/access-pin" element={<POSPinSettingsPage\\/>}/);
-  assert.match(container, /navigate\\('\\/pos\\/access-pin'\\)/);
+  assert.ok(app.includes('path="/pos/access-pin" element={<POSPinSettingsPage/>'));
+  assert.ok(container.includes("navigate('/pos/access-pin')"));
   assert.match(page, /canManagePin/);
-  assert.match(page, /<Navigate to="\\/pos" replace \\/>/);
+  assert.ok(page.includes('<Navigate to="/pos" replace />'));
   assert.match(pinTab, /Create your property POS PIN/);
   assert.match(pinTab, /Create POS PIN/);
 });
