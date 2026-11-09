@@ -20,7 +20,8 @@ import { shiftService } from '@/services/shiftService';
 import { posAccessService } from '@/services/posAccessService';
 import POSAccessGate, { POS_ACCESS_KEY } from '@/components/pos/POSAccessGate';
 import AccessPinTab from '@/components/pos/AccessPinTab';
-import CloseShiftModal, { OpenShiftModal } from '@/components/pos/CloseShiftModal';
+import CloseShiftModal from '@/components/pos/CloseShiftModal';
+import ShiftManagementPage from '@/components/pos/ShiftManagementPage';
 import MenuManager from '@/components/pos/MenuManager';
 import POSSettings from '@/components/pos/settings/POSSettings';
 
@@ -89,9 +90,20 @@ export default function POSContainer() {
 		setPosAccessError('');
 		setPinSettingsOpen(false);
 		setCurrentShift(null);
+		setShiftLoadError('');
 		setShiftLoading(true);
+		setActiveTab('shifts');
 		authService.listStaff(propertyId, 'pos').then(setPosStaff).catch(() => {});
-		shiftService.getCurrentShift(propertyId).then(setCurrentShift).catch(()=>setCurrentShift(null)).finally(()=>setShiftLoading(false));
+		shiftService.getCurrentShift(propertyId)
+			.then((shift) => {
+				setCurrentShift(shift);
+				setActiveTab(shift ? 'floor' : 'shifts');
+			})
+			.catch((error) => {
+				setCurrentShift(null);
+				setShiftLoadError(error?.message || 'Could not verify the current POS shift.');
+			})
+			.finally(() => setShiftLoading(false));
 	}, [propertyId]);
 	useEffect(() => {
 		if (!propertyId) return undefined;
@@ -129,6 +141,7 @@ export default function POSContainer() {
 	const [tableTransferError, setTableTransferError] = useState('');
 	const [currentShift, setCurrentShift] = useState(null);
 	const [shiftLoading, setShiftLoading] = useState(true);
+	const [shiftLoadError, setShiftLoadError] = useState('');
 	const [closeShiftOpen, setCloseShiftOpen] = useState(false);
 	const [menuManagerOpen, setMenuManagerOpen] = useState(false);
 	const [settingsOpen, setSettingsOpen] = useState(false);
@@ -385,16 +398,15 @@ export default function POSContainer() {
 		<POSAccessGate propertyName={propertyName} logoUrl={user?.property?.logo_url} error={posAccessError} busy={posAccessBusy} canManagePin={canManagePosPin} onAdminReset={() => setPinSettingsOpen(true)} onSubmit={verifyPosAccess} />
 		{pinSettingsOpen && <div className="fixed inset-0 z-[120] flex items-center justify-center bg-[var(--overlay-scrim)] p-3"><div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-[var(--surface)] p-4 shadow-2xl sm:p-6"><div className="mb-4 flex items-center justify-between gap-3"><div><h2 className="text-lg font-bold text-[var(--text)]">Reset property POS PIN</h2><p className="text-xs text-[var(--text-muted)]">Administrator access required</p></div><button type="button" onClick={() => setPinSettingsOpen(false)} className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-semibold text-[var(--text)]">Close</button></div><AccessPinTab /></div></div>}
 	</> ;
-	if (!currentShift) return <OpenShiftModal propertyId={propertyId} onOpened={(shift) => setCurrentShift(shift)} />;
-
 	return (
 		<div className="flex flex-col h-full overflow-hidden">
-			<AppHeader activeTab={activeTab} onTabChange={setActiveTab} activeTable={activeTable} shift={currentShift} propertyName={propertyName} onCloseShift={canCloseShift ? ()=>setCloseShiftOpen(true) : null} onManageMenu={canCloseShift ? ()=>setMenuManagerOpen(true) : null} onOpenSettings={()=>setSettingsOpen(true)} />
+			<AppHeader activeTab={activeTab} onTabChange={setActiveTab} activeTable={activeTable} shift={currentShift} hasOpenShift={Boolean(currentShift)} onOpenShifts={() => setActiveTab('shifts')} propertyName={propertyName} onCloseShift={currentShift && canCloseShift ? ()=>setCloseShiftOpen(true) : null} onManageMenu={canCloseShift ? ()=>setMenuManagerOpen(true) : null} onOpenSettings={()=>setSettingsOpen(true)} />
 
-			<div className="flex-1 min-h-0">
-				{activeTab === 'floor' && <div className="relative h-full"><FloorPlan onTableSelect={handleTableSelect} /><div className="absolute bottom-3 left-3 z-20 flex items-center gap-1 rounded-2xl border-2 border-border bg-surface p-2 shadow-lg"><span className="px-1 text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]">Staff</span>{posStaff.slice(0,8).map(person => <button key={person.id} title={`Switch to ${person.full_name}`} onClick={()=>{setSwitchStaff(person);setSwitchError('');}} className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-border bg-primary text-[10px] font-black text-foreground hover:scale-105">{person.avatar || person.full_name?.slice(0,2).toUpperCase()}</button>)}</div>{switchStaff&&<PinPad title="Switch POS Staff" staffName={switchStaff.full_name} error={switchError} onSubmit={verifySwitch} onClose={()=>setSwitchStaff(null)}/>}</div>}
+			<div className="flex-1 min-h-0 overflow-y-auto">
+				{(activeTab === 'shifts' || !currentShift) && <ShiftManagementPage propertyId={propertyId} currentShift={currentShift} loadError={shiftLoadError} onOpened={(shift) => { setCurrentShift(shift); setShiftLoadError(''); setActiveTab('floor'); }} />}
+				{activeTab === 'floor' && currentShift && <div className="relative h-full"><FloorPlan onTableSelect={handleTableSelect} /><div className="absolute bottom-3 left-3 z-20 flex items-center gap-1 rounded-2xl border-2 border-border bg-surface p-2 shadow-lg"><span className="px-1 text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]">Staff</span>{posStaff.slice(0,8).map(person => <button key={person.id} title={`Switch to ${person.full_name}`} onClick={()=>{setSwitchStaff(person);setSwitchError('');}} className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-border bg-primary text-[10px] font-black text-foreground hover:scale-105">{person.avatar || person.full_name?.slice(0,2).toUpperCase()}</button>)}</div>{switchStaff&&<PinPad title="Switch POS Staff" staffName={switchStaff.full_name} error={switchError} onSubmit={verifySwitch} onClose={()=>setSwitchStaff(null)}/>}</div>}
 
-				{activeTab === 'order' && activeTable && (
+				{activeTab === 'order' && currentShift && activeTable && (
 					<OrderTaking
 						table={activeTable}
 						orderLines={orderLines}
@@ -406,7 +418,7 @@ export default function POSContainer() {
 					/>
 				)}
 
-				{activeTab === 'bill' && activeTable && (
+				{activeTab === 'bill' && currentShift && activeTable && (
 					<BillPayment
 						table={activeTable}
 						orderLines={orderLines}
@@ -466,7 +478,7 @@ export default function POSContainer() {
 
 			{menuManagerOpen && <MenuManager open={menuManagerOpen} onClose={()=>setMenuManagerOpen(false)} />}
 			{settingsOpen && <POSSettings user={user} onClose={()=>setSettingsOpen(false)} />}
-			{closeShiftOpen && currentShift && <CloseShiftModal shift={currentShift} onClose={()=>setCloseShiftOpen(false)} onClosed={()=>{setCurrentShift(null);setCloseShiftOpen(false);setActiveTable(null);setActiveTab('floor');setPosUnlocked(false);}} />}
+			{closeShiftOpen && currentShift && <CloseShiftModal shift={currentShift} onClose={()=>setCloseShiftOpen(false)} onClosed={()=>{setCurrentShift(null);setCloseShiftOpen(false);setActiveTable(null);setActiveTab('shifts');}} />}
 			<OpenTableDialog
 				open={!!pendingTable}
 				table={pendingTable}

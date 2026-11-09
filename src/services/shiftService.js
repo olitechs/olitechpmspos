@@ -35,12 +35,9 @@ export const shiftService = {
   },
 
   async getOpenTables(propertyId) {
-    const { data, error } = await supabase
-      .from('pos_table_sessions')
-      .select('id,table_key,table_number,status,order_number')
-      .eq('property_id', propertyId)
-      .neq('status', 'closed')
-      .order('table_number', { ascending: true });
+    const { data, error } = await supabase.rpc('fn_list_active_pos_table_sessions', {
+      p_property_id: propertyId,
+    });
     if (error) throw new Error(error.message);
     return data || [];
   },
@@ -118,10 +115,18 @@ export const shiftService = {
     };
   },
 
-  async listShifts(propertyId, date = null) {
+  async listShifts(propertyId, filters = null) {
     let query = supabase.from('pos_shifts').select('*').eq('property_id', propertyId).order('opened_at', { ascending: false });
-    if (date) query = query.eq('date', date);
-    const { data, error } = await query;
+    // Preserve the legacy exact-date call shape while supporting the Back Office
+    // date-range and status filters.
+    if (typeof filters === 'string') {
+      query = query.eq('date', filters);
+    } else if (filters && typeof filters === 'object') {
+      if (filters.from) query = query.gte('date', filters.from);
+      if (filters.to) query = query.lte('date', filters.to);
+      if (filters.status && filters.status !== 'all') query = query.eq('status', filters.status);
+    }
+    const { data, error } = await query.limit(500);
     if (error) throw new Error(error.message);
     return data || [];
   },

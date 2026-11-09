@@ -7,7 +7,7 @@ export const MAIN_NAV = [
   { id:'stores', label:'Stores', path:'/stores', roles:['admin','owner','store_manager'], color:'var(--brand-dark)', icon:Store },
 ];
 export const BACK_OFFICE_NAV = [
-  { id:'reports', label:'Reports', icon:BarChart3, children:[['Sales report','/backoffice/reports/sales'],['Inventory report','/backoffice/reports/inventory'],['Employee report','/backoffice/reports/employees']] },
+  { id:'reports', label:'Reports', icon:BarChart3, children:[['Sales report','/backoffice/reports/sales'],['Inventory report','/backoffice/reports/inventory'],['Employee report','/backoffice/reports/employees'],['POS shift history','/backoffice/reports/shifts']] },
   { id:'items', label:'Items', icon:ShoppingBag, expanded:true, children:[['Item list','/backoffice/items/list'],['Categories','/backoffice/items/categories'],['Modifiers','/backoffice/items/modifiers'],['Discounts','/backoffice/items/discounts']] },
   { id:'inventory', label:'Inventory management', icon:ShoppingCart, expanded:true, children:[['Purchase orders','/backoffice/inventory/purchase-orders'],['Transfer orders','/backoffice/inventory/transfer-orders'],['Stock adjustments','/backoffice/inventory/stock-adjustments'],['Inventory counts','/backoffice/inventory/counts'],['Productions','/backoffice/inventory/productions'],['Suppliers','/backoffice/inventory/suppliers'],['Inventory history','/backoffice/inventory/history'],['Inventory valuation','/backoffice/inventory/valuation']] },
   { id:'employees', label:'Employees', icon:Users, expanded:true, children:[['Employee list','/backoffice/employees/list'],['Access rights','/backoffice/employees/access-rights'],['Timecards','/backoffice/employees/timecards'],['Total hours worked','/backoffice/employees/hours']] },
