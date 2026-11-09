@@ -79,7 +79,7 @@
     --cal-head: var(--surface);
     --cal-grid: var(--border);
     --cal-group: var(--sidebar);
-    --cal-weekend: color-mix(in srgb, var(--coastal-teal) 7%, var(--surface));
+    --cal-weekend: color-mix(in srgb, var(--coastal-teal) 11%, var(--surface));
     --cal-today: color-mix(in srgb, var(--coastal-teal) 15%, var(--surface));
     --cal-text: var(--text-muted);
     --cal-room: var(--text);
