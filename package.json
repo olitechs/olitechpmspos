@@ -2,6 +2,7 @@
   "name": "olitechs-pms-pos",
   "private": true,
   "version": "0.1.0",
+  "license": "UNLICENSED",
   "type": "module",
   "scripts": {
     "predev": "node scripts/prepare-brand-assets.mjs",
