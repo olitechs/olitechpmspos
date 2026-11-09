@@ -48,6 +48,9 @@ test('package tier gates workspace access', () => {
   assert.equal(canAccessApp('admin', 'frontoffice', 'none'), false);
   assert.equal(canAccessApp('admin', 'backoffice', 'standard'), false);
   assert.equal(canAccessApp('admin', 'frontoffice', 'standard'), true);
+  assert.equal(canAccessApp('admin', 'pos', 'standard'), true);
+  assert.equal(canAccessApp('admin', 'backoffice', 'standard'), false);
+  assert.equal(getDefaultApp('admin', 'standard'), 'frontoffice');
   assert.equal(canAccessApp('admin', 'backoffice', 'professional'), true);
   assert.equal(canAccessApp('admin', 'backoffice', 'unrecognized-tier'), false);
 });
