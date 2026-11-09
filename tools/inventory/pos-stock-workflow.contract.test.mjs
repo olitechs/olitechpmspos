@@ -58,7 +58,7 @@ test('duplicate sale retries use a unique receipt key and a stable order identit
 });
 
 test('receipt line identity and stock mapping status are durable and unmapped items warn staff', () => {
-  assert.match(billPayment, /buildPosSaleItems\(orderLines,recipeNames,recipeLookupAvailable\)/);
+  assert.match(billPayment, /buildPosSaleItems\(mappedOrderLines,recipeNames,stockLookupAvailable\)/);
   assert.match(billPayment, /stock_tracking_status==='unlinked'/);
   assert.match(billPayment, /line status is stored on the receipt/);
   assert.match(inventory, /Finalized POS sales deduct linked products and active recipe ingredients/);
