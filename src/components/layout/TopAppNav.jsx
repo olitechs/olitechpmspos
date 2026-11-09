@@ -31,8 +31,9 @@ function openWorkspaceTab(workspace) {
 
 export default function TopAppNav({ workspace = 'backoffice' }) {
   const { user } = useAuth();
-  // Back Office launches each workspace in a separate tab within this browser window.
-  if (workspace !== 'backoffice') return null;
+  // Keep the package-authorised workspace switcher available from every workspace.
+  // Standard subscribers do not have Back Office, so Front Office and POS must
+  // provide the same route to one another without requiring a hidden Back Office shell.
   const s = getSessionStaff();
   const raw = s?.role || user?.staff?.role || user?.propertyRole || user?.role;
   const role = normalizeAppRole(normalizeStaffRole(raw));
