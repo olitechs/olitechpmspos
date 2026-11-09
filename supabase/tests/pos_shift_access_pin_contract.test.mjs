@@ -45,3 +45,17 @@ test('close-shift approval controls use the defined manager permission flag', ()
   assert.match(closeShiftUi, /canApproveWithoutStaffPin/);
   assert.doesNotMatch(closeShiftUi, /canApproveAsPropertyAdmin/);
 });
+
+const firstTimePinSql = readFileSync(new URL('../migrations/20261109160000_pos_pin_first_time_setup.sql', import.meta.url), 'utf8');
+const accessPinUi = readFileSync(new URL('../../src/components/pos/AccessPinTab.jsx', import.meta.url), 'utf8');
+const posContainerUi = readFileSync(new URL('../../src/components/pos/POSContainer.jsx', import.meta.url), 'utf8');
+
+test('new properties must create a private POS PIN and administrators can reach setup from active staff sessions', () => {
+  assert.match(firstTimePinSql, /do not seed the shared default PIN \(1234\)/i);
+  assert.match(firstTimePinSql, /return new;/i);
+  assert.doesNotMatch(firstTimePinSql, /insert into public\.pos_access_credentials/i);
+  assert.match(accessPinUi, /No POS PIN has been created yet/i);
+  assert.match(accessPinUi, /Create POS PIN/i);
+  assert.match(posContainerUi, /sessionStaff\?\.role/);
+  assert.match(posContainerUi, /Create \/ reset POS PIN/);
+});
