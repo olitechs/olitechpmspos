@@ -61,8 +61,12 @@ function mapReservation(r, roomsById, roomTypesById = new Map()) {
 	const paymentStatus = r.payment_status || (Number(r.amount_paid || 0) >= Number(r.total_amount || r.rate || 0) && Number(r.total_amount || r.rate || 0) > 0 ? 'fully_paid' : Number(r.amount_paid || 0) > 0 ? 'partially_paid' : 'not_paid');
 	return {
 		id: r.id,
+		reservationNumber: r.confirmation_code || r.reservation_number || r.booking_reference || r.id,
 		guestId: r.guest_id || null,
 		bookingDetails: r.booking_details || {},
+		currency: r.currency || r.booking_details?.currency || 'USD',
+		paymentMethod: r.payment_method || r.paymentMethod || r.booking_details?.payment_method || r.booking_details?.paymentMethod || '',
+		paidAt: r.paid_at || r.payment_date || r.booking_details?.paid_at || r.booking_details?.payment_date || '',
 		groupId: r.group_id || undefined,
 		roomId: r.room_id,
 		roomNumber: room?.number,
