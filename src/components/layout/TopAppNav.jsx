@@ -6,35 +6,26 @@ import { getSessionStaff, normalizeStaffRole } from '@/services/authService';
 
 const STAFF_SESSION_KEY = 'olitech_active_staff_v2';
 
-function openWorkspaceWindow(workspace) {
-  const width = workspace.id === 'pos' ? 1540 : 1440;
-  const height = workspace.id === 'pos' ? 960 : 900;
-  const left = Math.max(0, Math.round((window.screen.availWidth - width) / 2));
-  const top = Math.max(0, Math.round((window.screen.availHeight - height) / 2));
-  const popup = window.open(
-    `${window.location.origin}${workspace.path}`,
-    `olitech-workspace-${workspace.id}`,
-    `popup=yes,width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`,
-  );
-
-  if (!popup) return;
+function openWorkspaceTab(workspace) {
+  // Do not pass popup dimensions/features or a reusable window name here.
+  // Browsers then apply their normal _blank behavior (a new tab in standard setups).
+  const tab = window.open(`${window.location.origin}${workspace.path}`, '_blank');
+  if (!tab) return;
 
   // Supabase auth is shared through localStorage. Staff PIN identity is deliberately
-  // tab-scoped, so copy only the current staff session into this workspace window.
-  // This also refreshes an already-open named workspace if the active staff changed.
+  // tab-scoped, so copy only the current staff session into the new workspace tab.
   try {
     const staffSession = sessionStorage.getItem(STAFF_SESSION_KEY);
-    if (staffSession) popup.sessionStorage.setItem(STAFF_SESSION_KEY, staffSession);
-    else popup.sessionStorage.removeItem(STAFF_SESSION_KEY);
+    if (staffSession) tab.sessionStorage.setItem(STAFF_SESSION_KEY, staffSession);
+    else tab.sessionStorage.removeItem(STAFF_SESSION_KEY);
   } catch {
     // The destination still opens; its normal PIN gate handles an unavailable handoff.
   }
 
   try {
-    popup.opener = null;
-    popup.focus();
+    tab.opener = null;
   } catch {
-    // Browser window policies may prevent focus changes; navigation is already started.
+    // Browser policies may prevent changing opener; navigation is already started.
   }
 }
 
@@ -68,9 +59,9 @@ export default function TopAppNav({ workspace = 'backoffice' }) {
           const isCurrent = window.location.pathname === a.path
             || (a.id !== 'pos' && window.location.pathname.startsWith(a.path + '/'));
           return (
-            <button key={a.id} type="button" onClick={() => openWorkspaceWindow(a)}
-              aria-label={`Open ${a.label} in a separate window`}
-              title={`Open ${a.label} in a separate window`}
+            <button key={a.id} type="button" onClick={() => openWorkspaceTab(a)}
+              aria-label={`Open ${a.label} in a new tab`}
+              title={`Open ${a.label} in a new tab`}
               className={[
                 'flex min-w-[142px] shrink-0 items-center justify-center gap-2 rounded-md px-5 text-[13px] font-semibold transition-colors',
                 isCurrent ? 'bg-[var(--bg)] text-[var(--text)] shadow-[inset_0_-3px_0_var(--brand-primary)]' : 'text-[var(--text-muted)] hover:bg-[var(--bg)] hover:text-[var(--text)]',
