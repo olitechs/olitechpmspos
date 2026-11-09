@@ -277,7 +277,7 @@ test('POS access stays unlocked during navigation and is cleared when its browse
 test('Rooms / Apartments opens room setup by default while Room Planner keeps its dedicated route', () => {
   assert.ok(app.includes('path="rooms" element={<POSApp initialModule="rooms" embedded workspaceModule="frontoffice"/>}'));
   assert.match(roomsPage, /useState\(isDedicatedPlanner \? 'planner' : 'management'\)/);
-  assert.match(roomsPage, /Room Types & Facilities/);
+  assert.match(roomsPage, /Rooms, Types & Facilities/);
   assert.match(roomsPage, /<RoomManagement onChanged=\{pms\.reload\} \/>/);
   assert.match(roomsPage, /to="\/frontoffice\/structure"/);
   assert.match(roomManagement, /label="Floor"/);
