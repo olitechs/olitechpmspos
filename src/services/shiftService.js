@@ -58,8 +58,11 @@ export const shiftService = {
       p_notes: notes || null,
     });
     if (error) throw new Error(error.message);
-    if (data?.id) localStorage.setItem(`olitech_pos_shift_${propertyId}`, data.id);
-    return data;
+    const row = Array.isArray(data) ? data[0] : data;
+    const shift = row?.shift && typeof row.shift === 'object' ? row.shift : row;
+    if (!shift?.id) throw new Error('The database did not return the new shift record. Refresh and verify the shift before continuing.');
+    localStorage.setItem(`olitech_pos_shift_${propertyId}`, shift.id);
+    return shift;
   },
 
   async closeShift({ shiftId, countedCash, notes = '', managerApproved = false }) {
