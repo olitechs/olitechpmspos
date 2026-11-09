@@ -87,7 +87,7 @@ export default function POSApp({
         content = <Dashboard onNavigateToPOS={() => setActiveModule('pos')} />;
         break;
       case 'pos':
-        content = <POSContainer />;
+        content = <POSContainer onNavigateToCashier={() => setActiveModule('cashier')} />;
         break;
       case 'reservations':
         content = <Reservations />;
