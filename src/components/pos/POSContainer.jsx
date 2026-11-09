@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ArrowRightLeft, GitMerge, X, MoveRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStore } from '@/data/AppStore';
@@ -19,7 +20,6 @@ import { getUnsentOrderLines } from '@/services/printTemplates';
 import { pmsService } from '@/services/pmsService';
 import { posAccessService } from '@/services/posAccessService';
 import POSAccessGate, { POS_ACCESS_KEY } from '@/components/pos/POSAccessGate';
-import AccessPinTab from '@/components/pos/AccessPinTab';
 import MenuManager from '@/components/pos/MenuManager';
 import POSSettings from '@/components/pos/settings/POSSettings';
 
@@ -62,6 +62,7 @@ function buildKitchenTicketText(center, lines, { orderNumber, table, propertyNam
 // opening a new table session, taking an order, and settling the bill.
 export default function POSContainer({ onNavigateToCashier }) {
 	const store = useStore();
+	const navigate = useNavigate();
 	const { user } = useAuth();
 	const propertyId = user?.property?.id;
 	const sessionStaff = (() => { try { return JSON.parse(sessionStorage.getItem('olitech_active_staff_v2') || 'null'); } catch { return null; } })();
@@ -76,7 +77,6 @@ export default function POSContainer({ onNavigateToCashier }) {
 	const [posUnlocked, setPosUnlocked] = useState(false);
 	const [posAccessError, setPosAccessError] = useState('');
 	const [posAccessBusy, setPosAccessBusy] = useState(false);
-	const [pinSettingsOpen, setPinSettingsOpen] = useState(false);
 	const canManagePosPin = Boolean(user?.isPlatformOwner || ['owner', 'admin'].includes(String(user?.propertyRole || '').toLowerCase()) || ['hotel_admin', 'super_admin'].includes(String(user?.staff?.role || '').toLowerCase()));
 	useEffect(() => {
 		if (!propertyId) return;
@@ -86,7 +86,6 @@ export default function POSContainer({ onNavigateToCashier }) {
 		const accessKey = `${POS_ACCESS_KEY}:${propertyId}`;
 		setPosUnlocked(sessionStorage.getItem(accessKey) === '1');
 		setPosAccessError('');
-		setPinSettingsOpen(false);
 		setCurrentShift(null);
 		setShiftLoadError('');
 		setShiftLoading(true);
@@ -391,10 +390,9 @@ export default function POSContainer({ onNavigateToCashier }) {
 
 	if (!propertyId) return <div className="flex h-full items-center justify-center bg-[var(--canvas)] p-6 text-sm text-[var(--text-muted)]">Select an active property before opening POS.</div>;
 	if (shiftLoading) return <div className="flex h-full items-center justify-center bg-[var(--canvas)] text-sm text-[var(--text-muted)]">Loading POS shift…</div>;
-	if (!posUnlocked) return <>
-		<POSAccessGate propertyName={propertyName} logoUrl={user?.property?.logo_url} error={posAccessError} busy={posAccessBusy} canManagePin={canManagePosPin} onAdminReset={() => setPinSettingsOpen(true)} onSubmit={verifyPosAccess} />
-		{pinSettingsOpen && <div className="fixed inset-0 z-[120] flex items-center justify-center bg-[var(--overlay-scrim)] p-3"><div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-[var(--surface)] p-4 shadow-2xl sm:p-6"><div className="mb-4 flex items-center justify-between gap-3"><div><h2 className="text-lg font-bold text-[var(--text)]">Reset property POS PIN</h2><p className="text-xs text-[var(--text-muted)]">Administrator access required</p></div><button type="button" onClick={() => setPinSettingsOpen(false)} className="rounded-lg border border-[var(--border)] px-3 py-2 text-sm font-semibold text-[var(--text)]">Close</button></div><AccessPinTab /></div></div>}
-	</> ;
+	if (!posUnlocked) return (
+		<POSAccessGate propertyName={propertyName} logoUrl={user?.property?.logo_url} error={posAccessError} busy={posAccessBusy} canManagePin={canManagePosPin} onAdminReset={() => navigate('/pos/access-pin')} onSubmit={verifyPosAccess} />
+	);
 	return (
 		<div className="flex flex-col h-full overflow-hidden">
 			<AppHeader activeTab={activeTab} onTabChange={setActiveTab} activeTable={activeTable} shift={currentShift} hasOpenShift={Boolean(currentShift)} onOpenShifts={() => onNavigateToCashier?.()} propertyName={propertyName} onCloseShift={currentShift && canCloseShift ? ()=>onNavigateToCashier?.() : null} onManageMenu={canCloseShift ? ()=>setMenuManagerOpen(true) : null} onOpenSettings={()=>setSettingsOpen(true)} />

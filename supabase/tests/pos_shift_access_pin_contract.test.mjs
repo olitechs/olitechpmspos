@@ -45,3 +45,16 @@ test('close-shift approval controls use the defined manager permission flag', ()
   assert.match(closeShiftUi, /canApproveWithoutStaffPin/);
   assert.doesNotMatch(closeShiftUi, /canApproveAsPropertyAdmin/);
 });
+
+test('POS PIN reset is routed to an admin-only page with first-time creation copy', () => {
+  const app = readFileSync(new URL('../../src/App.jsx', import.meta.url), 'utf8');
+  const container = readFileSync(new URL('../../src/components/pos/POSContainer.jsx', import.meta.url), 'utf8');
+  const page = readFileSync(new URL('../../src/pages/POSPinSettingsPage.jsx', import.meta.url), 'utf8');
+  const pinTab = readFileSync(new URL('../../src/components/pos/AccessPinTab.jsx', import.meta.url), 'utf8');
+  assert.ok(app.includes('path="/pos/access-pin" element={<POSPinSettingsPage/>'));
+  assert.ok(container.includes("navigate('/pos/access-pin')"));
+  assert.match(page, /canManagePin/);
+  assert.ok(page.includes('<Navigate to="/pos" replace />'));
+  assert.match(pinTab, /Create your property POS PIN/);
+  assert.match(pinTab, /Create POS PIN/);
+});
