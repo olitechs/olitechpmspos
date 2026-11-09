@@ -390,9 +390,9 @@ export default function POSContainer({ onNavigateToCashier }) {
 
 	if (!propertyId) return <div className="flex h-full items-center justify-center bg-[var(--canvas)] p-6 text-sm text-[var(--text-muted)]">Select an active property before opening POS.</div>;
 	if (shiftLoading) return <div className="flex h-full items-center justify-center bg-[var(--canvas)] text-sm text-[var(--text-muted)]">Loading POS shift…</div>;
-	if (!posUnlocked) return <>
+	if (!posUnlocked) return (
 		<POSAccessGate propertyName={propertyName} logoUrl={user?.property?.logo_url} error={posAccessError} busy={posAccessBusy} canManagePin={canManagePosPin} onAdminReset={() => navigate('/pos/access-pin')} onSubmit={verifyPosAccess} />
-	</> ;
+	);
 	return (
 		<div className="flex flex-col h-full overflow-hidden">
 			<AppHeader activeTab={activeTab} onTabChange={setActiveTab} activeTable={activeTable} shift={currentShift} hasOpenShift={Boolean(currentShift)} onOpenShifts={() => onNavigateToCashier?.()} propertyName={propertyName} onCloseShift={currentShift && canCloseShift ? ()=>onNavigateToCashier?.() : null} onManageMenu={canCloseShift ? ()=>setMenuManagerOpen(true) : null} onOpenSettings={()=>setSettingsOpen(true)} />
