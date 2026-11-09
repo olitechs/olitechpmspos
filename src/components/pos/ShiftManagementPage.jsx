@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -24,6 +24,7 @@ const formatDateTime = (value) => {
 };
 
 export default function ShiftManagementPage({ propertyId, currentShift, loadError, onOpened }) {
+  const [submitError, setSubmitError] = useState('');
   const {
     register,
     handleSubmit,
@@ -35,13 +36,18 @@ export default function ShiftManagementPage({ propertyId, currentShift, loadErro
   });
 
   const submit = async (values) => {
-    const shift = await shiftService.openShift({
-      propertyId,
-      openingCash: values.openingCash,
-      notes: values.notes,
-    });
-    reset();
-    onOpened?.(shift);
+    setSubmitError('');
+    try {
+      const shift = await shiftService.openShift({
+        propertyId,
+        openingCash: values.openingCash,
+        notes: values.notes,
+      });
+      reset();
+      onOpened?.(shift);
+    } catch (error) {
+      setSubmitError(error?.message || 'Unable to open the POS shift. Please try again.');
+    }
   };
 
   return (
@@ -126,6 +132,7 @@ export default function ShiftManagementPage({ propertyId, currentShift, loadErro
           </div>
 
           <form onSubmit={handleSubmit(submit)} className="space-y-4" noValidate>
+            {submitError && <div role="alert" className="rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] p-3 text-sm font-semibold text-[var(--danger-text)]">{submitError}</div>}
             <div>
               <label htmlFor="pos-shift-opening-cash" className="mb-1.5 block text-sm font-semibold text-[var(--text)]">Opening cash float (KES)</label>
               <input
