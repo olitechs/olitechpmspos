@@ -5,6 +5,20 @@ import { getRoomPlannerResponsiveMode } from '../../lib/roomPlannerResponsive.js
 
 const source = readFileSync(new URL('./RoomPlanner.jsx', import.meta.url), 'utf8');
 
+test('reservation hover card shows booking, stay, meal plan, payment and Folio details', () => {
+  assert.ok(source.includes('className="reservation-hover-card"'));
+  assert.ok(source.includes('Reservation No. {getPlannerReservationNumber(rv)}'));
+  assert.ok(source.includes('formatPlannerDate(rv.checkIn)'));
+  assert.ok(source.includes('differenceInCalendarDays(parseDate(rv.checkOut),parseDate(rv.checkIn))'));
+  assert.ok(source.includes('Total room:'));
+  assert.ok(source.includes('Booking notes:'));
+  assert.ok(source.includes('getPlannerMealDescription(rv.mealPlan)'));
+  assert.ok(source.includes('getPlannerPaymentDetails(rv).method'));
+  assert.ok(source.includes('>Folio</button>'));
+  assert.ok(source.includes('openFolio(rv)'));
+  assert.ok(source.includes('reservation-bar:hover .reservation-hover-card'));
+});
+
 test('room planner defaults to a 15-day window centred around today', () => {
   assert.ok(source.includes('export const getRollingPlannerRange = (today) =>'));
   assert.ok(source.includes('from: dateKey(subDays(today, 2))'));
