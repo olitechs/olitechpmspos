@@ -1,0 +1,53 @@
+Olitech PMS + POS
+Proprietary Software License
+
+Copyright (c) 2026 OliTechs. All rights reserved.
+
+1. OWNERSHIP
+This software, including its source code, database schemas, documentation,
+designs, and related materials (the "Software"), is the exclusive property of
+OliTechs ("Owner"). No title or ownership rights are transferred to you.
+
+2. NO LICENSE GRANTED
+No right or licence to use, copy, modify, merge, publish, distribute,
+sublicense, sell, host, or create derivative works of the Software is granted
+to any person, except under a separate written agreement signed by the Owner
+(for example, a paid subscription or commercial licence).
+
+3. VISIBILITY IS NOT PERMISSION
+The fact that the Software's source code may be visible on a public website,
+including GitHub, does not grant any licence or permission. Viewing the code
+is permitted only to the extent required by the terms of the hosting platform.
+Forking through the platform's built-in features is permitted solely for the
+purpose of viewing, and creates no right to use or distribute the Software.
+
+4. RESTRICTIONS
+Without prior written permission from the Owner, you may not:
+  a) use the Software in production or for any commercial purpose;
+  b) copy, redistribute, or resell the Software or any part of it;
+  c) offer the Software, or a service derived from it, to third parties;
+  d) remove or alter any copyright, trademark, or proprietary notices;
+  e) reverse engineer or attempt to extract the Software for use in a
+     competing product.
+
+5. TRADEMARKS
+"Olitech", "OliTechs", and associated logos are trademarks of the Owner. No
+trademark rights are granted.
+
+6. NO WARRANTY
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+OWNER BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY ARISING FROM, OUT
+OF, OR IN CONNECTION WITH THE SOFTWARE OR ITS USE.
+
+7. TERMINATION
+Any use in breach of this licence is unauthorised and may be pursued under
+applicable law, including the laws of Kenya.
+
+8. THIRD-PARTY COMPONENTS
+The Software depends on third-party open-source packages (such as React,
+Vite, Tailwind CSS, shadcn/ui, and Supabase client libraries). These remain
+under their own licences, which are unaffected by this notice.
+
+For licensing enquiries, contact the Owner.
