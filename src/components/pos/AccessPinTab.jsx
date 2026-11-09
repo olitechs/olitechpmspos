@@ -65,8 +65,8 @@ export default function AccessPinTab() {
       )}
     </section>
     <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
-      <h4 className="font-bold text-[var(--text)]">Reset POS PIN</h4>
-      <p className="mt-1 text-sm text-[var(--text-muted)]">Choose a new four-digit code. The previous code stops working immediately.</p>
+      <h4 className="font-bold text-[var(--text)]">{status?.is_default || !status?.configured ? 'Create your property POS PIN' : 'Reset POS PIN'}</h4>
+      <p className="mt-1 text-sm text-[var(--text-muted)]">{status?.is_default || !status?.configured ? 'Set a private four-digit code to replace the initial default PIN before normal operations.' : 'Choose a new four-digit code. The previous code stops working immediately.'}</p>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <label className="block text-xs font-semibold text-[var(--text-muted)]">New 4-digit PIN
           <input value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))} inputMode="numeric" autoComplete="new-password" type="password" maxLength={4} className="mt-1 w-full rounded-xl border border-[var(--border)] bg-[var(--canvas)] p-3 text-lg tracking-[.35em] text-[var(--text)]" placeholder="••••"/>
@@ -76,7 +76,7 @@ export default function AccessPinTab() {
         </label>
       </div>
       {error && <p role="alert" className="mt-3 rounded-xl bg-[var(--danger-soft)] p-3 text-sm font-medium text-[var(--danger-text)]">{error}</p>}
-      <button type="button" disabled={busy || loading || pin.length !== 4 || confirmPin.length !== 4} onClick={save} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl bg-[var(--primary)] px-5 py-3 text-sm font-bold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40">{busy ? 'Saving…' : 'Save new POS PIN'}</button>
+      <button type="button" disabled={busy || loading || pin.length !== 4 || confirmPin.length !== 4} onClick={save} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl bg-[var(--primary)] px-5 py-3 text-sm font-bold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40">{busy ? 'Saving…' : status?.is_default || !status?.configured ? 'Create POS PIN' : 'Save new POS PIN'}</button>
     </section>
   </div>;
 }
