@@ -19,6 +19,14 @@ test('reservation hover card shows booking, stay, meal plan, payment and Folio d
   assert.ok(source.includes('reservation-bar:hover .reservation-hover-card'));
 });
 
+test('PMS reservation mapping supplies reference, currency and payment metadata to planner cards', () => {
+  const store = readFileSync(new URL('../../data/PmsStore.jsx', import.meta.url), 'utf8');
+  assert.ok(store.includes('reservationNumber: r.confirmation_code'));
+  assert.ok(store.includes('currency: r.currency || r.booking_details?.currency'));
+  assert.ok(store.includes('paymentMethod: r.payment_method'));
+  assert.ok(store.includes('paidAt: r.paid_at'));
+});
+
 test('room planner defaults to a 15-day window centred around today', () => {
   assert.ok(source.includes('export const getRollingPlannerRange = (today) =>'));
   assert.ok(source.includes('from: dateKey(subDays(today, 2))'));
