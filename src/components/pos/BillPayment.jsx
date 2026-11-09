@@ -49,10 +49,40 @@ export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrde
   try{
    const currentShift=await pmsService.getOpenCashierShift(propertyId);
    if(!currentShift?.id){setError('No open POS shift. Open a shift before taking payments.');return;}
-   const needsRecipeLookup=orderLines.some(line=>!isProductUuid(line.productId||line.product_id));
-   let recipeNames=[];let recipeLookupAvailable=true;
-   if(needsRecipeLookup){try{recipeNames=(await inventoryService.listRecipes(propertyId)).filter(recipe=>recipe.active!==false).map(recipe=>recipe.menu_item_name).filter(Boolean)}catch(recipeError){recipeLookupAvailable=false;console.warn('[POS] Recipe stock mapping could not be checked',recipeError)}}
-   const saleItems=buildPosSaleItems(orderLines,recipeNames,recipeLookupAvailable);
+   const needsStockMappingLookup=orderLines.some(line=>!isProductUuid(line.productId||line.product_id));
+   let recipeNames=[];let productRows=[];let stockLookupAvailable=true;
+   if(needsStockMappingLookup){
+    try{
+     const [recipes,products]=await Promise.all([
+      inventoryService.listRecipes(propertyId),
+      inventoryService.listProducts(propertyId)
+     ]);
+     recipeNames=(recipes||[]).filter(recipe=>recipe.active!==false).map(recipe=>recipe.menu_item_name).filter(Boolean);
+     productRows=products||[];
+    }catch(stockLookupError){
+     stockLookupAvailable=false;
+     console.warn('[POS] Store product / recipe stock mapping could not be checked',stockLookupError);
+    }
+   }
+   // Older open table sessions can contain menu lines without a product UUID.
+   // Recover only an unambiguous exact-name match within this property; never
+   // guess between duplicate Store products or create a new inventory item.
+   const normalizeStockName=value=>String(value||'').normalize('NFKD').replace(/[\\u0300-\\u036f]/g,'').trim().replace(/\\s+/g,' ').toLocaleLowerCase('en');
+   const productsByName=new Map();
+   for(const product of productRows){
+    const key=normalizeStockName(product.name);
+    if(!key)continue;
+    const matches=productsByName.get(key)||[];
+    matches.push(product);
+    productsByName.set(key,matches);
+   }
+   const mappedOrderLines=orderLines.map(line=>{
+    if(isProductUuid(line.productId||line.product_id))return line;
+    const matches=productsByName.get(normalizeStockName(line.name||line.item_name))||[];
+    if(matches.length!==1)return line;
+    return {...line,productId:matches[0].id,product_id:matches[0].id};
+   });
+   const saleItems=buildPosSaleItems(mappedOrderLines,recipeNames,stockLookupAvailable);
    const saleIdempotencyKey=createPosSaleIdempotencyKey({propertyId,tableKey:table.id,orderNumber:stableOrderNumber});
    const unlinkedStockItems=saleItems.filter(item=>item.stock_tracking_status==='unlinked');
    const unverifiedStockItems=saleItems.filter(item=>item.stock_tracking_status==='unverified');
