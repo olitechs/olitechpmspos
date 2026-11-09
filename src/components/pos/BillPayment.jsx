@@ -67,7 +67,7 @@ export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrde
    // Older open table sessions can contain menu lines without a product UUID.
    // Recover only an unambiguous exact-name match within this property; never
    // guess between duplicate Store products or create a new inventory item.
-   const normalizeStockName=value=>String(value||'').normalize('NFKD').replace(/[\\u0300-\\u036f]/g,'').trim().replace(/\\s+/g,' ').toLocaleLowerCase('en');
+   const normalizeStockName=value=>String(value||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').trim().replace(/\s+/g,' ').toLocaleLowerCase('en');
    const productsByName=new Map();
    for(const product of productRows){
     const key=normalizeStockName(product.name);
