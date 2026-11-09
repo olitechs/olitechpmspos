@@ -9,7 +9,7 @@ import { NAVY, TEAL, SURFACE, SURFACE2, BORDER, MUTED, DESTRUCTIVE } from '@/dat
 export default function Rooms() {
   const pms = usePms();
   const { pathname } = useLocation();
-  const isDedicatedPlanner = /^\\/frontoffice\\/room-planner\\/?$/.test(pathname);
+  const isDedicatedPlanner = pathname === '/frontoffice/room-planner' || pathname === '/frontoffice/room-planner/';
   const [tab, setTab] = useState(isDedicatedPlanner ? 'planner' : 'management');
   const [openRoom, setOpenRoom] = useState(null);
   const [actionError, setActionError] = useState('');
