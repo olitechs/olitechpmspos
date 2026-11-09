@@ -256,14 +256,14 @@ test('Room Planner toolbar exposes the approved controls and responsive dimensio
   for (const label of ['Add Closures', 'New reservation', 'Today', 'Start date', 'End date', 'Select month']) {
     assert.ok(roomPlanner.includes(label), 'missing toolbar control: ' + label);
   }
-  assert.match(roomPlanner, /width:141/);
-  assert.match(roomPlanner, /width:131/);
-  assert.match(roomPlanner, /width:267/);
-  assert.match(roomPlanner, /width:130/);
+  // Redesign: fluid toolbar (no hard-coded pixel widths), 38px desktop / 44px touch controls.
+  assert.doesNotMatch(roomPlanner, /style=\{\{width:(141|131|267|130)\}\}/);
   assert.match(roomPlanner, /height:38px/);
+  assert.match(roomPlanner, /pointer:coarse[^ {]*\{[^}]*height:44px/);
   assert.match(roomPlanner, /@media\(max-width:1099px\)/);
-  assert.match(roomPlanner, /shiftVisibleRange\(-15\)/);
-  assert.match(roomPlanner, /shiftVisibleRange\(15\)/);
+  assert.match(roomPlanner, /shiftVisibleRange\(-\(Number\(viewLength\)\|\|15\)\)/);
+  assert.match(roomPlanner, /shiftVisibleRange\(Number\(viewLength\)\|\|15\)/);
+  assert.match(roomPlanner, /applyViewLength\(days\)/);
   assert.match(roomPlanner, /subDays\(today, 2\)/);
   assert.match(roomPlanner, /addDays\(today, 12\)/);
   assert.match(roomPlanner, /onClick=\{addClosure\}/);
