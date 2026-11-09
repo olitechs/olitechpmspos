@@ -1,15 +1,39 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { LockKeyhole } from 'lucide-react';
+import { ExternalLink, LockKeyhole } from 'lucide-react';
 import { MAIN_NAV, canAccessApp, normalizeAppRole } from '@/data/modules/navArchitecture';
 import { useAuth } from '@/lib/AuthContext';
 import { getSessionStaff, normalizeStaffRole } from '@/services/authService';
 
+const STAFF_SESSION_KEY = 'olitech_active_staff_v2';
+
+function openWorkspaceTab(workspace) {
+  // Do not pass popup dimensions/features: browsers then open a normal tab
+  // in the current browser window (subject to the user's browser preferences).
+  const tab = window.open(`${window.location.origin}${workspace.path}`, '_blank');
+  if (!tab) return;
+
+  // Same-origin window.open starts the new tab with a copy of sessionStorage.
+  // Refresh the staff PIN identity explicitly in case the current tab changed.
+  try {
+    const staffSession = sessionStorage.getItem(STAFF_SESSION_KEY);
+    if (staffSession) tab.sessionStorage.setItem(STAFF_SESSION_KEY, staffSession);
+    else tab.sessionStorage.removeItem(STAFF_SESSION_KEY);
+  } catch {
+    // The destination's normal PIN gate handles an unavailable handoff.
+  }
+
+  try {
+    tab.opener = null;
+    tab.focus();
+  } catch {
+    // Browser policies may prevent focus changes; the tab is already opening.
+  }
+}
+
 export default function TopAppNav({ workspace = 'backoffice' }) {
   const { user } = useAuth();
-  const navigate = useNavigate();
-  // Back Office is the main workspace and the only place that can launch
-  // the other workspaces. Navigation stays in this browser tab and window.
+  // Back Office is the main workspace and can launch the other workspaces.
+  // Each workspace opens as a tab in the same browser window, never a popup.
   if (workspace !== 'backoffice') return null;
   const s = getSessionStaff();
   const raw = s?.role || user?.staff?.role || user?.propertyRole || user?.role;
@@ -36,14 +60,14 @@ export default function TopAppNav({ workspace = 'backoffice' }) {
           const isCurrent = window.location.pathname === a.path
             || (a.id !== 'pos' && window.location.pathname.startsWith(a.path + '/'));
           return (
-            <button key={a.id} type="button" onClick={() => navigate(a.path)}
-              aria-label={`Go to ${a.label}`}
-              title={`Go to ${a.label}`}
+            <button key={a.id} type="button" onClick={() => openWorkspaceTab(a)}
+              aria-label={`Open ${a.label} in a new tab`}
+              title={`Open ${a.label} in a new tab`}
               className={[
                 'flex min-w-[142px] shrink-0 items-center justify-center gap-2 rounded-md px-5 text-[13px] font-semibold transition-colors',
                 isCurrent ? 'bg-[var(--bg)] text-[var(--text)] shadow-[inset_0_-3px_0_var(--brand-primary)]' : 'text-[var(--text-muted)] hover:bg-[var(--bg)] hover:text-[var(--text)]',
               ].join(' ')}>
-              <I size={17}/><span>{a.label}</span>
+              <I size={17}/><span>{a.label}</span><ExternalLink size={13} className="text-[var(--text-muted)]" aria-hidden="true"/>
             </button>
           );
         })}
