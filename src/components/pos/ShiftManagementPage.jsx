@@ -61,7 +61,7 @@ export default function ShiftManagementPage({ propertyId, currentShift, loadErro
           </p>
         </div>
         {currentShift ? (
-          <span className="inline-flex items-center gap-2 rounded-full bg-[var(--status-paid)] px-3 py-1.5 text-xs font-bold text-white">
+          <span className="inline-flex items-center gap-2 rounded-full bg-[var(--status-paid)] px-3 py-1.5 text-xs font-bold text-[var(--pay-paid-fg)]">
             <CheckCircle2 size={15} /> Shift open
           </span>
         ) : (
@@ -89,7 +89,7 @@ export default function ShiftManagementPage({ propertyId, currentShift, loadErro
               <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Active property shift</p>
               <h2 className="mt-1 text-lg font-bold text-[var(--text)]">{currentShift.shift_no || 'Current shift'}</h2>
             </div>
-            <span className="rounded-full bg-[var(--status-paid)] px-3 py-1 text-xs font-bold text-white">OPEN</span>
+            <span className="rounded-full bg-[var(--status-paid)] px-3 py-1 text-xs font-bold text-[var(--pay-paid-fg)]">OPEN</span>
           </div>
           <div className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3">
             <div className="rounded-2xl border border-[var(--border)] p-4">
