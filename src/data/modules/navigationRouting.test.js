@@ -135,20 +135,21 @@ test('Storekeeper dashboard exposes required filters, operational sections and h
   assert.doesNotMatch(storekeeperDashboard, /#[0-9a-fA-F]{3,8}\b/);
 });
 
-test('each workspace opens in its own named browser window', () => {
-  assert.match(topNav, /window\.open\([\s\S]*?olitech-workspace-\$\{workspace\.id\}/);
-  assert.match(topNav, /popup=yes/);
-  assert.match(topNav, /onClick=\{\(\) => openWorkspaceWindow\(a\)\}/);
-  assert.match(topNav, /aria-label=\{\`Open \$\{a\.label\} in a separate window\`\}/);
+test('each workspace opens in a new tab in the current browser window, not a popup window', () => {
+  assert.match(topNav, /window\.open\([\s\S]*?, '_blank'\)/);
+  assert.match(topNav, /onClick=\{\(\) => openWorkspaceTab\(a\)\}/);
+  assert.match(topNav, /aria-label=\{\`Open \$\{a\.label\} in a new tab\`\}/);
+  assert.doesNotMatch(topNav, /popup=yes|width=\$\{width\}|height=\$\{height\}/);
+  assert.doesNotMatch(topNav, /openWorkspaceWindow/);
   assert.doesNotMatch(topNav, /<NavLink/);
 });
 
-test('workspace window handoff preserves the current tab-scoped staff PIN identity', () => {
+test('workspace tab handoff preserves the current tab-scoped staff PIN identity', () => {
   assert.match(topNav, /const STAFF_SESSION_KEY = 'olitech_active_staff_v2'/);
   assert.match(topNav, /sessionStorage\.getItem\(STAFF_SESSION_KEY\)/);
-  assert.match(topNav, /popup\.sessionStorage\.setItem\(STAFF_SESSION_KEY, staffSession\)/);
-  assert.match(topNav, /popup\.sessionStorage\.removeItem\(STAFF_SESSION_KEY\)/);
-  assert.match(topNav, /popup\.opener = null/);
+  assert.match(topNav, /tab\.sessionStorage\.setItem\(STAFF_SESSION_KEY, staffSession\)/);
+  assert.match(topNav, /tab\.sessionStorage\.removeItem\(STAFF_SESSION_KEY\)/);
+  assert.match(topNav, /tab\.opener = null/);
 });
 
 test('workspace layouts own one shell and embedded module routes suppress legacy navigation', () => {
