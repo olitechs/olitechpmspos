@@ -77,7 +77,7 @@ export default function POSContainer({ onNavigateToCashier }) {
 	const [posAccessError, setPosAccessError] = useState('');
 	const [posAccessBusy, setPosAccessBusy] = useState(false);
 	const [pinSettingsOpen, setPinSettingsOpen] = useState(false);
-	const canManagePosPin = Boolean(user?.isPlatformOwner || ['owner', 'admin'].includes(String(user?.propertyRole || '').toLowerCase()) || ['hotel_admin', 'super_admin'].includes(String(user?.staff?.role || '').toLowerCase()));
+	const canManagePosPin = Boolean(user?.isPlatformOwner || ['owner', 'admin', 'hotel_admin', 'super_admin'].includes(String(user?.propertyRole || '').toLowerCase()) || ['owner', 'admin', 'hotel_admin', 'super_admin'].includes(String(sessionStaff?.role || '').toLowerCase()) || ['hotel_admin', 'super_admin'].includes(String(user?.staff?.role || '').toLowerCase()));
 	useEffect(() => {
 		if (!propertyId) return;
 		// Keep the POS access grant for this browser window only. Navigating between
