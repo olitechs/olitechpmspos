@@ -2,13 +2,15 @@
 
 # OliTechs
 
+© 2026 OliTechs. All rights reserved. See LICENSE.
+
 <br />
 
 **Hospitality operations, connected.**
 
 A multi-workspace Property Management System and Point of Sale for hotels, resorts, lodges, restaurants and serviced apartments.
 
-[Live application](https://olitechpmspos.vercel.app) · **React 18** · **Vite 6** · **Supabase/Postgres** · **MIT**
+[Live application](https://olitechpmspos.vercel.app) · **React 18** · **Vite 6** · **Supabase/Postgres** · ![License](https://img.shields.io/badge/license-Proprietary-red)
 
 [Overview](#1-product-overview) · [Workflows](#3-end-to-end-workflows) · [Modules](#4-module-by-module-guide) · [Architecture](#5-technical-architecture) · [Setup](#9-local-development-setup)
 
@@ -433,7 +435,7 @@ The product name is always spelled **OliTechs**. Application color values are de
 
 ## License
 
-[MIT](LICENSE)
+[Proprietary](LICENSE)
 
 <div align="center">
 
