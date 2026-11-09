@@ -54,7 +54,9 @@ export default function POSAccessGate({ propertyName, error, busy, canManagePin,
 
         <div className="mt-3 flex w-full items-center justify-between px-1 text-[10px] text-[var(--pos-gate-muted)] sm:text-xs">
           <span className="truncate">{propertyName || 'OliTechs POS'}</span>
-          {canManagePin && <button type="button" onClick={onAdminReset} className="font-semibold text-[var(--pos-gate-accent)] underline underline-offset-4">Reset POS PIN</button>}
+          {canManagePin
+            ? <button type="button" onClick={onAdminReset} className="font-semibold text-[var(--pos-gate-accent)] underline underline-offset-4">Reset POS PIN</button>
+            : <span className="text-right">Need a PIN? Ask your property administrator to set or reset it.</span>}
         </div>
       </section>
     </main>
