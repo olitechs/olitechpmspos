@@ -35,12 +35,9 @@ export const shiftService = {
   },
 
   async getOpenTables(propertyId) {
-    const { data, error } = await supabase
-      .from('pos_table_sessions')
-      .select('id,table_key,table_number,status,order_number')
-      .eq('property_id', propertyId)
-      .neq('status', 'closed')
-      .order('table_number', { ascending: true });
+    const { data, error } = await supabase.rpc('fn_list_active_pos_table_sessions', {
+      p_property_id: propertyId,
+    });
     if (error) throw new Error(error.message);
     return data || [];
   },
