@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { AlertCircle, CheckCircle2, Clock3, Wallet } from 'lucide-react';
+import { AlertCircle, BarChart3, CheckCircle2, Clock3, RefreshCw, Wallet } from 'lucide-react';
 import { shiftService } from '@/services/shiftService';
 
 const openingShiftSchema = z.object({
@@ -25,6 +25,35 @@ const formatDateTime = (value) => {
 
 export default function ShiftManagementPage({ propertyId, currentShift, loadError, onOpened }) {
   const [submitError, setSubmitError] = useState('');
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const [summary, setSummary] = useState(null);
+  const [summaryTables, setSummaryTables] = useState([]);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryError, setSummaryError] = useState('');
+
+  const loadSummary = async () => {
+    if (!currentShift?.id) return;
+    setSummaryLoading(true);
+    setSummaryError('');
+    try {
+      const [report, tables] = await Promise.all([
+        shiftService.getShiftReport(currentShift.id),
+        shiftService.getOpenTables(propertyId),
+      ]);
+      setSummary(report);
+      setSummaryTables(Array.isArray(tables) ? tables : []);
+    } catch (error) {
+      setSummaryError(error?.message || 'Unable to load the current shift summary.');
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
+
+  const toggleSummary = async () => {
+    const next = !summaryOpen;
+    setSummaryOpen(next);
+    if (next) await loadSummary();
+  };
   const {
     register,
     handleSubmit,
@@ -71,6 +100,63 @@ export default function ShiftManagementPage({ propertyId, currentShift, loadErro
         )}
       </div>
 
+      {currentShift && summaryOpen && (
+        <section className="mt-5 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-sm" aria-live="polite">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-5 py-4">
+            <div>
+              <h2 className="font-bold text-[var(--text)]">Current shift summary</h2>
+              <p className="mt-1 text-xs text-[var(--text-muted)]">Live totals from posted receipts, refunds and active table sessions.</p>
+            </div>
+            <button type="button" onClick={loadSummary} disabled={summaryLoading} className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[var(--border)] px-3 text-xs font-bold text-[var(--text)] disabled:opacity-50">
+              <RefreshCw size={14} className={summaryLoading ? 'animate-spin' : ''} /> Refresh
+            </button>
+          </div>
+          <div className="p-5">
+            {summaryLoading && <p role="status" className="text-sm text-[var(--text-muted)]">Loading shift totals…</p>}
+            {summaryError && <p role="alert" className="mb-3 rounded-xl bg-[var(--danger-soft)] p-3 text-sm text-[var(--danger-text)]">{summaryError}</p>}
+            {summary && (
+              <>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {[
+                    ['Gross sales', summary.grossSales],
+                    ['Refunds', summary.refundsTotal],
+                    ['Voided value', summary.voidedValue],
+                    ['Net sales', summary.totalSales],
+                    ['Cash', summary.payments?.cash?.amount],
+                    ['M-Pesa', summary.payments?.mpesa?.amount],
+                    ['Card', summary.payments?.card?.amount],
+                    ['Bank', summary.payments?.bank?.amount],
+                    ['Room charge', summary.payments?.room_charge?.amount],
+                    ['Other', summary.payments?.other?.amount],
+                    ['Expected drawer cash', summary.expectedCash],
+                  ].map(([label, value]) => (
+                    <div key={label} className="rounded-xl border border-[var(--border)] bg-[var(--canvas)] p-3">
+                      <p className="text-xs font-semibold text-[var(--text-muted)]">{label}</p>
+                      <p className="mt-1 text-base font-bold tabular-nums text-[var(--text)]">KES {money(value)}</p>
+                    </div>
+                  ))}
+                  <div className="rounded-xl border border-[var(--border)] bg-[var(--canvas)] p-3">
+                    <p className="text-xs font-semibold text-[var(--text-muted)]">Posted receipts</p>
+                    <p className="mt-1 text-base font-bold tabular-nums text-[var(--text)]">{Number(summary.totalTransactions || 0).toLocaleString('en-KE')}</p>
+                  </div>
+                  <div className="rounded-xl border border-[var(--border)] bg-[var(--canvas)] p-3">
+                    <p className="text-xs font-semibold text-[var(--text-muted)]">Active tables</p>
+                    <p className="mt-1 text-base font-bold tabular-nums text-[var(--text)]">{summaryTables.length}</p>
+                  </div>
+                </div>
+                {summaryTables.length > 0 && (
+                  <div className="mt-4 rounded-xl border border-[var(--warning)] bg-[var(--warning-soft)] p-3">
+                    <p className="text-sm font-bold text-[var(--warning-text)]">Tables still open</p>
+                    <p className="mt-1 text-sm text-[var(--warning-text)]">{summaryTables.map((table) => 'Table ' + (table.table_number || table.table_key || '—')).join(', ')}</p>
+                    <p className="mt-1 text-xs text-[var(--warning-text)]">These sessions must be settled or cleared before the shift can be closed.</p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </section>
+      )}
+
       {loadError && (
         <div role="alert" className="mb-5 flex items-start gap-3 rounded-2xl border border-[var(--danger)] bg-[var(--danger-soft)] p-4 text-sm text-[var(--danger-text)]">
           <AlertCircle size={18} className="mt-0.5 shrink-0" />
@@ -106,8 +192,11 @@ export default function ShiftManagementPage({ propertyId, currentShift, loadErro
             </div>
           </div>
           {currentShift.notes && <p className="border-t border-[var(--border)] px-5 py-3 text-sm text-[var(--text-muted)]">{currentShift.notes}</p>}
-          <div className="border-t border-[var(--border)] px-5 py-4 text-xs text-[var(--text-muted)]">
-            This shift is shared by the property’s POS team. Waiter sales are recorded against this open shift.
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] px-5 py-4">
+            <p className="text-xs text-[var(--text-muted)]">This shift is shared by the property’s POS team. Waiter sales are recorded against this open shift.</p>
+            <button type="button" onClick={toggleSummary} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm font-bold text-[var(--primary)] hover:bg-[var(--primary-soft)]">
+              <BarChart3 size={16} /> {summaryOpen ? 'Hide shift summary' : 'View shift summary'}
+            </button>
           </div>
         </section>
       ) : (

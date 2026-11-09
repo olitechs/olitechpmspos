@@ -3,9 +3,48 @@ import { buildShiftSalesSummary, normalizeShiftPaymentMethod } from '@/services/
 
 export const shiftService = {
   async getCurrentShift(propertyId) {
+    if (!propertyId) return null;
+
+    const normalizeShift = (value) => {
+      const row = Array.isArray(value) ? value[0] : value;
+      if (!row || typeof row !== 'object') return null;
+      const nested = row.shift && typeof row.shift === 'object' ? row.shift
+        : row.current_shift && typeof row.current_shift === 'object' ? row.current_shift
+        : row;
+      const shift = {
+        ...nested,
+        id: nested.id || nested.shift_id || row.id || row.shift_id || null,
+        shift_no: nested.shift_no || nested.shift_number || row.shift_no || row.shift_number || null,
+        opened_at: nested.opened_at || nested.started_at || row.opened_at || row.started_at || null,
+        opening_cash: nested.opening_cash ?? nested.opening_float ?? row.opening_cash ?? row.opening_float ?? 0,
+        date: nested.date || nested.business_date || row.date || row.business_date || null,
+      };
+      return shift.id ? shift : null;
+    };
+
     const { data, error } = await supabase.rpc('fn_current_pos_shift', { p_property_id: propertyId });
     if (error) throw new Error(error.message);
-    return data || null;
+    const rpcShift = normalizeShift(data);
+    // Some deployed RPC versions return a composite wrapper rather than the
+    // plain pos_shifts row. Verify the canonical row directly if its identity
+    // or display fields are missing. This also finds an open shift carried
+    // across midnight; an open shift must not disappear just because its
+    // business date is yesterday.
+    if (rpcShift?.id && rpcShift.opened_at && rpcShift.shift_no) return rpcShift;
+
+    const { data: row, error: rowError } = await supabase
+      .from('pos_shifts')
+      .select('*')
+      .eq('property_id', propertyId)
+      .eq('status', 'open')
+      .order('opened_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (rowError) {
+      if (rpcShift?.id) return rpcShift;
+      throw new Error(rowError.message);
+    }
+    return normalizeShift(row) || rpcShift;
   },
 
   async openShift({ propertyId, openingCash, notes = '' }) {
@@ -19,8 +58,11 @@ export const shiftService = {
       p_notes: notes || null,
     });
     if (error) throw new Error(error.message);
-    if (data?.id) localStorage.setItem(`olitech_pos_shift_${propertyId}`, data.id);
-    return data;
+    const row = Array.isArray(data) ? data[0] : data;
+    const shift = row?.shift && typeof row.shift === 'object' ? row.shift : row;
+    if (!shift?.id) throw new Error('The database did not return the new shift record. Refresh and verify the shift before continuing.');
+    localStorage.setItem(`olitech_pos_shift_${propertyId}`, shift.id);
+    return shift;
   },
 
   async closeShift({ shiftId, countedCash, notes = '', managerApproved = false }) {
