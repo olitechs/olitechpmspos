@@ -118,10 +118,12 @@ test('official OliTechs identity is shared across all application workspaces and
   assert.match(html, /<title>OliTechs PMS \+ POS \| Hospitality Operations<\/title>/);
 });
 
-test('theme foundation defines exact light-only brand, Coastal Linen, payment and room tokens', () => {
+test('theme foundation defines exact light-only OliTechs navy/blue brand, payment and room tokens', () => {
   for (const token of [
-    '--deep-lagoon: #0A3F4A', '--coastal-teal: #0F7C86', '--white: #FFFFFF', '--soft-white: #F5F8F8',
-    '--canvas: #F6F9F9', '--sidebar: #EAF3F3', '--text: #223039', '--accent: #E8955A',
+    '--brand-navy: #101A35', '--brand-blue: #285FE7', '--brand-blue-hover: #174AC8',
+    '--brand-blue-soft: #F3F7FF', '--brand-canvas: #F8FAFF', '--brand-white: #FFFFFF',
+    '--deep-lagoon: #101A35', '--coastal-teal: #285FE7', '--white: #FFFFFF', '--soft-white: #F8FAFF',
+    '--canvas: #F8FAFF', '--sidebar: #EEF3FC', '--text: #101A35', '--accent: #E8955A',
     '--status-paid: #3FA77A', '--status-deposit-paid: #F2C14E', '--status-deposit-foreground: #5A4310',
     '--status-not-paid: #EE8A3C', '--room-occupied: #2F6F9F', '--room-checkout: #3949AB', '--room-out-of-order: #65727A',
     '--print-ink: #000000', '--print-void: #DC2626',
