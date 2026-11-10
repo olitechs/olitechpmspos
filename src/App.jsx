@@ -110,7 +110,7 @@ function AppRoutes(){return <AuthProvider><Suspense fallback={<AuthLoading/>}><R
 <Route path="services/housekeeping" element={<POSApp initialModule="housekeeping" embedded workspaceModule="frontoffice"/>}/>
 <Route path="services/room-charges" element={<POSApp initialModule="folio" embedded workspaceModule="frontoffice"/>}/>
 <Route path="services/minibar" element={<ModuleStatusPage title="Minibar and Extras" description="Track minibar consumption and guest extras." module="minibar" back="/frontoffice"/>}/>
-<Route path="services/laundry" element={<ModuleStatusPage title="Laundry" description="Manage guest laundry requests and charges." module="laundry" back="/frontoffice"/>}/>
+<Route path="services/laundry" element={<FrontOfficeLaundry/>}/>
 <Route path="services/maintenance" element={<ModuleStatusPage title="Maintenance / Work Orders" description="Record maintenance requests, work orders and room downtime." module="maintenance" back="/frontoffice"/>}/>
 <Route path="services/guest-requests" element={<ModuleStatusPage title="Guest Requests / Transfers and Tours" description="Coordinate guest requests, transfers and tours." module="guest-requests" back="/frontoffice"/>}/>
 <Route path="*" element={<ModuleStatusPage title="Front Office Module" description="This Front Office route is reserved for a supported module." module="frontoffice" back="/frontoffice"/>}/>
