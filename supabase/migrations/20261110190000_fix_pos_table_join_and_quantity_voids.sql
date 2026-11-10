@@ -11,7 +11,7 @@ create or replace function public.fn_move_or_merge_pos_table(
 ) returns jsonb
 language plpgsql
 security definer
-set search_path = public
+set search_path = pg_catalog, public, pg_temp
 as $$
 declare
   v_source public.pos_table_sessions;
@@ -277,7 +277,7 @@ create or replace function public.fn_remove_pos_item(
 ) returns jsonb
 language plpgsql
 security definer
-set search_path = public
+set search_path = pg_catalog, public, pg_temp
 as $$
 declare
   v_session public.pos_table_sessions;
