@@ -208,7 +208,7 @@ test('operational screens use semantic theme tokens for text, surfaces, focus an
   assert.doesNotMatch(sharedSelect, /NAVY|SURFACE2|data-\[highlighted\]:bg-slate/);
   assert.match(productTable, /var\(--danger\)/);
   assert.doesNotMatch(productTable, /#EF4444|#EAB308|#22C55E|#FFD300/);
-  assert.match(publicHome, /text-secondary-foreground/);
+  assert.match(publicHome, /className="olitechs-marketing/);
   assert.match(pageNotFound, /font-family:var\(--font-heading\)/);
   assert.doesNotMatch(pageNotFound, /Roboto/);
 });
