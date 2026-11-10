@@ -59,8 +59,8 @@ export function AuthProvider({ children }) {
     const channel = supabase
       .channel(`property-access-${propertyId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'properties', filter: `id=eq.${propertyId}` }, () => checkUserAuth({ silent: true }))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'property_subscriptions', filter: `property_id=eq.${propertyId}` }, () => checkUserAuth())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'property_users', filter: `property_id=eq.${propertyId}` }, () => checkUserAuth())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'property_subscriptions', filter: `property_id=eq.${propertyId}` }, () => checkUserAuth({ silent: true }))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'property_users', filter: `property_id=eq.${propertyId}` }, () => checkUserAuth({ silent: true }))
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [user?.property?.id, user?.isPlatformOwner, checkUserAuth]);
