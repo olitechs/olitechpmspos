@@ -212,3 +212,131 @@ revoke all on function public.platform_set_property_member(uuid, uuid, property_
 revoke all on function public.platform_remove_property_member(uuid, uuid) from public, anon;
 grant execute on function public.platform_set_property_member(uuid, uuid, property_member_role) to authenticated;
 grant execute on function public.platform_remove_property_member(uuid, uuid) to authenticated;
+
+
+-- Property-scoped historical recovery search. These functions are intentionally
+-- read-only: they never recreate a receipt, payment, charge, refund or booking.
+-- SECURITY DEFINER is required because the normal back-office RLS checks also
+-- enforce each property's subscribed modules. Every call is explicitly guarded
+-- by the current authenticated platform-owner profile and a concrete property.
+create or replace function public.admin_search_historical_receipts(
+  p_property_id uuid,
+  p_query text default null,
+  p_from timestamptz default null,
+  p_to timestamptz default null,
+  p_limit integer default 50
+) returns setof jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+stable
+as $$
+declare v_query text := nullif(trim(p_query), '');
+begin
+  if auth.uid() is null or not public.is_platform_owner() then
+    raise exception 'Only an authenticated platform owner can search historical receipts.' using errcode = '42501';
+  end if;
+  if p_property_id is null then raise exception 'Select a property before searching.' using errcode = '22023'; end if;
+  if v_query is null and p_from is null and p_to is null then
+    raise exception 'Enter a receipt number, guest, room or date range.' using errcode = '22023';
+  end if;
+
+  return query
+  select to_jsonb(r) || jsonb_build_object(
+    'property_currency', p.currency,
+    'refunds', coalesce((
+      select jsonb_agg(to_jsonb(cr) order by cr.created_at desc)
+      from public.cashier_refunds cr
+      where cr.property_id = r.property_id
+        and (cr.receipt_id = r.id or cr.target_id = r.id)
+    ), '[]'::jsonb)
+  )
+  from public.pos_receipts r
+  join public.properties p on p.id = r.property_id
+  where r.property_id = p_property_id
+    and (p_from is null or r.created_at >= p_from)
+    and (p_to is null or r.created_at < p_to)
+    and (
+      v_query is null
+      or r.order_number ilike '%' || v_query || '%'
+      or r.guest_name ilike '%' || v_query || '%'
+      or r.room_number ilike '%' || v_query || '%'
+      or r.table_number ilike '%' || v_query || '%'
+      or r.id::text = v_query
+    )
+  order by r.created_at desc
+  limit greatest(1, least(coalesce(p_limit, 50), 100));
+end;
+$$;
+
+create or replace function public.admin_search_guest_folios(
+  p_property_id uuid,
+  p_query text default null,
+  p_from date default null,
+  p_to date default null,
+  p_limit integer default 50
+) returns setof jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+stable
+as $$
+declare v_query text := nullif(trim(p_query), '');
+begin
+  if auth.uid() is null or not public.is_platform_owner() then
+    raise exception 'Only an authenticated platform owner can search guest folios.' using errcode = '42501';
+  end if;
+  if p_property_id is null then raise exception 'Select a property before searching.' using errcode = '22023'; end if;
+  if v_query is null and p_from is null and p_to is null then
+    raise exception 'Enter a guest name, phone, confirmation code, room or date range.' using errcode = '22023';
+  end if;
+
+  return query
+  select to_jsonb(r) || jsonb_build_object(
+    'room_number', rm.number,
+    'property_currency', p.currency,
+    'totals', coalesce((select to_jsonb(ft) from public.folio_totals ft where ft.reservation_id = r.id), '{}'::jsonb),
+    'charges', coalesce((
+      select jsonb_agg(to_jsonb(fc) order by fc.created_at, fc.id)
+      from public.folio_charges fc
+      where fc.property_id = r.property_id and fc.reservation_id = r.id
+    ), '[]'::jsonb),
+    'payments', coalesce((
+      select jsonb_agg(to_jsonb(pm) order by pm.created_at, pm.id)
+      from public.payments pm
+      where pm.property_id = r.property_id and pm.reservation_id = r.id
+    ), '[]'::jsonb),
+    'refunds', coalesce((
+      select jsonb_agg(to_jsonb(cr) order by cr.created_at desc)
+      from public.cashier_refunds cr
+      where cr.property_id = r.property_id and cr.reservation_id = r.id
+    ), '[]'::jsonb),
+    'receipts', coalesce((
+      select jsonb_agg(to_jsonb(pr) order by pr.created_at desc)
+      from public.pos_receipts pr
+      where pr.property_id = r.property_id and pr.reservation_id = r.id
+    ), '[]'::jsonb)
+  )
+  from public.reservations r
+  join public.properties p on p.id = r.property_id
+  left join public.rooms rm on rm.id = r.room_id
+  where r.property_id = p_property_id
+    and (p_from is null or r.arrival >= p_from)
+    and (p_to is null or r.arrival <= p_to)
+    and (
+      v_query is null
+      or r.guest_name ilike '%' || v_query || '%'
+      or r.phone ilike '%' || v_query || '%'
+      or r.confirmation_code ilike '%' || v_query || '%'
+      or rm.number ilike '%' || v_query || '%'
+      or r.id::text = v_query
+    )
+  order by r.created_at desc
+  limit greatest(1, least(coalesce(p_limit, 50), 100));
+end;
+$$;
+
+revoke all on function public.admin_search_historical_receipts(uuid,text,timestamptz,timestamptz,integer) from public, anon;
+revoke all on function public.admin_search_guest_folios(uuid,text,date,date,integer) from public, anon;
+grant execute on function public.admin_search_historical_receipts(uuid,text,timestamptz,timestamptz,integer) to authenticated;
+grant execute on function public.admin_search_guest_folios(uuid,text,date,date,integer) to authenticated;
