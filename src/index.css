@@ -13,14 +13,14 @@
     --brand-blue-soft: #F3F7FF;
     --brand-canvas: #F8FAFF;
     --brand-white: #FFFFFF;
-    --deep-lagoon: var(--brand-navy);
-    --coastal-teal: var(--brand-blue);
-    --white: var(--brand-white);
-    --soft-white: var(--brand-canvas);
-    --canvas: var(--brand-canvas);
+    --deep-lagoon: #101A35;
+    --coastal-teal: #285FE7;
+    --white: #FFFFFF;
+    --soft-white: #F8FAFF;
+    --canvas: #F8FAFF;
     --surface: var(--white);
     --sidebar: #EEF3FC;
-    --text: var(--brand-navy);
+    --text: #101A35;
     --accent: #E8955A;
 
     /* Functional payment states: preserve the requested fill/foreground pairs. */
