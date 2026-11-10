@@ -273,15 +273,15 @@ test('POS access stays unlocked during navigation and is cleared when its browse
 
 
 test('application page and module screens are lazy-loaded instead of inflating the initial route bundle', () => {
-  const eagerPageImports = [...app.matchAll(/^import\\s+[^\\n]+from\\s+['\"]@\\/(?:pages|components\\/(?!ui\\/))\\//gm)].map((match) => match[0]);
+  const eagerPageImports = [...app.matchAll(/^import\s+[^\n]+from\s+['\"]@\/(?:pages|components\/(?!ui\/))\//gm)].map((match) => match[0]);
   assert.deepEqual(eagerPageImports, [
     "import SupabaseSetupNotice from '@/pages/SupabaseSetupNotice';",
   ]);
-  assert.ok([...app.matchAll(/lazyWithRetry\\(\\(\\) => import\\(/g)].length >= 50, 'major route screens should remain split into retry-aware chunks');
+  assert.ok([...app.matchAll(/lazyWithRetry\(\(\) => import\(/g)].length >= 50, 'major route screens should remain split into retry-aware chunks');
 });
 
 test('global route fallback uses a responsive skeleton instead of a blocking spinner', () => {
-  assert.match(app, /function AuthLoading\\(\\)[\\s\\S]*?animate-pulse[\\s\\S]*?aria-label=\"Loading OliTechs\"/);
-  assert.doesNotMatch(app, /function AuthLoading\\(\\)[\\s\\S]*?animate-spin/);
-  assert.match(app, /<Suspense fallback={<AuthLoading\\/>}>/);
+  assert.match(app, /function AuthLoading\(\)[\s\S]*?animate-pulse[\s\S]*?aria-label=\"Loading OliTechs\"/);
+  assert.doesNotMatch(app, /function AuthLoading\(\)[\s\S]*?animate-spin/);
+  assert.match(app, /<Suspense fallback={<AuthLoading\/>}>/);
 });
