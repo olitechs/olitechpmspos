@@ -1,17 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  ArrowDown, ArrowRight, BarChart3, BedDouble, Check, ChevronDown, ChevronRight,
-  CircleHelp, ClipboardList, CreditCard, Globe2, Menu, MessageCircle, Monitor,
-  Utensils, Users, Wallet, X
+  ArrowDown, ArrowRight, Check, ChevronDown, ChevronRight, Menu, X
 } from 'lucide-react';
 import SocialFAB from '../components/shell/SocialFAB';
 import BrandLogo from '@/components/ui/BrandLogo';
-
-const CONTACT = {
-  phone: '+254 745 043 121',
-  phoneHref: 'tel:+254745043121',
-  email: 'info@olitech.co.ke',
   whatsapp: 'https://wa.me/254745043121',
 };
 
