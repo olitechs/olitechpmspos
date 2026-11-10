@@ -15,7 +15,6 @@ import Reservations from '@/components/modules/Reservations';
 import GuestList from '@/components/modules/GuestList';
 import Receipts from '@/components/modules/Receipts';
 import Folio from '@/components/modules/Folio';
-import Cashier from '@/components/modules/Cashier';
 import NightAudit from '@/components/modules/NightAudit';
 import SettingsPanel from '@/components/modules/SettingsPanel';
 import Housekeeping from '@/components/modules/Housekeeping';
@@ -105,7 +104,8 @@ export default function POSApp({
         content = <Folio />;
         break;
       case 'cashier':
-        content = <Cashier />;
+        // Keep legacy Cashier navigation pointed at the canonical POS shift workflow.
+        content = <POSContainer initialTab="shifts" />;
         break;
       case 'night-audit':
         content = <NightAudit />;
