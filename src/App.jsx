@@ -72,6 +72,7 @@ const Store = lazyWithRetry(() => import('@/pages/Store'), 'app-store');
 const FrontOfficeLaundry = lazyWithRetry(() => import('@/pages/FrontOfficeLaundry'), 'route-pages-frontoffice-laundry');
 const FrontOfficeMaintenance = lazyWithRetry(() => import('@/pages/FrontOfficeMaintenance'), 'route-pages-frontoffice-maintenance');
 const FrontOfficeGuestRequests = lazyWithRetry(() => import('@/pages/FrontOfficeGuestRequests'), 'route-pages-frontoffice-guest-requests');
+const FrontOfficeStatistics = lazyWithRetry(() => import('@/pages/FrontOfficeStatistics'), 'route-pages-frontoffice-statistics');
 const StoresPage = lazyWithRetry(() => import('@/components/stores/StoresPage'), 'app-stores-page');
 
 function AuthLoading(){return <div role="status" aria-live="polite" className="fixed inset-0 flex items-center justify-center bg-[var(--canvas)]"><div className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--border)] border-t-[var(--brand-primary)]"/></div>;}
@@ -108,7 +109,7 @@ function AppRoutes(){return <AuthProvider><Suspense fallback={<AuthLoading/>}><R
 <Route path="check-in/walk-in" element={<POSApp initialModule="walk-in-checkin" embedded workspaceModule="frontoffice"/>}/>
 <Route path="check-in/express-checkout" element={<POSApp initialModule="express-checkout" embedded workspaceModule="frontoffice"/>}/>
 <Route path="check-in/registration-cards" element={<POSApp initialModule="registration-cards" embedded workspaceModule="frontoffice"/>}/>
-<Route path="statistics/:report" element={<ModuleStatusPage title="Statistics" description="Property performance reporting with period filters and document exports." module="statistics" back="/frontoffice"/>}/>
+<Route path="statistics/:report" element={<FrontOfficeStatistics/>}/>
 <Route path="services/housekeeping" element={<POSApp initialModule="housekeeping" embedded workspaceModule="frontoffice"/>}/>
 <Route path="services/room-charges" element={<POSApp initialModule="folio" embedded workspaceModule="frontoffice"/>}/>
 <Route path="services/minibar" element={<ModuleStatusPage title="Minibar and Extras" description="Track minibar consumption and guest extras." module="minibar" back="/frontoffice"/>}/>
