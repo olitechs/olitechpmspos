@@ -168,12 +168,39 @@ export default function PublicHome() {
     window.addEventListener('scroll', updateHeader, { passive: true });
     return () => window.removeEventListener('scroll', updateHeader);
   }, []);
+
+  // Reveal homepage content as it enters the viewport.
+  useEffect(() => {
+    const root = document.querySelector('.olitechs-marketing');
+    if (!root || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const targets = root.querySelectorAll(
+      '.industry-strip > *, .connected-inner > *, .connected-list article, .solution-card, .confidence-grid > *, .plan-card, .journey-grid article, .faq-item, .final-cta > *'
+    );
+    if (!('IntersectionObserver' in window)) return;
+    targets.forEach((element, index) => {
+      element.classList.add('marketing-reveal');
+      element.style.setProperty('--reveal-delay', `${(index % 4) * 85}ms`);
+    });
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -48px 0px' });
+    targets.forEach((element) => observer.observe(element));
+    return () => observer.disconnect();
+  }, []);
+
   const nav = [['Platform','#platform'],['Solutions','#solutions'],['Features','#features'],['Pricing','#pricing'],['About','#about']];
   return (
     <div className="olitechs-marketing min-h-screen overflow-x-hidden bg-white text-[#101A35]">
       <style>{`
-        .olitechs-marketing{--ink:#101a35;--navy:#101a35;--blue:#285fe7;--pale:#f3f7ff;--line:#e7ebf3;font-family:Inter,ui-sans-serif,system-ui,sans-serif}
+        .olitechs-marketing{overflow-x:clip;--ink:#101a35;--navy:#101a35;--blue:#285fe7;--pale:#f3f7ff;--line:#e7ebf3;font-family:Inter,ui-sans-serif,system-ui,sans-serif}
         .olitechs-marketing button,.olitechs-marketing a{transition:all .2s ease}
+        .marketing-reveal{opacity:0;transform:translate3d(0,28px,0);transition:opacity .7s ease,transform .7s cubic-bezier(.2,.7,.2,1);transition-delay:var(--reveal-delay,0ms);will-change:opacity,transform}
+        .marketing-reveal.is-visible{opacity:1;transform:translate3d(0,0,0);will-change:auto}
         .marketing-nav{height:76px;position:sticky;top:0;z-index:50;border-bottom:1px solid transparent;background:rgba(255,255,255,0);backdrop-filter:blur(0);-webkit-backdrop-filter:blur(0);box-shadow:0 0 0 transparent;transition:background-color .28s ease,backdrop-filter .28s ease,-webkit-backdrop-filter .28s ease,border-color .28s ease,box-shadow .28s ease}
         .marketing-nav.is-scrolled{background:rgba(255,255,255,.88);backdrop-filter:blur(16px) saturate(150%);-webkit-backdrop-filter:blur(16px) saturate(150%);border-bottom-color:rgba(16,26,53,.08);box-shadow:0 8px 28px rgba(16,26,53,.06)}
         .marketing-nav-inner{max-width:1280px;height:100%;margin:auto;padding:0 28px;display:flex;align-items:center;gap:38px}
@@ -182,11 +209,14 @@ export default function PublicHome() {
         .marketing-button{display:inline-flex;align-items:center;justify-content:center;gap:9px;border-radius:6px;background:var(--blue);padding:13px 22px;color:#fff;font-size:12px;font-weight:800;box-shadow:0 8px 20px #285fe726}
         .marketing-button:hover{background:#174ac8;transform:translateY(-1px)}
         .marketing-button-outline{border:1px solid #d8dfec;background:#fff;color:var(--ink);box-shadow:none}
-        .hero-section{max-width:1280px;margin:auto;padding:78px 28px 60px;text-align:center}
-        .hero-kicker{display:inline-flex;align-items:center;gap:9px;color:#285fe7;background:#f3f7ff;border:1px solid #e2eaff;border-radius:99px;padding:8px 14px;font-size:10px;font-weight:800;letter-spacing:.15em}
-        .hero-title{max-width:950px;margin:25px auto 18px;font-size:clamp(42px,6vw,76px);line-height:.99;letter-spacing:-.06em;font-weight:850;color:#101a35}
-        .hero-title span{color:#285fe7}
-        .hero-copy{max-width:680px;margin:0 auto;color:#66718a;font-size:16px;line-height:1.8}
+        .hero-section{max-width:1280px;margin:auto;padding:78px 28px 60px;text-align:center;position:relative;isolation:isolate;overflow:hidden;background:#101a35}
+        .hero-background{position:absolute;inset:0;z-index:-2;width:100%;height:100%;object-fit:cover;object-position:center 45%;pointer-events:none}
+        .hero-overlay{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(8,17,39,.72),rgba(16,26,53,.78) 58%,rgba(16,26,53,.94));pointer-events:none}
+        .hero-section>.hero-kicker,.hero-section>.hero-title,.hero-section>.hero-copy,.hero-section>.hero-actions,.hero-section>.workspace-wrap{position:relative;z-index:1}
+        .hero-kicker{display:inline-flex;align-items:center;gap:9px;color:#e4ecff;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.24);border-radius:99px;padding:8px 14px;font-size:10px;font-weight:800;letter-spacing:.15em;backdrop-filter:blur(8px)}
+        .hero-title{max-width:950px;margin:25px auto 18px;font-size:clamp(42px,6vw,76px);line-height:.99;letter-spacing:-.06em;font-weight:850;color:#fff}
+        .hero-title span{color:#91b0ff}
+        .hero-copy{max-width:680px;margin:0 auto;color:#e0e7f5;font-size:16px;line-height:1.8}
         .hero-actions{display:flex;justify-content:center;gap:12px;margin-top:27px;flex-wrap:wrap}
         .hero-subcopy{margin-top:15px;color:#8992a5;font-size:11px}
         .workspace-wrap{max-width:1200px;margin:55px auto 0;text-align:left}
@@ -212,6 +242,7 @@ export default function PublicHome() {
         .faq-section{max-width:1224px;margin:auto;padding:95px 28px}.faq-layout{display:grid;grid-template-columns:.7fr 1.3fr;gap:70px}.faq-aside p{margin-top:18px;color:#6e7a91;font-size:12px}.faq-item{border-bottom:1px solid #e5eaf2}.faq-item button{width:100%;display:flex;justify-content:space-between;gap:15px;text-align:left;padding:18px 0;font-size:12px;font-weight:800;color:#1b2742}.faq-item>p{padding:0 28px 18px 0;font-size:11px;line-height:1.7;color:#6e7a91}
         .final-cta{max-width:1224px;margin:0 auto 65px;padding:34px 45px;border-radius:10px;background:linear-gradient(110deg,#101a35,#204a9e);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:25px}.final-cta h2{font-size:clamp(22px,3vw,34px);font-weight:850;line-height:1.05;letter-spacing:-.04em}.final-cta p{margin-top:10px;color:#c7d4f3;font-size:11px}.final-cta-actions{display:grid;gap:9px;min-width:210px}.final-cta-actions a{background:#fff;color:#101a35;padding:12px 18px;border-radius:5px;text-align:center;font-size:10px;font-weight:900}.final-cta-actions a+ a{background:#3268e8;color:#fff}
         .marketing-footer{border-top:1px solid #e9edf3;padding:45px 28px 22px}.footer-inner{max-width:1224px;margin:auto;display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:35px}.footer-inner h4{font-size:10px;font-weight:900;color:#1b2742}.footer-inner a,.footer-inner p{display:block;margin-top:13px;font-size:10px;line-height:1.6;color:#78849a}.footer-bottom{max-width:1224px;margin:35px auto 0;padding-top:18px;border-top:1px solid #edf0f5;display:flex;justify-content:space-between;gap:15px;color:#8992a5;font-size:9px}
+        @media(prefers-reduced-motion:reduce){.marketing-reveal,.marketing-reveal.is-visible{opacity:1;transform:none;transition:none;will-change:auto}}
         @media(max-width:900px){.marketing-nav-inner{gap:15px;padding:0 18px}.marketing-nav-links{gap:15px}.connected-inner{grid-template-columns:1fr;gap:38px}.workspace-body{grid-template-columns:145px 1fr}.workspace-side{padding:15px 10px}.workspace-main{padding:15px}.planner-toolbar small{display:none}.solutions-grid{gap:12px}.solution-card{padding:20px}.footer-inner{grid-template-columns:1fr 1fr}.faq-layout{gap:35px}}
         @media(max-width:640px){.marketing-nav{height:66px}.marketing-nav-inner{padding:0 15px}.marketing-nav-inner>.marketing-button{padding:10px 12px;font-size:10px}.marketing-nav-links{display:none}.mobile-nav-panel{position:absolute;top:65px;left:0;right:0;background:#fff;border-bottom:1px solid #e7ebf3;padding:12px 18px;display:grid;gap:3px;box-shadow:0 12px 22px #10203a12}.mobile-nav-panel a{padding:12px 8px;font-size:13px;color:#34415d}.hero-section{padding:55px 17px 42px}.hero-title{font-size:43px}.hero-copy{font-size:13px}.workspace-wrap{margin-top:35px;overflow:hidden}.workspace-shell{width:760px;transform:scale(.72);transform-origin:top left;margin-bottom:-105px;width:138.9%}.workspace-body{grid-template-columns:150px 1fr}.industry-strip{padding:10px 18px 45px;grid-template-columns:1fr 1fr;gap:22px 12px}.industry-strip div{font-size:11px}.connected-section,.solutions-section,.confidence-section,.pricing-section,.journey-section,.faq-section{padding:68px 18px}.connected-inner{gap:30px}.pos-content{grid-template-columns:1fr}.pos-order{max-width:none}.pos-products{grid-template-columns:repeat(2,1fr)}.pos-window-top{gap:9px;font-size:9px}.solutions-grid,.confidence-grid,.pricing-grid,.journey-grid{grid-template-columns:1fr}.solution-card{min-height:180px}.plan-card{padding:23px}.plan-description{min-height:0}.faq-layout{grid-template-columns:1fr;gap:25px}.faq-aside h2{max-width:350px}.final-cta{margin:0 18px 45px;padding:28px 22px;display:block}.final-cta-actions{margin-top:22px}.footer-inner{grid-template-columns:1fr 1fr;gap:28px 18px}.footer-inner>div:first-child{grid-column:1/-1}.footer-bottom{flex-direction:column;align-items:flex-start}.workspace-main{min-width:560px}}
         @media(prefers-reduced-motion:reduce){.olitechs-marketing *{scroll-behavior:auto!important;transition:none!important}}
@@ -232,6 +263,10 @@ export default function PublicHome() {
 
       <main>
         <section className="hero-section" id="platform">
+          <video className="hero-background" autoPlay muted loop playsInline preload="metadata" aria-hidden="true" tabIndex={-1}>
+            <source src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260815_040604_b04410ba-c173-4b68-826d-212a24bccdad.mp4" type="video/mp4" />
+          </video>
+          <div className="hero-overlay" aria-hidden="true" />
           <div className="hero-kicker">BUILT FOR HOSPITALITY. READY FOR WHAT’S NEXT.</div>
           <h1 className="hero-title">Great stays start with<br/><span>smarter operations.</span></h1>
           <p className="hero-copy">One connected PMS + POS for your rooms, restaurants and people.<br/>Less friction behind the scenes. Better experiences out front.</p>
