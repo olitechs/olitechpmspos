@@ -22,15 +22,12 @@ export const shiftService = {
       return shift.id ? shift : null;
     };
 
-    const { data, error } = await supabase.rpc('fn_current_pos_shift', { p_property_id: propertyId });
-    if (error) throw new Error(error.message);
-    const rpcShift = normalizeShift(data);
-    // Some deployed RPC versions return a composite wrapper rather than the
-    // plain pos_shifts row. Verify the canonical row directly if its identity
-    // or display fields are missing. This also finds an open shift carried
-    // across midnight; an open shift must not disappear just because its
-    // business date is yesterday.
-    if (rpcShift?.id && rpcShift.opened_at && rpcShift.shift_no) return rpcShift;
+    // Always inspect the canonical table for an already-open property shift.
+    // The RPC may be an older deployment that rejects this operation after
+    // the legacy cashier workflow was retired; that must not hide an active
+    // shift or force staff to open a duplicate shift.
+    const { data: rpcData, error: rpcError } = await supabase.rpc('fn_current_pos_shift', { p_property_id: propertyId });
+    const rpcShift = normalizeShift(rpcData);
 
     const { data: row, error: rowError } = await supabase
       .from('pos_shifts')
@@ -40,11 +37,16 @@ export const shiftService = {
       .order('opened_at', { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (rowError) {
-      if (rpcShift?.id) return rpcShift;
-      throw new Error(rowError.message);
-    }
-    return normalizeShift(row) || rpcShift;
+
+    // The property-scoped canonical row takes precedence over any stale RPC
+    // wrapper. This also recovers shifts left open across midnight.
+    if (!rowError) return normalizeShift(row) || rpcShift;
+    if (rpcShift?.id) return rpcShift;
+
+    // Surface an error only when neither source can establish shift status.
+    if (rpcError && rowError) throw new Error(rpcError.message || rowError.message);
+    if (rowError) throw new Error(rowError.message);
+    return null;
   },
 
   async openShift({ propertyId, openingCash, notes = '' }) {
