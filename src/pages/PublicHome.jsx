@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowDown, ArrowRight, BarChart3, BedDouble, Check, ChevronDown, ChevronRight,
@@ -164,13 +164,22 @@ function HousekeepingPreview() {
 export default function PublicHome() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState(0);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const updateHeader = () => setIsScrolled(window.scrollY > 12);
+    updateHeader();
+    window.addEventListener('scroll', updateHeader, { passive: true });
+    return () => window.removeEventListener('scroll', updateHeader);
+  }, []);
   const nav = [['Platform','#platform'],['Solutions','#solutions'],['Features','#features'],['Pricing','#pricing'],['About','#about']];
   return (
     <div className="olitechs-marketing min-h-screen overflow-x-hidden bg-white text-[#101A35]">
       <style>{`
         .olitechs-marketing{--ink:#101a35;--navy:#101a35;--blue:#285fe7;--pale:#f3f7ff;--line:#e7ebf3;font-family:Inter,ui-sans-serif,system-ui,sans-serif}
         .olitechs-marketing button,.olitechs-marketing a{transition:all .2s ease}
-        .marketing-nav{height:76px;border-bottom:1px solid #eef1f6;background:rgba(255,255,255,.94);backdrop-filter:blur(16px)}
+        .marketing-nav{height:76px;position:sticky;top:0;z-index:50;border-bottom:1px solid transparent;background:rgba(255,255,255,0);backdrop-filter:blur(0);-webkit-backdrop-filter:blur(0);box-shadow:0 0 0 transparent;transition:background-color .28s ease,backdrop-filter .28s ease,-webkit-backdrop-filter .28s ease,border-color .28s ease,box-shadow .28s ease}
+        .marketing-nav.is-scrolled{background:rgba(255,255,255,.88);backdrop-filter:blur(16px) saturate(150%);-webkit-backdrop-filter:blur(16px) saturate(150%);border-bottom-color:rgba(16,26,53,.08);box-shadow:0 8px 28px rgba(16,26,53,.06)}
         .marketing-nav-inner{max-width:1280px;height:100%;margin:auto;padding:0 28px;display:flex;align-items:center;gap:38px}
         .marketing-nav-links{display:flex;align-items:center;justify-content:center;gap:36px;flex:1}
         .marketing-nav-links a{font-size:13px;font-weight:600;color:#46516a}.marketing-nav-links a:hover{color:var(--blue)}
@@ -212,7 +221,7 @@ export default function PublicHome() {
         @media(prefers-reduced-motion:reduce){.olitechs-marketing *{scroll-behavior:auto!important;transition:none!important}}
       `}</style>
 
-      <header className="marketing-nav sticky top-0 z-50">
+      <header className={`marketing-nav${isScrolled ? " is-scrolled" : ""}`}>
         <div className="marketing-nav-inner">
           <Link to="/" aria-label="OliTechs home" className="shrink-0"><BrandLogo className="h-9 w-auto max-w-[135px] object-contain object-left" /></Link>
           <nav className="marketing-nav-links">{nav.map(([label,href])=><a key={label} href={href}>{label}</a>)}</nav>
