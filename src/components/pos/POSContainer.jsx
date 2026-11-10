@@ -361,6 +361,9 @@ export default function POSContainer({ initialTab = 'floor' } = {}) {
 				delete next[activeTable.id];
 				return next;
 			});
+			// Update the local status first so the subsequent session persistence
+			// cannot race with an older "occupied" status after a printed bill join.
+			if (session.status === 'unsettled') store.setUnsettled(target.id);
 			// Keep the in-memory AppStore session in sync with the atomic database
 			// merge. Otherwise reopening the destination can restore its old lines.
 			store.setSessionOrderLines(target.id, nextLines, session.order_number || sourceSession?.orderNumber || null);
@@ -368,7 +371,6 @@ export default function POSContainer({ initialTab = 'floor' } = {}) {
 				target.id,
 				Array.isArray(session.kot_sent_order_lines) ? session.kot_sent_order_lines : [],
 			).catch((syncError) => console.warn('[POS] joined-table KOT snapshot sync failed', syncError));
-			if (session.status === 'unsettled') store.setUnsettled(target.id);
 			setActiveTable(target);
 			setActiveTab(session.status === 'unsettled' ? 'bill' : 'order');
 			setTableTransferOpen(false);
