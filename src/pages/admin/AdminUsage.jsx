@@ -41,12 +41,11 @@ export default function AdminUsage() {
     const channel = supabase.channel('platform-usage-live')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'properties' }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'property_users' }, () => load())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'staff_sessions' }, () => load())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pos_receipts' }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations' }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'fnb_print_jobs' }, () => load())
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    const refreshInterval = window.setInterval(() => load(), 30000);
+    return () => { window.clearInterval(refreshInterval); supabase.removeChannel(channel); };
   }, [load]);
 
   const totals = rows.reduce((sum, row) => ({
@@ -81,7 +80,7 @@ export default function AdminUsage() {
     <section className="overflow-hidden rounded-2xl border border-border bg-card">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-4 sm:px-5">
         <div><h2 className="font-semibold text-foreground">Property activity</h2><p className="mt-1 text-xs text-muted-foreground">Select a property to open its management workspace.</p></div>
-        <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><span className="h-2 w-2 rounded-full bg-emerald-500" /> Realtime updates enabled</span>
+        <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><span className="h-2 w-2 rounded-full bg-emerald-500" /> Live changes + 30-second refresh</span>
       </div>
       {loading ? <div className="p-8 text-center text-sm text-muted-foreground">Loading property usage…</div> : rows.length === 0 ? <div className="p-8 text-center text-sm text-muted-foreground">No property usage records are available.</div> : <>
         <div className="hidden overflow-x-auto md:block">
