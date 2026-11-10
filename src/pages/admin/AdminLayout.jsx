@@ -7,6 +7,7 @@ const PLATFORM_NAV = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/admin/properties', label: 'Properties', icon: Building2 },
   { to: '/admin/usage', label: 'Usage & Health', icon: Activity },
+  { to: '/admin/users', label: 'Users & Access', icon: UsersRound },
   { to: '/admin/audit-log', label: 'Platform Audit Log', icon: ScrollText },
 ];
 
