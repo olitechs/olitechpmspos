@@ -9,6 +9,9 @@ const container = readFileSync(new URL('../../src/components/pos/POSContainer.js
 test('POS table joins aggregate all distinct lines in a single JSON array', () => {
   assert.match(migration, /jsonb_agg\(merged\.line order by merged\.first_ord\)/i);
   assert.match(migration, /group by md5\(\(q\.line - 'qty' - 'quantity'\)::text\)/i);
+  assert.match(migration, /'::join::'/i);
+  assert.match(migration, /'{productId}'/i);
+  assert.match(migration, /'{baseProductId}'/i);
   assert.match(migration, /v_merged_lines/i);
 });
 
