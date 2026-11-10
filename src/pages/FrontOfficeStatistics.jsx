@@ -16,7 +16,8 @@ const REPORTS={
 const money=(v,currency)=>new Intl.NumberFormat('en-KE',{style:'currency',currency:currency||'KES',maximumFractionDigits:0}).format(Number(v)||0);
 const dateKey=d=>{const x=new Date(d);return Number.isNaN(x.getTime())?'':x.toISOString().slice(0,10)};
 function StatisticsContent(){
- const {report='occupancy'}=useParams(),{rooms=[],reservations=[],loading,error}=usePms();\n const {user}=useAuth(); const currency=user?.property?.currency||'KES';
+ const {report='occupancy'}=useParams(),{rooms=[],reservations=[],loading,error}=usePms();
+ const {user}=useAuth(); const currency=user?.property?.currency||'KES';
  const [period,setPeriod]=useState('30');
  const config=REPORTS[report]||REPORTS.occupancy;
  const now=new Date(),days=Number(period),start=new Date(now);start.setHours(0,0,0,0);start.setDate(start.getDate()-(days-1));
