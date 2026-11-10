@@ -1,81 +1,75 @@
 import { supabase } from '@/lib/supabaseClient';
-import { buildShiftSalesSummary, normalizeShiftPaymentMethod } from '@/services/shiftReportCore';
+import { buildShiftSalesSummary } from '@/services/shiftReportCore';
+
+const propertyDate = (value) => {
+  if (!value) return null;
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Africa/Nairobi',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date(value));
+};
+
+const normalizeCashierShift = (row) => {
+  if (!row?.id) return null;
+  return {
+    ...row,
+    shift_no: row.shift_no == null ? null : String(row.shift_no),
+    opening_cash: Number(row.opening_float ?? row.opening_cash ?? 0),
+    date: row.date || propertyDate(row.opened_at),
+    counted_cash: row.closing_cash_count == null ? null : Number(row.closing_cash_count),
+    cash_variance: row.variance == null ? null : Number(row.variance),
+  };
+};
 
 export const shiftService = {
+  // cashier_shifts is the production source of truth. pos_shifts and its
+  // open/current/close RPCs were intentionally retired by migration
+  // 20261109071322; never call those retired endpoints from the POS UI.
   async getCurrentShift(propertyId) {
     if (!propertyId) return null;
-
-    const normalizeShift = (value) => {
-      const row = Array.isArray(value) ? value[0] : value;
-      if (!row || typeof row !== 'object') return null;
-      const nested = row.shift && typeof row.shift === 'object' ? row.shift
-        : row.current_shift && typeof row.current_shift === 'object' ? row.current_shift
-        : row;
-      const shift = {
-        ...nested,
-        id: nested.id || nested.shift_id || row.id || row.shift_id || null,
-        shift_no: nested.shift_no || nested.shift_number || row.shift_no || row.shift_number || null,
-        opened_at: nested.opened_at || nested.started_at || row.opened_at || row.started_at || null,
-        opening_cash: nested.opening_cash ?? nested.opening_float ?? row.opening_cash ?? row.opening_float ?? 0,
-        date: nested.date || nested.business_date || row.date || row.business_date || null,
-      };
-      return shift.id ? shift : null;
-    };
-
-    // Always inspect the canonical table for an already-open property shift.
-    // The RPC may be an older deployment that rejects this operation after
-    // the legacy cashier workflow was retired; that must not hide an active
-    // shift or force staff to open a duplicate shift.
-    const { data: rpcData, error: rpcError } = await supabase.rpc('fn_current_pos_shift', { p_property_id: propertyId });
-    const rpcShift = normalizeShift(rpcData);
-
-    const { data: row, error: rowError } = await supabase
-      .from('pos_shifts')
+    const { data, error } = await supabase
+      .from('cashier_shifts')
       .select('*')
       .eq('property_id', propertyId)
       .eq('status', 'open')
       .order('opened_at', { ascending: false })
       .limit(1)
       .maybeSingle();
-
-    // The property-scoped canonical row takes precedence over any stale RPC
-    // wrapper. This also recovers shifts left open across midnight.
-    if (!rowError) return normalizeShift(row) || rpcShift;
-    if (rpcShift?.id) return rpcShift;
-
-    // Surface an error only when neither source can establish shift status.
-    if (rpcError && rowError) throw new Error(rpcError.message || rowError.message);
-    if (rowError) throw new Error(rowError.message);
-    return null;
+    if (error) throw new Error(error.message);
+    return normalizeCashierShift(data);
   },
 
-  async openShift({ propertyId, openingCash, notes = '' }) {
+  async openShift({ propertyId, openingCash }) {
     const amount = Number(openingCash);
+    if (!propertyId) throw new Error('Select an active property before opening a shift.');
     if (!Number.isFinite(amount) || amount <= 0) {
       throw new Error('A starting cash float greater than zero is required to open a shift.');
     }
-    const { data, error } = await supabase.rpc('fn_open_pos_shift', {
+    const { data, error } = await supabase.rpc('fn_open_cashier_shift', {
       p_property_id: propertyId,
-      p_opening_cash: amount,
-      p_notes: notes || null,
+      p_opening_float: amount,
     });
     if (error) throw new Error(error.message);
     const row = Array.isArray(data) ? data[0] : data;
-    const shift = row?.shift && typeof row.shift === 'object' ? row.shift : row;
-    if (!shift?.id) throw new Error('The database did not return the new shift record. Refresh and verify the shift before continuing.');
+    const shift = normalizeCashierShift(row);
+    if (!shift?.id) throw new Error('The database did not return the opened shift. Refresh and verify the shift before continuing.');
     localStorage.setItem(`olitech_pos_shift_${propertyId}`, shift.id);
     return shift;
   },
 
-  async closeShift({ shiftId, countedCash, notes = '', managerApproved = false }) {
-    const { data, error } = await supabase.rpc('fn_close_pos_shift', {
+  async closeShift({ shiftId, countedCash, notes = '' }) {
+    const amount = Number(countedCash);
+    if (!shiftId) throw new Error('The active shift could not be identified.');
+    if (!Number.isFinite(amount) || amount < 0) throw new Error('Enter a valid closing cash count.');
+    const { data, error } = await supabase.rpc('fn_close_cashier_shift', {
       p_shift_id: shiftId,
-      p_counted_cash: Number(countedCash || 0),
+      p_closing_cash_count: amount,
       p_notes: notes || null,
-      p_manager_approved: Boolean(managerApproved),
     });
     if (error) throw new Error(error.message);
-    return data;
+    return normalizeCashierShift(data);
   },
 
   async getOpenTables(propertyId) {
@@ -87,21 +81,28 @@ export const shiftService = {
   },
 
   async getShiftReport(shiftId) {
-    const { data: shift, error } = await supabase.from('pos_shifts').select('*').eq('id', shiftId).single();
-    if (error) throw new Error(error.message);
+    const { data: rawShift, error: shiftError } = await supabase
+      .from('cashier_shifts')
+      .select('*')
+      .eq('id', shiftId)
+      .single();
+    if (shiftError) throw new Error(shiftError.message);
+    const shift = normalizeCashierShift(rawShift);
 
-    // New receipts use pos_shift_id; shift_id is included for older rows.
     const { data: rows, error: rowsError } = await supabase
       .from('pos_receipts')
       .select('*')
       .eq('property_id', shift.property_id)
-      .or(`pos_shift_id.eq.${shiftId},shift_id.eq.${shiftId}`)
+      .eq('shift_id', shiftId)
       .order('created_at', { ascending: true });
     if (rowsError) throw new Error(rowsError.message);
 
     const postedRows = (rows || []).filter((receipt) => receipt.status === 'posted');
     const voidedRows = (rows || []).filter((receipt) => receipt.status === 'voided');
-    const splitIds = postedRows.filter((receipt) => receipt.payment_method === 'split').map((receipt) => receipt.id);
+    const splitIds = postedRows
+      .filter((receipt) => receipt.payment_method === 'split')
+      .map((receipt) => receipt.id);
+
     let allocations = [];
     if (splitIds.length) {
       const { data, error: allocationError } = await supabase
@@ -113,8 +114,20 @@ export const shiftService = {
       allocations = data || [];
     }
 
-    const postedIds = postedRows.map((receipt) => receipt.id);
+    const allocationTotals = new Map();
+    for (const allocation of allocations) {
+      const receiptId = String(allocation.receipt_id || '');
+      allocationTotals.set(receiptId, (allocationTotals.get(receiptId) || 0) + Number(allocation.amount || 0));
+    }
+    const unreconciled = postedRows.filter((receipt) => receipt.payment_method === 'split'
+      && Math.abs((allocationTotals.get(String(receipt.id)) || 0) - Number(receipt.total || 0)) > 0.01);
+    if (unreconciled.length) {
+      throw new Error('Shift report blocked: split payment allocations do not reconcile for receipt(s) '
+        + unreconciled.map((receipt) => receipt.order_number || receipt.id).join(', ') + '.');
+    }
+
     let refunds = [];
+    const postedIds = postedRows.map((receipt) => receipt.id);
     if (postedIds.length) {
       const { data, error: refundError } = await supabase
         .from('cashier_refunds')
@@ -125,26 +138,27 @@ export const shiftService = {
       refunds = data || [];
     }
 
-    const allocationTotals = new Map();
-    for (const allocation of allocations) {
-      const receiptId = String(allocation.receipt_id || '');
-      allocationTotals.set(receiptId, (allocationTotals.get(receiptId) || 0) + Number(allocation.amount || 0));
-    }
-    const unreconciled = postedRows.filter((receipt) => receipt.payment_method === 'split'
-      && Math.abs((allocationTotals.get(String(receipt.id)) || 0) - Number(receipt.total || 0)) > 0.01);
-    if (unreconciled.length) {
-      throw new Error('Shift report blocked: split payment allocations do not reconcile for receipt(s) ' + unreconciled.map((receipt) => receipt.order_number || receipt.id).join(', ') + '.');
-    }
-
     const summary = buildShiftSalesSummary(postedRows, allocations, refunds, voidedRows);
+    const { data: cashierSummary, error: summaryError } = await supabase.rpc('fn_cashier_shift_summary', {
+      p_shift_id: shiftId,
+    });
+    if (summaryError) throw new Error(summaryError.message);
+
     const staffIds = [shift.opened_by, shift.closed_by].filter(Boolean);
     let staffNames = {};
     if (staffIds.length) {
-      const { data: staffRows } = await supabase.from('staff').select('user_id,full_name,email').eq('property_id', shift.property_id).in('user_id', staffIds);
-      staffNames = Object.fromEntries((staffRows || []).map((person) => [person.user_id, person.full_name || person.email || 'Staff']));
+      const { data: staffRows, error: staffError } = await supabase
+        .from('staff')
+        .select('user_id,full_name,email')
+        .eq('property_id', shift.property_id)
+        .in('user_id', staffIds);
+      if (staffError) throw new Error(staffError.message);
+      staffNames = Object.fromEntries((staffRows || []).map((person) => [
+        person.user_id,
+        person.full_name || person.email || 'Staff',
+      ]));
     }
-    const countedCash = shift.counted_cash == null ? null : Number(shift.counted_cash);
-    const variance = shift.cash_variance == null ? null : Number(shift.cash_variance);
+
     return {
       shift,
       openedBy: staffNames[shift.opened_by] || '',
@@ -153,26 +167,39 @@ export const shiftService = {
       voidedOrders: voidedRows,
       refunds,
       ...summary,
-      expectedCash: Number(shift.opening_cash || 0) + Number(summary.payments.cash.amount || 0),
-      countedCash,
-      variance,
+      // Use the database reconciliation as the cash-drawer authority. The
+      // detailed payment mix above is calculated from the same receipt ledger.
+      expectedCash: Number(cashierSummary?.expected_cash ?? 0),
+      countedCash: shift.counted_cash,
+      variance: shift.cash_variance,
     };
   },
 
   async listShifts(propertyId, filters = null) {
-    let query = supabase.from('pos_shifts').select('*').eq('property_id', propertyId).order('opened_at', { ascending: false });
-    // Preserve the legacy exact-date call shape while supporting the Back Office
-    // date-range and status filters.
+    let query = supabase
+      .from('cashier_shifts')
+      .select('*')
+      .eq('property_id', propertyId)
+      .order('opened_at', { ascending: false });
+
+    const startOfNairobiDay = (date) => `${date}T00:00:00+03:00`;
+    const startAfterNairobiDay = (date) => {
+      const next = new Date(`${date}T00:00:00+03:00`);
+      next.setUTCDate(next.getUTCDate() + 1);
+      return next.toISOString();
+    };
+
     if (typeof filters === 'string') {
-      query = query.eq('date', filters);
+      query = query.gte('opened_at', startOfNairobiDay(filters)).lt('opened_at', startAfterNairobiDay(filters));
     } else if (filters && typeof filters === 'object') {
-      if (filters.from) query = query.gte('date', filters.from);
-      if (filters.to) query = query.lte('date', filters.to);
+      if (filters.from) query = query.gte('opened_at', startOfNairobiDay(filters.from));
+      if (filters.to) query = query.lt('opened_at', startAfterNairobiDay(filters.to));
       if (filters.status && filters.status !== 'all') query = query.eq('status', filters.status);
     }
+
     const { data, error } = await query.limit(500);
     if (error) throw new Error(error.message);
-    return data || [];
+    return (data || []).map(normalizeCashierShift);
   },
 
   async printData(shiftId) {
