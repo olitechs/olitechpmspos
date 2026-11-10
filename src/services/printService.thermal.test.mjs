@@ -100,3 +100,26 @@ test('unsettled receipt uses two feed lines and a full cut', async () => {
   assert.ok(service.includes('buildLogoEscPosBase64'));
   assert.ok(!service.includes('partialCut: true'));
 });
+
+test('live shift preview is a separate pre-close thermal report with no closing cash variance', async () => {
+  const service = await read('./printService.js');
+  assert.match(service, /export async function printShiftPreview/);
+  const start = service.indexOf('function shiftPreviewHtml');
+  const end = service.indexOf('export async function printShiftPreview', start);
+  const preview = service.slice(start, end);
+  assert.match(preview, /PRE-CLOSE/);
+  assert.match(preview, /SHIFT STILL OPEN/);
+  assert.match(preview, /LIVE SHIFT SUMMARY/);
+  assert.match(preview, /EXPECTED CASH IN DRAWER/);
+  assert.doesNotMatch(preview, /CASH COUNTED|CASH VARIANCE|SHIFT CLOSING REPORT/);
+});
+
+test('successful shift closure automatically sends the final thermal report and allows retry', async () => {
+  const modal = await read('../components/pos/CloseShiftModal.jsx');
+  assert.match(modal, /await sendClosedReport\(fresh\)/);
+  assert.match(modal, /const sendClosedReport=async\(reportData\)/);
+  assert.match(modal, /setPrintStatus\('printed'\)/);
+  assert.match(modal, /Retry print/);
+  assert.match(modal, /Shift closed successfully/);
+  assert.doesNotMatch(modal, /Skip printing/);
+});
