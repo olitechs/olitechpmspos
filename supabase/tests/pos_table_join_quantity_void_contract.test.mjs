@@ -25,6 +25,7 @@ test('table move and join preserve VAT and kitchen-sent snapshots', () => {
 test('joined table updates the local destination session before reopening it', () => {
   assert.match(container, /store\.setSessionOrderLines\(target\.id, nextLines/);
   assert.match(container, /store\.setKotSentOrderLines\(/);
+  assert.ok(container.indexOf("if (session.status === 'unsettled') store.setUnsettled(target.id)") < container.indexOf("store.setSessionOrderLines(target.id"));
 });
 
 test('POS item removal asks for an explicit quantity and validates the current line quantity', () => {
