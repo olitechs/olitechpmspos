@@ -75,7 +75,7 @@ create policy property_tag_assignments_insert on public.property_tag_assignments
       or public.property_role(property_id) in ('owner','admin','manager')
       or public.current_staff_role(property_id) in ('hotel_admin','super_admin','front_office_manager'))
     and (
-      (entity_type = 'guest' and exists (select 1 from public.guests e where e.id = entity_id and e.property_id = property_id))
+      (entity_type = 'guest' and exists (select 1 from public.guests e where e.id = property_tag_assignments.entity_id and e.property_id = property_tag_assignments.property_id))
       or (entity_type = 'room' and exists (select 1 from public.rooms e where e.id = entity_id and e.property_id = property_id))
       or (entity_type = 'reservation' and exists (select 1 from public.reservations e where e.id = entity_id and e.property_id = property_id))
     )
