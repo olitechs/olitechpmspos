@@ -70,6 +70,7 @@ const POSApp = lazyWithRetry(() => import('@/pages/POSApp'), 'app-pos-app');
 const Reports = lazyWithRetry(() => import('@/components/modules/Reports'), 'app-reports');
 const Store = lazyWithRetry(() => import('@/pages/Store'), 'app-store');
 const FrontOfficeLaundry = lazyWithRetry(() => import('@/pages/FrontOfficeLaundry'), 'route-pages-frontoffice-laundry');
+const FrontOfficeMaintenance = lazyWithRetry(() => import('@/pages/FrontOfficeMaintenance'), 'route-pages-frontoffice-maintenance');
 const StoresPage = lazyWithRetry(() => import('@/components/stores/StoresPage'), 'app-stores-page');
 
 function AuthLoading(){return <div role="status" aria-live="polite" className="fixed inset-0 flex items-center justify-center bg-[var(--canvas)]"><div className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--border)] border-t-[var(--brand-primary)]"/></div>;}
@@ -111,7 +112,7 @@ function AppRoutes(){return <AuthProvider><Suspense fallback={<AuthLoading/>}><R
 <Route path="services/room-charges" element={<POSApp initialModule="folio" embedded workspaceModule="frontoffice"/>}/>
 <Route path="services/minibar" element={<ModuleStatusPage title="Minibar and Extras" description="Track minibar consumption and guest extras." module="minibar" back="/frontoffice"/>}/>
 <Route path="services/laundry" element={<FrontOfficeLaundry/>}/>
-<Route path="services/maintenance" element={<ModuleStatusPage title="Maintenance / Work Orders" description="Record maintenance requests, work orders and room downtime." module="maintenance" back="/frontoffice"/>}/>
+<Route path="services/maintenance" element={<FrontOfficeMaintenance/>}/>
 <Route path="services/guest-requests" element={<ModuleStatusPage title="Guest Requests / Transfers and Tours" description="Coordinate guest requests, transfers and tours." module="guest-requests" back="/frontoffice"/>}/>
 <Route path="*" element={<ModuleStatusPage title="Front Office Module" description="This Front Office route is reserved for a supported module." module="frontoffice" back="/frontoffice"/>}/>
 </Route></Route>
