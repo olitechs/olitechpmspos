@@ -19,7 +19,8 @@ function printFolio(f) {
 }
 
 export default function AdminRecovery() {
-  const [properties,setProperties]=useState([]);\n  const [users,setUsers]=useState([]);
+  const [properties,setProperties]=useState([]);
+  const [users,setUsers]=useState([]);
   const [propertyId,setPropertyId]=useState('');
   const [kind,setKind]=useState('receipts');
   const [query,setQuery]=useState('');
@@ -33,7 +34,8 @@ export default function AdminRecovery() {
   const [busy,setBusy]=useState(false);
 
   useEffect(()=>{Promise.all([platformService.listProperties(),platformService.getUserDirectory()]).then(([p,u])=>{setProperties(p);setUsers(u);if(p[0])setPropertyId(p[0].id)}).catch(e=>toast.error(e.message));},[]);
-  const property=properties.find(x=>x.id===propertyId);\n  const propertyUsers=users.filter(u=>(u.property_memberships||[]).some(m=>m.property_id===propertyId));
+  const property=properties.find(x=>x.id===propertyId);
+  const propertyUsers=users.filter(u=>(u.property_memberships||[]).some(m=>m.property_id===propertyId));
   const search=useCallback(async()=>{
     if(!propertyId || (!query.trim()&&!from&&!to)){toast.error('Select a property and enter a search term or date range.');return;}
     setLoading(true);setSelected(null);
