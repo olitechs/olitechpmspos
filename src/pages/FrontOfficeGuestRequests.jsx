@@ -18,7 +18,7 @@ export default function FrontOfficeGuestRequests(){
  const load=useCallback(async()=>{if(!propertyId){setLoading(false);return;}setLoading(true);try{
   const [q,r,s]=await Promise.all([
    supabase.from('guest_service_requests').select('*, reservation:reservations(guest_name,confirmation_code), room:rooms(number,name)').eq('property_id',propertyId).order('created_at',{ascending:false}).limit(250),
-   supabase.from('reservations').select('id,guest_name,room_id,arrival,departure,confirmation_code,rooms:rooms(number,name)').eq('property_id',propertyId).in('status',['confirmed','checked-in','reserved']).order('arrival'),
+   supabase.from('reservations').select('id,guest_name,room_id,arrival,departure,confirmation_code,rooms:rooms(number,name)').eq('property_id',propertyId).in('status',['booked','checked-in']).order('arrival'),
    supabase.from('staff').select('id,user_id,full_name,role').eq('property_id',propertyId).eq('is_active',true).order('full_name')
   ]);
   if(q.error)throw q.error;if(r.error)throw r.error;if(s.error)throw s.error;
