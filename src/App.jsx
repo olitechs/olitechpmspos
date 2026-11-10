@@ -64,8 +64,8 @@ import EmployeeListPage from "@/components/settings/EmployeeListPage";
 import HelpCentre from "@/pages/HelpCentre";
 import FrontOfficeDashboard from "@/pages/FrontOfficeDashboard";
 import FrontOfficeStructure from "@/pages/FrontOfficeStructure";
-import FrontOfficeConfiguration from "@/pages/FrontOfficeConfiguration";
-import FrontOfficeTags from "@/pages/FrontOfficeTags";
+const FrontOfficeConfiguration = lazyWithRetry(() => import('@/pages/FrontOfficeConfiguration'), 'route-pages-frontofficeconfiguration');
+const FrontOfficeTags = lazyWithRetry(() => import('@/pages/FrontOfficeTags'), 'route-pages-frontofficetags');
 import ShiftReport from '@/pages/ShiftReport';
 
 const POSApp = lazyWithRetry(() => import('@/pages/POSApp'), 'app-pos-app');
