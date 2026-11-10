@@ -1,7 +1,8 @@
-import React,{useMemo,useState} from 'react';
+import React,{useEffect,useMemo,useState} from 'react';
 import {Link,useParams} from 'react-router-dom';
 import {PmsProvider,usePms} from '@/data/PmsStore';
 import {useAuth} from '@/lib/AuthContext';
+import {supabase} from '@/lib/supabaseClient';
 import {BarChart3,CalendarDays,Download,TrendingUp,Users,BedDouble,Wallet,ArrowUpRight} from 'lucide-react';
 
 const REPORTS={
@@ -17,7 +18,9 @@ const money=(v,currency)=>new Intl.NumberFormat('en-KE',{style:'currency',curren
 const dateKey=d=>{const x=new Date(d);return Number.isNaN(x.getTime())?'':x.toISOString().slice(0,10)};
 function StatisticsContent(){
  const {report='occupancy'}=useParams(),{rooms=[],reservations=[],loading,error}=usePms();
- const {user}=useAuth(); const currency=user?.property?.currency||'KES';
+ const {user}=useAuth(); const propertyId=user?.property?.id; const currency=user?.property?.currency||'KES';
+ const [cancelledCount,setCancelledCount]=useState(0);
+ useEffect(()=>{let live=true;if(report!=='cancellations'||!propertyId)return()=>{live=false;};const from=new Date();from.setHours(0,0,0,0);from.setDate(from.getDate()-(Number(period)-1));const to=new Date();to.setHours(23,59,59,999);supabase.from('reservations').select('id',{count:'exact',head:true}).eq('property_id',propertyId).eq('status','cancelled').gte('arrival',dateKey(from)).lte('arrival',dateKey(to)).then(({count,error})=>{if(live&&!error)setCancelledCount(count||0);});return()=>{live=false;};},[report,propertyId,period]);
  const [period,setPeriod]=useState('30');
  const config=REPORTS[report]||REPORTS.occupancy;
  const now=new Date(),days=Number(period),start=new Date(now);start.setHours(0,0,0,0);start.setDate(start.getDate()-(days-1));
@@ -25,7 +28,7 @@ function StatisticsContent(){
  const data=useMemo(()=>{
   const active=reservations.filter(r=>!['cancelled','no_show'].includes(String(r.status||'').toLowerCase()));
   const scoped=reservations.filter(r=>{const d=new Date(r.checkIn||r.arrival);return !Number.isNaN(d.getTime())&&d>=start&&d<=end;});
-  const cancelled=reservations.filter(r=>['cancelled','no_show'].includes(String(r.status||'').toLowerCase())&&new Date(r.checkIn||r.arrival)>=start&&new Date(r.checkIn||r.arrival)<=end);
+  const cancelled=cancelledCount;
   const nightsBetween=(a,b)=>Math.max(0,Math.round((new Date(dateKey(b)+'T00:00:00')-new Date(dateKey(a)+'T00:00:00'))/86400000));
   const roomNights=active.reduce((sum,r)=>{const a=new Date(dateKey(r.checkIn||r.arrival)+'T00:00:00'),b=new Date(dateKey(r.checkOut||r.departure)+'T00:00:00');const from=a>start?a:start,to=b<new Date(end.getTime()+1)?b:new Date(end.getTime()+1);return sum+Math.max(0,Math.round((to-from)/86400000));},0);
   const availableRoomNights=rooms.length*days;
@@ -38,11 +41,11 @@ function StatisticsContent(){
   const upcoming=active.filter(r=>{const d=new Date(r.checkIn||r.arrival);return d>=now&&d<=new Date(now.getTime()+days*86400000);});
   const daily=Array.from({length:Math.min(days,14)},(_,i)=>{const d=new Date(start);d.setDate(start.getDate()+Math.round(i*(days-1)/(Math.min(days,14)-1||1)));const k=dateKey(d);return {date:k,count:scoped.filter(r=>dateKey(r.checkIn||r.arrival)===k).length};});
   return {scoped,cancelled,roomNights,availableRoomNights,occupancy,totalValue,collected,adr,revpar,grouped,origin,upcoming,daily,active};
- },[reservations,rooms,period]);
+ },[reservations,rooms,period,cancelledCount]);
  const cards=report==='occupancy'?[['Occupancy',data.occupancy.toFixed(1)+'%','Room nights / available room nights',BedDouble],['Room nights',data.roomNights,'Reserved nights in period',CalendarDays],['Available room nights',data.availableRoomNights,'Rooms × selected days',BedDouble],['Reservations',data.scoped.length,'Arrivals in selected period',Users]]:
  report==='adr-revpar'?[['ADR',money(data.adr,currency),'Reservation value / occupied room nights',TrendingUp],['RevPAR',money(data.revpar,currency),'Reservation value / available room nights',BedDouble],['Occupancy',data.occupancy.toFixed(1)+'%','Selected period',BarChart3],['Room nights',data.roomNights,'Selected period',CalendarDays]]:
  report==='revenue'?[['Reservation value',money(data.totalValue,currency),'Value of reservations arriving in period',Wallet],['Recorded payments',money(data.collected,currency),'Payments recorded against those reservations',Wallet],['Outstanding',money(Math.max(0,data.totalValue-data.collected),currency),'Estimated difference; not a folio ledger balance',TrendingUp],['Reservations',data.scoped.length,'Arrivals in selected period',Users]]:
- report==='cancellations'?[['Cancelled / no-show',data.cancelled.length,'Cancelled records available in PMS feed',CalendarDays],['Reservations',data.scoped.length,'Other arrivals in selected period',Users],['Cancellation share',((data.cancelled.length/(data.cancelled.length+data.scoped.length||1))*100).toFixed(1)+'%','Of records in selected period',BarChart3],['Active reservations',data.active.length,'All active reservations',BedDouble]]:
+ report==='cancellations'?[['Cancelled reservations',data.cancelled,'Cancelled reservation records',CalendarDays],['Reservations',data.scoped.length,'Other arrivals in selected period',Users],['Cancellation share',((data.cancelled/(data.cancelled+data.scoped.length||1))*100).toFixed(1)+'%','Of records in selected period',BarChart3],['Active reservations',data.active.length,'All active reservations',BedDouble]]:
  [['Reservations',data.scoped.length,'Arrivals in selected period',Users],['Forward demand',data.upcoming.length,'Upcoming arrivals within selected window',CalendarDays],['Room nights',data.roomNights,'Selected period',BedDouble],['Occupancy',data.occupancy.toFixed(1)+'%','Selected period',BarChart3]];
  const groups=report==='channels'?data.grouped:report==='guest-origin'?data.origin:null;
  const rows=Object.entries(groups||{}).sort((a,b)=>b[1]-a[1]);
