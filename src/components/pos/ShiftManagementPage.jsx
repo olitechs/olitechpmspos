@@ -1,16 +1,9 @@
 import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { AlertCircle, BarChart3, CheckCircle2, Clock3, LockKeyhole, Printer, RefreshCw, Wallet } from 'lucide-react';
 import { shiftService } from '@/services/shiftService';
 import { getPrinters, getAssignments, printShiftPreview } from '@/services/printService';
 import { toast } from 'sonner';
-
-const openingShiftSchema = z.object({
-  openingCash: z.coerce.number().finite().positive('Enter an opening cash float greater than zero.'),
-  notes: z.string().trim().max(500, 'Opening notes must be 500 characters or fewer.'),
-});
+import { OpenShiftModal } from '@/components/pos/CloseShiftModal';
 
 const money = (value) => Number(value || 0).toLocaleString('en-KE', {
   minimumFractionDigits: 2,
@@ -26,7 +19,7 @@ const formatDateTime = (value) => {
 };
 
 export default function ShiftManagementPage({ propertyId, currentShift, loadError, onOpened, onCloseShift }) {
-  const [submitError, setSubmitError] = useState('');
+  const [openShiftModal, setOpenShiftModal] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [summary, setSummary] = useState(null);
   const [summaryTables, setSummaryTables] = useState([]);
@@ -80,30 +73,7 @@ export default function ShiftManagementPage({ propertyId, currentShift, loadErro
     setSummaryOpen(next);
     if (next) await loadSummary();
   };
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-    reset,
-  } = useForm({
-    resolver: zodResolver(openingShiftSchema),
-    defaultValues: { openingCash: '', notes: '' },
-  });
 
-  const submit = async (values) => {
-    setSubmitError('');
-    try {
-      const shift = await shiftService.openShift({
-        propertyId,
-        openingCash: values.openingCash,
-        notes: values.notes,
-      });
-      reset();
-      onOpened?.(shift);
-    } catch (error) {
-      setSubmitError(error?.message || 'Unable to open the POS shift. Please try again.');
-    }
-  };
 
   return (
     <main className="mx-auto w-full max-w-5xl p-4 sm:p-6 lg:p-8" aria-labelledby="pos-shifts-title">
@@ -231,71 +201,28 @@ export default function ShiftManagementPage({ propertyId, currentShift, loadErro
           </div>
         </section>
       ) : (
-        <section className="grid gap-6 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.8fr)] lg:p-7">
-          <div>
-            <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--danger-soft)] text-[var(--danger-text)]">
-              <AlertCircle size={21} />
+        <section className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-sm sm:p-8">
+          <div className="mx-auto max-w-xl text-center">
+            <span className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--primary-soft)] text-[var(--primary)]">
+              <Wallet size={22} />
             </span>
-            <h2 className="mt-4 text-xl font-bold text-[var(--text)]">Open the property POS shift</h2>
+            <h2 className="mt-4 text-xl font-bold text-[var(--text)]">No active POS shift</h2>
             <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">
-              Enter the cash float placed in the POS drawer. Only one POS shift can be open for this property at a time.
-              The shift must be open before staff can start taking orders or payments.
+              Open the property shift before taking orders or payments. The opening float and handover notes are recorded through the standard shift-opening workflow.
             </p>
-            <div className="mt-5 rounded-2xl bg-[var(--canvas)] p-4 text-xs leading-5 text-[var(--text-muted)]">
-              <p className="font-bold text-[var(--text)]">Before you continue</p>
-              <ul className="mt-2 list-disc space-y-1 pl-4">
-                <li>Count and confirm the opening cash float.</li>
-                <li>Record any handover notes for the next shift review.</li>
-                <li>All POS staff and waiters will use this property shift.</li>
-              </ul>
-            </div>
-          </div>
-
-          <form onSubmit={handleSubmit(submit)} className="space-y-4" noValidate>
-            {submitError && <div role="alert" className="rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] p-3 text-sm font-semibold text-[var(--danger-text)]">{submitError}</div>}
-            <div>
-              <label htmlFor="pos-shift-opening-cash" className="mb-1.5 block text-sm font-semibold text-[var(--text)]">Opening cash float (KES)</label>
-              <input
-                id="pos-shift-opening-cash"
-                type="number"
-                min="0.01"
-                step="0.01"
-                inputMode="decimal"
-                placeholder="e.g. 5000.00"
-                disabled={Boolean(loadError) || isSubmitting}
-                aria-invalid={Boolean(errors.openingCash)}
-                aria-describedby={errors.openingCash ? 'pos-shift-opening-cash-error' : undefined}
-                className="min-h-12 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 text-base font-semibold text-[var(--text)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15 disabled:opacity-50"
-                {...register('openingCash')}
-              />
-              {errors.openingCash && <p id="pos-shift-opening-cash-error" role="alert" className="mt-1.5 text-xs font-semibold text-[var(--danger-text)]">{errors.openingCash.message}</p>}
-            </div>
-
-            <div>
-              <label htmlFor="pos-shift-opening-notes" className="mb-1.5 block text-sm font-semibold text-[var(--text)]">Opening notes <span className="font-normal text-[var(--text-muted)]">(optional)</span></label>
-              <textarea
-                id="pos-shift-opening-notes"
-                rows={4}
-                placeholder="Record float handover or opening observations…"
-                disabled={Boolean(loadError) || isSubmitting}
-                aria-invalid={Boolean(errors.notes)}
-                className="w-full resize-y rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--text)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15 disabled:opacity-50"
-                {...register('notes')}
-              />
-              {errors.notes && <p role="alert" className="mt-1.5 text-xs font-semibold text-[var(--danger-text)]">{errors.notes.message}</p>}
-            </div>
-
             <button
-              type="submit"
-              disabled={Boolean(loadError) || isSubmitting}
-              className="inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-[var(--primary)] px-5 py-3 text-sm font-bold text-primary-foreground transition hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-50"
+              type="button"
+              onClick={() => setOpenShiftModal(true)}
+              disabled={Boolean(loadError)}
+              className="mt-6 inline-flex min-h-12 w-full max-w-sm items-center justify-center rounded-xl bg-[var(--primary)] px-5 py-3 text-sm font-bold text-primary-foreground transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isSubmitting ? 'Opening shift…' : 'Open POS Shift'}
+              Open shift
             </button>
-            <p className="text-center text-xs text-[var(--text-muted)]">The shift opens only after the database confirms the request.</p>
-          </form>
+            <p className="mt-3 text-xs text-[var(--text-muted)]">Only one property-wide POS shift can be open at a time.</p>
+          </div>
         </section>
       )}
+      {openShiftModal && <OpenShiftModal propertyId={propertyId} onOpened={(shift) => { setOpenShiftModal(false); onOpened?.(shift); }} />}
     </main>
   );
 }
