@@ -17,7 +17,6 @@ import { printOrder as printRoutedOrder, isPrinterGroupRoutingEnabled } from '@/
 import { usePrinterStore as usePrinterStoreV2 } from '@/data/modules/printerStore';
 import { posService } from '@/services/posService';
 import { getUnsentOrderLines } from '@/services/printTemplates';
-import { pmsService } from '@/services/pmsService';
 import { posAccessService } from '@/services/posAccessService';
 import POSAccessGate, { POS_ACCESS_KEY } from '@/components/pos/POSAccessGate';
 import MenuManager from '@/components/pos/MenuManager';
@@ -63,7 +62,7 @@ function buildKitchenTicketText(center, lines, { orderNumber, table, propertyNam
 
 // Owns the floor → order → bill flow for the POS module: table selection,
 // opening a new table session, taking an order, and settling the bill.
-export default function POSContainer({ onNavigateToCashier }) {
+export default function POSContainer() {
 	const store = useStore();
 	const navigate = useNavigate();
 	const { user } = useAuth();
