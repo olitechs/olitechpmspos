@@ -328,6 +328,11 @@ declare
   v_lines jsonb;
   v_item jsonb;
   v_new_lines jsonb := '[]'::jsonb;
+  v_new_kot_lines jsonb := '[]'::jsonb;
+  v_sent_item jsonb;
+  v_sent_original numeric := 0;
+  v_sent_current numeric;
+  v_sent_remaining numeric;
   v_original numeric;
   v_removed numeric;
   v_new numeric;
@@ -399,8 +404,46 @@ begin
     raise exception 'Item not found on this table.';
   end if;
 
+  -- A bill already printed is treated as sent in full. Otherwise, only the
+  -- quantity in the immutable KOT snapshot can be voided; later additions are
+  -- still unsent and must be removed without creating a void record.
+  if v_session.status = 'unsettled' then
+    v_sent_original := v_original;
+  else
+    select coalesce(sum(greatest(coalesce((value->>'qty')::numeric, (value->>'quantity')::numeric, 0), 0)), 0)
+      into v_sent_original
+    from jsonb_array_elements(coalesce(v_session.kot_sent_order_lines, '[]'::jsonb)) value
+    where value->>'id' = p_item_id;
+  end if;
+
+  if p_remove_qty > v_sent_original then
+    raise exception 'Cannot void more than the quantity already sent to production (%).', v_sent_original;
+  end if;
+
+  if v_session.status = 'unsettled' then
+    -- The printed bill includes the whole remaining order, so keep the sent
+    -- snapshot aligned with the new billed lines after the void.
+    v_new_kot_lines := v_new_lines;
+  else
+    for v_sent_item in
+      select value from jsonb_array_elements(coalesce(v_session.kot_sent_order_lines, '[]'::jsonb))
+    loop
+      if v_sent_item->>'id' = p_item_id then
+        v_sent_current := greatest(coalesce((v_sent_item->>'qty')::numeric, (v_sent_item->>'quantity')::numeric, 0), 0);
+        v_sent_remaining := v_sent_current - p_remove_qty;
+        if v_sent_remaining > 0 then
+          v_new_kot_lines := v_new_kot_lines || jsonb_build_array(jsonb_set(v_sent_item, '{qty}', to_jsonb(v_sent_remaining)));
+        end if;
+      else
+        v_new_kot_lines := v_new_kot_lines || jsonb_build_array(v_sent_item);
+      end if;
+    end loop;
+  end if;
+
   update public.pos_table_sessions
-    set order_lines=v_new_lines, updated_at=now()
+    set order_lines=v_new_lines,
+        kot_sent_order_lines=v_new_kot_lines,
+        updated_at=now()
   where id=v_session.id;
 
   select 'V-' || lpad((coalesce(max(nullif(regexp_replace(void_number,'[^0-9]','','g'), '')::bigint), 0)+1)::text,6,'0')
@@ -435,7 +478,8 @@ begin
   return jsonb_build_object(
     'void',row_to_json(v_void),
     'session',row_to_json(v_session),
-    'order_lines',v_new_lines
+    'order_lines',v_new_lines,
+    'kot_sent_order_lines',v_new_kot_lines
   );
 end;
 $$;
