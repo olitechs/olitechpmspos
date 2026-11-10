@@ -29,7 +29,7 @@ test('joined table updates the local destination session before reopening it', (
 
 test('POS item removal asks for an explicit quantity and validates the current line quantity', () => {
   assert.match(orderTaking, /Quantity to \{removeTarget\.sent \? 'void' : 'remove'\}/);
-  assert.match(orderTaking, /max=\{removeTarget\.line\.qty\}/);
+  assert.match(orderTaking, /max=\{removeTarget\.sent \? removeTarget\.sentQty : removeTarget\.unsentQty\}/);
   assert.match(orderTaking, /session\?\.kotSentOrderLines/);
   assert.match(orderTaking, /removeTarget\.sentQty/);
   assert.match(orderTaking, /result\?\.kot_sent_order_lines/);
