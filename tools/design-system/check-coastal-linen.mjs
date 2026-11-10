@@ -39,8 +39,10 @@ for (const [name, value] of requiredTokens) {
   if (!declaration.test(css)) errors.push(`Canonical token ${name} must be ${value}.`);
 }
 
-if ((css.match(/#[0-9a-fA-F]{3,8}\b/g) || []).length !== requiredTokens.length) {
-  errors.push(`src/index.css must contain only the ${requiredTokens.length} canonical literal color tokens, once each.`);
+const expectedColors = new Set(requiredTokens.map(([, value]) => value.toUpperCase()));
+const actualColors = new Set((css.match(/#[0-9a-fA-F]{3,8}\\b/g) || []).map((value) => value.toUpperCase()));
+if (actualColors.size !== expectedColors.size || [...actualColors].some((value) => !expectedColors.has(value))) {
+  errors.push(`src/index.css must use only the ${expectedColors.size} approved OliTechs brand and status colors.`);
 }
 if (/\[data-theme=["']dark|color-scheme\s*:\s*dark|\.dark\b/.test(css + provider)) {
   errors.push('Dark theme selectors must not be present in the active theme or provider.');
