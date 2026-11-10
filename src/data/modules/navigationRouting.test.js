@@ -273,8 +273,8 @@ test('POS access stays unlocked during navigation and is cleared when its browse
 
 
 test('Front Office configuration and tags destinations resolve to working property-scoped pages', () => {
-  assert.match(app, /path=\"configuration\" element={<FrontOfficeConfiguration\\/>}/);
-  assert.match(app, /path=\"tags\" element={<FrontOfficeTags\\/>}/);
+  assert.ok(app.includes('path="configuration" element={<FrontOfficeConfiguration/>}'));
+  assert.ok(app.includes('path="tags" element={<FrontOfficeTags/>}'));
   const configuration = read('../../pages/FrontOfficeConfiguration.jsx');
   const tags = read('../../pages/FrontOfficeTags.jsx');
   assert.match(configuration, /from\('rate_plans'\)/);
