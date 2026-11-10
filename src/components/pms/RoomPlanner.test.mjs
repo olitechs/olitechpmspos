@@ -8,8 +8,8 @@ const source = readFileSync(new URL('./RoomPlanner.jsx', import.meta.url), 'utf8
 test('reservation hover card shows booking, stay, meal plan, payment and Folio details', () => {
   assert.ok(source.includes('className="reservation-hover-card"'));
   assert.ok(source.includes('Reservation No. {getPlannerReservationNumber(hoverCard.reservation)}'));
-  assert.ok(source.includes('formatPlannerDate(rv.checkIn)'));
-  assert.ok(source.includes('differenceInCalendarDays(parseDate(rv.checkOut),parseDate(rv.checkIn))'));
+  assert.ok(source.includes('formatPlannerDate(hoverCard.reservation.checkIn)'));
+  assert.ok(source.includes('differenceInCalendarDays(parseDate(hoverCard.reservation.checkOut),parseDate(hoverCard.reservation.checkIn))'));
   assert.ok(source.includes('Total room:'));
   assert.ok(source.includes('Booking notes:'));
   assert.ok(source.includes('getPlannerMealDescription(hoverCard.reservation.mealPlan)'));
