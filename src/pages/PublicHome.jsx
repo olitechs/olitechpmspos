@@ -182,11 +182,14 @@ export default function PublicHome() {
         .marketing-button{display:inline-flex;align-items:center;justify-content:center;gap:9px;border-radius:6px;background:var(--blue);padding:13px 22px;color:#fff;font-size:12px;font-weight:800;box-shadow:0 8px 20px #285fe726}
         .marketing-button:hover{background:#174ac8;transform:translateY(-1px)}
         .marketing-button-outline{border:1px solid #d8dfec;background:#fff;color:var(--ink);box-shadow:none}
-        .hero-section{max-width:1280px;margin:auto;padding:78px 28px 60px;text-align:center}
-        .hero-kicker{display:inline-flex;align-items:center;gap:9px;color:#285fe7;background:#f3f7ff;border:1px solid #e2eaff;border-radius:99px;padding:8px 14px;font-size:10px;font-weight:800;letter-spacing:.15em}
-        .hero-title{max-width:950px;margin:25px auto 18px;font-size:clamp(42px,6vw,76px);line-height:.99;letter-spacing:-.06em;font-weight:850;color:#101a35}
-        .hero-title span{color:#285fe7}
-        .hero-copy{max-width:680px;margin:0 auto;color:#66718a;font-size:16px;line-height:1.8}
+        .hero-section{max-width:1280px;margin:auto;padding:78px 28px 60px;text-align:center;position:relative;isolation:isolate;overflow:hidden;background:#101a35}
+        .hero-background{position:absolute;inset:0;z-index:-2;width:100%;height:100%;object-fit:cover;object-position:center 45%;pointer-events:none}
+        .hero-overlay{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(8,17,39,.72),rgba(16,26,53,.78) 58%,rgba(16,26,53,.94));pointer-events:none}
+        .hero-section>.hero-kicker,.hero-section>.hero-title,.hero-section>.hero-copy,.hero-section>.hero-actions,.hero-section>.workspace-wrap{position:relative;z-index:1}
+        .hero-kicker{display:inline-flex;align-items:center;gap:9px;color:#e4ecff;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.24);border-radius:99px;padding:8px 14px;font-size:10px;font-weight:800;letter-spacing:.15em;backdrop-filter:blur(8px)}
+        .hero-title{max-width:950px;margin:25px auto 18px;font-size:clamp(42px,6vw,76px);line-height:.99;letter-spacing:-.06em;font-weight:850;color:#fff}
+        .hero-title span{color:#91b0ff}
+        .hero-copy{max-width:680px;margin:0 auto;color:#e0e7f5;font-size:16px;line-height:1.8}
         .hero-actions{display:flex;justify-content:center;gap:12px;margin-top:27px;flex-wrap:wrap}
         .hero-subcopy{margin-top:15px;color:#8992a5;font-size:11px}
         .workspace-wrap{max-width:1200px;margin:55px auto 0;text-align:left}
@@ -232,6 +235,10 @@ export default function PublicHome() {
 
       <main>
         <section className="hero-section" id="platform">
+          <video className="hero-background" autoPlay muted loop playsInline preload="metadata" aria-hidden="true" tabIndex={-1}>
+            <source src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260815_040604_b04410ba-c173-4b68-826d-212a24bccdad.mp4" type="video/mp4" />
+          </video>
+          <div className="hero-overlay" aria-hidden="true" />
           <div className="hero-kicker">BUILT FOR HOSPITALITY. READY FOR WHAT’S NEXT.</div>
           <h1 className="hero-title">Great stays start with<br/><span>smarter operations.</span></h1>
           <p className="hero-copy">One connected PMS + POS for your rooms, restaurants and people.<br/>Less friction behind the scenes. Better experiences out front.</p>
