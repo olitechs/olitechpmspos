@@ -69,6 +69,7 @@ import ShiftReport from '@/pages/ShiftReport';
 const POSApp = lazyWithRetry(() => import('@/pages/POSApp'), 'app-pos-app');
 const Reports = lazyWithRetry(() => import('@/components/modules/Reports'), 'app-reports');
 const Store = lazyWithRetry(() => import('@/pages/Store'), 'app-store');
+const FrontOfficeMinibar = lazyWithRetry(() => import('@/pages/FrontOfficeMinibar'), 'route-pages-frontoffice-minibar');
 const StoresPage = lazyWithRetry(() => import('@/components/stores/StoresPage'), 'app-stores-page');
 
 function AuthLoading(){return <div role="status" aria-live="polite" className="fixed inset-0 flex items-center justify-center bg-[var(--canvas)]"><div className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--border)] border-t-[var(--brand-primary)]"/></div>;}
