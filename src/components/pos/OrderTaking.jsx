@@ -162,20 +162,17 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
   const changeQty = (id, delta) => {
     if (delta < 0) {
       const line = orderLines.find((l) => l.id === id);
+      if (!line) return;
       const session = store.getSession(table.id);
       const sent = Boolean(session?.kotSentAt || session?.status === 'unsettled');
-      if (line && sent) {
-        setRemoveTarget({ line, removeQty: 1, sent });
-        setRemoveReason('');
-        setRemoveError('');
-        return;
-      }
+      // Every decrease/removal is confirmed with an explicit quantity. Sent
+      // lines continue through the audited manager-approved void workflow.
+      setRemoveTarget({ line, removeQty: Math.min(1, Number(line.qty) || 1), sent });
+      setRemoveReason('');
+      setRemoveError('');
+      return;
     }
-    setOrderLines((prev) =>
-      prev
-        .map((l) => (l.id === id ? { ...l, qty: l.qty + delta } : l))
-        .filter((l) => l.qty > 0)
-    );
+    setOrderLines((prev) => prev.map((l) => (l.id === id ? { ...l, qty: l.qty + delta } : l)).filter((l) => l.qty > 0));
   };
 
   const managerRoles = new Set(['hotel_admin','super_admin','cashier','fb_manager','front_office_manager','property_manager','general_manager','manager','admin','owner']);
@@ -183,26 +180,40 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
 
   const performRemoval = async () => {
     if (!removeTarget || !propertyId) return;
-    if (!removeReason.trim()) { setRemoveError('Enter a reason for the item cancellation.'); return; }
+    const removeQty = Number(removeTarget.removeQty);
+    const originalQty = Number(removeTarget.line.qty);
+    if (!Number.isFinite(removeQty) || removeQty <= 0 || removeQty > originalQty) {
+      setRemoveError(`Enter a quantity greater than zero and no more than ${originalQty}.`);
+      return;
+    }
+    if (removeTarget.sent && !removeReason.trim()) {
+      setRemoveError('Enter a reason for the item cancellation.');
+      return;
+    }
     setRemoveBusy(true); setRemoveError('');
     try {
+      if (!removeTarget.sent) {
+        setOrderLines((prev) => prev
+          .map((line) => line.id === removeTarget.line.id ? { ...line, qty: Number(line.qty) - removeQty } : line)
+          .filter((line) => Number(line.qty) > 0));
+        setRemoveTarget(null);
+        return;
+      }
       const staffName = activeStaff?.full_name || user?.name || 'POS Staff';
       const result = await pmsService.removeOrderItem({
         propertyId,
         tableKey: table.id,
         itemId: removeTarget.line.id,
-        removeQty: removeTarget.removeQty,
+        removeQty,
         reason: removeReason.trim(),
         removedByName: staffName,
       });
       setOrderLines(result?.order_lines || []);
-      if (removeTarget.sent) {
-        try { await store.setKotSentOrderLines(table.id, result?.order_lines || []); }
-        catch (snapshotError) { console.error('[POS] voided order KOT snapshot could not be reconciled', snapshotError); setRemoveError('Item was removed. The void ticket will still print, but reconnect before sending more items.'); }
-      }
+      try { await store.setKotSentOrderLines(table.id, result?.order_lines || []); }
+      catch (snapshotError) { console.error('[POS] voided order KOT snapshot could not be reconciled', snapshotError); setRemoveError('Item was voided. The void ticket will still print, but reconnect before sending more items.'); }
       const voidRow = result?.void;
       const settings = await getPropertySettings(propertyId).catch(() => null);
-      if (removeTarget.sent && settings?.print_void_slips !== false && voidRow) {
+      if (settings?.print_void_slips !== false && voidRow) {
         const [printers, assignments] = await Promise.all([getPrinters(propertyId), getAssignments(propertyId)]);
         const assignmentType = voidRow.category === 'drinks' ? 'void_drinks_orders' : 'void_food_orders';
         const fallbackType = voidRow.category === 'drinks' ? 'drinks_orders' : 'food_orders';
@@ -227,9 +238,9 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
             timestamp: voidRow.created_at,
             category: voidRow.category,
           })));
-          if (!results.some(r => r.ok)) setRemoveError('Item removed, but the void slip did not print. Check the assigned printer.');
+          if (!results.some(r => r.ok)) setRemoveError('Item voided, but the void slip did not print. Check the assigned printer.');
         } else {
-          setRemoveError('Item removed, but no Kitchen/Bar void printer is assigned.');
+          setRemoveError('Item voided, but no Kitchen/Bar void printer is assigned.');
         }
       }
       setRemoveTarget(null);
@@ -241,7 +252,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
   };
 
   const requestRemoval = () => {
-    if (needsManagerPin) {
+    if (removeTarget?.sent && needsManagerPin) {
       setPinError('');
       setPinStaff({ name: 'Manager approval required' });
       return;
@@ -529,19 +540,22 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
         <div className="fixed inset-0 z-[250] flex items-center justify-center bg-[var(--overlay-scrim)] p-4">
           <div className="overlay-surface w-full max-w-md rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-5">
             <div className="flex items-start justify-between gap-3">
-              <div><div className="flex items-center gap-2 text-base font-bold text-[var(--text)]"><AlertTriangle size={18} className="text-[var(--danger)]"/>Cancel sent item</div><p className="mt-1 text-sm text-[var(--text-muted)]">This item was already sent to production or the bill was printed. A control void will be recorded.</p></div>
+              <div><div className="flex items-center gap-2 text-base font-bold text-[var(--text)]"><AlertTriangle size={18} className="text-[var(--danger)]"/>{removeTarget.sent ? 'Void sent item' : 'Remove item'}</div><p className="mt-1 text-sm text-[var(--text-muted)]">{removeTarget.sent ? 'This item was already sent to production or the bill was printed. A control void will be recorded.' : 'This item has not been sent to production. Confirm how many units to remove from the open order.'}</p></div>
               <button type="button" aria-label="Close cancellation dialog" onClick={()=>setRemoveTarget(null)} className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--primary-soft)]"><X size={18}/></button>
             </div>
             <div className="mt-4 rounded-2xl border border-[var(--danger)] bg-[var(--danger-soft)] p-4">
               <div className="font-bold text-[var(--text)]">{removeTarget.line.name}</div>
-              <div className="mt-1 text-sm text-[var(--text-muted)]">Original quantity: {removeTarget.line.qty} · Removing: {removeTarget.removeQty} · Remaining: {Math.max(0, removeTarget.line.qty-removeTarget.removeQty)}</div>
+              <div className="mt-1 text-sm text-[var(--text-muted)]">Original quantity: {removeTarget.line.qty} · Removing: {removeTarget.removeQty || 0} · Remaining: {Math.max(0, Number(removeTarget.line.qty)-Number(removeTarget.removeQty || 0))}</div>
             </div>
-            <label className="mt-4 block text-sm font-semibold text-[var(--text)]">Reason required
-              <textarea value={removeReason} onChange={e=>setRemoveReason(e.target.value)} rows={3} placeholder="Wrong order, guest cancellation, duplicate item…" className="mt-2 w-full resize-none rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 text-base text-[var(--text)] outline-none focus:border-[var(--danger)]"/>
+            <label className="mt-4 block text-sm font-semibold text-[var(--text)]">Quantity to {removeTarget.sent ? 'void' : 'remove'}
+              <input type="number" inputMode="decimal" min="0.01" max={removeTarget.line.qty} step="any" value={removeTarget.removeQty} onChange={e=>setRemoveTarget(prev=>({...prev,removeQty:e.target.value === '' ? '' : Number(e.target.value)}))} className="mt-2 min-h-12 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-base text-[var(--text)] outline-none focus:border-[var(--danger)]"/>
             </label>
+            {removeTarget.sent && <label className="mt-4 block text-sm font-semibold text-[var(--text)]">Reason required
+              <textarea value={removeReason} onChange={e=>setRemoveReason(e.target.value)} rows={3} placeholder="Wrong order, guest cancellation, duplicate item…" className="mt-2 w-full resize-none rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 text-base text-[var(--text)] outline-none focus:border-[var(--danger)]"/>
+            </label>}
             {removeError && <div role="alert" className="mt-3 rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] p-3 text-sm font-semibold text-[var(--danger-text)]">{removeError}</div>}
-            <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-[var(--text-muted)]"><ShieldCheck size={15}/>Kitchen/Bar control slip will be printed when enabled.</div>
-            <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button type="button" onClick={()=>setRemoveTarget(null)} className="min-h-12 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 text-sm font-bold text-[var(--text)] hover:bg-[var(--primary-soft)]">Keep Item</button><button type="button" disabled={removeBusy} onClick={requestRemoval} className="min-h-12 rounded-xl bg-[var(--danger)] px-4 text-sm font-bold text-[var(--danger-foreground)] disabled:opacity-50">{removeBusy?'Removing…':needsManagerPin?'Request Manager PIN':'Confirm Void'}</button></div>
+            {removeTarget.sent && <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-[var(--text-muted)]"><ShieldCheck size={15}/>Kitchen/Bar control slip will be printed when enabled.</div>}
+            <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button type="button" onClick={()=>setRemoveTarget(null)} className="min-h-12 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 text-sm font-bold text-[var(--text)] hover:bg-[var(--primary-soft)]">Keep Item</button><button type="button" disabled={removeBusy || !Number.isFinite(Number(removeTarget.removeQty)) || Number(removeTarget.removeQty) <= 0 || Number(removeTarget.removeQty) > Number(removeTarget.line.qty) || (removeTarget.sent && !removeReason.trim())} onClick={requestRemoval} className="min-h-12 rounded-xl bg-[var(--danger)] px-4 text-sm font-bold text-[var(--danger-foreground)] disabled:opacity-50">{removeBusy ? (removeTarget.sent ? 'Voiding…' : 'Removing…') : removeTarget.sent ? (needsManagerPin ? 'Request Manager PIN' : 'Confirm Void') : 'Confirm Remove'}</button></div>
           </div>
         </div>
       )}
