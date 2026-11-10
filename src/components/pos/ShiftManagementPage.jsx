@@ -4,6 +4,7 @@ import { shiftService } from '@/services/shiftService';
 import { getPrinters, getAssignments, printShiftPreview } from '@/services/printService';
 import { toast } from 'sonner';
 import { OpenShiftModal } from '@/components/pos/CloseShiftModal';
+import ShiftReceiptHistory from '@/components/pos/ShiftReceiptHistory';
 
 const money = (value) => Number(value || 0).toLocaleString('en-KE', {
   minimumFractionDigits: 2,
@@ -222,6 +223,7 @@ export default function ShiftManagementPage({ propertyId, currentShift, loadErro
           </div>
         </section>
       )}
+      <ShiftReceiptHistory propertyId={propertyId} currentShift={currentShift} />
       {openShiftModal && <OpenShiftModal propertyId={propertyId} onOpened={(shift) => { setOpenShiftModal(false); onOpened?.(shift); }} />}
     </main>
   );

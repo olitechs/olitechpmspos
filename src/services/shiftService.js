@@ -202,6 +202,74 @@ export const shiftService = {
     return (data || []).map(normalizeCashierShift);
   },
 
+  async getShiftReceipts(propertyId, shiftId) {
+    if (!propertyId || !shiftId) return [];
+    const { data: receipts, error: receiptError } = await supabase
+      .from('pos_receipts')
+      .select('*')
+      .eq('property_id', propertyId)
+      .eq('shift_id', shiftId)
+      .order('created_at', { ascending: false })
+      .limit(500);
+    if (receiptError) throw new Error(receiptError.message);
+    const rows = receipts || [];
+    if (!rows.length) return [];
+
+    const receiptIds = rows.map((receipt) => receipt.id);
+    const [refundResult, adjustmentResult] = await Promise.all([
+      supabase
+        .from('cashier_refunds')
+        .select('*')
+        .eq('property_id', propertyId)
+        .in('receipt_id', receiptIds)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('cashier_adjustments')
+        .select('id,target_id,amount,refund_method,reason,status,created_at')
+        .eq('property_id', propertyId)
+        .eq('target_type', 'pos_receipt')
+        .eq('adjustment_type', 'refund')
+        .eq('status', 'pending')
+        .in('target_id', receiptIds)
+        .order('created_at', { ascending: false }),
+    ]);
+    if (refundResult.error) throw new Error(refundResult.error.message);
+    if (adjustmentResult.error) throw new Error(adjustmentResult.error.message);
+
+    const refundRows = refundResult.data || [];
+    const pendingRows = adjustmentResult.data || [];
+    const pendingByReceipt = new Map();
+    for (const pending of pendingRows) {
+      const key = String(pending.target_id);
+      const list = pendingByReceipt.get(key) || [];
+      list.push(pending);
+      pendingByReceipt.set(key, list);
+    }
+
+    const refundsByReceipt = new Map();
+    for (const refund of refundRows || []) {
+      const key = String(refund.receipt_id);
+      const list = refundsByReceipt.get(key) || [];
+      list.push(refund);
+      refundsByReceipt.set(key, list);
+    }
+
+    return rows.map((receipt) => {
+      const refunds = refundsByReceipt.get(String(receipt.id)) || [];
+      const refundedTotal = refunds.reduce((sum, refund) => sum + Number(refund.amount || 0), 0);
+      const pendingRefunds = pendingByReceipt.get(String(receipt.id)) || [];
+      const pendingRefundTotal = pendingRefunds.reduce((sum, adjustment) => sum + Number(adjustment.amount || 0), 0);
+      return {
+        ...receipt,
+        refunds,
+        pending_refunds: pendingRefunds,
+        refunded_total: refundedTotal,
+        pending_refund_total: pendingRefundTotal,
+        refundable_balance: Math.max(0, Number(receipt.total || 0) - refundedTotal - pendingRefundTotal),
+      };
+    });
+  },
+
   async printData(shiftId) {
     return this.getShiftReport(shiftId);
   },
