@@ -202,6 +202,48 @@ export const shiftService = {
     return (data || []).map(normalizeCashierShift);
   },
 
+  async getShiftReceipts(propertyId, shiftId) {
+    if (!propertyId || !shiftId) return [];
+    const { data: receipts, error: receiptError } = await supabase
+      .from('pos_receipts')
+      .select('*')
+      .eq('property_id', propertyId)
+      .eq('shift_id', shiftId)
+      .order('created_at', { ascending: false })
+      .limit(500);
+    if (receiptError) throw new Error(receiptError.message);
+    const rows = receipts || [];
+    if (!rows.length) return [];
+
+    const receiptIds = rows.map((receipt) => receipt.id);
+    const { data: refundRows, error: refundError } = await supabase
+      .from('cashier_refunds')
+      .select('id,receipt_id,amount,method,settlement_method,created_at,approved_by')
+      .eq('property_id', propertyId)
+      .in('receipt_id', receiptIds)
+      .order('created_at', { ascending: false });
+    if (refundError) throw new Error(refundError.message);
+
+    const refundsByReceipt = new Map();
+    for (const refund of refundRows || []) {
+      const key = String(refund.receipt_id);
+      const list = refundsByReceipt.get(key) || [];
+      list.push(refund);
+      refundsByReceipt.set(key, list);
+    }
+
+    return rows.map((receipt) => {
+      const refunds = refundsByReceipt.get(String(receipt.id)) || [];
+      const refundedTotal = refunds.reduce((sum, refund) => sum + Number(refund.amount || 0), 0);
+      return {
+        ...receipt,
+        refunds,
+        refunded_total: refundedTotal,
+        refundable_balance: Math.max(0, Number(receipt.total || 0) - refundedTotal),
+      };
+    });
+  },
+
   async printData(shiftId) {
     return this.getShiftReport(shiftId);
   },
