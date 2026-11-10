@@ -115,6 +115,7 @@ export default function AdminDashboard() {
         <div className="grid md:grid-cols-3 gap-4">
           <QuickAction to="/admin/properties/new" icon={Plus} title="Create Property" description="Register a property directly from the platform." />
           <QuickAction to="/admin/usage" icon={Activity} title="Usage & Health" description="Monitor sessions, bookings, receipts and print failures by property." />
+          <QuickAction to="/admin/users" icon={Users} title="Users & Access" description="Find platform accounts and manage their property memberships." />
           <QuickAction to="/admin/properties" icon={ClipboardList} title="Manage Properties" description="Approve, suspend, reactivate and assign packages." />
           <QuickAction to="/admin/audit-log" icon={Activity} title="Platform Audit Log" description="Review platform-wide administrative activity." />
         </div>
