@@ -70,6 +70,7 @@ const POSApp = lazyWithRetry(() => import('@/pages/POSApp'), 'app-pos-app');
 const Reports = lazyWithRetry(() => import('@/components/modules/Reports'), 'app-reports');
 const Store = lazyWithRetry(() => import('@/pages/Store'), 'app-store');
 const FrontOfficeLaundry = lazyWithRetry(() => import('@/pages/FrontOfficeLaundry'), 'route-pages-frontoffice-laundry');
+const FrontOfficeMinibar = lazyWithRetry(() => import('@/pages/FrontOfficeMinibar'), 'route-pages-frontoffice-minibar');
 const FrontOfficeMaintenance = lazyWithRetry(() => import('@/pages/FrontOfficeMaintenance'), 'route-pages-frontoffice-maintenance');
 const FrontOfficeGuestRequests = lazyWithRetry(() => import('@/pages/FrontOfficeGuestRequests'), 'route-pages-frontoffice-guest-requests');
 const FrontOfficeStatistics = lazyWithRetry(() => import('@/pages/FrontOfficeStatistics'), 'route-pages-frontoffice-statistics');
@@ -114,7 +115,7 @@ function AppRoutes(){return <AuthProvider><Suspense fallback={<AuthLoading/>}><R
 <Route path="statistics/:report" element={<FrontOfficeStatistics/>}/>
 <Route path="services/housekeeping" element={<POSApp initialModule="housekeeping" embedded workspaceModule="frontoffice"/>}/>
 <Route path="services/room-charges" element={<POSApp initialModule="folio" embedded workspaceModule="frontoffice"/>}/>
-<Route path="services/minibar" element={<ModuleStatusPage title="Minibar and Extras" description="Track minibar consumption and guest extras." module="minibar" back="/frontoffice"/>}/>
+<Route path="services/minibar" element={<FrontOfficeMinibar/>}/>
 <Route path="services/laundry" element={<FrontOfficeLaundry/>}/>
 <Route path="services/maintenance" element={<FrontOfficeMaintenance/>}/>
 <Route path="services/guest-requests" element={<FrontOfficeGuestRequests/>}/>
