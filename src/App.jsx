@@ -76,6 +76,7 @@ const FrontOfficeGuestRequests = lazyWithRetry(() => import('@/pages/FrontOffice
 const FrontOfficeStatistics = lazyWithRetry(() => import('@/pages/FrontOfficeStatistics'), 'route-pages-frontoffice-statistics');
 const FrontOfficeTags = lazyWithRetry(() => import('@/pages/FrontOfficeTags'), 'route-pages-frontoffice-tags');
 const FrontOfficeAssistance = lazyWithRetry(() => import('@/pages/FrontOfficeAssistance'), 'route-pages-frontoffice-assistance');
+const FrontOfficeConfiguration = lazyWithRetry(() => import('@/pages/FrontOfficeConfiguration'), 'route-pages-frontoffice-configuration');
 const StoresPage = lazyWithRetry(() => import('@/components/stores/StoresPage'), 'app-stores-page');
 
 function AuthLoading(){return <div role="status" aria-live="polite" className="fixed inset-0 flex items-center justify-center bg-[var(--canvas)]"><div className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--border)] border-t-[var(--brand-primary)]"/></div>;}
@@ -104,7 +105,7 @@ function AppRoutes(){return <AuthProvider><Suspense fallback={<AuthLoading/>}><R
 <Route path="dashboard" element={<FrontOfficeDashboard/>}/>
 <Route path="channels" element={<POSApp initialModule="channels" embedded workspaceModule="frontoffice"/>}/>
 <Route path="structure" element={<FrontOfficeStructure/>}/>
-<Route path="configuration" element={<ModuleStatusPage title="Configuration" description="Rates, seasons, VAT, payment methods, policies, templates, users, roles and planner settings." module="configuration" back="/frontoffice"/>}/>
+<Route path="configuration" element={<FrontOfficeConfiguration/>}/>
 <Route path="tags" element={<FrontOfficeTags/>}/>
 <Route path="check-in/arrivals" element={<POSApp initialModule="reservations" embedded workspaceModule="frontoffice"/>}/>
 <Route path="check-in/in-house" element={<POSApp initialModule="reservations" embedded workspaceModule="frontoffice"/>}/>
