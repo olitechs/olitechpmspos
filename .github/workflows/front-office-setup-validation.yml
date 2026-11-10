@@ -1,0 +1,40 @@
+name: Front Office setup validation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/App.jsx'
+      - 'src/pages/FrontOfficeConfiguration.jsx'
+      - 'src/pages/FrontOfficeTags.jsx'
+      - 'src/data/modules/navigationRouting.test.js'
+      - 'supabase/migrations/*front_office_property_tags.sql'
+      - 'supabase/migrations/*validate_property_tag_assignment_type.sql'
+      - '.github/workflows/front-office-setup-validation.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: front-office-setup-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: ESLint
+        run: npx eslint src/App.jsx src/pages/FrontOfficeConfiguration.jsx src/pages/FrontOfficeTags.jsx src/data/modules/navigationRouting.test.js --quiet
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Architecture and navigation tests
+        run: npm run test:architecture
+      - name: Production build
+        run: npm run build
