@@ -47,7 +47,7 @@ for (const { path, absolute } of files) {
 }
 
 const css = readFileSync(join(root, 'src/index.css'), 'utf8');
-const themeValues = new Set((css.match(/#[0-9a-fA-F]{3,8}\\b/g) || []).map((value) => value.toUpperCase()));
+const themeValues = new Set((css.match(/#[0-9a-fA-F]{3,8}\b/g) || []).map((value) => value.toUpperCase()));
 if (themeValues.size !== 17) errors.push(`src/index.css: expected 17 approved unique canonical color values, found ${themeValues.size}`);
 const definedTokens = new Set([...css.matchAll(/--([\w-]+)\s*:/g)].map((match) => match[1]));
 const tokenSources = [{ path: 'src/index.css', content: css }, ...files.map(({ path, absolute }) => ({ path, content: readFileSync(absolute, 'utf8') }))];
