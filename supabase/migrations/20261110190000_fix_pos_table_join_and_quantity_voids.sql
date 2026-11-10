@@ -359,7 +359,7 @@ begin
     set order_lines=v_new_lines, updated_at=now()
   where id=v_session.id;
 
-  select 'V-' || lpad((coalesce(max(nullif(regexp_replace(void_number,'[^0-9]','','g'),''),'0')::bigint)+1)::text,6,'0')
+  select 'V-' || lpad((coalesce(max(nullif(regexp_replace(void_number,'[^0-9]','','g'), '')::bigint), 0)+1)::text,6,'0')
     into v_void_number
   from public.pos_void_items
   where property_id=p_property_id;
