@@ -40,7 +40,7 @@ for (const [name, value] of requiredTokens) {
 }
 
 const expectedColors = new Set(requiredTokens.map(([, value]) => value.toUpperCase()));
-const actualColors = new Set((css.match(/#[0-9a-fA-F]{3,8}\\b/g) || []).map((value) => value.toUpperCase()));
+const actualColors = new Set((css.match(/#[0-9a-fA-F]{3,8}\b/g) || []).map((value) => value.toUpperCase()));
 if (actualColors.size !== expectedColors.size || [...actualColors].some((value) => !expectedColors.has(value))) {
   errors.push(`src/index.css must use only the ${expectedColors.size} approved OliTechs brand and status colors.`);
 }
