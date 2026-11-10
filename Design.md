@@ -10,14 +10,14 @@ OliTechs is a professional hospitality operations interface with a light-only Ol
 
 | Purpose | Token |
 |---|---|
-| Navy brand | `--brand-navy` (`#101A35`) |
-| Primary blue | `--brand-blue`, `--coastal-teal`, `--primary` (`#285FE7`) |
+| Navy brand | `--brand-navy` |
+| Primary blue | `--brand-blue`, `--coastal-teal`, `--primary` |
 | Primary hover / dark anchor | `--brand-blue-hover`, `--deep-lagoon` |
 | Soft blue / canvas / white | `--brand-blue-soft`, `--brand-canvas`, `--brand-white`, `--soft-white`, `--canvas`, `--white` |
 | Sidebar / text / muted text / border | `--sidebar`, `--text`, `--text-muted`, `--border` |
 | Small highlights and warnings only | `--accent`, `--warning`, `--warning-soft` |
 
-The brand palette is navy `#101A35`, primary blue `#285FE7`, hover blue `#174AC8`, soft blue `#F3F7FF`, canvas `#F8FAFF`, sidebar `#EEF3FC`, and white `#FFFFFF`. The `--deep-lagoon` and `--coastal-teal` names remain as compatibility aliases for existing component contracts; their values follow the current OliTechs navy/blue palette.
+The brand palette uses navy, primary blue, a darker hover blue, soft blue surfaces, a pale canvas, a light sidebar and white working surfaces. The `--deep-lagoon` and `--coastal-teal` names remain as compatibility aliases for existing component contracts; their values follow the current OliTechs navy/blue palette.
 
 Use the official brand tokens for the logo, headers, primary buttons, active states, links and key accents. Do not use the warning accent as a large surface or in the logo. The canvas and normal working surfaces remain light; do not introduce black areas.
 
