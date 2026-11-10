@@ -164,10 +164,25 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
       const line = orderLines.find((l) => l.id === id);
       if (!line) return;
       const session = store.getSession(table.id);
-      const sent = Boolean(session?.kotSentAt || session?.status === 'unsettled');
-      // Every decrease/removal is confirmed with an explicit quantity. Sent
-      // lines continue through the audited manager-approved void workflow.
-      setRemoveTarget({ line, removeQty: Math.min(1, Number(line.qty) || 1), sent });
+      const currentQty = Math.max(0, Number(line.qty) || 0);
+      const sentLine = (Array.isArray(session?.kotSentOrderLines) ? session.kotSentOrderLines : [])
+        .find((item) => item.id === id);
+      const sentQty = session?.status === 'unsettled'
+        ? currentQty
+        : Math.min(currentQty, Math.max(0, Number(sentLine?.qty || 0)));
+      const unsentQty = Math.max(0, currentQty - sentQty);
+      // Remove unsent additions first. Only quantities confirmed in the KOT
+      // snapshot (or included on a printed bill) enter the audited void flow.
+      const sent = unsentQty <= 0 && sentQty > 0;
+      const allowedQty = sent ? sentQty : unsentQty;
+      if (allowedQty <= 0) return;
+      setRemoveTarget({
+        line,
+        removeQty: Math.min(1, allowedQty),
+        sent,
+        sentQty,
+        unsentQty,
+      });
       setRemoveReason('');
       setRemoveError('');
       return;
@@ -182,8 +197,9 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
     if (!removeTarget || !propertyId) return;
     const removeQty = Number(removeTarget.removeQty);
     const originalQty = Number(removeTarget.line.qty);
-    if (!Number.isFinite(removeQty) || removeQty <= 0 || removeQty > originalQty) {
-      setRemoveError(`Enter a quantity greater than zero and no more than ${originalQty}.`);
+    const allowedQty = Number(removeTarget.sent ? removeTarget.sentQty : removeTarget.unsentQty);
+    if (!Number.isFinite(removeQty) || removeQty <= 0 || removeQty > allowedQty) {
+      setRemoveError(`Enter a quantity greater than zero and no more than ${allowedQty}.`);
       return;
     }
     if (removeTarget.sent && !removeReason.trim()) {
@@ -209,7 +225,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
         removedByName: staffName,
       });
       setOrderLines(result?.order_lines || []);
-      try { await store.setKotSentOrderLines(table.id, result?.order_lines || []); }
+      try { await store.setKotSentOrderLines(table.id, result?.kot_sent_order_lines || []); }
       catch (snapshotError) { console.error('[POS] voided order KOT snapshot could not be reconciled', snapshotError); setRemoveError('Item was voided. The void ticket will still print, but reconnect before sending more items.'); }
       const voidRow = result?.void;
       const settings = await getPropertySettings(propertyId).catch(() => null);
@@ -545,17 +561,18 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
             </div>
             <div className="mt-4 rounded-2xl border border-[var(--danger)] bg-[var(--danger-soft)] p-4">
               <div className="font-bold text-[var(--text)]">{removeTarget.line.name}</div>
-              <div className="mt-1 text-sm text-[var(--text-muted)]">Original quantity: {removeTarget.line.qty} · Removing: {removeTarget.removeQty || 0} · Remaining: {Math.max(0, Number(removeTarget.line.qty)-Number(removeTarget.removeQty || 0))}</div>
+              <div className="mt-1 text-sm text-[var(--text-muted)]">On order: {removeTarget.line.qty} · Already sent: {removeTarget.sentQty || 0} · {removeTarget.sent ? 'Voiding' : 'Removing'}: {removeTarget.removeQty || 0} · Remaining: {Math.max(0, Number(removeTarget.line.qty)-Number(removeTarget.removeQty || 0))}</div>
+              {!removeTarget.sent && Number(removeTarget.sentQty || 0) > 0 && <div className="mt-1 text-xs font-semibold text-[var(--text-muted)]">The sent quantity is protected and will require a separate manager-approved void.</div>}
             </div>
             <label className="mt-4 block text-sm font-semibold text-[var(--text)]">Quantity to {removeTarget.sent ? 'void' : 'remove'}
-              <input type="number" inputMode="decimal" min="0.01" max={removeTarget.line.qty} step="any" value={removeTarget.removeQty} onChange={e=>setRemoveTarget(prev=>({...prev,removeQty:e.target.value === '' ? '' : Number(e.target.value)}))} className="mt-2 min-h-12 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-base text-[var(--text)] outline-none focus:border-[var(--danger)]"/>
+              <input type="number" inputMode="decimal" min="0.01" max={removeTarget.sent ? removeTarget.sentQty : removeTarget.unsentQty} step="any" value={removeTarget.removeQty} onChange={e=>setRemoveTarget(prev=>({...prev,removeQty:e.target.value === '' ? '' : Number(e.target.value)}))} className="mt-2 min-h-12 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-base text-[var(--text)] outline-none focus:border-[var(--danger)]"/>
             </label>
             {removeTarget.sent && <label className="mt-4 block text-sm font-semibold text-[var(--text)]">Reason required
               <textarea value={removeReason} onChange={e=>setRemoveReason(e.target.value)} rows={3} placeholder="Wrong order, guest cancellation, duplicate item…" className="mt-2 w-full resize-none rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 text-base text-[var(--text)] outline-none focus:border-[var(--danger)]"/>
             </label>}
             {removeError && <div role="alert" className="mt-3 rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] p-3 text-sm font-semibold text-[var(--danger-text)]">{removeError}</div>}
             {removeTarget.sent && <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-[var(--text-muted)]"><ShieldCheck size={15}/>Kitchen/Bar control slip will be printed when enabled.</div>}
-            <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button type="button" onClick={()=>setRemoveTarget(null)} className="min-h-12 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 text-sm font-bold text-[var(--text)] hover:bg-[var(--primary-soft)]">Keep Item</button><button type="button" disabled={removeBusy || !Number.isFinite(Number(removeTarget.removeQty)) || Number(removeTarget.removeQty) <= 0 || Number(removeTarget.removeQty) > Number(removeTarget.line.qty) || (removeTarget.sent && !removeReason.trim())} onClick={requestRemoval} className="min-h-12 rounded-xl bg-[var(--danger)] px-4 text-sm font-bold text-[var(--danger-foreground)] disabled:opacity-50">{removeBusy ? (removeTarget.sent ? 'Voiding…' : 'Removing…') : removeTarget.sent ? (needsManagerPin ? 'Request Manager PIN' : 'Confirm Void') : 'Confirm Remove'}</button></div>
+            <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button type="button" onClick={()=>setRemoveTarget(null)} className="min-h-12 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 text-sm font-bold text-[var(--text)] hover:bg-[var(--primary-soft)]">Keep Item</button><button type="button" disabled={removeBusy || !Number.isFinite(Number(removeTarget.removeQty)) || Number(removeTarget.removeQty) <= 0 || Number(removeTarget.removeQty) > Number(removeTarget.sent ? removeTarget.sentQty : removeTarget.unsentQty) || (removeTarget.sent && !removeReason.trim())} onClick={requestRemoval} className="min-h-12 rounded-xl bg-[var(--danger)] px-4 text-sm font-bold text-[var(--danger-foreground)] disabled:opacity-50">{removeBusy ? (removeTarget.sent ? 'Voiding…' : 'Removing…') : removeTarget.sent ? (needsManagerPin ? 'Request Manager PIN' : 'Confirm Void') : 'Confirm Remove'}</button></div>
           </div>
         </div>
       )}
