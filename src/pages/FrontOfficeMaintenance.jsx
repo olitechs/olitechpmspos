@@ -3,7 +3,7 @@ import { Wrench,Plus,RefreshCw,Search,AlertTriangle,CheckCircle2,Clock3,Clipboar
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
-import pmsService from '@/services/pmsService';
+import { pmsService } from '@/services/pmsService';
 const input='h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text)]';
 const statuses=['open','assigned','in_progress','resolved','closed'];
 const statusLabel={open:'Open',assigned:'Assigned',in_progress:'In progress',resolved:'Resolved',closed:'Closed'};
