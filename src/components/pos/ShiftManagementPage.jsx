@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { AlertCircle, BarChart3, CheckCircle2, Clock3, RefreshCw, Wallet } from 'lucide-react';
+import { AlertCircle, BarChart3, CheckCircle2, Clock3, Printer, RefreshCw, Wallet } from 'lucide-react';
 import { shiftService } from '@/services/shiftService';
+import { getPrinters, getAssignments, printShiftPreview } from '@/services/printService';
+import { toast } from 'sonner';
 
 const openingShiftSchema = z.object({
   openingCash: z.coerce.number().finite().positive('Enter an opening cash float greater than zero.'),
@@ -30,6 +32,7 @@ export default function ShiftManagementPage({ propertyId, currentShift, loadErro
   const [summaryTables, setSummaryTables] = useState([]);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summaryError, setSummaryError] = useState('');
+  const [printingSummary, setPrintingSummary] = useState(false);
 
   const loadSummary = async () => {
     if (!currentShift?.id) return;
@@ -46,6 +49,29 @@ export default function ShiftManagementPage({ propertyId, currentShift, loadErro
       setSummaryError(error?.message || 'Unable to load the current shift summary.');
     } finally {
       setSummaryLoading(false);
+    }
+  };
+
+  const printLiveSummary = async () => {
+    if (!summary || !currentShift?.id) return;
+    setPrintingSummary(true);
+    try {
+      const [printers, assignments] = await Promise.all([getPrinters(propertyId), getAssignments(propertyId)]);
+      const assigned = assignments
+        .filter((assignment) => ['shift_reports', 'reports'].includes(assignment.assignment_type))
+        .map((assignment) => printers.find((printer) => printer.id === assignment.printer_id))
+        .filter(Boolean);
+      if (!assigned.length) {
+        toast.warning('No printer is assigned to Shift Closing Reports.');
+        return;
+      }
+      const result = await printShiftPreview({ ...summary, propertyId }, assigned[0]);
+      if (!result.ok) toast.error(result.friendlyError || 'The live shift summary could not be printed.');
+      else toast.success('Live shift summary sent to the assigned printer.');
+    } catch (error) {
+      toast.error(error?.message || 'Unable to print the live shift summary.');
+    } finally {
+      setPrintingSummary(false);
     }
   };
 
@@ -107,9 +133,14 @@ export default function ShiftManagementPage({ propertyId, currentShift, loadErro
               <h2 className="font-bold text-[var(--text)]">Current shift summary</h2>
               <p className="mt-1 text-xs text-[var(--text-muted)]">Live totals from posted receipts, refunds and active table sessions.</p>
             </div>
-            <button type="button" onClick={loadSummary} disabled={summaryLoading} className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[var(--border)] px-3 text-xs font-bold text-[var(--text)] disabled:opacity-50">
-              <RefreshCw size={14} className={summaryLoading ? 'animate-spin' : ''} /> Refresh
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" onClick={printLiveSummary} disabled={!summary || summaryLoading || printingSummary} className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[var(--border)] px-3 text-xs font-bold text-[var(--text)] disabled:opacity-50">
+                <Printer size={14} /> {printingSummary ? 'Printing…' : 'Print live summary'}
+              </button>
+              <button type="button" onClick={loadSummary} disabled={summaryLoading} className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[var(--border)] px-3 text-xs font-bold text-[var(--text)] disabled:opacity-50">
+                <RefreshCw size={14} className={summaryLoading ? 'animate-spin' : ''} /> Refresh
+              </button>
+            </div>
           </div>
           <div className="p-5">
             {summaryLoading && <p role="status" className="text-sm text-[var(--text-muted)]">Loading shift totals…</p>}
