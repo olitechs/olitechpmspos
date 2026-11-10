@@ -179,7 +179,7 @@ begin
       select value as line, (100000 + ordinality)::numeric as ord
         from jsonb_array_elements(v_source_lines) with ordinality
     ) q
-    group by coalesce(nullif(q.line->>'id',''), nullif(q.line->>'name',''), md5(q.line::text))
+    group by md5((q.line - 'qty' - 'quantity')::text)
   ) merged;
 
   -- Keep the already-sent KOT snapshot separate from the live order lines.
@@ -201,7 +201,7 @@ begin
       select value as line, (100000 + ordinality)::numeric as ord
         from jsonb_array_elements(coalesce(v_source.kot_sent_order_lines, '[]'::jsonb)) with ordinality
     ) q
-    group by coalesce(nullif(q.line->>'id',''), nullif(q.line->>'name',''), md5(q.line::text))
+    group by md5((q.line - 'qty' - 'quantity')::text)
   ) merged;
 
   v_status := case
