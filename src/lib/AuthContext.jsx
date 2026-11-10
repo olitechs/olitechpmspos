@@ -15,8 +15,8 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [authError, setAuthError] = useState(null);
 
-  const checkUserAuth = useCallback(async () => {
-    setIsLoadingAuth(true);
+  const checkUserAuth = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setIsLoadingAuth(true);
     try {
       const current = await authService.getCurrentUser();
       if (current) {
@@ -30,7 +30,7 @@ export function AuthProvider({ children }) {
       setUser(null);
       setAuthError({ type: 'auth_required', message: err?.message });
     } finally {
-      setIsLoadingAuth(false);
+      if (!silent) setIsLoadingAuth(false);
       setAuthChecked(true);
     }
   }, []);
@@ -45,7 +45,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const { data: subscription } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'INITIAL_SESSION') return;
-      checkUserAuth();
+      checkUserAuth({ silent: true });
     });
     return () => subscription?.subscription?.unsubscribe();
   }, [checkUserAuth]);
@@ -58,7 +58,7 @@ export function AuthProvider({ children }) {
     if (!propertyId || user?.isPlatformOwner) return undefined;
     const channel = supabase
       .channel(`property-access-${propertyId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'properties', filter: `id=eq.${propertyId}` }, () => checkUserAuth())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'properties', filter: `id=eq.${propertyId}` }, () => checkUserAuth({ silent: true }))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'property_subscriptions', filter: `property_id=eq.${propertyId}` }, () => checkUserAuth())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'property_users', filter: `property_id=eq.${propertyId}` }, () => checkUserAuth())
       .subscribe();
