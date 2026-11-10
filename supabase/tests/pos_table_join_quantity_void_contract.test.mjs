@@ -30,7 +30,11 @@ test('joined table updates the local destination session before reopening it', (
 test('POS item removal asks for an explicit quantity and validates the current line quantity', () => {
   assert.match(orderTaking, /Quantity to \{removeTarget\.sent \? 'void' : 'remove'\}/);
   assert.match(orderTaking, /max=\{removeTarget\.line\.qty\}/);
-  assert.match(orderTaking, /removeQty > originalQty/);
+  assert.match(orderTaking, /session\?\.kotSentOrderLines/);
+  assert.match(orderTaking, /removeTarget\.sentQty/);
+  assert.match(orderTaking, /result\?\.kot_sent_order_lines/);
+  assert.match(migration, /Cannot void more than the quantity already sent to production/);
+  assert.match(migration, /kot_sent_order_lines=v_new_kot_lines/);
   assert.match(orderTaking, /Confirm Remove/);
 });
 
