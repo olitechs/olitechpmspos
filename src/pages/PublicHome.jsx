@@ -1,10 +1,9 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, useMotionValue, useSpring } from 'framer-motion';
 import {
-  ArrowRight, BarChart3, BedDouble, CalendarDays, Check, ChevronDown,
-  Clock3, CreditCard, Globe2, Mail, Menu, MessageCircle, Phone, Play,
-  ShieldCheck, Smartphone, Sparkles, Utensils, X, Zap
+  ArrowDown, ArrowRight, BarChart3, BedDouble, Check, ChevronDown, ChevronRight,
+  CircleHelp, ClipboardList, CreditCard, Globe2, Menu, MessageCircle, Monitor,
+  Utensils, Users, Wallet, X
 } from 'lucide-react';
 import SocialFAB from '../components/shell/SocialFAB';
 import BrandLogo from '@/components/ui/BrandLogo';
@@ -16,219 +15,116 @@ const CONTACT = {
   whatsapp: 'https://wa.me/254745043121',
 };
 
-const features = [
+const plans = [
   {
-    title: 'Room Planner',
-    icon: CalendarDays,
-    large: true,
-    desc: 'See every room against every date. Move reservations with confirmation, prevent double-booking, manage joint stays and keep your team oriented around today.',
-    bullets: ['Today as the 3rd visible column', 'Drag & drop + overlap prevention', 'Payment-aware reservation bars', 'Date filter, print & daily occupancy footer'],
-  },
-  {
-    title: 'PMS',
-    icon: BedDouble,
-    desc: 'One place for guests, rooms, stays and front-desk operations — from arrival through checkout.',
-    bullets: ['8 room statuses', 'Direct / Booking.com / Unknown', 'Bed Only / BB / HB / FB', 'Adults + kids ages 0–17'],
-  },
-  {
-    title: 'POS',
-    icon: Utensils,
-    desc: 'Run your restaurant and bar without leaving the hotel system. Keep tables, checks, KOT and room charges connected.',
-    bullets: ['Open tables & checks', 'Live covers tracking', 'KOT & kitchen workflow', 'Cash, Card, M-Pesa & room charge'],
-  },
-  {
-    title: 'M-Pesa First Billing',
-    icon: CreditCard,
-    large: true,
-    desc: 'Collect deposits and balances the way your guests already pay. Keep folios, partial payments and room charges visible to the front desk.',
-    bullets: ['M-Pesa STK push ready workflow', 'Partial-payment tracking', 'Charge restaurant bills to rooms', 'Clear paid / unpaid visibility'],
-  },
-  {
-    title: 'Channel Manager',
-    icon: Globe2,
-    desc: 'Keep direct and Booking.com availability aligned, with rates and inventory managed from one operating view.',
-    bullets: ['Direct + Booking.com', 'Rate plans & allotments', 'Stop-sell controls', 'Reduce manual updates'],
-  },
-  {
-    title: 'Reports',
-    icon: BarChart3,
-    desc: 'Turn day-to-day activity into management insight with revenue, reservations, POS and payment reporting.',
-    bullets: ['Revenue today & trends', 'Average check & payments', 'Reservation reporting', 'Exportable management data'],
-  },
-];
-
-const pricing = [
-  {
-    name: 'Free',
-    eyebrow: '7 DAYS FREE',
-    subtitle: 'Basic plan',
-    monthly: 'KES 0',
-    annual: 'KES 0',
-    note: 'for 7 days',
-    features: ['Full access during trial', '5 rooms', '1 user', 'Room Planner + PMS + POS', '1GB data', 'Email support'],
-    button: 'Get Started',
-    style: 'muted',
+    name: 'Free Trial',
+    eyebrow: '7-DAY ACCESS',
+    price: 'KES 0',
+    period: '7 days',
+    description: 'Experience the power of connected hospitality management.',
+    features: [
+      '7-day platform access',
+      'PMS and POS exploration',
+      'Room and reservation management',
+      'Front Office dashboard',
+      'Restaurant POS access',
+      'Basic reporting',
+      'Guided onboarding',
+    ],
+    action: 'Start Free Trial',
+    tone: 'blue',
   },
   {
     name: 'Professional',
-    eyebrow: 'MOST POPULAR',
-    subtitle: 'Ideal for growing hotels',
-    monthly: 'KES 7,500',
-    annual: 'KES 74,500',
-    note: '/year',
-    features: ['50 rooms', '10 users', 'Advanced POS + KOT', 'Channel Manager', 'Print + Joint Reservations', 'Drag & Drop + overlap prevention', 'All payment methods', 'Priority support'],
-    button: 'Get Started',
-    style: 'featured',
+    eyebrow: 'PMS + POS',
+    price: 'KES 7,500',
+    period: 'per month',
+    description: 'Everything a growing hospitality business needs to operate efficiently.',
+    features: [
+      'Complete hotel PMS',
+      'Front Office operations',
+      'Room Planner and reservations',
+      'Guest Folio and billing',
+      'Restaurant and bar POS',
+      'Kitchen Display System',
+      'Inventory management',
+      'Priority support',
+    ],
+    action: 'Get Started',
+    tone: 'featured',
   },
   {
     name: 'Enterprise',
-    eyebrow: '',
-    subtitle: 'Best choice for multi-property',
-    monthly: 'KES 15,000',
-    annual: 'KES 149,000',
-    note: '/year',
-    features: ['Unlimited rooms & users', 'Multi-property', 'API access', 'Custom branding', 'Dedicated manager', '24/7 WhatsApp', 'Training & onboarding'],
-    button: 'Get Started',
-    style: 'muted',
+    eyebrow: 'ADVANCED OPERATIONS',
+    price: 'KES 15,000',
+    period: 'per month',
+    description: 'Advanced tools for larger hospitality businesses and complex operations.',
+    features: [
+      'Everything in Professional',
+      'Advanced reporting and analytics',
+      'Multi-department operations',
+      'Advanced staff permissions',
+      'Advanced inventory controls',
+      'Business performance insights',
+      'Dedicated onboarding assistance',
+      'Enterprise configuration support',
+    ],
+    action: 'Choose Enterprise',
+    tone: 'dark',
   },
 ];
 
-const comparison = [
-  ['Room Planner + PMS', '✓', '✓', '✓'],
-  ['POS + KOT', '✓', '✓', '✓'],
-  ['Rooms', '5', '50', 'Unlimited'],
-  ['Users', '1', '10', 'Unlimited'],
-  ['Channel Manager', '—', '✓', '✓'],
-  ['Multi-property', '—', '—', '✓'],
-  ['API access', '—', '—', '✓'],
-  ['Priority support', '—', '✓', '✓'],
-];
-
 const faqs = [
-  ['What happens after the 7-day free trial?', 'Your trial gives you full access for 7 days. You can choose a paid plan when you are ready; there is no credit card required to start.'],
-  ['Can I cancel anytime?', 'Yes. There is no long-term commitment. Cancel before your next billing period and your subscription will not renew.'],
-  ['Do you support M-Pesa?', 'Yes. OliTechs is designed around Kenyan hospitality workflows and supports M-Pesa alongside card, cash and charge-to-room payments.'],
-  ['Can I migrate data from Excel?', 'Yes. The platform supports import workflows so you can bring existing operational data into your hotel system.'],
-  ['Does the system work for restaurants too?', 'Yes. POS includes tables, checks, covers, KOT, kitchen workflow, payments and room-charge posting.'],
-  ['What support do I get?', 'Trial users get email support. Professional and Enterprise plans include priority support, with Enterprise also receiving dedicated management and WhatsApp support.'],
+  ['What is OliTechs PMS + POS?', 'A hospitality management platform that brings property management and point of sale into one connected workspace for your team.'],
+  ['Is it suitable for my hospitality business?', 'OliTechs is designed for hotels, boutique stays, resorts, lodges, restaurants and bars.'],
+  ['Can my front desk and restaurant work together?', 'Yes. Restaurant orders can be connected to guest stays and room charges, helping your teams work from the same operational picture.'],
+  ['How do I get pricing for my property?', 'Choose a plan above or contact our team to discuss the right setup for your property and operations.'],
+  ['What happens during a product demo?', 'We walk through the workflows that matter to your property, including reservations, room operations, restaurant service and billing.'],
 ];
 
-/* ---------- shared motion helpers ---------- */
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 28 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } },
-};
-
-function Reveal({ as = 'div', className = '', children, delay = 0, ...rest }) {
-  const Comp = motion[as] || motion.div;
-  return (
-    <Comp
-      className={className}
-      initial="hidden"
-      whileInView="show"
-      viewport={{ once: true, margin: '-80px' }}
-      variants={fadeUp}
-      transition={{ delay }}
-      {...rest}
-    >
-      {children}
-    </Comp>
-  );
+function Eyebrow({ children, light = false }) {
+  return <p className={`text-[10px] font-extrabold uppercase tracking-[.24em] ${light ? 'text-blue-200' : 'text-[#285FE7]'}`}>{children}</p>;
 }
 
-/** Pointer-driven 3D tilt wrapper — no extra dependencies, framer-motion only. */
-function Tilt({ children, className = '', max = 10, glare = false }) {
-  const ref = useRef(null);
-  const rx = useMotionValue(0);
-  const ry = useMotionValue(0);
-  const srx = useSpring(rx, { stiffness: 180, damping: 16, mass: 0.4 });
-  const sry = useSpring(ry, { stiffness: 180, damping: 16, mass: 0.4 });
-
-  function onMove(e) {
-    const rect = ref.current.getBoundingClientRect();
-    const px = (e.clientX - rect.left) / rect.width - 0.5;
-    const py = (e.clientY - rect.top) / rect.height - 0.5;
-    ry.set(px * max * 2);
-    rx.set(-py * max * 2);
-  }
-  function onLeave() {
-    rx.set(0);
-    ry.set(0);
-  }
-
+function SectionTitle({ eyebrow, title, description, light = false, centered = false }) {
   return (
-    <div ref={ref} onMouseMove={onMove} onMouseLeave={onLeave} className={className} style={{ perspective: 1200 }}>
-      <motion.div style={{ rotateX: srx, rotateY: sry, transformStyle: 'preserve-3d' }} className="relative">
-        {children}
-        {glare && (
-          <motion.div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 rounded-[24px] bg-gradient-to-br from-[var(--white)]/10 via-transparent to-transparent"
-            style={{ transform: 'translateZ(40px)' }}
-          />
-        )}
-      </motion.div>
+    <div className={`${centered ? 'mx-auto text-center' : ''} max-w-2xl`}>
+      <Eyebrow light={light}>{eyebrow}</Eyebrow>
+      <h2 className={`mt-4 text-[clamp(2rem,4vw,3.35rem)] font-extrabold leading-[1.02] tracking-[-.045em] ${light ? 'text-white' : 'text-[#101A35]'}`}>{title}</h2>
+      {description && <p className={`mt-5 text-sm leading-7 sm:text-base ${light ? 'text-slate-300' : 'text-slate-500'}`}>{description}</p>}
     </div>
   );
 }
 
-/** Slow-drifting blurred orb used for hero/section ambience. */
-function FloatOrb({ className, duration = 10, x = 20, y = 24 }) {
+function WorkspacePreview() {
+  const rooms = [
+    ['101', 'Deluxe king', 'James Mwangi · 2 nights', 'stay-blue'],
+    ['102', 'Deluxe king', 'Emily Wanjiku', 'stay-green'],
+    ['103', 'Garden suite', 'Michael Otieno · 4 nights', 'stay-purple'],
+    ['104', 'Twin room', 'Group booking · Safari Tours', 'stay-gold'],
+  ];
   return (
-    <motion.div
-      aria-hidden
-      className={className}
-      animate={{ x: [0, x, 0, -x, 0], y: [0, -y, 0, y, 0] }}
-      transition={{ duration, repeat: Infinity, ease: 'easeInOut' }}
-    />
-  );
-}
-
-/* ---------- building blocks ---------- */
-
-function IconBox({ icon: Icon, className = '' }) {
-  return <div className={`w-10 h-10 shrink-0 rounded-xl bg-primary text-primary-foreground flex items-center justify-center ${className}`}><Icon className="w-5 h-5" /></div>;
-}
-
-function FactChip({ icon: Icon, label }) {
-  return (
-    <div className="flex items-center gap-3 rounded-xl border border-border bg-surface p-4">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icon className="h-4.5 w-4.5" /></div>
-      <div className="text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground">{label}</div>
-    </div>
-  );
-}
-
-function ProductMock() {
-  const days = ['01', '02', '03', '04', '05', '06', '07'];
-  return (
-    <div className="relative" style={{ transform: 'translateZ(30px)' }}>
-      <div className="absolute -inset-8 rounded-[40px] bg-primary/10 blur-3xl" />
-      <div className="relative rounded-[24px] border border-border bg-surface p-2 shadow-2xl">
-        <div className="flex items-center gap-2 border-b border-border px-3 py-2">
-          <span className="h-2.5 w-2.5 rounded-full bg-border" />
-          <span className="h-2.5 w-2.5 rounded-full bg-border" />
-          <span className="h-2.5 w-2.5 rounded-full bg-border" />
-          <span className="ml-3 text-[10px] font-bold text-muted-foreground">OliTechs · Room Planner</span>
-        </div>
-        <div className="rounded-[18px] bg-canvas p-3">
-          <div className="grid grid-cols-[115px_repeat(7,minmax(48px,1fr))] overflow-hidden rounded-xl border border-border bg-surface text-[9px]">
-            <div className="bg-surface p-2 font-bold text-foreground">SEPTEMBER 2026</div>
-            {days.map((d, i) => <div key={d} className={`p-2 text-center font-bold ${i > 4 ? 'bg-secondary' : 'bg-secondary'} text-secondary-foreground`}>{d}</div>)}
-            <div className="border-t border-border p-2 font-bold">STANDARD GARDEN</div>
-            <div className="col-span-4 border-t border-border bg-surface p-2 text-foreground">Front desk · Direct · 1A</div>
-            <div className="col-span-2 border-t border-border" />
-            <div className="border-t border-border bg-secondary" />
-            <div className="border-t border-border p-2 font-bold">STANDARD OCEAN</div>
-            <div className="col-span-2 border-t border-border bg-primary p-2 font-bold text-foreground">Guest stay · BB · 2A</div>
-            <div className="col-span-3 border-t border-border" />
-            <div className="col-span-2 border-t border-border bg-secondary" />
+    <div className="workspace-shell">
+      <div className="workspace-top"><span className="window-dots"><i/><i/><i/></span><b>olitechs / property workspace</b><span className="secure-label">● Secure workspace</span></div>
+      <div className="workspace-body">
+        <aside className="workspace-side">
+          <div className="workspace-brand">oli<span>techs</span></div>
+          <small>The Grand Hotel</small><small>Nairobi, Kenya　⌄</small>
+          {['Overview', 'Reservations', 'Front desk', 'Room planner', 'Point of sale', 'Housekeeping', 'Reports & insights'].map((item, i) => <div key={item} className={i === 3 ? 'side-active' : ''}>{item}</div>)}
+          <small className="side-foot">PROPERTY WORKSPACE</small>
+        </aside>
+        <div className="workspace-main">
+          <div className="workspace-heading"><div><b>Room planner</b><p>A clear view of every room. A warm welcome for every guest.</p></div><button>+ New reservation</button></div>
+          <div className="metric-grid">
+            <div><small>Occupancy</small><strong>84%</strong><em>↑ 6.2% this week</em></div>
+            <div><small>Rooms available</small><strong>12</strong><em>Ready for your next guest</em></div>
+            <div><small>Arrivals today</small><strong>18</strong><em>8 checked in</em></div>
+            <div><small>Revenue today</small><strong>KES 286,400</strong><em>Rooms + restaurant</em></div>
           </div>
-          <div className="mt-2 grid grid-cols-3 gap-2">
-            <div className="rounded-lg bg-surface p-2 text-[9px] text-foreground"><b className="text-primary">3</b> Arrivals</div>
-            <div className="rounded-lg bg-surface p-2 text-[9px] text-foreground"><b>8</b> In-House</div>
-            <div className="rounded-lg bg-surface p-2 text-[9px] text-foreground"><b className="text-muted-foreground">2</b> Check-Outs</div>
+          <div className="planner-toolbar"><b>October 2026</b><span>‹　Today　 ›</span><small>● Confirmed　 ● Checked in　 ● Available</small></div>
+          <div className="planner-grid">
+            <div className="planner-head"><span>Room</span>{['Mon 19','Tue 20','Wed 21','Thu 22','Fri 23','Sat 24','Sun 25'].map(x => <span key={x}>{x}</span>)}</div>
+            {rooms.map((room, i) => <div className="planner-row" key={room[0]}><b>{room[0]}　{room[1]}</b><span className={i === 0 ? room[3] : ''}>{i === 0 ? room[2] : ''}</span><span className={i === 1 ? room[3] : ''}>{i === 1 ? room[2] : ''}</span><span className={i === 2 ? room[3] : ''}>{i === 2 ? room[2] : ''}</span><span className={i === 3 ? room[3] : ''}>{i === 3 ? room[2] : ''}</span><span/><span/><span/></div>)}
           </div>
         </div>
       </div>
@@ -236,306 +132,152 @@ function ProductMock() {
   );
 }
 
-function PricingCard({ plan, annual }) {
-  const price = annual ? plan.annual : plan.monthly;
-  const isFeatured = plan.style === 'featured';
+function POSPreview() {
+  const products = [
+    ['SIGNATURE', 'Grilled tilapia', 'KES 1,200'],
+    ['KITCHEN', 'Beef burger', 'KES 950'],
+    ['FRESH', 'Garden salad', 'KES 700'],
+    ['BARISTA', 'House coffee', 'KES 350'],
+    ['BAR', 'Fresh juice', 'KES 450'],
+    ['DESSERT', 'Chocolate cake', 'KES 600'],
+  ];
   return (
-    <Tilt max={isFeatured ? 6 : 4} glare={isFeatured}>
-      <div className={`relative flex flex-col rounded-2xl p-6 ${isFeatured ? 'scale-[1.02] border border-border bg-[var(--surface)] shadow-[0_0_50px_rgba(255,211,0,0.08)]' : 'border border-border bg-surface'}`}>
-        {plan.eyebrow && (
-          <span className={`self-start rounded-full px-3 py-1 text-[10px] font-black tracking-wide ${isFeatured ? 'bg-primary text-primary-foreground' : 'bg-secondary text-foreground'}`}>
-            {plan.eyebrow}
-          </span>
-        )}
-        <h3 className="mt-5 text-xl font-black text-foreground">{plan.name}</h3>
-        <p className="mt-1 text-sm text-muted-foreground">{plan.subtitle}</p>
-        <div className="mt-6 flex items-end gap-2">
-          <span className="text-3xl font-black tracking-tight text-foreground">{price}</span>
-          <span className="pb-1 text-xs text-muted-foreground">{annual ? plan.note : plan.name === 'Free' ? plan.note : '/mo'}</span>
+    <div className="pos-preview">
+      <div className="pos-window"><div className="pos-window-top"><span>OliTechs POS</span><span>The Garden Restaurant</span><b>Shift open ●</b></div>
+        <div className="pos-content"><div className="pos-menu"><div className="pos-tabs">All items　 Food　 Drinks　 Desserts</div><div className="pos-products">{products.map(([tag, name, price]) => <div className="pos-product" key={name}><small>{tag}</small><b>{name}</b><strong>{price}</strong></div>)}</div></div>
+          <div className="pos-order"><small>TABLE 08</small><b>2 guests · Dine in</b><hr/><p>2 × Grilled tilapia <strong>2,400</strong></p><p>1 × Garden salad <strong>700</strong></p><p>2 × Fresh juice <strong>900</strong></p><hr/><b className="order-total">Total <strong>KES 4,000</strong></b><button>Charge to room →</button></div>
         </div>
-        <p className="mt-1 text-[10px] text-muted-foreground">{annual ? 'Billed annually' : 'Billing monthly'}</p>
-        <ul className="mt-6 flex-1 space-y-3">
-          {plan.features.map(item => <li key={item} className="flex gap-2 text-sm text-muted-foreground"><Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />{item}</li>)}
-        </ul>
-        <Link to="/signup" className={`mt-7 block rounded-full py-3 text-center text-sm font-bold ${isFeatured ? 'bg-primary text-primary-foreground hover:bg-primary' : 'bg-secondary text-foreground hover:bg-[var(--primary-soft)] hover:text-[var(--primary)]'}`}>
-          {plan.button}
-        </Link>
       </div>
-    </Tilt>
+      <p className="pos-caption">A connected bill. A smoother guest experience.</p>
+    </div>
   );
+}
+
+function AnalyticsPreview() {
+  return <div className="analytics-card"><div className="preview-heading"><b>Revenue overview</b><span>This week⌄</span></div><strong>KES 1,842,600</strong><div className="bar-chart">{[35,52,43,70,58,88,76].map((v,i)=><i key={i} style={{height:`${v}%`}} />)}</div><div className="chart-days">Mon　　 Tue　　 Wed　　 Thu　　 Fri　　 Sat　　 Sun</div></div>;
+}
+
+function HousekeepingPreview() {
+  return <div className="housekeeping-card"><div className="preview-heading"><b>Housekeeping</b><span>Live room status</span></div>{[['101','Deluxe king','Ready'],['102','Deluxe king','In progress'],['103','Garden suite','Ready']].map(([n,room,status])=><div className="housekeeping-row" key={n}><b>{n}</b><span>{room}</span><em className={status === 'Ready' ? 'ready' : 'progress'}>{status}</em></div>)}</div>;
 }
 
 export default function PublicHome() {
-  const [annual, setAnnual] = useState(false);
-  const [openFaq, setOpenFaq] = useState(null);
   const [mobileOpen, setMobileOpen] = useState(false);
-
-  const scrollLinks = [
-    ['Services', '#features'],
-    ['How it works', '#how-it-works'],
-    ['Contact', '#contact'],
-    ['Pricing', '#pricing'],
-    ['FAQ', '#faq'],
-  ];
-
+  const [openFaq, setOpenFaq] = useState(0);
+  const nav = [['Platform','#platform'],['Solutions','#solutions'],['Features','#features'],['Pricing','#pricing'],['About','#about']];
   return (
-    <div id="top" className="min-h-screen overflow-x-hidden bg-surface text-foreground selection:bg-primary selection:text-foreground">
-      <nav className="sticky top-0 z-50 border-b border-border bg-surface/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-7xl items-center gap-6 px-5 sm:px-6">
-          <a href="#top" className="flex shrink-0 items-center gap-3">
-            <BrandLogo className="h-9 w-auto max-w-[132px] object-contain object-left" />
-          </a>
-          <div className="hidden flex-1 items-center justify-center gap-7 lg:flex">
-            {scrollLinks.map(([label, href]) => <a key={label} href={href} className="text-sm text-[var(--text-muted)] transition hover:text-foreground">{label}</a>)}
-          </div>
-          <div className="ml-auto flex items-center gap-3">
-            <Link to="/signin" className="hidden px-2 py-2 text-sm font-semibold text-foreground sm:block">Sign In</Link>
-            <Link to="/signup" className="rounded-full bg-primary px-5 py-2.5 text-sm font-black text-foreground hover:bg-primary">Start Free Trial</Link>
-            <button onClick={() => setMobileOpen(!mobileOpen)} className="rounded-lg p-2 text-foreground lg:hidden" aria-label="Menu">{mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}</button>
+    <div className="olitechs-marketing min-h-screen overflow-x-hidden bg-white text-[#101A35]">
+      <style>{`
+        .olitechs-marketing{--ink:#101a35;--navy:#101a35;--blue:#285fe7;--pale:#f3f7ff;--line:#e7ebf3;font-family:Inter,ui-sans-serif,system-ui,sans-serif}
+        .olitechs-marketing button,.olitechs-marketing a{transition:all .2s ease}
+        .marketing-nav{height:76px;border-bottom:1px solid #eef1f6;background:rgba(255,255,255,.94);backdrop-filter:blur(16px)}
+        .marketing-nav-inner{max-width:1280px;height:100%;margin:auto;padding:0 28px;display:flex;align-items:center;gap:38px}
+        .marketing-nav-links{display:flex;align-items:center;justify-content:center;gap:36px;flex:1}
+        .marketing-nav-links a{font-size:13px;font-weight:600;color:#46516a}.marketing-nav-links a:hover{color:var(--blue)}
+        .marketing-button{display:inline-flex;align-items:center;justify-content:center;gap:9px;border-radius:6px;background:var(--blue);padding:13px 22px;color:#fff;font-size:12px;font-weight:800;box-shadow:0 8px 20px #285fe726}
+        .marketing-button:hover{background:#174ac8;transform:translateY(-1px)}
+        .marketing-button-outline{border:1px solid #d8dfec;background:#fff;color:var(--ink);box-shadow:none}
+        .hero-section{max-width:1280px;margin:auto;padding:78px 28px 60px;text-align:center}
+        .hero-kicker{display:inline-flex;align-items:center;gap:9px;color:#285fe7;background:#f3f7ff;border:1px solid #e2eaff;border-radius:99px;padding:8px 14px;font-size:10px;font-weight:800;letter-spacing:.15em}
+        .hero-title{max-width:950px;margin:25px auto 18px;font-size:clamp(42px,6vw,76px);line-height:.99;letter-spacing:-.06em;font-weight:850;color:#101a35}
+        .hero-title span{color:#285fe7}
+        .hero-copy{max-width:680px;margin:0 auto;color:#66718a;font-size:16px;line-height:1.8}
+        .hero-actions{display:flex;justify-content:center;gap:12px;margin-top:27px;flex-wrap:wrap}
+        .hero-subcopy{margin-top:15px;color:#8992a5;font-size:11px}
+        .workspace-wrap{max-width:1200px;margin:55px auto 0;text-align:left}
+        .workspace-shell{border:1px solid #dfe5ef;border-radius:13px;overflow:hidden;background:#fff;box-shadow:0 25px 70px #13234c18}
+        .workspace-top{height:43px;display:flex;align-items:center;padding:0 16px;gap:15px;background:#fff;border-bottom:1px solid #e9edf4;color:#68738a;font-size:10px}
+        .window-dots{display:flex;gap:5px}.window-dots i{width:7px;height:7px;border-radius:50%;background:#cbd3e1}
+        .secure-label{margin-left:auto;color:#60708a}
+        .workspace-body{display:grid;grid-template-columns:190px 1fr;min-height:390px}
+        .workspace-side{background:#111b37;color:#dbe4ff;padding:20px 14px;display:flex;flex-direction:column;gap:9px;font-size:11px}
+        .workspace-brand{font-size:20px;font-weight:900;letter-spacing:-1px;color:#fff;margin-bottom:15px}.workspace-brand span{color:#6c91ff}
+        .workspace-side small{font-size:9px;color:#9eaccb}.workspace-side>div:not(.workspace-brand){padding:9px 10px;border-radius:5px;color:#dbe4ff}.workspace-side .side-active{background:#285fe7;color:#fff!important}.workspace-side .side-foot{margin-top:auto;letter-spacing:.14em}
+        .workspace-main{padding:20px 22px;min-width:0}.workspace-heading{display:flex;justify-content:space-between;align-items:center;gap:15px}.workspace-heading b{font-size:14px}.workspace-heading p{font-size:10px;color:#8992a5;margin-top:4px}.workspace-heading button{background:#285fe7;color:#fff;border-radius:4px;padding:9px 12px;font-size:9px;font-weight:700}
+        .metric-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:18px}.metric-grid>div{border:1px solid #e8edf5;border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:6px}.metric-grid small{font-size:9px;color:#77839b}.metric-grid strong{font-size:clamp(14px,2vw,23px);color:#172341}.metric-grid em{font-size:8px;color:#6b88c6;font-style:normal}
+        .planner-toolbar{display:flex;align-items:center;gap:20px;margin:19px 0 10px;font-size:10px;color:#4d5a74}.planner-toolbar small{margin-left:auto;font-size:8px;color:#8992a5}
+        .planner-grid{border:1px solid #e8edf5;border-radius:6px;overflow:hidden}.planner-head,.planner-row{display:grid;grid-template-columns:150px repeat(7,minmax(0,1fr));min-width:680px}.planner-head{background:#f5f7fb;color:#65718a;font-size:8px;font-weight:700}.planner-head span,.planner-row>*{padding:10px 7px;border-right:1px solid #edf0f5}.planner-row{min-height:44px;border-top:1px solid #edf0f5;font-size:8px;color:#596780}.planner-row>b{color:#26344f}.planner-row span:not(:empty){margin:5px 2px;padding:7px 6px;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.stay-blue{background:#e1ebff;color:#2855bd}.stay-green{background:#dff5eb;color:#267b59}.stay-purple{background:#eee7ff;color:#7252ae}.stay-gold{background:#fff0d9;color:#966b22}
+        .industry-strip{max-width:1200px;margin:0 auto;padding:12px 28px 56px;display:grid;grid-template-columns:repeat(4,1fr);gap:20px;text-align:center}.industry-strip div{font-size:13px;font-weight:750;color:#24324e}.industry-strip div:nth-child(2){color:#285fe7}
+        .connected-section{background:#101a35;color:#fff;padding:100px 28px}.connected-inner{max-width:1224px;margin:auto;display:grid;grid-template-columns:.8fr 1.2fr;gap:70px;align-items:center}.connected-list{margin-top:38px;display:grid;gap:24px}.connected-list article{display:grid;grid-template-columns:38px 1fr;gap:14px}.connected-list article>span{font-size:13px;color:#7da0ff;font-weight:800}.connected-list h3{font-size:16px;font-weight:750}.connected-list p{margin-top:6px;color:#aeb9d0;font-size:12px;line-height:1.7}
+        .pos-preview{min-width:0}.pos-window{border-radius:12px;background:#fff;color:#15203b;overflow:hidden;box-shadow:0 24px 60px #0005}.pos-window-top{padding:16px 18px;display:flex;align-items:center;gap:20px;border-bottom:1px solid #e9edf3;font-size:11px;font-weight:800}.pos-window-top span:first-child{color:#285fe7}.pos-window-top b{margin-left:auto;color:#3b9a73;font-size:9px}.pos-content{display:grid;grid-template-columns:1.25fr .75fr;gap:16px;padding:17px}.pos-tabs{font-size:9px;color:#68738a;padding:10px 0 15px;border-bottom:1px solid #edf0f5}.pos-products{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;padding-top:13px}.pos-product{min-height:90px;border:1px solid #e9edf3;border-radius:7px;padding:11px;display:flex;flex-direction:column;gap:8px}.pos-product small{font-size:7px;letter-spacing:.13em;color:#285fe7;font-weight:900}.pos-product b{font-size:10px}.pos-product strong{font-size:9px;color:#64718b}.pos-order{border:1px solid #e9edf3;border-radius:8px;padding:14px;font-size:9px}.pos-order>small{color:#285fe7;font-weight:900;letter-spacing:.13em}.pos-order>b{display:block;margin:6px 0 12px}.pos-order p{display:flex;justify-content:space-between;gap:8px;margin:12px 0;color:#68738a}.pos-order hr{border:0;border-top:1px solid #edf0f5;margin:12px 0}.pos-order .order-total{display:flex;justify-content:space-between;font-size:11px}.pos-order button{width:100%;margin-top:15px;padding:11px;background:#285fe7;color:#fff;border-radius:5px;font-size:9px;font-weight:800}.pos-caption{text-align:right;margin-top:13px;color:#aeb9d0;font-size:10px}
+        .solutions-section{max-width:1280px;margin:auto;padding:100px 28px}.solutions-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:45px}.solution-card{min-height:210px;padding:26px;border-radius:10px;border:1px solid #e6ebf3;background:#f2f6ff;position:relative}.solution-card:nth-child(2){background:#eef9f7}.solution-card:nth-child(3){background:#f5f1ff}.solution-card .solution-no{font-size:10px;font-weight:900;color:#285fe7}.solution-card h3{margin-top:23px;font-size:19px;font-weight:800;letter-spacing:-.03em}.solution-card p{margin-top:10px;font-size:12px;line-height:1.7;color:#68738a;max-width:300px}.solution-card small{display:block;margin-top:20px;font-size:8px;letter-spacing:.1em;color:#75819a;font-weight:800}.solution-arrow{position:absolute;right:23px;top:23px;color:#285fe7}
+        .confidence-section{background:#f8faff;padding:95px 28px}.confidence-inner{max-width:1224px;margin:auto}.confidence-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:42px}.analytics-card,.housekeeping-card{background:#fff;border:1px solid #e7ebf2;border-radius:10px;padding:22px;box-shadow:0 8px 25px #14264d08}.preview-heading{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#24314d}.preview-heading span{font-size:9px;color:#8791a5}.analytics-card>strong{display:block;font-size:24px;margin-top:20px}.bar-chart{height:125px;display:flex;align-items:end;gap:17px;border-bottom:1px solid #e9edf3;margin-top:10px;padding:0 15px}.bar-chart i{flex:1;max-width:32px;border-radius:3px 3px 0 0;background:#3268e8}.chart-days{font-size:8px;color:#8992a5;text-align:center;padding-top:10px}.housekeeping-row{display:grid;grid-template-columns:50px 1fr 90px;gap:10px;align-items:center;padding:19px 0;border-bottom:1px solid #edf0f5;font-size:10px}.housekeeping-row:last-child{border:0}.housekeeping-row span{color:#75819a}.housekeeping-row em{font-style:normal;font-size:9px;text-align:center;border-radius:20px;padding:6px;background:#e2f6ed;color:#318464}.housekeeping-row em.progress{background:#fff2d9;color:#a4772a}
+        .pricing-section{max-width:1280px;margin:auto;padding:100px 28px}.pricing-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;margin-top:45px;align-items:stretch}.plan-card{border:1px solid #e5eaf2;border-radius:10px;background:#fff;padding:27px;display:flex;flex-direction:column;min-width:0}.plan-card.featured{border:2px solid #3268e8;box-shadow:0 16px 40px #285fe715}.plan-card.dark{border-color:#111b37}.plan-eyebrow{font-size:9px;letter-spacing:.14em;font-weight:900;color:#285fe7}.plan-card h3{margin-top:17px;font-size:20px;font-weight:800}.plan-price{margin-top:17px;font-size:30px;font-weight:900;letter-spacing:-.05em}.plan-period{font-size:11px;color:#75819a}.plan-description{min-height:48px;margin-top:13px;color:#68738a;font-size:11px;line-height:1.65}.plan-features{display:grid;gap:12px;margin:24px 0 28px;flex:1}.plan-features li{display:flex;align-items:flex-start;gap:9px;color:#5f6c83;font-size:10px;line-height:1.45}.plan-features svg{width:13px;height:13px;flex:none;color:#3268e8}.plan-card.dark .plan-eyebrow,.plan-card.dark .plan-features svg{color:#101a35}.plan-action{width:100%;border-radius:5px;padding:12px 14px;text-align:center;font-size:10px;font-weight:900;background:#285fe7;color:#fff}.plan-card.dark .plan-action{background:#101a35}.plan-card.featured .plan-action{background:#285fe7}.compare-toggle{margin-top:25px;border:1px solid #e8edf3;border-radius:7px;padding:15px 18px;display:flex;justify-content:space-between;align-items:center;font-size:11px;font-weight:800}.pricing-help{text-align:center;margin-top:24px;font-size:11px;color:#78849a}.pricing-help a{color:#285fe7;font-weight:800}
+        .journey-section{background:#f8faff;padding:95px 28px}.journey-inner{max-width:1224px;margin:auto}.journey-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:25px;margin-top:40px}.journey-grid article{padding:23px 0;border-top:1px solid #dfe5ef}.journey-grid strong{font-size:12px;color:#285fe7}.journey-grid h3{margin-top:30px;font-size:16px;font-weight:800}.journey-grid p{margin-top:10px;color:#718097;font-size:11px;line-height:1.7}
+        .faq-section{max-width:1224px;margin:auto;padding:95px 28px}.faq-layout{display:grid;grid-template-columns:.7fr 1.3fr;gap:70px}.faq-aside p{margin-top:18px;color:#6e7a91;font-size:12px}.faq-item{border-bottom:1px solid #e5eaf2}.faq-item button{width:100%;display:flex;justify-content:space-between;gap:15px;text-align:left;padding:18px 0;font-size:12px;font-weight:800;color:#1b2742}.faq-item>p{padding:0 28px 18px 0;font-size:11px;line-height:1.7;color:#6e7a91}
+        .final-cta{max-width:1224px;margin:0 auto 65px;padding:34px 45px;border-radius:10px;background:linear-gradient(110deg,#101a35,#204a9e);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:25px}.final-cta h2{font-size:clamp(22px,3vw,34px);font-weight:850;line-height:1.05;letter-spacing:-.04em}.final-cta p{margin-top:10px;color:#c7d4f3;font-size:11px}.final-cta-actions{display:grid;gap:9px;min-width:210px}.final-cta-actions a{background:#fff;color:#101a35;padding:12px 18px;border-radius:5px;text-align:center;font-size:10px;font-weight:900}.final-cta-actions a+ a{background:#3268e8;color:#fff}
+        .marketing-footer{border-top:1px solid #e9edf3;padding:45px 28px 22px}.footer-inner{max-width:1224px;margin:auto;display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:35px}.footer-inner h4{font-size:10px;font-weight:900;color:#1b2742}.footer-inner a,.footer-inner p{display:block;margin-top:13px;font-size:10px;line-height:1.6;color:#78849a}.footer-bottom{max-width:1224px;margin:35px auto 0;padding-top:18px;border-top:1px solid #edf0f5;display:flex;justify-content:space-between;gap:15px;color:#8992a5;font-size:9px}
+        @media(max-width:900px){.marketing-nav-inner{gap:15px;padding:0 18px}.marketing-nav-links{gap:15px}.connected-inner{grid-template-columns:1fr;gap:38px}.workspace-body{grid-template-columns:145px 1fr}.workspace-side{padding:15px 10px}.workspace-main{padding:15px}.planner-toolbar small{display:none}.solutions-grid{gap:12px}.solution-card{padding:20px}.footer-inner{grid-template-columns:1fr 1fr}.faq-layout{gap:35px}}
+        @media(max-width:640px){.marketing-nav{height:66px}.marketing-nav-inner{padding:0 15px}.marketing-nav-inner>.marketing-button{padding:10px 12px;font-size:10px}.marketing-nav-links{display:none}.mobile-nav-panel{position:absolute;top:65px;left:0;right:0;background:#fff;border-bottom:1px solid #e7ebf3;padding:12px 18px;display:grid;gap:3px;box-shadow:0 12px 22px #10203a12}.mobile-nav-panel a{padding:12px 8px;font-size:13px;color:#34415d}.hero-section{padding:55px 17px 42px}.hero-title{font-size:43px}.hero-copy{font-size:13px}.workspace-wrap{margin-top:35px;overflow:hidden}.workspace-shell{width:760px;transform:scale(.72);transform-origin:top left;margin-bottom:-105px;width:138.9%}.workspace-body{grid-template-columns:150px 1fr}.industry-strip{padding:10px 18px 45px;grid-template-columns:1fr 1fr;gap:22px 12px}.industry-strip div{font-size:11px}.connected-section,.solutions-section,.confidence-section,.pricing-section,.journey-section,.faq-section{padding:68px 18px}.connected-inner{gap:30px}.pos-content{grid-template-columns:1fr}.pos-order{max-width:none}.pos-products{grid-template-columns:repeat(2,1fr)}.pos-window-top{gap:9px;font-size:9px}.solutions-grid,.confidence-grid,.pricing-grid,.journey-grid{grid-template-columns:1fr}.solution-card{min-height:180px}.plan-card{padding:23px}.plan-description{min-height:0}.faq-layout{grid-template-columns:1fr;gap:25px}.faq-aside h2{max-width:350px}.final-cta{margin:0 18px 45px;padding:28px 22px;display:block}.final-cta-actions{margin-top:22px}.footer-inner{grid-template-columns:1fr 1fr;gap:28px 18px}.footer-inner>div:first-child{grid-column:1/-1}.footer-bottom{flex-direction:column;align-items:flex-start}.workspace-main{min-width:560px}}
+        @media(prefers-reduced-motion:reduce){.olitechs-marketing *{scroll-behavior:auto!important;transition:none!important}}
+      `}</style>
+
+      <header className="marketing-nav sticky top-0 z-50">
+        <div className="marketing-nav-inner">
+          <Link to="/" aria-label="OliTechs home" className="shrink-0"><BrandLogo className="h-9 w-auto max-w-[135px] object-contain object-left" /></Link>
+          <nav className="marketing-nav-links">{nav.map(([label,href])=><a key={label} href={href}>{label}</a>)}</nav>
+          <div className="ml-auto flex items-center gap-4">
+            <Link to="/signin" className="hidden text-xs font-bold text-[#283550] sm:inline">Sign in</Link>
+            <a className="marketing-button" href="#contact">Request a Demo</a>
+            <button className="rounded-md p-2 text-[#101a35] md:hidden" onClick={()=>setMobileOpen(v=>!v)} aria-label="Toggle navigation">{mobileOpen?<X size={19}/>:<Menu size={19}/>}</button>
           </div>
         </div>
-        {mobileOpen && <div className="border-t border-border bg-surface px-5 py-4 lg:hidden">
-          <div className="flex flex-col gap-1">
-            {scrollLinks.map(([label, href]) => <a key={label} href={href} onClick={() => setMobileOpen(false)} className="rounded-lg px-3 py-3 text-sm text-muted-foreground hover:bg-secondary">{label}</a>)}
-            <Link to="/signin" className="px-3 py-3 text-sm text-foreground">Sign In</Link>
-          </div>
-        </div>}
-      </nav>
+        {mobileOpen&&<nav className="mobile-nav-panel md:hidden">{nav.map(([label,href])=><a key={label} href={href} onClick={()=>setMobileOpen(false)}>{label}</a>)}<Link to="/signin">Sign in</Link></nav>}
+      </header>
 
       <main>
-        <section className="relative mx-auto grid max-w-7xl items-center gap-12 overflow-hidden px-5 pb-20 pt-16 sm:px-6 md:pt-24 lg:grid-cols-[1.02fr_.98fr]">
-          <FloatOrb className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-primary/10 blur-3xl" duration={11} x={26} y={18} />
-          <FloatOrb className="pointer-events-none absolute -right-16 top-32 h-64 w-64 rounded-full bg-primary/5 blur-3xl" duration={14} x={-18} y={22} />
-
-          <motion.div initial="hidden" animate="show" variants={{ show: { transition: { staggerChildren: 0.08 } } }} className="relative">
-            <motion.div variants={fadeUp} className="inline-flex items-center gap-2 rounded-full border border-border bg-[var(--surface)] px-3 py-1.5 text-xs font-bold text-foreground">
-              <ShieldCheck className="h-3.5 w-3.5 text-primary" /> Kenyan-built hospitality software
-            </motion.div>
-            <motion.h1 variants={fadeUp} className="mt-6 max-w-3xl text-5xl font-black leading-[0.94] tracking-[-0.045em] sm:text-6xl lg:text-[64px]">
-              Hotel Management, <span className="text-primary">Simplified.</span><br />From Desk to Kitchen.
-            </motion.h1>
-            <motion.p variants={fadeUp} className="mt-6 max-w-xl text-base leading-7 text-[var(--text-muted)] sm:text-lg">
-              OliTechs replaces Excel & 3 systems. Room Planner, PMS, POS and M-Pesa billing in one connected operating system built for Kenya.
-            </motion.p>
-            <motion.div variants={fadeUp} className="mt-8 flex flex-wrap gap-3">
-              <Link to="/signup" className="rounded-full bg-primary px-7 py-3.5 text-sm font-black text-foreground hover:bg-primary">Start 7-Day Free Trial <ArrowRight className="ml-1 inline h-4 w-4" /></Link>
-              <a href="#planner" className="rounded-full bg-surface px-7 py-3.5 text-sm font-bold text-foreground hover:bg-[var(--border)]"><Play className="mr-1 inline h-4 w-4 fill-current" /> See Room Planner</a>
-            </motion.div>
-            <motion.p variants={fadeUp} className="mt-4 text-xs text-muted-foreground">No credit card required · Cancel anytime · Setup in 5 minutes</motion.p>
-            <motion.div variants={fadeUp} className="mt-10 grid max-w-lg grid-cols-3 gap-2">
-              <FactChip icon={Smartphone} label="M-Pesa Ready" />
-              <FactChip icon={Zap} label="5-Min Setup" />
-              <FactChip icon={Globe2} label="Built for Kenya" />
-            </motion.div>
-          </motion.div>
-
-          <Reveal delay={0.15}>
-            <Tilt max={9} glare>
-              <ProductMock />
-            </Tilt>
-          </Reveal>
+        <section className="hero-section" id="platform">
+          <div className="hero-kicker">BUILT FOR HOSPITALITY. READY FOR WHAT’S NEXT.</div>
+          <h1 className="hero-title">Great stays start with<br/><span>smarter operations.</span></h1>
+          <p className="hero-copy">One connected PMS + POS for your rooms, restaurants and people.<br/>Less friction behind the scenes. Better experiences out front.</p>
+          <div className="hero-actions"><a href="#contact" className="marketing-button">Request a Demo <ArrowRight size={15}/></a><a href="#features" className="marketing-button marketing-button-outline">Explore the Platform <ArrowDown size={14}/></a></div>
+          <div className="workspace-wrap"><WorkspacePreview/></div>
         </section>
 
-        <Reveal as="section" className="mx-auto max-w-7xl px-5 pb-8 sm:px-6">
-          <div className="rounded-2xl border border-border bg-surface p-5 sm:p-6">
-            <div className="flex flex-col items-center justify-between gap-5 sm:flex-row">
-              <p className="text-sm font-bold text-foreground">Talk to the team directly — no ticket queue.</p>
-              <div className="flex flex-wrap items-center justify-center gap-3">
-                <a href={CONTACT.whatsapp} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2 text-xs font-black text-foreground hover:border-[var(--primary)]"><MessageCircle className="h-4 w-4 text-primary" /> WhatsApp</a>
-                <a href={CONTACT.phoneHref} className="flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2 text-xs font-black text-foreground hover:border-[var(--primary)]"><Phone className="h-4 w-4 text-primary" /> {CONTACT.phone}</a>
-                <a href={`mailto:${CONTACT.email}`} className="flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2 text-xs font-black text-foreground hover:border-[var(--primary)]"><Mail className="h-4 w-4 text-primary" /> {CONTACT.email}</a>
+        <div className="industry-strip" aria-label="Designed for hospitality teams"><div>Hotels &amp; resorts</div><div>Restaurants &amp; bars</div><div>Front office</div><div>Finance &amp; operations</div></div>
+
+        <section className="connected-section" id="features">
+          <div className="connected-inner">
+            <div><Eyebrow light>CONNECTED BY DESIGN</Eyebrow><h2 className="mt-4 text-[clamp(2.1rem,4vw,3.5rem)] font-extrabold leading-[1.02] tracking-[-.05em]">Your entire property.<br/>Finally in sync.</h2><p className="mt-5 max-w-sm text-sm leading-7 text-slate-300">From the first reservation to the final bill, keep every team and every touchpoint on the same page.</p>
+              <div className="connected-list">
+                <article><span>01</span><div><h3>A seamless front desk</h3><p>Manage bookings, room assignments and guest check-ins from one clear workspace.</p></div></article>
+                <article><span>02</span><div><h3>Service without the silos</h3><p>Connect restaurant orders and room charges without losing the details.</p></div></article>
+                <article><span>03</span><div><h3>Clarity at every close</h3><p>Bring sales and property activity together for a more informed end of day.</p></div></article>
               </div>
             </div>
-          </div>
-        </Reveal>
-
-        <Reveal as="section" id="features" className="mx-auto max-w-7xl px-5 py-24 sm:px-6">
-          <div className="max-w-2xl">
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-primary">Benefits</p>
-            <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Everything to run your hotel, nothing you don't.</h2>
-            <p className="mt-4 text-[var(--text-muted)]">One operating layer for rooms, guests, restaurant, payments and management.</p>
-          </div>
-          <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-            {features.map(({ title, icon, desc, bullets, large }, i) => {
-              const Icon = icon;
-              return (
-                <Reveal as="article" delay={(i % 3) * 0.06} id={title === 'Room Planner' ? 'planner' : title === 'POS' ? 'pos' : undefined} key={title} className={large ? 'lg:col-span-2' : ''}>
-                  <Tilt max={5}>
-                    <div className="rounded-2xl border border-border bg-surface p-6 transition hover:border-[var(--border)]">
-                      <IconBox icon={Icon} />
-                      <h3 className="mt-5 text-xl font-black">{title}</h3>
-                      <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-muted)]">{desc}</p>
-                      <div className="mt-5 grid gap-2 sm:grid-cols-2">
-                        {bullets.map(b => <div key={b} className="flex items-start gap-2 text-xs text-muted-foreground"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />{b}</div>)}
-                      </div>
-                      {title === 'M-Pesa First Billing' && <div className="mt-6 flex flex-wrap items-center gap-2"><span className="rounded-full bg-[var(--status-deposit-paid)] px-3 py-1.5 text-xs font-black text-[var(--status-deposit-foreground)]">PARTIALLY PAID · 50%</span><span className="text-xs text-muted-foreground">M-Pesa → Folio → Receipt</span></div>}
-                    </div>
-                  </Tilt>
-                </Reveal>
-              );
-            })}
-          </div>
-        </Reveal>
-
-        <section className="border-y border-[var(--border)]/35 bg-[var(--surface)] py-24" id="how-it-works">
-          <div className="mx-auto max-w-7xl px-5 sm:px-6">
-            <Reveal className="mx-auto max-w-2xl text-center">
-              <p className="text-xs font-black uppercase tracking-[0.22em] text-primary">How it works?</p>
-              <h2 className="mt-3 text-3xl font-black sm:text-4xl">Get started in 3 simple steps</h2>
-              <p className="mt-3 text-[var(--text-muted)]">Go from signup to running your operation without a long implementation project.</p>
-            </Reveal>
-            <div className="mt-12 grid gap-5 md:grid-cols-3">
-              {[
-                ['01', 'Create Account', 'Sign up, start your 7-day free trial and invite your team. No card required.'],
-                ['02', 'Add Rooms & Tables', 'Import rooms, create room types and set up your POS floor plan.'],
-                ['03', 'Start Selling', 'Check in guests, take orders, post room charges and collect M-Pesa.'],
-              ].map(([n, t, d], i) => (
-                <Reveal key={n} delay={i * 0.08} className="rounded-2xl border border-border bg-surface p-6">
-                  <div className="text-4xl font-black text-primary">{n}</div>
-                  <h3 className="mt-5 text-lg font-black">{t}</h3>
-                  <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">{d}</p>
-                </Reveal>
-              ))}
-            </div>
+            <POSPreview/>
           </div>
         </section>
 
-        <Reveal as="section" id="pricing" className="mx-auto max-w-7xl px-5 py-24 sm:px-6">
-          <div className="mx-auto max-w-2xl text-center">
-            <span className="inline-flex rounded-full border border-border bg-[var(--surface)] px-3 py-1 text-xs font-bold">Pricing</span>
-            <h2 className="mt-4 text-4xl font-black tracking-tight">Choose your plan</h2>
-            <p className="mt-3 text-[var(--text-muted)]">Start small. Upgrade when your operation grows.</p>
-            <div className="mx-auto mt-7 inline-flex rounded-full bg-[var(--surface)] p-1">
-              <button onClick={() => setAnnual(false)} className={`rounded-full px-5 py-2 text-xs font-bold ${!annual ? 'bg-surface text-foreground' : 'text-[var(--text-muted)]'}`}>Monthly</button>
-              <button onClick={() => setAnnual(true)} className={`rounded-full px-5 py-2 text-xs font-bold ${annual ? 'bg-[var(--white)] text-foreground' : 'text-[var(--text-muted)]'}`}>Annual <span className="ml-1 text-primary">Save 17%</span></button>
-            </div>
+        <section className="solutions-section" id="solutions">
+          <SectionTitle eyebrow="MADE FOR YOUR WORLD" title={<>Hospitality isn’t one-size-fits-all.<br/>Your platform shouldn’t be either.</>} />
+          <div className="solutions-grid">
+            {[['01','Hotels & boutique stays','Make every arrival feel effortless.','Bring reservations, front desk and room readiness into one connected rhythm.','ROOMS READY WHEN YOU ARE'],['02','Resorts & lodges','Deliver a more connected escape.','Keep accommodation, dining and guest services working beautifully together.','ONE STAY. EVERY TOUCHPOINT.'],['03','Restaurants & bars','Keep great service flowing.','Move from order to payment with less friction, at the table or at the counter.','FROM FIRST ORDER TO FINAL BILL']].map(([n,title,lead,desc,foot])=><article className="solution-card" key={n}><span className="solution-no">{n}</span><ArrowRight className="solution-arrow" size={17}/><h3>{title}</h3><p>{lead} {desc}</p><small>{foot}</small></article>)}
           </div>
-          <div className="mx-auto mt-10 grid max-w-5xl gap-5 lg:grid-cols-3">
-            {pricing.map(plan => <PricingCard key={plan.name} plan={plan} annual={annual} />)}
-          </div>
-          <p className="mt-8 text-center text-xs text-muted-foreground">No credit card required · Cancel anytime</p>
-
-          <div className="mt-16 overflow-hidden rounded-2xl border border-border bg-surface">
-            <div className="border-b border-border px-5 py-5"><h3 className="font-black">Compare plans</h3><p className="mt-1 text-xs text-muted-foreground">Everything important, side by side.</p></div>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[650px] text-sm">
-                <thead><tr className="border-b border-border text-left text-muted-foreground"><th className="px-5 py-4 font-semibold">Feature</th><th className="px-5 py-4">Free</th><th className="px-5 py-4 text-foreground">Professional</th><th className="px-5 py-4">Enterprise</th></tr></thead>
-                <tbody>{comparison.map(row => <tr key={row[0]} className="border-b border-[var(--border)]/35 last:border-0"><td className="px-5 py-3.5 text-muted-foreground">{row[0]}</td>{row.slice(1).map((v, i) => <td key={i} className={`px-5 py-3.5 ${v === '✓' ? 'font-black text-primary' : 'text-muted-foreground'}`}>{v}</td>)}</tr>)}</tbody>
-              </table>
-            </div>
-          </div>
-        </Reveal>
-
-        <Reveal as="section" className="mx-auto max-w-7xl px-5 pb-24 sm:px-6">
-          <div className="rounded-2xl border border-border bg-surface p-8 sm:p-10">
-            <div className="flex flex-col items-center justify-between gap-8 lg:flex-row">
-              <div><p className="text-xs font-black uppercase tracking-[0.22em] text-primary">Integrations</p><h2 className="mt-2 text-2xl font-black">Payments your guests already trust.</h2><p className="mt-2 text-sm text-[var(--text-muted)]">M-Pesa, cards, cash and charge-to-room in one billing workflow.</p></div>
-              <div className="flex flex-wrap gap-3">
-                {['M-PESA', 'CARD', 'CASH', 'KRA'].map(x => <div key={x} className="rounded-xl border border-border bg-surface px-5 py-3 text-xs font-black text-foreground">{x}</div>)}
-              </div>
-            </div>
-          </div>
-        </Reveal>
-
-        <Reveal as="section" className="mx-auto max-w-7xl px-5 pb-24 sm:px-6">
-          <div className="grid items-center gap-10 lg:grid-cols-[.8fr_1.2fr]">
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.22em] text-primary">Why OliTechs?</p>
-              <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Stop stitching your hotel together with spreadsheets.</h2>
-              <p className="mt-4 text-sm leading-6 text-[var(--text-muted)]">Excel can store information. OliTechs connects the operation — rooms, guests, tables, payments and management — so your team can act on the same live picture.</p>
-            </div>
-            <div className="overflow-hidden rounded-2xl border border-border bg-surface">
-              <div className="grid grid-cols-[1.2fr_1fr_1fr] border-b border-border bg-surface px-5 py-4 text-xs font-black uppercase tracking-wide">
-                <span>Operation</span><span className="text-muted-foreground">Excel + tools</span><span className="text-primary">OliTechs</span>
-              </div>
-              {[
-                ['Room availability', 'Manual updates', 'Live Room Planner'],
-                ['Guest + folio', 'Separate files', 'Connected PMS'],
-                ['Restaurant orders', 'Separate POS', 'POS + KOT'],
-                ['M-Pesa billing', 'Manual reconciliation', 'Connected payments'],
-                ['Management reports', 'Build your own', 'Ready-to-use reports'],
-              ].map(row => <div key={row[0]} className="grid grid-cols-[1.2fr_1fr_1fr] border-b border-[var(--border)]/35 px-5 py-4 text-sm last:border-0"><span className="text-muted-foreground">{row[0]}</span><span className="text-muted-foreground">{row[1]}</span><span className="font-bold text-foreground">{row[2]}</span></div>)}
-            </div>
-          </div>
-        </Reveal>
-
-        <section id="contact" className="mx-auto max-w-7xl px-5 pb-24 sm:px-6">
-          <Reveal className="text-center">
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-primary">Get in touch</p>
-            <h2 className="mt-3 text-3xl font-black">Talk to OliTechs directly</h2>
-            <p className="mx-auto mt-3 max-w-xl text-sm text-[var(--text-muted)]">Questions about setup, pricing or migrating from Excel? Reach the team through any of these channels.</p>
-          </Reveal>
-          <div className="mt-10 grid gap-5 md:grid-cols-3">
-            {[
-              { icon: MessageCircle, label: 'WhatsApp', value: CONTACT.phone, href: CONTACT.whatsapp, external: true },
-              { icon: Phone, label: 'Call', value: CONTACT.phone, href: CONTACT.phoneHref },
-              { icon: Mail, label: 'Email', value: CONTACT.email, href: `mailto:${CONTACT.email}` },
-            ].map((c, i) => {
-              const Icon = c.icon;
-              return (
-                <Reveal key={c.label} delay={i * 0.08}>
-                  <Tilt max={6}>
-                    <a href={c.href} target={c.external ? '_blank' : undefined} rel={c.external ? 'noreferrer' : undefined} className="block rounded-2xl border border-border bg-surface p-6 transition hover:border-[var(--primary)]/40">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground"><Icon className="h-5 w-5" /></div>
-                      <p className="mt-5 text-xs font-black uppercase tracking-[0.15em] text-muted-foreground">{c.label}</p>
-                      <p className="mt-1 text-lg font-black text-foreground">{c.value}</p>
-                    </a>
-                  </Tilt>
-                </Reveal>
-              );
-            })}
-          </div>
-          <Reveal delay={0.2} className="mt-6 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-            <Clock3 className="h-3.5 w-3.5 text-primary" /> Fastest response is usually via WhatsApp.
-          </Reveal>
         </section>
 
-        <Reveal as="section" id="faq" className="mx-auto max-w-3xl px-5 pb-24 sm:px-6">
-          <div className="text-center"><p className="text-xs font-black uppercase tracking-[0.22em] text-primary">FAQ</p><h2 className="mt-3 text-3xl font-black">Frequently Asked Questions</h2></div>
-          <div className="mt-9 space-y-3">
-            {faqs.map(([q, a], i) => <div key={q} className="rounded-xl border border-border bg-surface">
-              <button className="flex w-full items-center justify-between gap-5 px-5 py-4 text-left text-sm font-bold" onClick={() => setOpenFaq(openFaq === i ? null : i)}>
-                <span>{q}</span><ChevronDown className={`h-4 w-4 shrink-0 text-primary transition-transform ${openFaq === i ? 'rotate-180' : ''}`} />
-              </button>
-              {openFaq === i && <div className="border-t border-border px-5 pb-5 pt-4 text-sm leading-6 text-[var(--text-muted)]">{a}</div>}
-            </div>)}
+        <section className="confidence-section" id="about">
+          <div className="confidence-inner"><SectionTitle eyebrow="LESS GUESSWORK. MORE CONTROL." title="See the details. Move with confidence." description="A clear view of your business. Turn daily activity into a more informed next move."/>
+            <div className="confidence-grid"><AnalyticsPreview/><HousekeepingPreview/></div>
           </div>
-        </Reveal>
+        </section>
 
-        <Reveal as="section" className="mx-auto max-w-7xl px-5 pb-24 sm:px-6">
-          <div className="rounded-3xl bg-primary p-10 text-center sm:p-14">
-            <Sparkles className="mx-auto h-7 w-7 text-foreground" />
-            <h2 className="mt-4 text-3xl font-black tracking-tight text-foreground sm:text-4xl">Ready to run your hotel like a 5-star?</h2>
-            <p className="mt-3 text-sm font-semibold text-[var(--sidebar)]">Built for hotels and lodges in Kenya.</p>
-            <Link to="/signup" className="mt-7 inline-flex items-center rounded-full bg-surface px-8 py-4 text-sm font-black text-foreground hover:bg-secondary">Start Your 7-Day Free Trial <ArrowRight className="ml-2 h-4 w-4" /></Link>
-            <p className="mt-4 text-xs font-semibold text-[var(--text)]">No credit card · Cancel anytime · Setup in 5 mins</p>
-          </div>
-        </Reveal>
+        <section className="pricing-section" id="pricing">
+          <SectionTitle eyebrow="SIMPLE, TRANSPARENT PRICING" title={<>The right tools for every stage<br/>of your hospitality business.</>} description="Choose a plan that fits your property. From getting started to managing complete hospitality operations, OliTechs brings everything together in one platform." centered/>
+          <div className="pricing-grid">{plans.map(plan=><article key={plan.name} className={`plan-card ${plan.tone}`}><span className="plan-eyebrow">{plan.eyebrow}</span><h3>{plan.name}</h3><div className="plan-price">{plan.price}</div><div className="plan-period">{plan.period}</div><p className="plan-description">{plan.description}</p><div className="mt-5 text-[9px] font-extrabold tracking-[.13em] text-[#263550]">WHAT’S INCLUDED</div><ul className="plan-features">{plan.features.map(item=><li key={item}><Check/>{item}</li>)}</ul><Link to="/signup" className="plan-action">{plan.action}</Link></article>)}</div>
+          <button className="compare-toggle" onClick={()=>document.getElementById('plan-help')?.scrollIntoView({behavior:'smooth',block:'center'})}><span>Compare Plans &amp; Features</span><ChevronRight size={16}/></button>
+          <p className="pricing-help" id="plan-help">Need help choosing the right plan? Our team can help you find the best fit for your hospitality operation.　<a href="#contact">Talk to Our Team</a></p>
+        </section>
+
+        <section className="journey-section" id="how-it-works"><div className="journey-inner"><SectionTitle eyebrow="A SMARTER WAY FORWARD" title="Your next chapter, without the complexity." description="A clear path from first conversation to a more connected property."/><div className="journey-grid">{[['01','Let’s talk hospitality.','Show us how your business runs and what you want to improve.'],['02','See your workflows.','Explore PMS + POS through a demo built around your needs.'],['03','Plan your next move.','Find the right setup for your property, your team and your goals.']].map(([n,t,d])=><article key={n}><strong>{n}</strong><h3>{t}</h3><p>{d}</p></article>)}</div></div></section>
+
+        <section className="faq-section" id="faq"><div className="faq-layout"><div className="faq-aside"><SectionTitle eyebrow="A LITTLE MORE CLARITY" title={<>Good questions.<br/>Clear answers.</>}/><p>Have something else in mind?<br/><a className="font-extrabold text-[#285fe7]" href="#contact">Let’s talk ↗</a></p></div><div>{faqs.map(([q,a],i)=><article className="faq-item" key={q}><button onClick={()=>setOpenFaq(openFaq===i?-1:i)} aria-expanded={openFaq===i}><span>{q}</span>{openFaq===i?<ChevronDown size={17}/>:<ChevronRight size={17}/>}</button>{openFaq===i&&<p>{a}</p>}</article>)}</div></div></section>
+
+        <section className="final-cta" id="contact"><div><Eyebrow light>MAKE ROOM FOR WHAT’S NEXT</Eyebrow><h2 className="mt-4">Complete hotel management.<br/>Better guest experiences.</h2><p>Discover what a more connected property can look like.</p></div><div className="final-cta-actions"><a href={CONTACT.whatsapp} target="_blank" rel="noreferrer">Request a Demo ↗</a><Link to="/signup">Get Started →</Link></div></section>
       </main>
 
-      <footer className="border-t border-border bg-surface">
-        <div className="mx-auto grid max-w-7xl gap-10 px-5 py-14 sm:px-6 md:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <BrandLogo className="h-10 w-auto max-w-[150px] object-contain object-left" />
-            <p className="mt-4 max-w-xs text-sm leading-6 text-muted-foreground">The connected operating system for modern African hospitality.</p>
-            <div className="mt-5 flex items-center gap-2 text-xs text-muted-foreground"><ShieldCheck className="h-4 w-4 text-primary" /> Built for hospitality operations</div>
-          </div>
-          <div><h3 className="text-sm font-bold">Menu</h3><div className="mt-4 space-y-3 text-sm text-[var(--text-muted)]"><a className="block hover:text-foreground" href="#features">Features</a><a className="block hover:text-foreground" href="#pricing">Pricing</a><a className="block hover:text-foreground" href="#how-it-works">How it works</a><a className="block hover:text-foreground" href="#faq">FAQ</a></div></div>
-          <div><h3 className="text-sm font-bold">Legal & Contact</h3><div className="mt-4 space-y-3 text-sm text-[var(--text-muted)]"><Link className="block hover:text-foreground" to="/terms">Terms (coming soon)</Link><Link className="block hover:text-foreground" to="/privacy">Privacy (coming soon)</Link><a className="block hover:text-foreground" href={CONTACT.phoneHref}>{CONTACT.phone}</a><a className="block hover:text-foreground" href={`mailto:${CONTACT.email}`}>{CONTACT.email}</a></div></div>
-          <div>
-            <h3 className="text-sm font-bold">Stay in the loop</h3><p className="mt-4 text-sm leading-6 text-muted-foreground">Product updates and hospitality tips. No spam.</p>
-            <form onSubmit={e => e.preventDefault()} className="mt-4 flex gap-2"><input aria-label="Email" type="email" placeholder="you@hotel.com" className="min-w-0 flex-1 rounded-full border border-border bg-surface px-4 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-[var(--primary)]" /><button className="shrink-0 rounded-full bg-primary px-4 py-2.5 text-xs font-black text-foreground hover:bg-primary">Subscribe</button></form>
-          </div>
-        </div>
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 border-t border-border px-5 py-6 text-center sm:px-6 md:flex-row md:text-left">
-          <p className="text-xs text-muted-foreground">© 2026 OliTechs. All rights reserved.</p>
-          <div className="flex flex-wrap items-center justify-center gap-4 text-xs">
-            <a href={CONTACT.whatsapp} target="_blank" rel="noreferrer" className="font-black text-primary hover:text-foreground"><MessageCircle className="mr-1 inline h-4 w-4" />Designed by Shadrack — WhatsApp {CONTACT.phone}</a>
-          </div>
-        </div>
-      </footer>
-
-      <SocialFAB />
+      <footer className="marketing-footer"><div className="footer-inner"><div><BrandLogo className="h-9 w-auto max-w-[130px] object-contain object-left"/><p className="max-w-xs">Smarter operations.<br/>More memorable hospitality.</p></div><div><h4>Platform</h4><a href="#platform">Property management</a><a href="#solutions">Point of sale</a><a href="#features">Features</a><a href="#pricing">Pricing</a></div><div><h4>Solutions</h4><a href="#solutions">Hotels &amp; resorts</a><a href="#solutions">Restaurants &amp; bars</a><a href="#contact">Request a Demo</a><Link to="/signin">Sign in</Link></div><div><h4>Company</h4><a href="#about">About OliTechs</a><a href={CONTACT.whatsapp}>Contact</a><a href={`mailto:${CONTACT.email}`}>{CONTACT.email}</a><a href={CONTACT.phoneHref}>{CONTACT.phone}</a></div></div><div className="footer-bottom"><span>© 2026 OliTechs. All rights reserved.</span><span>olitechs.co.ke</span></div></footer>
+      <SocialFAB/>
     </div>
   );
 }
