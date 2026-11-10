@@ -62,7 +62,7 @@ function buildKitchenTicketText(center, lines, { orderNumber, table, propertyNam
 
 // Owns the floor → order → bill flow for the POS module: table selection,
 // opening a new table session, taking an order, and settling the bill.
-export default function POSContainer() {
+export default function POSContainer({ initialTab = 'floor' } = {}) {
 	const store = useStore();
 	const navigate = useNavigate();
 	const { user } = useAuth();
@@ -96,7 +96,7 @@ export default function POSContainer() {
 		shiftService.getCurrentShift(propertyId)
 			.then((shift) => {
 				setCurrentShift(shift);
-				setActiveTab(shift ? 'floor' : 'shifts');
+				setActiveTab(initialTab === 'shifts' ? 'shifts' : (shift ? 'floor' : 'shifts'));
 			})
 			.catch((error) => {
 				setCurrentShift(null);
