@@ -167,19 +167,41 @@ begin
   from (
     select
       jsonb_set(
-        (array_agg(q.line order by q.ord))[1],
-        '{qty}',
-        to_jsonb(sum(coalesce((q.line->>'qty')::numeric, (q.line->>'quantity')::numeric, 0)))
+        jsonb_set(
+          jsonb_set(
+            jsonb_set(
+              grouped.first_line,
+              '{qty}',
+              to_jsonb(grouped.total_qty),
+              true
+            ),
+            '{id}',
+            to_jsonb(coalesce(nullif(grouped.first_line->>'id',''),'joined') || '::join::' || md5((grouped.first_line - 'qty' - 'quantity')::text)),
+            true
+          ),
+          '{productId}',
+          to_jsonb(coalesce(nullif(grouped.first_line->>'productId',''), nullif(grouped.first_line->>'baseProductId',''), nullif(grouped.first_line->>'id',''))),
+          true
+        ),
+        '{baseProductId}',
+        to_jsonb(coalesce(nullif(grouped.first_line->>'baseProductId',''), nullif(grouped.first_line->>'productId',''), nullif(grouped.first_line->>'id',''))),
+        true
       ) as line,
-      min(q.ord) as first_ord
+      grouped.first_ord
     from (
-      select value as line, ordinality::numeric as ord
-        from jsonb_array_elements(v_target_lines) with ordinality
-      union all
-      select value as line, (100000 + ordinality)::numeric as ord
-        from jsonb_array_elements(v_source_lines) with ordinality
-    ) q
-    group by md5((q.line - 'qty' - 'quantity')::text)
+      select
+        (array_agg(q.line order by q.ord))[1] as first_line,
+        sum(coalesce((q.line->>'qty')::numeric, (q.line->>'quantity')::numeric, 0)) as total_qty,
+        min(q.ord) as first_ord
+      from (
+        select value as line, ordinality::numeric as ord
+          from jsonb_array_elements(v_target_lines) with ordinality
+        union all
+        select value as line, (100000 + ordinality)::numeric as ord
+          from jsonb_array_elements(v_source_lines) with ordinality
+      ) q
+      group by md5((q.line - 'qty' - 'quantity')::text)
+    ) grouped
   ) merged;
 
   -- Keep the already-sent KOT snapshot separate from the live order lines.
@@ -189,19 +211,41 @@ begin
   from (
     select
       jsonb_set(
-        (array_agg(q.line order by q.ord))[1],
-        '{qty}',
-        to_jsonb(sum(coalesce((q.line->>'qty')::numeric, (q.line->>'quantity')::numeric, 0)))
+        jsonb_set(
+          jsonb_set(
+            jsonb_set(
+              grouped.first_line,
+              '{qty}',
+              to_jsonb(grouped.total_qty),
+              true
+            ),
+            '{id}',
+            to_jsonb(coalesce(nullif(grouped.first_line->>'id',''),'joined') || '::join::' || md5((grouped.first_line - 'qty' - 'quantity')::text)),
+            true
+          ),
+          '{productId}',
+          to_jsonb(coalesce(nullif(grouped.first_line->>'productId',''), nullif(grouped.first_line->>'baseProductId',''), nullif(grouped.first_line->>'id',''))),
+          true
+        ),
+        '{baseProductId}',
+        to_jsonb(coalesce(nullif(grouped.first_line->>'baseProductId',''), nullif(grouped.first_line->>'productId',''), nullif(grouped.first_line->>'id',''))),
+        true
       ) as line,
-      min(q.ord) as first_ord
+      grouped.first_ord
     from (
-      select value as line, ordinality::numeric as ord
-        from jsonb_array_elements(coalesce(v_target.kot_sent_order_lines, '[]'::jsonb)) with ordinality
-      union all
-      select value as line, (100000 + ordinality)::numeric as ord
-        from jsonb_array_elements(coalesce(v_source.kot_sent_order_lines, '[]'::jsonb)) with ordinality
-    ) q
-    group by md5((q.line - 'qty' - 'quantity')::text)
+      select
+        (array_agg(q.line order by q.ord))[1] as first_line,
+        sum(coalesce((q.line->>'qty')::numeric, (q.line->>'quantity')::numeric, 0)) as total_qty,
+        min(q.ord) as first_ord
+      from (
+        select value as line, ordinality::numeric as ord
+          from jsonb_array_elements(coalesce(v_target.kot_sent_order_lines, '[]'::jsonb)) with ordinality
+        union all
+        select value as line, (100000 + ordinality)::numeric as ord
+          from jsonb_array_elements(coalesce(v_source.kot_sent_order_lines, '[]'::jsonb)) with ordinality
+      ) q
+      group by md5((q.line - 'qty' - 'quantity')::text)
+    ) grouped
   ) merged;
 
   v_status := case
