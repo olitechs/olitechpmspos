@@ -1,11 +1,14 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Building2, ScrollText, LogOut, UsersRound, Settings } from 'lucide-react';
+import { LayoutDashboard, Building2, ScrollText, LogOut, UsersRound, Settings, Activity, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import BrandLogo from '@/components/ui/BrandLogo';
 
 const PLATFORM_NAV = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/admin/properties', label: 'Properties', icon: Building2 },
+  { to: '/admin/usage', label: 'Usage & Health', icon: Activity },
+  { to: '/admin/users', label: 'Users & Access', icon: UsersRound },
+  { to: '/admin/recovery', label: 'Recovery Centre', icon: ShieldAlert },
   { to: '/admin/audit-log', label: 'Platform Audit Log', icon: ScrollText },
 ];
 

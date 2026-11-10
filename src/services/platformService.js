@@ -20,6 +20,18 @@ async function logAudit({ action, propertyId, oldValue, newValue }) {
 }
 
 export const platformService = {
+	async getUserDirectory() {
+		const { data, error } = await supabase.rpc('admin_user_directory');
+		if (error) throw new Error(error.message);
+		return data || [];
+	},
+
+	async getPropertyUsage() {
+		const { data, error } = await supabase.rpc('admin_property_usage');
+		if (error) throw new Error(error.message);
+		return data || [];
+	},
+
 	async listProperties() {
 		const { data, error } = await supabase.rpc('admin_list_properties');
 		if (error) throw new Error(error.message);

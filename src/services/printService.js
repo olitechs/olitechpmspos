@@ -790,9 +790,11 @@ export async function printReceipt(type, data) {
     return { ok:false, results:[], jobId:queued.id, assignmentType, friendlyError:message };
   }
   const copyCount = type === 'UNSETTLED' ? Math.max(1, Math.min(2, Number(settings.unsettled_receipt_copy_count || 2))) : 2;
-  const copies = type === 'UNSETTLED'
-    ? (copyCount === 1 ? ['CUSTOMER COPY'] : ['CUSTOMER COPY', settings.unsettled_receipt_front_office_copy === false ? 'SECOND COPY' : 'FRONT OFFICE COPY'])
-    : ['CUSTOMER COPY', 'CASHIER COPY'];
+  const copies = data.recoveryCopy
+    ? ['RECOVERY COPY']
+    : type === 'UNSETTLED'
+      ? (copyCount === 1 ? ['CUSTOMER COPY'] : ['CUSTOMER COPY', settings.unsettled_receipt_front_office_copy === false ? 'SECOND COPY' : 'FRONT OFFICE COPY'])
+      : ['CUSTOMER COPY', 'CASHIER COPY'];
   const results = [];
   if (type === 'UNSETTLED') {
     const printedAt = new Date();
@@ -847,7 +849,7 @@ export async function printReceipt(type, data) {
         copyType: copy.toLowerCase().replaceAll(' ', '_'),
         assignmentType,
         payload: { orderNumber: data.orderNumber || data.checkNo || null, total: data.total || 0, copy },
-        title: 'Final Receipt - ' + copy,
+        title: (data.recoveryCopy ? 'Historical Receipt - ' : 'Final Receipt - ') + copy,
         thermalText,
         thermalBase64,
       }));

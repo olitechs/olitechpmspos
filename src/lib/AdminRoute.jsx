@@ -17,7 +17,7 @@ export default function AdminRoute() {
   const propertyAdmin = ['owner', 'admin', 'manager'].includes(String(user?.propertyRole || '').toLowerCase());
   const staffAdmin = ['hotel_admin', 'super_admin', 'fb_manager'].includes(String(user?.staff?.role || '').toLowerCase());
 
-  const platformOnlyPaths = ['/admin/properties', '/admin/audit-log'];
+  const platformOnlyPaths = ['/admin/properties', '/admin/audit-log', '/admin/usage', '/admin/users', '/admin/recovery'];
   const isPlatformOnlyPath = platformOnlyPaths.some((path) =>
     location.pathname === path || location.pathname.startsWith(`${path}/`)
   );
