@@ -219,7 +219,7 @@ export const shiftService = {
     const [refundResult, adjustmentResult] = await Promise.all([
       supabase
         .from('cashier_refunds')
-        .select('id,receipt_id,amount,method,settlement_method,created_at,approved_by')
+        .select('*')
         .eq('property_id', propertyId)
         .in('receipt_id', receiptIds)
         .order('created_at', { ascending: false }),
