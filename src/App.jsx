@@ -10,7 +10,7 @@ import { BrowserRouter as Router, Route, Routes, Navigate, Outlet, useParams } f
 import PageNotFound from "@/lib/PageNotFound";
 import { AuthProvider, useAuth } from "@/lib/AuthContext";
 import AdminRoute from "@/lib/AdminRoute";
-const ScrollToTop = lazyWithRetry(() => import('@/components/ui/ScrollToTop'), 'route-components-ui-scrolltotop');
+import ScrollToTop from '@/components/ui/ScrollToTop';
 const Login = lazyWithRetry(() => import('@/pages/Login'), 'route-pages-login');
 const Register = lazyWithRetry(() => import('@/pages/Register'), 'route-pages-register');
 const ForgotPassword = lazyWithRetry(() => import('@/pages/ForgotPassword'), 'route-pages-forgotpassword');
@@ -35,7 +35,7 @@ const SettingsPrinters = lazyWithRetry(() => import('@/pages/SettingsPrinters'),
 const ReceiptSettings = lazyWithRetry(() => import('@/components/settings/ReceiptSettings'), 'route-components-settings-receiptsettings');
 const SubscriptionPanel = lazyWithRetry(() => import('@/components/admin/SubscriptionPanel'), 'route-components-admin-subscriptionpanel');
 const KitchenDisplay = lazyWithRetry(() => import('@/components/modules/KitchenDisplay'), 'route-components-modules-kitchendisplay');
-const SupabaseSetupNotice = lazyWithRetry(() => import('@/pages/SupabaseSetupNotice'), 'route-pages-supabasesetupnotice');
+import SupabaseSetupNotice from '@/pages/SupabaseSetupNotice';
 const PublicHome = lazyWithRetry(() => import('@/pages/PublicHome'), 'route-pages-publichome');
 const PublicSignIn = lazyWithRetry(() => import('@/pages/PublicSignIn'), 'route-pages-publicsignin');
 const PublicSignUp = lazyWithRetry(() => import('@/pages/PublicSignUp'), 'route-pages-publicsignup');
