@@ -216,13 +216,35 @@ export const shiftService = {
     if (!rows.length) return [];
 
     const receiptIds = rows.map((receipt) => receipt.id);
-    const { data: refundRows, error: refundError } = await supabase
-      .from('cashier_refunds')
-      .select('id,receipt_id,amount,method,settlement_method,created_at,approved_by')
-      .eq('property_id', propertyId)
-      .in('receipt_id', receiptIds)
-      .order('created_at', { ascending: false });
-    if (refundError) throw new Error(refundError.message);
+    const [refundResult, adjustmentResult] = await Promise.all([
+      supabase
+        .from('cashier_refunds')
+        .select('id,receipt_id,amount,method,settlement_method,created_at,approved_by')
+        .eq('property_id', propertyId)
+        .in('receipt_id', receiptIds)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('cashier_adjustments')
+        .select('id,target_id,amount,refund_method,reason,status,created_at')
+        .eq('property_id', propertyId)
+        .eq('target_type', 'pos_receipt')
+        .eq('adjustment_type', 'refund')
+        .eq('status', 'pending')
+        .in('target_id', receiptIds)
+        .order('created_at', { ascending: false }),
+    ]);
+    if (refundResult.error) throw new Error(refundResult.error.message);
+    if (adjustmentResult.error) throw new Error(adjustmentResult.error.message);
+
+    const refundRows = refundResult.data || [];
+    const pendingRows = adjustmentResult.data || [];
+    const pendingByReceipt = new Map();
+    for (const pending of pendingRows) {
+      const key = String(pending.target_id);
+      const list = pendingByReceipt.get(key) || [];
+      list.push(pending);
+      pendingByReceipt.set(key, list);
+    }
 
     const refundsByReceipt = new Map();
     for (const refund of refundRows || []) {
@@ -235,11 +257,15 @@ export const shiftService = {
     return rows.map((receipt) => {
       const refunds = refundsByReceipt.get(String(receipt.id)) || [];
       const refundedTotal = refunds.reduce((sum, refund) => sum + Number(refund.amount || 0), 0);
+      const pendingRefunds = pendingByReceipt.get(String(receipt.id)) || [];
+      const pendingRefundTotal = pendingRefunds.reduce((sum, adjustment) => sum + Number(adjustment.amount || 0), 0);
       return {
         ...receipt,
         refunds,
+        pending_refunds: pendingRefunds,
         refunded_total: refundedTotal,
-        refundable_balance: Math.max(0, Number(receipt.total || 0) - refundedTotal),
+        pending_refund_total: pendingRefundTotal,
+        refundable_balance: Math.max(0, Number(receipt.total || 0) - refundedTotal - pendingRefundTotal),
       };
     });
   },
