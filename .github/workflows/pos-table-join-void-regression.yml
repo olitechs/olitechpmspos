@@ -1,0 +1,48 @@
+name: POS Table Join and Quantity Void Regression
+
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/20261110190000_fix_pos_table_join_and_quantity_voids.sql"
+      - "supabase/tests/pos_table_join_quantity_void_contract.test.mjs"
+      - "supabase/tests/pos_table_join_quantity_void_regression.sql"
+      - "supabase/tests/fixtures/pos_table_join_quantity_void_setup.sql"
+      - "src/components/pos/POSContainer.jsx"
+      - "src/components/pos/OrderTaking.jsx"
+      - "package.json"
+      - ".github/workflows/pos-table-join-void-regression.yml"
+  workflow_dispatch:
+
+jobs:
+  isolated-pos-table-join-and-void:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: pos_table_join_void_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d pos_table_join_void_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: pos_table_join_void_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Create isolated POS schema and auth stubs
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/fixtures/pos_table_join_quantity_void_setup.sql
+      - name: Apply candidate POS RPC migration to isolated PostgreSQL only
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261110190000_fix_pos_table_join_and_quantity_voids.sql
+      - name: Run table join, move, VAT, KOT and void quantity regressions
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/pos_table_join_quantity_void_regression.sql
