@@ -6,15 +6,21 @@
   :root {
     color-scheme: light;
 
-    /* Canonical brand and Coastal Linen palette. Color literals live only here. */
-    --deep-lagoon: #0A3F4A;
-    --coastal-teal: #0F7C86;
+    /* OliTechs shared brand system — aligned with the approved marketing homepage. */
+    --brand-navy: #101A35;
+    --brand-blue: #285FE7;
+    --brand-blue-hover: #174AC8;
+    --brand-blue-soft: #F3F7FF;
+    --brand-canvas: #F8FAFF;
+    --brand-white: #FFFFFF;
+    --deep-lagoon: #101A35;
+    --coastal-teal: #285FE7;
     --white: #FFFFFF;
-    --soft-white: #F5F8F8;
-    --canvas: #F6F9F9;
+    --soft-white: #F8FAFF;
+    --canvas: #F8FAFF;
     --surface: var(--white);
-    --sidebar: #EAF3F3;
-    --text: #223039;
+    --sidebar: #EEF3FC;
+    --text: #101A35;
     --accent: #E8955A;
 
     /* Functional payment states: preserve the requested fill/foreground pairs. */
