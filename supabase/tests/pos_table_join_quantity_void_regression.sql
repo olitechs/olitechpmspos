@@ -103,9 +103,21 @@ begin
   from jsonb_array_elements(v_result->'order_lines') value
   where value->>'id'=v_line_id;
   if v_qty <> 3 then raise exception 'Partial void should leave quantity 3, got %', v_qty; end if;
+  select (value->>'qty')::numeric into v_qty
+  from jsonb_array_elements((select kot_sent_order_lines from public.pos_table_sessions where property_id=v_property and table_key='T1')) value
+  where value->>'id'=v_line_id;
+  if v_qty <> 1 then raise exception 'Voiding 2 sent units should leave 1 sent unit in the KOT snapshot, got %', v_qty; end if;
   select count(*) into v_void_count from public.pos_void_items where property_id=v_property;
   select count(*) into v_audit_count from public.pos_order_audit where property_id=v_property and action='ITEM_REMOVED';
   if v_void_count <> 1 or v_audit_count <> 1 then raise exception 'Void and audit rows were not recorded atomically.'; end if;
+
+  begin
+    -- The current line still has 3 units, but only 1 remains in the sent snapshot.
+    perform public.fn_remove_pos_item(v_property,'T1',v_line_id,2,'Unsent quantity must not be voided','Test Cashier');
+    raise exception 'Expected unsent quantity to be protected from voiding.';
+  exception when others then
+    if sqlerrm not like 'Cannot void more than the quantity already sent to production%' then raise; end if;
+  end;
 
   begin
     perform public.fn_remove_pos_item(v_property,'T1',v_line_id,4,'Over quantity test','Test Cashier');
