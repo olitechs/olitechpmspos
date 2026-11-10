@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  ArrowDown, ArrowRight, Check, ChevronDown, ChevronRight, Menu, X
-} from 'lucide-react';
+import { ArrowDown, ArrowRight, Check, ChevronDown, ChevronRight, Menu, X } from 'lucide-react';
 import SocialFAB from '../components/shell/SocialFAB';
 import BrandLogo from '@/components/ui/BrandLogo';
   whatsapp: 'https://wa.me/254745043121',
