@@ -270,3 +270,19 @@ test('POS access stays unlocked during navigation and is cleared when its browse
   assert.match(posContainer, /window\.addEventListener\('beforeunload', clearWindowAccess\)/);
   assert.match(posContainer, /sessionStorage\.removeItem\(accessKey\)/);
 });
+
+
+test('application page and module screens are lazy-loaded instead of inflating the initial route bundle', () => {
+  const eagerPageImports = [...app.matchAll(/^import\\s+[^\\n]+from\\s+['\"]@\\/(?:pages|components)\\//gm)].map((match) => match[0]);
+  assert.deepEqual(eagerPageImports, [
+    "import ScrollToTop from '@/components/ui/ScrollToTop';",
+    "import SupabaseSetupNotice from '@/pages/SupabaseSetupNotice';",
+  ]);
+  assert.ok([...app.matchAll(/lazyWithRetry\\(\\(\\) => import\\(/g)].length >= 50, 'major route screens should remain split into retry-aware chunks');
+});
+
+test('global route fallback uses a responsive skeleton instead of a blocking spinner', () => {
+  assert.match(app, /function AuthLoading\\(\\)[\\s\\S]*?animate-pulse[\\s\\S]*?aria-label=\"Loading OliTechs\"/);
+  assert.doesNotMatch(app, /function AuthLoading\\(\\)[\\s\\S]*?animate-spin/);
+  assert.match(app, /<Suspense fallback={<AuthLoading\\/>}>/);
+});
