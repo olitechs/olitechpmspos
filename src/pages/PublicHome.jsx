@@ -3,6 +3,11 @@ import { Link } from 'react-router-dom';
 import { ArrowDown, ArrowRight, Check, ChevronDown, ChevronRight, Menu, X } from 'lucide-react';
 import SocialFAB from '../components/shell/SocialFAB';
 import BrandLogo from '@/components/ui/BrandLogo';
+
+const CONTACT = {
+  phone: '+254 745 043 121',
+  phoneHref: 'tel:+254745043121',
+  email: 'info@olitech.co.ke',
   whatsapp: 'https://wa.me/254745043121',
 };
 
