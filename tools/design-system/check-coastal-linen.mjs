@@ -9,13 +9,19 @@ const design = readFileSync(join(root, 'Design.md'), 'utf8');
 const errors = [];
 
 const requiredTokens = [
-  ['--deep-lagoon', '#0A3F4A'],
-  ['--coastal-teal', '#0F7C86'],
+  ['--brand-navy', '#101A35'],
+  ['--brand-blue', '#285FE7'],
+  ['--brand-blue-hover', '#174AC8'],
+  ['--brand-blue-soft', '#F3F7FF'],
+  ['--brand-canvas', '#F8FAFF'],
+  ['--brand-white', '#FFFFFF'],
+  ['--deep-lagoon', '#101A35'],
+  ['--coastal-teal', '#285FE7'],
   ['--white', '#FFFFFF'],
-  ['--soft-white', '#F5F8F8'],
-  ['--canvas', '#F6F9F9'],
-  ['--sidebar', '#EAF3F3'],
-  ['--text', '#223039'],
+  ['--soft-white', '#F8FAFF'],
+  ['--canvas', '#F8FAFF'],
+  ['--sidebar', '#EEF3FC'],
+  ['--text', '#101A35'],
   ['--accent', '#E8955A'],
   ['--status-paid', '#3FA77A'],
   ['--status-deposit-paid', '#F2C14E'],
@@ -63,8 +69,8 @@ if (/Choose light, dark|Dark palette|enable system-color-mode listener|support b
 }
 
 if (errors.length) {
-  console.error('Coastal Linen theme contract failed:\n' + errors.map((error) => '- ' + error).join('\n'));
+  console.error('OliTechs theme contract failed:\n' + errors.map((error) => '- ' + error).join('\n'));
   process.exitCode = 1;
 } else {
-  console.log('Coastal Linen light-only tokens, payment/room status semantics and Tailwind mappings passed.');
+  console.log('OliTechs navy/blue light-only tokens, payment/room status semantics and Tailwind mappings passed.');
 }
