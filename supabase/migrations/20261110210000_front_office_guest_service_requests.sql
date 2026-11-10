@@ -1,4 +1,6 @@
 -- Property-scoped guest requests, transfers and tours with an immutable activity history.
+create unique index if not exists reservations_property_id_id_unique on public.reservations(property_id,id);
+create unique index if not exists rooms_property_id_id_unique on public.rooms(property_id,id);
 create table if not exists public.guest_service_requests (
  id uuid primary key default gen_random_uuid(),
  property_id uuid not null references public.properties(id) on delete cascade,
@@ -65,9 +67,10 @@ begin
  end if;
  insert into public.guest_service_request_events(property_id,request_id,event_type,from_status,to_status,note,actor_id)
  values(new.property_id,new.id,v_event,old.status,new.status,nullif(new.resolution_notes,''),auth.uid());
- new.updated_at:=now();
  return new;
 end;$$;
+drop trigger if exists guest_service_request_touch_updated_at on public.guest_service_requests;
+create trigger guest_service_request_touch_updated_at before update on public.guest_service_requests for each row execute function public.fn_touch_updated_at();
 drop trigger if exists guest_service_request_event_log on public.guest_service_requests;
 create trigger guest_service_request_event_log after insert or update on public.guest_service_requests for each row execute function public.fn_log_guest_service_request_event();
 grant select,insert,update on public.guest_service_requests to authenticated;
