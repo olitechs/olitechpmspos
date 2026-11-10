@@ -120,6 +120,21 @@ export default function ShiftReceiptHistory({ propertyId, currentShift }) {
     }
   };
 
+  const decidePendingRefund = async (adjustmentId, approve) => {
+    setRefundBusy(true);
+    try {
+      await pmsService.approveCashierAdjustment({ adjustmentId, approve, reason: null });
+      toast.success(approve ? 'Refund approved and posted.' : 'Refund request rejected.');
+      const rows = await shiftService.getShiftReceipts(propertyId, shiftId);
+      setReceipts(rows);
+      setSelected(rows.find((row) => row.id === selected?.id) || null);
+    } catch (err) {
+      toast.error(err.message || 'Manager decision could not be recorded.');
+    } finally {
+      setRefundBusy(false);
+    }
+  };
+
   const selectedShift = currentShift?.id === shiftId
     ? currentShift
     : closedShifts.find((shift) => shift.id === shiftId);
@@ -193,6 +208,7 @@ export default function ShiftReceiptHistory({ propertyId, currentShift }) {
                 <div className="flex justify-between"><span className="text-[var(--text-muted)]">VAT</span><span>KES {money(selected.vat)}</span></div>
                 <div className="flex justify-between border-t border-[var(--border)] pt-2 font-bold"><span>Total</span><span>KES {money(selected.total)}</span></div>
                 <div className="flex justify-between text-[var(--text-muted)]"><span>Refunded</span><span>KES {money(selected.refunded_total)}</span></div>
+                <div className="flex justify-between text-[var(--text-muted)]"><span>Pending approval</span><span>KES {money(selected.pending_refund_total)}</span></div>
                 <div className="flex justify-between font-bold"><span>Remaining refundable</span><span>KES {money(selected.refundable_balance)}</span></div>
               </div>
             </div>
@@ -200,6 +216,7 @@ export default function ShiftReceiptHistory({ propertyId, currentShift }) {
               <h4 className="font-bold text-[var(--text)]">Refund receipt</h4>
               <p className="mt-1 text-xs text-[var(--text-muted)]">Refunds stay linked to the original receipt and shift. Existing manager-approval controls are preserved.</p>
               {selected.refunds?.length > 0 && <div className="my-3 rounded-lg bg-[var(--canvas)] p-3"><p className="text-xs font-bold text-[var(--text-muted)]">Previous refunds</p>{selected.refunds.map((refundRow) => <div key={refundRow.id} className="mt-1 flex justify-between gap-2 text-xs"><span>{refundRow.settlement_method || refundRow.method} · {dateTime(refundRow.created_at)}</span><b>KES {money(refundRow.amount)}</b></div>)}</div>}
+              {selected.pending_refunds?.length > 0 && <div className="my-3 rounded-lg border border-[var(--warning)] bg-[var(--warning-soft)] p-3"><p className="text-xs font-bold text-[var(--warning-text)]">Refunds awaiting manager approval</p>{selected.pending_refunds.map((pending) => <div key={pending.id} className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs"><span>KES {money(pending.amount)} · {pending.refund_method || 'Original tender'} · {pending.reason}</span><span className="flex gap-2"><button type="button" disabled={refundBusy} onClick={() => decidePendingRefund(pending.id, true)} className="font-bold text-[var(--primary)] disabled:opacity-50">Approve</button><button type="button" disabled={refundBusy} onClick={() => decidePendingRefund(pending.id, false)} className="font-bold text-[var(--danger-text)] disabled:opacity-50">Reject</button></span></div>)}</div>}
               {selected.status === 'posted' && Number(selected.refundable_balance) > 0 ? (
                 <div className="mt-3 space-y-3">
                   {selected.payment_method === 'split' && <label className="block text-xs font-semibold text-[var(--text-muted)]">Refund tender<select value={refundMethod} onChange={(event) => setRefundMethod(event.target.value)} className="mt-1 min-h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm"><option value="">Select payment method</option><option value="cash">Cash</option><option value="card">Card</option><option value="mpesa">M-Pesa</option><option value="bank">Bank</option><option value="room">Room charge</option></select></label>}
