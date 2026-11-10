@@ -1,6 +1,8 @@
 name: Performance audit validation
 
 on:
+  push:
+    branches: [perf/full-app-audit-loading-and-startup]
   pull_request:
     branches: [main]
     paths:
