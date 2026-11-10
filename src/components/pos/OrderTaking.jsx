@@ -196,7 +196,6 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
   const performRemoval = async () => {
     if (!removeTarget || !propertyId) return;
     const removeQty = Number(removeTarget.removeQty);
-    const originalQty = Number(removeTarget.line.qty);
     const allowedQty = Number(removeTarget.sent ? removeTarget.sentQty : removeTarget.unsentQty);
     if (!Number.isFinite(removeQty) || removeQty <= 0 || removeQty > allowedQty) {
       setRemoveError(`Enter a quantity greater than zero and no more than ${allowedQty}.`);
