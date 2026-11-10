@@ -8,7 +8,6 @@ export const SIDEBAR_SECTIONS=[
   {id:"reports",label:"Reports",icon:BarChart3,roles:["hotel_admin","super_admin","front_office_manager","store_manager","fb_manager"],path:"/backoffice/reports/sales",active:["reports"],group:"dropdown"}
  ]},
  {key:"front-office",title:"Front Office",items:[
-  {id:"room-planner",label:"Room Planner",icon:BedDouble,roles:["hotel_admin","super_admin","front_office_manager","receptionist","front_desk","housekeeping_supervisor"],path:"/frontoffice/room-planner",active:["rooms","room-planner"]},
   {id:"reservations",label:"Reservations",icon:CalendarDays,roles:["hotel_admin","super_admin","front_office_manager","receptionist","front_desk"],path:"/frontoffice/reservations",active:["reservations"]},
   {id:"folio",label:"Guest Folio",icon:Receipt,roles:["hotel_admin","super_admin","front_office_manager","receptionist","front_desk"],path:"/frontoffice/folio",active:["folio"]},
   {id:"housekeeping",label:"Housekeeping",icon:Sparkles,roles:["hotel_admin","super_admin","front_office_manager","receptionist","front_desk","housekeeping_supervisor"],path:"/frontoffice/housekeeping",active:["housekeeping"]},
