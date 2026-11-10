@@ -50,7 +50,7 @@ export default function FrontOfficeConfiguration() {
     event.preventDefault();
     const payload = {
       property_id: propertyId,
-      code: rateForm.code.trim().toUpperCase().replace(/\\s+/g, '_'),
+      code: rateForm.code.trim().toUpperCase().replace(/\s+/g, '_'),
       name: rateForm.name.trim(),
       description: rateForm.description.trim() || null,
       meal_plan: rateForm.meal_plan,
