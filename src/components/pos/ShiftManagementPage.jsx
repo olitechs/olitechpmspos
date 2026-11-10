@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { AlertCircle, BarChart3, CheckCircle2, Clock3, Printer, RefreshCw, Wallet } from 'lucide-react';
+import { AlertCircle, BarChart3, CheckCircle2, Clock3, LockKeyhole, Printer, RefreshCw, Wallet } from 'lucide-react';
 import { shiftService } from '@/services/shiftService';
 import { getPrinters, getAssignments, printShiftPreview } from '@/services/printService';
 import { toast } from 'sonner';
@@ -25,7 +25,7 @@ const formatDateTime = (value) => {
     : date.toLocaleString('en-KE', { dateStyle: 'medium', timeStyle: 'short' });
 };
 
-export default function ShiftManagementPage({ propertyId, currentShift, loadError, onOpened }) {
+export default function ShiftManagementPage({ propertyId, currentShift, loadError, onOpened, onCloseShift }) {
   const [submitError, setSubmitError] = useState('');
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [summary, setSummary] = useState(null);
@@ -206,7 +206,7 @@ export default function ShiftManagementPage({ propertyId, currentShift, loadErro
               <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Active property shift</p>
               <h2 className="mt-1 text-lg font-bold text-[var(--text)]">{currentShift.shift_no || 'Current shift'}</h2>
             </div>
-            <span className="rounded-full bg-[var(--status-paid)] px-3 py-1 text-xs font-bold text-[var(--pay-paid-fg)]">OPEN</span>
+            <div className="flex items-center gap-2"><span className="rounded-full bg-[var(--status-paid)] px-3 py-1 text-xs font-bold text-[var(--pay-paid-fg)]">OPEN</span>{onCloseShift && <button type="button" onClick={onCloseShift} className="inline-flex min-h-9 items-center gap-2 rounded-lg bg-[var(--primary)] px-3 py-2 text-xs font-bold text-primary-foreground hover:brightness-95"><LockKeyhole size={14} /> Close shift</button>}</div>
           </div>
           <div className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3">
             <div className="rounded-2xl border border-[var(--border)] p-4">

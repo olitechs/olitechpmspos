@@ -17,11 +17,13 @@ import { printOrder as printRoutedOrder, isPrinterGroupRoutingEnabled } from '@/
 import { usePrinterStore as usePrinterStoreV2 } from '@/data/modules/printerStore';
 import { posService } from '@/services/posService';
 import { getUnsentOrderLines } from '@/services/printTemplates';
-import { pmsService } from '@/services/pmsService';
 import { posAccessService } from '@/services/posAccessService';
 import POSAccessGate, { POS_ACCESS_KEY } from '@/components/pos/POSAccessGate';
 import MenuManager from '@/components/pos/MenuManager';
 import POSSettings from '@/components/pos/settings/POSSettings';
+import ShiftManagementPage from '@/components/pos/ShiftManagementPage';
+import CloseShiftModal from '@/components/pos/CloseShiftModal';
+import { shiftService } from '@/services/shiftService';
 
 const THERMAL_COLUMNS = 42; // standard 80mm thermal ticket text width
 
@@ -60,7 +62,7 @@ function buildKitchenTicketText(center, lines, { orderNumber, table, propertyNam
 
 // Owns the floor → order → bill flow for the POS module: table selection,
 // opening a new table session, taking an order, and settling the bill.
-export default function POSContainer({ onNavigateToCashier }) {
+export default function POSContainer() {
 	const store = useStore();
 	const navigate = useNavigate();
 	const { user } = useAuth();
@@ -91,7 +93,7 @@ export default function POSContainer({ onNavigateToCashier }) {
 		setShiftLoading(true);
 		setActiveTab('shifts');
 		authService.listStaff(propertyId, 'pos').then(setPosStaff).catch(() => {});
-		pmsService.getOpenCashierShift(propertyId)
+		shiftService.getCurrentShift(propertyId)
 			.then((shift) => {
 				setCurrentShift(shift);
 				setActiveTab(shift ? 'floor' : 'shifts');
@@ -141,6 +143,7 @@ export default function POSContainer({ onNavigateToCashier }) {
 	const [shiftLoadError, setShiftLoadError] = useState('');
 		const [menuManagerOpen, setMenuManagerOpen] = useState(false);
 	const [settingsOpen, setSettingsOpen] = useState(false);
+	const [closeShiftOpen, setCloseShiftOpen] = useState(false);
 	// Order lines are kept per-table so switching tabs/tables doesn't lose an in-progress order.
 	const [orderLinesByTable, setOrderLinesByTable] = useState({});
 	useEffect(() => {
@@ -395,10 +398,10 @@ export default function POSContainer({ onNavigateToCashier }) {
 	);
 	return (
 		<div className="flex flex-col h-full overflow-hidden">
-			<AppHeader activeTab={activeTab} onTabChange={setActiveTab} activeTable={activeTable} shift={currentShift} hasOpenShift={Boolean(currentShift)} onOpenShifts={() => onNavigateToCashier?.()} propertyName={propertyName} onCloseShift={currentShift && canCloseShift ? ()=>onNavigateToCashier?.() : null} onManageMenu={canCloseShift ? ()=>setMenuManagerOpen(true) : null} onOpenSettings={()=>setSettingsOpen(true)} />
+			<AppHeader activeTab={activeTab} onTabChange={setActiveTab} activeTable={activeTable} shift={currentShift} hasOpenShift={Boolean(currentShift)} onOpenShifts={() => setActiveTab('shifts')} propertyName={propertyName} onCloseShift={currentShift && canCloseShift ? ()=>setCloseShiftOpen(true) : null} onManageMenu={canCloseShift ? ()=>setMenuManagerOpen(true) : null} onOpenSettings={()=>setSettingsOpen(true)} />
 
 			<div className="flex-1 min-h-0 overflow-y-auto">
-				{(activeTab === 'shifts' || !currentShift) && <section className="mx-auto flex h-full w-full max-w-xl flex-col items-center justify-center p-6 text-center"><div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-sm"><h2 className="text-xl font-bold text-[var(--text)]">Open a cashier shift</h2><p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">POS payments now use the active cashier shift. Open or manage your shift in the Shifts workspace, then return here to continue with existing bills.</p>{shiftLoadError && <p role="alert" className="mt-3 rounded-lg bg-[var(--danger-soft)] p-3 text-sm text-[var(--danger-text)]">{shiftLoadError}</p>}<button type="button" onClick={() => onNavigateToCashier?.()} className="mt-5 min-h-11 rounded-xl bg-[var(--primary)] px-5 py-3 text-sm font-bold text-[var(--on-primary)]">Go to Shifts → Open shift</button></div></section>}
+				{activeTab === 'shifts' && <ShiftManagementPage propertyId={propertyId} currentShift={currentShift} loadError={shiftLoadError} onOpened={(shift) => { setCurrentShift(shift); setActiveTab('floor'); }} onCloseShift={canCloseShift ? () => setCloseShiftOpen(true) : null} />}
 				{activeTab === 'floor' && currentShift && <div className="relative h-full"><FloorPlan onTableSelect={handleTableSelect} /><div className="absolute bottom-3 left-3 z-20 flex items-center gap-1 rounded-2xl border-2 border-border bg-surface p-2 shadow-lg"><span className="px-1 text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]">Staff</span>{posStaff.slice(0,8).map(person => <button key={person.id} title={`Switch to ${person.full_name}`} onClick={()=>{setSwitchStaff(person);setSwitchError('');}} className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-border bg-primary text-[10px] font-black text-foreground hover:scale-105">{person.avatar || person.full_name?.slice(0,2).toUpperCase()}</button>)}</div>{switchStaff&&<PinPad title="Switch POS Staff" staffName={switchStaff.full_name} error={switchError} onSubmit={verifySwitch} onClose={()=>setSwitchStaff(null)}/>}</div>}
 
 				{activeTab === 'order' && currentShift && activeTable && (
@@ -473,6 +476,7 @@ export default function POSContainer({ onNavigateToCashier }) {
 
 			{menuManagerOpen && <MenuManager open={menuManagerOpen} onClose={()=>setMenuManagerOpen(false)} />}
 			{settingsOpen && <POSSettings user={user} onClose={()=>setSettingsOpen(false)} />}
+			{closeShiftOpen && currentShift && <CloseShiftModal shift={currentShift} onClose={() => setCloseShiftOpen(false)} onClosed={() => { setCloseShiftOpen(false); setCurrentShift(null); setActiveTab('shifts'); }} />}
 			<OpenTableDialog
 				open={!!pendingTable}
 				table={pendingTable}
