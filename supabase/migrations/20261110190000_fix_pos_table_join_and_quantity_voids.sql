@@ -214,7 +214,7 @@ begin
         jsonb_set(
           jsonb_set(
             jsonb_set(
-              grouped.first_line,
+              grouped.first_line - 'quantity',
               '{qty}',
               to_jsonb(grouped.total_qty),
               true
