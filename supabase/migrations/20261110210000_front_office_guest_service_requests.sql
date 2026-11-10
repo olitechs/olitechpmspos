@@ -69,8 +69,11 @@ begin
  values(new.property_id,new.id,v_event,old.status,new.status,nullif(new.resolution_notes,''),auth.uid());
  return new;
 end;$$;
+create or replace function public.fn_touch_guest_service_request_updated_at()
+returns trigger language plpgsql set search_path=public as $
+begin new.updated_at:=now(); return new; end;$;
 drop trigger if exists guest_service_request_touch_updated_at on public.guest_service_requests;
-create trigger guest_service_request_touch_updated_at before update on public.guest_service_requests for each row execute function public.fn_touch_updated_at();
+create trigger guest_service_request_touch_updated_at before update on public.guest_service_requests for each row execute function public.fn_touch_guest_service_request_updated_at();
 drop trigger if exists guest_service_request_event_log on public.guest_service_requests;
 create trigger guest_service_request_event_log after insert or update on public.guest_service_requests for each row execute function public.fn_log_guest_service_request_event();
 grant select,insert,update on public.guest_service_requests to authenticated;
