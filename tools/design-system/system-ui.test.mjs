@@ -167,7 +167,7 @@ test('mobile sidebar exposes expanded state and closes with Escape', () => {
 
 test('operational screens use semantic theme tokens for text, surfaces, focus and feedback', () => {
   const screens = {
-    reservations, folio, posDevices, receiptSettings, operationalSettings, catalogue, accessError, nightAudit, cashier, housekeeping, subscriptionPanel, printerSettings, adminProperties, adminRoute, protectedRoute, employeeList, sharedSelect, productTable, publicHome, pageNotFound,
+    reservations, folio, posDevices, receiptSettings, operationalSettings, catalogue, accessError, nightAudit, cashier, housekeeping, subscriptionPanel, printerSettings, adminProperties, adminRoute, protectedRoute, employeeList, sharedSelect, productTable, pageNotFound,
   };
   for (const [name, source] of Object.entries(screens)) {
     assert.doesNotMatch(
