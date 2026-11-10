@@ -75,7 +75,14 @@ export default function CloseShiftModal({shift,onClosed,onClose}){
    setBusy(true);setError('');
    try{
     const closed=await shiftService.closeShift({shiftId:shift.id,countedCash:Number(counted||0),notes,managerApproved:approved});
-    const fresh=await shiftService.getShiftReport(shift.id);
+    let fresh;
+    try {
+      fresh=await shiftService.getShiftReport(shift.id);
+    } catch (refreshError) {
+      fresh={...report,shift:{...report.shift,status:'closed',closed_at:new Date().toISOString()}};
+      toast.warning('Shift closed. The final report refresh failed, so the last loaded sales summary will be used for printing.');
+    }
+    fresh.shift={...fresh.shift,status:'closed',closed_at:fresh.shift?.closed_at||new Date().toISOString(),counted_cash:Number(counted||0),cash_variance:Number(closed?.variance||0)};
     fresh.countedCash=Number(counted||0);fresh.variance=Number(closed?.variance||0);fresh.propertyId=propertyId;fresh.openedBy=fresh.openedBy||'Staff';fresh.closedBy=fresh.closedBy||staff?.full_name||user?.name||'Staff';
     const settingsRow=await (async()=>{const {data}=await import('@/lib/supabaseClient').then(m=>m.supabase.from('property_settings').select('*').eq('property_id',propertyId).maybeSingle());return data||null;})().catch(()=>null);
     fresh.settings=settingsRow;fresh.propertyName=propertyName;
