@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Building2, Clock, CheckCircle2, ShieldAlert, Users, ArrowRight, RefreshCw, Plus, ClipboardList, Activity, Ban, CreditCard } from 'lucide-react';
+import { Building2, Clock, CheckCircle2, ShieldAlert, Users, ArrowRight, RefreshCw, Plus, ClipboardList, Activity, Ban, CreditCard, KeyRound } from 'lucide-react';
 import { platformService } from '@/services/platformService';
 import { supabase } from '@/lib/supabaseClient';
 import { PACKAGE_LABELS } from '@/lib/entitlements';
@@ -116,6 +116,7 @@ export default function AdminDashboard() {
           <QuickAction to="/admin/properties/new" icon={Plus} title="Create Property" description="Register a property directly from the platform." />
           <QuickAction to="/admin/usage" icon={Activity} title="Usage & Health" description="Monitor sessions, bookings, receipts and print failures by property." />
           <QuickAction to="/admin/users" icon={Users} title="Users & Access" description="Find platform accounts and manage their property memberships." />
+          <QuickAction to="/admin/recovery" icon={KeyRound} title="Recovery Centre" description="Find historical receipts and guest folios, reprint records and assist with account recovery." />
           <QuickAction to="/admin/properties" icon={ClipboardList} title="Manage Properties" description="Approve, suspend, reactivate and assign packages." />
           <QuickAction to="/admin/audit-log" icon={Activity} title="Platform Audit Log" description="Review platform-wide administrative activity." />
         </div>
