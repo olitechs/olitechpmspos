@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, UserPlus, Save, Trash2 } from 'lucide-react';
+import { ArrowLeft, UserPlus, Save, Trash2, ShieldCheck, PackageCheck, CheckCircle2 } from 'lucide-react';
 import { platformService } from '@/services/platformService';
 import { PACKAGE_LABELS } from '@/lib/entitlements';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,7 @@ export default function AdminPropertyDetail() {
   const [error,setError]=useState('');
   const [loading,setLoading]=useState(true);
   const [busy,setBusy]=useState(false);
+  const [selectedStatus,setSelectedStatus]=useState('pending');
   const [packageDialog,setPackageDialog]=useState(null);
   const [ownerEmail,setOwnerEmail]=useState('');
   const [memberEmail,setMemberEmail]=useState('');
@@ -48,7 +49,7 @@ export default function AdminPropertyDetail() {
         platformService.listAuditLog(id),
         platformService.getSubscription(id)
       ]);
-      setProperty(p); setMembers(m); setAuditLog(log); setSubscription(s);
+      setProperty(p); setMembers(m); setAuditLog(log); setSubscription(s); setSelectedStatus(p.status || 'pending');
       if(s) setSubForm({
         planCode:PLAN_MODULES[s.plan_code] ? s.plan_code : 'standard',status:s.status||'trial',
         trialEndsAt:isoInput(s.trial_ends_at),currentPeriodEndsAt:isoInput(s.current_period_ends_at),
@@ -107,19 +108,70 @@ export default function AdminPropertyDetail() {
 
     {error&&<div className="p-4 rounded-xl bg-destructive/10 text-destructive text-sm">{error}</div>}
 
-    <section className="grid md:grid-cols-2 gap-4">
-      <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
-        <h2 className="font-semibold">Property Access</h2>
-        <div className="grid grid-cols-2 gap-2">
-          {['pending','active','suspended','rejected','inactive'].map(s=><Button key={s} size="sm" variant={property.status===s?'default':'outline'} disabled={busy||property.status===s} onClick={()=>setStatus(s)} className="capitalize">{s}</Button>)}
+    <section className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+      <div className="space-y-4">
+        <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="rounded-xl bg-primary/10 p-2.5 text-primary"><ShieldCheck className="h-5 w-5"/></div>
+            <div className="min-w-0 flex-1">
+              <h2 className="font-semibold text-foreground">Property access</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Control whether this property can sign in and use the platform.</p>
+            </div>
+            <span className={`rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${property.status==='active'?'bg-emerald-500/10 text-emerald-700':property.status==='pending'?'bg-amber-500/10 text-amber-700':property.status==='suspended'?'bg-red-500/10 text-red-700':'bg-muted text-muted-foreground'}`}>{property.status}</span>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+            <label className="text-sm font-medium">Access status
+              <select value={selectedStatus} onChange={e=>setSelectedStatus(e.target.value)} disabled={busy} className="mt-1.5 h-11 w-full rounded-xl border border-input bg-background px-3 capitalize">
+                {['pending','active','suspended','rejected','inactive'].map(s=><option key={s} value={s}>{s.charAt(0).toUpperCase()+s.slice(1)}</option>)}
+              </select>
+            </label>
+            <Button disabled={busy||selectedStatus===property.status} onClick={()=>setStatus(selectedStatus)} className="h-11 sm:min-w-36">{busy?'Saving…':'Update access'}</Button>
+          </div>
+          <p className="text-xs text-muted-foreground">Suspending or deactivating access does not delete property records, bookings, receipts or financial history.</p>
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          {['none','standard','premium','professional'].map(p=><Button key={p} size="sm" variant={property.package===p?'default':'outline'} disabled={busy||property.package===p} onClick={()=>setPackage(p)}>{PACKAGE_LABELS[p]}</Button>)}
+
+        <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="rounded-xl bg-primary/10 p-2.5 text-primary"><PackageCheck className="h-5 w-5"/></div>
+            <div className="min-w-0 flex-1">
+              <h2 className="font-semibold text-foreground">Assigned package</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Choose the feature level available to this property.</p>
+            </div>
+          </div>
+          <div className="rounded-xl border border-primary/25 bg-primary/[0.04] p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Current package</p>
+                <p className="mt-1 text-xl font-bold text-foreground">{PACKAGE_LABELS[property.package] || 'No Package'}</p>
+              </div>
+              <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{property.package==='none'?'Not assigned':'Assigned'}</span>
+            </div>
+            <p className="mt-2 text-sm text-muted-foreground">{property.package==='standard'?'Essential property operations with core PMS and POS tools.':property.package==='premium'?'Expanded operations, inventory and advanced reporting.':property.package==='professional'?'Full platform capabilities and advanced controls.':'This property currently has no active package entitlement.'}</p>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button className="h-11 flex-1" disabled={busy} onClick={()=>setPackageDialog({mode:'change'})}>Change package</Button>
+            {property.package!=='none'&&<Button className="h-11" variant="outline" disabled={busy} onClick={()=>{if(window.confirm('Remove the package and suspend subscription access for this property? Existing records will be preserved.'))setPackage('none')}}>Remove package</Button>}
+          </div>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {[
+              {name:'Standard',desc:'Core PMS + POS',features:'Essential daily operations'},
+              {name:'Premium',desc:'Advanced operations',features:'Inventory and analytics'},
+              {name:'Professional',desc:'Full platform',features:'Complete feature set'},
+            ].map((pkg)=>(
+              <div key={pkg.name} className={`rounded-xl border p-3 ${PACKAGE_LABELS[property.package]===pkg.name?'border-primary bg-primary/5':'border-border bg-background'}`}>
+                <div className="flex items-center gap-1.5 text-sm font-semibold">{pkg.name}{PACKAGE_LABELS[property.package]===pkg.name&&<CheckCircle2 className="h-3.5 w-3.5 text-primary"/>}</div>
+                <p className="mt-1 text-xs font-medium text-muted-foreground">{pkg.desc}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{pkg.features}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
-      <div className="bg-card border border-border rounded-2xl p-5">
-        <h2 className="font-semibold mb-3">Property Information</h2>
-        <dl className="text-sm space-y-2">{[['Business Name',property.business_name],['Type',property.property_type],['Address',property.address],['City',property.city],['Country',property.country],['Phone',property.phone],['Email',property.email],['Currency',property.currency],['Timezone',property.timezone]].map(([l,v])=><div key={l} className="flex justify-between gap-4"><dt className="text-muted-foreground">{l}</dt><dd className="font-medium text-right">{v||'—'}</dd></div>)}</dl>
+
+      <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
+        <h2 className="font-semibold text-foreground">Property information</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Registered business and regional settings.</p>
+        <dl className="mt-5 divide-y divide-border text-sm">{[['Business Name',property.business_name],['Type',property.property_type],['Address',property.address],['City',property.city],['Country',property.country],['Phone',property.phone],['Email',property.email],['Currency',property.currency],['Timezone',property.timezone]].map(([l,v])=><div key={l} className="flex items-start justify-between gap-4 py-3 first:pt-0 last:pb-0"><dt className="text-muted-foreground">{l}</dt><dd className="max-w-[65%] break-words text-right font-medium text-foreground">{v||'—'}</dd></div>)}</dl>
       </div>
     </section>
 
