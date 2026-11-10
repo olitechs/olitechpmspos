@@ -170,7 +170,7 @@ begin
         jsonb_set(
           jsonb_set(
             jsonb_set(
-              grouped.first_line,
+              grouped.first_line - 'quantity',
               '{qty}',
               to_jsonb(grouped.total_qty),
               true
@@ -393,7 +393,7 @@ begin
       end;
 
       if v_new > 0 then
-        v_new_lines := v_new_lines || jsonb_build_array(jsonb_set(v_item,'{qty}',to_jsonb(v_new)));
+        v_new_lines := v_new_lines || jsonb_build_array(jsonb_set(v_item - 'quantity','{qty}',to_jsonb(v_new)));
       end if;
     else
       v_new_lines := v_new_lines || jsonb_build_array(v_item);
@@ -432,7 +432,7 @@ begin
         v_sent_current := greatest(coalesce((v_sent_item->>'qty')::numeric, (v_sent_item->>'quantity')::numeric, 0), 0);
         v_sent_remaining := v_sent_current - p_remove_qty;
         if v_sent_remaining > 0 then
-          v_new_kot_lines := v_new_kot_lines || jsonb_build_array(jsonb_set(v_sent_item, '{qty}', to_jsonb(v_sent_remaining)));
+          v_new_kot_lines := v_new_kot_lines || jsonb_build_array(jsonb_set(v_sent_item - 'quantity', '{qty}', to_jsonb(v_sent_remaining)));
         end if;
       else
         v_new_kot_lines := v_new_kot_lines || jsonb_build_array(v_sent_item);
