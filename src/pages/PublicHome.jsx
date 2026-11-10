@@ -83,15 +83,15 @@ const faqs = [
 ];
 
 function Eyebrow({ children, light = false }) {
-  return <p className={\`text-[10px] font-extrabold uppercase tracking-[.24em] \${light ? 'text-blue-200' : 'text-[#285FE7]'}\`}>{children}</p>;
+  return <p className={`text-[10px] font-extrabold uppercase tracking-[.24em] ${light ? 'text-blue-200' : 'text-[#285FE7]'}`}>{children}</p>;
 }
 
 function SectionTitle({ eyebrow, title, description, light = false, centered = false }) {
   return (
-    <div className={\`\${centered ? 'mx-auto text-center' : ''} max-w-2xl\`}>
+    <div className={`${centered ? 'mx-auto text-center' : ''} max-w-2xl`}>
       <Eyebrow light={light}>{eyebrow}</Eyebrow>
-      <h2 className={\`mt-4 text-[clamp(2rem,4vw,3.35rem)] font-extrabold leading-[1.02] tracking-[-.045em] \${light ? 'text-white' : 'text-[#101A35]'}\`}>{title}</h2>
-      {description && <p className={\`mt-5 text-sm leading-7 sm:text-base \${light ? 'text-slate-300' : 'text-slate-500'}\`}>{description}</p>}
+      <h2 className={`mt-4 text-[clamp(2rem,4vw,3.35rem)] font-extrabold leading-[1.02] tracking-[-.045em] ${light ? 'text-white' : 'text-[#101A35]'}`}>{title}</h2>
+      {description && <p className={`mt-5 text-sm leading-7 sm:text-base ${light ? 'text-slate-300' : 'text-slate-500'}`}>{description}</p>}
     </div>
   );
 }
@@ -154,7 +154,7 @@ function POSPreview() {
 }
 
 function AnalyticsPreview() {
-  return <div className="analytics-card"><div className="preview-heading"><b>Revenue overview</b><span>This week⌄</span></div><strong>KES 1,842,600</strong><div className="bar-chart">{[35,52,43,70,58,88,76].map((v,i)=><i key={i} style={{height:\`\${v}%\`}} />)}</div><div className="chart-days">Mon　　 Tue　　 Wed　　 Thu　　 Fri　　 Sat　　 Sun</div></div>;
+  return <div className="analytics-card"><div className="preview-heading"><b>Revenue overview</b><span>This week⌄</span></div><strong>KES 1,842,600</strong><div className="bar-chart">{[35,52,43,70,58,88,76].map((v,i)=><i key={i} style={{height:`${v}%`}} />)}</div><div className="chart-days">Mon　　 Tue　　 Wed　　 Thu　　 Fri　　 Sat　　 Sun</div></div>;
 }
 
 function HousekeepingPreview() {
@@ -167,7 +167,7 @@ export default function PublicHome() {
   const nav = [['Platform','#platform'],['Solutions','#solutions'],['Features','#features'],['Pricing','#pricing'],['About','#about']];
   return (
     <div className="olitechs-marketing min-h-screen overflow-x-hidden bg-white text-[#101A35]">
-      <style>{\`
+      <style>{`
         .olitechs-marketing{--ink:#101a35;--navy:#101a35;--blue:#285fe7;--pale:#f3f7ff;--line:#e7ebf3;font-family:Inter,ui-sans-serif,system-ui,sans-serif}
         .olitechs-marketing button,.olitechs-marketing a{transition:all .2s ease}
         .marketing-nav{height:76px;border-bottom:1px solid #eef1f6;background:rgba(255,255,255,.94);backdrop-filter:blur(16px)}
@@ -210,7 +210,7 @@ export default function PublicHome() {
         @media(max-width:900px){.marketing-nav-inner{gap:15px;padding:0 18px}.marketing-nav-links{gap:15px}.connected-inner{grid-template-columns:1fr;gap:38px}.workspace-body{grid-template-columns:145px 1fr}.workspace-side{padding:15px 10px}.workspace-main{padding:15px}.planner-toolbar small{display:none}.solutions-grid{gap:12px}.solution-card{padding:20px}.footer-inner{grid-template-columns:1fr 1fr}.faq-layout{gap:35px}}
         @media(max-width:640px){.marketing-nav{height:66px}.marketing-nav-inner{padding:0 15px}.marketing-nav-inner>.marketing-button{padding:10px 12px;font-size:10px}.marketing-nav-links{display:none}.mobile-nav-panel{position:absolute;top:65px;left:0;right:0;background:#fff;border-bottom:1px solid #e7ebf3;padding:12px 18px;display:grid;gap:3px;box-shadow:0 12px 22px #10203a12}.mobile-nav-panel a{padding:12px 8px;font-size:13px;color:#34415d}.hero-section{padding:55px 17px 42px}.hero-title{font-size:43px}.hero-copy{font-size:13px}.workspace-wrap{margin-top:35px;overflow:hidden}.workspace-shell{width:760px;transform:scale(.72);transform-origin:top left;margin-bottom:-105px;width:138.9%}.workspace-body{grid-template-columns:150px 1fr}.industry-strip{padding:10px 18px 45px;grid-template-columns:1fr 1fr;gap:22px 12px}.industry-strip div{font-size:11px}.connected-section,.solutions-section,.confidence-section,.pricing-section,.journey-section,.faq-section{padding:68px 18px}.connected-inner{gap:30px}.pos-content{grid-template-columns:1fr}.pos-order{max-width:none}.pos-products{grid-template-columns:repeat(2,1fr)}.pos-window-top{gap:9px;font-size:9px}.solutions-grid,.confidence-grid,.pricing-grid,.journey-grid{grid-template-columns:1fr}.solution-card{min-height:180px}.plan-card{padding:23px}.plan-description{min-height:0}.faq-layout{grid-template-columns:1fr;gap:25px}.faq-aside h2{max-width:350px}.final-cta{margin:0 18px 45px;padding:28px 22px;display:block}.final-cta-actions{margin-top:22px}.footer-inner{grid-template-columns:1fr 1fr;gap:28px 18px}.footer-inner>div:first-child{grid-column:1/-1}.footer-bottom{flex-direction:column;align-items:flex-start}.workspace-main{min-width:560px}}
         @media(prefers-reduced-motion:reduce){.olitechs-marketing *{scroll-behavior:auto!important;transition:none!important}}
-      \`}</style>
+      `}</style>
 
       <header className="marketing-nav sticky top-0 z-50">
         <div className="marketing-nav-inner">
@@ -264,7 +264,7 @@ export default function PublicHome() {
 
         <section className="pricing-section" id="pricing">
           <SectionTitle eyebrow="SIMPLE, TRANSPARENT PRICING" title={<>The right tools for every stage<br/>of your hospitality business.</>} description="Choose a plan that fits your property. From getting started to managing complete hospitality operations, OliTechs brings everything together in one platform." centered/>
-          <div className="pricing-grid">{plans.map(plan=><article key={plan.name} className={\`plan-card \${plan.tone}\`}><span className="plan-eyebrow">{plan.eyebrow}</span><h3>{plan.name}</h3><div className="plan-price">{plan.price}</div><div className="plan-period">{plan.period}</div><p className="plan-description">{plan.description}</p><div className="mt-5 text-[9px] font-extrabold tracking-[.13em] text-[#263550]">WHAT’S INCLUDED</div><ul className="plan-features">{plan.features.map(item=><li key={item}><Check/>{item}</li>)}</ul><Link to="/signup" className="plan-action">{plan.action}</Link></article>)}</div>
+          <div className="pricing-grid">{plans.map(plan=><article key={plan.name} className={`plan-card ${plan.tone}`}><span className="plan-eyebrow">{plan.eyebrow}</span><h3>{plan.name}</h3><div className="plan-price">{plan.price}</div><div className="plan-period">{plan.period}</div><p className="plan-description">{plan.description}</p><div className="mt-5 text-[9px] font-extrabold tracking-[.13em] text-[#263550]">WHAT’S INCLUDED</div><ul className="plan-features">{plan.features.map(item=><li key={item}><Check/>{item}</li>)}</ul><Link to="/signup" className="plan-action">{plan.action}</Link></article>)}</div>
           <button className="compare-toggle" onClick={()=>document.getElementById('plan-help')?.scrollIntoView({behavior:'smooth',block:'center'})}><span>Compare Plans &amp; Features</span><ChevronRight size={16}/></button>
           <p className="pricing-help" id="plan-help">Need help choosing the right plan? Our team can help you find the best fit for your hospitality operation.　<a href="#contact">Talk to Our Team</a></p>
         </section>
@@ -276,7 +276,7 @@ export default function PublicHome() {
         <section className="final-cta" id="contact"><div><Eyebrow light>MAKE ROOM FOR WHAT’S NEXT</Eyebrow><h2 className="mt-4">Complete hotel management.<br/>Better guest experiences.</h2><p>Discover what a more connected property can look like.</p></div><div className="final-cta-actions"><a href={CONTACT.whatsapp} target="_blank" rel="noreferrer">Request a Demo ↗</a><Link to="/signup">Get Started →</Link></div></section>
       </main>
 
-      <footer className="marketing-footer"><div className="footer-inner"><div><BrandLogo className="h-9 w-auto max-w-[130px] object-contain object-left"/><p className="max-w-xs">Smarter operations.<br/>More memorable hospitality.</p></div><div><h4>Platform</h4><a href="#platform">Property management</a><a href="#solutions">Point of sale</a><a href="#features">Features</a><a href="#pricing">Pricing</a></div><div><h4>Solutions</h4><a href="#solutions">Hotels &amp; resorts</a><a href="#solutions">Restaurants &amp; bars</a><a href="#contact">Request a Demo</a><Link to="/signin">Sign in</Link></div><div><h4>Company</h4><a href="#about">About OliTechs</a><a href={CONTACT.whatsapp}>Contact</a><a href={\`mailto:\${CONTACT.email}\`}>{CONTACT.email}</a><a href={CONTACT.phoneHref}>{CONTACT.phone}</a></div></div><div className="footer-bottom"><span>© 2026 OliTechs. All rights reserved.</span><span>olitechs.co.ke</span></div></footer>
+      <footer className="marketing-footer"><div className="footer-inner"><div><BrandLogo className="h-9 w-auto max-w-[130px] object-contain object-left"/><p className="max-w-xs">Smarter operations.<br/>More memorable hospitality.</p></div><div><h4>Platform</h4><a href="#platform">Property management</a><a href="#solutions">Point of sale</a><a href="#features">Features</a><a href="#pricing">Pricing</a></div><div><h4>Solutions</h4><a href="#solutions">Hotels &amp; resorts</a><a href="#solutions">Restaurants &amp; bars</a><a href="#contact">Request a Demo</a><Link to="/signin">Sign in</Link></div><div><h4>Company</h4><a href="#about">About OliTechs</a><a href={CONTACT.whatsapp}>Contact</a><a href={`mailto:${CONTACT.email}`}>{CONTACT.email}</a><a href={CONTACT.phoneHref}>{CONTACT.phone}</a></div></div><div className="footer-bottom"><span>© 2026 OliTechs. All rights reserved.</span><span>olitechs.co.ke</span></div></footer>
       <SocialFAB/>
     </div>
   );
