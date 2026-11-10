@@ -57,3 +57,50 @@ $$;
 
 revoke all on function public.admin_property_usage() from public, anon;
 grant execute on function public.admin_property_usage() to authenticated;
+
+-- Platform-wide user directory with property membership summaries.
+create or replace function public.admin_user_directory()
+returns table (
+  user_id uuid,
+  email text,
+  full_name text,
+  platform_role text,
+  created_at timestamptz,
+  property_memberships jsonb
+)
+language plpgsql
+security definer
+set search_path = public
+stable
+as $$
+begin
+  if not public.is_platform_owner() then
+    raise exception 'Only a platform owner can view the user directory.' using errcode = '42501';
+  end if;
+
+  return query
+  select
+    pr.id,
+    pr.email,
+    pr.full_name,
+    pr.platform_role::text,
+    pr.created_at,
+    coalesce(
+      jsonb_agg(jsonb_build_object(
+        'property_id', p.id,
+        'property_name', p.name,
+        'property_status', p.status::text,
+        'role', pu.role::text
+      ) order by p.name) filter (where pu.id is not null),
+      '[]'::jsonb
+    )
+  from public.profiles pr
+  left join public.property_users pu on pu.user_id = pr.id
+  left join public.properties p on p.id = pu.property_id
+  group by pr.id, pr.email, pr.full_name, pr.platform_role, pr.created_at
+  order by pr.created_at desc;
+end;
+$$;
+
+revoke all on function public.admin_user_directory() from public, anon;
+grant execute on function public.admin_user_directory() to authenticated;
