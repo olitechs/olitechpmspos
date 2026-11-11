@@ -10,10 +10,20 @@ export const REDACTED = '[redacted]';
 // belong in a log file, so sensitive keys are replaced before anything is written.
 const SENSITIVE_KEY = /^(password|passwd|pass|secret|clientsecret|token|accesstoken|refreshtoken|authorization|cookie|apikey|api_key|key|signingkey|service_role_key|servicerolekey|supabasekey|supabase_key|escpos|escposbase64|content|contenthtml|payloadtext|guest|guestname|customer)$/i;
 
+// Credentials arrive under many names (p_token, tokenHash, agentSecret,
+// pairingCode). Matching suffixes means a new field name cannot quietly write a
+// workstation secret into the log file.
+const SENSITIVE_SUFFIX = /(token|tokenhash|secret|password|passwd|apikey|api_key|pairingcode|paircode|devicecode|credentialsecret)$/i;
+
 const MAX_STRING_LENGTH = 2000;
 const MAX_DEPTH = 6;
 
 const normalizeKey = (key) => String(key).replace(/[\s_-]/g, '');
+
+export const isSensitiveKey = (key) => {
+  const normalized = normalizeKey(key);
+  return SENSITIVE_KEY.test(normalized) || SENSITIVE_SUFFIX.test(normalized);
+};
 
 export function redactValue(value, depth = 0) {
   if (value === null || value === undefined) return value;
@@ -29,7 +39,7 @@ export function redactValue(value, depth = 0) {
   if (typeof value === 'object') {
     const clean = {};
     for (const [key, entry] of Object.entries(value)) {
-      clean[key] = SENSITIVE_KEY.test(normalizeKey(key)) ? REDACTED : redactValue(entry, depth + 1);
+      clean[key] = isSensitiveKey(key) ? REDACTED : redactValue(entry, depth + 1);
     }
     return clean;
   }

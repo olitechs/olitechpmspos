@@ -115,6 +115,8 @@ export function loadConfig(env = process.env, { platform = process.platform } = 
     // The durable queue lives with the rest of the service state so an upgrade
     // and a restart both find the jobs that were accepted before the stop.
     queueDir: path.join(dataDir, 'queue'),
+    // Paired workstation secret. Written 0600 by the pairing flow, read at start.
+    tokenFile: path.join(dataDir, 'agent-credential.json'),
     queueMaxAttempts: clamp(numberFrom(env.PRINT_AGENT_QUEUE_MAX_ATTEMPTS, 3), 1, 10),
     queueRetentionMs: clamp(numberFrom(env.PRINT_AGENT_QUEUE_RETENTION_DAYS, 7), 1, 90) * 86400000,
     queueMaxRecords: clamp(numberFrom(env.PRINT_AGENT_QUEUE_MAX_RECORDS, 500), 50, 5000),

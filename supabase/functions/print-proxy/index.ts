@@ -4,11 +4,33 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
 
+// The proxy used to answer every origin. Printing is a state-changing action on
+// hotel hardware, so only the application origin is allowed now. Override with
+// PRINT_PROXY_ALLOWED_ORIGIN for a custom domain or a staging deploy.
+const APP_ORIGIN = (Deno.env.get('PRINT_PROXY_ALLOWED_ORIGIN') || 'https://olitechpmspos.vercel.app').replace(/\/+$/, '');
+
 const CORS = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': APP_ORIGIN,
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  Vary: 'Origin',
 };
+
+// Stop a stuck retry loop from emptying a roll of paper or hammering a printer.
+const RATE_LIMIT = 30;
+const RATE_WINDOW_MS = 60_000;
+const rateBuckets = new Map<string, { count: number; resetAt: number }>();
+
+function rateLimited(clientKey: string) {
+  const timestamp = Date.now();
+  const bucket = rateBuckets.get(clientKey);
+  if (!bucket || bucket.resetAt <= timestamp) {
+    rateBuckets.set(clientKey, { count: 1, resetAt: timestamp + RATE_WINDOW_MS });
+    return false;
+  }
+  bucket.count += 1;
+  return bucket.count > RATE_LIMIT;
+}
 
 function corsJson(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -114,6 +136,11 @@ async function writeTcp(host: string, port: number, payload: Uint8Array, timeout
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   if (req.method !== 'POST') return corsJson({ ok:false, code:'METHOD_NOT_ALLOWED', message:'POST required.' }, 405);
+
+  const clientKey = (req.headers.get('x-forwarded-for') || 'unknown').split(',')[0].trim() || 'unknown';
+  if (rateLimited(clientKey)) {
+    return corsJson({ ok:false, code:'RATE_LIMITED', message:'Too many print requests. Wait a minute and try again.' }, 429);
+  }
 
   try {
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {

@@ -199,6 +199,17 @@ If a page is missing for an `uncertain` job, the safe action is the retry option
 - [ ] Switch the printer on and press Reprint. One copy prints and the panel returns to clear.
 - [ ] Queue a job from another computer (or with the printer off), then confirm the panel counts it under "Waiting" before it prints.
 
+## Part 12 — Pairing and locked-down endpoints (Phase 7)
+
+- [ ] On a fresh workstation, open Settings → Printers as a manager. The panel offers **Pair this computer** and explains that it enables printing queued jobs.
+- [ ] Press it. After a moment the panel shows "Paired as …" and no error appears.
+- [ ] Open `%ProgramData%\OliTechs\PrintAgent\agent-credential.json`. It exists, contains no readable token in the log files, and `http://127.0.0.1:8631/health` shows `paired: true` without any secret.
+- [ ] Search the log file for the value in that file's `secret` field. It must not appear anywhere in `agent.log`.
+- [ ] Restart the service and confirm the panel still shows the workstation as paired (the credential is read from disk, not memory).
+- [ ] From another computer, try `POST http://<this-pc>:8631/print`. The agent refuses because it only listens on 127.0.0.1.
+- [ ] Press a print button repeatedly in quick succession. After roughly 60 jobs a minute the agent replies "Too many printer requests…" instead of printing more pages.
+- [ ] As a manager, revoke the workstation with `fn_revoke_print_agent_credential`, then pair it again with a new code. The old code is refused, the new one works, and the secret file is replaced.
+
 ## Results
 
 Tick each part and write what you saw.

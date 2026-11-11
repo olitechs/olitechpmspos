@@ -8,6 +8,8 @@ import { loadConfig, AGENT_VERSION } from './config.mjs';
 import { createLogger, createConsoleLogger } from './logger.mjs';
 import { createDurableQueue, classifyPrintError } from './queue.mjs';
 import { createJobClaimer } from './claim.mjs';
+import { readAgentCredential, pairAgent } from './pairing.mjs';
+import { createRateLimiter } from './ratelimit.mjs';
 
 // Loopback by default. startPrintAgent() applies the resolved configuration so a
 // Windows service and a console run agree on host, port, origins and data paths.
@@ -22,6 +24,12 @@ let printQueue = null;
 let queueTimer = null;
 let claimTimer = null;
 let jobClaimer = null;
+let claimConfig = null;
+let TOKEN_FILE = null;
+let agentCredential = null;
+
+// Local requests are cheap, but a runaway retry loop can empty a roll of paper.
+const limiter = createRateLimiter({ limits: { print: 60, queue: 30, discover: 6, pair: 5, default: 120 } });
 let drainingQueue = false;
 let maxQueueAttempts = 3;
 let queueDrainIntervalMs = 1500;
@@ -502,20 +510,36 @@ async function acceptCloudJob(input) {
   return { ok: false, status: outcome.body?.status, code: outcome.body?.code, message: outcome.body?.message, jobId: admission.job.id };
 }
 
+function rateLimitClass(route) {
+  if (['/print', '/test', '/windows-print', '/windows-test', '/open-drawer'].includes(route)) return 'print';
+  if (String(route).startsWith('/queue')) return 'queue';
+  if (route === '/pair') return 'pair';
+  if (['/discover', '/printers/list', '/windows-printers'].includes(route)) return 'discover';
+  return 'default';
+}
+
 function startClaimWorker(config) {
-  if (!config.claimJobs || claimTimer) return null;
+  if (claimTimer || !config) return claimTimer;
+  const credential = agentCredential;
+  const usingToken = Boolean(credential?.secret);
+  // A paired workstation claims automatically: that is what pairing is for.
+  // An unpaired one still needs the explicit service-key opt-in from Phase 5.
+  if (!usingToken && !config.claimJobs) return null;
   if (!supabaseV2) {
-    log.warn('cloud print claims are off: Supabase is not configured on this workstation');
+    log.warn('cloud print claims are off: this workstation has no cloud configuration');
     return null;
   }
-  if (!AGENT_ID) {
-    log.warn('cloud print claims are off: PRINT_AGENT_ID is required so the database can tell agents apart');
+  if (!usingToken && !AGENT_ID) {
+    log.warn('cloud print claims are off: PRINT_AGENT_ID is required when claiming with a service key');
     return null;
   }
+
+  claimConfig = config;
   jobClaimer = createJobClaimer({
     client: supabaseV2,
-    agentId: AGENT_ID,
-    propertyId: config.propertyId,
+    agentId: AGENT_ID || credential?.credentialId || 'paired-workstation',
+    token: usingToken ? credential.secret : null,
+    propertyId: usingToken ? null : config.propertyId,
     logger: log,
     acceptJob: acceptCloudJob,
     batchSize: config.claimBatchSize,
@@ -526,7 +550,11 @@ function startClaimWorker(config) {
   }, config.claimIntervalMs);
   claimTimer.unref?.();
   void jobClaimer.claimOnce();
-  log.info('cloud print claims enabled', { intervalMs: config.claimIntervalMs, propertyId: config.propertyId || 'all' });
+  log.info('cloud print claims enabled', {
+    mode: usingToken ? 'paired' : 'service-key',
+    intervalMs: config.claimIntervalMs,
+    propertyId: usingToken ? credential.propertyId : (config.propertyId || 'all'),
+  });
   return claimTimer;
 }
 
@@ -637,8 +665,20 @@ const server = http.createServer(async (req, res) => {
     '/print-agent/queue': '/queue',
     '/api/queue/retry': '/queue/retry',
     '/print-agent/queue/retry': '/queue/retry',
+    '/api/pair': '/pair',
+    '/print-agent/pair': '/pair',
   };
   const route = routeAliases[url.pathname] || url.pathname;
+
+  const clientAddress = String(req.socket?.remoteAddress || 'local');
+  const admission = limiter.check(clientAddress, rateLimitClass(route));
+  if (!admission.allowed) {
+    return json(res, 429, {
+      ok: false,
+      code: 'RATE_LIMITED',
+      message: 'Too many printer requests from this computer. Wait a moment and try again. No extra copies were printed.',
+    }, { 'Retry-After': String(admission.retryAfterSeconds) });
+  }
 
   if (req.method === 'GET' && route === '/health') {
     // Deliberately reports only facts a dashboard or support engineer needs.
@@ -655,6 +695,9 @@ const server = http.createServer(async (req, res) => {
       uptimeSeconds: Math.round(process.uptime()),
       platform: process.platform,
       queue: printQueue ? printQueue.counts() : null,
+      paired: agentCredential
+        ? { paired: true, agentName: agentCredential.agentName, propertyId: agentCredential.propertyId }
+        : { paired: false },
     });
   }
 
@@ -674,6 +717,38 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && route === '/printers/list') {
     try { return json(res, 200, { ok:true, printers:await discoverNetworkPrinters(), transport:'network_ip' }); }
     catch(error) { return json(res, 500, { ok:false, code:error?.code||'NETWORK_DISCOVERY_FAILED', message:error?.message||'Unable to list network printers.' }); }
+  }
+
+  if (req.method === 'POST' && route === '/pair') {
+    try {
+      const body = await readBody(req);
+      const credential = await pairAgent({
+        code: body.code,
+        tokenFile: TOKEN_FILE,
+        supabase: SUPABASE_URL && SUPABASE_KEY ? { url: SUPABASE_URL, key: SUPABASE_KEY } : null,
+        logger: log,
+      });
+      agentCredential = credential;
+      if (claimTimer) {
+        clearInterval(claimTimer);
+        claimTimer = null;
+        jobClaimer = null;
+      }
+      startClaimWorker(claimConfig);
+      // The secret stays on this computer: it is never returned to the browser.
+      return json(res, 200, {
+        ok: true,
+        paired: true,
+        agentName: credential.agentName,
+        propertyId: credential.propertyId,
+      });
+    } catch (error) {
+      return json(res, 400, {
+        ok: false,
+        code: error?.code || 'PAIRING_FAILED',
+        message: error?.message || 'This computer could not be paired. Ask a manager for a new code.',
+      });
+    }
   }
 
   if (req.method === 'GET' && route === '/queue') {
@@ -880,6 +955,12 @@ export async function startPrintAgent({ config = loadConfig(), logger = null } =
   } catch (error) {
     printQueue = null;
     log.error('print queue unavailable; printing continues without crash recovery', { error: error?.message });
+  }
+
+  TOKEN_FILE = config.tokenFile;
+  agentCredential = readAgentCredential(config.tokenFile);
+  if (agentCredential) {
+    log.info('print agent is paired', { agentName: agentCredential.agentName, propertyId: agentCredential.propertyId });
   }
 
   // Single instance: two agents on one workstation would claim the same print

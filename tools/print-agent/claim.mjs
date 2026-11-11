@@ -15,6 +15,9 @@ import { classifyPrintError } from './queue.mjs';
 
 export const CLAIM_RPC = 'fn_claim_fnb_print_jobs';
 export const COMPLETE_RPC = 'fn_complete_fnb_print_job';
+// Paired workstations authenticate with their own secret instead of a service key.
+export const TOKEN_CLAIM_RPC = 'fn_print_agent_claim';
+export const TOKEN_COMPLETE_RPC = 'fn_print_agent_complete';
 
 const IPV4 = /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/;
 const ALLOWED_PORTS = new Set([9100, 9101, 9102]);
@@ -61,6 +64,7 @@ export function createJobClaimer({
   acceptJob,
   batchSize = 3,
   leaseSeconds = 120,
+  token = null,
 } = {}) {
   let disabledReason = null;
 
@@ -69,12 +73,19 @@ export function createJobClaimer({
 
   async function complete(job, status, message) {
     try {
-      const { error } = await client.rpc(COMPLETE_RPC, {
-        p_job_id: job.id,
-        p_status: status,
-        p_error_message: message,
-        p_agent_id: agentId,
-      });
+      const { error } = token
+        ? await client.rpc(TOKEN_COMPLETE_RPC, {
+          p_token: token,
+          p_job_id: job.id,
+          p_status: status,
+          p_error_message: message,
+        })
+        : await client.rpc(COMPLETE_RPC, {
+          p_job_id: job.id,
+          p_status: status,
+          p_error_message: message,
+          p_agent_id: agentId,
+        });
       if (error) warn('could not report a claimed print job', { jobId: job.id, status, error: error.message });
     } catch (error) {
       warn('could not report a claimed print job', { jobId: job.id, status, error: error?.message });
@@ -84,7 +95,7 @@ export function createJobClaimer({
   async function claimOnce() {
     const summary = { claimed: 0, printed: 0, failed: 0, uncertain: 0, skipped: 0, disabled: disabledReason };
     if (disabledReason) return summary;
-    if (!client || !agentId || typeof acceptJob !== 'function') {
+    if (!client || (!agentId && !token) || typeof acceptJob !== 'function') {
       disabledReason = 'NOT_CONFIGURED';
       summary.disabled = disabledReason;
       return summary;
@@ -92,12 +103,18 @@ export function createJobClaimer({
 
     let data;
     try {
-      const response = await client.rpc(CLAIM_RPC, {
-        p_agent_id: agentId,
-        p_property_id: propertyId,
-        p_limit: batchSize,
-        p_lease_seconds: leaseSeconds,
-      });
+      const response = token
+        ? await client.rpc(TOKEN_CLAIM_RPC, {
+          p_token: token,
+          p_limit: batchSize,
+          p_lease_seconds: leaseSeconds,
+        })
+        : await client.rpc(CLAIM_RPC, {
+          p_agent_id: agentId,
+          p_property_id: propertyId,
+          p_limit: batchSize,
+          p_lease_seconds: leaseSeconds,
+        });
       if (response?.error) throw response.error;
       data = response?.data;
     } catch (error) {

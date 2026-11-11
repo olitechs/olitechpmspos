@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createJobClaimer, resolveClaimedJobTarget, claimedJobPayload, CLAIM_RPC, COMPLETE_RPC } from './claim.mjs';
+import { createJobClaimer, resolveClaimedJobTarget, claimedJobPayload, CLAIM_RPC, COMPLETE_RPC, TOKEN_CLAIM_RPC, TOKEN_COMPLETE_RPC } from './claim.mjs';
 
 const escpos = () => Buffer.from('OliTechs ticket').toString('base64');
 
@@ -25,11 +25,11 @@ function fakeClient({ jobs = [], claimError = null, completeError = null } = {})
     calls,
     async rpc(name, args) {
       calls.push({ name, args });
-      if (name === CLAIM_RPC) {
+      if (name === CLAIM_RPC || name === TOKEN_CLAIM_RPC) {
         if (claimError) return { data: null, error: claimError };
         return { data: jobs, error: null };
       }
-      if (name === COMPLETE_RPC) {
+      if (name === COMPLETE_RPC || name === TOKEN_COMPLETE_RPC) {
         calls.push({ name: 'completed', args });
         return { data: null, error: completeError };
       }
@@ -159,6 +159,35 @@ test('a completion failure is logged and does not crash the agent', async () => 
   const summary = await claimer.claimOnce();
   assert.equal(summary.printed, 1);
   assert.ok(warnings.some((message) => /report a claimed print job/.test(message)));
+});
+
+test('a paired workstation claims and completes with its own secret, not a service key', async () => {
+  const client = fakeClient({ jobs: [queuedJob()] });
+  const secret = 'f'.repeat(64);
+  const claimer = createJobClaimer({ client, token: secret, acceptJob: acceptOk });
+
+  const summary = await claimer.claimOnce();
+  assert.equal(summary.printed, 1);
+
+  const claimCall = client.calls.find((call) => call.name === TOKEN_CLAIM_RPC);
+  assert.ok(claimCall, 'the token RPC must be used');
+  assert.equal(claimCall.args.p_token, secret);
+  assert.equal(claimCall.args.p_agent_id, undefined, 'no service-role agent id is sent');
+  assert.equal(claimCall.args.p_property_id, undefined, 'the property comes from the credential, not the caller');
+
+  const completion = client.calls.find((call) => call.name === 'completed');
+  assert.equal(completion.args.p_token, secret);
+  assert.equal(completion.args.p_status, 'printed');
+  assert.equal(completion.args.p_agent_id, undefined);
+});
+
+test('a rejected workstation secret disables claiming without a crash loop', async () => {
+  const client = fakeClient({ claimError: { code: '42501', message: 'This workstation credential is not recognised or has been revoked.' } });
+  const claimer = createJobClaimer({ client, token: 'e'.repeat(64), acceptJob: acceptOk });
+
+  const summary = await claimer.claimOnce();
+  assert.equal(summary.claimed, 0);
+  assert.equal(claimer.disabled, null, 'a revoked secret is reported, not treated as a missing function');
 });
 
 test('no agent credential means claiming stays off', async () => {

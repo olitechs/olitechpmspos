@@ -71,6 +71,20 @@ This means a USB or Bluetooth printer does not need to expose a raw TCP port whe
 
 The test sends a real ESC/POS page. A configured printer is not shown as Connected merely because its settings were saved.
 
+## Pairing this computer (recommended)
+
+A paired workstation prints jobs queued in the cloud with its **own** credential, not a service-role key:
+
+1. On the POS computer, open **Settings → Printers** while signed in as a manager.
+2. Press **Pair this computer** in the print agent panel. OliTechs asks the server for a 10-minute, single-use code and hands it to the agent on `127.0.0.1`.
+3. The agent exchanges the code for a random secret, stores it at `%ProgramData%\OliTechs\PrintAgent\agent-credential.json` (readable only by the service account) and starts claiming jobs for that property.
+
+The browser is only a courier for the short code: the long-lived secret never reaches the browser, a log line or the network from this machine. The database stores `md5(secret)`, so a database copy cannot be replayed. Unpairing through `fn_revoke_print_agent_credential` invalidates the credential and turns any job that workstation was holding into `uncertain` rather than losing it.
+
+No terminal is needed on the workstation, and no service-role key is collected by the installer. `POST /pair` (local only, five requests a minute) accepts `{"code":"ABCD2345"}`; `GET /health` reports `paired` and the agent name without the secret.
+
+The local API is also rate limited per client and route class (prints 60/min, queue 30/min, discovery 6/min, pairing 5/min) so a stuck retry loop cannot empty a roll of paper.
+
 ## Durable print queue
 
 Every real print job is written to disk before any bytes go to the printer, and is only marked printed once the printer confirms it. Test-button pages are deliberately not recorded, because staff expect to repeat them. The record is what makes these promises true:

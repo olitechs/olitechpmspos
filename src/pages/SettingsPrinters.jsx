@@ -4,6 +4,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { getPrinters, getAssignments, testPrint, connectPrinter, printTestOrder, printTestReceipt, printCutCalibrationTest } from '@/services/printService';
 import PrinterSetupWizard from '@/components/settings/PrinterSetupWizard';
 import { fetchPrintHealth, retryPrintJob } from '@/services/printerHealthCore';
+import { pairWorkstation } from '@/services/printerAgentPairing';
 import { getPrinterPrintSettings, savePrinterPrintSettings } from '@/services/printerPrintSettings';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -104,6 +105,7 @@ export default function SettingsPrinters() {
   const [health,setHealth] = useState(null);
   const [healthLoading,setHealthLoading] = useState(false);
   const [healthNotice,setHealthNotice] = useState('');
+  const [pairing,setPairing] = useState({ loading:false, message:'' });
 
   const load = async (silent=false) => {
     if (!propertyId) return;
@@ -138,6 +140,22 @@ export default function SettingsPrinters() {
   };
 
   useEffect(()=>{ refreshHealth(); },[propertyId]);
+
+  const pairThisComputer = async () => {
+    setPairing({ loading:true, message:'' });
+    try {
+      const result = await pairWorkstation({ client: supabase, propertyId, agentUrl, agentName: 'POS computer' });
+      setPairing({
+        loading:false,
+        message: result.ok
+          ? `This computer is paired as ${result.agentName}. It will now print queued jobs even when no browser is open.`
+          : (result.message || 'Pairing failed. Ask a manager for a new code.'),
+      });
+      await refreshHealth();
+    } catch (error) {
+      setPairing({ loading:false, message: error?.message || 'Pairing failed. Ask a manager for a new code.' });
+    }
+  };
 
   const reprintJob = async job => {
     setHealthNotice('');
@@ -403,7 +421,7 @@ export default function SettingsPrinters() {
       <div className="mx-auto max-w-7xl space-y-6 px-5 py-6 lg:px-7">
         {error && <Alert type="error" text={error}/>}
 {agentError && <Alert type="error" text={agentError}/>}
-        <PrintHealthStrip health={health} loading={healthLoading} notice={healthNotice} onRefresh={refreshHealth} onReprint={reprintJob}/>
+        <PrintHealthStrip health={health} loading={healthLoading} notice={healthNotice} pairing={pairing} onRefresh={refreshHealth} onReprint={reprintJob} onPair={pairThisComputer}/>
 {!!discovered.length && <div className="rounded-2xl border border-[var(--primary)] bg-primary-soft p-4"><div className="text-xs font-black uppercase tracking-wide text-primary-text">Network printers discovered</div><div className="mt-2 flex flex-wrap gap-2">{discovered.map(d=><button key={`${d.host}:${d.port}`} onClick={()=>{setEditing({...blank,connection_type:'network_ip',ip_address:d.host,port:d.port,assignmentTypes:[]});setDiscovered([]);}} className="rounded-xl border border-[var(--primary)] bg-surface px-3 py-2 text-xs font-bold text-primary-text hover:bg-primary-soft">{d.label}</button>)}</div></div>}
         {notice && <Alert type="success" text={notice}/>}
         {loading ? <div className="rounded-2xl border border-border bg-surface p-10 text-center text-sm text-muted-foreground">Loading printer configuration…</div> :
@@ -455,7 +473,7 @@ export default function SettingsPrinters() {
   );
 }
 
-function PrintHealthStrip({health,loading,notice,onRefresh,onReprint}) {
+function PrintHealthStrip({health,loading,notice,pairing,onRefresh,onReprint,onPair}) {
   const tone = health?.tone || 'ok';
   const cls = tone==='danger'
     ? 'border-[var(--danger)] bg-[var(--danger-soft)]'
@@ -472,6 +490,13 @@ function PrintHealthStrip({health,loading,notice,onRefresh,onReprint}) {
         <div className="mt-1 text-sm font-semibold text-foreground">{loading ? 'Checking the print agent…' : (health?.headline || 'Checking the print agent…')}</div>
         {health?.detail && <div className="mt-1 max-w-2xl text-xs text-muted-foreground">{health.detail}</div>}
         {notice && <div className="mt-1 text-xs font-bold text-foreground">{notice}</div>}
+        {health?.paired?.paired
+          ? <div className="mt-1 text-[11px] font-semibold text-muted-foreground">Paired as {health.paired.agentName}. Queued jobs print even when no browser is open.</div>
+          : (health?.reachable && <div className="mt-2">
+              <button onClick={onPair} disabled={pairing?.loading} className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-bold text-foreground hover:bg-secondary disabled:opacity-50"><Network size={14}/>{pairing?.loading ? 'Pairing…' : 'Pair this computer'}</button>
+              <div className="mt-1 text-[11px] text-muted-foreground">Pairs this PC so it can print jobs queued while it was switched off.</div>
+            </div>)}
+        {pairing?.message && <div className="mt-1 text-xs font-bold text-foreground">{pairing.message}</div>}
         {!!counts && <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] font-bold text-muted-foreground">
           <span className="rounded-lg bg-surface px-2 py-1 ring-1 ring-border">Waiting {counts.queued || 0}</span>
           <span className="rounded-lg bg-surface px-2 py-1 ring-1 ring-border">Printed {counts.printed || 0}</span>
