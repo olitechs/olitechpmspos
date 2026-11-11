@@ -9,13 +9,19 @@ const design = readFileSync(join(root, 'Design.md'), 'utf8');
 const errors = [];
 
 const requiredTokens = [
-  ['--deep-lagoon', '#0A3F4A'],
-  ['--coastal-teal', '#0F7C86'],
+  ['--brand-navy', '#101A35'],
+  ['--brand-blue', '#285FE7'],
+  ['--brand-blue-hover', '#174AC8'],
+  ['--brand-blue-soft', '#F3F7FF'],
+  ['--brand-canvas', '#F8FAFF'],
+  ['--brand-white', '#FFFFFF'],
+  ['--deep-lagoon', '#101A35'],
+  ['--coastal-teal', '#285FE7'],
   ['--white', '#FFFFFF'],
-  ['--soft-white', '#F5F8F8'],
-  ['--canvas', '#F6F9F9'],
-  ['--sidebar', '#EAF3F3'],
-  ['--text', '#223039'],
+  ['--soft-white', '#F8FAFF'],
+  ['--canvas', '#F8FAFF'],
+  ['--sidebar', '#EEF3FC'],
+  ['--text', '#101A35'],
   ['--accent', '#E8955A'],
   ['--status-paid', '#3FA77A'],
   ['--status-deposit-paid', '#F2C14E'],
@@ -33,8 +39,10 @@ for (const [name, value] of requiredTokens) {
   if (!declaration.test(css)) errors.push(`Canonical token ${name} must be ${value}.`);
 }
 
-if ((css.match(/#[0-9a-fA-F]{3,8}\b/g) || []).length !== requiredTokens.length) {
-  errors.push(`src/index.css must contain only the ${requiredTokens.length} canonical literal color tokens, once each.`);
+const expectedColors = new Set(requiredTokens.map(([, value]) => value.toUpperCase()));
+const actualColors = new Set((css.match(/#[0-9a-fA-F]{3,8}\b/g) || []).map((value) => value.toUpperCase()));
+if (actualColors.size !== expectedColors.size || [...actualColors].some((value) => !expectedColors.has(value))) {
+  errors.push(`src/index.css must use only the ${expectedColors.size} approved OliTechs brand and status colors.`);
 }
 if (/\[data-theme=["']dark|color-scheme\s*:\s*dark|\.dark\b/.test(css + provider)) {
   errors.push('Dark theme selectors must not be present in the active theme or provider.');
@@ -63,8 +71,8 @@ if (/Choose light, dark|Dark palette|enable system-color-mode listener|support b
 }
 
 if (errors.length) {
-  console.error('Coastal Linen theme contract failed:\n' + errors.map((error) => '- ' + error).join('\n'));
+  console.error('OliTechs theme contract failed:\n' + errors.map((error) => '- ' + error).join('\n'));
   process.exitCode = 1;
 } else {
-  console.log('Coastal Linen light-only tokens, payment/room status semantics and Tailwind mappings passed.');
+  console.log('OliTechs navy/blue light-only tokens, payment/room status semantics and Tailwind mappings passed.');
 }

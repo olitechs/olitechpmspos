@@ -1,21 +1,23 @@
 # OliTechs — Brand and theme system
 
 ## Design intent
-OliTechs is a professional hospitality operations interface with a light-only Coastal Linen palette, calm hierarchy, clear semantic surfaces and touch-first workflows. Theme work is presentation-only: preserve domain behavior, data, routes, permissions, stores, receipts, printer routing and payment functionality.
+OliTechs is a professional hospitality operations interface with a light-only OliTechs navy/blue palette, calm hierarchy, clear semantic surfaces and touch-first workflows. Theme work is presentation-only: preserve domain behavior, data, routes, permissions, stores, receipts, printer routing and payment functionality.
 
 ## Canonical colour source
 `src/index.css` is the single source of application colour values. Components, Tailwind and shadcn use CSS variables and semantic aliases only. Do not introduce a second palette, palette-specific utility classes, inline colour literals or a dark/system theme.
 
-### Brand and Coastal Linen tokens
+### Approved navy/blue brand tokens
 
 | Purpose | Token |
 |---|---|
-| Deep Lagoon | `--deep-lagoon` |
-| Coastal Teal / primary | `--coastal-teal`, `--primary` |
-| White / Soft White | `--white`, `--soft-white` |
-| Canvas / surface / sidebar | `--canvas`, `--surface`, `--sidebar` |
-| Text / muted text / border | `--text`, `--text-muted`, `--border` |
+| Navy brand | `--brand-navy` |
+| Primary blue | `--brand-blue`, `--coastal-teal`, `--primary` |
+| Primary hover / dark anchor | `--brand-blue-hover`, `--deep-lagoon` |
+| Soft blue / canvas / white | `--brand-blue-soft`, `--brand-canvas`, `--brand-white`, `--soft-white`, `--canvas`, `--white` |
+| Sidebar / text / muted text / border | `--sidebar`, `--text`, `--text-muted`, `--border` |
 | Small highlights and warnings only | `--accent`, `--warning`, `--warning-soft` |
+
+The brand palette uses navy, primary blue, a darker hover blue, soft blue surfaces, a pale canvas, a light sidebar and white working surfaces. The `--deep-lagoon` and `--coastal-teal` names remain as compatibility aliases for existing component contracts; their values follow the current OliTechs navy/blue palette.
 
 Use the official brand tokens for the logo, headers, primary buttons, active states, links and key accents. Do not use the warning accent as a large surface or in the logo. The canvas and normal working surfaces remain light; do not introduce black areas.
 

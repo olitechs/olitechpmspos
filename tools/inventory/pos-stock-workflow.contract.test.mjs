@@ -29,7 +29,9 @@ test('recipe menu quantities scale ingredient consumption by recipe yield', () =
 
 test('sent kitchen items retain a control-void record and full receipt void calls stock reversal', () => {
   assert.match(orderTaking, /pmsService\.removeOrderItem\(/);
-  assert.match(orderTaking, /if\s*\(\s*removeTarget\.sent\s*\)[\s\S]*?voidRow/);
+  assert.match(orderTaking, /if\s*\(\s*!removeTarget\.sent\s*\)[\s\S]*?return/);
+  assert.match(orderTaking, /const voidRow = result\?\.void/);
+  assert.match(orderTaking, /result\?\.kot_sent_order_lines/);
   assert.match(orderTaking, /printVoidTicket/);
   assert.match(voidRefund, /fn_reverse_pos_stock\(a\.property_id,receipt\.items,1/);
 });

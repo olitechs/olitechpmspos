@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Search, Users, ShieldCheck, Building2, RefreshCw, UserRoundCog, XCircle } from 'lucide-react';
+import { Search, Users, ShieldCheck, Building2, RefreshCw, XCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { platformService } from '@/services/platformService';
 import { supabase } from '@/lib/supabaseClient';

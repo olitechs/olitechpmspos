@@ -117,7 +117,7 @@ export default function AdminPropertyDetail() {
               <h2 className="font-semibold text-foreground">Property access</h2>
               <p className="mt-1 text-sm text-muted-foreground">Control whether this property can sign in and use the platform.</p>
             </div>
-            <span className={`rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${property.status==='active'?'bg-emerald-500/10 text-emerald-700':property.status==='pending'?'bg-amber-500/10 text-amber-700':property.status==='suspended'?'bg-red-500/10 text-red-700':'bg-muted text-muted-foreground'}`}>{property.status}</span>
+            <span className={`rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${property.status==='active'?'bg-[var(--success-soft)] text-[var(--success-text)]':property.status==='pending'?'bg-[var(--warning-soft)] text-[var(--warning-text)]':property.status==='suspended'?'bg-[var(--danger-soft)] text-[var(--danger-text)]':'bg-muted text-muted-foreground'}`}>{property.status}</span>
           </div>
           <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
             <label className="text-sm font-medium">Access status
