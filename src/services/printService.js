@@ -341,8 +341,19 @@ export async function printToPrinter(printer, contentHtml, { propertyId, jobType
   const text = typeof thermalText === 'string' ? thermalText : htmlToThermalText(contentHtml);
   const printSettings = getPrinterPrintSettings(printer, settingsOverride || {});
   const finalThermalBase64 = thermalBase64 || bytesToBase64(new TextEncoder().encode(toEscPosPayload(text, printSettings)));
+  // A job claimed by the agent later can only print if the bytes travel with the
+  // row. Keep the ESC/POS payload and its target on the job, capped so a huge
+  // logo cannot bloat the queue table.
+  const claimTarget = printer.connection_type === 'windows_printer'
+    ? { windowsPrinterName: printer.windows_printer_name || null }
+    : normalizeNetworkEndpoint(printer.ip_address || printer.host, printer.port || 9100);
+  const claimablePayload = {
+    ...payload,
+    printTarget: claimTarget,
+    ...(finalThermalBase64 && finalThermalBase64.length <= 400000 ? { escposBase64: finalThermalBase64 } : {}),
+  };
   let job = null;
-  if (persistJob && propertyId) { job = await createFnbPrintJob({propertyId,printerId:printer.id,assignmentType,jobType,copyType,title,contentHtml,payload,retryOf}); await updateFnbPrintJob(job.id,propertyId,'printing',null,printer.id); }
+  if (persistJob && propertyId) { job = await createFnbPrintJob({propertyId,printerId:printer.id,assignmentType,jobType,copyType,title,contentHtml,payload:claimablePayload,retryOf}); await updateFnbPrintJob(job.id,propertyId,'printing',null,printer.id); }
   // One key per queued print job: the id of the fnb_print_jobs row created
   // above. Reprints create a new row, so they are intentionally not deduplicated.
   const agentOptions = { idempotencyKey: job?.id || null };

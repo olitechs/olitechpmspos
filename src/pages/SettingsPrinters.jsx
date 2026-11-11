@@ -3,6 +3,7 @@ import { Plus, Pencil, Trash2, Printer, Wifi, Play, X, RefreshCw, CheckCircle2, 
 import { useAuth } from '@/lib/AuthContext';
 import { getPrinters, getAssignments, testPrint, connectPrinter, printTestOrder, printTestReceipt, printCutCalibrationTest } from '@/services/printService';
 import PrinterSetupWizard from '@/components/settings/PrinterSetupWizard';
+import { fetchPrintHealth, retryPrintJob } from '@/services/printerHealthCore';
 import { getPrinterPrintSettings, savePrinterPrintSettings } from '@/services/printerPrintSettings';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -100,6 +101,9 @@ export default function SettingsPrinters() {
   const [windowsPrinters,setWindowsPrinters] = useState([]);
   const [templateTests,setTemplateTests] = useState({});
   const [wizardOpen,setWizardOpen] = useState(false);
+  const [health,setHealth] = useState(null);
+  const [healthLoading,setHealthLoading] = useState(false);
+  const [healthNotice,setHealthNotice] = useState('');
 
   const load = async (silent=false) => {
     if (!propertyId) return;
@@ -117,6 +121,34 @@ export default function SettingsPrinters() {
   };
 
   useEffect(()=>{ load(); },[propertyId]);
+
+  // The agent runs on this computer, so its health is checked from here rather
+  // than the cloud: that is the only place the answer is true.
+  const agentUrl = printers.find(p=>p.agent_url)?.agent_url || 'http://127.0.0.1:8631';
+
+  const refreshHealth = async () => {
+    setHealthLoading(true);
+    try {
+      setHealth(await fetchPrintHealth(agentUrl));
+    } catch (error) {
+      setHealth({ reachable:false, tone:'danger', headline:'The print agent is not reachable on this computer.', detail:error?.message || 'Start the OliTechs Print Agent, then check again.', counts:null, attention:[] });
+    } finally {
+      setHealthLoading(false);
+    }
+  };
+
+  useEffect(()=>{ refreshHealth(); },[propertyId]);
+
+  const reprintJob = async job => {
+    setHealthNotice('');
+    try {
+      const result = await retryPrintJob(agentUrl, job.id);
+      setHealthNotice(result.ok ? 'Reprint sent to the printer.' : (result.message || 'The printer did not accept the reprint.'));
+    } catch (error) {
+      setHealthNotice(error?.message || 'The reprint could not be sent.');
+    }
+    await refreshHealth();
+  };
 
   const refreshLocalDevices = async (agentUrl='http://127.0.0.1:8631') => {
     setAgentError('');
@@ -371,6 +403,7 @@ export default function SettingsPrinters() {
       <div className="mx-auto max-w-7xl space-y-6 px-5 py-6 lg:px-7">
         {error && <Alert type="error" text={error}/>}
 {agentError && <Alert type="error" text={agentError}/>}
+        <PrintHealthStrip health={health} loading={healthLoading} notice={healthNotice} onRefresh={refreshHealth} onReprint={reprintJob}/>
 {!!discovered.length && <div className="rounded-2xl border border-[var(--primary)] bg-primary-soft p-4"><div className="text-xs font-black uppercase tracking-wide text-primary-text">Network printers discovered</div><div className="mt-2 flex flex-wrap gap-2">{discovered.map(d=><button key={`${d.host}:${d.port}`} onClick={()=>{setEditing({...blank,connection_type:'network_ip',ip_address:d.host,port:d.port,assignmentTypes:[]});setDiscovered([]);}} className="rounded-xl border border-[var(--primary)] bg-surface px-3 py-2 text-xs font-bold text-primary-text hover:bg-primary-soft">{d.label}</button>)}</div></div>}
         {notice && <Alert type="success" text={notice}/>}
         {loading ? <div className="rounded-2xl border border-border bg-surface p-10 text-center text-sm text-muted-foreground">Loading printer configuration…</div> :
@@ -420,6 +453,44 @@ export default function SettingsPrinters() {
       {wizardOpen && <PrinterSetupWizard open propertyId={propertyId} onClose={()=>setWizardOpen(false)} onSaved={()=>load(true).catch(()=>{})}/>} 
     </div>
   );
+}
+
+function PrintHealthStrip({health,loading,notice,onRefresh,onReprint}) {
+  const tone = health?.tone || 'ok';
+  const cls = tone==='danger'
+    ? 'border-[var(--danger)] bg-[var(--danger-soft)]'
+    : tone==='warning'
+      ? 'border-[var(--warning)] bg-[var(--warning-soft)]'
+      : 'border-border bg-surface';
+  const counts = health?.counts;
+  return <section className={`rounded-2xl border p-4 ${cls}`}>
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wide text-foreground">
+          {tone==='ok' ? <CheckCircle2 size={14}/> : <AlertCircle size={14}/>} Print agent on this computer
+        </div>
+        <div className="mt-1 text-sm font-semibold text-foreground">{loading ? 'Checking the print agent…' : (health?.headline || 'Checking the print agent…')}</div>
+        {health?.detail && <div className="mt-1 max-w-2xl text-xs text-muted-foreground">{health.detail}</div>}
+        {notice && <div className="mt-1 text-xs font-bold text-foreground">{notice}</div>}
+        {!!counts && <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] font-bold text-muted-foreground">
+          <span className="rounded-lg bg-surface px-2 py-1 ring-1 ring-border">Waiting {counts.queued || 0}</span>
+          <span className="rounded-lg bg-surface px-2 py-1 ring-1 ring-border">Printed {counts.printed || 0}</span>
+          <span className="rounded-lg bg-surface px-2 py-1 ring-1 ring-border">Did not print {counts.failed || 0}</span>
+          <span className="rounded-lg bg-surface px-2 py-1 ring-1 ring-border">Needs checking {counts.uncertain || 0}</span>
+        </div>}
+      </div>
+      <button onClick={onRefresh} disabled={loading} className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-bold text-foreground hover:bg-secondary disabled:opacity-50"><RefreshCw size={14}/>{loading?'Checking…':'Check agent'}</button>
+    </div>
+    {!!health?.attention?.length && <div className="mt-3 space-y-2">
+      {health.attention.map(job=><div key={job.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-surface p-2.5 ring-1 ring-border">
+        <div className="min-w-0 text-xs">
+          <div className="font-bold text-foreground">{job.title || 'Print job'} <span className="font-mono text-[10px] font-normal text-muted-foreground">{job.status}</span></div>
+          <div className="text-muted-foreground">{job.error?.message || 'Check the printer before reprinting this job.'}</div>
+        </div>
+        <button onClick={()=>onReprint(job)} className="rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[11px] font-bold text-foreground hover:bg-secondary">Reprint</button>
+      </div>)}
+    </div>}
+  </section>;
 }
 
 function Stat({label,value,icon:Icon,className=''}) {

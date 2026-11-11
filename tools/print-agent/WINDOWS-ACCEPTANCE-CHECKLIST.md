@@ -190,6 +190,15 @@ This part proves the two promises that matter most to a busy reception: a print 
 
 If a page is missing for an `uncertain` job, the safe action is the retry option, not pressing the print button again in the app: retrying keeps one record, while a fresh print creates a second legitimate copy.
 
+## Part 11 — Printer health in the app (Phase 5)
+
+- [ ] Open Settings → Printers. At the top of the page there is a "Print agent on this computer" panel that reports the agent is running and that the queue is clear.
+- [ ] Stop the service (`sc stop OliTechsPrintAgent`, as administrator), then press "Check agent" in that panel. It says the agent is not reachable in plain language, without a stack trace.
+- [ ] Start the service again, press "Check agent", and the panel returns to healthy.
+- [ ] Switch the printer off and print something. The panel shows a job under "Did not print" with a Reprint button, and the message explains that nothing was printed twice.
+- [ ] Switch the printer on and press Reprint. One copy prints and the panel returns to clear.
+- [ ] Queue a job from another computer (or with the printer off), then confirm the panel counts it under "Waiting" before it prints.
+
 ## Results
 
 Tick each part and write what you saw.
@@ -234,7 +243,7 @@ Common causes, in plain language:
 
 These belong to later phases and must not be marked as passed here:
 
-- automatic printing of jobs that the cloud app queued while no agent was running (Phase 5);
+- automatic printing of jobs that the cloud app queued while no agent was running, until Phase 7 provides a workstation credential (the opt-in claim worker is built and tested, but needs a service-role key);
 - USB or network printer disconnect and reconnect handling (Phase 5);
 - out-of-paper reporting (Phase 5);
 - the in-app printer dashboard (Phase 6);

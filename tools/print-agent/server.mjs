@@ -7,6 +7,7 @@ import { spawn } from 'node:child_process';
 import { loadConfig, AGENT_VERSION } from './config.mjs';
 import { createLogger, createConsoleLogger } from './logger.mjs';
 import { createDurableQueue, classifyPrintError } from './queue.mjs';
+import { createJobClaimer } from './claim.mjs';
 
 // Loopback by default. startPrintAgent() applies the resolved configuration so a
 // Windows service and a console run agree on host, port, origins and data paths.
@@ -19,6 +20,8 @@ let cloudChannel = null;
 let heartbeatTimer = null;
 let printQueue = null;
 let queueTimer = null;
+let claimTimer = null;
+let jobClaimer = null;
 let drainingQueue = false;
 let maxQueueAttempts = 3;
 let queueDrainIntervalMs = 1500;
@@ -476,6 +479,57 @@ async function drainPrintQueue() {
   }
 }
 
+/**
+ * Admits a job claimed from the cloud queue into the same durable local queue
+ * the browser path uses. The `fnb:<id>` key means a re-claim of the same row
+ * finds the existing record rather than printing a second copy.
+ */
+async function acceptCloudJob(input) {
+  if (!printQueue) {
+    return { ok: false, code: 'PRINT_QUEUE_DISABLED', message: 'The local print queue is unavailable on this workstation.' };
+  }
+  const admission = printQueue.enqueue({ ...input, attemptLimit: maxQueueAttempts });
+  if (admission.duplicate) {
+    const status = admission.job.status;
+    if (status === 'printed') return { ok: true, deduplicated: true, jobId: admission.job.id };
+    if (status === 'uncertain') {
+      return { ok: false, status: 'uncertain', code: 'PRINT_OUTCOME_UNCERTAIN', message: 'This job may already have printed. Check the paper before sending it again.' };
+    }
+    return { ok: false, status, code: 'PRINT_JOB_IN_PROGRESS', jobId: admission.job.id };
+  }
+  const outcome = await runQueuedJob(admission.job);
+  if (outcome.ok) return { ok: true, jobId: admission.job.id };
+  return { ok: false, status: outcome.body?.status, code: outcome.body?.code, message: outcome.body?.message, jobId: admission.job.id };
+}
+
+function startClaimWorker(config) {
+  if (!config.claimJobs || claimTimer) return null;
+  if (!supabaseV2) {
+    log.warn('cloud print claims are off: Supabase is not configured on this workstation');
+    return null;
+  }
+  if (!AGENT_ID) {
+    log.warn('cloud print claims are off: PRINT_AGENT_ID is required so the database can tell agents apart');
+    return null;
+  }
+  jobClaimer = createJobClaimer({
+    client: supabaseV2,
+    agentId: AGENT_ID,
+    propertyId: config.propertyId,
+    logger: log,
+    acceptJob: acceptCloudJob,
+    batchSize: config.claimBatchSize,
+    leaseSeconds: config.claimLeaseSeconds,
+  });
+  claimTimer = setInterval(() => {
+    jobClaimer?.claimOnce().catch((error) => log.warn('cloud print claim failed', { error: error?.message }));
+  }, config.claimIntervalMs);
+  claimTimer.unref?.();
+  void jobClaimer.claimOnce();
+  log.info('cloud print claims enabled', { intervalMs: config.claimIntervalMs, propertyId: config.propertyId || 'all' });
+  return claimTimer;
+}
+
 function startQueueWorker() {
   if (!printQueue || queueTimer) return null;
   queueTimer = setInterval(() => { void drainPrintQueue(); }, queueDrainIntervalMs);
@@ -880,6 +934,7 @@ export async function startPrintAgent({ config = loadConfig(), logger = null } =
   cloudChannel = startCloudSubscription();
   heartbeatTimer = startHeartbeat();
   startQueueWorker();
+  startClaimWorker(config);
 
   let shutdownPromise = null;
   const shutdown = (reason = 'shutdown') => {
@@ -893,6 +948,9 @@ export async function startPrintAgent({ config = loadConfig(), logger = null } =
         try { fs.rmSync(config.lockFile, { force: true }); } catch (_) {}
         if (queueTimer) clearInterval(queueTimer);
         queueTimer = null;
+        if (claimTimer) clearInterval(claimTimer);
+        claimTimer = null;
+        jobClaimer = null;
         try { printQueue?.close(); } catch (_) {}
         printQueue = null;
         log.info('print agent stopped', { reason });
@@ -904,6 +962,8 @@ export async function startPrintAgent({ config = loadConfig(), logger = null } =
       heartbeatTimer = null;
       if (queueTimer) clearInterval(queueTimer);
       queueTimer = null;
+      if (claimTimer) clearInterval(claimTimer);
+      claimTimer = null;
       try { cloudChannel?.unsubscribe?.(); } catch (_) {}
       cloudChannel = null;
       try { server.closeIdleConnections?.(); } catch (_) {}

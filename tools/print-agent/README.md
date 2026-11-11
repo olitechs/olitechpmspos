@@ -91,6 +91,26 @@ Endpoints on the local agent:
 
 Settings: `PRINT_AGENT_QUEUE_MAX_ATTEMPTS` (default 3), `PRINT_AGENT_QUEUE_RETENTION_DAYS` (7), `PRINT_AGENT_QUEUE_MAX_RECORDS` (500), `PRINT_AGENT_QUEUE_DRAIN_MS` (1500).
 
+## Printing jobs queued in the cloud (opt-in)
+
+By default the agent only prints what the open app sends it. It can also poll the cloud queue so a ticket fired while this workstation was switched off still prints when it comes back:
+
+    PRINT_AGENT_CLAIM_JOBS=1
+    PRINT_AGENT_ID=<a stable name for this workstation>
+    SUPABASE_SERVICE_ROLE_KEY=<agent credential>   # Phase 7 replaces this with pairing
+    PRINT_AGENT_PROPERTY_ID=<property uuid>        # optional; default is every property
+
+How it stays safe:
+
+- the claim function is `for update skip locked`, so two agents never take the same row;
+- a claim has a lease (default 120s); an expired lease becomes `uncertain`, never `queued` again, because the paper may already be printed;
+- each claimed job enters the local durable queue with the key `fnb:<job id>`, so a re-claim after a restart finds the existing record instead of printing again;
+- claiming needs a service-role key, and the Windows installer deliberately does **not** collect one, so this stays off until Phase 7 adds scoped pairing. Without a key the agent simply logs that claims are off and keeps printing locally.
+
+Other settings: `PRINT_AGENT_CLAIM_INTERVAL_MS` (15000), `PRINT_AGENT_CLAIM_BATCH_SIZE` (3), `PRINT_AGENT_CLAIM_LEASE_SECONDS` (120).
+
+Database side: `supabase/migrations/20261111160000_phase5_agent_print_claim.sql` adds the `uncertain` status, `claimed_by` / `claimed_at` / `lease_expires_at` / `uncertain_at`, and the service-role RPCs `fn_claim_fnb_print_jobs`, `fn_complete_fnb_print_job` and `fn_expire_fnb_print_leases`. The app stores the ESC/POS bytes and printer target on the job (`payload.escposBase64`, `payload.printTarget`) so a queued job is printable without the browser.
+
 ## Important
 
 The local agent binds to loopback by default. Do not expose it publicly.

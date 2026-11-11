@@ -119,6 +119,13 @@ export function loadConfig(env = process.env, { platform = process.platform } = 
     queueRetentionMs: clamp(numberFrom(env.PRINT_AGENT_QUEUE_RETENTION_DAYS, 7), 1, 90) * 86400000,
     queueMaxRecords: clamp(numberFrom(env.PRINT_AGENT_QUEUE_MAX_RECORDS, 500), 50, 5000),
     queueDrainMs: clamp(numberFrom(env.PRINT_AGENT_QUEUE_DRAIN_MS, 1500), 100, 60000),
+    // Opt-in until Phase 7 gives workstations their own credential: claiming
+    // needs a service-role key, which the installer deliberately does not ask for.
+    claimJobs: isTruthyFlag(env.PRINT_AGENT_CLAIM_JOBS),
+    claimIntervalMs: clamp(numberFrom(env.PRINT_AGENT_CLAIM_INTERVAL_MS, 15000), 2000, 300000),
+    claimBatchSize: clamp(numberFrom(env.PRINT_AGENT_CLAIM_BATCH_SIZE, 3), 1, 10),
+    claimLeaseSeconds: clamp(numberFrom(env.PRINT_AGENT_CLAIM_LEASE_SECONDS, 120), 30, 900),
+    propertyId: String(env.PRINT_AGENT_PROPERTY_ID || '').trim() || null,
     discoverOnStart: !isFalsyFlag(env.PRINT_AGENT_DISCOVER_ON_START),
     shutdownTimeoutMs: clamp(numberFrom(env.PRINT_AGENT_SHUTDOWN_TIMEOUT_MS, 10000), 1000, 60000),
     logMaxBytes: clamp(numberFrom(env.PRINT_AGENT_LOG_MAX_BYTES, 2_000_000), 10_000, 50_000_000),
