@@ -4,6 +4,8 @@ import { useAuth } from '@/lib/AuthContext';
 import { getPrinters, getAssignments, testPrint, connectPrinter, printTestOrder, printTestReceipt, printCutCalibrationTest } from '@/services/printService';
 import PrinterSetupWizard from '@/components/settings/PrinterSetupWizard';
 import { fetchPrintHealth, retryPrintJob } from '@/services/printerHealthCore';
+import { fetchPrinterHistory } from '@/services/printerHistory';
+import { jobStatusLabel, jobTone, recentPrinterJobs, summarizeAllPrinters, tidyError } from '@/services/printerHistoryCore';
 import { pairWorkstation } from '@/services/printerAgentPairing';
 import { exportPrintDiagnostics } from '@/services/printerDiagnostics';
 import { getPrinterPrintSettings, savePrinterPrintSettings } from '@/services/printerPrintSettings';
@@ -108,6 +110,9 @@ export default function SettingsPrinters() {
   const [healthNotice,setHealthNotice] = useState('');
   const [pairing,setPairing] = useState({ loading:false, message:'' });
   const [diagnostics,setDiagnostics] = useState({ loading:false, message:'' });
+  const [history,setHistory] = useState(null);
+  const [historyLoading,setHistoryLoading] = useState(false);
+  const [historyOpen,setHistoryOpen] = useState(null);
 
   const load = async (silent=false) => {
     if (!propertyId) return;
@@ -143,6 +148,10 @@ export default function SettingsPrinters() {
 
   useEffect(()=>{ refreshHealth(); },[propertyId]);
 
+  // History is cloud-side, so it also covers jobs printed by a paired
+  // workstation while this browser was closed.
+  useEffect(()=>{ refreshHistory(); },[propertyId, printers.length]);
+
   const pairThisComputer = async () => {
     setPairing({ loading:true, message:'' });
     try {
@@ -171,6 +180,19 @@ export default function SettingsPrinters() {
       });
     } catch (error) {
       setDiagnostics({ loading:false, message: error?.message || 'The diagnostics file could not be saved.' });
+    }
+  };
+
+  const refreshHistory = async () => {
+    if (!propertyId) return;
+    setHistoryLoading(true);
+    try {
+      const result = await fetchPrinterHistory({ propertyId, printerIds: printers.map(p=>p.id) });
+      setHistory(result);
+    } catch (error) {
+      setHistory({ jobs:[], byPrinter:{}, error: error?.message || 'Print history could not be loaded.' });
+    } finally {
+      setHistoryLoading(false);
     }
   };
 
@@ -351,6 +373,7 @@ export default function SettingsPrinters() {
       setTestingId(null);
       // Always refresh the persisted status after the test, including failures.
       await load(true).catch(() => {});
+      await refreshHistory().catch(() => {});
     }
   };
 
@@ -407,6 +430,8 @@ export default function SettingsPrinters() {
     return acc;
   },{}),[]);
 
+  const historyView=useMemo(()=>summarizeAllPrinters(printers, history?.jobs || []),[printers, history]);
+
   return (
     <div className="min-h-full bg-[var(--canvas)]">
       <div className="border-b border-border bg-surface">
@@ -427,10 +452,11 @@ export default function SettingsPrinters() {
             </div>
           </div>
 
-          <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-3">
+          <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
             <Stat label="Configured" value={printers.length} icon={Printer}/>
             <Stat label="Connected" value={connectedCount} icon={Wifi}/>
             <Stat label="Routing rules" value={assignedCount} icon={ChevronRight} className="hidden md:flex"/>
+            <Stat label="Needs attention" value={historyView.attention} icon={AlertCircle} className="hidden md:flex"/>
           </div>
         </div>
       </div>
@@ -442,13 +468,14 @@ export default function SettingsPrinters() {
 {!!discovered.length && <div className="rounded-2xl border border-[var(--primary)] bg-primary-soft p-4"><div className="text-xs font-black uppercase tracking-wide text-primary-text">Network printers discovered</div><div className="mt-2 flex flex-wrap gap-2">{discovered.map(d=><button key={`${d.host}:${d.port}`} onClick={()=>{setEditing({...blank,connection_type:'network_ip',ip_address:d.host,port:d.port,assignmentTypes:[]});setDiscovered([]);}} className="rounded-xl border border-[var(--primary)] bg-surface px-3 py-2 text-xs font-bold text-primary-text hover:bg-primary-soft">{d.label}</button>)}</div></div>}
         {notice && <Alert type="success" text={notice}/>}
         {loading ? <div className="rounded-2xl border border-border bg-surface p-10 text-center text-sm text-muted-foreground">Loading printer configuration…</div> :
+          <>
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(420px,0.9fr)]">
             <section>
               <div className="mb-3 flex items-end justify-between">
                 <div><h2 className="text-sm font-black uppercase tracking-wide text-foreground">Physical Printers</h2><p className="mt-1 text-xs text-muted-foreground">Only a verified connection is shown as Connected.</p></div>
               </div>
               <div className="space-y-3">
-                {printers.map(p=><PrinterCard key={p.id} printer={p} assignments={assignments.filter(a=>a.printer_id===p.id)} testing={testingId===p.id} onTest={()=>verify(p.id)} onTestOrder={()=>runTemplateTest(p,'order')} onTestReceipt={(vatMode,longReceipt)=>runTemplateTest(p,'receipt',{vatMode,longReceipt})} orderTest={templateTests[p.id+':order']} receiptTest={templateTests[p.id+':receipt']} onEdit={()=>openEdit(p)} onDelete={()=>remove(p.id)} onRemoveAssignment={removeAssignment}/>)}
+                {printers.map(p=><PrinterCard key={p.id} printer={p} assignments={assignments.filter(a=>a.printer_id===p.id)} testing={testingId===p.id} historySummary={historyView.summaries[p.id]} onTest={()=>verify(p.id)} onTestOrder={()=>runTemplateTest(p,'order')} onTestReceipt={(vatMode,longReceipt)=>runTemplateTest(p,'receipt',{vatMode,longReceipt})} orderTest={templateTests[p.id+':order']} receiptTest={templateTests[p.id+':receipt']} onEdit={()=>openEdit(p)} onDelete={()=>remove(p.id)} onRemoveAssignment={removeAssignment}/>)}
                 {!printers.length && <Empty onAdd={()=>setWizardOpen(true)} onAdvanced={openNew}/>}
               </div>
             </section>
@@ -481,7 +508,9 @@ export default function SettingsPrinters() {
                 </div>)}
               </div>
             </section>
-          </div>}
+          </div>
+          <PrintHistoryPanel printers={printers} view={historyView} loading={historyLoading} error={history?.error} openId={historyOpen} onToggle={id=>setHistoryOpen(current=>current===id?null:id)}/>
+          </>}
       </div>
 
       {editing && <PrinterModal form={editing} setForm={setEditing} onClose={()=>setEditing(null)} onSave={save} onCalibration={runCutCalibration} windowsPrinters={windowsPrinters} refreshLocalDevices={refreshLocalDevices}/>}
@@ -539,6 +568,67 @@ function PrintHealthStrip({health,loading,notice,pairing,diagnostics,onRefresh,o
   </section>;
 }
 
+const historyToneClass = tone => tone==='danger'
+  ? 'border-[var(--danger)] bg-[var(--danger-soft)] text-[var(--danger-text)]'
+  : tone==='warning'
+    ? 'border-[var(--warning)] bg-[var(--warning-soft)] text-[var(--warning-text)]'
+    : tone==='ok'
+      ? 'border-[var(--success)] bg-[var(--success-soft)] text-[var(--success-text)]'
+      : 'border-border bg-secondary text-muted-foreground';
+
+const historyDotClass = tone => tone==='danger'?'bg-[var(--danger)]':tone==='warning'?'bg-[var(--warning)]':tone==='ok'?'bg-[var(--success)]':'bg-[var(--text-muted)]';
+
+function PrintHistoryPanel({printers,view,loading,error,openId,onToggle}) {
+  return <section className="mt-6 rounded-2xl border border-border bg-surface shadow-sm">
+    <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border p-5">
+      <div>
+        <h2 className="font-black text-foreground">Print history</h2>
+        <p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">Every ticket sent to these printers in the last 7 days, including jobs printed by a paired workstation while this browser was closed. Open a printer to see its last five jobs and why one failed.</p>
+      </div>
+      <div className="flex flex-wrap gap-1.5 text-[11px] font-bold">
+        <span className="rounded-lg bg-[var(--success-soft)] px-2 py-1 text-[var(--success-text)]">{view.totals.ok} healthy</span>
+        <span className="rounded-lg bg-[var(--warning-soft)] px-2 py-1 text-[var(--warning-text)]">{view.totals.warning} to watch</span>
+        <span className="rounded-lg bg-[var(--danger-soft)] px-2 py-1 text-[var(--danger-text)]">{view.totals.danger} failing</span>
+      </div>
+    </div>
+    {loading && <div className="p-5 text-sm text-muted-foreground">Loading print history…</div>}
+    {!loading && error && <div className="p-5 text-sm font-semibold text-[var(--danger-text)]">{error}</div>}
+    {!loading && !error && <div className="divide-y divide-border">
+      {printers.map(p=>{
+        const summary=view.summaries[p.id];
+        const open=openId===p.id;
+        const jobs=recentPrinterJobs(view.byPrinter[p.id] || [], 5);
+        return <div key={p.id}>
+          <button onClick={()=>onToggle(p.id)} className="flex w-full flex-wrap items-center justify-between gap-3 p-4 text-left hover:bg-secondary">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 text-sm font-bold text-foreground"><span className={`h-2 w-2 shrink-0 rounded-full ${historyDotClass(summary?.tone)}`}/>{p.name}</div>
+              <div className="mt-0.5 text-[11px] font-semibold text-muted-foreground">{summary?.headline || 'No print jobs in the last 7 days.'}</div>
+            </div>
+            <div className="flex items-center gap-3 text-[11px] font-semibold text-muted-foreground">
+              <span>{summary?.counts.printed || 0} printed</span>
+              <span>{summary?.counts.failed || 0} failed</span>
+              <ChevronRight size={15} className={open?'rotate-90 transition-transform':'transition-transform'}/>
+            </div>
+          </button>
+          {open && <div className="border-t border-border bg-secondary/40 p-4">
+            {!jobs.length
+              ? <div className="text-xs text-muted-foreground">No jobs were sent to this printer in the last 7 days.</div>
+              : <ul className="space-y-2">{jobs.map(job=><li key={job.id} className="flex flex-wrap items-start justify-between gap-2 rounded-xl bg-surface p-2.5 ring-1 ring-border">
+                  <div className="min-w-0">
+                    <div className="text-xs font-bold text-foreground">{job.title || job.assignment_type || 'Print job'}</div>
+                    <div className="text-[11px] text-muted-foreground">{new Date(job.created_at).toLocaleString('en-KE')}{job.copy_type?` · ${job.copy_type}`:''}</div>
+                    {job.error_message && <div className="mt-0.5 text-[11px] font-semibold text-[var(--danger-text)]">{tidyError(job.error_message,120)}</div>}
+                  </div>
+                  <span className={`rounded-full border px-2 py-0.5 text-[10px] font-black ${historyToneClass(jobTone(job.status))}`}>{jobStatusLabel(job.status)}</span>
+                </li>)}</ul>}
+          </div>}
+        </div>;
+      })}
+      {!printers.length && <div className="p-5 text-sm text-muted-foreground">Add a printer to see its print history.</div>}
+    </div>}
+  </section>;
+}
+
 function Stat({label,value,icon:Icon,className=''}) {
   return <div className={`flex items-center gap-3 rounded-xl border border-border bg-surface p-3.5 ${className}`}><div className="rounded-lg bg-secondary p-2 text-foreground"><Icon size={15}/></div><div><div className="text-lg font-black text-foreground">{value}</div><div className="text-[11px] font-semibold text-muted-foreground">{label}</div></div></div>;
 }
@@ -547,7 +637,7 @@ function Alert({type,text}) {
   return <div className={`flex items-start gap-2 rounded-xl border p-3 text-sm font-semibold ${type==='error'?'border-[var(--danger)] bg-[var(--danger-soft)] text-[var(--danger-text)]':'border-[var(--success)] bg-[var(--success-soft)] text-[var(--success-text)]'}`}>{type==='error'?<AlertCircle size={17}/>:<CheckCircle2 size={17}/>}<span>{text}</span></div>;
 }
 
-function PrinterCard({printer,assignments,testing,onTest,onTestOrder,onTestReceipt,orderTest,receiptTest,onEdit,onDelete,onRemoveAssignment}) {
+function PrinterCard({printer,assignments,testing,historySummary,onTest,onTestOrder,onTestReceipt,orderTest,receiptTest,onEdit,onDelete,onRemoveAssignment}) {
   const [receiptVatMode, setReceiptVatMode] = useState('off');
   const [longReceipt, setLongReceipt] = useState(false);
   const meta=statusMeta(printer);
@@ -578,6 +668,12 @@ function PrinterCard({printer,assignments,testing,onTest,onTestOrder,onTestRecei
     </div>
 
     {printer.last_error && <div className="mt-3 rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] p-3 text-xs font-semibold leading-5 text-[var(--danger-text)]">{printer.last_error}</div>}
+
+    {historySummary && <div className={`mt-3 rounded-xl border p-3 ${historyToneClass(historySummary.tone)}`}>
+      <div className="text-xs font-black">{historySummary.headline}</div>
+      {historySummary.detail && <div className="mt-0.5 text-[11px] leading-4 opacity-90">{historySummary.detail}</div>}
+      {historySummary.successRate != null && <div className="mt-1 text-[10px] font-bold uppercase tracking-wide opacity-75">Last {historySummary.windowDays} days: {historySummary.counts.printed} printed · {historySummary.counts.failed} failed · {historySummary.successRate}% success</div>}
+    </div>}
 
     <div className="mt-3 flex flex-wrap gap-1.5">
       {assignments.length ? assignments.map(a=><span key={a.id} className="rounded-md bg-secondary px-2 py-1 text-[10px] font-bold text-muted-foreground">{ASSIGNMENTS.find(x=>x[0]===a.assignment_type)?.[1] || a.assignment_type}</span>) : <span className="text-[11px] text-muted-foreground">No routing assigned</span>}
