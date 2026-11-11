@@ -135,6 +135,18 @@ It deliberately does not contain Supabase keys, the workstation credential, raw 
 
 Endpoints: `POST /diagnostics` builds and saves a bundle and returns it; `POST /queue/retry` is unaffected. Both are rate limited.
 
+## Compatibility and go-live evidence
+
+`docs/print-agent/PRINTER-COMPATIBILITY-MATRIX.md` lists the printer families we expect to work, what the agent can and cannot print, and the eight checks a printer must pass before a hotel goes live. Expected support is not validation: real site results live in `tools/print-agent/compatibility-evidence.json`, which ships empty.
+
+```bash
+npm run print-agent:compatibility status
+npm run print-agent:compatibility record -- path/to/record.json
+npm run print-agent:compatibility report -- --out docs/print-agent/COMPATIBILITY-STATUS.md
+```
+
+`record` refuses incomplete records, unknown models and anything that looks like a credential, receipt text or raw print data.
+
 ## Important
 
 The local agent binds to loopback by default. Do not expose it publicly.

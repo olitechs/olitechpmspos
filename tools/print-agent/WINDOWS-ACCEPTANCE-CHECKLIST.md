@@ -233,6 +233,20 @@ Use a spare Windows 10/11 computer that has never had the print agent on it.
 - [ ] With the printer switched off, print something, wait for it to fail, then save diagnostics again. The file lists that job as `failed` with the printer address, which is what support needs.
 - [ ] Attach the file to a test support request and confirm a colleague can understand it without programming knowledge.
 
+## Part 15 — Printer compatibility evidence (Phase 10)
+
+Do this for every printer the hotel will actually use, and for each production
+point (kitchen, bar, front office). It is the evidence that lets the hotel go
+live.
+
+- [ ] Open `docs/print-agent/PRINTER-COMPATIBILITY-MATRIX.md` and find this printer's model. If it is not listed, add it to the matrix before going further.
+- [ ] Run the eight checks on real paper: test page, final receipt, a reprint, a job queued while the printer is switched off, and a job that survives stopping and starting the service. Kitchen/bar tickets, the cash drawer and cut calibration are optional but should be recorded when used.
+- [ ] Write the result as a JSON file using the template in that document. Do not paste passwords, pairing codes or receipt text into it.
+- [ ] Run `npm run print-agent:compatibility record -- path/to/record.json` on the workstation. It must say `Status: validated`; anything else means a required check is still failing.
+- [ ] Run `npm run print-agent:compatibility status`. The printer shows `validated`, and the go-live line no longer lists this model as a gap.
+- [ ] Repeat for every printer in use. Only then does `status` say `Go-live: ready`.
+- [ ] Keep the record file and the photos with the installation notes.
+
 ## Results
 
 Tick each part and write what you saw.
