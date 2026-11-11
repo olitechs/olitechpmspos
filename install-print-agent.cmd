@@ -13,13 +13,29 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
+if not exist "%~dp0tools\print-agent\install-windows.ps1" (
+  echo.
+  echo The OliTechs installation script was not found:
+  echo   %~dp0tools\print-agent\install-windows.ps1
+  echo Copy the complete OliTechs PMS folder to this computer and run this installer again.
+  pause
+  exit /b 1
+)
 if "%WORKSPACE_ID%"=="" set /p WORKSPACE_ID=Workspace ID: 
 if "%PRINT_AGENT_ID%"=="" set /p PRINT_AGENT_ID=Agent ID (UUID): 
-if "%SUPABASE_SERVICE_ROLE_KEY%"=="" set /p SUPABASE_SERVICE_ROLE_KEY=Supabase service-role key (local PC only): 
 setx WORKSPACE_ID "%WORKSPACE_ID%" >nul
 setx PRINT_AGENT_ID "%PRINT_AGENT_ID%" >nul
-if not "%SUPABASE_SERVICE_ROLE_KEY%"=="" setx SUPABASE_SERVICE_ROLE_KEY "%SUPABASE_SERVICE_ROLE_KEY%" >nul
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0toolsprint-agentinstall-windows.ps1"
+rem Printing never needs a Supabase service-role key on a POS computer, and
+rem storing one here would give the workstation full database access. The
+rem agent is paired with Olitech through a scoped credential instead.
+if defined SUPABASE_SERVICE_ROLE_KEY (
+  echo.
+  echo Note: an old SUPABASE_SERVICE_ROLE_KEY variable is still set on this
+  echo computer. The Print Agent no longer uses it and it should be removed.
+)
+rem %~dp0 already ends with a backslash, so the path is built from the folder
+rem that this installer sits in. Keep this path in step with the repository.
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\print-agent\install-windows.ps1"
 if errorlevel 1 (
   echo.
   echo Installation failed.
