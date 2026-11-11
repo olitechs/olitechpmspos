@@ -270,7 +270,9 @@ The migration updates `fn_move_or_merge_pos_table` and `fn_remove_pos_item`, inc
 - `FloorPlan.jsx` stores table positions and shape in browser `localStorage`.
 - The live schema has persistent POS table sessions, but no corresponding shared zone/table-layout configuration table was found in the public table inventory.
 
-**Risk:** a floor layout or waiter list changed on one workstation may not be available on another terminal and may reset when the application state is recreated. Per-browser localStorage is not a hotel-wide configuration source.
+**Additional evidence:** the default zone IDs (`bar`, `pool`, `room`) are reused across properties, while `FloorPlan.jsx` uses global browser keys (`tableLayoutPositions`, `tableShapeMode`) rather than property-scoped keys. The waiter list is seeded with sample names (Amina Kariuki, John Mwangi, Grace Wanjiru, Peter Otieno and David Lumumba), not loaded from the property's staff table.
+
+**Risk:** a floor layout or waiter list changed on one workstation may not be available on another terminal and may reset when the application state is recreated. Because the localStorage keys and default zone IDs are not property-scoped, table-position preferences can also carry across properties in the same browser. Per-browser localStorage is not a hotel-wide configuration source.
 
 **Required remediation:** create a property-scoped server-owned floor-plan configuration with stable table IDs, zones, seat counts, display names and layout metadata. Load and save it through authorized services; retain localStorage only for device-specific visual preferences.
 
@@ -399,6 +401,7 @@ Health advisor returned no lints in this snapshot.
 | Reports | PARTIAL | Live reporting RPCs; occupancy, room revenue and split tender semantics need reconciliation |
 | Printing | PARTIAL / REAL | Print jobs/logs and assignments exist; two configuration paths and hardware matrix remain |
 | Multi-terminal floor plan | NOT READY | Zones/tables/waiters are local state, not shared property configuration |
+| Multi-property user session selection | PARTIAL | Login resolves the first returned membership; no explicit active-property choice is established for users assigned to multiple properties |
 | Offline operation | NOT IMPLEMENTED END TO END | No proven durable outbox/replay/conflict system |
 | Native Windows / Android | NOT IMPLEMENTED | Current app remains browser-hosted Vite/React |
 | Build / regression certification | UNVERIFIED IN THIS AUDIT | No local build/test execution; only Vercel status observed |
@@ -444,6 +447,14 @@ A pilot should not be signed off until the following scenarios pass with at leas
 12. Night audit with room folios, POS room charges, split payments, refunds, voids, discounts and business-date rollover.
 13. Network interruption during POS/PMS writes, refresh, reconnect and duplicate replay.
 14. Property A user attempting to read or mutate Property B records through direct table and RPC calls.
+
+### HR-12 — P1: Login does not provide a deterministic multi-property selection flow
+
+**Evidence:** `authService.js` loads up to ten property memberships and chooses the first membership row containing a property. The code comment explicitly says the login/onboarding flow currently resolves one primary property even though a person can belong to more than one property.
+
+**Risk:** if one staff/owner account is assigned to multiple hotels, the selected property may depend on returned membership ordering. Users do not have a clear, deliberate property context at sign-in, which is important for cross-property reporting and safe operational work.
+
+**Required remediation:** add an explicit property selector or a persisted active-property selection with server-side membership validation. Ensure every query, mutation, subscription and printer routing operation uses the selected property context and that switching property clears stale client state.
 
 ## 11. Audit conclusion
 
