@@ -1,12 +1,21 @@
 import { buildEscPosPayload } from '../../src/services/escposJob.js';
 import http from 'node:http';
 import net from 'node:net';
+import fs from 'node:fs';
 import { URL } from 'node:url';
 import { spawn } from 'node:child_process';
-import { createClient } from '@supabase/supabase-js';
+import { loadConfig, AGENT_VERSION } from './config.mjs';
+import { createLogger, createConsoleLogger } from './logger.mjs';
 
-const HOST = process.env.PRINT_AGENT_HOST || '127.0.0.1';
-const PORT = Number(process.env.PRINT_AGENT_PORT || 8631);
+// Loopback by default. startPrintAgent() applies the resolved configuration so a
+// Windows service and a console run agree on host, port, origins and data paths.
+let HOST = '127.0.0.1';
+let PORT = 8631;
+let runtimeMode = 'console';
+let startedAtIso = new Date().toISOString();
+let log = createConsoleLogger();
+let cloudChannel = null;
+let heartbeatTimer = null;
 const CONNECT_TIMEOUT_MS = Number(process.env.PRINT_AGENT_TIMEOUT_MS || 6000);
 const ALLOWED_PORTS = new Set([9100, 9101, 9102]);
 const IPV4 = /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/;
@@ -231,11 +240,27 @@ async function printWindowsRaw(printerName, payload) {
   await runPowerShell(script, [name, base64]);
 }
 
-const AGENT_ID = process.env.PRINT_AGENT_ID || '';
-const WORKSPACE_ID = process.env.WORKSPACE_ID || '';
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
-const supabaseV2 = SUPABASE_URL && SUPABASE_KEY ? createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false,autoRefreshToken:false}}) : null;
+// Cloud printing is optional. The client is created at startup so a workstation
+// without Supabase configuration (or without the dependency installed) can still
+// start and print over LAN and the Windows spooler.
+let AGENT_ID = process.env.PRINT_AGENT_ID || '';
+let WORKSPACE_ID = process.env.WORKSPACE_ID || '';
+let SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
+let SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+let supabaseV2 = null;
+
+async function initCloudClient() {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return null;
+  try {
+    const { createClient } = await import('@supabase/supabase-js');
+    supabaseV2 = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+    return supabaseV2;
+  } catch (error) {
+    log.warn('cloud printing disabled: Supabase client is unavailable', { error: error?.message });
+    supabaseV2 = null;
+    return null;
+  }
+}
 
 async function discoverBonjourPrinters() {
   try {
@@ -254,7 +279,7 @@ async function registerAgent(printers=[]) {
     else if(defaultStore?.id) await supabaseV2.from('printers').insert({workspace_id:WORKSPACE_ID,store_id:defaultStore.id,name:p.label||`Network Printer ${p.host}`,connection_type:'print_agent',ip_address:p.host,port:p.port,agent_id:AGENT_ID,is_kitchen:true,status:'online',last_seen:new Date().toISOString()});
   }
 }
-async function discoverAndRegister() { try { const network=await discoverNetworkPrinters(); const mdns=await discoverBonjourPrinters(); const found=[...new Map([...network,...mdns].map(p=>[p.host+':'+p.port,p])).values()]; await registerAgent(found); return found; } catch(e){ console.error('[Print Agent v2] discovery failed:',e.message); return []; } }
+async function discoverAndRegister() { try { const network=await discoverNetworkPrinters(); const mdns=await discoverBonjourPrinters(); const found=[...new Map([...network,...mdns].map(p=>[p.host+':'+p.port,p])).values()]; await registerAgent(found); return found; } catch(e){ log.error('printer discovery failed',{error:e.message}); return []; } }
 async function processCloudJob(job) {
   if(!supabaseV2) throw new Error('Supabase is not configured for cloud print jobs.');
   const {data:printer,error}=await supabaseV2.from('printers').select('*').eq('id',job.printer_id).single();
@@ -273,16 +298,18 @@ function startCloudSubscription() {
   const channel=supabaseV2.channel('print_jobs:'+WORKSPACE_ID)
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'print_jobs',filter:'workspace_id=eq.'+WORKSPACE_ID},payload=>{
       processCloudJob(payload.new).catch(async e=>{
-        console.error('[Print Agent v2] job failed:',e.message);
+        log.error('cloud print job failed',{error:e.message});
         await supabaseV2.from('print_jobs').update({status:'failed',error_message:e.message}).eq('id',payload.new.id);
         if(payload.new.printer_id) await supabaseV2.from('printers').update({status:'error',last_seen:new Date().toISOString()}).eq('id',payload.new.printer_id);
       });
-    }).subscribe(status=>console.log('[Print Agent v2] realtime:',status));
+    }).subscribe(status=>log.info('cloud realtime status',{status}));
   return channel;
 }
 function startHeartbeat() {
-  if(!supabaseV2 || !WORKSPACE_ID || !AGENT_ID) return;
-  setInterval(()=>supabaseV2.from('print_agents').update({status:'online',last_seen:new Date().toISOString()}).eq('id',AGENT_ID).then(({error})=>error&&console.error('[Print Agent v2] heartbeat:',error.message)),30000);
+  if(!supabaseV2 || !WORKSPACE_ID || !AGENT_ID) return null;
+  const timer = setInterval(()=>supabaseV2.from('print_agents').update({status:'online',last_seen:new Date().toISOString()}).eq('id',AGENT_ID).then(({error})=>error&&log.error('heartbeat failed',{error:error.message})),30000);
+  timer.unref?.();
+  return timer;
 }
 
 function json(res, status, body, extraHeaders = {}) {
@@ -297,13 +324,9 @@ function json(res, status, body, extraHeaders = {}) {
   res.end(JSON.stringify(body));
 }
 
-const TRUSTED_ORIGINS = new Set([
-  'https://olitechpmspos.vercel.app',
-  ...(process.env.PRINT_AGENT_ALLOWED_ORIGINS || '')
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean),
-]);
+// Replaced from configuration at startup. Kept as a module-level set so the
+// request handler stays a plain function that is easy to exercise in tests.
+let TRUSTED_ORIGINS = new Set(['https://olitechpmspos.vercel.app']);
 
 function isAllowedOrigin(origin) {
   if (!origin) return true; // CLI / native local clients do not use browser CORS.
@@ -386,12 +409,19 @@ const server = http.createServer(async (req, res) => {
   const route = routeAliases[url.pathname] || url.pathname;
 
   if (req.method === 'GET' && route === '/health') {
+    // Deliberately reports only facts a dashboard or support engineer needs.
+    // No printer addresses, credentials or configuration values are exposed.
     return json(res, 200, {
       ok: true,
       service: 'OliTechs Local Print Agent',
-      version: '2.0.0',
+      version: AGENT_VERSION,
+      mode: runtimeMode,
       host: HOST,
       port: PORT,
+      pid: process.pid,
+      startedAt: startedAtIso,
+      uptimeSeconds: Math.round(process.uptime()),
+      platform: process.platform,
     });
   }
 
@@ -482,10 +512,174 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, HOST, async () => {
-  console.log(`[OliTechs Print Agent v2] listening on http://${HOST}:${PORT}`);
-  const found=await discoverAndRegister();
-  startCloudSubscription();
-  startHeartbeat();
-  console.log(`[OliTechs Print Agent v2] discovered ${found.length} network printer(s)`);
-});
+function readInstanceLock(lockFile) {
+  try {
+    return JSON.parse(fs.readFileSync(lockFile, 'utf8'));
+  } catch (_) {
+    return null;
+  }
+}
+
+function pidIsAlive(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    // EPERM means the process exists but belongs to another account.
+    return error?.code === 'EPERM';
+  }
+}
+
+/**
+ * Starts the local API and everything that must outlive a browser session.
+ * Throws with a stable `code` rather than starting a half-configured agent.
+ */
+export async function startPrintAgent({ config = loadConfig(), logger = null } = {}) {
+  runtimeMode = config.mode;
+  startedAtIso = new Date().toISOString();
+  HOST = config.host;
+  PORT = config.port;
+  TRUSTED_ORIGINS = new Set(config.allowedOrigins);
+  if (config.agentId) AGENT_ID = config.agentId;
+  if (config.workspaceId) WORKSPACE_ID = config.workspaceId;
+  if (config.supabase) {
+    SUPABASE_URL = config.supabase.url;
+    SUPABASE_KEY = config.supabase.key;
+  }
+
+  if (logger) {
+    log = logger;
+  } else {
+    fs.mkdirSync(config.logDir, { recursive: true });
+    log = createLogger({
+      dir: config.logDir,
+      maxBytes: config.logMaxBytes,
+      maxFiles: config.logMaxFiles,
+      level: config.logLevel,
+      mirror: config.mode !== 'service',
+    });
+  }
+
+  log.info('print agent starting', {
+    version: AGENT_VERSION,
+    mode: runtimeMode,
+    host: HOST,
+    port: PORT,
+    dataDir: config.dataDir,
+    allowedOrigins: config.allowedOrigins,
+  });
+  if (config.hostWarning) log.warn(config.hostWarning, { requestedHost: config.requestedHost, host: HOST });
+  if (config.ignoredOrigins?.length) log.warn('ignored invalid allowed-origin entries', { origins: config.ignoredOrigins });
+
+  fs.mkdirSync(config.dataDir, { recursive: true });
+
+  // Single instance: two agents on one workstation would claim the same print
+  // jobs and drive the same printers, which is how duplicate tickets happen.
+  const running = readInstanceLock(config.lockFile);
+  if (running?.pid && running.pid !== process.pid && pidIsAlive(running.pid)) {
+    const error = new Error(`Another OliTechs Print Agent is already running on this computer (process ${running.pid}). Stop it before starting a second one.`);
+    error.code = 'AGENT_ALREADY_RUNNING';
+    log.error('refusing to start a second print agent', { pid: running.pid, lockFile: config.lockFile });
+    throw error;
+  }
+
+  await new Promise((resolve, reject) => {
+    const onListenError = (error) => {
+      if (error?.code === 'EADDRINUSE') {
+        const friendly = new Error(`Port ${config.port} is already in use. Another print agent or program is using it on this computer.`);
+        friendly.code = 'AGENT_PORT_IN_USE';
+        return reject(friendly);
+      }
+      reject(error);
+    };
+    server.once('error', onListenError);
+    server.listen(config.port, config.host, () => {
+      server.removeListener('error', onListenError);
+      const address = server.address();
+      if (address && typeof address === 'object') PORT = address.port;
+      resolve();
+    });
+  });
+
+  // The lock records the real port, which is what makes an ephemeral test port
+  // discoverable and what a support engineer can read from disk.
+  fs.writeFileSync(config.lockFile, JSON.stringify({
+    pid: process.pid,
+    host: HOST,
+    port: PORT,
+    mode: runtimeMode,
+    version: AGENT_VERSION,
+    startedAt: startedAtIso,
+  }, null, 2));
+  log.info('print agent listening', { host: HOST, port: PORT, pid: process.pid });
+
+  await initCloudClient();
+  if (config.discoverOnStart) {
+    try {
+      const found = await discoverAndRegister();
+      log.info('printer discovery finished', { count: found.length });
+    } catch (error) {
+      log.warn('printer discovery skipped', { error: error?.message });
+    }
+  }
+  cloudChannel = startCloudSubscription();
+  heartbeatTimer = startHeartbeat();
+
+  let shutdownPromise = null;
+  const shutdown = (reason = 'shutdown') => {
+    if (shutdownPromise) return shutdownPromise;
+    shutdownPromise = new Promise((resolve) => {
+      log.info('print agent stopping', { reason });
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        try { fs.rmSync(config.lockFile, { force: true }); } catch (_) {}
+        log.info('print agent stopped', { reason });
+        resolve();
+      };
+      const forceTimer = setTimeout(finish, config.shutdownTimeoutMs);
+      forceTimer.unref?.();
+      if (heartbeatTimer) clearInterval(heartbeatTimer);
+      heartbeatTimer = null;
+      try { cloudChannel?.unsubscribe?.(); } catch (_) {}
+      cloudChannel = null;
+      try { server.closeIdleConnections?.(); } catch (_) {}
+      server.close(() => {
+        clearTimeout(forceTimer);
+        finish();
+      });
+      // Keep-alive sockets left open by a browser must not block a service stop.
+      setTimeout(() => {
+        try { server.closeAllConnections?.(); } catch (_) {}
+      }, 1000).unref?.();
+    });
+    return shutdownPromise;
+  };
+
+  const stopOnSignal = (signal) => {
+    log.info('shutdown requested', { signal });
+    shutdown(signal).finally(() => process.exit(0));
+  };
+  process.once('SIGTERM', stopOnSignal);
+  process.once('SIGINT', stopOnSignal);
+  // A service must crash loudly (so Windows restarts it) instead of hanging in
+  // an unknown state where receipts silently stop appearing.
+  process.once('uncaughtException', (error) => {
+    log.error('uncaught exception', { error: error?.stack || String(error) });
+    process.exit(1);
+  });
+  process.once('unhandledRejection', (reason) => {
+    log.error('unhandled rejection', { error: reason?.stack || String(reason) });
+    process.exit(1);
+  });
+
+  return {
+    server,
+    config,
+    logger: log,
+    shutdown,
+    get port() { return PORT; },
+  };
+}

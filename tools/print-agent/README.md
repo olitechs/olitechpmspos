@@ -33,13 +33,21 @@ The OliTechs Local Print Agent runs on each Windows POS workstation and bridges 
 
 ## Run
 
+On Windows, install it once as a service so it starts with the computer and keeps printing when nobody is signed in:
+
+    npm run print-agent:install
+
+Manual/diagnostic run only (refused while the service is running):
+
     npm run print-agent
 
 Default listener: http://127.0.0.1:8631
 
 Health check: http://127.0.0.1:8631/health
 
-Keep the agent running on every Windows POS workstation that uses LAN or Windows-driver printing.
+Structured logs: `%ProgramData%\OliTechs\PrintAgent\logs\agent.log`
+
+The service runs on every Windows POS workstation that uses LAN or Windows-driver printing. See `INSTALL-WINDOWS.md` for service installation, recovery, upgrades and uninstallation.
 
 ## Windows printer workflow
 

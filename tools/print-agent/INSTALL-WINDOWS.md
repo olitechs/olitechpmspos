@@ -1,41 +1,85 @@
-# OliTechs Print Agent — Windows Auto-Start
+# OliTechs Print Agent — Windows Service
 
-The OliTechs Print Agent is a local Windows process that bridges the PMS browser to LAN ESC/POS printers and Windows-installed printers.
+The OliTechs Print Agent runs as a Windows service, not as a console window. That
+means it keeps printing when the cashier closes the browser, closes the
+terminal, signs out, or is replaced at the till by another user. Windows starts
+it during boot, before anyone signs in.
+
+It bridges the Olitech PMS/POS web application to:
+
+- LAN / Wi-Fi ESC/POS printers (raw TCP, normally port 9100);
+- printers installed in Windows (USB or Bluetooth through their driver).
 
 ## Install
 
-From the PMS repository on the POS workstation:
+On the POS computer:
+
+1. Install Node.js 20 or newer (the future OliTechs installer will bundle it).
+2. Copy the OliTechs PMS folder to the computer.
+3. Run the installer as an administrator.
 
 ```powershell
-npm install
 npm run print-agent:install
 ```
 
-The installer creates a Windows Task Scheduler task named **OliTechs Print Agent**.
+The installer creates the service **OliTechsPrintAgent**, which:
 
-The task:
-- starts automatically when the POS Windows user logs in;
-- runs the agent hidden on `127.0.0.1:8631`;
-- automatically restarts the agent after an unexpected exit;
-- resolves the current `node.exe` at launch;
-- does not require a permanent PowerShell window.
+- starts automatically with Windows and needs no signed-in user;
+- restarts automatically after an unexpected exit (Service Control Manager
+  recovery: 5 s, then 15 s, then 60 s, with the counter reset daily);
+- serves `http://127.0.0.1:8631` on the loopback interface only;
+- writes structured logs to `%ProgramData%\OliTechs\PrintAgent\logs\agent.log`;
+- refuses to start if another agent already owns the installation.
+
+The service wrapper (`WinSW.exe`) is a separate binary. This repository does not
+store or download executables, so the script requires either:
+
+- `WinSW.exe` next to `service\install-service.ps1`, or
+- `-WinSWPath C:\path\to\WinSW.exe`.
+
+The packaged OliTechs installer ships it; a manual install can point at a copy.
 
 ## Verify
 
 ```powershell
+Get-Service OliTechsPrintAgent
 Invoke-RestMethod http://127.0.0.1:8631/health
 Test-NetConnection 192.168.2.117 -Port 9100
 ```
 
-The first command should report `ok: true`. The second should report `TcpTestSucceeded : True` for a reachable network printer.
+The first two commands should report `Running` and a JSON body containing
+`ok: true`, the agent `version`, `mode: "service"`, its `pid` and
+`uptimeSeconds`. The third checks that a specific printer answers on the network.
 
-## Manual start
+For the full Phase 2 acceptance run — browser closed, terminal closed, sign-out,
+restart, crash recovery and log checks — follow
+`WINDOWS-ACCEPTANCE-CHECKLIST.md`. It is written for a supervisor and needs no
+programming knowledge.
 
-For diagnostics:
+## Logs
+
+```
+%ProgramData%\OliTechs\PrintAgent\logs\agent.log
+```
+
+One JSON object per line, rotated at 2 MB with 5 files kept. Passwords, tokens,
+raw ESC/POS payloads, receipt content and guest details are replaced with
+`[redacted]` before anything is written.
+
+## Upgrade
+
+Re-run the installer. It stops and re-registers the service, keeps the printer
+configuration, and reports the result. Installing is idempotent.
+
+## Manual run (diagnostics only)
 
 ```powershell
-npm run print-agent:run
+npm run print-agent
 ```
+
+This is refused while the service is running: two agents would claim the same
+jobs and print the same ticket twice. Stop the service first if you genuinely
+need a console session.
 
 ## Uninstall
 
@@ -43,18 +87,18 @@ npm run print-agent:run
 npm run print-agent:uninstall
 ```
 
-Uninstalling removes only the Windows scheduled task. It does not remove printer configuration or the PMS application.
+Removes the service and any leftover logon task. Printer data and logs stay in
+`%ProgramData%\OliTechs\PrintAgent` so a reinstall keeps its configuration; add
+`-RemoveData` to delete them as well.
 
-## Updating the PMS
+## Known limitations
 
-After pulling a new repository version, reinstalling the task is safe:
-
-```powershell
-npm run print-agent:install
-```
-
-The scheduled task is replaced with the current runner path and configuration.
-
-## Important
-
-The agent must run on the same Windows workstation as the PMS operator. A Vercel-hosted web application cannot directly open TCP connections to a printer on the hotel's private LAN.
+- The service runs as `LocalSystem`. Printers installed only for one Windows user
+  may not be visible to it; install per-machine drivers where possible. This is
+  validated per customer in the Phase 10 compatibility matrix, not assumed.
+- RAW ESC/POS through the spooler requires a driver that accepts raw data.
+  GDI-only drivers will not produce a usable thermal receipt.
+- Automatic power-on after a mains failure depends on BIOS/UEFI settings and the
+  hardware; a UPS is recommended for the POS computer and printer.
+- A successful print response confirms the printer accepted the bytes. It cannot
+  prove paper physically emerged.

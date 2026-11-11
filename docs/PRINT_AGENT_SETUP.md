@@ -4,13 +4,15 @@ The current local agent listens on `127.0.0.1:8631`. Keep this port consistent w
 
 ## Start and verify
 
-From the repository root:
+On a Windows POS computer, install the agent once as a Windows service so it starts with the computer and keeps printing when nobody is signed in:
 
-```bash
-npm run print-agent
+```powershell
+npm run print-agent:install
 ```
 
-Open `http://127.0.0.1:8631/health` on the POS workstation. The agent should return JSON with `ok: true`.
+Open `http://127.0.0.1:8631/health` on the POS workstation. The agent should return JSON with `ok: true`, the agent `version`, `mode: "service"`, its `pid` and `uptimeSeconds`.
+
+Logs are written to `%ProgramData%\OliTechs\PrintAgent\logs\agent.log` (JSON lines, size-rotated, with credentials, raw ESC/POS payloads and guest details redacted). For a manual diagnostic run only, use `npm run print-agent`; it is refused while the service is running because two agents would print the same job twice.
 
 ## Network thermal printers
 

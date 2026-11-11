@@ -1,0 +1,38 @@
+<!--
+  Template for the OliTechs Print Agent Windows service (WinSW).
+
+  install-service.ps1 replaces the {{PLACEHOLDER}} values and writes
+  OliTechsPrintAgent.xml next to OliTechsPrintAgent.exe in
+  %ProgramData%\OliTechs\PrintAgent\service.
+
+  Do not put credentials in this file. The service runs as LocalSystem and the
+  agent authenticates its callers, not the other way round.
+-->
+<service>
+  <id>OliTechsPrintAgent</id>
+  <name>OliTechs Print Agent</name>
+  <description>Prints Olitech PMS/POS receipts and kitchen tickets to LAN ESC/POS and Windows-installed printers.</description>
+
+  <executable>{{NODE_EXE}}</executable>
+  <arguments>"{{AGENT_SCRIPT}}"</arguments>
+  <workingdirectory>{{WORKING_DIR}}</workingdirectory>
+
+  <!-- Start with Windows, without waiting for a user to sign in. -->
+  <startmode>Automatic</startmode>
+  <delayedAutoStart>false</delayedAutoStart>
+  <stoptimeout>20 sec</stoptimeout>
+
+  <!-- Restart after an unexpected exit. install-service.ps1 also sets the
+       Service Control Manager recovery policy as the outer safety net. -->
+  <onfailure action="restart" delay="10 sec"/>
+  <resetfailure>1 hour</resetfailure>
+
+  <env name="PRINT_AGENT_MODE" value="service"/>
+  <env name="PRINT_AGENT_DATA_DIR" value="{{DATA_DIR}}"/>
+
+  <logpath>{{LOG_DIR}}</logpath>
+  <log mode="roll-by-size">
+    <sizeThreshold>10240</sizeThreshold>
+    <keepFiles>8</keepFiles>
+  </log>
+</service>
