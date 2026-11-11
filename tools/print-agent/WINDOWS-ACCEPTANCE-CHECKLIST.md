@@ -224,6 +224,15 @@ Use a spare Windows 10/11 computer that has never had the print agent on it.
 - [ ] Uninstall from Apps & features. The service is gone, and printer data plus the credential are still in `%ProgramData%\OliTechs\PrintAgent`.
 - [ ] Reinstall and confirm the workstation is still paired (the credential was kept) or pair again with a fresh code.
 
+## Part 14 — Diagnostics file (Phase 9)
+
+- [ ] Open Settings → Printers and press **Save diagnostics file**. A file named `OliTechs-PrintAgent-Diagnostics-….json` lands in Downloads, and the panel confirms the name.
+- [ ] The same file also exists in `%ProgramData%\OliTechs\PrintAgent\diagnostics\`.
+- [ ] Open the file in Notepad. It shows the agent version, mode, pairing name, queue counts and log lines. It does **not** show a password, token, pairing code, receipt text or guest name — search for `token`, `secret` and `pairing` to confirm.
+- [ ] Stop the service and press the button again. The panel explains the agent is not reachable instead of downloading an empty file.
+- [ ] With the printer switched off, print something, wait for it to fail, then save diagnostics again. The file lists that job as `failed` with the printer address, which is what support needs.
+- [ ] Attach the file to a test support request and confirm a colleague can understand it without programming knowledge.
+
 ## Results
 
 Tick each part and write what you saw.

@@ -10,6 +10,7 @@ import { createDurableQueue, classifyPrintError } from './queue.mjs';
 import { createJobClaimer } from './claim.mjs';
 import { readAgentCredential, pairAgent } from './pairing.mjs';
 import { createRateLimiter } from './ratelimit.mjs';
+import { createDiagnostics } from './diagnostics.mjs';
 
 // Loopback by default. startPrintAgent() applies the resolved configuration so a
 // Windows service and a console run agree on host, port, origins and data paths.
@@ -27,6 +28,7 @@ let jobClaimer = null;
 let claimConfig = null;
 let TOKEN_FILE = null;
 let agentCredential = null;
+let runtimeConfig = null;
 
 // Local requests are cheap, but a runaway retry loop can empty a roll of paper.
 const limiter = createRateLimiter({ limits: { print: 60, queue: 30, discover: 6, pair: 5, default: 120 } });
@@ -510,9 +512,32 @@ async function acceptCloudJob(input) {
   return { ok: false, status: outcome.body?.status, code: outcome.body?.code, message: outcome.body?.message, jobId: admission.job.id };
 }
 
+/**
+ * Deliberately reports only facts a dashboard or support engineer needs. No
+ * printer addresses, credentials or configuration values are exposed.
+ */
+function buildHealth() {
+  return {
+    ok: true,
+    service: 'OliTechs Local Print Agent',
+    version: AGENT_VERSION,
+    mode: runtimeMode,
+    host: HOST,
+    port: PORT,
+    pid: process.pid,
+    startedAt: startedAtIso,
+    uptimeSeconds: Math.round(process.uptime()),
+    platform: process.platform,
+    queue: printQueue ? printQueue.counts() : null,
+    paired: agentCredential
+      ? { paired: true, agentName: agentCredential.agentName, propertyId: agentCredential.propertyId }
+      : { paired: false },
+  };
+}
+
 function rateLimitClass(route) {
   if (['/print', '/test', '/windows-print', '/windows-test', '/open-drawer'].includes(route)) return 'print';
-  if (String(route).startsWith('/queue')) return 'queue';
+  if (String(route).startsWith('/queue') || route === '/diagnostics') return 'queue';
   if (route === '/pair') return 'pair';
   if (['/discover', '/printers/list', '/windows-printers'].includes(route)) return 'discover';
   return 'default';
@@ -667,6 +692,8 @@ const server = http.createServer(async (req, res) => {
     '/print-agent/queue/retry': '/queue/retry',
     '/api/pair': '/pair',
     '/print-agent/pair': '/pair',
+    '/api/diagnostics': '/diagnostics',
+    '/print-agent/diagnostics': '/diagnostics',
   };
   const route = routeAliases[url.pathname] || url.pathname;
 
@@ -681,24 +708,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'GET' && route === '/health') {
-    // Deliberately reports only facts a dashboard or support engineer needs.
-    // No printer addresses, credentials or configuration values are exposed.
-    return json(res, 200, {
-      ok: true,
-      service: 'OliTechs Local Print Agent',
-      version: AGENT_VERSION,
-      mode: runtimeMode,
-      host: HOST,
-      port: PORT,
-      pid: process.pid,
-      startedAt: startedAtIso,
-      uptimeSeconds: Math.round(process.uptime()),
-      platform: process.platform,
-      queue: printQueue ? printQueue.counts() : null,
-      paired: agentCredential
-        ? { paired: true, agentName: agentCredential.agentName, propertyId: agentCredential.propertyId }
-        : { paired: false },
-    });
+    return json(res, 200, buildHealth());
   }
 
   if (req.method === 'GET' && route === '/discover') {
@@ -777,6 +787,28 @@ const server = http.createServer(async (req, res) => {
       return json(res, outcome.status, { ...outcome.body, job: printQueue.get(id) });
     } catch (error) {
       return json(res, 500, { ok: false, code: 'PRINT_QUEUE_ERROR', message: error?.message || 'The print queue could not reprint this job.' });
+    }
+  }
+
+  if (req.method === 'POST' && route === '/diagnostics') {
+    try {
+      const result = createDiagnostics({
+        config: runtimeConfig,
+        health: buildHealth(),
+        queue: printQueue ? { counts: printQueue.counts(), items: printQueue.list({ limit: 50 }) } : null,
+      });
+      log.info('diagnostics bundle created', { fileName: result.fileName, bytes: result.bytes });
+      return json(res, 200, {
+        ok: true,
+        fileName: result.fileName,
+        file: result.file,
+        bytes: result.bytes,
+        generatedAt: result.bundle.generatedAt,
+        bundle: result.bundle,
+      });
+    } catch (error) {
+      log.error('diagnostics bundle failed', { error: error?.message });
+      return json(res, 500, { ok: false, code: 'DIAGNOSTICS_FAILED', message: error?.message || 'The diagnostics file could not be created.' });
     }
   }
 
@@ -957,6 +989,7 @@ export async function startPrintAgent({ config = loadConfig(), logger = null } =
     log.error('print queue unavailable; printing continues without crash recovery', { error: error?.message });
   }
 
+  runtimeConfig = config;
   TOKEN_FILE = config.tokenFile;
   agentCredential = readAgentCredential(config.tokenFile);
   if (agentCredential) {

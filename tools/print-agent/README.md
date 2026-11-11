@@ -125,6 +125,16 @@ Other settings: `PRINT_AGENT_CLAIM_INTERVAL_MS` (15000), `PRINT_AGENT_CLAIM_BATC
 
 Database side: `supabase/migrations/20261111160000_phase5_agent_print_claim.sql` adds the `uncertain` status, `claimed_by` / `claimed_at` / `lease_expires_at` / `uncertain_at`, and the service-role RPCs `fn_claim_fnb_print_jobs`, `fn_complete_fnb_print_job` and `fn_expire_fnb_print_leases`. The app stores the ESC/POS bytes and printer target on the job (`payload.escposBase64`, `payload.printTarget`) so a queued job is printable without the browser.
 
+## Diagnostics for support
+
+Settings → Printers has a **Save diagnostics file** button. One click produces a JSON file in the staff member's Downloads folder and an identical copy in `%ProgramData%\OliTechs\PrintAgent\diagnostics\`, so support can collect it even if the app is not open.
+
+The file contains the agent version and mode, pairing state (name and property, never the secret), queue counts and the last 50 job outcomes without print data, the service lock, free disk space, and the last 500 log records in chronological order across rotated files.
+
+It deliberately does not contain Supabase keys, the workstation credential, raw ESC/POS bytes, receipt text or guest details: the bundle is an allow-list and `redactValue` runs over it again before it is written. Log lines that cannot be parsed are counted, not copied.
+
+Endpoints: `POST /diagnostics` builds and saves a bundle and returns it; `POST /queue/retry` is unaffected. Both are rate limited.
+
 ## Important
 
 The local agent binds to loopback by default. Do not expose it publicly.
