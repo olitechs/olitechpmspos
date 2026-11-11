@@ -317,3 +317,88 @@ export function describeTestOutcome(result = {}) {
     detail: message || 'Check the printer power, cable or network connection, then press Test again.',
   };
 }
+
+/**
+ * Persists a wizard result through an injected Supabase-shaped client so the
+ * flow is testable without a database, and so both guarantees below are real:
+ *
+ *  - a retry updates the row the wizard already created instead of inserting a
+ *    second printer;
+ *  - if routing fails, a newly created printer is removed again, because a
+ *    printer that is listed but routes nothing looks configured and silently
+ *    prints nothing.
+ */
+export async function savePrinterSetup({
+  client,
+  propertyId,
+  setup,
+  existingPrinterId = null,
+  agentUrl = DEFAULT_AGENT_URL,
+} = {}) {
+  if (!client || typeof client.from !== 'function') {
+    return { ok: false, message: 'Printing is not connected to the database in this session.' };
+  }
+  if (!propertyId) {
+    return { ok: false, message: 'This login is not linked to a property, so the printer cannot be saved.' };
+  }
+  if (!setup?.ok) {
+    return { ok: false, message: setup?.message || 'The printer details need attention before saving.' };
+  }
+
+  const row = {
+    ...setup.payload,
+    property_id: propertyId,
+    agent_url: normalizeAgentBaseUrl(agentUrl),
+  };
+
+  let printer = null;
+  if (existingPrinterId) {
+    const updated = await client
+      .from('property_printers')
+      .update(row)
+      .eq('id', existingPrinterId)
+      .eq('property_id', propertyId)
+      .select()
+      .single();
+    if (updated.error) return { ok: false, message: updated.error.message || 'The printer could not be saved.' };
+    printer = updated.data;
+  } else {
+    const inserted = await client.from('property_printers').insert(row).select().single();
+    if (inserted.error) return { ok: false, message: inserted.error.message || 'The printer could not be saved.' };
+    printer = inserted.data;
+  }
+  if (!printer?.id) {
+    return { ok: false, message: 'The printer was saved but the database did not return it. Reload this page.' };
+  }
+
+  const rollBack = async () => {
+    if (existingPrinterId) return;
+    try {
+      await client.from('property_printers').delete().eq('id', printer.id).eq('property_id', propertyId);
+    } catch (_) {
+      // The routing error is the one the user needs to see.
+    }
+  };
+
+  const cleared = await client
+    .from('printer_assignments')
+    .delete()
+    .eq('printer_id', printer.id)
+    .eq('property_id', propertyId);
+  if (cleared?.error) {
+    await rollBack();
+    return { ok: false, message: cleared.error.message || 'The printer routing could not be updated.' };
+  }
+
+  if (setup.assignmentTypes.length) {
+    const assigned = await client.from('printer_assignments').insert(
+      setup.assignmentTypes.map((type) => ({ property_id: propertyId, printer_id: printer.id, assignment_type: type })),
+    );
+    if (assigned?.error) {
+      await rollBack();
+      return { ok: false, message: assigned.error.message || 'The printer was saved but its routing failed.' };
+    }
+  }
+
+  return { ok: true, printer, assignmentTypes: [...setup.assignmentTypes] };
+}

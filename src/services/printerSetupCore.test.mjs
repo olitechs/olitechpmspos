@@ -16,6 +16,7 @@ import {
   normalizeAgentBaseUrl,
   previousStep,
   printerTypeForRole,
+  savePrinterSetup,
 } from './printerSetupCore.js';
 
 const jsonResponse = (body, status = 200) => ({
@@ -201,4 +202,117 @@ test('print results become clear next actions', () => {
 
   const notFound = describeTestOutcome({ ok: false, friendlyError: 'The selected Windows printer is not installed or is currently unavailable.' });
   assert.equal(notFound.title, 'Printer is not available');
+});
+
+/**
+ * Minimal Supabase-shaped fake: records every call, lets a test force an error
+ * on a specific table, and supports the chains the real client uses
+ * (`insert().select().single()`, `insert()` awaited, `delete().eq().eq()`,
+ * `update().eq().eq().select().single()`).
+ */
+function fakeSupabase({ errorOn = null, errorMessage = 'database error' } = {}) {
+  const calls = [];
+  const failure = (table, op) => (errorOn === `${table}.${op}` ? { data: null, error: { message: errorMessage } } : null);
+
+  const client = {
+    calls,
+    from(table) {
+      const chain = {
+        eq() { return chain; },
+        then(resolve, reject) { return Promise.resolve(failure(table, 'delete') || { data: null, error: null }).then(resolve, reject); },
+        insert(payload) {
+          calls.push({ table, op: 'insert', payload });
+          const failed = failure(table, 'insert');
+          const result = failed || { data: table === 'property_printers' ? { id: 'printer-1', ...payload } : null, error: null };
+          const thenable = Promise.resolve(result);
+          thenable.select = () => ({ single: async () => result });
+          return thenable;
+        },
+        update(payload) {
+          calls.push({ table, op: 'update', payload });
+          const failed = failure(table, 'update');
+          const result = failed || { data: { id: 'printer-existing', ...payload }, error: null };
+          return { eq() { return this; }, select: () => ({ single: async () => result }) };
+        },
+        delete() {
+          calls.push({ table, op: 'delete' });
+          return chain;
+        },
+      };
+      return chain;
+    },
+  };
+  return client;
+}
+
+const windowsSetup = () => buildPrinterSetup({
+  printer: {
+    name: 'EPSON TM-T20III',
+    connection_type: 'windows_printer',
+    windows_printer_name: 'EPSON TM-T20III',
+  },
+  roleId: 'kitchen',
+  name: 'Kitchen pass',
+});
+
+test('saving a printer writes the row and its routing', async () => {
+  const client = fakeSupabase();
+  const saved = await savePrinterSetup({ client, propertyId: 'property-1', setup: windowsSetup(), agentUrl: 'localhost:8631/' });
+
+  assert.equal(saved.ok, true);
+  assert.equal(saved.printer.id, 'printer-1');
+  assert.deepEqual(saved.assignmentTypes, ['food_orders', 'void_food_orders']);
+
+  const printerInsert = client.calls.find((call) => call.table === 'property_printers' && call.op === 'insert');
+  assert.equal(printerInsert.payload.property_id, 'property-1');
+  assert.equal(printerInsert.payload.agent_url, 'http://localhost:8631');
+  assert.equal(printerInsert.payload.windows_printer_name, 'EPSON TM-T20III');
+
+  const assignmentInsert = client.calls.find((call) => call.table === 'printer_assignments' && call.op === 'insert');
+  assert.deepEqual(assignmentInsert.payload.map((row) => row.assignment_type), ['food_orders', 'void_food_orders']);
+  assert.ok(assignmentInsert.payload.every((row) => row.printer_id === 'printer-1'));
+});
+
+test('a failed routing save removes the new printer instead of leaving it half configured', async () => {
+  const client = fakeSupabase({ errorOn: 'printer_assignments.insert', errorMessage: 'routing write denied' });
+  const saved = await savePrinterSetup({ client, propertyId: 'property-1', setup: windowsSetup() });
+
+  assert.equal(saved.ok, false);
+  assert.match(saved.message, /routing write denied/);
+  const rollback = client.calls.filter((call) => call.table === 'property_printers' && call.op === 'delete');
+  assert.equal(rollback.length, 1, 'the orphaned printer row must be deleted');
+});
+
+test('retrying updates the existing printer instead of duplicating it', async () => {
+  const client = fakeSupabase();
+  const saved = await savePrinterSetup({
+    client,
+    propertyId: 'property-1',
+    setup: windowsSetup(),
+    existingPrinterId: 'printer-existing',
+  });
+
+  assert.equal(saved.ok, true);
+  assert.equal(client.calls.filter((call) => call.table === 'property_printers' && call.op === 'insert').length, 0);
+  const update = client.calls.find((call) => call.table === 'property_printers' && call.op === 'update');
+  assert.equal(update.payload.property_id, 'property-1');
+  assert.equal(client.calls.filter((call) => call.table === 'printer_assignments' && call.op === 'delete').length, 1);
+});
+
+test('nothing is written without a property or valid setup', async () => {
+  const client = fakeSupabase();
+  const noProperty = await savePrinterSetup({ client, propertyId: null, setup: windowsSetup() });
+  assert.equal(noProperty.ok, false);
+  assert.match(noProperty.message, /property/i);
+
+  const invalidSetup = await savePrinterSetup({ client, propertyId: 'property-1', setup: { ok: false, message: 'Choose a printer first.' } });
+  assert.equal(invalidSetup.ok, false);
+  assert.match(invalidSetup.message, /Choose a printer/);
+  assert.equal(client.calls.length, 0);
+});
+
+test('a missing client fails clearly instead of crashing the wizard', async () => {
+  const saved = await savePrinterSetup({ propertyId: 'property-1', setup: windowsSetup() });
+  assert.equal(saved.ok, false);
+  assert.match(saved.message, /not connected to the database/i);
 });

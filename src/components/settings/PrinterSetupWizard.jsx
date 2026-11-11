@@ -18,6 +18,7 @@ import {
   nextStep,
   previousStep,
   roleById,
+  savePrinterSetup,
 } from '@/services/printerSetupCore';
 
 const STEP_TITLES = {
@@ -150,26 +151,23 @@ export default function PrinterSetupWizard({ open, propertyId, agentUrl = 'http:
       return;
     }
 
+    // Coming back to this step after a failed test must retry the test, never
+    // insert a second copy of the printer.
+    if (savedPrinter?.id) {
+      setStep('test');
+      await runTest(savedPrinter);
+      return;
+    }
+
     setSaving(true);
     setSaveError('');
     try {
-      const inserted = await supabase
-        .from('property_printers')
-        .insert({ ...built.payload, property_id: propertyId })
-        .select()
-        .single();
-      if (inserted.error) throw new Error(inserted.error.message);
+      const saved = await savePrinterSetup({ client: supabase, propertyId, setup: built, agentUrl });
+      if (!saved.ok) throw new Error(saved.message);
 
-      const printer = inserted.data;
+      const printer = saved.printer;
       setSavedPrinter(printer);
       savePrinterPrintSettings(printer.id, { paperWidth: built.payload.paper_width });
-
-      if (built.assignmentTypes.length) {
-        const assigned = await supabase.from('printer_assignments').insert(
-          built.assignmentTypes.map((type) => ({ property_id: propertyId, printer_id: printer.id, assignment_type: type })),
-        );
-        if (assigned.error) throw new Error(assigned.error.message);
-      }
 
       setStep('test');
       await runTest(printer);
