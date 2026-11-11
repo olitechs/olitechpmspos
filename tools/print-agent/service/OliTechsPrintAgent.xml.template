@@ -35,4 +35,9 @@
     <sizeThreshold>10240</sizeThreshold>
     <keepFiles>8</keepFiles>
   </log>
+
+  <!-- Public Supabase URL and anon key, rendered by install-service.ps1 when the
+       OliTechs installer supplies them. Never a service-role key: the workstation
+       authenticates itself to the cloud with its own paired credential. -->
+{{ENV_ENTRIES}}
 </service>

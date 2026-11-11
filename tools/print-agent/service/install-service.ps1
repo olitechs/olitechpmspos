@@ -1,6 +1,10 @@
 [CmdletBinding()]
 param(
   [string]$WinSWPath = '',
+  [string]$NodeExe = '',
+  [string]$SupabaseUrl = '',
+  [string]$SupabaseAnonKey = '',
+  [string]$AgentConfigPath = '',
   [switch]$SkipLegacyTaskCleanup
 )
 
@@ -20,9 +24,18 @@ if (-not (Test-Path $TemplatePath)) { throw "Service template not found: $Templa
 $AgentScript = Join-Path $AgentDir 'print-agent-v2.js'
 if (-not (Test-Path $AgentScript)) { throw "Print agent entry point not found: $AgentScript" }
 
-$node = Get-Command node.exe -ErrorAction SilentlyContinue
-if (-not $node) {
-  throw 'Node.js was not found on this computer. Install Node.js 20 or newer, then run the OliTechs Print Agent installer again.'
+# The packaged OliTechs installer ships its own Node runtime, so a POS computer
+# never needs Node.js installed system-wide. A manual install still uses PATH.
+$nodeExePath = ''
+if ($NodeExe) {
+  if (-not (Test-Path $NodeExe)) { throw "The bundled Node.js runtime was not found: $NodeExe" }
+  $nodeExePath = (Resolve-Path $NodeExe).Path
+} else {
+  $node = Get-Command node.exe -ErrorAction SilentlyContinue
+  if (-not $node) {
+    throw 'Node.js was not found on this computer. Run the OliTechs Print Agent installer, or install Node.js 20 or newer.'
+  }
+  $nodeExePath = $node.Source
 }
 
 $DataDir = Join-Path $env:ProgramData 'OliTechs\PrintAgent'
@@ -65,11 +78,34 @@ if ($existing) {
 
 $escape = [System.Security.SecurityElement]::Escape
 $xml = Get-Content -Raw -Path $TemplatePath
-$xml = $xml.Replace('{{NODE_EXE}}', $escape.Invoke($node.Source))
+$xml = $xml.Replace('{{NODE_EXE}}', $escape.Invoke($nodeExePath))
 $xml = $xml.Replace('{{AGENT_SCRIPT}}', $escape.Invoke($AgentScript))
 $xml = $xml.Replace('{{WORKING_DIR}}', $escape.Invoke($RepoRoot))
 $xml = $xml.Replace('{{DATA_DIR}}', $escape.Invoke($DataDir))
 $xml = $xml.Replace('{{LOG_DIR}}', $escape.Invoke($LogDir))
+
+# Pairing needs the public Supabase URL and anon key. Neither is a secret in the
+# credential sense (the anon key ships in the web app), and the workstation gets
+# its own print credential through pairing. A service-role key is never installed
+# here, so a copied workstation cannot read another property's data.
+if (-not $AgentConfigPath) { $AgentConfigPath = Join-Path $RepoRoot 'agent-config.json' }
+if ((-not $SupabaseUrl -or -not $SupabaseAnonKey) -and (Test-Path $AgentConfigPath)) {
+  try {
+    $agentConfig = Get-Content -Raw -Path $AgentConfigPath | ConvertFrom-Json
+    if (-not $SupabaseUrl) { $SupabaseUrl = [string]$agentConfig.supabaseUrl }
+    if (-not $SupabaseAnonKey) { $SupabaseAnonKey = [string]$agentConfig.supabaseAnonKey }
+  } catch {
+    Write-Host "Could not read $AgentConfigPath. Pairing will stay unavailable until the agent is configured." -ForegroundColor Yellow
+  }
+}
+
+$envEntries = ''
+if ($SupabaseUrl -and $SupabaseAnonKey) {
+  $escapedUrl = $escape.Invoke($SupabaseUrl)
+  $escapedKey = $escape.Invoke($SupabaseAnonKey)
+  $envEntries = "  <env name=`"SUPABASE_URL`" value=`"$escapedUrl`"/>`r`n  <env name=`"VITE_SUPABASE_ANON_KEY`" value=`"$escapedKey`"/>"
+}
+$xml = $xml.Replace('{{ENV_ENTRIES}}', $envEntries)
 Set-Content -Path $ConfigPath -Value $xml -Encoding UTF8
 
 Copy-Item -Path $resolvedWinSW -Destination $WrapperPath -Force
@@ -119,6 +155,11 @@ Write-Host "Status:   $((Get-Service -Name $ServiceId).Status)"
 Write-Host "Accounts: runs as LocalSystem and starts with Windows, before anyone signs in"
 Write-Host "Endpoint: http://127.0.0.1:8631"
 Write-Host "Logs:     $LogDir"
+if ($SupabaseUrl -and $SupabaseAnonKey) {
+  Write-Host 'Pairing:  available. Open OliTechs, Settings, Printers and press "Pair this computer".'
+} else {
+  Write-Host 'Pairing:  unavailable until SUPABASE_URL and the anon key are configured for the agent.' -ForegroundColor Yellow
+}
 if ($healthy) {
   Write-Host 'Health:   responding' -ForegroundColor Green
 } else {

@@ -210,6 +210,20 @@ If a page is missing for an `uncertain` job, the safe action is the retry option
 - [ ] Press a print button repeatedly in quick succession. After roughly 60 jobs a minute the agent replies "Too many printer requests…" instead of printing more pages.
 - [ ] As a manager, revoke the workstation with `fn_revoke_print_agent_credential`, then pair it again with a new code. The old code is refused, the new one works, and the secret file is replaced.
 
+## Part 13 — Click-once installer and pairing (Phase 8)
+
+Use a spare Windows 10/11 computer that has never had the print agent on it.
+
+- [ ] Right-click the installer → Properties → Digital Signatures. There is a signature, it is valid, and the signer is OliTechs. Stop here if it is unsigned or the signer is unknown.
+- [ ] Double-click the installer and approve the administrator prompt. No terminal, command prompt or Node.js prompt appears at any point.
+- [ ] When the pairing window appears, type the code from Settings → Printers → Pair this computer. It reports the computer is paired.
+- [ ] Press Start and look in the OliTechs Print Agent folder: Printer status, Pair this computer, Print agent logs and Uninstall are all there.
+- [ ] `Get-Service OliTechsPrintAgent` shows Running, and `http://127.0.0.1:8631/health` reports `paired: true`.
+- [ ] Restart Windows without signing in. The service starts, and a print sent from another computer comes out without anyone logging in.
+- [ ] Run the installer a second time over the top. It succeeds, keeps the printer configuration, and does not create a second service or a second copy of any print.
+- [ ] Uninstall from Apps & features. The service is gone, and printer data plus the credential are still in `%ProgramData%\OliTechs\PrintAgent`.
+- [ ] Reinstall and confirm the workstation is still paired (the credential was kept) or pair again with a fresh code.
+
 ## Results
 
 Tick each part and write what you saw.

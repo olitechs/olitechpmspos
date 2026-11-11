@@ -12,15 +12,36 @@ It bridges the Olitech PMS/POS web application to:
 
 ## Install
 
+### Option A — the signed installer (recommended, no terminal)
+
+1. Download `OliTechsPrintAgentSetup-<version>.exe` from OliTechs support.
+2. Right-click → **Properties → Digital Signatures** and confirm the signer is
+   OliTechs. Windows also shows the publisher on the SmartScreen prompt.
+3. Double-click it and approve the administrator prompt.
+4. When the pairing window opens, type the code from **OliTechs → Settings →
+   Printers → Pair this computer**. Pairing can be skipped and repeated later
+   from the Start menu.
+
+Nothing else is needed: Node.js, the service wrapper and the agent are bundled.
+Build and sign the installer with `installer/build-installer.ps1`; see
+`installer/README.md`.
+
+### Option B — manual install (engineers only)
+
 On the POS computer:
 
-1. Install Node.js 20 or newer (the future OliTechs installer will bundle it).
+1. Install Node.js 20 or newer.
 2. Copy the OliTechs PMS folder to the computer.
 3. Run the installer as an administrator.
 
 ```powershell
 npm run print-agent:install
 ```
+
+After a manual install, pair the computer from Settings → Printers so it can
+print jobs queued while it was switched off. A manual install without a
+`SUPABASE_URL`/anon key in the service environment can print locally but cannot
+pair.
 
 The installer creates the service **OliTechsPrintAgent**, which:
 
@@ -92,6 +113,12 @@ Removes the service and any leftover logon task. Printer data and logs stay in
 `-RemoveData` to delete them as well.
 
 ## Known limitations
+
+- The signed installer is built on a Windows machine with a code-signing
+  certificate. Until OliTechs has that certificate, only the manual path exists,
+  and an unsigned build must not be handed to a hotel.
+- The bundled runtime is pinned at build time. Rebuild the installer after a Node
+  security release instead of updating Node on each workstation.
 
 - The service runs as `LocalSystem`. Printers installed only for one Windows user
   may not be visible to it; install per-machine drivers where possible. This is
