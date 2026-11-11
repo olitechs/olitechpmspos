@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Plus, Pencil, Trash2, Printer, Wifi, Play, X, RefreshCw, CheckCircle2, AlertCircle, CircleOff, Network, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { getPrinters, getAssignments, testPrint, connectPrinter, printTestOrder, printTestReceipt, printCutCalibrationTest } from '@/services/printService';
+import PrinterSetupWizard from '@/components/settings/PrinterSetupWizard';
 import { getPrinterPrintSettings, savePrinterPrintSettings } from '@/services/printerPrintSettings';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -98,6 +99,7 @@ export default function SettingsPrinters() {
   const [agentError,setAgentError] = useState('');
   const [windowsPrinters,setWindowsPrinters] = useState([]);
   const [templateTests,setTemplateTests] = useState({});
+  const [wizardOpen,setWizardOpen] = useState(false);
 
   const load = async (silent=false) => {
     if (!propertyId) return;
@@ -353,7 +355,8 @@ export default function SettingsPrinters() {
             <div className="flex gap-2">
               <button onClick={discoverNetwork} disabled={discovering} className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm font-bold text-foreground hover:bg-secondary disabled:opacity-50"><Network size={15}/>{discovering?'Scanning LAN…':'Find network printers'}</button>
               <button onClick={()=>load()} className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm font-bold text-foreground hover:bg-secondary"><RefreshCw size={15}/>Refresh</button>
-              <button onClick={openNew} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-black text-primary-foreground shadow-sm hover:bg-[var(--primary-hover)]"><Plus size={16}/>Add Printer</button>
+              <button onClick={openNew} className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm font-bold text-foreground hover:bg-secondary"><Plus size={15}/>Advanced</button>
+              <button onClick={()=>setWizardOpen(true)} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-black text-primary-foreground shadow-sm hover:bg-[var(--primary-hover)]"><Plus size={16}/>Set up a printer</button>
             </div>
           </div>
 
@@ -378,7 +381,7 @@ export default function SettingsPrinters() {
               </div>
               <div className="space-y-3">
                 {printers.map(p=><PrinterCard key={p.id} printer={p} assignments={assignments.filter(a=>a.printer_id===p.id)} testing={testingId===p.id} onTest={()=>verify(p.id)} onTestOrder={()=>runTemplateTest(p,'order')} onTestReceipt={(vatMode,longReceipt)=>runTemplateTest(p,'receipt',{vatMode,longReceipt})} orderTest={templateTests[p.id+':order']} receiptTest={templateTests[p.id+':receipt']} onEdit={()=>openEdit(p)} onDelete={()=>remove(p.id)} onRemoveAssignment={removeAssignment}/>)}
-                {!printers.length && <Empty onAdd={openNew}/>}
+                {!printers.length && <Empty onAdd={()=>setWizardOpen(true)} onAdvanced={openNew}/>}
               </div>
             </section>
 
@@ -413,7 +416,8 @@ export default function SettingsPrinters() {
           </div>}
       </div>
 
-      {editing && <PrinterModal form={editing} setForm={setEditing} onClose={()=>setEditing(null)} onSave={save} onCalibration={runCutCalibration} windowsPrinters={windowsPrinters} refreshLocalDevices={refreshLocalDevices}/>} 
+      {editing && <PrinterModal form={editing} setForm={setEditing} onClose={()=>setEditing(null)} onSave={save} onCalibration={runCutCalibration} windowsPrinters={windowsPrinters} refreshLocalDevices={refreshLocalDevices}/>}
+      {wizardOpen && <PrinterSetupWizard open propertyId={propertyId} onClose={()=>setWizardOpen(false)} onSaved={()=>load(true).catch(()=>{})}/>} 
     </div>
   );
 }
@@ -483,8 +487,8 @@ function PrinterCard({printer,assignments,testing,onTest,onTestOrder,onTestRecei
   </article>;
 }
 
-function Empty({onAdd}) {
-  return <div className="rounded-2xl border border-dashed border-border bg-surface p-10 text-center"><div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary"><Printer size={20} className="text-muted-foreground"/></div><h3 className="mt-3 font-black text-foreground">No printers configured</h3><p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">Add a network thermal printer with its LAN IP. OliTechs will verify the connection and print a test ticket before marking it connected.</p><button onClick={onAdd} className="mt-4 rounded-xl bg-primary px-4 py-2.5 text-sm font-black text-primary-foreground">Add your first printer</button></div>;
+function Empty({onAdd,onAdvanced}) {
+  return <div className="rounded-2xl border border-dashed border-border bg-surface p-10 text-center"><div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary"><Printer size={20} className="text-muted-foreground"/></div><h3 className="mt-3 font-black text-foreground">No printers configured</h3><p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">The setup wizard finds the printers this computer can reach, asks what the printer is used for, and prints a test page. It takes about a minute.</p><button onClick={onAdd} className="mt-4 rounded-xl bg-primary px-4 py-2.5 text-sm font-black text-primary-foreground">Set up your first printer</button><button onClick={onAdvanced} className="ml-2 mt-4 rounded-xl border border-border px-4 py-2.5 text-sm font-bold text-foreground">Add manually</button></div>;
 }
 
 function PrinterModal({form,setForm,onClose,onSave,onCalibration,windowsPrinters=[],refreshLocalDevices=()=>{}}) {
