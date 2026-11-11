@@ -148,9 +148,13 @@ async function updatePrinterTransportStatus(printer, propertyId, status, errorMe
   }
 }
 
-async function localAgentRequest(printer, propertyId, path, text = '', escposBase64 = null) {
+async function localAgentRequest(printer, propertyId, path, text = '', escposBase64 = null, options = {}) {
   const base = normalizeAgentUrl(printer.agent_url || printer.agentUrl);
   const endpoint = normalizeNetworkEndpoint(printer.ip_address || printer.host, printer.port || 9100);
+  // The agent uses this key to recognise the same print job arriving twice: a
+  // retried request, a double submit or a resend after a timeout. A deliberate
+  // reprint is a new job row, so it gets a new key and is never suppressed.
+  const idempotencyKey = options.idempotencyKey || null;
   const payload = {
     ...endpoint,
     printerId: printer.id || null,
@@ -159,6 +163,7 @@ async function localAgentRequest(printer, propertyId, path, text = '', escposBas
     text,
     printSettings: getPrinterPrintSettings(printer),
     ...(escposBase64 ? { escposBase64 } : {}),
+    ...(idempotencyKey ? { idempotencyKey } : {}),
   };
 
   const paths = [path, '/api' + path, '/print-agent' + path];
@@ -170,7 +175,10 @@ async function localAgentRequest(printer, propertyId, path, text = '', escposBas
     try {
       const response = await fetch(base + candidate, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(idempotencyKey ? { 'X-Idempotency-Key': idempotencyKey } : {}),
+        },
         body: JSON.stringify(payload),
         signal: controller.signal,
       });
@@ -205,8 +213,8 @@ async function localAgentRequest(printer, propertyId, path, text = '', escposBas
   };
 }
 
-async function directAgentPrint(printer, propertyId, text, path, escposBase64 = null) {
-  const result = await localAgentRequest(printer, propertyId, path, text, escposBase64);
+async function directAgentPrint(printer, propertyId, text, path, escposBase64 = null, options = {}) {
+  const result = await localAgentRequest(printer, propertyId, path, text, escposBase64, options);
   if (!result.ok) {
     const code = result.code || 'LOCAL_AGENT_ERROR';
     const friendly = `[${code}] ${result.message}`;
@@ -240,7 +248,7 @@ export async function openCashDrawer(printer, propertyId) {
   return { ok:true, transport:'local_agent', printerId:printer.id || null };
 }
 
-async function directTcpPrint(printer, propertyId, text, action = 'print', escposBase64 = null) {
+async function directTcpPrint(printer, propertyId, text, action = 'print', escposBase64 = null, options = {}) {
   const endpoint = normalizeNetworkEndpoint(printer?.ip_address || printer?.host, printer?.port || 9100);
   const host = endpoint.host;
   if (!host) return { ok:false, friendlyError:'Printer IP address is not configured.' };
@@ -248,14 +256,14 @@ async function directTcpPrint(printer, propertyId, text, action = 'print', escpo
   if (!Number.isInteger(port) || ![9100,9101,9102].includes(port)) {
     return { ok:false, friendlyError:'Unsupported thermal printer port. Use TCP 9100, 9101 or 9102.' };
   }
-  return directAgentPrint(printer, propertyId, text, action === 'test' ? '/test' : '/print', escposBase64);
+  return directAgentPrint(printer, propertyId, text, action === 'test' ? '/test' : '/print', escposBase64, options);
 }
 
-async function directWindowsPrint(printer, propertyId, text, action = 'print', escposBase64 = null) {
+async function directWindowsPrint(printer, propertyId, text, action = 'print', escposBase64 = null, options = {}) {
   if (!printer.windows_printer_name) {
     return { ok:false, friendlyError:'Select a Windows-installed printer first.' };
   }
-  return directAgentPrint(printer, propertyId, text, action === 'test' ? '/windows-test' : '/windows-print', escposBase64);
+  return directAgentPrint(printer, propertyId, text, action === 'test' ? '/windows-test' : '/windows-print', escposBase64, options);
 }
 
 function browserPrinterShape(printer) {
@@ -335,11 +343,14 @@ export async function printToPrinter(printer, contentHtml, { propertyId, jobType
   const finalThermalBase64 = thermalBase64 || bytesToBase64(new TextEncoder().encode(toEscPosPayload(text, printSettings)));
   let job = null;
   if (persistJob && propertyId) { job = await createFnbPrintJob({propertyId,printerId:printer.id,assignmentType,jobType,copyType,title,contentHtml,payload,retryOf}); await updateFnbPrintJob(job.id,propertyId,'printing',null,printer.id); }
+  // One key per queued print job: the id of the fnb_print_jobs row created
+  // above. Reprints create a new row, so they are intentionally not deduplicated.
+  const agentOptions = { idempotencyKey: job?.id || null };
   let result;
   if (printer.connection_type === 'network_ip') {
-    result = await directTcpPrint(printer, propertyId, text, 'print', finalThermalBase64);
+    result = await directTcpPrint(printer, propertyId, text, 'print', finalThermalBase64, agentOptions);
   } else if (printer.connection_type === 'windows_printer') {
-    result = await directWindowsPrint(printer, propertyId, text, 'print', finalThermalBase64);
+    result = await directWindowsPrint(printer, propertyId, text, 'print', finalThermalBase64, agentOptions);
   } else if (['usb','bluetooth','serial'].includes(printer.connection_type)) {
     const transport = browserPrinterShape(printer);
     const verified = await testBrowserPrinterConnection(transport);

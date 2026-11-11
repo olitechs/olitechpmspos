@@ -6,6 +6,7 @@ import { URL } from 'node:url';
 import { spawn } from 'node:child_process';
 import { loadConfig, AGENT_VERSION } from './config.mjs';
 import { createLogger, createConsoleLogger } from './logger.mjs';
+import { createDurableQueue, classifyPrintError } from './queue.mjs';
 
 // Loopback by default. startPrintAgent() applies the resolved configuration so a
 // Windows service and a console run agree on host, port, origins and data paths.
@@ -16,6 +17,11 @@ let startedAtIso = new Date().toISOString();
 let log = createConsoleLogger();
 let cloudChannel = null;
 let heartbeatTimer = null;
+let printQueue = null;
+let queueTimer = null;
+let drainingQueue = false;
+let maxQueueAttempts = 3;
+let queueDrainIntervalMs = 1500;
 const CONNECT_TIMEOUT_MS = Number(process.env.PRINT_AGENT_TIMEOUT_MS || 6000);
 const ALLOWED_PORTS = new Set([9100, 9101, 9102]);
 const IPV4 = /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/;
@@ -70,10 +76,14 @@ function writeTcpNow(host, port, payload) {
     let drainDone = true;
     let endCalled = false;
     let writeFinished = false;
+    let connected = false;
 
     const finish = (error) => {
       if (settled) return;
       settled = true;
+      // Record whether bytes could have reached the printer. The queue uses this
+      // to tell a safe retry (connection refused) from a possible duplicate.
+      if (error) error.delivered = connected;
       socket.destroy();
       error ? reject(error) : resolve();
     };
@@ -85,6 +95,7 @@ function writeTcpNow(host, port, payload) {
 
     socket.setTimeout(CONNECT_TIMEOUT_MS);
     socket.once('connect', () => {
+      connected = true;
       const accepted = socket.write(payload, (error) => {
         if (error) return finish(error);
         writeCallbackDone = true;
@@ -237,7 +248,14 @@ async function printWindowsRaw(printerName, payload) {
     'try { if([RawPrinter]::StartDocPrinter($h,1,$doc)-eq 0){throw "StartDocPrinter failed"}; try { if([RawPrinter]::StartPagePrinter($h)-eq 0){throw "StartPagePrinter failed"}; try { $ptr=[Runtime.InteropServices.Marshal]::AllocHGlobal($data.Length); try { [Runtime.InteropServices.Marshal]::Copy($data,0,$ptr,$data.Length); $written=0; if(-not [RawPrinter]::WritePrinter($h,$ptr,$data.Length,[ref]$written)){throw "WritePrinter failed"}; if($written-ne $data.Length){throw "Spooler wrote $written of $($data.Length) bytes"} } finally {[Runtime.InteropServices.Marshal]::FreeHGlobal($ptr)} } finally {[RawPrinter]::EndPagePrinter($h)|Out-Null} } finally {[RawPrinter]::EndDocPrinter($h)|Out-Null} } finally {[RawPrinter]::ClosePrinter($h)|Out-Null}',
     'Write-Output "OK"'
   ].join('\n');
-  await runPowerShell(script, [name, base64]);
+  try {
+    return await runPowerShell(script, [name, base64]);
+  } catch (error) {
+    // A partial spooler write means some bytes may already be on paper, which
+    // makes a retry a possible duplicate rather than a safe resend.
+    if (/spooler wrote|WritePrinter failed/i.test(String(error?.message || ''))) error.delivered = true;
+    throw error;
+  }
 }
 
 // Cloud printing is optional. The client is created at startup so a workstation
@@ -310,6 +328,162 @@ function startHeartbeat() {
   const timer = setInterval(()=>supabaseV2.from('print_agents').update({status:'online',last_seen:new Date().toISOString()}).eq('id',AGENT_ID).then(({error})=>error&&log.error('heartbeat failed',{error:error.message})),30000);
   timer.unref?.();
   return timer;
+}
+
+function readIdempotencyKey(req, body) {
+  const headerKey = typeof req.headers['x-idempotency-key'] === 'string' ? req.headers['x-idempotency-key'] : '';
+  return String(headerKey || body?.idempotencyKey || body?.idempotency_key || body?.jobId || '').trim() || null;
+}
+
+function jobTargetLabel(job) {
+  if (!job) return '';
+  if (job.transport === 'windows_spooler') return String(job.target?.printerName || '');
+  return [job.target?.host, job.target?.port].filter(Boolean).join(':');
+}
+
+/**
+ * Journals a job (or explains why it will not be sent) before any printing
+ * happens. Returns either `{ job }` to print now or `{ response }` when the
+ * request is a duplicate or asked to be deferred to the worker.
+ */
+function admitPrintJob({ req, body, transport, target, payloadBase64, title }) {
+  if (!printQueue) {
+    // No writable queue: keep printing without crash recovery rather than
+    // refusing to print a guest's bill.
+    return { job: { id: null, transport, target, payloadBase64, title: title || null } };
+  }
+
+  let admission;
+  try {
+    admission = printQueue.enqueue({
+      idempotencyKey: readIdempotencyKey(req, body),
+      transport,
+      target,
+      payloadBase64,
+      title: title || null,
+      meta: { jobId: body?.jobId || null, propertyId: body?.propertyId || null, printerId: body?.printerId || null },
+      attemptLimit: maxQueueAttempts,
+    });
+  } catch (error) {
+    log.error('print queue write failed; printing without recovery', { error: error?.message });
+    return { job: { id: null, transport, target, payloadBase64, title: title || null } };
+  }
+
+  const job = admission.job;
+  if (admission.duplicate) {
+    if (job.status === 'printed') {
+      return { response: { status: 200, body: {
+        ok: true, printed: true, deduplicated: true, status: 'printed', jobId: job.id,
+        message: 'This print job has already printed. It was not sent to the printer again.',
+      } } };
+    }
+    if (job.status === 'uncertain') {
+      return { response: { status: 409, body: {
+        ok: false, code: 'PRINT_OUTCOME_UNCERTAIN', status: 'uncertain', jobId: job.id,
+        message: 'A previous attempt for this job may already have printed. Check the paper, then reprint from the printer queue if it is missing.',
+      } } };
+    }
+    return { response: { status: 409, body: {
+      ok: false, code: 'PRINT_JOB_IN_PROGRESS', status: job.status, jobId: job.id,
+      message: 'This print job is already queued or printing.',
+    } } };
+  }
+
+  if (body?.defer === true) {
+    return { response: { status: 202, body: {
+      ok: true, queued: true, status: 'queued', jobId: job.id,
+      message: 'The print job is queued and will be sent to the printer by the agent.',
+    } } };
+  }
+
+  return { job };
+}
+
+async function deliverQueuedJob(job) {
+  const payload = Buffer.from(String(job.payloadBase64 || ''), 'base64');
+  if (!payload.length) {
+    const error = new Error('This print job no longer has its print data. Print a new copy from the app instead.');
+    error.code = 'PRINT_JOB_PAYLOAD_MISSING';
+    throw error;
+  }
+  if (job.transport === 'windows_spooler') return printWindowsRaw(job.target?.printerName, payload);
+  return writeTcp(job.target?.host, job.target?.port, payload);
+}
+
+function friendlyPrintFailure(code, message) {
+  if (code === 'ETIMEDOUT' || code === 'TIMEOUT') {
+    return 'Printer connection timed out. Check power, IP address, port and LAN connection.';
+  }
+  if (String(code).startsWith('WINDOWS_') || String(code).startsWith('PRINT_')) return message;
+  return 'The local print agent could not connect to the printer. Check power, IP address, port and LAN connection.';
+}
+
+async function runQueuedJob(job) {
+  const journaled = Boolean(printQueue && job?.id);
+  // The attempt is written before bytes leave the machine. A crash after this
+  // line is reported as `uncertain` on restart instead of being resent blindly.
+  if (journaled) printQueue.markAttempt(job.id);
+
+  try {
+    await deliverQueuedJob(job);
+    if (journaled) printQueue.markPrinted(job.id);
+    return { ok: true, jobId: job?.id || null };
+  } catch (error) {
+    const code = error?.code || 'PRINT_FAILED';
+    const message = error?.message || 'The printer did not accept the job.';
+    const outcome = classifyPrintError(error);
+    if (journaled) {
+      if (outcome === 'uncertain') printQueue.markUncertain(job.id, { code, message });
+      else printQueue.markFailed(job.id, { code, message });
+    }
+    log.warn('print job failed', { jobId: job?.id || null, outcome, code, target: jobTargetLabel(job), error: message });
+    if (outcome === 'uncertain') {
+      return { ok: false, status: 502, body: {
+        ok: false, code: 'PRINT_OUTCOME_UNCERTAIN', status: 'uncertain', jobId: job?.id || null,
+        message: 'The printer accepted part of this job but never confirmed it. Check whether paper came out, then reprint from the printer queue if it is missing. The agent will not send it again on its own.',
+      } };
+    }
+    return { ok: false, status: 502, body: {
+      ok: false, code: code === 'ETIMEDOUT' ? 'TIMEOUT' : 'PRINTER_UNREACHABLE', status: 'failed', jobId: job?.id || null,
+      message: friendlyPrintFailure(code, message),
+    } };
+  }
+}
+
+async function drainPrintQueue() {
+  if (!printQueue || drainingQueue) return;
+  drainingQueue = true;
+  try {
+    printQueue.failExhausted({ attemptLimit: maxQueueAttempts });
+    for (;;) {
+      const job = printQueue.nextQueued({ attemptLimit: maxQueueAttempts });
+      if (!job) break;
+      const outcome = await runQueuedJob(job);
+      if (outcome.ok) continue;
+      // Never resend a job that may already be on paper, and do not hammer a
+      // printer that is switched off.
+      if (outcome.body?.code === 'PRINT_OUTCOME_UNCERTAIN') break;
+      const attempts = printQueue.get(job.id)?.attempts || 1;
+      if (attempts < maxQueueAttempts) {
+        printQueue.scheduleRetry(job.id, Math.min(60000, 5000 * 2 ** (attempts - 1)));
+      }
+      break;
+    }
+  } catch (error) {
+    log.error('print queue drain failed', { error: error?.message });
+  } finally {
+    drainingQueue = false;
+  }
+}
+
+function startQueueWorker() {
+  if (!printQueue || queueTimer) return null;
+  queueTimer = setInterval(() => { void drainPrintQueue(); }, queueDrainIntervalMs);
+  queueTimer.unref?.();
+  // A job accepted just before the last stop is printed as soon as the service
+  // is back up, without waiting for a browser to be open.
+  void drainPrintQueue();
+  return queueTimer;
 }
 
 function json(res, status, body, extraHeaders = {}) {
@@ -405,6 +579,10 @@ const server = http.createServer(async (req, res) => {
     '/print-agent/windows-test': '/windows-test',
     '/api/open-drawer': '/open-drawer',
     '/print-agent/open-drawer': '/open-drawer',
+    '/api/queue': '/queue',
+    '/print-agent/queue': '/queue',
+    '/api/queue/retry': '/queue/retry',
+    '/print-agent/queue/retry': '/queue/retry',
   };
   const route = routeAliases[url.pathname] || url.pathname;
 
@@ -422,6 +600,7 @@ const server = http.createServer(async (req, res) => {
       startedAt: startedAtIso,
       uptimeSeconds: Math.round(process.uptime()),
       platform: process.platform,
+      queue: printQueue ? printQueue.counts() : null,
     });
   }
 
@@ -443,6 +622,35 @@ const server = http.createServer(async (req, res) => {
     catch(error) { return json(res, 500, { ok:false, code:error?.code||'NETWORK_DISCOVERY_FAILED', message:error?.message||'Unable to list network printers.' }); }
   }
 
+  if (req.method === 'GET' && route === '/queue') {
+    if (!printQueue) return json(res, 200, { ok: true, enabled: false, counts: null, items: [] });
+    return json(res, 200, { ok: true, enabled: true, counts: printQueue.counts(), items: printQueue.list({ limit: 100 }) });
+  }
+
+  if (req.method === 'POST' && route === '/queue/retry') {
+    if (!printQueue) {
+      return json(res, 503, { ok: false, code: 'PRINT_QUEUE_DISABLED', message: 'The print queue is not available on this workstation.' });
+    }
+    try {
+      const body = await readBody(req);
+      const id = String(body.id || body.jobId || '').trim();
+      if (!id) {
+        return json(res, 400, { ok: false, code: 'PRINT_JOB_ID_REQUIRED', message: 'Provide the id of the queued print job to reprint.' });
+      }
+      let job;
+      try {
+        job = printQueue.requeue(id);
+      } catch (error) {
+        return json(res, 409, { ok: false, code: error?.code || 'PRINT_JOB_NOT_RETRYABLE', message: error?.message || 'This print job cannot be reprinted.' });
+      }
+      const outcome = await runQueuedJob(job);
+      if (outcome.ok) return json(res, 200, { ok: true, printed: true, jobId: id, job: printQueue.get(id) });
+      return json(res, outcome.status, { ...outcome.body, job: printQueue.get(id) });
+    } catch (error) {
+      return json(res, 500, { ok: false, code: 'PRINT_QUEUE_ERROR', message: error?.message || 'The print queue could not reprint this job.' });
+    }
+  }
+
   if (req.method !== 'POST' || !['/print','/test','/windows-print','/windows-test','/open-drawer'].includes(route)) {
     return json(res, 404, { ok: false, code: 'NOT_FOUND', message: 'OliTechs print agent endpoint not found.' });
   }
@@ -453,8 +661,18 @@ const server = http.createServer(async (req, res) => {
       const printerName = String(body.windowsPrinterName || '').trim();
       const raw = body.escposBase64 || body.content_escpos_base64;
       const payload = raw ? Buffer.from(raw, 'base64') : escPosPayload(body.text, route === '/windows-test', body.printSettings || {});
-      await printWindowsRaw(printerName, payload);
-      return json(res, 200, { ok:true, status:'connected', printed:true, transport:'windows_spooler', printerName });
+      if (route === '/windows-test') {
+        await printWindowsRaw(printerName, payload);
+        return json(res, 200, { ok:true, status:'connected', printed:true, transport:'windows_spooler', printerName });
+      }
+      const admission = admitPrintJob({
+        req, body, transport: 'windows_spooler', target: { printerName },
+        payloadBase64: payload.toString('base64'), title: body.title,
+      });
+      if (admission.response) return json(res, admission.response.status, admission.response.body);
+      const outcome = await runQueuedJob(admission.job);
+      if (!outcome.ok) return json(res, outcome.status, outcome.body);
+      return json(res, 200, { ok:true, status:'connected', printed:true, transport:'windows_spooler', printerName, jobId: admission.job.id });
     }
 
     const endpoint = normalizeEndpoint(body.host || body.ip_address, body.port);
@@ -491,7 +709,20 @@ const server = http.createServer(async (req, res) => {
     } else {
       payload = escPosPayload(body.text, route === '/test', body.printSettings || {});
     }
-    await writeTcp(host, port, payload);
+
+    if (route === '/test') {
+      // A test page is a deliberate repeatable action, so it is never deduplicated.
+      await writeTcp(host, port, payload);
+      return json(res, 200, { ok:true, status:'connected', printed:true, transport:'local_agent', endpoint:`${host}:${port}` });
+    }
+
+    const admission = admitPrintJob({
+      req, body, transport: 'network_ip', target: { host, port },
+      payloadBase64: payload.toString('base64'), title: body.title,
+    });
+    if (admission.response) return json(res, admission.response.status, admission.response.body);
+    const outcome = await runQueuedJob(admission.job);
+    if (!outcome.ok) return json(res, outcome.status, outcome.body);
 
     return json(res, 200, {
       ok: true,
@@ -499,6 +730,7 @@ const server = http.createServer(async (req, res) => {
       printed: true,
       transport: 'local_agent',
       endpoint: `${host}:${port}`,
+      jobId: admission.job.id,
     });
   } catch (error) {
     const code = error?.code === 'ETIMEDOUT' ? 'TIMEOUT' : 'PRINTER_UNREACHABLE';
@@ -574,6 +806,28 @@ export async function startPrintAgent({ config = loadConfig(), logger = null } =
 
   fs.mkdirSync(config.dataDir, { recursive: true });
 
+  // The durable queue is created before the port is opened, so every job the
+  // agent accepts from this moment on is already on disk.
+  try {
+    printQueue = createDurableQueue({
+      dir: config.queueDir,
+      logger: log,
+      retentionMs: config.queueRetentionMs,
+      maxRecords: config.queueMaxRecords,
+      maxAttempts: config.queueMaxAttempts,
+    });
+    maxQueueAttempts = config.queueMaxAttempts;
+    queueDrainIntervalMs = config.queueDrainMs;
+    log.info('print queue ready', {
+      dir: config.queueDir,
+      recovered: printQueue.recoveredCount,
+      counts: printQueue.counts(),
+    });
+  } catch (error) {
+    printQueue = null;
+    log.error('print queue unavailable; printing continues without crash recovery', { error: error?.message });
+  }
+
   // Single instance: two agents on one workstation would claim the same print
   // jobs and drive the same printers, which is how duplicate tickets happen.
   const running = readInstanceLock(config.lockFile);
@@ -625,6 +879,7 @@ export async function startPrintAgent({ config = loadConfig(), logger = null } =
   }
   cloudChannel = startCloudSubscription();
   heartbeatTimer = startHeartbeat();
+  startQueueWorker();
 
   let shutdownPromise = null;
   const shutdown = (reason = 'shutdown') => {
@@ -636,6 +891,10 @@ export async function startPrintAgent({ config = loadConfig(), logger = null } =
         if (settled) return;
         settled = true;
         try { fs.rmSync(config.lockFile, { force: true }); } catch (_) {}
+        if (queueTimer) clearInterval(queueTimer);
+        queueTimer = null;
+        try { printQueue?.close(); } catch (_) {}
+        printQueue = null;
         log.info('print agent stopped', { reason });
         resolve();
       };
@@ -643,6 +902,8 @@ export async function startPrintAgent({ config = loadConfig(), logger = null } =
       forceTimer.unref?.();
       if (heartbeatTimer) clearInterval(heartbeatTimer);
       heartbeatTimer = null;
+      if (queueTimer) clearInterval(queueTimer);
+      queueTimer = null;
       try { cloudChannel?.unsubscribe?.(); } catch (_) {}
       cloudChannel = null;
       try { server.closeIdleConnections?.(); } catch (_) {}
@@ -681,5 +942,6 @@ export async function startPrintAgent({ config = loadConfig(), logger = null } =
     logger: log,
     shutdown,
     get port() { return PORT; },
+    get queue() { return printQueue; },
   };
 }

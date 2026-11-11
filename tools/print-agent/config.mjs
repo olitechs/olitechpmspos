@@ -3,7 +3,7 @@ import path from 'node:path';
 
 // Bumped when the agent's behaviour or configuration surface changes. The
 // service, the dashboard and diagnostics all report this same value.
-export const AGENT_VERSION = '2.1.0';
+export const AGENT_VERSION = '2.2.0';
 export const SERVICE_ID = 'OliTechsPrintAgent';
 export const SERVICE_DISPLAY_NAME = 'OliTechs Print Agent';
 export const LOOPBACK_HOSTS = Object.freeze(['127.0.0.1', 'localhost', '::1', '[::1]']);
@@ -112,6 +112,13 @@ export function loadConfig(env = process.env, { platform = process.platform } = 
     dataDir,
     logDir: path.join(dataDir, 'logs'),
     lockFile: path.join(dataDir, 'agent.lock'),
+    // The durable queue lives with the rest of the service state so an upgrade
+    // and a restart both find the jobs that were accepted before the stop.
+    queueDir: path.join(dataDir, 'queue'),
+    queueMaxAttempts: clamp(numberFrom(env.PRINT_AGENT_QUEUE_MAX_ATTEMPTS, 3), 1, 10),
+    queueRetentionMs: clamp(numberFrom(env.PRINT_AGENT_QUEUE_RETENTION_DAYS, 7), 1, 90) * 86400000,
+    queueMaxRecords: clamp(numberFrom(env.PRINT_AGENT_QUEUE_MAX_RECORDS, 500), 50, 5000),
+    queueDrainMs: clamp(numberFrom(env.PRINT_AGENT_QUEUE_DRAIN_MS, 1500), 100, 60000),
     discoverOnStart: !isFalsyFlag(env.PRINT_AGENT_DISCOVER_ON_START),
     shutdownTimeoutMs: clamp(numberFrom(env.PRINT_AGENT_SHUTDOWN_TIMEOUT_MS, 10000), 1000, 60000),
     logMaxBytes: clamp(numberFrom(env.PRINT_AGENT_LOG_MAX_BYTES, 2_000_000), 10_000, 50_000_000),

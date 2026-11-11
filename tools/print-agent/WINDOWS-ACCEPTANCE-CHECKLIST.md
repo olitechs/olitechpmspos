@@ -174,6 +174,22 @@ own.
 
 ---
 
+## Part 10 — No lost prints, no double prints (Phase 4)
+
+This part proves the two promises that matter most to a busy reception: a print is never silently lost, and a print is never silently duplicated.
+
+- [ ] In Settings → Printers, press the same test print button twice in quick succession, then look at the printer. Exactly one page comes out and the app does not report a scary error.
+- [ ] Open `http://127.0.0.1:8631/queue` in the browser. There is one entry for that print, marked `printed`, and its `attempts` is 1.
+- [ ] Switch the printer off at the wall (or unplug its network cable). Print a receipt. The app says the printer could not be reached, and `/queue` shows one entry marked `failed`.
+- [ ] Switch the printer back on and use the retry option in the app (or `POST /queue/retry` with that job's `id`). The receipt prints once, and that same queue entry changes to `printed` — the queue does not gain a second entry.
+- [ ] Print a long report, and while it is printing stop the service (`sc stop OliTechsPrintAgent`, as administrator). Start it again (`sc start OliTechsPrintAgent`).
+- [ ] Look at `/queue`: that job is marked `uncertain`, not `failed` and not `queued`. Look at the printer: no second copy appeared on its own, even after a minute.
+- [ ] Reprint that `uncertain` job deliberately. It prints once, and the entry becomes `printed`.
+- [ ] Restart Windows with a print waiting: close every browser window first, then print a test receipt with the Local Print Agent reachable. Shut down immediately. After signing in again, `/queue` still lists the job with the same state — nothing was forgotten and nothing was sent twice.
+- [ ] `http://127.0.0.1:8631/health` shows a `queue` section with readable counts.
+
+If a page is missing for an `uncertain` job, the safe action is the retry option, not pressing the print button again in the app: retrying keeps one record, while a fresh print creates a second legitimate copy.
+
 ## Results
 
 Tick each part and write what you saw.
@@ -218,8 +234,7 @@ Common causes, in plain language:
 
 These belong to later phases and must not be marked as passed here:
 
-- automatic printing of jobs queued while nobody was signed in (Phase 4);
-- duplicate protection when a print button is pressed twice (Phase 4);
+- automatic printing of jobs that the cloud app queued while no agent was running (Phase 5);
 - USB or network printer disconnect and reconnect handling (Phase 5);
 - out-of-paper reporting (Phase 5);
 - the in-app printer dashboard (Phase 6);

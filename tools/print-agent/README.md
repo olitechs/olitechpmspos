@@ -71,6 +71,26 @@ This means a USB or Bluetooth printer does not need to expose a raw TCP port whe
 
 The test sends a real ESC/POS page. A configured printer is not shown as Connected merely because its settings were saved.
 
+## Durable print queue
+
+Every real print job is written to disk before any bytes go to the printer, and is only marked printed once the printer confirms it. Test-button pages are deliberately not recorded, because staff expect to repeat them. The record is what makes these promises true:
+
+- **A restart cannot lose a job or print it twice.** A job interrupted by a service stop, crash, power cut or sign-out is reported as `uncertain`, never resent automatically. Someone checks the paper and reprints deliberately if it is missing.
+- **A duplicate submission prints once.** The app sends the `fnb_print_jobs` id as an idempotency key (`X-Idempotency-Key`, or `idempotencyKey` in the body). The same job arriving twice — a retried request, a double click, a resend after a browser timeout — finds the existing record instead of producing a second copy. An intentional reprint is a new job row, so it always prints.
+- **A switched-off printer stays safe.** A refused connection is `failed` because nothing was sent, so it can be retried. A connection that drops mid-job is `uncertain`, because the paper may already carry part of a receipt.
+
+Queue files live in `%ProgramData%\OliTechs\PrintAgent\queue\`: an append-only journal plus a compacted snapshot. Print data is discarded as soon as a job prints, and finished records are pruned after 7 days or 500 jobs.
+
+Endpoints on the local agent:
+
+- `GET /queue` — counts and the latest 100 jobs (`queued`, `printing`, `printed`, `failed`, `uncertain`).
+- `POST /queue/retry` with `{"id":"<job id>"}` — deliberate reprint of a failed or uncertain job. A job that already printed is refused, so a receipt is never silently duplicated.
+- `POST /print` and `POST /windows-print` accept `defer: true` to queue a job without waiting for the printer.
+
+`GET /health` includes `queue` counts, so support can see stuck work without opening the app.
+
+Settings: `PRINT_AGENT_QUEUE_MAX_ATTEMPTS` (default 3), `PRINT_AGENT_QUEUE_RETENTION_DAYS` (7), `PRINT_AGENT_QUEUE_MAX_RECORDS` (500), `PRINT_AGENT_QUEUE_DRAIN_MS` (1500).
+
 ## Important
 
 The local agent binds to loopback by default. Do not expose it publicly.
