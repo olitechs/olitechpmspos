@@ -234,7 +234,7 @@ Physical printing and hardware claims require tests on the actual printer/tablet
 7. Do not claim full offline operation until the durable local data layer, synchronization, conflict handling and tests exist.
 8. Never run production database migrations or deploy a production release without explicit user authorization.
 9. Keep changes small and reversible. Run the required tests and build, inspect the diff, and report commit SHA.
-10. Do not push directly to `main) unless the user explicitly authorizes that action and repository rules permit it.
+10. Do not push directly to `main` unless the user explicitly authorizes that action and repository rules permit it.
 
 ## 10. Agent completion report
 
