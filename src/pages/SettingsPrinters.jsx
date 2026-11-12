@@ -277,7 +277,12 @@ export default function SettingsPrinters() {
       const response=await fetch(base+'/windows-printers');
       const data=await response.json().catch(()=>({}));
       if (response.ok && data.ok) setWindowsPrinters(data.printers || []);
-      else setWindowsPrinters([]);
+      else {
+        // An empty list here reads as "no printers installed", which sends staff
+        // off reinstalling drivers when the agent simply refused the request.
+        setWindowsPrinters([]);
+        setAgentError(data.message || `The print agent could not list Windows printers (HTTP ${response.status}).`);
+      }
     } catch (_) {
       setWindowsPrinters([]);
       setAgentError('OliTechs Print Agent is not reachable on this POS computer.');
@@ -368,11 +373,20 @@ export default function SettingsPrinters() {
 
     const printerId=result.data.id;
     savePrinterPrintSettings(printerId, { feedLinesBeforeCut:Number(feedLinesBeforeCut), feedDotsBeforeCut:Number(feedDotsBeforeCut), cutCommand, extraFeedAfterCut:Number(extraFeedAfterCut), paperWidth:result.data.paper_width || editing.paper_width || '80mm' });
+    // The printer row is already saved at this point. Keep its id so a retry
+    // updates it instead of adding a duplicate printer, and record the failure
+    // so the card does not stay stuck on "Testing…" forever.
+    const routingFailed = async (message) => {
+      setEditing(current=>current?{...current,id:printerId}:current);
+      await supabase.from('property_printers').update({last_status:'failed',last_error:message}).eq('id',printerId).eq('property_id',propertyId);
+      await load(true).catch(()=>{});
+      setError(`Printer saved, but its routing could not be updated: ${message}`);
+    };
     const deleted=await supabase.from('printer_assignments').delete().eq('printer_id',printerId).eq('property_id',propertyId);
-    if (deleted.error) return setError(deleted.error.message);
+    if (deleted.error) { await routingFailed(deleted.error.message); return; }
     if (assignmentTypes.length) {
       const inserted=await supabase.from('printer_assignments').insert(assignmentTypes.map(type=>({property_id:propertyId,printer_id:printerId,assignment_type:type})));
-      if (inserted.error) return setError(inserted.error.message);
+      if (inserted.error) { await routingFailed(inserted.error.message); return; }
     }
 
     setEditing(null);

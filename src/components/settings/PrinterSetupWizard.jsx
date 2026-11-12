@@ -97,6 +97,11 @@ export default function PrinterSetupWizard({ open, propertyId, agentUrl = 'http:
       } else {
         setAgentError(describeAgentFailure(result));
       }
+    } catch (error) {
+      // Without this the dialog sat on "Looking for the print agent…" forever
+      // with no way to tell that the check had failed.
+      setAgent({ ok:false });
+      setAgentError(error?.message || 'The print agent check failed. Confirm the agent is installed, then try again.');
     } finally {
       setChecking(false);
     }
@@ -151,23 +156,28 @@ export default function PrinterSetupWizard({ open, propertyId, agentUrl = 'http:
       return;
     }
 
-    // Coming back to this step after a failed test must retry the test, never
-    // insert a second copy of the printer.
-    if (savedPrinter?.id) {
-      setStep('test');
-      await runTest(savedPrinter);
-      return;
-    }
-
     setSaving(true);
     setSaveError('');
     try {
-      const saved = await savePrinterSetup({ client: supabase, propertyId, setup: built, agentUrl });
+      // Going back after a failed test and changing the name, paper or role must
+      // save those edits. Updating the same printer also avoids inserting a
+      // second copy when the test is retried.
+      const saved = await savePrinterSetup({
+        client: supabase,
+        propertyId,
+        setup: built,
+        agentUrl,
+        existingPrinterId: savedPrinter?.id || null,
+      });
       if (!saved.ok) throw new Error(saved.message);
 
       const printer = saved.printer;
       setSavedPrinter(printer);
-      savePrinterPrintSettings(printer.id, { paperWidth: built.payload.paper_width });
+      try {
+        savePrinterPrintSettings(printer.id, { paperWidth: built.payload.paper_width });
+      } catch (_) {
+        // Per-workstation cut settings only. The printer itself is saved.
+      }
 
       setStep('test');
       await runTest(printer);
