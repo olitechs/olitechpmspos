@@ -20,6 +20,11 @@ const pageFiles = [
   '../../pages/admin/AdminAuditLog.jsx',
   '../../pages/admin/AdminUsers.jsx',
   '../../pages/admin/AdminProperties.jsx',
+  '../../pages/admin/AdminDashboard.jsx',
+  '../../pages/admin/AdminUsage.jsx',
+  '../settings/EmployeeListPage.jsx',
+  '../settings/CategoriesPage.jsx',
+  '../modules/Purchasing.jsx',
 ];
 
 test('application entry and protected route use the shared skeleton instead of full-screen spinners', () => {
