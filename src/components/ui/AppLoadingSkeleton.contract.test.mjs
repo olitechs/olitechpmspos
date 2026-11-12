@@ -12,6 +12,7 @@ const pageFiles = [
   '../modules/Receipts.jsx',
   '../modules/Folio.jsx',
   '../modules/RegistrationCards.jsx',
+  '../modules/Reservations.jsx',
   '../../pages/ShiftReport.jsx',
   '../../pages/FrontOfficeStructure.jsx',
   '../modules/InventoryOperations.jsx',
