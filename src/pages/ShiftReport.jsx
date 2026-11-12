@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { PageDataSkeleton } from '@/components/ui/AppLoadingSkeleton';
 import { CalendarDays, ChevronDown, ChevronUp, RefreshCw, Search, X } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { getSessionStaff } from '@/services/authService';
@@ -162,7 +163,7 @@ export default function ShiftReport() {
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] px-4 py-3">
           <div><h2 className="text-sm font-bold">Shift records</h2><p className="text-xs text-[var(--text-muted)]">{visibleShifts.length} record(s) shown</p></div>
         </div>
-        {loading ? <div role="status" className="p-10 text-center text-sm text-[var(--text-muted)]">Loading shift history…</div>
+        {loading ? <PageDataSkeleton variant="table" rows={6}/>
           : loadError ? null
           : visibleShifts.length === 0 ? <div className="p-10 text-center text-sm text-[var(--text-muted)]">No shift records match the selected filters.</div>
           : <div className="overflow-x-auto">
@@ -188,7 +189,7 @@ export default function ShiftReport() {
                       <div><h3 className="font-bold">{shift.shift_no} · Financial report</h3><p className="mt-1 text-xs text-[var(--text-muted)]">Opened {dateTime(shift.opened_at)} · Closed {dateTime(shift.closed_at)}</p></div>
                       <div className="flex items-center gap-2"><DocumentExportMenu definition={reportDefinition} label="Export shift report" disabled={!reportDefinition}/><button type="button" onClick={() => { setSelectedShift(null); setSelectedReport(null); }} aria-label="Close shift details" className="rounded-lg border border-[var(--border)] p-2 text-[var(--text-muted)]"><X size={15}/></button></div>
                     </div>
-                    {reportLoading && <div role="status" className="py-6 text-sm text-[var(--text-muted)]">Loading receipt and reconciliation details…</div>}
+                    {reportLoading && <div className="mt-4"><PageDataSkeleton variant="report" rows={3}/></div>}
                     {reportError && <div role="alert" className="mt-3 rounded-lg bg-[var(--danger-soft)] p-3 text-sm text-[var(--danger-text)]">{reportError}<button type="button" onClick={() => openReport(shift)} className="ml-2 font-bold underline">Retry</button></div>}
                     {selectedReport && <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                       {[

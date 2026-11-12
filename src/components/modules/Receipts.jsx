@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Loader2, Receipt as ReceiptIcon } from 'lucide-react';
+import { Receipt as ReceiptIcon } from 'lucide-react';
+import { PageDataSkeleton } from '@/components/ui/AppLoadingSkeleton';
 import { useAuth } from '@/lib/AuthContext';
 import { pmsService } from '@/services/pmsService';
 import ReceiptDetailModal from '@/components/pms/ReceiptDetailModal';
@@ -34,7 +35,7 @@ export default function Receipts() {
 					<p className="text-xs" style={{ color: MUTED }}>Every POS sale — cash, card, M-Pesa, and room charges.</p>
 				</div>
 			</div>
-			{loading && <div className="flex items-center gap-2 text-sm p-6 justify-center" style={{ color: MUTED }}><Loader2 size={16} className="animate-spin" /> Loading receipts…</div>}
+			{loading && <PageDataSkeleton variant="table" rows={6}/>}
 			{error && <div className="text-xs p-3 rounded-lg mb-3" style={{ background: 'var(--danger-soft)', color: 'var(--danger-text)' }}>{error}</div>}
 			{!loading && !error && (
 				<div className="rounded-2xl overflow-hidden" style={{ background: SURFACE, border: `1px solid ${BORDER}` }}>

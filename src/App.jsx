@@ -6,9 +6,10 @@ import InventoryOperations from '@/components/modules/InventoryOperations';
 import { Toaster } from "@/components/ui/toaster";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClientInstance } from "@/lib/query-client";
-import { BrowserRouter as Router, Route, Routes, Navigate, Outlet, useParams } from "react-router-dom";
+import { BrowserRouter as Router, Route, Routes, Navigate, Outlet, useParams, useLocation } from "react-router-dom";
 import PageNotFound from "@/lib/PageNotFound";
 import { AuthProvider, useAuth } from "@/lib/AuthContext";
+import AppLoadingSkeleton from "@/components/ui/AppLoadingSkeleton";
 import AdminRoute from "@/lib/AdminRoute";
 import ScrollToTop from "@/components/ui/ScrollToTop";
 import Login from "@/pages/Login";
@@ -69,9 +70,22 @@ import ShiftReport from '@/pages/ShiftReport';
 const POSApp = lazyWithRetry(() => import('@/pages/POSApp'), 'app-pos-app');
 const Reports = lazyWithRetry(() => import('@/components/modules/Reports'), 'app-reports');
 const Store = lazyWithRetry(() => import('@/pages/Store'), 'app-store');
+const FrontOfficeLaundry = lazyWithRetry(() => import('@/pages/FrontOfficeLaundry'), 'route-pages-frontoffice-laundry');
+const FrontOfficeMinibar = lazyWithRetry(() => import('@/pages/FrontOfficeMinibar'), 'route-pages-frontoffice-minibar');
+const FrontOfficeMaintenance = lazyWithRetry(() => import('@/pages/FrontOfficeMaintenance'), 'route-pages-frontoffice-maintenance');
+const FrontOfficeGuestRequests = lazyWithRetry(() => import('@/pages/FrontOfficeGuestRequests'), 'route-pages-frontoffice-guest-requests');
+const FrontOfficeStatistics = lazyWithRetry(() => import('@/pages/FrontOfficeStatistics'), 'route-pages-frontoffice-statistics');
+const FrontOfficeTags = lazyWithRetry(() => import('@/pages/FrontOfficeTags'), 'route-pages-frontoffice-tags');
+const FrontOfficeAssistance = lazyWithRetry(() => import('@/pages/FrontOfficeAssistance'), 'route-pages-frontoffice-assistance');
+const FrontOfficeConfiguration = lazyWithRetry(() => import('@/pages/FrontOfficeConfiguration'), 'route-pages-frontoffice-configuration');
 const StoresPage = lazyWithRetry(() => import('@/components/stores/StoresPage'), 'app-stores-page');
 
-function AuthLoading(){return <div role="status" aria-live="polite" className="fixed inset-0 flex items-center justify-center bg-[var(--canvas)]"><div className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--border)] border-t-[var(--brand-primary)]"/></div>;}
+function AuthLoading(){
+  const location = useLocation();
+  const path = location.pathname.toLowerCase();
+  const variant = path.includes('/pos') ? 'pos' : (path.includes('room-planner') || path.includes('rooms') ? 'rooms' : (path.startsWith('/admin') ? 'admin' : 'dashboard'));
+  return <AppLoadingSkeleton variant={variant} label="Preparing your workspace" />;
+}
 function appRole(user){const s=getSessionStaff();const raw=s?.role||user?.staff?.role||user?.propertyRole||user?.role;return normalizeAppRole(normalizeStaffRole(raw));}
 function PublicRoute(){const {user,isLoadingAuth,isLoadingPublicSettings}=useAuth();if(isLoadingAuth||isLoadingPublicSettings)return <AuthLoading/>;if(user){if(user?.isPlatformOwner)return <Navigate to="/admin" replace/>;const defaultApp=getDefaultApp(appRole(user),user?.property?.package);return defaultApp?<Navigate to={'/'+defaultApp} replace/>:<PendingApproval/>;}return <Outlet/>;}
 function ProtectedRoute({app,children}){const {user,isLoadingAuth,isLoadingPublicSettings}=useAuth();if(isLoadingAuth||isLoadingPublicSettings)return <AuthLoading/>;if(!user)return <Navigate to="/signin" replace/>;if(user?.isPlatformOwner)return <Navigate to="/admin" replace/>;if(!canAccessApp(appRole(user),app,user?.property?.package)){const defaultApp=getDefaultApp(appRole(user),user?.property?.package);return defaultApp?<Navigate to={'/'+defaultApp} replace/>:<PendingApproval/>;}const property=user?.property;const full=property?.status==='active'&&property?.package&&property.package!=='none';if(!full)return <PendingApproval/>;return children||<Outlet/>;}
@@ -93,21 +107,22 @@ function AppRoutes(){return <AuthProvider><Suspense fallback={<AuthLoading/>}><R
 <Route element={<ProtectedRoute app="backoffice"/>}><Route path="/backoffice" element={<BackOfficeLayout/>}><Route index element={<POSApp initialModule="dashboard" embedded workspaceModule="backoffice"/>}/><Route path="items/list" element={<BackOfficeStorePage tab="products"/>}/><Route path="items/categories" element={<CategoriesPage/>}/><Route path="items/modifiers" element={<Phase2CataloguePage section="modifiers"/>}/><Route path="items/discounts" element={<Phase2CataloguePage section="discounts"/>}/><Route path="reports/sales" element={<BackOfficeReportPage kind="sales"/>}/><Route path="reports/inventory" element={<BackOfficeReportPage kind="inventory"/>}/><Route path="reports/employees" element={<BackOfficeReportPage kind="employees"/>}/><Route path="reports/shifts" element={<ShiftReport/>}/><Route path="inventory/purchase-orders" element={<Purchasing/>}/><Route path="inventory/transfer-orders" element={<POSApp initialModule="transfers" embedded workspaceModule="backoffice"/>}/><Route path="inventory/stock-adjustments" element={<InventoryOperations initialTab="adjustments"/>}/><Route path="inventory/counts" element={<InventoryOperations initialTab="counts"/>}/><Route path="inventory/productions" element={<InventoryOperations initialTab="production"/>}/><Route path="inventory/suppliers" element={<Phase2CataloguePage section="suppliers"/>}/><Route path="inventory/history" element={<InventoryOperations initialTab="history"/>}/><Route path="inventory/valuation" element={<InventoryOperations initialTab="valuation"/>}/><Route path="stores" element={<StoresPage/>}/><Route path="pos-devices" element={<POSDevicesPage/>}/><Route path="printers" element={<KitchenPrintersPage/>}/><Route path="employees/list" element={<EmployeeListPage/>}/><Route path="employees/access-rights" element={<Roles/>}/><Route path="employees/timecards" element={<TimecardsPage/>}/><Route path="employees/hours" element={<TimecardsPage/>}/><Route path="customers" element={<GuestList/>}/><Route path="integrations" element={<BookingEngine/>}/><Route path="settings/:slug" element={<BackOfficeSettingsPage/>}/><Route path="help" element={<HelpCentre/>}/></Route></Route>
 <Route element={<ProtectedRoute app="frontoffice"/>}><Route path="/frontoffice" element={<FrontOfficeLayout/>}><Route index element={<FrontOfficeDashboard/>}/><Route path="room-planner" element={<POSApp initialModule="rooms" embedded workspaceModule="frontoffice"/>}/><Route path="rooms" element={<POSApp initialModule="rooms" embedded workspaceModule="frontoffice"/>}/><Route path="reservations" element={<POSApp initialModule="reservations" embedded workspaceModule="frontoffice"/>}/><Route path="folio" element={<POSApp initialModule="folio" embedded workspaceModule="frontoffice"/>}/><Route path="housekeeping" element={<POSApp initialModule="housekeeping" embedded workspaceModule="frontoffice"/>}/><Route path="night-audit" element={<POSApp initialModule="night-audit" embedded workspaceModule="frontoffice"/>}/>
 <Route path="manuals" element={<HelpCentre/>}/>
-<Route path="assistance" element={<ModuleStatusPage title="Assistance" description="Support contacts, service requests, ticket history and system status." module="assistance" back="/frontoffice"/>}/>
+<Route path="assistance" element={<FrontOfficeAssistance/>}/>
 <Route path="dashboard" element={<FrontOfficeDashboard/>}/>
 <Route path="channels" element={<POSApp initialModule="channels" embedded workspaceModule="frontoffice"/>}/>
 <Route path="structure" element={<FrontOfficeStructure/>}/>
-<Route path="configuration" element={<ModuleStatusPage title="Configuration" description="Rates, seasons, VAT, payment methods, policies, templates, users, roles and planner settings." module="configuration" back="/frontoffice"/>}/>
-<Route path="tags" element={<ModuleStatusPage title="Tags" description="Create and assign coloured tags for reservations, guests and rooms." module="tags" back="/frontoffice"/>}/>
+<Route path="configuration" element={<FrontOfficeConfiguration/>}/>
+<Route path="tags" element={<FrontOfficeTags/>}/>
 <Route path="check-in/arrivals" element={<POSApp initialModule="reservations" embedded workspaceModule="frontoffice"/>}/>
 <Route path="check-in/in-house" element={<POSApp initialModule="reservations" embedded workspaceModule="frontoffice"/>}/>
 <Route path="check-in/departures" element={<POSApp initialModule="reservations" embedded workspaceModule="frontoffice"/>}/>
 <Route path="check-in/walk-in" element={<POSApp initialModule="walk-in-checkin" embedded workspaceModule="frontoffice"/>}/>
 <Route path="check-in/express-checkout" element={<POSApp initialModule="express-checkout" embedded workspaceModule="frontoffice"/>}/>
 <Route path="check-in/registration-cards" element={<POSApp initialModule="registration-cards" embedded workspaceModule="frontoffice"/>}/>
-<Route path="statistics/:report" element={<ModuleStatusPage title="Statistics" description="Property performance reporting with period filters and document exports." module="statistics" back="/frontoffice"/>}/>
+<Route path="statistics/:report" element={<FrontOfficeStatistics/>}/>
 <Route path="services/housekeeping" element={<POSApp initialModule="housekeeping" embedded workspaceModule="frontoffice"/>}/>
 <Route path="services/room-charges" element={<POSApp initialModule="folio" embedded workspaceModule="frontoffice"/>}/>
+<Route path="services/minibar" element={<FrontOfficeMinibar/>}/><Route path="services/laundry" element={<FrontOfficeLaundry/>}/><Route path="services/maintenance" element={<FrontOfficeMaintenance/>}/><Route path="services/guest-requests" element={<FrontOfficeGuestRequests/>}/>
 <Route path="services/minibar" element={<ModuleStatusPage title="Minibar and Extras" description="Track minibar consumption and guest extras." module="minibar" back="/frontoffice"/>}/>
 <Route path="services/laundry" element={<ModuleStatusPage title="Laundry" description="Manage guest laundry requests and charges." module="laundry" back="/frontoffice"/>}/>
 <Route path="services/maintenance" element={<ModuleStatusPage title="Maintenance / Work Orders" description="Record maintenance requests, work orders and room downtime." module="maintenance" back="/frontoffice"/>}/>

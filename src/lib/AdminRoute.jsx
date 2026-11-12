@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
+import AppLoadingSkeleton from '@/components/ui/AppLoadingSkeleton';
 
 // Client-side route separation is defense in depth. Supabase RLS and guarded
 // database functions remain the authoritative authorization boundary.
@@ -8,7 +9,7 @@ export default function AdminRoute() {
   const location = useLocation();
 
   if (isLoadingAuth || !authChecked) {
-    return <div className="fixed inset-0 flex items-center justify-center"><div className="w-8 h-8 border-4 border-[var(--border)] border-t-[var(--primary)] rounded-full animate-spin" /></div>;
+    return <AppLoadingSkeleton variant="admin" label="Preparing administration workspace" className="border-[var(--border)]" />;
   }
 
   if (!user) return <Navigate to="/admin/login" replace />;

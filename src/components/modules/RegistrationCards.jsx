@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { PageDataSkeleton } from '@/components/ui/AppLoadingSkeleton';
 import { ArrowLeft, Search, UserRound } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
@@ -98,7 +99,7 @@ export default function RegistrationCards() {
           <div className="grid gap-3 py-4 sm:grid-cols-2 lg:grid-cols-3">{fields.map(([name, value]) => <div key={name} className="min-w-0"><div className="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">{name}</div><div className="mt-1 break-words text-sm font-medium text-[var(--text)]">{valueOrDash(value)}</div></div>)}</div>
           <div className="mt-2 grid gap-8 border-t border-[var(--border)] pt-6 sm:grid-cols-2"><div className="border-b border-dashed border-[var(--text-muted)] pb-2 text-xs text-[var(--text-muted)]">Guest signature</div><div className="border-b border-dashed border-[var(--text-muted)] pb-2 text-xs text-[var(--text-muted)]">Reception staff signature</div></div>
           <p className="mt-3 text-[10px] text-[var(--text-muted)]">Only details already saved in the guest profile and reservation are included. Missing information is shown as — and should be completed through the authorized guest-record workflow.</p>
-        </div> : <div className={card + ' py-12 text-center text-sm text-[var(--text-muted)]'}>{loading ? 'Loading reservations…' : 'Select an active reservation to preview its registration card.'}</div>}
+        </div> : <div className={card + ' py-12 text-center text-sm text-[var(--text-muted)]'}>{loading ? <PageDataSkeleton variant="list" rows={5}/> : 'Select an active reservation to preview its registration card.'}</div>}
       </div>
     </div>
   );

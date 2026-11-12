@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { PageDataSkeleton } from '@/components/ui/AppLoadingSkeleton';
 import { Search } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { pmsService } from '@/services/pmsService';
@@ -57,7 +58,7 @@ export default function GuestList() {
 					</thead>
 					<tbody>
 						{loading && (
-							<tr><td colSpan={6} className="px-4 py-6 text-center text-sm" style={{ color: MUTED }}>Loading guests…</td></tr>
+							<tr><td colSpan={6} className="p-3"><PageDataSkeleton variant="table" rows={5}/></td></tr>
 						)}
 						{!loading && filtered.length === 0 && (
 							<tr><td colSpan={6} className="px-4 py-6 text-center text-sm" style={{ color: MUTED }}>No guests yet — they'll appear here after a check-in.</td></tr>

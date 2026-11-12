@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { PageDataSkeleton } from '@/components/ui/AppLoadingSkeleton';
 import { ArrowLeftRight, Banknote, Plus, RefreshCw, Search, ShieldCheck, Undo2, X } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { pmsService } from '@/services/pmsService';
@@ -142,7 +143,7 @@ export default function Folio({ initialReservationId = null, embedded = false })
           {!embedded && <aside className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
             <div className="border-b border-[var(--border)] p-3"><div className="relative"><Search size={15} className="absolute left-3 top-3 text-muted-foreground"/><input className={input+" pl-9"} placeholder="Search guest, phone, room or reference" value={query} onChange={(e)=>setQuery(e.target.value)}/></div></div>
             <div className="max-h-[720px] overflow-y-auto">
-              {loading ? <div className="p-6 text-center text-sm text-[var(--text-muted)]">Loading guest accounts…</div> : filtered.map((r) => <button key={r.id} onClick={()=>loadFolio(r)} className={`w-full border-b border-[var(--border)] p-4 text-left hover:bg-[var(--canvas)] ${selected?.id===r.id?'bg-[var(--canvas)]':''}`}>
+              {loading ? <div className="p-3"><PageDataSkeleton variant="list" rows={6}/></div> : filtered.map((r) => <button key={r.id} onClick={()=>loadFolio(r)} className={`w-full border-b border-[var(--border)] p-4 text-left hover:bg-[var(--canvas)] ${selected?.id===r.id?'bg-[var(--canvas)]':''}`}>
                 <div className="flex items-center justify-between gap-2"><span className="font-semibold text-[var(--text)]">{r.guest_name}</span><span className="text-[11px] capitalize text-[var(--text-muted)]">{r.status}</span></div>
                 <div className="mt-1 text-xs text-[var(--text-muted)]">{r.arrival} → {r.departure} · {r.channel || 'direct'}</div><div className="mt-1 font-mono text-[10px] text-[var(--text-muted)]">Reservation {r.id.slice(0,8)}</div>
               </button>)}

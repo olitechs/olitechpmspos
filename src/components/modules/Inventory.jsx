@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { PageDataSkeleton } from '@/components/ui/AppLoadingSkeleton';
 import { PackageSearch, Plus, Minus, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { inventoryService } from '@/services/inventoryService';
@@ -104,7 +105,7 @@ function InventoryInner() {
 					<div className="px-4 py-3" style={{ borderBottom: `1px solid ${BORDER}` }}>
 						<h3 className="text-xs font-bold uppercase tracking-widest" style={{ color: MUTED }}>Stock</h3>
 					</div>
-					{loading && <div className="px-4 py-6 text-center text-sm" style={{ color: MUTED }}>Loading…</div>}
+					{loading && <div className="p-3"><PageDataSkeleton variant="table" rows={5}/></div>}
 					{!loading && items.length === 0 && <div className="px-4 py-6 text-center text-sm" style={{ color: MUTED }}>No inventory items yet.</div>}
 					{items.map((item) => {
 						const low = Number(item.quantity) <= Number(item.low_stock_threshold);

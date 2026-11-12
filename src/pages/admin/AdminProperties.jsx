@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { PACKAGE_LABELS } from '@/lib/entitlements';
 import { Button } from '@/components/ui/button';
 import PackageAssignmentModal from './PackageAssignmentModal';
+import { PageDataSkeleton } from '@/components/ui/AppLoadingSkeleton';
 
 const STATUS_STYLES = {
 	pending: 'bg-[var(--warning-soft)] text-[var(--warning-text)]',
@@ -110,8 +111,8 @@ export default function AdminProperties() {
 					<tbody>
 						{loading && (
 							<tr>
-								<td colSpan={6} className="px-4 py-6 text-center text-muted-foreground">
-									Loading properties...
+								<td colSpan={6} className="p-3">
+									<PageDataSkeleton variant="table" rows={6}/>
 								</td>
 							</tr>
 						)}

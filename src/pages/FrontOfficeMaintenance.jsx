@@ -1,0 +1,55 @@
+import { useCallback,useEffect,useMemo,useState } from 'react';
+import { Wrench,Plus,RefreshCw,Search,AlertTriangle,CheckCircle2,Clock3,ClipboardList } from 'lucide-react';
+import { toast } from 'sonner';
+import { useAuth } from '@/lib/AuthContext';
+import { supabase } from '@/lib/supabaseClient';
+import { pmsService } from '@/services/pmsService';
+const input='h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text)]';
+const statuses=['open','assigned','in_progress','resolved','closed'];
+const statusLabel={open:'Open',assigned:'Assigned',in_progress:'In progress',resolved:'Resolved',closed:'Closed'};
+const priorityLabel={low:'Low',medium:'Medium',high:'High'};
+export default function FrontOfficeMaintenance(){
+ const {user}=useAuth(),propertyId=user?.property?.id;
+ const [tickets,setTickets]=useState([]),[rooms,setRooms]=useState([]),[staff,setStaff]=useState([]),[summary,setSummary]=useState({});
+ const [roomId,setRoomId]=useState(''),[issue,setIssue]=useState(''),[priority,setPriority]=useState('medium'),[filter,setFilter]=useState('all'),[search,setSearch]=useState('');
+ const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[editing,setEditing]=useState(null),[resolution,setResolution]=useState(''),[returnStatus,setReturnStatus]=useState('dirty'),[assignment,setAssignment]=useState('');
+ const load=useCallback(async()=>{if(!propertyId){setLoading(false);return;}setLoading(true);try{
+  const [t,r,s,d]=await Promise.all([
+   pmsService.listMaintenanceTickets(propertyId),
+   supabase.from('rooms').select('id,number,name,status,floor').eq('property_id',propertyId).eq('active',true).order('number'),
+   supabase.from('staff').select('id,user_id,full_name,email,role,is_active').eq('property_id',propertyId).eq('is_active',true).order('full_name'),
+   pmsService.getMaintenanceDashboard(propertyId)
+  ]);if(r.error)throw r.error;if(s.error)throw s.error;setTickets(t||[]);setRooms(r.data||[]);setStaff(s.data||[]);setSummary(d||{});
+ }catch(e){toast.error(e.message||'Unable to load maintenance workspace.');}finally{setLoading(false);}},[propertyId]);
+ useEffect(()=>{load();},[load]);
+ const create=async e=>{e.preventDefault();if(!issue.trim())return;setBusy(true);try{
+  await pmsService.createMaintenanceTicket({propertyId,roomId:roomId||null,issue:issue.trim(),priority});
+  toast.success('Maintenance work order created.');setIssue('');setRoomId('');setPriority('medium');await load();
+ }catch(e){toast.error(e.message||'Could not create work order.');}finally{setBusy(false);}};
+ const save=async(ticket,status,assignedTo=null)=>{setBusy(true);try{
+  await pmsService.updateMaintenanceTicket(ticket.id,{status,assignedTo:assignedTo||ticket.assigned_to||null,resolutionNotes:resolution.trim()||null,returnStatus});
+  toast.success('Work order updated.');setEditing(null);setResolution('');setAssignment('');await load();
+ }catch(e){toast.error(e.message||'Could not update work order.');}finally{setBusy(false);}};
+ const filtered=useMemo(()=>tickets.filter(t=>(filter==='all'||t.status===filter)&&((t.issue||'').toLowerCase().includes(search.toLowerCase())||(t.room?.number||'').toString().includes(search)||(t.assigned_to||'').toLowerCase().includes(search.toLowerCase()))),[tickets,filter,search]);
+ const counts={open:summary.open??0,assigned:summary.assigned??0,in_progress:summary.in_progress??0,resolved:summary.resolved??0,closed:summary.closed??0};
+ const roomLabel=r=>'Room '+r.number+(r.name?' · '+r.name:'')+' · '+r.status;
+ const staffName=id=>staff.find(x=>x.user_id===id)?.full_name||staff.find(x=>x.id===id)?.full_name||'Unassigned';
+ return <div className="min-h-full bg-[var(--canvas)] p-4 text-[var(--text)] sm:p-6"><div className="mx-auto max-w-7xl space-y-5">
+  <header className="flex flex-wrap items-center justify-between gap-3"><div><div className="text-[11px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Front Office · Property Operations</div><h1 className="mt-1 text-2xl font-bold">Maintenance & Work Orders</h1><p className="mt-1 text-sm text-[var(--text-muted)]">Log repairs, assign technicians, track room downtime and return rooms safely to service.</p></div><button onClick={load} disabled={loading} className="inline-flex h-10 items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm"><RefreshCw size={15}/> Refresh</button></header>
+  <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">{[['open','Open',ClipboardList],['assigned','Assigned',Wrench],['in_progress','In progress',Clock3],['resolved','Resolved',CheckCircle2],['high_priority_open','High priority',AlertTriangle]].map(([key,label,Icon])=><div key={key} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3"><div className="flex items-center gap-2 text-xs text-[var(--text-muted)]"><Icon size={15}/>{label}</div><div className="mt-1 text-2xl font-bold tabular-nums">{key==='high_priority_open'?(summary.high_priority_open??0):counts[key]}</div></div>)}</div>
+  <div className="grid gap-4 xl:grid-cols-[minmax(320px,0.72fr)_minmax(0,1.5fr)]">
+   <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"><div className="mb-4 flex items-center gap-2"><Plus size={18}/><h2 className="font-semibold">Create work order</h2></div><form onSubmit={create} className="space-y-3">
+    <label className="block text-xs font-semibold">Room (optional)<select value={roomId} onChange={e=>setRoomId(e.target.value)} className={input+' mt-1'}><option value="">General property maintenance</option>{rooms.map(r=><option key={r.id} value={r.id} disabled={['occupied','booked'].includes(r.status)}>{roomLabel(r)}</option>)}</select><span className="mt-1 block font-normal text-[var(--text-muted)]">Occupied or booked rooms cannot be placed into maintenance.</span></label>
+    <label className="block text-xs font-semibold">Issue / fault description<textarea required minLength={4} maxLength={2000} rows={5} value={issue} onChange={e=>setIssue(e.target.value)} className={input+' h-auto py-2'} placeholder="Describe the repair, fault, location and any safety concern…"/></label>
+    <label className="block text-xs font-semibold">Priority<select value={priority} onChange={e=>setPriority(e.target.value)} className={input+' mt-1'}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High / urgent</option></select></label>
+    <button disabled={busy||loading||issue.trim().length<4} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[var(--brand-primary)] px-4 text-sm font-semibold text-[var(--on-primary)] disabled:opacity-50"><Plus size={16}/>{busy?'Creating…':'Create work order'}</button>
+   </form></section>
+   <section className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]"><div className="border-b border-[var(--border)] p-4"><div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="font-semibold">Work order register</h2><p className="mt-1 text-xs text-[var(--text-muted)]">Assignment, progress notes and room return condition.</p></div><Wrench size={19}/></div><div className="mt-3 flex flex-wrap gap-2"><div className="relative min-w-0 flex-1"><Search size={14} className="absolute left-3 top-3 text-[var(--text-muted)]"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search issue, room or assignee" className={input+' pl-9'}/></div><select value={filter} onChange={e=>setFilter(e.target.value)} className={input+' w-auto min-w-32'}><option value="all">All statuses</option>{statuses.map(s=><option key={s} value={s}>{statusLabel[s]}</option>)}</select></div></div>
+    {loading?<div className="space-y-3 p-4">{[1,2,3].map(i=><div key={i} className="h-24 animate-pulse rounded-lg bg-[var(--canvas)]"/>)}</div>:<div className="divide-y divide-[var(--border)]">{filtered.map(t=><article key={t.id} className="space-y-3 p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><div className="font-semibold">{t.issue}</div><div className="mt-1 text-xs text-[var(--text-muted)]">{t.room?.number?'Room '+t.room.number:'Property-wide'} · {new Date(t.created_at).toLocaleString()}</div><div className="mt-1 text-xs text-[var(--text-muted)]">Assigned: {staffName(t.assigned_to)} · Priority: {priorityLabel[t.priority]||t.priority}</div></div><span className="rounded-full bg-[var(--canvas)] px-3 py-1 text-xs font-semibold">{statusLabel[t.status]||t.status}</span></div>
+     {t.resolution_notes&&<p className="rounded-lg bg-[var(--canvas)] p-2 text-xs text-[var(--text-muted)]">Resolution: {t.resolution_notes}</p>}
+     {editing===t.id?<div className="grid gap-2 rounded-lg bg-[var(--canvas)] p-3"><label className="text-xs font-semibold">Assign technician<select value={assignment} onChange={e=>setAssignment(e.target.value)} className={input+' mt-1'}><option value="">Keep current assignment</option>{staff.map(x=><option key={x.id} value={x.user_id||x.id}>{x.full_name} · {x.role}</option>)}</select></label><label className="text-xs font-semibold">Resolution / progress notes<textarea value={resolution} onChange={e=>setResolution(e.target.value)} rows={2} className={input+' mt-1 h-auto py-2'} placeholder="Work performed, parts used, findings…"/></label><label className="text-xs font-semibold">Room condition after resolution<select value={returnStatus} onChange={e=>setReturnStatus(e.target.value)} className={input+' mt-1'}><option value="dirty">Return as dirty (housekeeping required)</option><option value="available">Return as available</option></select></label><div className="flex flex-wrap gap-2">{statuses.filter(s=>s!==t.status).map(s=><button key={s} disabled={busy} onClick={()=>save(t,s,assignment||null)} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-semibold disabled:opacity-50">Set {statusLabel[s]}</button>)}<button onClick={()=>setEditing(null)} className="rounded-lg px-3 py-2 text-xs">Cancel</button></div></div>:<div className="flex flex-wrap items-center justify-between gap-2"><div className="text-[11px] text-[var(--text-muted)]">{t.started_at?'Started '+new Date(t.started_at).toLocaleString():'Not started'}{t.resolved_at?' · Resolved '+new Date(t.resolved_at).toLocaleString():''}</div><button onClick={()=>{setEditing(t.id);setResolution(t.resolution_notes||'');setReturnStatus(t.return_status||'dirty');setAssignment(t.assigned_to||'');}} className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-semibold">Manage work order</button></div>}
+    </article>)}{!filtered.length&&<p className="p-8 text-center text-sm text-[var(--text-muted)]">No work orders match this view.</p>}</div>}
+   </section>
+  </div><p className="text-xs text-[var(--text-muted)]">Room status changes are performed by the existing maintenance RPC. Rooms under repair remain unavailable until resolved or closed; choose whether they return to dirty or available.</p>
+ </div></div>;
+}

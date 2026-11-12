@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { PageDataSkeleton } from '@/components/ui/AppLoadingSkeleton';
 import { Link } from 'react-router-dom';
 import { Building2, Clock, CheckCircle2, ShieldAlert, Users, ArrowRight, RefreshCw, Plus, ClipboardList, Activity, Ban, CreditCard, KeyRound } from 'lucide-react';
 import { platformService } from '@/services/platformService';
@@ -66,7 +67,7 @@ export default function AdminDashboard() {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  if (loading) return <div className="text-muted-foreground text-sm">Loading platform dashboard...</div>;
+  if (loading) return <PageDataSkeleton variant="report" rows={6}/>;
   if (error) return <div className="p-4 rounded-xl bg-destructive/10 text-destructive text-sm">{error}</div>;
 
   const pending = properties.filter((property) => property.status === 'pending');
