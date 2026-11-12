@@ -6,7 +6,8 @@ import PrinterSetupWizard from '@/components/settings/PrinterSetupWizard';
 import { fetchPrintHealth, retryPrintJob } from '@/services/printerHealthCore';
 import { fetchPrinterHistory } from '@/services/printerHistory';
 import { jobStatusLabel, jobTone, recentPrinterJobs, summarizeAllPrinters, tidyError } from '@/services/printerHistoryCore';
-import { pairWorkstation } from '@/services/printerAgentPairing';
+import { pairWorkstation, listPairedWorkstations, revokePairedWorkstation } from '@/services/printerAgentPairing';
+import { workstationPresence } from '@/services/printerAgentCredentialsCore';
 import { exportPrintDiagnostics } from '@/services/printerDiagnostics';
 import { getPrinterPrintSettings, savePrinterPrintSettings } from '@/services/printerPrintSettings';
 import { supabase } from '@/lib/supabaseClient';
@@ -109,6 +110,7 @@ export default function SettingsPrinters() {
   const [healthLoading,setHealthLoading] = useState(false);
   const [healthNotice,setHealthNotice] = useState('');
   const [pairing,setPairing] = useState({ loading:false, message:'' });
+  const [workstations,setWorkstations] = useState({ loading:true, rows:[], message:'' });
   const [diagnostics,setDiagnostics] = useState({ loading:false, message:'' });
   const [history,setHistory] = useState(null);
   const [historyLoading,setHistoryLoading] = useState(false);
@@ -165,6 +167,33 @@ export default function SettingsPrinters() {
       await refreshHealth();
     } catch (error) {
       setPairing({ loading:false, message: error?.message || 'Pairing failed. Ask a manager for a new code.' });
+    }
+  };
+
+  // A lost or replaced POS computer must be revocable from the cloud, so the
+  // list comes from the database, not from the agent on this computer.
+  const refreshWorkstations = async () => {
+    if (!propertyId) return;
+    setWorkstations((current)=>({ ...current, loading:true }));
+    try {
+      const rows = await listPairedWorkstations({ client: supabase, propertyId });
+      setWorkstations({ loading:false, rows, message:'' });
+    } catch (error) {
+      setWorkstations({ loading:false, rows:[], message: error?.message || 'Could not load paired workstations.' });
+    }
+  };
+
+  useEffect(()=>{ refreshWorkstations(); },[propertyId]);
+
+  const revokeWorkstation = async (row) => {
+    if (!window.confirm(`Revoke "${row.name}"? That computer stops printing immediately and must be paired again.`)) return;
+    setWorkstations((current)=>({ ...current, message:'' }));
+    try {
+      await revokePairedWorkstation({ client: supabase, propertyId, credentialId: row.id });
+      await Promise.all([refreshWorkstations(), refreshHealth()]);
+      setWorkstations((current)=>({ ...current, message:`${row.name} can no longer print. Its unfinished jobs are marked for checking.` }));
+    } catch (error) {
+      setWorkstations((current)=>({ ...current, message: error?.message || 'Could not revoke that workstation.' }));
     }
   };
 
@@ -465,6 +494,7 @@ export default function SettingsPrinters() {
         {error && <Alert type="error" text={error}/>}
 {agentError && <Alert type="error" text={agentError}/>}
         <PrintHealthStrip health={health} loading={healthLoading} notice={healthNotice} pairing={pairing} diagnostics={diagnostics} onRefresh={refreshHealth} onReprint={reprintJob} onPair={pairThisComputer} onDiagnostics={saveDiagnostics}/>
+        <PairedWorkstations data={workstations} onRefresh={refreshWorkstations} onRevoke={revokeWorkstation}/>
 {!!discovered.length && <div className="rounded-2xl border border-[var(--primary)] bg-primary-soft p-4"><div className="text-xs font-black uppercase tracking-wide text-primary-text">Network printers discovered</div><div className="mt-2 flex flex-wrap gap-2">{discovered.map(d=><button key={`${d.host}:${d.port}`} onClick={()=>{setEditing({...blank,connection_type:'network_ip',ip_address:d.host,port:d.port,assignmentTypes:[]});setDiscovered([]);}} className="rounded-xl border border-[var(--primary)] bg-surface px-3 py-2 text-xs font-bold text-primary-text hover:bg-primary-soft">{d.label}</button>)}</div></div>}
         {notice && <Alert type="success" text={notice}/>}
         {loading ? <div className="rounded-2xl border border-border bg-surface p-10 text-center text-sm text-muted-foreground">Loading printer configuration…</div> :
@@ -517,6 +547,37 @@ export default function SettingsPrinters() {
       {wizardOpen && <PrinterSetupWizard open propertyId={propertyId} onClose={()=>setWizardOpen(false)} onSaved={()=>load(true).catch(()=>{})}/>} 
     </div>
   );
+}
+
+function PairedWorkstations({data,onRefresh,onRevoke}) {
+  const rows = Array.isArray(data?.rows) ? data.rows : [];
+  return <section className="rounded-2xl border border-border bg-surface p-4">
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wide text-foreground"><Network size={14}/> Paired workstations</div>
+        <div className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">Every computer allowed to print for this property. Revoke one when a device is lost, replaced, or moved out of the building — it stops printing at once and must be paired again with a new code.</div>
+      </div>
+      <button onClick={onRefresh} disabled={data?.loading} className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-bold text-foreground hover:bg-secondary disabled:opacity-50"><RefreshCw size={14}/>{data?.loading ? 'Checking…' : 'Refresh list'}</button>
+    </div>
+    {data?.message && <div className="mt-3 rounded-lg bg-secondary px-3 py-2 text-xs font-bold text-foreground">{data.message}</div>}
+    <div className="mt-3 space-y-2">
+      {data?.loading && !rows.length && <p className="text-xs text-muted-foreground">Loading paired workstations…</p>}
+      {!data?.loading && !rows.length && !data?.message && <p className="text-xs text-muted-foreground">No computer has been paired for this property yet. Pair one from Settings → Printers on that computer.</p>}
+      {rows.map((row)=>{
+        const presence = workstationPresence(row);
+        const tone = presence.tone === 'success' ? 'text-[var(--success-text)]' : presence.tone === 'warning' ? 'text-[var(--warning-text)]' : 'text-muted-foreground';
+        return <div key={row.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-[var(--canvas)] p-3 ring-1 ring-border">
+          <div className="min-w-0">
+            <div className="text-sm font-bold text-foreground">{row.name || 'POS computer'}</div>
+            <div className={`mt-0.5 text-[11px] font-semibold ${tone}`}>{presence.label}</div>
+          </div>
+          {row.revoked_at
+            ? <span className="inline-flex items-center gap-1.5 rounded-lg bg-secondary px-2 py-1 text-[11px] font-bold text-muted-foreground"><CircleOff size={12}/> Revoked</span>
+            : <button onClick={()=>onRevoke(row)} className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[11px] font-bold text-[var(--danger-text)] hover:bg-[var(--danger-soft)]"><Trash2 size={12}/> Revoke</button>}
+        </div>;
+      })}
+    </div>
+  </section>;
 }
 
 function PrintHealthStrip({health,loading,notice,pairing,diagnostics,onRefresh,onReprint,onPair,onDiagnostics}) {

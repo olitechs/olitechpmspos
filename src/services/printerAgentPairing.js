@@ -79,6 +79,11 @@ export async function listPairedWorkstations({ client, propertyId } = {}) {
   return Array.isArray(data) ? data : [];
 }
 
+/**
+ * Cuts a workstation off. The RPC only allows owners/admins/managers and scopes
+ * the update to this property; the agent's token hash is cleared immediately.
+ * Jobs it was mid-way through become "needs checking" rather than silently lost.
+ */
 export async function revokePairedWorkstation({ client, propertyId, credentialId } = {}) {
   if (!client || !propertyId || !credentialId) throw new Error('Choose a workstation to unpair.');
   const { error } = await client.rpc(REVOKE_RPC, { p_property_id: propertyId, p_credential_id: credentialId });
