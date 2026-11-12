@@ -1,5 +1,7 @@
 # OliTechs Print Agent 2.2.0 — release notes
 
+> **Published ahead of release.** The 2.2.0 installer is not available for download yet. The signed installer is supplied by OliTechs support when your site is ready to upgrade.
+
 **For:** hotel managers, front-office and F&B staff, and OliTechs support
 **What it is:** the small program installed on each Windows POS computer that
 sends receipts and kitchen tickets to your thermal printers.
