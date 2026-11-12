@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Plus, Pencil, Trash2, Printer, Wifi, Play, X, RefreshCw, CheckCircle2, AlertCircle, CircleOff, Network, ChevronRight, FileDown } from 'lucide-react';
+import { Plus, Pencil, Trash2, Printer, Wifi, Play, X, RefreshCw, CheckCircle2, AlertCircle, CircleOff, Network, ChevronRight, FileDown, KeyRound } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { getPrinters, getAssignments, testPrint, connectPrinter, printTestOrder, printTestReceipt, printCutCalibrationTest } from '@/services/printService';
 import PrinterSetupWizard from '@/components/settings/PrinterSetupWizard';
 import { fetchPrintHealth, retryPrintJob } from '@/services/printerHealthCore';
 import { fetchPrinterHistory } from '@/services/printerHistory';
 import { jobStatusLabel, jobTone, recentPrinterJobs, summarizeAllPrinters, tidyError } from '@/services/printerHistoryCore';
-import { pairWorkstation, listPairedWorkstations, revokePairedWorkstation } from '@/services/printerAgentPairing';
+import { pairWorkstation, createPairingCode, listPairedWorkstations, revokePairedWorkstation } from '@/services/printerAgentPairing';
 import { workstationPresence } from '@/services/printerAgentCredentialsCore';
 import { exportPrintDiagnostics } from '@/services/printerDiagnostics';
 import { getPrinterPrintSettings, savePrinterPrintSettings } from '@/services/printerPrintSettings';
@@ -112,6 +112,7 @@ export default function SettingsPrinters() {
   const [healthNotice,setHealthNotice] = useState('');
   const [pairing,setPairing] = useState({ loading:false, message:'' });
   const [workstations,setWorkstations] = useState({ loading:true, rows:[], message:'' });
+  const [pairingCode,setPairingCode] = useState({ loading:false, code:'', expiresAt:null, agentName:'POS computer', error:'' });
   const [diagnostics,setDiagnostics] = useState({ loading:false, message:'' });
   const [history,setHistory] = useState(null);
   const [historyLoading,setHistoryLoading] = useState(false);
@@ -168,6 +169,24 @@ export default function SettingsPrinters() {
       await refreshHealth();
     } catch (error) {
       setPairing({ loading:false, message: error?.message || 'Pairing failed. Ask a manager for a new code.' });
+    }
+  };
+
+  // Cross-machine pairing: a manager reads this code in their browser and types
+  // it into the installer dialog on the other computer. It is generated in the
+  // cloud, so it does not need the agent on this browser's computer.
+  const showPairingCode = async () => {
+    setPairingCode((current)=>({ ...current, loading:true, error:'', code:'' }));
+    try {
+      const result = await createPairingCode({
+        client: supabase,
+        propertyId,
+        agentName: String(pairingCode.agentName || '').trim() || 'POS computer',
+      });
+      setPairingCode((current)=>({ ...current, loading:false, code:result.code, expiresAt:result.expiresAt, error:'' }));
+    } catch (error) {
+      setPairingCode((current)=>({ ...current, loading:false, code:'', expiresAt:null,
+        error: error?.message || 'Could not create a pairing code.' }));
     }
   };
 
@@ -495,6 +514,7 @@ export default function SettingsPrinters() {
         {error && <Alert type="error" text={error}/>}
 {agentError && <Alert type="error" text={agentError}/>}
         <PrintHealthStrip health={health} loading={healthLoading} notice={healthNotice} pairing={pairing} diagnostics={diagnostics} onRefresh={refreshHealth} onReprint={reprintJob} onPair={pairThisComputer} onDiagnostics={saveDiagnostics}/>
+        <PairAnotherComputer state={pairingCode} onChangeName={(name)=>setPairingCode((current)=>({ ...current, agentName:name }))} onGenerate={showPairingCode} onClose={()=>setPairingCode((current)=>({ ...current, code:'', expiresAt:null, error:'' }))}/>
         <PairedWorkstations data={workstations} onRefresh={refreshWorkstations} onRevoke={revokeWorkstation}/>
 {!!discovered.length && <div className="rounded-2xl border border-[var(--primary)] bg-primary-soft p-4"><div className="text-xs font-black uppercase tracking-wide text-primary-text">Network printers discovered</div><div className="mt-2 flex flex-wrap gap-2">{discovered.map(d=><button key={`${d.host}:${d.port}`} onClick={()=>{setEditing({...blank,connection_type:'network_ip',ip_address:d.host,port:d.port,assignmentTypes:[]});setDiscovered([]);}} className="rounded-xl border border-[var(--primary)] bg-surface px-3 py-2 text-xs font-bold text-primary-text hover:bg-primary-soft">{d.label}</button>)}</div></div>}
         {notice && <Alert type="success" text={notice}/>}
@@ -548,6 +568,66 @@ export default function SettingsPrinters() {
       {wizardOpen && <PrinterSetupWizard open propertyId={propertyId} onClose={()=>setWizardOpen(false)} onSaved={()=>load(true).catch(()=>{})}/>} 
     </div>
   );
+}
+
+function PairAnotherComputer({state,onChangeName,onGenerate,onClose}) {
+  const [now,setNow] = useState(()=>Date.now());
+  const [copied,setCopied] = useState(false);
+
+  // The code expires server-side after ten minutes; show the same clock so a
+  // manager never reads out a code that has already lapsed.
+  useEffect(()=>{
+    if (!state?.code) return undefined;
+    setNow(Date.now());
+    const timer = setInterval(()=>setNow(Date.now()), 1000);
+    return ()=>clearInterval(timer);
+  },[state?.code, state?.expiresAt]);
+
+  const expiresAt = state?.expiresAt ? new Date(state.expiresAt).getTime() : null;
+  const remaining = Number.isFinite(expiresAt) ? Math.max(0, expiresAt - now) : null;
+  const minutes = remaining == null ? null : Math.floor(remaining / 60000);
+  const seconds = remaining == null ? null : Math.floor((remaining % 60000) / 1000);
+  const expired = remaining === 0;
+
+  const copy = async () => {
+    if (!state?.code) return;
+    try {
+      await navigator.clipboard.writeText(state.code);
+      setCopied(true);
+      setTimeout(()=>setCopied(false), 2000);
+    } catch (_) {
+      // Clipboard permission can be denied; the code is on screen to read.
+    }
+  };
+
+  return <section className="rounded-2xl border border-border bg-surface p-4">
+    <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wide text-foreground"><KeyRound size={14}/> Pair another computer</div>
+    <p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">Generate a temporary code, then type it into the OliTechs Print Agent pairing window on the other computer. The code is single use and expires after 10 minutes. It is safe to read over the phone to a trusted colleague.</p>
+
+    {!state?.code && <div className="mt-3 flex flex-wrap items-end gap-2">
+      <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Computer name (optional)
+        <input value={state?.agentName || ''} onChange={(e)=>onChangeName(e.target.value)} maxLength={100} placeholder="Reception PC" className="mt-1 block w-56 rounded-xl border border-border px-3 py-2 text-sm font-normal normal-case tracking-normal text-foreground"/>
+      </label>
+      <button type="button" onClick={onGenerate} disabled={state?.loading} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-black text-primary-foreground hover:bg-[var(--primary-hover)] disabled:opacity-50"><KeyRound size={14}/>{state?.loading ? 'Creating code…' : 'Show pairing code'}</button>
+    </div>}
+
+    {state?.error && <div role="alert" className="mt-3 rounded-lg bg-[var(--danger-soft)] p-3 text-xs font-bold text-[var(--danger-text)]">{state.error}</div>}
+
+    {state?.code && <div className="mt-3 rounded-xl border border-[var(--primary)] bg-primary-soft p-4">
+      <div className="text-[11px] font-black uppercase tracking-wide text-primary-text">Pairing code for {state.agentName || 'POS computer'}</div>
+      <div className="mt-1 flex flex-wrap items-center gap-3">
+        <span className={`select-all font-mono text-3xl font-black tracking-[0.25em] ${expired ? 'text-muted-foreground line-through' : 'text-foreground'}`}>{state.code}</span>
+        <button type="button" onClick={copy} disabled={expired} className="rounded-lg border border-border bg-surface px-3 py-1.5 text-[11px] font-bold text-foreground hover:bg-secondary disabled:opacity-50">{copied ? 'Copied' : 'Copy code'}</button>
+        <button type="button" onClick={onClose} className="rounded-lg border border-border bg-surface px-3 py-1.5 text-[11px] font-bold text-muted-foreground hover:bg-secondary">Hide</button>
+      </div>
+      <p className={`mt-2 text-xs font-semibold ${expired ? 'text-[var(--danger-text)]' : 'text-muted-foreground'}`}>
+        {expired
+          ? 'This code has expired. Generate a new one.'
+          : `Expires in ${minutes}:${String(seconds).padStart(2,'0')}. It can be used once.`}
+      </p>
+      <p className="mt-1 text-[11px] text-muted-foreground">On that computer: Start menu → OliTechs Print Agent → Pair this computer (or the pairing step at the end of the installer), then enter this code.</p>
+    </div>}
+  </section>;
 }
 
 function PairedWorkstations({data,onRefresh,onRevoke}) {
