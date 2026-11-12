@@ -1,0 +1,66 @@
+name: Apply printer department migration
+
+# One-off production change: applies exactly one migration file and verifies it.
+# Requires the typed confirmation APPLY. Uses the existing SUPABASE_DB_URL secret
+# and never prints it.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type APPLY to run this against production"
+        required: true
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require explicit confirmation
+        if: ${{ inputs.confirm != 'APPLY' }}
+        run: |
+          echo "::error::Confirmation input must be exactly APPLY."
+          exit 1
+
+      - name: Show the exact file being applied
+        run: |
+          set -euo pipefail
+          FILE=supabase/migrations/20261112120000_printer_department_routing.sql
+          test -f "$FILE"
+          sha256sum "$FILE"
+          echo "--- statements ---"
+          grep -viE '^\s*(--|$)' "$FILE"
+
+      - name: Apply migration in one transaction
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_DB_URL:-}" ]; then
+            echo "::error::Repository secret SUPABASE_DB_URL is not configured."
+            exit 1
+          fi
+          psql --version
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -1 \
+            -f supabase/migrations/20261112120000_printer_department_routing.sql
+
+      - name: Verify the column and index
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          echo "department column:"
+          psql "$SUPABASE_DB_URL" -At -v ON_ERROR_STOP=1 -c \
+            "select column_name || ' ' || data_type || ' nullable=' || is_nullable from information_schema.columns where table_schema='public' and table_name='property_printers' and column_name='department';"
+          echo "index:"
+          psql "$SUPABASE_DB_URL" -At -v ON_ERROR_STOP=1 -c \
+            "select indexname from pg_indexes where schemaname='public' and tablename='property_printers' and indexname='property_printers_department_idx';"
+          echo "printers already carrying a department:"
+          psql "$SUPABASE_DB_URL" -At -v ON_ERROR_STOP=1 -c \
+            "select count(*) from public.property_printers where department is not null;"
