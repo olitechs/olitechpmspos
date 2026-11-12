@@ -72,19 +72,19 @@ begin
  return new;
 end;$$;
 create or replace function public.fn_validate_guest_service_request()
-returns trigger language plpgsql set search_path=public as $
+returns trigger language plpgsql set search_path=public, pg_temp as $function$
 begin
  if new.assigned_to is not null and not exists(select 1 from public.staff s where s.property_id=new.property_id and s.user_id=new.assigned_to and s.is_active=true) then
   raise exception 'Assigned staff member must be active and belong to this property.';
  end if;
  return new;
-end;$;
+end;$function$;
 drop trigger if exists guest_service_request_validate on public.guest_service_requests;
 create trigger guest_service_request_validate before insert or update on public.guest_service_requests for each row execute function public.fn_validate_guest_service_request();
 
 create or replace function public.fn_touch_guest_service_request_updated_at()
-returns trigger language plpgsql set search_path=public as $
-begin new.updated_at:=now(); return new; end;$;
+returns trigger language plpgsql set search_path=public, pg_temp as $function$
+begin new.updated_at:=now(); return new; end;$function$;
 drop trigger if exists guest_service_request_touch_updated_at on public.guest_service_requests;
 create trigger guest_service_request_touch_updated_at before update on public.guest_service_requests for each row execute function public.fn_touch_guest_service_request_updated_at();
 drop trigger if exists guest_service_request_event_log on public.guest_service_requests;
