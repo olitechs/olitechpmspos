@@ -36,6 +36,7 @@ export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrde
   try{
    await posService.saveVatSnapshot({propertyId,tableKey:table.id,snapshot:vatSnapshot});
    const result=await printReceipt('UNSETTLED',{propertyId,orderNumber:stableOrderNumber,checkNo:stableOrderNumber,table:tableLabel(table),waiter,covers:guestCovers,diningOption:table?.diningOption||table?.dining_option||table?.orderType||'Dine In',items:orderLines,subtotal,discount,vat,total,vatSnapshot,currency:'KES'});
+   if(result.outcome==='uncertain'){setBillPrinted(true);toast.warning('The bill may have printed — check the paper before reprinting.');return}
    if(!result.ok){setError(result.friendlyError||'Bill printer failed.');toast.error('Bill was not printed.');return}
    store.setUnsettled(table.id);setBillPrinted(true);toast.success('Unsettled bill printed. The table remains open.');
   }catch(e){setError(e?.message||'Bill printer failed.');toast.error('Bill was not printed.');}
@@ -115,6 +116,8 @@ export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrde
    }
    if(result.ok){
     toast.success(`Payment completed and receipt printed via ${methodLabel}.`);
+   }else if(result.outcome==='uncertain'){
+    toast.warning('Payment completed. The receipt may already have printed — check the paper before reprinting, so the guest does not get two.',{duration:10000});
    }else{
     toast.warning('Payment completed, but the receipt did not print. Reprint it later from Receipts.');
    }
@@ -129,7 +132,9 @@ export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrde
   try{
    await posService.saveVatSnapshot({propertyId,tableKey:table.id,snapshot:vatSnapshot});
    const result=await printReceipt('UNSETTLED',{propertyId,orderNumber:stableOrderNumber,checkNo:stableOrderNumber,table:tableLabel(table),waiter,covers:guestCovers,items:orderLines,subtotal,discount,vat,total,vatSnapshot,currency:'KES'});
-   if(result.ok){setBillPrinted(true);toast.success('Bill reprinted.')}else setError(result.friendlyError||'Bill printer failed.');
+   if(result.ok){setBillPrinted(true);toast.success('Bill reprinted.')}
+   else if(result.outcome==='uncertain'){setBillPrinted(true);toast.warning('The bill may have printed — check the paper before reprinting.')}
+   else setError(result.friendlyError||'Bill printer failed.');
   }catch(e){setError(e?.message||'Bill printer failed.')}finally{setBusy(false)}
  };
  const splitRemaining=Number((total-splitTotal).toFixed(2));

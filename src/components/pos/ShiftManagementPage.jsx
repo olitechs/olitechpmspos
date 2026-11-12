@@ -60,7 +60,8 @@ export default function ShiftManagementPage({ propertyId, currentShift, loadErro
         return;
       }
       const result = await printShiftPreview({ ...summary, propertyId }, assigned[0]);
-      if (!result.ok) toast.error(result.friendlyError || 'The live shift summary could not be printed.');
+      if (result.outcome === 'uncertain') toast.warning('The live shift summary may have printed — check the paper before printing it again.');
+      else if (!result.ok) toast.error(result.friendlyError || 'The live shift summary could not be printed.');
       else toast.success('Live shift summary sent to the assigned printer.');
     } catch (error) {
       toast.error(error?.message || 'Unable to print the live shift summary.');

@@ -46,7 +46,8 @@ export default function AdminRecovery() {
 
   const reprint=async(r)=>{
     const result=await printReceipt('RECEIPT',{propertyId:r.property_id,orderNumber:r.order_number,checkNo:r.order_number,table:r.table_number?'Table '+r.table_number:'—',waiter:r.waiter||'Unassigned',covers:r.covers,items:r.items||[],total:r.total,subtotal:r.subtotal,discountAmount:r.discount_amount,discountName:r.discount_name,vat:r.vat,currency:r.property_currency||property?.currency||'KES',paymentMethod:r.payment_method,createdAt:r.created_at,recoveryCopy:true});
-    if(result?.ok)toast.success('Historical receipt sent to the configured printer.');else toast.error(result?.friendlyError||'Could not print receipt.');
+    if(result?.outcome==='uncertain')toast.warning('The historical receipt may have printed — check the paper before printing it again.');
+    else if(result?.ok)toast.success('Historical receipt sent to the configured printer.');else toast.error(result?.friendlyError||'Could not print receipt.');
   };
   const makeLink=async()=>{
     setBusy(true);setRecovery(null);

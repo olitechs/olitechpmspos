@@ -5,6 +5,7 @@ import {
   durableJobStatus,
   outcomeAffectsConnection,
   printOutcomeMessage,
+  summarizePrintOutcomes,
 } from './printOutcomeCore.js';
 
 test('a successful agent response is printed', () => {
@@ -27,6 +28,23 @@ test('a duplicate still held by the agent is pending, not a failure', () => {
   assert.equal(classifyAgentPrintOutcome({ ok: false, status: 'queued' }), 'pending');
   assert.equal(durableJobStatus('pending'), 'printing', 'the row must stay in progress');
   assert.equal(outcomeAffectsConnection('pending'), false);
+});
+
+test('a receipt copy that may have printed is never summarised as a failure', () => {
+  const summary = summarizePrintOutcomes([{ ok: true }, { ok: false, code: 'PRINT_OUTCOME_UNCERTAIN' }]);
+  assert.equal(summary.outcome, 'uncertain');
+  assert.equal(summary.ok, false, 'ok stays strict so callers do not silently accept it');
+  assert.equal(summary.needsPaperCheck, true);
+  assert.match(summary.message, /may already have printed. Check the paper/);
+
+  const allPrinted = summarizePrintOutcomes([{ ok: true }, { ok: true }]);
+  assert.equal(allPrinted.outcome, 'printed');
+  assert.equal(allPrinted.ok, true);
+
+  const failed = summarizePrintOutcomes([{ ok: true }, { ok: false, code: 'PRINTER_UNREACHABLE' }]);
+  assert.equal(failed.outcome, 'failed');
+  assert.equal(failed.needsPaperCheck, false);
+  assert.equal(summarizePrintOutcomes([]).ok, false);
 });
 
 test('a real transport failure stays failed and may mark the printer offline', () => {

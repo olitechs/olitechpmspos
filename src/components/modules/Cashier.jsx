@@ -103,7 +103,10 @@ export default function Cashier() {
             guest: selected.guest_name, room: selected.room_number,
             amount, reason: reason.trim(), createdAt: new Date().toISOString()
           })));
-          if (!results.some(r => r.ok)) setError('Refund was posted, but the configured refund printer could not print the control slip.');
+          if (results.some(r => r.outcome === 'uncertain')) setError('Refund was posted. The control slip may already have printed — check the paper before reprinting it.');
+          else if (!results.some(r => r.ok)) setError('Refund was posted, but the configured refund printer could not print the control slip.');
+        } else {
+          setError('Refund was posted. No printer is assigned to Refund Slips, so no control slip was printed.');
         }
       } catch (printError) {
         setError(`Refund was posted, but the control slip could not be printed: ${printError.message || 'printer error'}`);
@@ -128,6 +131,7 @@ export default function Cashier() {
         currency: 'KES',
         voidedCount: receipt.status === 'voided' ? 1 : 0,
       });
+      if (result.outcome === 'uncertain') throw new Error('The receipt may already have reprinted. Check the paper before printing it again.');
       if (!result.ok) throw new Error(result.friendlyError || 'Receipt printer did not complete the reprint.');
     } catch (e) { setError(e.message || 'Receipt reprint failed.'); }
     finally { setReprintBusy(null); }

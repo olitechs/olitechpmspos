@@ -3,7 +3,7 @@ import { testConnection as testBrowserPrinterConnection, pairUsbDevice, pairBlue
 import { supabase } from '@/lib/supabaseClient';
 import { buildOrderTicketText, buildUnsettledReceiptText, buildFinalReceiptText, toEscPosPayload, thermalTextToHtml } from '@/services/printTemplates';
 import { getPrintColor } from '@/utils/printTheme';
-import { classifyAgentPrintOutcome, durableJobStatus, outcomeAffectsConnection } from '@/services/printOutcomeCore';
+import { classifyAgentPrintOutcome, durableJobStatus, outcomeAffectsConnection, summarizePrintOutcomes } from '@/services/printOutcomeCore';
 import { planDepartmentTickets, printersForDepartment } from '@/services/printDepartmentRoutingCore';
 
 const normalizeNetworkEndpoint = (value, fallbackPort = 9100) => {
@@ -596,8 +596,11 @@ export async function printVoidTicket(printer, data = {}) {
   );
 
   if (data.voidId && propertyId) {
+    // The void table has no "uncertain" status, so an unconfirmed slip stays
+    // 'pending' rather than being recorded as a failure it may not be.
+    const outcome = result.outcome || classifyAgentPrintOutcome(result);
     const patch = {
-      status: result.ok ? 'printed' : 'failed',
+      status: outcome === 'printed' ? 'printed' : outcome === 'uncertain' ? 'pending' : 'failed',
       printer_id: printer.id || null,
     };
     await supabase.from('pos_void_items').update(patch).eq('id', data.voidId).eq('property_id', propertyId);
@@ -870,7 +873,8 @@ export async function printReceipt(type, data) {
     });
     const message = `No printer assigned to ${assignmentType}.`;
     await updateFnbPrintJob(queued.id, propertyId, 'failed', message, null);
-    return { ok:false, results:[], jobId:queued.id, assignmentType, friendlyError:message };
+    return { ok:false, outcome:'failed', results:[], jobId:queued.id, assignmentType, friendlyError:message,
+      summary:{ total:0, printed:0, uncertain:0, pending:0, failed:0, outcome:'failed', ok:false, needsPaperCheck:false, message } };
   }
   const copyCount = type === 'UNSETTLED' ? Math.max(1, Math.min(2, Number(settings.unsettled_receipt_copy_count || 2))) : 2;
   const copies = data.recoveryCopy
@@ -914,7 +918,8 @@ export async function printReceipt(type, data) {
         }));
       }
     }
-    return { ok: results.length === targets.length * copies.length && results.every(result => result.ok), results };
+    const summary = summarizePrintOutcomes(results);
+    return { ok: summary.ok, outcome: summary.outcome, summary, results };
   }
 
   for (const printer of targets) {
@@ -938,7 +943,8 @@ export async function printReceipt(type, data) {
       }));
     }
   }
-  return { ok: results.every((r) => r.ok), results };
+  const summary = summarizePrintOutcomes(results);
+  return { ok: summary.ok, outcome: summary.outcome, summary, results };
 }
 
 function shiftReportHtml(data, copyLabel) {
@@ -981,7 +987,8 @@ export async function printShiftReport(shiftData, printer) {
   const propertyId=shiftData.propertyId;
   const first=await printToPrinter(printer,shiftReportHtml(shiftData,'CASHIER COPY'),{propertyId,jobType:'shift_report',copyType:'cashier',assignmentType:'shift_reports',payload:{shiftId:shiftData.shift?.id||null},title:'Shift Closing Report'});
   const second=await printToPrinter(printer,shiftReportHtml(shiftData,'MANAGER / ACCOUNTANT COPY'),{propertyId,jobType:'shift_report',copyType:'manager',assignmentType:'shift_reports',payload:{shiftId:shiftData.shift?.id||null},title:'Shift Closing Report'});
-  return {ok:first.ok&&second.ok,results:[first,second]};
+  const summary = summarizePrintOutcomes([first, second]);
+  return {ok:summary.ok,outcome:summary.outcome,summary,results:[first,second]};
 }
 export async function listFnbPrintJobs(propertyId,{status=null,statuses=null,limit=50}={}) { if (!propertyId) return []; let q=supabase.from('fnb_print_jobs').select('*').eq('property_id',propertyId).order('created_at',{ascending:false}).limit(Math.min(100,Math.max(1,limit))); if(status) q=q.eq('status',status); else if(Array.isArray(statuses)&&statuses.length) q=q.in('status',statuses); const {data,error}=await q; if(error) throw error; return data||[]; }
 export async function retryFnbPrintJob(jobId,propertyId) {
@@ -989,8 +996,13 @@ export async function retryFnbPrintJob(jobId,propertyId) {
   if(error) throw error;
   const printer = await resolveRetryPrinter(job, propertyId);
   if(!printer) throw new Error(`No available printer is assigned to ${job.assignment_type || 'this print job'}.`);
+  // Reuse the ESC/POS bytes that were stored with the job. Re-rendering from
+  // HTML loses the logo raster and the single-buffer dithering used by the
+  // unsettled bill, so a retry would print a visibly different receipt.
+  const storedPayload = typeof job.payload?.escposBase64 === 'string' && job.payload.escposBase64 ? job.payload.escposBase64 : null;
   return printToPrinter(printer,job.content_html,{
     propertyId,jobType:job.job_type,copyType:job.copy_type,assignmentType:job.assignment_type,
-    payload:job.payload||{},title:job.title||'OliTechs Print',retryOf:job.id
+    payload:job.payload||{},title:job.title||'OliTechs Print',retryOf:job.id,
+    thermalBase64: storedPayload,
   });
 }

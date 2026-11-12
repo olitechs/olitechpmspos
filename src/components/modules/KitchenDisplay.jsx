@@ -60,9 +60,14 @@ export default function KitchenDisplay() {
       const [printers, assignments] = await Promise.all([getPrinters(propertyId), getAssignments(propertyId)]);
       const type = v.category === 'drinks' ? 'void_drinks_orders' : 'void_food_orders';
       const fallback = v.category === 'drinks' ? 'drinks_orders' : 'food_orders';
-      const targets = assignments.filter(a => a.assignment_type === type || a.assignment_type === fallback).map(a => printers.find(p => p.id === a.printer_id)).filter(Boolean).filter((p,i,a)=>a.findIndex(x=>x.id===p.id)===i);
+      // Prefer dedicated void printers; only fall back to the order printer when
+      // none is configured, otherwise every slip prints twice.
+      const collect = (assignmentType) => assignments.filter(a => a.assignment_type === assignmentType).map(a => printers.find(p => p.id === a.printer_id)).filter(Boolean).filter((p,i,a)=>a.findIndex(x=>x.id===p.id)===i);
+      const dedicated = collect(type);
+      const targets = dedicated.length ? dedicated : collect(fallback);
       if (!targets.length) throw new Error('No Kitchen/Bar printer is assigned for void slips.');
       const results = await Promise.all(targets.map(printer => printVoidTicket(printer,{propertyId,voidId:v.id,tableNo:v.table_number,waiterName:v.waiter,checkNo:v.check_no||v.order_number,item:v.item_name,removedQty:v.removed_qty,originalQty:v.original_qty,newQty:v.new_qty,reason:v.reason,removedBy:v.removed_by_name,timestamp:v.created_at,category:v.category})));
+      if (results.some(r=>r.outcome==='uncertain')) throw new Error('The void slip may already have printed. Check the paper before reprinting it.');
       if (!results.some(r=>r.ok)) throw new Error('Void reprint failed.');
       setVoids(await pmsService.listVoidedItems(propertyId));
     } catch(e) { setVoidError(e.message||'Void reprint failed.'); } finally { setVoidBusy(false); }

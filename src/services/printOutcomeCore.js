@@ -36,6 +36,38 @@ export function outcomeAffectsConnection(outcome) {
   return outcome === 'failed';
 }
 
+/**
+ * Collapses several copies/slips into one honest answer for a cashier dialog.
+ * "ok" keeps its strict meaning (every copy printed), so callers that gate a
+ * retry on it cannot claim a failure when paper may already exist.
+ */
+export function summarizePrintOutcomes(results = []) {
+  const list = (Array.isArray(results) ? results : []).filter(Boolean);
+  const counts = { printed: 0, uncertain: 0, pending: 0, failed: 0 };
+  for (const result of list) {
+    const outcome = result.outcome || classifyAgentPrintOutcome(result);
+    counts[outcome] = (counts[outcome] || 0) + 1;
+  }
+  const total = list.length;
+  const outcome = counts.uncertain ? 'uncertain'
+    : counts.failed ? 'failed'
+      : counts.pending ? 'pending'
+        : total ? 'printed' : 'failed';
+  const noun = total === 1 ? 'copy' : 'copies';
+  return {
+    total,
+    ...counts,
+    outcome,
+    ok: total > 0 && counts.printed === total,
+    needsPaperCheck: counts.uncertain > 0,
+    message: counts.uncertain
+      ? `${counts.uncertain} of ${total} ${noun} may already have printed. Check the paper before reprinting.`
+      : counts.failed
+        ? `${counts.failed} of ${total} ${noun} did not print.`
+        : total ? 'Everything printed.' : 'Nothing was sent to a printer.',
+  };
+}
+
 export function printOutcomeMessage(outcome) {
   if (outcome === 'uncertain') return 'This job may already have printed. Check the paper before reprinting.';
   if (outcome === 'pending') return 'This job is still queued or printing at the agent.';

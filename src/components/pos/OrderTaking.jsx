@@ -233,11 +233,16 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
         const [printers, assignments] = await Promise.all([getPrinters(propertyId), getAssignments(propertyId)]);
         const assignmentType = voidRow.category === 'drinks' ? 'void_drinks_orders' : 'void_food_orders';
         const fallbackType = voidRow.category === 'drinks' ? 'drinks_orders' : 'food_orders';
-        const targets = assignments
-          .filter(a => a.assignment_type === assignmentType || a.assignment_type === fallbackType)
+        // A dedicated void printer must win. Treating the normal order printer
+        // as an equal target printed every void slip twice (kitchen and the
+        // audit printer) whenever both were configured.
+        const collectTargets = (type) => assignments
+          .filter(a => a.assignment_type === type)
           .map(a => printers.find(p => p.id === a.printer_id))
           .filter(Boolean)
           .filter((p,i,arr) => arr.findIndex(x => x.id === p.id) === i);
+        const dedicatedVoidPrinters = collectTargets(assignmentType);
+        const targets = dedicatedVoidPrinters.length ? dedicatedVoidPrinters : collectTargets(fallbackType);
         if (targets.length) {
           const results = await Promise.all(targets.map(printer => printVoidTicket(printer, {
             propertyId,
@@ -254,7 +259,8 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
             timestamp: voidRow.created_at,
             category: voidRow.category,
           })));
-          if (!results.some(r => r.ok)) setRemoveError('Item voided, but the void slip did not print. Check the assigned printer.');
+          if (results.some(r => r.outcome === 'uncertain')) setRemoveError('Item voided. The void slip may already have printed — check the paper before reprinting it.');
+          else if (!results.some(r => r.ok)) setRemoveError('Item voided, but the void slip did not print. Check the assigned printer.');
         } else {
           setRemoveError('Item voided, but no Kitchen/Bar void printer is assigned.');
         }
