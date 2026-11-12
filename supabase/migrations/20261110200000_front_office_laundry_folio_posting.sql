@@ -26,4 +26,4 @@ begin
  return jsonb_build_object('order_id',v_order.id,'reservation_id',v_res.id,'total',v_total,'status',v_order.status);
 end;$$;
 revoke execute on function public.fn_create_laundry_order_with_folio(uuid,uuid,jsonb,text) from public,anon;
-grant execute on function public.fn_create_laundry_order_with_folio(uuid,uuid,jsonb,text) to authen
+grant execute on function public.fn_create_laundry_order_with_folio(uuid,uuid,jsonb,text) to authenticated;

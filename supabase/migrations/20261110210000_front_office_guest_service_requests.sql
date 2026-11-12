@@ -90,5 +90,6 @@ create trigger guest_service_request_touch_updated_at before update on public.gu
 drop trigger if exists guest_service_request_event_log on public.guest_service_requests;
 create trigger guest_service_request_event_log after insert or update on public.guest_service_requests for each row execute function public.fn_log_guest_service_request_event();
 grant select,insert,update on public.guest_service_requests to authenticated;
-grant select,insert on public.guest_service_request_events to authenticated;
-revoke all on public.guest_service_requests,public.guest_service_reques
+grant select on public.guest_service_request_events to authenticated;
+revoke insert on public.guest_service_request_events from authenticated;
+revoke all on public.guest_service_requests,public.guest_service_request_events from anon;

@@ -2,9 +2,13 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, X as CloseIcon } from 'lucide-react';
 
-// Keep only destinations verified as belonging to OliTechs.
+// TODO: swap these for OliTechs' real profile URLs — only WhatsApp below is confirmed real.
 const SOCIALS = [
   { key: 'whatsapp', label: 'WhatsApp', href: 'https://wa.me/254745043121', kind: 'icon' },
+  { key: 'instagram', label: 'Instagram', href: 'https://instagram.com/olitechs', kind: 'mono', mono: 'IG' },
+  { key: 'tiktok', label: 'TikTok', href: 'https://tiktok.com/@olitechs', kind: 'mono', mono: 'TT' },
+  { key: 'linkedin', label: 'LinkedIn', href: 'https://linkedin.com/company/olitechs', kind: 'mono', mono: 'in' },
+  { key: 'facebook', label: 'Facebook', href: 'https://facebook.com/olitechs', kind: 'mono', mono: 'f' },
 ];
 
 /**
