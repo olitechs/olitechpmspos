@@ -127,7 +127,7 @@ test('the Windows release workflow verifies inputs, signs, and refuses an unsign
   assert.match(workflow, /choco install innosetup/);
   assert.match(workflow, /WINDOWS_CERT_PFX_BASE64/);
   assert.match(workflow, /Import-PfxCertificate/);
-  assert.match(workflow, /Refuse to build a release without a signing certificate/);
+  assert.match(workflow, /Refuse to build an unsigned release/);
   assert.match(workflow, /SHA256SUMS\.txt/);
   assert.match(workflow, /actions\/upload-artifact/);
   assert.match(workflow, /softprops\/action-gh-release/);
