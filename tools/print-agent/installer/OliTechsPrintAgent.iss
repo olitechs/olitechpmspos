@@ -117,9 +117,11 @@ begin
   Result := Code = 0;
 end;
 
-{ Files in {app} are replaced right after ssInstall. A running service holds the
-  bundled node.exe open, so it must be stopped before any file is copied. An
-  upgrade must not need a reboot or a manual "sc stop". }
+{ Files in the install folder are replaced right after ssInstall. A running
+  service holds the bundled node.exe open, so it must be stopped before any
+  file is copied. An upgrade must not need a reboot or a manual "sc stop".
+  (Do not write brace constants such as the app folder inside a brace comment:
+  Inno ends the comment at the first closing brace.) }
 procedure StopExistingAgentService();
 var
   I: Integer;
