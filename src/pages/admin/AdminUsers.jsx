@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { platformService } from '@/services/platformService';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
+import { PageDataSkeleton } from '@/components/ui/AppLoadingSkeleton';
 
 const ROLES = ['owner', 'admin', 'manager', 'reception', 'cashier', 'waiter', 'kitchen', 'housekeeping', 'maintenance', 'accountant', 'storekeeper'];
 
@@ -71,8 +72,9 @@ export default function AdminUsers() {
     {error && <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">{error}<p className="mt-1 text-xs">Confirm the platform user-directory migration has been applied.</p></div>}
     <div className="flex items-center justify-between text-xs text-muted-foreground"><span>{loading ? 'Loading accounts…' : `${filtered.length} of ${users.length} accounts`}</span><span>Property membership changes are audited by the existing platform RPCs.</span></div>
     <section className="space-y-3">
+      {loading && <PageDataSkeleton variant="cards" rows={6}/>}
       {!loading && filtered.length === 0 && <div className="rounded-2xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">No matching accounts found.</div>}
-      {filtered.map((user) => <article key={user.user_id} className="overflow-hidden rounded-2xl border border-border bg-card">
+      {!loading && filtered.map((user) => <article key={user.user_id} className="overflow-hidden rounded-2xl border border-border bg-card">
         <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
           <div className="flex min-w-0 items-center gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"><Users className="h-5 w-5" /></div><div className="min-w-0"><div className="truncate font-semibold text-foreground">{user.full_name || 'Unnamed user'}</div><div className="truncate text-sm text-muted-foreground">{user.email}</div></div></div>
           <div className="flex flex-wrap items-center gap-2"><span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs capitalize"><ShieldCheck className="h-3 w-3" />{user.platform_role}</span><span className="rounded-full bg-muted px-2.5 py-1 text-xs">{(user.property_memberships || []).length} properties</span></div>
