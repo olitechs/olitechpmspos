@@ -2,12 +2,9 @@ import { useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/ui/UserNotRegisteredError';
+import AppLoadingSkeleton from '@/components/ui/AppLoadingSkeleton';
 
-const DefaultFallback = () => (
-  <div className="fixed inset-0 flex items-center justify-center">
-    <div className="w-8 h-8 border-4 border-[var(--border)] border-t-[var(--primary)] rounded-full animate-spin"></div>
-  </div>
-);
+const DefaultFallback = () => <AppLoadingSkeleton variant="dashboard" label="Checking your access" />;
 
 export default function ProtectedRoute({ fallback = <DefaultFallback />, unauthenticatedElement }) {
   const { isAuthenticated, isLoadingAuth, authChecked, authError, checkUserAuth } = useAuth();
