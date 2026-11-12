@@ -29,6 +29,18 @@ function RoomSkeleton() {
   return <div className="space-y-3">{Array.from({length:5},(_,i)=><div key={i} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3"><div className="mb-3 flex justify-between"><Placeholder className="[&>div]:h-4 [&>div]:w-28"/><Placeholder className="[&>div]:h-3 [&>div]:w-16"/></div><div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-6">{Array.from({length:6},(_,j)=><div key={j} className="h-16 animate-pulse rounded-lg bg-[var(--surface-2)] sm:h-20"/>)}</div></div>)}</div>;
 }
 
+
+export function PageDataSkeleton({ variant = 'table', rows = 5, className = '' }) {
+  const rowCount = Math.max(3, Math.min(8, rows));
+  return <div role="status" aria-label="Loading page data" aria-live="polite" className={`w-full min-w-0 space-y-4 ${className}`.trim()}>
+    <span className="sr-only">Loading page data…</span>
+    {variant === 'report' && <div className="grid grid-cols-2 gap-3 md:grid-cols-4">{Array.from({length:4},(_,i)=><div key={i} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"><Placeholder className="mb-4 [&>div]:h-3 [&>div]:w-2/3"/><Placeholder className="mb-2 [&>div]:h-7 [&>div]:w-1/2"/><Placeholder className="[&>div]:h-2 [&>div]:w-3/4"/></div>)}</div>}
+    {variant === 'cards' && <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">{Array.from({length:rowCount},(_,i)=><div key={i} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"><div className="mb-4 flex items-center gap-3"><div className="h-10 w-10 animate-pulse rounded-full bg-[var(--surface-2)]"/><div className="min-w-0 flex-1"><Placeholder className="mb-2 [&>div]:h-3 [&>div]:w-2/3"/><Placeholder className="[&>div]:h-2 [&>div]:w-1/2"/></div></div><Placeholder lines={2} className="[&>div]:h-3"/></div>)}</div>}
+    {variant === 'list' && <div className="divide-y divide-[var(--border)] rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4">{Array.from({length:rowCount},(_,i)=><div key={i} className="flex items-center gap-3 py-4"><div className="h-9 w-9 animate-pulse rounded-full bg-[var(--surface-2)]"/><div className="min-w-0 flex-1"><Placeholder className="mb-2 [&>div]:h-3 [&>div]:w-2/3"/><Placeholder className="[&>div]:h-2 [&>div]:w-1/3"/></div><Placeholder className="w-20 [&>div]:h-6"/></div>)}</div>}
+    {(variant === 'table' || variant === 'report') && <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]"><div className="grid grid-cols-3 gap-3 border-b border-[var(--border)] bg-[var(--surface-2)] p-3 sm:grid-cols-5">{Array.from({length:5},(_,i)=><Placeholder key={i} className={`${i>2?'hidden sm:block ':''}[&>div]:h-3`}/>)}</div><div className="px-3">{Array.from({length:rowCount},(_,i)=><div key={i} className="grid grid-cols-3 gap-3 border-b border-[var(--border)] py-4 last:border-0 sm:grid-cols-5">{Array.from({length:5},(_,j)=><Placeholder key={j} className={`${j>2?'hidden sm:block ':''}[&>div]:h-3`}/>)}</div>)}</div></div>}
+  </div>;
+}
+
 export default function AppLoadingSkeleton({variant='dashboard',label='Loading workspace',className='',fullScreen=true}) {
   const admin=variant==='admin',pos=variant==='pos',rooms=variant==='rooms';
   return <div role="status" aria-live="polite" aria-label={label} className={`${fullScreen ? 'fixed inset-0 z-[100] min-h-screen' : 'relative min-h-[22rem] w-full rounded-xl'} flex overflow-hidden bg-[var(--canvas)] text-[var(--text)] ${className}`.trim()}>
