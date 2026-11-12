@@ -1,4 +1,5 @@
 import React, { Suspense, useEffect, useState } from 'react';
+import AppLoadingSkeleton from '@/components/ui/AppLoadingSkeleton';
 import { lazyWithRetry } from '@/lib/lazyWithRetry';
 import { useLocation } from 'react-router-dom';
 import { StoreProvider } from '@/data/AppStore';
@@ -189,7 +190,7 @@ export default function POSApp({
             <div className="min-h-0 flex-1 overflow-y-auto">
               <ErrorBoundary label={currentModule?.label || 'This section'}>
                 <RouteGuard module={guardedWorkspace}>
-                  <Suspense fallback={<div className="flex min-h-48 items-center justify-center bg-[var(--canvas)] text-sm text-[var(--text-muted)]" role="status">Loading module…</div>}>
+                  <Suspense fallback={<AppLoadingSkeleton variant={activeModule === "pos" ? "pos" : activeModule === "rooms" ? "rooms" : "dashboard"} label={`Loading ${currentModule?.label || "module"}`} fullScreen={false} />}>
                     {activeModule === 'settings'
                       ? content
                       : <PaywallGuard module={getSubscriptionEntitlement(activeModule, workspaceModule)}>{content}</PaywallGuard>}
