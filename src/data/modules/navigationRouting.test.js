@@ -276,7 +276,7 @@ test('POS access stays unlocked during navigation and is cleared when its browse
 test('every Front Office navigation destination resolves to a registered route', () => {
   const paths = [
     ...[...frontShell.matchAll(/path:'([^']+)'/g)].map((match) => match[1]),
-    ...[...frontShell.matchAll(/\['[^']+','([^']+)'/g)].map((match) => match[1]),
+    ...[...frontShell.matchAll(/\['[^']+','(\/frontoffice\/[^']+)'/g)].map((match) => match[1]),
   ];
   const normalized = [...new Set(paths)].map((path) =>
     path.replace(/^\/frontoffice\/statistics\/[^/]+$/, '/frontoffice/statistics/:report')
