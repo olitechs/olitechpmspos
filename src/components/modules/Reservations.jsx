@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { PageDataSkeleton } from '@/components/ui/AppLoadingSkeleton';
 import { Link, useLocation } from 'react-router-dom';
 import {
   CalendarDays, CheckCircle2, ChevronRight, DoorOpen, LogOut, MoveRight,
@@ -81,6 +82,13 @@ export default function Reservations() {
   const arrivals = reservations.filter((r) => r.checkIn === selectedDate && r.status === 'booked');
   const departures = reservations.filter((r) => r.checkOut === selectedDate && r.status === 'checked-in');
   const inHouse = reservations.filter((r) => r.status === 'checked-in');
+
+  if (pms.loading) {
+    return <div className="flex-1 overflow-y-auto bg-canvas p-4 lg:p-6"><div className="mx-auto max-w-[1500px] space-y-4">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h1 className="text-xl font-bold tracking-tight text-foreground">{view === 'arrivals' ? 'Arrivals' : view === 'in-house' ? 'In-House Guests' : view === 'departures' ? 'Departures' : 'Reservations'}</h1><p className="mt-1 text-sm text-muted-foreground">Loading reservation and room records for this property</p></div><div className="h-10 w-32 animate-pulse rounded-lg bg-secondary"/></header>
+      <PageDataSkeleton variant="report" rows={6}/>
+    </div></div>;
+  }
 
   const refresh = async () => {
     setError('');
