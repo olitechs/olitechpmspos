@@ -258,6 +258,10 @@ export async function testConnection(printer, { timeoutMs = DEFAULT_TIMEOUT_MS }
 			case 'network': result = await testNetwork(printer, { timeoutMs }); break;
 			case 'usb': result = await testUsb(printer); break;
 			case 'bluetooth': result = await testBluetooth(printer); break;
+			// Web Serial was implemented but never reachable: without this case a
+			// serial printer fell through to "Unknown connection type" and the
+			// send gate refused to print.
+			case 'serial': result = await testSerial(printer); break;
 			case 'system': result = await testSystem(); break;
 			default: result = { status: PrinterStatus.ERROR, friendlyError: 'Unknown connection type.' };
 		}
@@ -277,6 +281,9 @@ export async function pairUsbDevice(printer) {
 	try {
 		const device = await navigator.usb.requestDevice({ filters: [] });
 		await device.open();
+		// Some devices expose no default configuration until one is selected, and
+		// then look like they have no printable interface.
+		if (!device.configuration) await device.selectConfiguration(1);
 		deviceHandles.set(printer.id, device);
 		return { ok: true };
 	} catch (err) {
@@ -342,9 +349,10 @@ async function sendToAgent(printer, text, printSettings = {}) {
   };
 }
 
-async function sendToUsb(printer, text, settings = {}) {
+	async function sendToUsb(printer, text, settings = {}) {
 	const handle = deviceHandles.get(printer.id);
 	if (!handle) return { ok: false, friendlyError: 'No USB device paired. Connect the printer first.' };
+	let claimedInterface = null;
 	try {
 		const iface = handle.configuration?.interfaces?.[0];
 		const alt = iface?.alternates?.[0];
@@ -352,12 +360,17 @@ async function sendToUsb(printer, text, settings = {}) {
 		if (!iface || !outEndpoint) {
 			return { ok: false, friendlyError: 'This USB device does not expose a printable interface.' };
 		}
-		await handle.claimInterface(iface.interfaceNumber).catch(() => {});
+		await handle.claimInterface(iface.interfaceNumber);
+		claimedInterface = iface.interfaceNumber;
 		const data = escPosBytes(text, settings);
 		await handle.transferOut(outEndpoint.endpointNumber, data);
 		return { ok: true };
 	} catch (err) {
 		return { ok: false, friendlyError: toFriendlyError(err), rawError: String(err?.message || err) };
+	} finally {
+		// Release the interface so the next print (or another tab) can use the
+		// device instead of finding it permanently claimed.
+		if (claimedInterface !== null) await handle.releaseInterface(claimedInterface).catch(() => {});
 	}
 }
 
@@ -400,16 +413,32 @@ async function sendToBluetooth(printer, text, settings = {}) {
     // long receipts cannot overrun the device buffer before the cut command.
     const CHUNK = 180;
     const acknowledgedWrites = typeof characteristic.writeValueWithResponse === 'function';
-    for (let i = 0; i < data.length; i += CHUNK) {
-      const chunk = data.slice(i, i + CHUNK);
-      if (acknowledgedWrites) {
-        await characteristic.writeValueWithResponse(chunk);
-      } else {
-        await characteristic.writeValueWithoutResponse(chunk);
-        if (i + CHUNK < data.length) {
-          await new Promise(resolve => setTimeout(resolve, 15));
+    let written = 0;
+    try {
+      for (let i = 0; i < data.length; i += CHUNK) {
+        const chunk = data.slice(i, i + CHUNK);
+        if (acknowledgedWrites) {
+          await characteristic.writeValueWithResponse(chunk);
+        } else {
+          await characteristic.writeValueWithoutResponse(chunk);
+          if (i + CHUNK < data.length) {
+            await new Promise(resolve => setTimeout(resolve, 15));
+          }
         }
+        written += chunk.length;
       }
+    } catch (err) {
+      // Chunks already accepted by the printer may be on paper. Reporting a
+      // plain failure invites a retry that prints a second partial receipt.
+      return {
+        ok: false,
+        status: written > 0 ? 'uncertain' : 'failed',
+        delivered: written > 0,
+        friendlyError: written > 0
+          ? 'The Bluetooth printer stopped part-way through. Check the paper before reprinting.'
+          : toFriendlyError(err),
+        rawError: String(err?.message || err),
+      };
     }
 		return { ok: true };
 	} catch (err) {

@@ -300,9 +300,13 @@ export async function testPrinterConnection(printer, propertyId) {
       const connection = await testBrowserPrinterConnection(browser);
       if (connection.status === PrinterStatus.CONNECTED) {
         const printed = await sendBrowserPrintJob(browser, buildTestPageText(browser), { thermal:true, title:'OliTechs Printer Test' });
+        const printedOutcome = printed?.outcome || classifyAgentPrintOutcome(printed);
         result = {
           ok: !!printed?.ok,
-          status: printed?.ok ? PrinterStatus.CONNECTED : PrinterStatus.FAILED,
+          // A partial Bluetooth write is not proof the device is unreachable.
+          status: printed?.ok ? PrinterStatus.CONNECTED
+            : (printed?.status === 'uncertain' ? PrinterStatus.CONNECTED : PrinterStatus.FAILED),
+          outcome: printed?.ok ? 'printed' : printedOutcome,
           friendlyError: printed?.friendlyError,
           transport: printer.connection_type,
         };
@@ -314,7 +318,7 @@ export async function testPrinterConnection(printer, propertyId) {
           transport: printer.connection_type,
         };
       }
-      await updatePrinterTransportStatus(printer, propertyId, result.ok ? 'connected' : 'offline', result.friendlyError || null);
+      await updatePrinterTransportStatus(printer, propertyId, outcomeAffectsConnection(result.outcome || (result.ok ? 'printed' : 'failed')) ? 'offline' : 'connected', result.friendlyError || null);
     } else {
       result = { ok:false, friendlyError:'Unsupported printer connection type.' };
     }
@@ -376,7 +380,14 @@ export async function printToPrinter(printer, contentHtml, { propertyId, jobType
       await updatePrinterTransportStatus(printer, propertyId, 'offline', result.friendlyError);
     } else {
       result = await sendBrowserPrintJob(transport, text, { thermal:true, title, printSettings });
-      await updatePrinterTransportStatus(printer, propertyId, result.ok ? 'connected' : 'offline', result.friendlyError || null);
+      // A half-written Bluetooth job proves the device is reachable, so it must
+      // not be marked offline (or re-queued as a clean failure).
+      const browserOutcome = result.outcome || classifyAgentPrintOutcome(result);
+      if (outcomeAffectsConnection(browserOutcome)) {
+        await updatePrinterTransportStatus(printer, propertyId, 'offline', result.friendlyError || null);
+      } else if (browserOutcome === 'printed') {
+        await updatePrinterTransportStatus(printer, propertyId, 'connected', null);
+      }
     }
   } else {
     result = { ok:false, friendlyError:'Unsupported printer connection type.' };
@@ -1039,6 +1050,11 @@ export async function printShiftReport(shiftData, printer) {
   const results=[];
   if (!done.includes('cashier')) results.push(await printToPrinter(printer,shiftReportHtml(shiftData,'CASHIER COPY'),{propertyId,jobType:'shift_report',copyType:'cashier',assignmentType:'shift_reports',payload:{shiftId},title:'Shift Closing Report'}));
   if (!done.includes('manager')) results.push(await printToPrinter(printer,shiftReportHtml(shiftData,'MANAGER / ACCOUNTANT COPY'),{propertyId,jobType:'shift_report',copyType:'manager',assignmentType:'shift_reports',payload:{shiftId},title:'Shift Closing Report'}));
+  if (!results.length) {
+    // Nothing was sent because every copy is already on paper. Reporting a
+    // failed print here would push staff into reprinting a full set.
+    return {ok:true,outcome:'already_printed',summary:summarizePrintOutcomes([]),skippedExisting:done.length,results};
+  }
   const summary = summarizePrintOutcomes(results);
   return {ok:summary.ok,outcome:summary.outcome,summary,skippedExisting:done.length,results};
 }
