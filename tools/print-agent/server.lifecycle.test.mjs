@@ -115,8 +115,15 @@ test('starts as a service, reports health and refuses untrusted browser origins'
   const stopped = child.kill('SIGTERM');
   assert.equal(stopped, true);
   const exit = await waitForExit(child);
-  assert.equal(exit.code, 0, 'a service stop should exit cleanly');
-  assert.equal(readLock(dataDir), null, 'the instance lock must be released on shutdown');
+  if (process.platform === 'win32') {
+    // Windows has no SIGTERM delivery to another process: the service wrapper
+    // terminates node.exe, so the process ends without running shutdown hooks.
+    // The durable queue and stale-lock recovery are what make that safe.
+    assert.ok(exit.signal || exit.code !== null, 'the agent process must actually stop');
+  } else {
+    assert.equal(exit.code, 0, 'a service stop should exit cleanly');
+    assert.equal(readLock(dataDir), null, 'the instance lock must be released on shutdown');
+  }
 });
 
 test('refuses to run a second agent against the same installation', async (t) => {
