@@ -25,7 +25,7 @@ export default function KitchenPrintersPage() {
     }
     setLoadingJobs(true);
     try {
-      const rows = await listFnbPrintJobs(propertyId, { status: 'failed', limit: 25 });
+      const rows = await listFnbPrintJobs(propertyId, { statuses: ['failed', 'uncertain'], limit: 25 });
       setFailedJobs(Array.isArray(rows) ? rows : []);
     } catch (error) {
       toast.error(error?.message || 'Unable to load failed print jobs.');
@@ -40,7 +40,7 @@ export default function KitchenPrintersPage() {
     let active = true;
     const refresh = async () => {
       try {
-        const rows = await listFnbPrintJobs(propertyId, { status: 'failed', limit: 25 });
+        const rows = await listFnbPrintJobs(propertyId, { statuses: ['failed', 'uncertain'], limit: 25 });
         if (active) setFailedJobs(Array.isArray(rows) ? rows : []);
       } catch (error) {
         console.warn('[KitchenPrintersPage] print recovery refresh failed', error);
@@ -63,6 +63,9 @@ export default function KitchenPrintersPage() {
 
   const retry = async (job) => {
     if (!propertyId || !job?.id) return;
+    // An unconfirmed job may already be on paper. Reprinting it blindly is how
+    // a guest ends up with two kitchen tickets or two bills.
+    if (job.status === 'uncertain' && !window.confirm('This job may already have printed. Check the paper first.\n\nReprint anyway?')) return;
     setRetryingJob(job.id);
     try {
       const result = await retryFnbPrintJob(job.id, propertyId);
@@ -82,8 +85,8 @@ export default function KitchenPrintersPage() {
       <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)]">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-5 py-4">
           <div>
-            <h2 className="text-base font-medium text-[var(--text)]">Failed kitchen print jobs</h2>
-            <p className="mt-1 text-sm text-[var(--text-muted)]">Review and retry failed F&B print jobs for this property.</p>
+            <h2 className="text-base font-medium text-[var(--text)]">Failed or unconfirmed kitchen print jobs</h2>
+            <p className="mt-1 text-sm text-[var(--text-muted)]">Review and retry failed F&B print jobs. Jobs marked “check the paper” may already have printed, so confirm before reprinting.</p>
           </div>
           <button type="button" onClick={loadFailedJobs} disabled={loadingJobs}
             className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[var(--border)] px-3 text-sm text-[var(--text)] disabled:opacity-50">
@@ -96,11 +99,12 @@ export default function KitchenPrintersPage() {
               <li key={job.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 text-sm font-medium text-[var(--text)]">
-                    <AlertCircle size={15} className="shrink-0 text-[var(--danger)]" />
+                    <AlertCircle size={15} className={`shrink-0 ${job.status === 'uncertain' ? 'text-[var(--warning)]' : 'text-[var(--danger)]'}`} />
                     <span className="truncate">{job.title || job.job_type || 'Kitchen print job'}</span>
+                    {job.status === 'uncertain' && <span className="shrink-0 rounded-md bg-[var(--warning-soft)] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[var(--warning-text)]">Check the paper</span>}
                   </div>
                   <p className="mt-1 text-xs text-[var(--text-muted)]">
-                    {job.error_message || 'The previous print attempt failed.'}
+                    {job.error_message || (job.status === 'uncertain' ? 'The printer never confirmed this job. It may already have printed.' : 'The previous print attempt failed.')}
                     {job.created_at ? ' · ' + new Date(job.created_at).toLocaleString() : ''}
                   </p>
                 </div>
@@ -115,7 +119,7 @@ export default function KitchenPrintersPage() {
         ) : (
           <div className="flex items-center gap-2 px-5 py-8 text-sm text-[var(--text-muted)]">
             <CheckCircle2 size={16} className="text-[var(--success)]" />
-            {loadingJobs ? 'Loading failed print jobs…' : 'No failed kitchen print jobs.'}
+            {loadingJobs ? 'Loading failed print jobs…' : 'No failed or unconfirmed kitchen print jobs.'}
           </div>
         )}
       </section>

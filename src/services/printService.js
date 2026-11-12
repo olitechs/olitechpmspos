@@ -3,6 +3,7 @@ import { testConnection as testBrowserPrinterConnection, pairUsbDevice, pairBlue
 import { supabase } from '@/lib/supabaseClient';
 import { buildOrderTicketText, buildUnsettledReceiptText, buildFinalReceiptText, toEscPosPayload, thermalTextToHtml } from '@/services/printTemplates';
 import { getPrintColor } from '@/utils/printTheme';
+import { classifyAgentPrintOutcome, durableJobStatus, outcomeAffectsConnection } from '@/services/printOutcomeCore';
 
 const normalizeNetworkEndpoint = (value, fallbackPort = 9100) => {
   let host = String(value || '').trim();
@@ -215,14 +216,18 @@ async function localAgentRequest(printer, propertyId, path, text = '', escposBas
 
 async function directAgentPrint(printer, propertyId, text, path, escposBase64 = null, options = {}) {
   const result = await localAgentRequest(printer, propertyId, path, text, escposBase64, options);
-  if (!result.ok) {
+  const outcome = classifyAgentPrintOutcome(result);
+  if (outcome !== 'printed') {
     const code = result.code || 'LOCAL_AGENT_ERROR';
     const friendly = `[${code}] ${result.message}`;
-    await updatePrinterTransportStatus(printer, propertyId, 'offline', friendly);
-    return { ok:false, friendlyError:friendly, code, transport:'local_agent' };
+    // A printer that may already have printed (uncertain), or one the agent is
+    // still working on (pending), is not offline. Only a real transport failure
+    // is allowed to change the printer's recorded connection state.
+    if (outcomeAffectsConnection(outcome)) await updatePrinterTransportStatus(printer, propertyId, 'offline', friendly);
+    return { ok:false, status: outcome, friendlyError:friendly, code, transport:'local_agent', outcome };
   }
   await updatePrinterTransportStatus(printer, propertyId, 'connected', null);
-  return { ok:true, status:'connected', direct:true, transport:'local_agent' };
+  return { ok:true, status:'connected', direct:true, transport:'local_agent', outcome:'printed' };
 }
 
 /**
@@ -375,9 +380,13 @@ export async function printToPrinter(printer, contentHtml, { propertyId, jobType
   } else {
     result = { ok:false, friendlyError:'Unsupported printer connection type.' };
   }
-  await logPrint(propertyId, printer.id, jobType, copyType, result.ok ? 'printed' : 'failed', result.friendlyError || null);
-  if (job) { try { await updateFnbPrintJob(job.id,propertyId,result.ok?'printed':'failed',result.friendlyError||null,printer.id); } catch (e) { console.warn('[printService] failed to update durable print job',e); } }
-  return {...result,jobId:job?.id||null,printerId:printer.id||null,printerName:printer.name||null,assignmentType};
+  const outcome = result.outcome || classifyAgentPrintOutcome(result);
+  const durableStatus = durableJobStatus(outcome);
+  // "pending" means the agent already holds this exact job; the row stays
+  // 'printing' rather than being written off as a failure.
+  await logPrint(propertyId, printer.id, jobType, copyType, outcome === 'pending' ? 'sending' : durableStatus, result.friendlyError || null);
+  if (job && outcome !== 'pending') { try { await updateFnbPrintJob(job.id,propertyId,durableStatus,result.friendlyError||null,printer.id); } catch (e) { console.warn('[printService] failed to update durable print job',e); } }
+  return {...result,outcome,jobId:job?.id||null,printerId:printer.id||null,printerName:printer.name||null,assignmentType};
 }
 
 export async function connectPrinter(printer, propertyId) {
@@ -922,7 +931,7 @@ export async function printShiftReport(shiftData, printer) {
   const second=await printToPrinter(printer,shiftReportHtml(shiftData,'MANAGER / ACCOUNTANT COPY'),{propertyId,jobType:'shift_report',copyType:'manager',assignmentType:'shift_reports',payload:{shiftId:shiftData.shift?.id||null},title:'Shift Closing Report'});
   return {ok:first.ok&&second.ok,results:[first,second]};
 }
-export async function listFnbPrintJobs(propertyId,{status=null,limit=50}={}) { if (!propertyId) return []; let q=supabase.from('fnb_print_jobs').select('*').eq('property_id',propertyId).order('created_at',{ascending:false}).limit(Math.min(100,Math.max(1,limit))); if(status) q=q.eq('status',status); const {data,error}=await q; if(error) throw error; return data||[]; }
+export async function listFnbPrintJobs(propertyId,{status=null,statuses=null,limit=50}={}) { if (!propertyId) return []; let q=supabase.from('fnb_print_jobs').select('*').eq('property_id',propertyId).order('created_at',{ascending:false}).limit(Math.min(100,Math.max(1,limit))); if(status) q=q.eq('status',status); else if(Array.isArray(statuses)&&statuses.length) q=q.in('status',statuses); const {data,error}=await q; if(error) throw error; return data||[]; }
 export async function retryFnbPrintJob(jobId,propertyId) {
   const {data:job,error}=await supabase.from('fnb_print_jobs').select('*').eq('id',jobId).eq('property_id',propertyId).single();
   if(error) throw error;

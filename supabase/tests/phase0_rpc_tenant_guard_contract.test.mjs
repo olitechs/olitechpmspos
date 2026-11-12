@@ -94,7 +94,10 @@ const dashboard = await readFile(
 
 test('kitchen printer route uses the production property-scoped printer schema', () => {
   assert.match(kitchenPrintersPage, /@\/pages\/SettingsPrinters/);
-  assert.match(kitchenPrintersPage, /listFnbPrintJobs\(propertyId, \{ status: 'failed', limit: 25 \}\)/);
+  // Failed and unconfirmed jobs both need a human: the unconfirmed ones may
+  // already be on paper, so reprinting them requires a paper check first.
+  assert.match(kitchenPrintersPage, /listFnbPrintJobs\(propertyId, \{ statuses: \['failed', 'uncertain'\], limit: 25 \}\)/);
+  assert.match(kitchenPrintersPage, /job\.status === 'uncertain' && !window\.confirm/);
   assert.match(kitchenPrintersPage, /table: 'fnb_print_jobs'/);
   assert.match(kitchenPrintersPage, /retryFnbPrintJob\(job\.id, propertyId\)/);
   assert.doesNotMatch(kitchenPrintersPage, /printer_groups|printer_group_categories|print_agents|from\('printers'\)/);
