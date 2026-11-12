@@ -14,14 +14,14 @@ test('sidebar navigation sections and item IDs are unique and complete', () => {
   }
 });
 
-test('sidebar master roles remain explicit and restricted routes retain role declarations', () => {
+test('calendar planner is not duplicated in the sidebar and restricted routes retain role declarations', () => {
   assert.equal(MASTER_ROLES.has('hotel_admin'), true);
   assert.equal(MASTER_ROLES.has('super_admin'), true);
   assert.equal(MASTER_ROLES.has('front_desk'), false);
   const items = SIDEBAR_SECTIONS.flatMap(section => section.items);
   const planner = items.find(item => item.id === 'room-planner');
   const accessRights = items.find(item => item.id === 'access-rights');
-  assert.ok(planner.roles.includes('front_desk'));
+  assert.equal(planner, undefined, 'Room Planner is accessed only from Calendar, not as a duplicate sidebar destination');
   assert.ok(accessRights.roles.includes('hotel_admin'));
   assert.ok(!accessRights.roles.includes('front_desk'));
   assert.equal(accessRights.path, '/backoffice/employees/access-rights');
