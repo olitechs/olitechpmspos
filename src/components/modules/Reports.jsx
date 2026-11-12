@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { PageDataSkeleton } from '@/components/ui/AppLoadingSkeleton';
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { CalendarDays, RefreshCw, TrendingUp, Hotel, ShoppingCart, ShieldCheck, BarChart3 } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
@@ -84,7 +85,7 @@ export default function Reports() {
 
       <div className="mb-4 flex flex-wrap gap-2">{tabs.map(([key,label,Icon])=><button key={key} type="button" onClick={()=>setTab(key)} className="inline-flex min-h-10 items-center gap-2 rounded-xl px-3 text-xs font-medium" style={{ background: tab===key ? 'var(--primary)' : SURFACE, color: tab===key ? 'var(--primary-foreground)' : NAVY, border: `1px solid ${tab===key ? NAVY : BORDER}` }}><Icon size={14}/>{label}</button>)}</div>
 
-      {loading && !report ? <div className="rounded-xl p-10 text-center text-sm" style={{ background:SURFACE,color:MUTED,border:`1px solid ${BORDER}` }}>Loading live transactional data…</div> : report && <>
+      {loading && !report ? <PageDataSkeleton variant="report" rows={6} /> : report && <>
         {tab==='overview' && <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
             <Stat label="Occupancy" value={`${report.hotel?.occupancy_percent || 0}%`} sub={`${report.hotel?.occupied_room_nights || 0} / ${report.hotel?.available_room_nights || 0} room nights`} icon={Hotel}/>
