@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { PageDataSkeleton } from '@/components/ui/AppLoadingSkeleton';
 import { Activity, RefreshCw, Users, ReceiptText, CalendarDays, Printer, Building2, Clock3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { platformService } from '@/services/platformService';
@@ -82,7 +83,7 @@ export default function AdminUsage() {
         <div><h2 className="font-semibold text-foreground">Property activity</h2><p className="mt-1 text-xs text-muted-foreground">Select a property to open its management workspace.</p></div>
         <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><span className="h-2 w-2 rounded-full bg-[var(--success)]" /> Live changes + 30-second refresh</span>
       </div>
-      {loading ? <div className="p-8 text-center text-sm text-muted-foreground">Loading property usage…</div> : rows.length === 0 ? <div className="p-8 text-center text-sm text-muted-foreground">No property usage records are available.</div> : <>
+      {loading ? <PageDataSkeleton variant="table" rows={6}/> : rows.length === 0 ? <div className="p-8 text-center text-sm text-muted-foreground">No property usage records are available.</div> : <>
         <div className="hidden overflow-x-auto md:block">
           <table className="w-full min-w-[900px] text-sm">
             <thead className="bg-muted/40 text-left text-xs text-muted-foreground"><tr>
