@@ -69,15 +69,16 @@ Name: "{group}\Pair this computer"; Filename: "powershell.exe"; Parameters: "-No
 Name: "{group}\Print agent logs"; Filename: "{commonappdata}\OliTechs\PrintAgent\logs"
 Name: "{group}\Uninstall OliTechs Print Agent"; Filename: "{uninstallexe}"
 
+; The service is registered in [Code] (RunServiceInstaller) so a failure can be
+; shown to staff instead of being swallowed by a hidden window. Only the pairing
+; dialog lives here, and it is skipped when the service did not install.
 [Run]
-; Registers (or upgrades) the service, waits for health, and prints a short
-; result. -NodeExe points at the bundled runtime so Node need not be installed.
-Filename: "powershell.exe"; Parameters: "-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File ""{app}\service\install-service.ps1"" -WinSWPath ""{app}\service\WinSW.exe"" -NodeExe ""{app}\node\node.exe"""; StatusMsg: "Installing the OliTechs Print Agent service…"; Flags: runhidden waituntilterminated
 ; Optional but recommended: pair immediately with the code from Settings → Printers.
-Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ""{app}\pair-workstation.ps1"""; Description: "Pair this computer with OliTechs now (recommended)"; StatusMsg: "Opening the pairing step…"; Flags: postinstall runhidden waituntilterminated runasoriginaluser
+Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ""{app}\pair-workstation.ps1"""; Description: "Pair this computer with OliTechs now (recommended)"; StatusMsg: "Opening the pairing step…"; Flags: postinstall runhidden waituntilterminated runasoriginaluser; Check: ServiceInstalledOk
 
 [UninstallRun]
-Filename: "powershell.exe"; Parameters: "-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File ""{app}\service\uninstall-service.ps1"""; Flags: runhidden waituntilterminated; RunOnceId: "RemoveOliTechsPrintAgentService"
+; Scripts live with the agent that ships them, not beside WinSW.exe.
+Filename: "powershell.exe"; Parameters: "-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File ""{app}\tools\print-agent\service\uninstall-service.ps1"""; Flags: runhidden waituntilterminated; RunOnceId: "RemoveOliTechsPrintAgentService"
 
 [UninstallDelete]
 ; The service and its wrapper live in ProgramData. Printer data, logs and the
@@ -85,7 +86,97 @@ Filename: "powershell.exe"; Parameters: "-NoProfile -NonInteractive -ExecutionPo
 Type: filesandordirs; Name: "{app}"
 
 [Code]
+var
+  ServiceInstallFailed: Boolean;
+
 function InitializeSetup(): Boolean;
 begin
+  ServiceInstallFailed := False;
   Result := True;
+end;
+
+{ True when sc.exe reported success, i.e. the service exists. }
+function AgentServiceExists(): Boolean;
+var
+  Code: Integer;
+begin
+  Result := False;
+  if not Exec(ExpandConstant('{cmd}'), '/C sc.exe query OliTechsPrintAgent', '', SW_HIDE, ewWaitUntilTerminated, Code) then
+    exit;
+  Result := Code = 0;
+end;
+
+{ 0 means the service is currently RUNNING. }
+function AgentServiceRunning(): Boolean;
+var
+  Code: Integer;
+begin
+  Result := False;
+  if not Exec(ExpandConstant('{cmd}'), '/C sc.exe query OliTechsPrintAgent | findstr /I "RUNNING"', '', SW_HIDE, ewWaitUntilTerminated, Code) then
+    exit;
+  Result := Code = 0;
+end;
+
+{ Files in {app} are replaced right after ssInstall. A running service holds the
+  bundled node.exe open, so it must be stopped before any file is copied. An
+  upgrade must not need a reboot or a manual "sc stop". }
+procedure StopExistingAgentService();
+var
+  I: Integer;
+  Code: Integer;
+begin
+  if not AgentServiceExists() then
+    exit;
+  Exec(ExpandConstant('{cmd}'), '/C sc.exe stop OliTechsPrintAgent', '', SW_HIDE, ewWaitUntilTerminated, Code);
+  for I := 1 to 40 do
+  begin
+    if not AgentServiceRunning() then
+      exit;
+    Sleep(500);
+  end;
+end;
+
+{ The pairing dialog only makes sense when the agent actually installed. }
+function ServiceInstalledOk(): Boolean;
+begin
+  Result := not ServiceInstallFailed;
+end;
+
+procedure RunServiceInstaller();
+var
+  Code: Integer;
+  Params: String;
+begin
+  Params := '-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "' +
+    ExpandConstant('{app}\tools\print-agent\service\install-service.ps1') + '"' +
+    ' -WinSWPath "' + ExpandConstant('{app}\service\WinSW.exe') + '"' +
+    ' -NodeExe "' + ExpandConstant('{app}\node\node.exe') + '"';
+
+  if not Exec('powershell.exe', Params, ExpandConstant('{app}'), SW_HIDE, ewWaitUntilTerminated, Code) then
+  begin
+    ServiceInstallFailed := True;
+    MsgBox('Windows could not start the OliTechs Print Agent service installer.' + #13#10#13#10 +
+      'Printing will not work until this is fixed. Restart the computer and run this installer again, ' +
+      'or send the log folder to support: ' + ExpandConstant('{commonappdata}\OliTechs\PrintAgent\logs'),
+      mbError, MB_OK);
+    exit;
+  end;
+
+  if Code <> 0 then
+  begin
+    ServiceInstallFailed := True;
+    MsgBox('The OliTechs Print Agent service could not be installed (exit code ' + IntToStr(Code) + ').' + #13#10#13#10 +
+      'Printing will not work until this is fixed. The agent log folder is:' + #13#10 +
+      ExpandConstant('{commonappdata}\OliTechs\PrintAgent\logs') + #13#10#13#10 +
+      'Try running this installer again. If it keeps failing, send that folder to support.',
+      mbError, MB_OK);
+  end;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssInstall then
+    StopExistingAgentService()
+  else if CurStep = ssPostInstall then
+    RunServiceInstaller();
 end;

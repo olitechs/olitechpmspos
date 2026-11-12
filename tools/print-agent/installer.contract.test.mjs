@@ -23,8 +23,9 @@ test('the installer registers the service with the bundled runtime, not a system
   const iss = await read('./installer/OliTechsPrintAgent.iss');
 
   assert.match(iss, /install-service\.ps1/);
-  assert.match(iss, /-NodeExe ""\{app\}\\node\\node\.exe""/);
-  assert.match(iss, /-WinSWPath ""\{app\}\\service\\WinSW\.exe""/);
+  // The service step is built in [Code] so its exit code can be checked.
+  assert.match(iss, /-NodeExe "' \+ ExpandConstant\('\{app\}\\node\\node\.exe'\)/);
+  assert.match(iss, /-WinSWPath "' \+ ExpandConstant\('\{app\}\\service\\WinSW\.exe'\)/);
   assert.match(iss, /Flags: runhidden waituntilterminated/);
   assert.match(iss, /uninstall-service\.ps1/, 'uninstalling must remove the service');
 });
@@ -48,6 +49,34 @@ test('staff are offered pairing in a window, never a terminal', async () => {
   assert.match(pairing, /exit 2/, 'skipping pairing is a distinct outcome');
   assert.match(pairing, /exit 3/, 'an unreachable agent is a distinct outcome');
   assert.ok(!/Write-(Host|Output|Verbose)[^\r\n]*pairingCode/i.test(pairing), 'the pairing code must never be written out');
+});
+
+test('the installer runs the service scripts from the staged agent folder and stops the service before copying', async () => {
+  const iss = await read('./installer/OliTechsPrintAgent.iss');
+
+  // The payload keeps the repository layout: scripts are staged under
+  // tools\print-agent\service, only WinSW.exe sits in {app}\service.
+  assert.match(iss, /\{app\}\\tools\\print-agent\\service\\install-service\.ps1/);
+  assert.match(iss, /\{app\}\\tools\\print-agent\\service\\uninstall-service\.ps1/);
+  assert.doesNotMatch(iss, /\{app\}\\service\\install-service\.ps1/);
+  assert.doesNotMatch(iss, /\{app\}\\service\\uninstall-service\.ps1/);
+
+  // An upgrade replaces node.exe, which a running service holds open.
+  assert.match(iss, /CurStep = ssInstall[\s\S]{0,80}StopExistingAgentService\(\)/);
+  assert.match(iss, /sc\.exe stop OliTechsPrintAgent/);
+  assert.match(iss, /function AgentServiceRunning\(\): Boolean/);
+});
+
+test('a failed service installation is reported to staff, and pairing is skipped', async () => {
+  const iss = await read('./installer/OliTechsPrintAgent.iss');
+
+  assert.match(iss, /ewWaitUntilTerminated, Code/);
+  assert.match(iss, /if Code <> 0 then/);
+  assert.match(iss, /ServiceInstallFailed := True/);
+  assert.match(iss, /mbError, MB_OK/);
+  assert.match(iss, /Printing will not work until this is fixed/);
+  assert.match(iss, /Check: ServiceInstalledOk/);
+  assert.match(iss, /function ServiceInstalledOk\(\): Boolean/);
 });
 
 test('no installer file mentions a service-role key', async () => {
