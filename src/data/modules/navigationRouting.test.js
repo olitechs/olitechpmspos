@@ -26,6 +26,7 @@ const storekeeperDashboard = read('../../pages/StorekeeperDashboard.jsx');
 const storekeeperService = read('../../services/storekeeperDashboardService.js');
 const storePage = read('../../pages/Store.jsx');
 const alertDetails = read('../../components/store/StorekeeperAlertDetails.jsx');
+const socialFab = read('../../components/shell/SocialFAB.jsx');
 
 function routePathExists(path) {
   if (path === '/backoffice') return /path="\/backoffice"/.test(app);
@@ -269,4 +270,30 @@ test('POS access stays unlocked during navigation and is cleared when its browse
   assert.match(posContainer, /sessionStorage\.getItem\(accessKey\) === '1'/);
   assert.match(posContainer, /window\.addEventListener\('beforeunload', clearWindowAccess\)/);
   assert.match(posContainer, /sessionStorage\.removeItem\(accessKey\)/);
+});
+
+
+test('every Front Office navigation destination resolves to a registered route', () => {
+  const paths = [
+    ...[...frontShell.matchAll(/path:'([^']+)'/g)].map((match) => match[1]),
+    ...[...frontShell.matchAll(/\\['[^']+','([^']+)'/g)].map((match) => match[1]),
+  ];
+  const normalized = [...new Set(paths)].map((path) =>
+    path.replace(/^\\/frontoffice\\/statistics\\/[^/]+$/, '/frontoffice/statistics/:report')
+  );
+  const missing = normalized.filter((path) => path.startsWith('/') && !routePathExists(path));
+  assert.deepEqual(missing, [], 'Front Office menu destinations missing route registrations');
+});
+
+test('public homepage section links point to real sections and contain no empty placeholders', () => {
+  assert.doesNotMatch(publicHome, /href=["']#["']/);
+  const targets = [...publicHome.matchAll(/href="#([^"]+)"/g)].map((match) => match[1]);
+  const ids = new Set([...publicHome.matchAll(/\\bid="([^"]+)"/g)].map((match) => match[1]));
+  const missing = [...new Set(targets)].filter((target) => !ids.has(target));
+  assert.deepEqual(missing, [], 'public homepage anchors must point to existing section IDs');
+});
+
+test('public social menu exposes only the verified official contact destination', () => {
+  assert.match(socialFab, /https:\\/\\/wa\\.me\\/254745043121/);
+  assert.doesNotMatch(socialFab, /instagram\\.com|tiktok\\.com|linkedin\\.com|facebook\\.com|x\\.com/);
 });
