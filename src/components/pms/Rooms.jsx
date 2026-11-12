@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { usePms } from '@/data/PmsStore';
 import RoomPanel from '@/components/pms/RoomPanel';
 import RoomManagement from '@/components/pms/RoomManagement';
@@ -9,8 +9,8 @@ import { NAVY, TEAL, SURFACE, SURFACE2, BORDER, MUTED, DESTRUCTIVE } from '@/dat
 export default function Rooms() {
   const pms = usePms();
   const { pathname } = useLocation();
-  const isDedicatedPlanner = /^\/frontoffice\/room-planner\/?$/.test(pathname);
-  const [tab, setTab] = useState('planner');
+  const isDedicatedPlanner = pathname === '/frontoffice/room-planner' || pathname === '/frontoffice/room-planner/';
+  const [tab, setTab] = useState(isDedicatedPlanner ? 'planner' : 'management');
   const [openRoom, setOpenRoom] = useState(null);
   const [actionError, setActionError] = useState('');
 
@@ -23,15 +23,20 @@ export default function Rooms() {
   return (
     <div className={`flex h-full min-h-0 w-full flex-col overflow-hidden ${isDedicatedPlanner ? 'h-[100dvh]' : ''}`} style={{ background: 'var(--bg)' }}>
       {!isDedicatedPlanner && (
-        <div className="flex shrink-0 items-center gap-2 overflow-x-auto border-b border-[var(--border)] bg-[var(--surface)] px-3 py-2.5">
+        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-[var(--border)] bg-[var(--surface)] px-3 py-2.5">
           {['planner', 'reservations', 'management'].map((t) => (
             <button key={t} onClick={() => setTab(t)}
               className="min-h-11 shrink-0 rounded-xl px-4 text-xs font-medium"
               style={{ background: tab === t ? 'var(--action)' : 'transparent', color: tab === t ? 'var(--action-text)' : 'var(--muted)', border: `1px solid ${tab === t ? 'var(--action)' : 'var(--border)'}` }}>
-              {t === 'planner' ? 'Room Planner' : t === 'reservations' ? 'Reservations' : 'Room Types & Setup'}
+              {t === 'planner' ? 'Room Planner' : t === 'reservations' ? 'Reservations' : 'Rooms, Types & Facilities'}
             </button>
           ))}
-          <div className="ml-auto hidden shrink-0 text-xs font-medium lg:block" style={{ color: 'var(--muted)' }}>Room operations</div>
+          <div className="ml-auto flex shrink-0 items-center gap-3">
+            <span className="hidden text-xs font-medium text-[var(--muted)] lg:inline">Manage rooms, room types, amenities and rates</span>
+            <Link to="/frontoffice/structure" className="inline-flex min-h-10 items-center rounded-lg border border-[var(--border)] px-3 text-xs font-semibold text-[var(--text)] hover:bg-[var(--surface-2)]">
+              Buildings & Floors
+            </Link>
+          </div>
         </div>
       )}
 

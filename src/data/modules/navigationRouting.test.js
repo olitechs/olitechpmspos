@@ -17,6 +17,8 @@ const inventoryOperations = read('../../components/modules/InventoryOperations.j
 const navArchitecture = read('./navArchitecture.js');
 const sidebarNavigation = read('./sidebarNavigation.js');
 const roomPlanner = read('../../components/pms/RoomPlanner.jsx');
+const roomsPage = read('../../components/pms/Rooms.jsx');
+const roomManagement = read('../../components/pms/RoomManagement.jsx');
 const legacySidebar = read('../../components/shell/Sidebar.jsx');
 const pmsService = read('../../services/pmsService.js');
 const distributionOps = read('../../components/modules/DistributionOps.jsx');
@@ -269,4 +271,17 @@ test('POS access stays unlocked during navigation and is cleared when its browse
   assert.match(posContainer, /sessionStorage\.getItem\(accessKey\) === '1'/);
   assert.match(posContainer, /window\.addEventListener\('beforeunload', clearWindowAccess\)/);
   assert.match(posContainer, /sessionStorage\.removeItem\(accessKey\)/);
+});
+
+
+test('Rooms / Apartments opens room setup by default while Room Planner keeps its dedicated route', () => {
+  assert.ok(app.includes('path="rooms" element={<POSApp initialModule="rooms" embedded workspaceModule="frontoffice"/>}'));
+  assert.match(roomsPage, /useState\(isDedicatedPlanner \? 'planner' : 'management'\)/);
+  assert.match(roomsPage, /Rooms, Types & Facilities/);
+  assert.match(roomsPage, /<RoomManagement onChanged=\{pms\.reload\} \/>/);
+  assert.match(roomsPage, /to="\/frontoffice\/structure"/);
+  assert.match(roomManagement, /label="Floor"/);
+  assert.match(roomManagement, /Amenities \(comma separated\)/);
+  assert.match(roomManagement, /onChanged\?\.\(\)/);
+  assert.match(roomsPage, /<RoomPlanner rooms=\{pms\.rooms\} reservations=\{pms\.reservations\}/);
 });
