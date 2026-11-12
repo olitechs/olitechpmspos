@@ -270,3 +270,16 @@ test('POS access stays unlocked during navigation and is cleared when its browse
   assert.match(posContainer, /window\.addEventListener\('beforeunload', clearWindowAccess\)/);
   assert.match(posContainer, /sessionStorage\.removeItem\(accessKey\)/);
 });
+
+
+test('Front Office configuration and tags destinations resolve to working property-scoped pages', () => {
+  assert.ok(app.includes('path="configuration" element={<FrontOfficeConfiguration/>}'));
+  assert.ok(app.includes('path="tags" element={<FrontOfficeTags/>}'));
+  const configuration = read('../../pages/FrontOfficeConfiguration.jsx');
+  const tags = read('../../pages/FrontOfficeTags.jsx');
+  assert.match(configuration, /from\('rate_plans'\)/);
+  assert.match(configuration, /property_id', propertyId/);
+  assert.match(tags, /from\('property_tags'\)/);
+  assert.match(tags, /from\('property_tag_assignments'\)/);
+  assert.match(tags, /property_id: propertyId/);
+});
