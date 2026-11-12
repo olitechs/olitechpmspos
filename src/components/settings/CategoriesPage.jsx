@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { PageDataSkeleton } from '@/components/ui/AppLoadingSkeleton';
 import { Pencil, RefreshCw, Save } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
@@ -93,7 +94,7 @@ export default function CategoriesPage() {
 
         <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-sm">
           {loading ? (
-            <div className="p-10 text-center text-[var(--muted)]">Loading…</div>
+            <PageDataSkeleton variant="cards" rows={6}/>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
