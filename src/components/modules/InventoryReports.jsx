@@ -1,4 +1,5 @@
 import React,{useEffect,useState} from 'react';
+import { PageDataSkeleton } from '@/components/ui/AppLoadingSkeleton';
 import {AlertTriangle,Boxes,RefreshCw,TrendingDown,TrendingUp} from 'lucide-react';
 import {toast} from 'sonner';
 import {useAuth} from '@/lib/AuthContext';
