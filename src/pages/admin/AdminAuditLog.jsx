@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { platformService } from '@/services/platformService';
+import { PageDataSkeleton } from '@/components/ui/AppLoadingSkeleton';
 
 export default function AdminAuditLog() {
 	const [entries, setEntries] = useState([]);
@@ -24,7 +25,7 @@ export default function AdminAuditLog() {
 			{error && <div className="p-4 rounded-xl bg-destructive/10 text-destructive text-sm">{error}</div>}
 
 			<div className="bg-card border border-border rounded-2xl divide-y divide-border">
-				{loading && <div className="px-4 py-6 text-center text-muted-foreground text-sm">Loading...</div>}
+				{loading && <div className="p-4"><PageDataSkeleton variant="list" rows={6}/></div>}
 				{!loading && entries.length === 0 && <div className="px-4 py-6 text-center text-muted-foreground text-sm">No activity recorded yet.</div>}
 					{entries.map((entry) => {
 						const details = entry.action === 'report_exported' ? entry.new_value || {} : null;
