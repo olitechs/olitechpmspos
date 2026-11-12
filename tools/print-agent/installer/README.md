@@ -45,17 +45,21 @@ cd tools\print-agent\installer
 .\build-installer.ps1 `
   -Version 2.2.0 `
   -WinSWPath C:\build\WinSW.exe `
+  -WinSWSha256 <sha256-of-WinSW-x64.exe> `
   -NodeZipPath C:\build\node-v22.14.0-win-x64.zip `
   -NodeSha256 <sha256-from-nodejs.org> `
   -CertificateThumbprint <cert-thumbprint>
 
 # Or with a PFX:
-.\build-installer.ps1 -WinSWPath ... -NodeSha256 ... `
+.\build-installer.ps1 -WinSWPath ... -WinSWSha256 ... -NodeSha256 ... `
   -PfxPath C:\build\olitechs.pfx -PfxPassword (Read-Host -AsSecureString | ConvertFrom-SecureString)
 
 # Internal test build only, clearly marked:
-.\build-installer.ps1 -WinSWPath ... -SkipNodeHashCheck -AllowUnsigned
+.\build-installer.ps1 -WinSWPath ... -SkipWinSWHashCheck -SkipNodeHashCheck -AllowUnsigned
 ```
+
+The script refuses to bundle an unverified `WinSW.exe` or Node.js archive for a
+release build. Pass `-SkipWinSWHashCheck` only for an internal test build.
 
 Output: `dist\installer\OliTechsPrintAgentSetup-<version>.exe` (or
 `...-UNSIGNED.exe`). The script refuses to produce an unsigned *release*: if no
@@ -82,6 +86,28 @@ secret store, never in this repository.
   customers, or publish the SHA-256 and a screenshot of the expected prompt.
 - Signing proves origin and integrity; it does not make the agent's behaviour
   safe. That is the origin allowlist, loopback binding, rate limits and pairing.
+
+## Automated release pipeline
+
+`.github/workflows/print-agent-release.yml` is the normal path. On a
+`print-agent-v*` tag (or a manual dispatch) it runs the print-agent tests, lint,
+typecheck and application tests, downloads Node.js and checks it against the
+published `SHASUMS256.txt`, downloads WinSW and checks it against the repository
+variable `WINSW_SHA256`, compiles with Inno Setup, signs with the imported
+certificate, writes `SHA256SUMS.txt`, uploads the artifact and publishes the
+GitHub Release.
+
+Required configuration:
+
+| Name | Type | Purpose |
+| --- | --- | --- |
+| `WINSW_SHA256` | repository variable | Pins the exact WinSW-x64.exe bytes |
+| `WINDOWS_CERT_PFX_BASE64` | secret | Base64 of the code-signing PFX |
+| `WINDOWS_CERT_PASSWORD` | secret | PFX password |
+
+Without the certificate secrets the workflow stops before compiling a release
+installer. A manual dispatch with `allow_unsigned=true` produces an internal
+`-UNSIGNED.exe` artifact and never a Release.
 
 ## Verify a build by hand
 

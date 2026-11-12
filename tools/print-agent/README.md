@@ -35,15 +35,28 @@ and the [2.2.0 release notes](../../docs/print-agent/RELEASE-NOTES-2.2.0.md) (wh
 - Uses Web Serial for printers exposed as a COM/serial device.
 - Configurable baud rate: 9600, 19200, 38400, 57600 or 115200.
 
-## Run
+## Install
 
-On Windows, install it once as a service so it starts with the computer and keeps printing when nobody is signed in:
+### Hotel staff
+
+1. Download `OliTechsPrintAgentSetup-<version>.exe` from the OliTechs release page or support.
+2. Double-click it and approve the Windows administrator prompt once.
+3. Type the pairing code from **OliTechs → Settings → Printers → Pair this computer** into the window that opens. Pairing can be skipped and repeated later from the Start menu.
+4. Add printers in **Settings → Printers** and press **Test & Print**.
+
+No terminal, Node.js, PowerShell or `npm` is involved. The installer bundles the agent, a Node.js runtime and the service wrapper.
+
+### Technical administrators
+
+The service can also be installed from a checkout for diagnosis:
 
     npm run print-agent:install
 
 Manual/diagnostic run only (refused while the service is running):
 
     npm run print-agent
+
+Release builds and signing are documented in [`installer/README.md`](installer/README.md) and the `Print Agent Windows Release` GitHub Actions workflow.
 
 Default listener: http://127.0.0.1:8631
 
@@ -109,25 +122,25 @@ Endpoints on the local agent:
 
 Settings: `PRINT_AGENT_QUEUE_MAX_ATTEMPTS` (default 3), `PRINT_AGENT_QUEUE_RETENTION_DAYS` (7), `PRINT_AGENT_QUEUE_MAX_RECORDS` (500), `PRINT_AGENT_QUEUE_DRAIN_MS` (1500).
 
-## Printing jobs queued in the cloud (opt-in)
+## Printing jobs queued in the cloud
 
-By default the agent only prints what the open app sends it. It can also poll the cloud queue so a ticket fired while this workstation was switched off still prints when it comes back:
+A **paired** workstation polls the cloud queue, so a ticket fired while the computer was switched off still prints when it comes back. Pairing is the only credential needed; there is no service-role key on a workstation.
 
-    PRINT_AGENT_CLAIM_JOBS=1
-    PRINT_AGENT_ID=<a stable name for this workstation>
-    SUPABASE_SERVICE_ROLE_KEY=<agent credential>   # Phase 7 replaces this with pairing
-    PRINT_AGENT_PROPERTY_ID=<property uuid>        # optional; default is every property
+The installed service already has `PRINT_AGENT_CLAIM_JOBS=1`, its name comes from the pairing code, and its property is the property the manager paired it to. Nothing has to be typed into a terminal.
+
+Without pairing, the agent still prints what the open app sends it, but it does not claim cloud-queued jobs.
 
 How it stays safe:
 
 - the claim function is `for update skip locked`, so two agents never take the same row;
 - a claim has a lease (default 120s); an expired lease becomes `uncertain`, never `queued` again, because the paper may already be printed;
 - each claimed job enters the local durable queue with the key `fnb:<job id>`, so a re-claim after a restart finds the existing record instead of printing again;
-- claiming needs a service-role key, and the Windows installer deliberately does **not** collect one, so this stays off until Phase 7 adds scoped pairing. Without a key the agent simply logs that claims are off and keeps printing locally.
+- claiming is authorised by the workstation's own paired credential: `fn_print_agent_claim` scopes every job to that credential's property, so a copied machine can only print its own hotel's work;
+- revoking the workstation marks jobs it was holding as `uncertain`, never lost and never silently reprinted. An unpaired agent logs that claims are off and keeps printing locally.
 
 Other settings: `PRINT_AGENT_CLAIM_INTERVAL_MS` (15000), `PRINT_AGENT_CLAIM_BATCH_SIZE` (3), `PRINT_AGENT_CLAIM_LEASE_SECONDS` (120).
 
-Database side: `supabase/migrations/20261111160000_phase5_agent_print_claim.sql` adds the `uncertain` status, `claimed_by` / `claimed_at` / `lease_expires_at` / `uncertain_at`, and the service-role RPCs `fn_claim_fnb_print_jobs`, `fn_complete_fnb_print_job` and `fn_expire_fnb_print_leases`. The app stores the ESC/POS bytes and printer target on the job (`payload.escposBase64`, `payload.printTarget`) so a queued job is printable without the browser.
+Database side: `supabase/migrations/20261111160000_phase5_agent_print_claim.sql` adds the `uncertain` status, `claimed_by` / `claimed_at` / `lease_expires_at` / `uncertain_at`, and the claim/completion RPCs. `supabase/migrations/20261111170000_phase7_print_agent_pairing.sql` adds the paired-credential RPCs `fn_create_print_agent_pairing`, `fn_redeem_print_agent_pairing`, `fn_print_agent_claim`, `fn_print_agent_complete`, `fn_list_print_agent_credentials` and `fn_revoke_print_agent_credential`. The app stores the ESC/POS bytes and printer target on the job (`payload.escposBase64`, `payload.printTarget`) so a queued job is printable without the browser.
 
 ## Diagnostics for support
 

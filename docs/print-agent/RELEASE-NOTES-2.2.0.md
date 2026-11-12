@@ -1,6 +1,10 @@
 # OliTechs Print Agent 2.2.0 — release notes
 
-> **Published ahead of release.** The 2.2.0 installer is not available for download yet. The signed installer is supplied by OliTechs support when your site is ready to upgrade.
+> **Release status: awaiting a signed build.** The 2.2.0 installer is produced and
+> signed by the `Print Agent Windows Release` workflow. Until that workflow has
+> run with the OliTechs signing certificate and published a Release, do not
+distribute an unsigned build. OliTechs support supplies the signed installer
+> when your site is ready to upgrade.
 
 **For:** hotel managers, front-office and F&B staff, and OliTechs support
 **What it is:** the small program installed on each Windows POS computer that

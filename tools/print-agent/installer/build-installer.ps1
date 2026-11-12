@@ -5,6 +5,8 @@ param(
   [string]$NodeVersion = '22.14.0',
   [string]$NodeSha256 = '',
   [string]$WinSWPath = '',
+  [string]$WinSWSha256 = '',
+  [switch]$SkipWinSWHashCheck,
   [string]$InnoSetupPath = '',
   [string]$SupabaseUrl = '',
   [string]$SupabaseAnonKey = '',
@@ -57,6 +59,20 @@ if (-not $WinSWPath) {
   throw 'Pass -WinSWPath with the WinSW.exe you have verified (SHA-256 + Authenticode). The repository does not store service-wrapper binaries.'
 }
 $WinSWPath = (Resolve-Path $WinSWPath).Path
+
+# A publisher signature is not a version pin: verify the exact bytes we ship.
+# The release workflow passes the checksum recorded in the repository variable
+# WINSW_SHA256, so a swapped or corrupted download cannot enter a release.
+if ($WinSWSha256) {
+  $winswActual = (Get-FileHash -Path $WinSWPath -Algorithm SHA256).Hash.ToLowerInvariant()
+  if ($winswActual -ne $WinSWSha256.ToLowerInvariant()) {
+    throw "WinSW.exe checksum mismatch. Expected $WinSWSha256 but the file is $winswActual."
+  }
+  Write-Host 'WinSW.exe checksum verified.' -ForegroundColor Green
+} elseif (-not $SkipWinSWHashCheck) {
+  throw 'Pass -WinSWSha256 with the checksum of the verified WinSW.exe, or -SkipWinSWHashCheck for an internal test build. A release never ships an unverified service wrapper.'
+}
+
 $winSwSignature = Get-AuthenticodeSignature $WinSWPath
 if ($winSwSignature.Status -ne 'Valid') {
   Write-Host "Warning: WinSW.exe is not validly signed (status: $($winSwSignature.Status))." -ForegroundColor Yellow

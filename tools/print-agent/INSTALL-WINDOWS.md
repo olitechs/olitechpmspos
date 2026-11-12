@@ -26,13 +26,15 @@ Nothing else is needed: Node.js, the service wrapper and the agent are bundled.
 Build and sign the installer with `installer/build-installer.ps1`; see
 `installer/README.md`.
 
-### Option B — manual install (engineers only)
+### Option B — install from a checkout (engineers only)
 
-On the POS computer:
+This path is for a technician with the repository already on the computer. It
+still needs `WinSW.exe`, and it uses the system Node.js because no bundled
+runtime exists outside the installer.
 
 1. Install Node.js 20 or newer.
 2. Copy the OliTechs PMS folder to the computer.
-3. Run the installer as an administrator.
+3. Run the service installer as an administrator.
 
 ```powershell
 npm run print-agent:install
@@ -72,10 +74,10 @@ The first two commands should report `Running` and a JSON body containing
 `ok: true`, the agent `version`, `mode: "service"`, its `pid` and
 `uptimeSeconds`. The third checks that a specific printer answers on the network.
 
-For the full Phase 2 acceptance run — browser closed, terminal closed, sign-out,
-restart, crash recovery and log checks — follow
-`WINDOWS-ACCEPTANCE-CHECKLIST.md`. It is written for a supervisor and needs no
-programming knowledge.
+The service must be started by Windows, not by a signed-in user. For the full
+acceptance run — browser closed, no terminal, sign-out, restart, crash recovery
+and log checks — follow `WINDOWS-ACCEPTANCE-CHECKLIST.md`. It is written for a
+supervisor and needs no programming knowledge.
 
 ## Logs
 
@@ -114,9 +116,10 @@ Removes the service and any leftover logon task. Printer data and logs stay in
 
 ## Known limitations
 
-- The signed installer is built on a Windows machine with a code-signing
-  certificate. Until OliTechs has that certificate, only the manual path exists,
-  and an unsigned build must not be handed to a hotel.
+- The signed installer is built by the `Print Agent Windows Release` workflow
+  on a Windows runner with a code-signing certificate. If the signing secrets
+  are not configured the workflow refuses to publish, and an unsigned build
+  must not be handed to a hotel.
 - The bundled runtime is pinned at build time. Rebuild the installer after a Node
   security release instead of updating Node on each workstation.
 

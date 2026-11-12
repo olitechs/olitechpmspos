@@ -10,17 +10,16 @@ Inno Setup 6, Windows SDK `signtool`, a code-signing certificate, a verified
 
 ---
 
-## 1. Run the two migrations (staging first)
+## 1. Confirm the two migrations on the production project
 
-Apply in this order, never the other way round:
+Phase 5 (`20261111160000_phase5_agent_print_claim.sql`) and Phase 7
+(`20261111170000_phase7_print_agent_pairing.sql`), including the RPC
+argument-order compatibility fix, have already been applied to the production
+project `mszogmazldxjsiytrlxr`. **Verify; do not reapply them blindly.**
 
-1. `supabase/migrations/20261111160000_phase5_agent_print_claim.sql`
-2. `supabase/migrations/20261111170000_phase7_print_agent_pairing.sql`
-
-Use the Supabase SQL editor or `supabase db push` after linking. Take a snapshot
-first. Both are additive and safe to re-run, but neither has ever been executed
-against a real database — run them on staging and read the output before
-production. Do not run them during trading hours.
+If a fresh environment is being built, apply them in this order and take a
+snapshot first. Both are additive, but neither should be run during trading
+hours.
 
 Verify (all should return rows):
 
@@ -44,7 +43,9 @@ be unchanged — this release adds an agent path beside it, not instead of it.
 `supabase/functions/print-proxy/index.ts` changed (origin pin and rate limiting).
 The workflow `.github/workflows/deploy-supabase-functions.yml` deploys it
 automatically on a push to `main` that touches `supabase/functions/**` — check
-that the run for this commit succeeded before going further.
+that the run for this commit succeeded before going further. If this release
+did not touch `supabase/functions/**`, the function was not redeployed and
+needs no action.
 
 If it did not run, deploy by hand:
 
@@ -57,12 +58,20 @@ pin or the limit is wrong, and nothing else in this checklist will behave.
 
 ## 3. Build and sign the installer
 
-On the Windows build machine, from `tools\print-agent\installer`:
+Preferred path: run the **Print Agent Windows Release** workflow. It runs tests,
+lint and typecheck, verifies the Node.js download against the published
+`SHASUMS256.txt`, verifies `WinSW.exe` against the `WINSW_SHA256` repository
+variable, imports the signing certificate from secrets, compiles with Inno
+Setup, writes `SHA256SUMS.txt`, uploads the artifact and creates the GitHub
+Release only when the result is signed.
+
+Manual fallback on a Windows build machine, from `tools\print-agent\installer`:
 
 ```powershell
 .\build-installer.ps1 `
   -Version 2.2.0 `
   -WinSWPath C:\build\WinSW.exe `
+  -WinSWSha256 <sha256-of-WinSW-x64.exe> `
   -NodeZipPath C:\build\node-v22.14.0-win-x64.zip `
   -NodeSha256 <sha256-from-nodejs.org> `
   -CertificateThumbprint <cert-thumbprint>

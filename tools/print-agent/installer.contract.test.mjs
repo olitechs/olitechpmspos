@@ -108,6 +108,31 @@ test('the build verifies the bundled runtime and the service wrapper', async () 
   assert.match(build, /Pass -WinSWPath with the WinSW\.exe/);
   assert.match(build, /A service-role reference was found in the payload/);
   assert.match(build, /Inno Setup 6 was not found/);
+  assert.match(build, /Get-FileHash -Path \$WinSWPath -Algorithm SHA256/);
+  assert.match(build, /WinSW\.exe checksum mismatch/);
+  assert.match(build, /Pass -WinSWSha256/);
+});
+
+test('the Windows release workflow verifies inputs, signs, and refuses an unsigned release', async () => {
+  const workflow = await read('../../.github/workflows/print-agent-release.yml');
+
+  assert.match(workflow, /windows-latest/);
+  assert.match(workflow, /npm run test:print-agent/);
+  assert.match(workflow, /npm run lint/);
+  assert.match(workflow, /npm run typecheck/);
+  assert.match(workflow, /SHASUMS256\.txt/);
+  assert.match(workflow, /Node\.js checksum mismatch/);
+  assert.match(workflow, /WINSW_SHA256/);
+  assert.match(workflow, /WinSW checksum mismatch/);
+  assert.match(workflow, /choco install innosetup/);
+  assert.match(workflow, /WINDOWS_CERT_PFX_BASE64/);
+  assert.match(workflow, /Import-PfxCertificate/);
+  assert.match(workflow, /Refuse to build a release without a signing certificate/);
+  assert.match(workflow, /SHA256SUMS\.txt/);
+  assert.match(workflow, /actions\/upload-artifact/);
+  assert.match(workflow, /softprops\/action-gh-release/);
+  assert.ok(!/service_role/i.test(workflow), 'the release workflow must not handle a service-role key');
+  assert.ok(!/BEGIN [A-Z ]*PRIVATE KEY/.test(workflow), 'no private key material may be committed');
 });
 
 test('the installer payload mirrors the repository layout the agent imports from', async () => {
