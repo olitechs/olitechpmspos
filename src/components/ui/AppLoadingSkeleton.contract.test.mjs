@@ -22,6 +22,8 @@ const pageFiles = [
   '../../pages/admin/AdminProperties.jsx',
   '../../pages/admin/AdminDashboard.jsx',
   '../../pages/admin/AdminUsage.jsx',
+  '../../pages/FrontOfficeDashboard.jsx',
+  '../modules/Dashboard.jsx',
   '../settings/EmployeeListPage.jsx',
   '../settings/CategoriesPage.jsx',
   '../modules/Purchasing.jsx',
