@@ -57,6 +57,7 @@ const ASSIGNMENTS = [
 const blank = {
   name:'',
   type:'receipt_80mm',
+  department:'',
   connection_type:'network_ip',
   ip_address:'',
   port:9100,
@@ -778,6 +779,10 @@ function PrinterModal({form,setForm,onClose,onSave,onCalibration,windowsPrinters
         <div className="space-y-3">
           <label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">Printer name<input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Kitchen Epson 01" className="mt-1.5 w-full rounded-xl border border-border px-3 py-2.5 text-sm outline-none focus:border-[var(--primary)]"/></label>
           <label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">Printer type<select value={form.type} onChange={e=>setForm({...form,type:e.target.value})} className="mt-1.5 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm">{TYPES.map(x=><option key={x[0]} value={x[0]}>{x[1]}</option>)}</select></label>
+          <label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">Department (production centre)
+            <input value={form.department||''} onChange={e=>setForm({...form,department:e.target.value})} placeholder="Kitchen, Bar, Grill, Pastry…" className="mt-1.5 w-full rounded-xl border border-border px-3 py-2.5 text-sm outline-none focus:border-[var(--primary)]"/>
+            <span className="mt-1 block text-[11px] font-normal normal-case tracking-normal text-muted-foreground">Tickets print here when an item's category production centre (or printer group) matches. Leave blank to keep the food/drinks assignment.</span>
+          </label>
           <label className="block text-xs font-black uppercase tracking-wide text-muted-foreground">Connection type
             <select value={form.connection_type || 'network_ip'} onChange={e=>setForm({...form,connection_type:e.target.value})} className="mt-1.5 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm">
               <option value="network_ip">LAN / Network IP</option>

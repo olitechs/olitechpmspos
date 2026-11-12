@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { buildOrderTicketText, buildUnsettledReceiptText, buildFinalReceiptText, toEscPosPayload, thermalTextToHtml } from '@/services/printTemplates';
 import { getPrintColor } from '@/utils/printTheme';
 import { classifyAgentPrintOutcome, durableJobStatus, outcomeAffectsConnection } from '@/services/printOutcomeCore';
+import { planDepartmentTickets, printersForDepartment } from '@/services/printDepartmentRoutingCore';
 
 const normalizeNetworkEndpoint = (value, fallbackPort = 9100) => {
   let host = String(value || '').trim();
@@ -420,69 +421,120 @@ export async function testPrint(printer, propertyId) {
   return testPrinterConnection(printer, propertyId);
 }
 
-const itemIsDrink = (item) => {
-  const category = String(item?.category || '').toLowerCase();
-  return category === 'drinks' || category === 'drink' || category === 'bibite' || String(item?.center || '').toLowerCase() === 'bar';
-};
+const isMissingRelation = (error) => ['42P01', 'PGRST205'].includes(error?.code)
+  || /could not find (the )?(table|relation)|does not exist/i.test(error?.message || '');
 
-function orderTicketHtml(order, kind, items, printer = {}, settings = {}) {
-  const thermalText = buildOrderTicketText(order, {
-    printer,
-    settings,
-    center: kind === 'food' ? 'KITCHEN' : 'BAR',
-    items,
-  });
-  return thermalTextToHtml(thermalText);
+/**
+ * Printer groups are optional: they let a manager map several categories to one
+ * production centre. Installations without groups route on the category's own
+ * production centre instead, so a missing group table must never block a
+ * kitchen ticket.
+ */
+async function loadPropertyPrinterGroups(propertyId) {
+  if (!propertyId) return [];
+  const { data, error } = await supabase.from('printer_groups')
+    .select('id,name,production_center')
+    .eq('property_id', propertyId);
+  if (error) {
+    if (isMissingRelation(error)) return [];
+    throw error;
+  }
+  const groups = data || [];
+  if (!groups.length) return [];
+  const { data: links, error: linkError } = await supabase.from('printer_group_categories')
+    .select('printer_group_id,category_id')
+    .in('printer_group_id', groups.map((group) => group.id));
+  if (linkError && !isMissingRelation(linkError)) throw linkError;
+  const rows = linkError ? [] : (links || []);
+  return groups.map((group) => ({
+    ...group,
+    productionCenter: group.production_center || '',
+    categoryIds: rows.filter((link) => link.printer_group_id === group.id).map((link) => link.category_id),
+  }));
 }
 
+/**
+ * Prints one ticket per production department. The department comes from the
+ * printer group that owns the item's category, else the category's production
+ * centre; the printer is the property printer set to that department. Until a
+ * printer has a department, the old food_orders/drinks_orders assignment is
+ * used, so existing installations keep printing while they are configured.
+ */
 export async function printOrderByCategory(order) {
   const propertyId = order.propertyId;
-  const [printers, assignments, settingsResult] = await Promise.all([
+  const [printers, assignments, settingsResult, categoriesResult, groups] = await Promise.all([
     getPrinters(propertyId),
     getAssignments(propertyId),
     supabase.from('property_settings').select('*').eq('property_id', propertyId).maybeSingle(),
+    supabase.from('pos_menu_categories').select('id,name,production_center').eq('property_id', propertyId),
+    loadPropertyPrinterGroups(propertyId),
   ]);
   if (settingsResult.error) throw settingsResult.error;
+  if (categoriesResult.error && !isMissingRelation(categoriesResult.error)) throw categoriesResult.error;
   const settings = settingsResult.data || {};
-  const food = (order.items || []).filter((item) => !itemIsDrink(item));
-  const drinks = (order.items || []).filter(itemIsDrink);
-  const groups = [{ type: 'food_orders', kind: 'food', items: food }, { type: 'drinks_orders', kind: 'drinks', items: drinks }];
+  const categories = categoriesResult.data || [];
+  const tickets = planDepartmentTickets(order.items || [], { categories, groups });
   const results = [];
-  for (const group of groups) {
-    if (!group.items.length) continue;
-    const targets = assignments.filter((a) => a.assignment_type === group.type).map((a) => printers.find((p) => p.id === a.printer_id)).filter(Boolean).filter((p,i,a) => a.findIndex((x) => x.id === p.id) === i);
+  for (const ticket of tickets) {
+    const departmentKey = String(ticket.department || 'Kitchen').toUpperCase();
+    const isDrinks = ticket.assignmentType === 'drinks_orders';
+    const jobType = isDrinks ? 'BOT' : 'KOT';
+    const title = `${ticket.department} Order`;
+    const payload = {
+      orderNumber: order.orderNumber || order.checkNo || null,
+      table: order.table || order.tableNumber || null,
+      department: ticket.department,
+      groupId: ticket.groupId || null,
+    };
+    const assignedPrinters = assignments
+      .filter((assignment) => assignment.assignment_type === ticket.assignmentType)
+      .map((assignment) => printers.find((printer) => printer.id === assignment.printer_id))
+      .filter(Boolean);
+    const targets = (printersForDepartment(ticket.department, printers).length
+      ? printersForDepartment(ticket.department, printers)
+      : assignedPrinters)
+      .filter((printer, index, list) => list.findIndex((candidate) => candidate.id === printer.id) === index);
+
     if (!targets.length) {
+      const ticketText = buildOrderTicketText(order, { settings, center: departmentKey, items: ticket.lines });
       const queued = await createFnbPrintJob({
-        propertyId, printerId:null, assignmentType:group.type,
-        jobType:group.kind === 'food' ? 'KOT' : 'BOT',
-        title:group.kind === 'food' ? 'Kitchen Order' : 'Bar Order',
-        contentHtml:orderTicketHtml(order,group.kind,group.items,{},settings),
-        payload:{orderNumber:order.orderNumber||order.checkNo||null,table:order.table||order.tableNumber||null}
+        propertyId,
+        printerId: null,
+        assignmentType: ticket.assignmentType,
+        jobType,
+        title,
+        contentHtml: thermalTextToHtml(ticketText),
+        payload,
       });
-      await updateFnbPrintJob(queued.id,propertyId,'failed',`No printer assigned to ${group.type}.`,null);
-      results.push({ ok:false, assignmentType:group.type, jobId:queued.id, printerId:null, printerName:null, friendlyError:`No printer assigned to ${group.type}.` });
+      const message = `No printer is assigned to the ${ticket.department} department.`;
+      await updateFnbPrintJob(queued.id, propertyId, 'failed', message, null);
+      results.push({ ok:false, department:ticket.department, assignmentType:ticket.assignmentType, jobId:queued.id, printerId:null, printerName:null, friendlyError:message });
       continue;
     }
+
     for (const printer of targets) {
       const thermalText = buildOrderTicketText(order, {
         printer,
         settings,
-        center: group.kind === 'food' ? 'KITCHEN' : 'BAR',
-        items: group.items,
+        center: departmentKey,
+        items: ticket.lines,
       });
       const thermalBase64 = bytesToBase64(new TextEncoder().encode(toEscPosPayload(thermalText, getPrinterPrintSettings(printer))));
-      results.push(await printToPrinter(printer, thermalTextToHtml(thermalText), {
-        propertyId,
-        jobType: group.kind === 'food' ? 'KOT' : 'BOT',
-        assignmentType: group.type,
-        payload: { orderNumber: order.orderNumber || order.checkNo || null, table: order.table || order.tableNumber || null },
-        title: group.kind === 'food' ? 'Kitchen Order' : 'Bar Order',
-        thermalText,
-        thermalBase64,
-      }));
+      results.push({
+        ...(await printToPrinter(printer, thermalTextToHtml(thermalText), {
+          propertyId,
+          jobType,
+          assignmentType: ticket.assignmentType,
+          payload,
+          title,
+          thermalText,
+          thermalBase64,
+        })),
+        department: ticket.department,
+      });
     }
   }
-  return { ok: results.every((r) => r.ok), results };
+  return { ok: results.length > 0 && results.every((r) => r.ok), results };
 }
 
 

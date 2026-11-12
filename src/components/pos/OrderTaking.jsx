@@ -8,7 +8,6 @@ import { useAuth } from '@/lib/AuthContext';
 import { authService } from '@/services/authService';
 import { pmsService } from '@/services/pmsService';
 import { getPrinters, getAssignments, printVoidTicket } from '@/services/printService';
-import { isPrinterGroupRoutingEnabled } from '@/services/printRoutingService';
 import { getPropertySettings } from '@/services/settingsService';
 import { inventoryService } from '@/services/inventoryService';
 import { posPhase3Service } from '@/services/posPhase3Service';
@@ -43,6 +42,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
   const [modifierSelections, setModifierSelections] = useState({});
   const [modifierLoading, setModifierLoading] = useState(false);
   const [assignedOrderCenters, setAssignedOrderCenters] = useState(null);
+  const [assignedOrderDepartments, setAssignedOrderDepartments] = useState(null);
 
   const loadPosMenu = async () => {
     if (!propertyId) { setMenuLoading(false); return; }
@@ -74,9 +74,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
   };
   useEffect(() => {
     let active = true;
-    if (isPrinterGroupRoutingEnabled()) {
-      setAssignedOrderCenters([]);
-    } else if (propertyId) {
+    if (propertyId) {
       Promise.all([getPrinters(propertyId), getAssignments(propertyId)])
         .then(([printers, assignments]) => {
           if (!active) return;
@@ -85,6 +83,9 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
           if (assignments.some(a => a.assignment_type === 'food_orders' && printerIds.has(a.printer_id))) centers.add('kitchen');
           if (assignments.some(a => a.assignment_type === 'drinks_orders' && printerIds.has(a.printer_id))) centers.add('bar');
           setAssignedOrderCenters([...centers]);
+          // Departments are the routing key once any printer has one; until then
+          // the food/drinks assignment above is what actually prints.
+          setAssignedOrderDepartments(printers.map(p => String(p.department || '').trim().toLowerCase()).filter(Boolean));
         })
         .catch(error => {
           console.warn('[POS] could not verify saved order-printer assignments', error);
@@ -297,8 +298,12 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
 
   // Order-routing warning: any production center in this order lacking a connected order printer.
   const orderCenters = [...new Set(orderLines.map((l) => l.center).filter(Boolean))];
-  const missingCenters = isPrinterGroupRoutingEnabled() || assignedOrderCenters === null ? [] : orderCenters
-    .filter(center => !assignedOrderCenters.includes(/bar|drink/i.test(String(center)) ? 'bar' : 'kitchen'));
+  const missingCenters = assignedOrderCenters === null || assignedOrderDepartments === null ? [] : orderCenters
+    .filter(center => {
+      const key = String(center).trim().toLowerCase();
+      if (assignedOrderDepartments.length) return !assignedOrderDepartments.includes(key);
+      return !assignedOrderCenters.includes(/bar|drink/i.test(key) ? 'bar' : 'kitchen');
+    });
   const demoMenuItems = Object.entries(MENU_ITEMS).flatMap(([category, items]) => items.map((item) => ({
     ...item, category, center: CATEGORY_CENTER[category] || 'Kitchen', stock: null, minimumStock: 0
   })));

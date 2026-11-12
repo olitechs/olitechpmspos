@@ -47,18 +47,19 @@ test('printer selection requires the order purpose, a ready printer, and matchin
   assert.equal(pickOrderPrinter('Dessert', printers, () => true), null);
 });
 
-test('KOT/BOT dispatch preflights routing and writes a single atomic batch of kitchen jobs', () => {
-  const service = read('./printRoutingService.js');
-  assert.match(service, /if \(unrouted\.length\)/);
-  assert.match(service, /const missing = plans\.filter\(plan => !plan\.printers\.length\)/);
-  assert.match(service, /from\('print_jobs'\)\.insert\(rows\)\.select\(\)/);
-  assert.doesNotMatch(service, /is_receipt/);
-});
-
-test('POS group-routing failures do not silently fall back to the legacy printer assignment path', () => {
+test('production POS and kitchen printing route by department, not by the retired feature flag', () => {
   const pos = read('../components/pos/POSContainer.jsx');
-  assert.match(pos, /if \(isPrinterGroupRoutingEnabled\(\)\)/);
-  assert.doesNotMatch(pos, /catch\(\(\) => printOrder\(\)\)/);
+  const kitchen = read('../components/modules/KitchenDisplay.jsx');
+  const service = read('./printService.js');
+
+  for (const source of [pos, kitchen]) {
+    assert.doesNotMatch(source, /isPrinterGroupRoutingEnabled|printRoutedOrder/);
+    assert.match(source, /printOrderByCategory/);
+  }
+  assert.match(service, /planDepartmentTickets\(order\.items \|\| \[\]/);
+  assert.match(service, /printersForDepartment\(ticket\.department, printers\)/);
+  assert.match(service, /printer_groups/);
+  assert.doesNotMatch(service, /from\('print_jobs'\)/);
 });
 
 test('printer assignment embedding explicitly selects the property-scoped foreign key', () => {

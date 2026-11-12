@@ -13,8 +13,6 @@ import PinPad from '@/components/auth/PinPad';
 import { authService } from '@/services/authService';
 import { useAuth } from '@/lib/AuthContext';
 import { printOrderByCategory } from '@/services/printService';
-import { printOrder as printRoutedOrder, isPrinterGroupRoutingEnabled } from '@/services/printRoutingService';
-import { usePrinterStore as usePrinterStoreV2 } from '@/data/modules/printerStore';
 import { posService } from '@/services/posService';
 import { getUnsentOrderLines } from '@/services/printTemplates';
 import { posAccessService } from '@/services/posAccessService';
@@ -71,8 +69,6 @@ export default function POSContainer({ initialTab = 'floor' } = {}) {
 	const posRole = String(sessionStaff?.role || user?.staff?.role || user?.propertyRole || '').toLowerCase().replace(/\s+/g,'_');
 	const canCloseShift = Boolean(user?.isPlatformOwner || ['hotel_admin','super_admin','cashier','fb_manager','owner','admin','manager','property_manager','general_manager'].includes(posRole));
 	const propertyName = user?.property?.name || user?.property?.business_name || 'OliTechs PMS + POS';
-	const supabaseStoreHydrate = async (propertyId) => { try { const { data } = await (await import('@/lib/supabaseClient')).supabase.from('stores').select('*').eq('property_id', propertyId).order('is_default',{ascending:false}).limit(1).maybeSingle(); if (data?.id) await usePrinterStoreV2.getState().hydrate(data.id); } catch (e) { console.warn('[POS] printer routing store unavailable; keeping legacy printer flow.', e?.message); } };
-	useEffect(() => { if (!propertyId || !isPrinterGroupRoutingEnabled()) return; supabaseStoreHydrate(propertyId); }, [propertyId]);
 	const [posStaff, setPosStaff] = useState([]);
 	const [switchStaff, setSwitchStaff] = useState(null);
 	const [switchError, setSwitchError] = useState('');
@@ -256,25 +252,9 @@ export default function POSContainer({ initialTab = 'floor' } = {}) {
 				return false;
 			}
 		};
-		const dispatchTickets = async (linesToPrint = retryLines) => {
-			if (isPrinterGroupRoutingEnabled()) {
-				const jobs = await printRoutedOrder({
-					propertyId,
-					propertyName,
-					id: orderNumber,
-					orderId: kitchenOrderRecord?.id,
-					orderNumber,
-					table: tableLabel(table),
-					waiter: session?.waiter,
-					covers: session?.guests || table.seats,
-					diningOption: table?.diningOption || table?.dining_option || 'Dine In',
-					isAddition: !!session?.kotSentAt,
-					items: linesToPrint,
-				});
-				return { ok: jobs.length > 0, jobs, queued: true };
-			}
-			return printOrder(linesToPrint);
-		};
+		// Every ticket is routed by production department inside printOrderByCategory:
+		// a group or the category's production centre decides the destination.
+		const dispatchTickets = async (linesToPrint = retryLines) => printOrder(linesToPrint);
 		// Persist the full sent-item snapshot before printer I/O. The POS leaves
 		// the order screen while tickets are being dispatched; without this
 		// early snapshot, staff can reopen the table during a slow print and the

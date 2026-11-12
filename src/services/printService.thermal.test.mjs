@@ -23,7 +23,6 @@ test('printer test buttons use the real template-backed print service without cr
 
 test('order and unsettled print paths use shared width-aware templates', async () => {
   const service = await read('./printService.js');
-  const routing = await read('./printRoutingService.js');
   assert.match(service, /buildOrderTicketText/);
   assert.match(service, /buildUnsettledReceiptText/);
   assert.match(service, /buildFinalReceiptText/);
@@ -33,10 +32,8 @@ test('order and unsettled print paths use shared width-aware templates', async (
   const browserTransport = await read('./printerService.js');
   assert.match(browserTransport, /writeValueWithResponse/);
   assert.match(browserTransport, /setTimeout\(resolve, 15\)/);
-  assert.match(routing, /buildOrderTicketText/);
-  assert.match(routing, /property_settings/);
-  assert.match(routing, /settings: receiptSettings/);
-  assert.match(routing, /toEscPosPayload/);
+  assert.match(service, /property_settings/);
+  assert.match(service, /toEscPosPayload/);
 });
 
 test('unsettled bill print remains separate from payment and receipt persistence', async () => {
@@ -63,12 +60,10 @@ test('unsettled duplicate copies are sent as independently cut print jobs', asyn
 
 test('KOT and BOT jobs use the shared configurable feed and cut finalizer', async () => {
   const service = await read('./printService.js');
-  const routing = await read('./printRoutingService.js');
   const browser = await read('./printerService.js');
   const agent = await read('../../tools/print-agent/server.mjs');
   assert.ok(service.includes('toEscPosPayload(thermalText, getPrinterPrintSettings(printer))'));
   assert.ok(service.includes('thermalBase64,'));
-  assert.ok(routing.includes('getPrinterPrintSettings(printer)'));
   assert.ok(browser.includes('buildEscPosPayload(text, settings)'));
   assert.ok(browser.includes("import { buildEscPosPayload } from './escposJob.js'"));
   assert.ok(agent.includes('buildEscPosPayload(body, settings)'));

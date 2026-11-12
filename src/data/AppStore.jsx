@@ -615,7 +615,10 @@ export function StoreProvider({ children }) {
     for (const center of centers) {
       const isBar = String(center).toLowerCase().includes('bar') || orderLines.some((l) => l.center === center && ['drink','drinks','bibite'].includes(String(l.category || '').toLowerCase()));
       const assignmentType = isBar ? 'drinks_orders' : 'food_orders';
-      const result = resultsByArea[assignmentType]?.[0];
+      // Department routing prints one ticket per centre, so match the centre
+      // first; with no department configured this falls back to the old route.
+      const result = routed.results?.find((r) => String(r.department || '').toLowerCase() === String(center).toLowerCase())
+        || resultsByArea[assignmentType]?.[0];
       nextPrintJobs[center] = {
         status: result?.ok ? PrintJobStatus.PRINTED : PrintJobStatus.FAILED,
         printerId: result?.printerId || null, printerName: result?.printerName || null,

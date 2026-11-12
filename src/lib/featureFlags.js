@@ -1,12 +1,10 @@
 // Lightweight feature flags for additive Back Office modules.
 const DEFAULTS = {
   backoffice: true,
-  printerGroupRouting: false,
   backofficePhase2: true,
 };
 const ENV_KEYS = {
   backoffice: import.meta.env?.VITE_FF_BACKOFFICE,
-  printerGroupRouting: import.meta.env?.VITE_FF_PRINTER_GROUP_ROUTING,
   backofficePhase2: import.meta.env?.VITE_FF_BACKOFFICE_PHASE2,
 };
 function parse(value) {
