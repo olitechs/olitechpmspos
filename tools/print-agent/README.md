@@ -2,6 +2,10 @@
 
 The OliTechs Local Print Agent runs on each Windows POS workstation and bridges the web application to physical thermal printers.
 
+**Installing, upgrading or supporting an install?** Start with the
+[deployment checklist](../../docs/print-agent/DEPLOYMENT-CHECKLIST.md) (migrations, signed build, validation gate)
+and the [2.2.0 release notes](../../docs/print-agent/RELEASE-NOTES-2.2.0.md) (what changed and what hotels must know).
+
 ## Supported transports
 
 ### 1. LAN / Network IP
