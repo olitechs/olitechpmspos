@@ -6,7 +6,7 @@ import InventoryOperations from '@/components/modules/InventoryOperations';
 import { Toaster } from "@/components/ui/toaster";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClientInstance } from "@/lib/query-client";
-import { BrowserRouter as Router, Route, Routes, Navigate, Outlet, useParams } from "react-router-dom";
+import { BrowserRouter as Router, Route, Routes, Navigate, Outlet, useParams, useLocation } from "react-router-dom";
 import PageNotFound from "@/lib/PageNotFound";
 import { AuthProvider, useAuth } from "@/lib/AuthContext";
 import AppLoadingSkeleton from "@/components/ui/AppLoadingSkeleton";
