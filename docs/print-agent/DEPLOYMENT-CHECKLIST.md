@@ -8,6 +8,22 @@ start at step 4.
 Inno Setup 6, Windows SDK `signtool`, a code-signing certificate, a verified
 `WinSW.exe`, and the Node win-x64 zip with its published SHA-256.
 
+## Current build status (2026-11-12)
+
+The `Print Agent Windows Release` workflow has built the installer successfully
+on `windows-latest`: tests, lint, typecheck, the Node.js checksum, the WinSW
+checksum, Inno Setup compilation and `SHA256SUMS.txt` all passed. That run was
+`allow_unsigned=true`, so it produced an internal test artifact and correctly
+skipped the Release step:
+
+- `OliTechsPrintAgentSetup-2.2.0-UNSIGNED.exe` (28,308,483 bytes)
+- SHA-256 `7b08c56eac31eb24f37811a07c8a3feafb855f0e182f61008e85b7eac6d38ab7`
+
+This is **not** a customer build. A signed release needs the
+`WINDOWS_CERT_PFX_BASE64` and `WINDOWS_CERT_PASSWORD` repository secrets; until
+they exist the workflow refuses to publish. No Windows computer or physical
+printer has run this artifact yet.
+
 ---
 
 ## 1. Confirm the two migrations on the production project
