@@ -1,0 +1,54 @@
+name: Performance audit validation
+
+on:
+  push:
+    branches: [perf/full-app-audit-loading-and-startup]
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/App.jsx'
+      - 'src/lib/AuthContext.jsx'
+      - 'src/services/authService.js'
+      - 'src/data/PmsStore.jsx'
+      - 'src/data/modules/navigationRouting.test.js'
+      - 'src/pages/admin/AdminUsers.jsx'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/performance-audit.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: performance-audit-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: ESLint, typecheck, architecture tests and production build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: ESLint
+        run: npx eslint . --quiet
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Architecture and navigation tests
+        run: npm run test:architecture
+
+      - name: Production build
+        run: npm run build

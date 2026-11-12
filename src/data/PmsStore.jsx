@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { pmsService } from '@/services/pmsService';
 import { supabase } from '@/lib/supabaseClient';
@@ -109,6 +109,7 @@ export function PmsProvider({ children }) {
 	const [guests, setGuests] = useState([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState('');
+	const realtimeRefreshTimer = useRef(null);
 
 	const reload = useCallback(async () => {
 		if (!propertyId) return;
@@ -141,13 +142,17 @@ export function PmsProvider({ children }) {
 
 	useEffect(() => {
 		if (!propertyId) return undefined;
+		const scheduleRefresh = () => {
+			if (realtimeRefreshTimer.current) clearTimeout(realtimeRefreshTimer.current);
+			realtimeRefreshTimer.current = setTimeout(() => { realtimeRefreshTimer.current = null; reload(); }, 180);
+		};
 		const channel = supabase
 			.channel('pms-property-' + propertyId)
-			.on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: 'property_id=eq.' + propertyId }, () => reload())
-			.on('postgres_changes', { event: '*', schema: 'public', table: 'reservations', filter: 'property_id=eq.' + propertyId }, () => reload())
-			.on('postgres_changes', { event: '*', schema: 'public', table: 'guests', filter: 'property_id=eq.' + propertyId }, () => reload())
+			.on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: 'property_id=eq.' + propertyId }, scheduleRefresh)
+			.on('postgres_changes', { event: '*', schema: 'public', table: 'reservations', filter: 'property_id=eq.' + propertyId }, scheduleRefresh)
+			.on('postgres_changes', { event: '*', schema: 'public', table: 'guests', filter: 'property_id=eq.' + propertyId }, scheduleRefresh)
 			.subscribe();
-		return () => { supabase.removeChannel(channel); };
+		return () => { if (realtimeRefreshTimer.current) clearTimeout(realtimeRefreshTimer.current); realtimeRefreshTimer.current = null; supabase.removeChannel(channel); };
 	}, [propertyId, reload]);
 
 	const roomsById = useMemo(() => new Map(rawRooms.map((r) => [r.id, r])), [rawRooms]);

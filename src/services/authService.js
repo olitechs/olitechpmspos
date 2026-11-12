@@ -148,11 +148,13 @@ async function loadCurrentUserDetails() {
 	let staff = null;
 	let subscription = null;
 	if (propertyId) {
-		const { data: staffRow } = await supabase.from('staff').select('id,full_name,email,phone,role,assigned_modules,is_active,property_id,avatar,last_login,user_id').eq('property_id', propertyId).ilike('email', authUser.email || '').maybeSingle();
-		staff = staffRow || null;
-		const { data: subscriptionRow, error: subscriptionError } = await supabase.rpc('fn_get_subscription', { p_property_id: propertyId });
-		if (subscriptionError) console.error('[authService] subscription lookup failed:', subscriptionError.message);
-		subscription = subscriptionRow || null;
+		const [staffResult, subscriptionResult] = await Promise.all([
+			supabase.from('staff').select('id,full_name,email,phone,role,assigned_modules,is_active,property_id,avatar,last_login,user_id').eq('property_id', propertyId).ilike('email', authUser.email || '').maybeSingle(),
+			supabase.rpc('fn_get_subscription', { p_property_id: propertyId }),
+		]);
+		staff = staffResult.data || null;
+		if (subscriptionResult.error) console.error('[authService] subscription lookup failed:', subscriptionResult.error.message);
+		subscription = subscriptionResult.data || null;
 	}
 
 	return toAppUser({
