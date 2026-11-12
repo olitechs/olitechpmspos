@@ -112,7 +112,7 @@ export default function AdminProperties() {
 						{loading && (
 							<tr>
 								<td colSpan={6} className="p-3">
-									<PageDataSkeleton variant="table" rows={6}/
+									<PageDataSkeleton variant="table" rows={6}/>
 								</td>
 							</tr>
 						)}
