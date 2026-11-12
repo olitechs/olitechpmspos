@@ -130,6 +130,7 @@ export default function Cashier() {
         createdAt: receipt.created_at,
         currency: 'KES',
         voidedCount: receipt.status === 'voided' ? 1 : 0,
+        forceReprint: true,
       });
       if (result.outcome === 'uncertain') throw new Error('The receipt may already have reprinted. Check the paper before printing it again.');
       if (!result.ok) throw new Error(result.friendlyError || 'Receipt printer did not complete the reprint.');

@@ -5,6 +5,7 @@ import {
   durableJobStatus,
   outcomeAffectsConnection,
   printOutcomeMessage,
+  copiesToPrint,
   summarizePrintOutcomes,
 } from './printOutcomeCore.js';
 
@@ -45,6 +46,15 @@ test('a receipt copy that may have printed is never summarised as a failure', ()
   assert.equal(failed.outcome, 'failed');
   assert.equal(failed.needsPaperCheck, false);
   assert.equal(summarizePrintOutcomes([]).ok, false);
+});
+
+test('a retry sends only the copies the printer has not confirmed', () => {
+  const copies = ['customer_copy', 'cashier_copy'];
+  assert.deepEqual(copiesToPrint(copies, ['customer_copy']), ['cashier_copy']);
+  assert.deepEqual(copiesToPrint(copies, ['customer_copy', 'cashier_copy']), []);
+  // An explicit reprint still produces another full set.
+  assert.deepEqual(copiesToPrint(copies, ['customer_copy', 'cashier_copy'], { force: true }), copies);
+  assert.deepEqual(copiesToPrint(copies, []), copies);
 });
 
 test('a real transport failure stays failed and may mark the printer offline', () => {

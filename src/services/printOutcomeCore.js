@@ -68,6 +68,18 @@ export function summarizePrintOutcomes(results = []) {
   };
 }
 
+/**
+ * Chooses the copies still to send. A retry after a partial failure must not
+ * send the copy that already came out; an explicit reprint (someone asked for
+ * another copy) sends everything.
+ */
+export function copiesToPrint(copies = [], alreadyPrinted = [], { force = false } = {}) {
+  const labels = Array.isArray(copies) ? copies : [];
+  if (force) return [...labels];
+  const done = new Set((Array.isArray(alreadyPrinted) ? alreadyPrinted : []).filter(Boolean));
+  return labels.filter((label) => !done.has(label));
+}
+
 export function printOutcomeMessage(outcome) {
   if (outcome === 'uncertain') return 'This job may already have printed. Check the paper before reprinting.';
   if (outcome === 'pending') return 'This job is still queued or printing at the agent.';

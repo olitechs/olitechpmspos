@@ -69,6 +69,7 @@ export default function ShiftReceiptHistory({ propertyId, currentShift }) {
         currency: 'KES',
         paymentMethod: receipt.payment_method,
         createdAt: receipt.created_at,
+        forceReprint: true,
       });
       if (result.outcome === 'uncertain') throw new Error('The receipt may already have reprinted. Check the paper before printing it again.');
       if (!result.ok) throw new Error(result.friendlyError || 'Receipt printer did not complete the reprint.');

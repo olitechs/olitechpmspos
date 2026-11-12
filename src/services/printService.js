@@ -3,7 +3,7 @@ import { testConnection as testBrowserPrinterConnection, pairUsbDevice, pairBlue
 import { supabase } from '@/lib/supabaseClient';
 import { buildOrderTicketText, buildUnsettledReceiptText, buildFinalReceiptText, toEscPosPayload, thermalTextToHtml } from '@/services/printTemplates';
 import { getPrintColor } from '@/utils/printTheme';
-import { classifyAgentPrintOutcome, durableJobStatus, outcomeAffectsConnection, summarizePrintOutcomes } from '@/services/printOutcomeCore';
+import { classifyAgentPrintOutcome, copiesToPrint, durableJobStatus, outcomeAffectsConnection, summarizePrintOutcomes } from '@/services/printOutcomeCore';
 import { planDepartmentTickets, printersForDepartment } from '@/services/printDepartmentRoutingCore';
 
 const normalizeNetworkEndpoint = (value, fallbackPort = 9100) => {
@@ -843,6 +843,33 @@ export async function printTestReceipt(printer, propertyId, { vatMode = 'off', l
   });
 }
 
+const copyKey = (label) => String(label || '').trim().toLowerCase().replaceAll(' ', '_');
+
+/**
+ * Which copies of this document the printer already confirmed. A retry then
+ * sends only what is missing instead of handing the guest a second customer
+ * copy. Lookups are deliberately fail-soft: if the history cannot be read,
+ * printing proceeds exactly as before rather than blocking a receipt.
+ */
+async function confirmedCopies({ propertyId, jobType, orderNumber = null, shiftId = null, withinHours = 12 }) {
+  if (!propertyId || !jobType) return [];
+  try {
+    let query = supabase.from('fnb_print_jobs')
+      .select('copy_type,status,payload,created_at')
+      .eq('property_id', propertyId)
+      .eq('job_type', jobType)
+      .in('status', ['printed', 'uncertain'])
+      .gte('created_at', new Date(Date.now() - withinHours * 3600 * 1000).toISOString());
+    if (orderNumber) query = query.eq('payload->>orderNumber', String(orderNumber));
+    if (shiftId) query = query.eq('payload->>shiftId', String(shiftId));
+    const { data, error } = await query;
+    if (error) return [];
+    return (data || []).map((row) => row.copy_type).filter(Boolean);
+  } catch (_) {
+    return [];
+  }
+}
+
 export async function printReceipt(type, data) {
   const propertyId = data.propertyId;
   let settings = data.settings || await (async () => { const { data: row, error } = await supabase.from('property_settings').select('*').eq('property_id', propertyId).maybeSingle(); if(error) throw error; return row; })();
@@ -882,13 +909,33 @@ export async function printReceipt(type, data) {
     : type === 'UNSETTLED'
       ? (copyCount === 1 ? ['CUSTOMER COPY'] : ['CUSTOMER COPY', settings.unsettled_receipt_front_office_copy === false ? 'SECOND COPY' : 'FRONT OFFICE COPY'])
       : ['CUSTOMER COPY', 'CASHIER COPY'];
+  // "Print bill" is idempotent: pressing it again after one copy failed must
+  // finish the job, not produce a second customer copy. Explicit reprints pass
+  // forceReprint (or recoveryCopy) and always print the full set.
+  const force = data.forceReprint === true || data.recoveryCopy === true;
+  const documentNumber = data.orderNumber || data.checkNo || null;
+  // Without a document number the lookup could match another table's copies,
+  // so printing proceeds normally instead of skipping anything.
+  const alreadyPrinted = force || !documentNumber ? [] : await confirmedCopies({
+    propertyId,
+    jobType: type,
+    orderNumber: documentNumber,
+  });
+  const pendingCopies = copiesToPrint(copies.map(copyKey), alreadyPrinted);
+  if (!pendingCopies.length) {
+    return { ok:true, outcome:'printed', results:[], skippedExisting:copies.length,
+      summary:{ total:0, printed:0, uncertain:0, pending:0, failed:0, outcome:'printed', ok:true, needsPaperCheck:false,
+        message:'Every copy of this document has already printed. Use Reprint to print another set.' },
+      friendlyError:null };
+  }
+  const copiesForRun = copies.filter((copy) => pendingCopies.includes(copyKey(copy)));
   const results = [];
   if (type === 'UNSETTLED') {
     const printedAt = new Date();
     // Each copy is an independently cut ESC/POS job. A combined text buffer
     // only carries one cutter command, leaving the copies attached together.
     for (const printer of targets) {
-      for (const copy of copies) {
+      for (const copy of copiesForRun) {
         const thermalText = buildUnsettledReceiptText(settings, data, {
           printer,
           copyLabel: copy,
@@ -925,7 +972,7 @@ export async function printReceipt(type, data) {
   for (const printer of targets) {
     // A receipt copy is a complete physical print job with its own feed and
     // cutter sequence. Never concatenate copies into one ESC/POS text stream.
-    for (const copy of copies) {
+    for (const copy of copiesForRun) {
       const thermalText = buildFinalReceiptText(settings, data, { printer, copyLabel: copy });
       const thermalBase64 = await buildLogoEscPosBase64(settings.logo_url, printer, thermalText, {
         // Keep the receipt clear of the cutter and provide a consistent tear margin.
@@ -985,10 +1032,15 @@ export async function printShiftPreview(shiftData, printer) {
 export async function printShiftReport(shiftData, printer) {
   if (!printer) return {ok:false,friendlyError:'Shift report printer not configured.'};
   const propertyId=shiftData.propertyId;
-  const first=await printToPrinter(printer,shiftReportHtml(shiftData,'CASHIER COPY'),{propertyId,jobType:'shift_report',copyType:'cashier',assignmentType:'shift_reports',payload:{shiftId:shiftData.shift?.id||null},title:'Shift Closing Report'});
-  const second=await printToPrinter(printer,shiftReportHtml(shiftData,'MANAGER / ACCOUNTANT COPY'),{propertyId,jobType:'shift_report',copyType:'manager',assignmentType:'shift_reports',payload:{shiftId:shiftData.shift?.id||null},title:'Shift Closing Report'});
-  const summary = summarizePrintOutcomes([first, second]);
-  return {ok:summary.ok,outcome:summary.outcome,summary,results:[first,second]};
+  const shiftId=shiftData.shift?.id||null;
+  // The "Retry print" button after a partial failure must not reprint the copy
+  // that already reached the printer.
+  const done = shiftData.forceReprint === true || !shiftId ? [] : await confirmedCopies({propertyId, jobType:'shift_report', shiftId});
+  const results=[];
+  if (!done.includes('cashier')) results.push(await printToPrinter(printer,shiftReportHtml(shiftData,'CASHIER COPY'),{propertyId,jobType:'shift_report',copyType:'cashier',assignmentType:'shift_reports',payload:{shiftId},title:'Shift Closing Report'}));
+  if (!done.includes('manager')) results.push(await printToPrinter(printer,shiftReportHtml(shiftData,'MANAGER / ACCOUNTANT COPY'),{propertyId,jobType:'shift_report',copyType:'manager',assignmentType:'shift_reports',payload:{shiftId},title:'Shift Closing Report'}));
+  const summary = summarizePrintOutcomes(results);
+  return {ok:summary.ok,outcome:summary.outcome,summary,skippedExisting:done.length,results};
 }
 export async function listFnbPrintJobs(propertyId,{status=null,statuses=null,limit=50}={}) { if (!propertyId) return []; let q=supabase.from('fnb_print_jobs').select('*').eq('property_id',propertyId).order('created_at',{ascending:false}).limit(Math.min(100,Math.max(1,limit))); if(status) q=q.eq('status',status); else if(Array.isArray(statuses)&&statuses.length) q=q.in('status',statuses); const {data,error}=await q; if(error) throw error; return data||[]; }
 export async function retryFnbPrintJob(jobId,propertyId) {

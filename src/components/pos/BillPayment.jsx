@@ -131,7 +131,7 @@ export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrde
   setBusy(true);setError('');
   try{
    await posService.saveVatSnapshot({propertyId,tableKey:table.id,snapshot:vatSnapshot});
-   const result=await printReceipt('UNSETTLED',{propertyId,orderNumber:stableOrderNumber,checkNo:stableOrderNumber,table:tableLabel(table),waiter,covers:guestCovers,items:orderLines,subtotal,discount,vat,total,vatSnapshot,currency:'KES'});
+   const result=await printReceipt('UNSETTLED',{propertyId,orderNumber:stableOrderNumber,checkNo:stableOrderNumber,table:tableLabel(table),waiter,covers:guestCovers,items:orderLines,subtotal,discount,vat,total,vatSnapshot,currency:'KES',forceReprint:true});
    if(result.ok){setBillPrinted(true);toast.success('Bill reprinted.')}
    else if(result.outcome==='uncertain'){setBillPrinted(true);toast.warning('The bill may have printed — check the paper before reprinting.')}
    else setError(result.friendlyError||'Bill printer failed.');
