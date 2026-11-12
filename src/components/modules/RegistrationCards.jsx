@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { PageDataSkeleton } from '@/components/ui/AppLoadingSkeleton';
 import { ArrowLeft, Search, UserRound } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
