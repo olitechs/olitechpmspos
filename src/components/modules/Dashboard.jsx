@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { PageDataSkeleton } from '@/components/ui/AppLoadingSkeleton';
 import { useNavigate } from 'react-router-dom';
 import {
   Activity,
@@ -230,6 +231,8 @@ export default function Dashboard({ onNavigateToPOS, onNavigateToRooms, onNaviga
   const dash = (v) => (pmsLoading ? '—' : v);
   const posDash = (v) => (summaryUnavailable ? 'Unavailable' : (reportLoading && !summary ? '—' : v));
   const dateLabel = new Intl.DateTimeFormat('en-KE', { timeZone: TZ, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
+
+  if (pmsLoading || (reportLoading && !summary)) return <div className="flex-1 overflow-y-auto bg-[var(--canvas)] p-4 sm:p-5 lg:p-6"><div className="mx-auto w-full max-w-[1600px]"><PageDataSkeleton variant="report" rows={6}/></div></div>;
 
   return (
     <div className="flex-1 overflow-y-auto bg-[var(--canvas)]">
