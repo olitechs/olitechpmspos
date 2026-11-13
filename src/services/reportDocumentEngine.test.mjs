@@ -7,9 +7,9 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createReportDefinition } from './reportDefinitions.js';
 import { createExcelBlob, createPdfBlob, reportFilename } from './reportDocumentEngine.js';
-import { readCoastalLinenDocumentTheme } from '../../scripts/reportTheme.mjs';
+import { readDocumentTheme } from '../../scripts/reportTheme.mjs';
 
-const THEME = await readCoastalLinenDocumentTheme();
+const THEME = await readDocumentTheme();
 const FONT_PATH = fileURLToPath(new URL('../../public/fonts/olitechs-report-sans.ttf', import.meta.url));
 const fontBase64 = (await readFile(FONT_PATH)).toString('base64');
 const ExcelJS = (await import('exceljs')).default;
@@ -29,7 +29,7 @@ function makeDefinition(rowCount) {
     key: `synthetic-scale-${rowCount}`,
     title: 'Synthetic Sales & Stock Report',
     subtitle: 'Generated test data only · not production records',
-    propertyName: 'Sample Coastal Linen Property',
+    propertyName: 'Sample OliTechs Property',
     period: { from: '2026-10-01', to: '2026-10-31' },
     filters: { period: 'October 2026', department: ['Bar', 'Kitchen'], status: 'Posted' },
     generatedBy: 'Synthetic Report Test',
@@ -104,7 +104,7 @@ test('generated Excel uses a combined branded summary, formulas, dates, safe tex
   assert.equal(detail.getCell('H7').value, "'=HYPERLINK(\"x\",\"x\")");
   assert.match(detail.getCell('F7').numFmt, /KES/);
   assert.equal(detail.getCell('F507').value.formula, 'SUM(F7:F506)');
-  assert.equal(detail.getCell('A6').fill.fgColor.argb, 'FF0A3F4A');
+  assert.equal(detail.getCell('A6').fill.fgColor.argb, 'FF101A35');
   assert.equal(detail.views[0].state, 'frozen');
   assert.equal(detail.pageSetup.printTitlesRow, '1:6');
 });

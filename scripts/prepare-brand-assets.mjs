@@ -13,8 +13,8 @@ function readColorToken(name) {
 }
 
 const colors = {
-  DEEP_LAGOON: readColorToken('deep-lagoon'),
-  COASTAL_TEAL: readColorToken('coastal-teal'),
+  BRAND_NAVY: readColorToken('deep-lagoon'),
+  BRAND_BLUE: readColorToken('coastal-teal'),
   WHITE: readColorToken('white'),
   SOFT_WHITE: readColorToken('soft-white'),
 };

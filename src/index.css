@@ -52,7 +52,7 @@
     --primary: var(--coastal-teal);
     --on-primary: var(--white);
     --primary-foreground: var(--on-primary);
-    --primary-hover: var(--deep-lagoon);
+    --primary-hover: var(--brand-blue-hover);
     --primary-text: var(--deep-lagoon);
     --primary-soft: color-mix(in srgb, var(--coastal-teal) 11%, var(--white));
     --success: var(--status-paid);
@@ -192,6 +192,37 @@
     --stay-optioned: var(--pay-opt);
     --stay-closed: var(--room-out-of-order);
 
+    /* Public marketing surfaces. Every value is derived from the brand and
+       status tokens above so the homepage never introduces a second palette. */
+    --mkt-ink: var(--brand-navy);
+    --mkt-ink-2: color-mix(in srgb, var(--brand-navy) 90%, var(--brand-blue));
+    --mkt-body: color-mix(in srgb, var(--brand-navy) 74%, var(--brand-white));
+    --mkt-muted: color-mix(in srgb, var(--brand-navy) 60%, var(--brand-white));
+    --mkt-muted-soft: color-mix(in srgb, var(--brand-navy) 48%, var(--brand-white));
+    --mkt-on-dark: color-mix(in srgb, var(--brand-blue) 22%, var(--brand-white));
+    --mkt-on-dark-muted: color-mix(in srgb, var(--brand-white) 62%, var(--brand-navy));
+    --mkt-blue-300: color-mix(in srgb, var(--brand-blue) 55%, var(--brand-white));
+    --mkt-blue-bright: color-mix(in srgb, var(--brand-blue) 88%, var(--brand-white));
+    --mkt-blue-deep: color-mix(in srgb, var(--brand-blue) 70%, var(--brand-navy));
+    --mkt-line: color-mix(in srgb, var(--brand-navy) 11%, var(--brand-white));
+    --mkt-line-soft: color-mix(in srgb, var(--brand-navy) 7%, var(--brand-white));
+    --mkt-line-strong: color-mix(in srgb, var(--brand-navy) 18%, var(--brand-white));
+    --mkt-panel: color-mix(in srgb, var(--brand-navy) 4%, var(--brand-white));
+    --mkt-blue-wash: color-mix(in srgb, var(--brand-blue) 8%, var(--brand-white));
+    --mkt-blue-tint: color-mix(in srgb, var(--brand-blue) 16%, var(--brand-white));
+    --mkt-blue-text: color-mix(in srgb, var(--brand-blue) 80%, var(--brand-navy));
+    --mkt-blue-muted: color-mix(in srgb, var(--brand-blue) 52%, var(--brand-white));
+    --mkt-green-wash: color-mix(in srgb, var(--status-paid) 10%, var(--brand-white));
+    --mkt-green-soft: color-mix(in srgb, var(--status-paid) 18%, var(--brand-white));
+    --mkt-green-text: color-mix(in srgb, var(--status-paid) 70%, var(--brand-navy));
+    --mkt-amber-wash: color-mix(in srgb, var(--status-deposit-paid) 20%, var(--brand-white));
+    --mkt-amber-text: color-mix(in srgb, var(--status-deposit-paid) 45%, var(--brand-navy));
+    --mkt-shadow: color-mix(in srgb, var(--brand-navy) 8%, transparent);
+    --mkt-shadow-strong: color-mix(in srgb, var(--brand-navy) 30%, transparent);
+    --mkt-nav-bg: color-mix(in srgb, var(--brand-white) 88%, transparent);
+    --mkt-white-10: color-mix(in srgb, var(--brand-white) 12%, transparent);
+    --mkt-white-24: color-mix(in srgb, var(--brand-white) 24%, transparent);
+
     --font-body: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     --font-heading: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     --font-display: var(--font-heading);
@@ -205,7 +236,8 @@
   h1, h2, h3, h4, .font-heading { font-family: var(--font-heading); font-weight: 600; }
   :where(*):not(svg):not(path) { font-synthesis: none; }
   button, a, input, select, textarea { transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease, opacity 150ms ease, transform 150ms ease; }
-  button { min-height: 44px; font-weight: 600; touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }\n  [role="button"] { touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  button { min-height: 44px; font-weight: 600; touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  [role="button"] { touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   input, select, textarea { border-color: var(--input-border); color: var(--text); }
   input, select, textarea { font-size: max(16px, 1em); }
   input::placeholder, textarea::placeholder { color: var(--text-muted); opacity: 1; }

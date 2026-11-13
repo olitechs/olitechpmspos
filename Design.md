@@ -10,9 +10,9 @@ OliTechs is a professional hospitality operations interface with a light-only Ol
 
 | Purpose | Token |
 |---|---|
-| Navy brand | `--brand-navy` |
+| Navy brand / ink | `--brand-navy`, `--deep-lagoon`, `--text` |
 | Primary blue | `--brand-blue`, `--coastal-teal`, `--primary` |
-| Primary hover / dark anchor | `--brand-blue-hover`, `--deep-lagoon` |
+| Primary hover | `--brand-blue-hover`, `--primary-hover` |
 | Soft blue / canvas / white | `--brand-blue-soft`, `--brand-canvas`, `--brand-white`, `--soft-white`, `--canvas`, `--white` |
 | Sidebar / text / muted text / border | `--sidebar`, `--text`, `--text-muted`, `--border` |
 | Small highlights and warnings only | `--accent`, `--warning`, `--warning-soft` |
@@ -20,6 +20,9 @@ OliTechs is a professional hospitality operations interface with a light-only Ol
 The brand palette uses navy, primary blue, a darker hover blue, soft blue surfaces, a pale canvas, a light sidebar and white working surfaces. The `--deep-lagoon` and `--coastal-teal` names remain as compatibility aliases for existing component contracts; their values follow the current OliTechs navy/blue palette.
 
 Use the official brand tokens for the logo, headers, primary buttons, active states, links and key accents. Do not use the warning accent as a large surface or in the logo. The canvas and normal working surfaces remain light; do not introduce black areas.
+
+### Marketing surfaces
+The public homepage uses the `--mkt-*` token family. Every marketing value is derived with `color-mix()` from the brand and status tokens above, so the homepage passes the same colour audit as the application. Add new marketing tints the same way; never add a hex literal to a component. Marketing headings, body copy, rules, tinted panels and shadows all resolve to `--mkt-*` or a brand/status token.
 
 ## Functional status tokens
 

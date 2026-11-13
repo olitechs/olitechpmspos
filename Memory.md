@@ -196,7 +196,7 @@ The seven foundation documents are the decision baseline. If a later agent propo
 
 The owner has authorized the scoped Phase 1 implementation described in the implementation brief supplied for this task. This authorization covers the design-token/shared-shell foundation only, must be delivered on a dedicated feature branch and pull request, and does not authorize merging the existing open Phase 1 foundation PR, changing the Room Planner behavior, or advancing to a later phase without a separate approval.
 
-The implementation brief's approved yellow/charcoal palette supersedes the older blue/slate target palette in the previous draft of `Design.md` and `design-system/olitechs-pms-pos/MASTER.md`. Record the corresponding ADR in `Architecture.md` and keep the docs and implementation aligned.
+The implementation brief's approved yellow/charcoal palette superseded the older blue/slate target palette at the time. It was itself superseded on 2026-11-13 by the approved OliTechs navy/blue brand block recorded in section 13; `Design.md` and `MASTER.md` now document only that block.
 
 The current repository already has an open PR #10 named `feat: Phase 1 foundation architecture and security`. This UI/design-system work is isolated on `feature/phase-1-design-system-shell`; do not alter or close PR #10.
 
@@ -206,3 +206,13 @@ The current repository already has an open PR #10 named `feat: Phase 1 foundatio
 ## 12. Owner Authorization — Phase 2 — 2026-10-09
 
 The owner explicitly authorized merging Phase 1 and starting Phase 2. Phase 2 is isolated on `feature/phase-2-core-pms` and covers Front Office / Core PMS integrity: timezone-safe date handling, reservation overlap and concurrency safety, Room Planner month and rolling 15-day views, check-in/out, room moves and stay extensions, folio balance enforcement/posting, housekeeping synchronization, and auditable operations. Preserve existing functionality and do not touch POS financial behavior outside a required PMS integration fix. No Phase 2 changes are authorized on `main`; use a dedicated PR and stop at the Phase 2 acceptance gate.
+
+## 13. Brand Consolidation — 2026-11-13
+
+- The approved palette is the single OliTechs navy/blue block in `src/index.css`: `--brand-navy`, `--brand-blue`, `--brand-blue-hover`, `--brand-blue-soft`, `--brand-canvas`, `--brand-white`, the approved compatibility names `--deep-lagoon`/`--coastal-teal`, the surface tokens, `--text` and `--accent`. Values are fixed by the owner; gates compare them exactly.
+- `--accent: #E8955A` is for small highlights and warnings only. Never use it as a large surface or in the logo.
+- `tools/design-system/check-coastal-linen.mjs` is now `check-brand-system.mjs` and runs as `npm run check:brand`; `npm run lint` chains it before the colour audit.
+- Public marketing surfaces use the derived `--mkt-*` token family in `src/index.css`. `src/pages/PublicHome.jsx` is no longer exempt from `scripts/check-colors.mjs`; add a `color-mix()`-derived token instead of a hex/rgba literal.
+- `--primary-hover` resolves to `--brand-blue-hover` (`#174AC8`), not navy, so primary buttons keep a blue hover state.
+- Report and document theme identifiers are `navy`/`blue`; brand asset templates use `{{BRAND_NAVY}}`/`{{BRAND_BLUE}}`.
+- Known environment gap: `npm run test:reports` needs Poppler `pdfinfo` for its PDF assertions. The Excel assertions and the rest of the report tests pass; this is a missing local tool, not a repo defect.

@@ -9,9 +9,6 @@ const colorAuditExemptions = new Set([
   'public/app-icon.svg',
   'public/favicon.svg',
   'public/manifest.json',
-  // PublicHome is a self-contained marketing microsite with a deliberately
-  // scoped visual system; operational app screens remain token-audited.
-  'src/pages/PublicHome.jsx',
 ]);
 const roots = ['src', 'public', 'tools/brand-assets', 'tools/print-agent', 'supabase/functions'];
 const files = [];

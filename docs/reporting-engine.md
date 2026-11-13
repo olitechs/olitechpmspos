@@ -6,7 +6,7 @@
 
 The export menu writes a bounded event to the existing append-only `audit_logs` table through `src/services/reportExportAuditService.js`. Safe filter normalization is isolated in `reportExportAuditCore.js`. Export errors surface to the user; the menu does not silently download a document when audit logging fails.
 
-The browser PDF renderer reads the Coastal Linen CSS variables in `src/index.css`; Node sample generation resolves those same token names through `scripts/reportTheme.mjs`. Neither path has an independent hard-coded palette. PDF creation uses jsPDF and AutoTable, with the project Noto Sans asset embedded for Unicode. ExcelJS produces actual `.xlsx` workbooks with a Summary sheet, detail sheets, safe text escaping, number formats, totals formulas, conditional formatting where the fields apply, frozen/filter headers and print setup.
+The browser PDF renderer reads the OliTechs brand CSS variables in `src/index.css`; Node sample generation resolves those same token names through `scripts/reportTheme.mjs`. Neither path has an independent hard-coded palette. PDF creation uses jsPDF and AutoTable, with the project Noto Sans asset embedded for Unicode. ExcelJS produces actual `.xlsx` workbooks with a Summary sheet, detail sheets, safe text escaping, number formats, totals formulas, conditional formatting where the fields apply, frozen/filter headers and print setup.
 
 ## Add a new data-backed report
 

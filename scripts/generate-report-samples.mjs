@@ -10,12 +10,12 @@ import {
   buildStockControlDefinition,
 } from '../src/services/reportDefinitions.js';
 import { createExcelBlob, createPdfBlob, reportFilename } from '../src/services/reportDocumentEngine.js';
-import { readCoastalLinenDocumentTheme } from './reportTheme.mjs';
+import { readDocumentTheme } from './reportTheme.mjs';
 
 const OUTPUT = join(process.cwd(), 'docs/report-samples');
-const THEME = await readCoastalLinenDocumentTheme();
+const THEME = await readDocumentTheme();
 const fontBase64 = (await readFile(join(process.cwd(), 'public/fonts/olitechs-report-sans.ttf'))).toString('base64');
-const common = { from: '2026-10-01', to: '2026-10-31', propertyName: 'Sample Coastal Linen Property', generatedBy: 'Synthetic Sample Generator' };
+const common = { from: '2026-10-01', to: '2026-10-31', propertyName: 'Sample OliTechs Property', generatedBy: 'Synthetic Sample Generator' };
 const shifts = [
   { id: 'synthetic-shift-01', shift_no: 'Morning', date: '2026-10-04' },
   { id: 'synthetic-shift-02', shift_no: 'Evening', date: '2026-10-12' },

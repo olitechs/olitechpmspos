@@ -8,8 +8,9 @@ The application is light-only. There is no dark/system mode selector, dark palet
 ## Canonical tokens
 All application colour values live in `src/index.css` under a single `:root`. Tailwind and shadcn values are CSS-variable mappings only. Component code must use semantic tokens and must not introduce raw colour literals, palette-specific utility classes, inline color values or another palette.
 
-- Brand: `--deep-lagoon`, `--coastal-teal`, `--white`, `--soft-white`, `--accent`.
-- Coastal Linen: `--canvas`, `--surface`, `--sidebar`, `--primary`, `--text`, `--text-muted`, `--border`.
+- Brand: `--brand-navy` (`--deep-lagoon`), `--brand-blue` (`--coastal-teal`), `--brand-blue-hover`, `--brand-blue-soft`, `--brand-canvas`, `--brand-white`, `--white`, `--soft-white`, `--accent`.
+- Surfaces and text: `--canvas`, `--surface`, `--sidebar`, `--primary`, `--primary-hover`, `--text`, `--text-muted`, `--border`.
+- Public marketing surfaces: `--mkt-*`, every value derived from the brand and status tokens with `color-mix()`.
 - Payment status: `--status-paid`, `--status-deposit-paid`, `--status-not-paid`, with their matching foreground aliases.
 - Room status: `--room-clean`, `--room-dirty`, `--room-occupied`, `--room-checkout`, `--room-out-of-order` and the diagonal `--room-out-of-order-stripe` treatment.
 
