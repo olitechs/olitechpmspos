@@ -7,7 +7,7 @@ import BrandLogo from '@/components/ui/BrandLogo';
 const CONTACT = {
   phone: '+254 745 043 121',
   phoneHref: 'tel:+254745043121',
-  email: 'info@olitech.co.ke',
+  email: 'info@olitechs.co.ke',
   whatsapp: 'https://wa.me/254745043121',
 };
 
