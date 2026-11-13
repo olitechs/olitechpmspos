@@ -113,7 +113,7 @@ test('official OliTechs identity is shared across all application workspaces and
   assert.match(brandLogo, /olitechs-logo\.svg/);
   assert.match(brandLogo, /app-icon\.svg/);
   assert.match(theme, /--primary:\s*var\(--coastal-teal\)/);
-  assert.match(theme, /--primary-hover:\s*var\(--deep-lagoon\)/);
+  assert.match(theme, /--primary-hover:\s*var\(--brand-blue-hover\)/);
   assert.match(theme, /--pos-gate-accent:\s*var\(--primary\)/);
   assert.match(html, /<title>OliTechs PMS \+ POS \| Hospitality Operations<\/title>/);
 });
