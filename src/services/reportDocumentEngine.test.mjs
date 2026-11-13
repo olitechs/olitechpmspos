@@ -104,7 +104,9 @@ test('generated Excel uses a combined branded summary, formulas, dates, safe tex
   assert.equal(detail.getCell('H7').value, "'=HYPERLINK(\"x\",\"x\")");
   assert.match(detail.getCell('F7').numFmt, /KES/);
   assert.equal(detail.getCell('F507').value.formula, 'SUM(F7:F506)');
-  assert.equal(detail.getCell('A6').fill.fgColor.argb, 'FF0A3F4A');
+  // Header row uses the current brand navy token --deep-lagoon (#101A35),
+  // enforced by tools/design-system/check-coastal-linen.mjs.
+  assert.equal(detail.getCell('A6').fill.fgColor.argb, 'FF101A35');
   assert.equal(detail.views[0].state, 'frozen');
   assert.equal(detail.pageSetup.printTitlesRow, '1:6');
 });
