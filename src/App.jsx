@@ -6,7 +6,7 @@ import InventoryOperations from '@/components/modules/InventoryOperations';
 import { Toaster } from "@/components/ui/toaster";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClientInstance } from "@/lib/query-client";
-import { BrowserRouter as Router, Route, Routes, Navigate, Outlet, useParams } from "react-router-dom";
+import { BrowserRouter as Router, Route, Routes, Navigate, Outlet, useParams, useLocation } from "react-router-dom";
 import PageNotFound from "@/lib/PageNotFound";
 import { AuthProvider, useAuth } from "@/lib/AuthContext";
 import AdminRoute from "@/lib/AdminRoute";
@@ -79,27 +79,56 @@ const FrontOfficeStatistics = lazyWithRetry(() => import('@/pages/FrontOfficeSta
 const FrontOfficeTags = lazyWithRetry(() => import('@/pages/FrontOfficeTags'), 'route-pages-frontoffice-tags');
 const StoresPage = lazyWithRetry(() => import('@/components/stores/StoresPage'), 'app-stores-page');
 
+function PageSkeleton({ variant }) {
+  const block = 'animate-pulse motion-reduce:animate-none rounded-md bg-[var(--border)]/70';
+  const panel = 'rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4';
+  const line = (w='w-full', h='h-3') => <div className={block+' '+w+' '+h}/>;
+  const toolbar = <div className="mb-5 flex flex-wrap items-center justify-between gap-3"><div className="flex flex-1 flex-wrap gap-2">{line('w-56 max-w-full','h-9')}{line('w-28','h-9')}</div>{line('w-32','h-9')}</div>;
+  const table = <div className={panel}><div className="mb-4 grid grid-cols-4 gap-3 border-b border-[var(--border)] pb-3">{Array.from({length:4},(_,i)=><div key={i}>{line('w-3/4','h-3')}</div>)}</div><div className="space-y-4">{Array.from({length:7},(_,i)=><div key={i} className="grid grid-cols-4 items-center gap-3">{line('w-4/5')}{line('w-3/4')}{line('w-2/3')}{line('w-1/2')}</div>)}</div></div>;
+  const metrics = <div className="mb-5 grid grid-cols-2 gap-3 xl:grid-cols-4">{Array.from({length:4},(_,i)=><div key={i} className={panel}>{line('w-20')}{line('mt-4 w-16','h-7')}</div>)}</div>;
+  let content;
+  switch (variant) {
+    case 'calendar':
+      content = <><div className="mb-4 flex flex-wrap justify-between gap-3">{line('w-44','h-9')}<div className="flex gap-2">{line('w-24','h-9')}{line('w-24','h-9')}{line('w-28','h-9')}</div></div><div className={panel}><div className="mb-3 grid grid-cols-7 gap-2">{Array.from({length:7},(_,i)=><div key={i}>{line('w-full','h-4')}</div>)}</div><div className="grid grid-cols-7 gap-2">{Array.from({length:35},(_,i)=><div key={i} className="min-h-20 rounded-lg border border-[var(--border)] p-2">{line('w-5')}{i%4===0&&line('mt-3 w-full','h-5')}</div>)}</div></div></>;
+      break;
+    case 'pos':
+      content = <div className="grid min-h-[65vh] gap-4 xl:grid-cols-[minmax(0,1fr)_360px]"><div><div className="mb-4 flex gap-2">{Array.from({length:5},(_,i)=><div key={i} className={block+' h-9 w-24 rounded-full'}/>)}</div><div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{Array.from({length:8},(_,i)=><div key={i} className={panel}><div className={block+' mb-3 aspect-[4/3] rounded-lg'}/>{line('w-4/5')}{line('mt-2 w-1/3')}</div>)}</div></div><div className={panel}><div className="mb-5 flex justify-between">{line('w-28','h-5')}{line('w-8','h-8')}</div>{Array.from({length:4},(_,i)=><div key={i} className="mb-4 flex gap-3">{line('h-12 w-12') }<div className="flex-1 space-y-2">{line('w-3/4')}{line('w-1/3')}</div></div>)}<div className="mt-8 border-t border-[var(--border)] pt-4">{line('w-full','h-10')}</div></div></div>;
+      break;
+    case 'folio':
+      content = <><div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">{Array.from({length:4},(_,i)=><div key={i} className={panel}>{line('w-20')}{line('mt-3 w-24','h-6')}</div>)}</div><div className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(280px,1fr)]"><div className={panel}>{line('w-40','h-5')}<div className="mt-5">{table}</div></div><div className={panel}>{line('w-32','h-5')}{Array.from({length:5},(_,i)=><div key={i} className="mt-5 flex justify-between">{line('w-1/2')}{line('w-16')}</div>)}{line('mt-8 w-full','h-10')}</div></div></>;
+      break;
+    case 'settings':
+      content = <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]"><div className={panel}><div className="space-y-4">{Array.from({length:7},(_,i)=><div key={i} className="flex gap-3">{line('h-8 w-8')}{line('w-3/4','h-4')}</div>)}</div></div><div className={panel}>{line('w-48','h-6')}{line('mt-3 w-3/4')}{Array.from({length:5},(_,i)=><div key={i} className="mt-6 flex items-center justify-between border-b border-[var(--border)] pb-4">{line('w-1/3')}{line('w-24','h-8')}</div>)}</div></div>;
+      break;
+    case 'form':
+      content = <div className="grid gap-4 lg:grid-cols-2"><div className={panel}>{line('w-40','h-5')}{Array.from({length:6},(_,i)=><div key={i} className="mt-5 space-y-2">{line('w-28')}{line('w-full','h-10')}</div>)}</div><div className={panel}>{line('w-40','h-5')}{Array.from({length:4},(_,i)=><div key={i} className="mt-5 space-y-2">{line('w-28')}{line('w-full','h-10')}</div>)}</div></div>;
+      break;
+    case 'report':
+      content = <>{metrics}<div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(260px,1fr)]"><div className={panel}>{line('w-40','h-5')}{line('mt-5 h-64 w-full')}</div><div className={panel}>{line('w-32','h-5')}{Array.from({length:5},(_,i)=><div key={i} className="mt-5">{line('w-full','h-5')}</div>)}</div></div></>;
+      break;
+    case 'dashboard':
+      content = <>{metrics}<div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(260px,1fr)]"><div className={panel}>{line('w-40','h-5')}{line('mt-5 h-56 w-full')}{line('mt-4 w-2/3')}</div><div className={panel}>{line('w-32','h-5')}{Array.from({length:5},(_,i)=><div key={i} className="mt-5 flex gap-3">{line('h-9 w-9 rounded-full')}<div className="flex-1 space-y-2">{line('w-3/4')}{line('w-1/2')}</div></div>)}</div></div></>;
+      break;
+    default:
+      content = <>{toolbar}{table}</>;
+  }
+  return <main aria-hidden="true" className="min-w-0 p-4 sm:p-6 lg:p-8"><div className="mb-6 flex items-start justify-between gap-4"><div className="min-w-0 flex-1">{line('mb-3 w-24')}{line('h-7 w-56 max-w-full')}{line('mt-3 h-3 w-72 max-w-full')}</div>{line('hidden h-9 w-32 sm:block')}</div>{content}</main>;
+}
 function AuthLoading(){
-  const block='rounded-lg bg-[var(--border)]/60 animate-pulse motion-reduce:animate-none';
-  return <main role="status" aria-live="polite" aria-label="Loading OliTechs workspace" className="fixed inset-0 z-[9999] overflow-hidden bg-[var(--canvas)] text-[var(--text)]">
-    <span className="sr-only">Loading your workspace. Please wait.</span>
-    <div className="flex h-14 items-center gap-3 border-b border-[var(--border)] bg-[var(--surface)] px-4 sm:px-6">
-      <div className="h-8 w-8 rounded-lg bg-[var(--brand-primary)]/15"/>
-      <div className="text-sm font-bold tracking-wide">OliTechs</div>
-      <div className={block+" ml-auto h-8 w-28 rounded-md"}/>
-      <div className={block+" h-8 w-8 rounded-full"}/>
-    </div>
-    <div className="grid h-[calc(100%-3.5rem)] grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)]">
-      <aside aria-hidden="true" className="hidden border-r border-[var(--border)] bg-[var(--surface)] p-4 md:block">
-        <div className={block+" mb-7 h-3 w-24"}/>
-        <div className="space-y-3">{Array.from({length:8},(_,i)=><div key={i} className="flex items-center gap-3 rounded-lg p-2"><div className={block+" h-7 w-7 rounded-md"}/><div className={block+" h-3 flex-1"}/></div>)}</div>
-      </aside>
-      <section aria-hidden="true" className="min-w-0 overflow-hidden p-4 sm:p-6 lg:p-8">
-        <div className="mb-7 flex items-center justify-between gap-4"><div className="min-w-0 flex-1"><div className={block+" mb-3 h-3 w-28"}/><div className={block+" h-7 w-56 max-w-full"}/><div className={block+" mt-3 h-3 w-72 max-w-full"}/></div><div className={block+" hidden h-9 w-28 rounded-lg sm:block"}/></div>
-        <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">{Array.from({length:4},(_,i)=><div key={i} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"><div className={block+" mb-4 h-3 w-20"}/><div className={block+" h-7 w-16"}/></div>)}</div>
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(260px,1fr)]"><div className="space-y-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"><div className={block+" h-5 w-40"}/><div className={block+" h-52 w-full rounded-lg"}/><div className="grid grid-cols-3 gap-3">{Array.from({length:3},(_,i)=><div key={i} className={block+" h-12 rounded-lg"}/>)}</div></div><div className="space-y-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"><div className={block+" h-5 w-32"}/>{Array.from({length:5},(_,i)=><div key={i} className="flex items-center gap-3"><div className={block+" h-9 w-9 rounded-full"}/><div className="flex-1 space-y-2"><div className={block+" h-3 w-3/4"}/><div className={block+" h-2.5 w-1/2"}/></div></div>)}</div></div>
-      </section>
-    </div>
+  const { pathname } = useLocation();
+  const path = pathname.toLowerCase();
+  const variant = /\/pos(?:\/|$)/.test(path) ? 'pos'
+    : /folio|room-charges/.test(path) ? 'folio'
+    : /room-planner|\/rooms(?:\/|$)|calendar/.test(path) ? 'calendar'
+    : /settings|configuration|printers|access-rights/.test(path) ? 'settings'
+    : /new|\/edit|create|registration-cards|walk-in/.test(path) ? 'form'
+    : /reports|statistics|analytics|audit-log|shift/.test(path) ? 'report'
+    : /dashboard|^\/$|^\/frontoffice\/?$|^\/backoffice\/?$|^\/stores\/?$|^\/admin\/?$/.test(path) ? 'dashboard'
+    : 'table';
+  return <main role="status" aria-live="polite" aria-label="Loading page" className="fixed inset-0 z-[9999] overflow-auto bg-[var(--canvas)] text-[var(--text)]">
+    <span className="sr-only">Loading page content. Please wait.</span>
+    <div className="flex h-14 items-center gap-3 border-b border-[var(--border)] bg-[var(--surface)] px-4 sm:px-6"><div className="h-8 w-8 rounded-lg bg-[var(--brand-primary)]/15"/><div className="text-sm font-bold tracking-wide">OliTechs</div><div className="ml-auto flex gap-2"><div className="h-8 w-24 animate-pulse rounded-md bg-[var(--border)]/70 motion-reduce:animate-none"/><div className="h-8 w-8 animate-pulse rounded-full bg-[var(--border)]/70 motion-reduce:animate-none"/></div></div>
+    <div className="grid min-h-[calc(100%-3.5rem)] grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)]"><aside aria-hidden="true" className="hidden border-r border-[var(--border)] bg-[var(--surface)] p-4 md:block"><div className="mb-7 h-3 w-24 animate-pulse rounded bg-[var(--border)]/70 motion-reduce:animate-none"/><div className="space-y-3">{Array.from({length:8},(_,i)=><div key={i} className="flex items-center gap-3 rounded-lg p-2"><div className="h-7 w-7 animate-pulse rounded-md bg-[var(--border)]/70 motion-reduce:animate-none"/><div className="h-3 flex-1 animate-pulse rounded bg-[var(--border)]/70 motion-reduce:animate-none"/></div>)}</div></aside><div className="min-w-0"><PageSkeleton variant={variant}/></div></div>
   </main>;
 }
 function appRole(user){const s=getSessionStaff();const raw=s?.role||user?.staff?.role||user?.propertyRole||user?.role;return normalizeAppRole(normalizeStaffRole(raw));}
