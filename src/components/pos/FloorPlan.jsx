@@ -187,7 +187,7 @@ export default function FloorPlan({ onTableSelect }) {
     setDesignMode(false);
   };
 
-  if (store.floorLoading) return (
+  if (store.floorLoading || store.sessionsLoading) return (
     <div role="status" aria-live="polite" className="flex h-full min-h-48 flex-col justify-center gap-4 bg-[var(--canvas)] p-6">
       <div className="mx-auto w-full max-w-xl space-y-3">
         <div className="h-10 animate-pulse rounded-xl bg-[var(--surface)]" />
@@ -205,6 +205,16 @@ export default function FloorPlan({ onTableSelect }) {
         <h2 className="text-lg font-black text-[var(--text)]">Floor configuration unavailable</h2>
         <p className="mt-2 text-sm text-[var(--text-muted)]">{store.floorError}</p>
         <p className="mt-2 text-xs text-[var(--text-muted)]">No table sessions or orders have been modified.</p>
+      </div>
+    </div>
+  );
+
+  if (store.sessionsError) return (
+    <div role="alert" className="flex h-full min-h-48 items-center justify-center bg-[var(--canvas)] p-6 text-center">
+      <div className="max-w-md rounded-2xl border border-[var(--danger)] bg-[var(--surface)] p-6">
+        <h2 className="text-lg font-black text-[var(--text)]">Active tables could not be verified</h2>
+        <p className="mt-2 text-sm text-[var(--text-muted)]">{store.sessionsError}</p>
+        <p className="mt-2 text-xs text-[var(--text-muted)]">The floor is not being shown as empty because open orders may still exist.</p>
       </div>
     </div>
   );
