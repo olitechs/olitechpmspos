@@ -197,8 +197,13 @@ export default function FloorPlan({ onTableSelect }) {
   })), [zone]);
 
   const moveTable = (id, x, y) => {
-    const t = zone?.tables.find((item) => item.id === id);
-    if (t && store.moveTable) store.moveTable(zone.id, id, x, y);
+    const table = zone?.tables.find((item) => item.id === id);
+    // Recovered active sessions retain their server table key as the UI ID.
+    // Persist coordinates against the original configured layout ID instead.
+    const layoutId = table?.layoutId || table?.id;
+    if (table && store.moveTable && !String(zone.id).startsWith('__open_shift_recovered__') && layoutId) {
+      store.moveTable(zone.id, layoutId, x, y);
+    }
   };
 
   const saveLayout = () => {
