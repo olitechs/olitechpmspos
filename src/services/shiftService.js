@@ -41,16 +41,18 @@ export const shiftService = {
     return normalizeCashierShift(data);
   },
 
-  async openShift({ propertyId, openingCash }) {
+  async openShift({ propertyId, openingCash, notes = '' }) {
     const amount = Number(openingCash);
     if (!propertyId) throw new Error('Select an active property before opening a shift.');
     if (!Number.isFinite(amount) || amount <= 0) {
       throw new Error('A starting cash float greater than zero is required to open a shift.');
     }
-    const { data, error } = await supabase.rpc('fn_open_cashier_shift', {
-      p_property_id: propertyId,
-      p_opening_float: amount,
-    });
+    const payload = { p_property_id: propertyId, p_opening_float: amount };
+    const openingNotes = String(notes || '').trim();
+    // Send p_notes only when it has content, so a note-free shift still opens on
+    // a database where the opening-notes migration has not been applied yet.
+    if (openingNotes) payload.p_notes = openingNotes;
+    const { data, error } = await supabase.rpc('fn_open_cashier_shift', payload);
     if (error) throw new Error(error.message);
     const row = Array.isArray(data) ? data[0] : data;
     const shift = normalizeCashierShift(row);
