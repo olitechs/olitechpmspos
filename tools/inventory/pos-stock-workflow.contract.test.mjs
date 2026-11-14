@@ -66,6 +66,7 @@ test('POS settlement verifies every Store mapping and blocks unlinked or invalid
   assert.match(billPayment, /listPosStockMappings\(propertyId\)/);
   assert.match(billPayment, /resolvePosSaleStockMappings\(orderLines,stockMappings\.products,stockMappings\.recipes,true\)/);
   assert.match(billPayment, /if\(unlinkedStockItems\.length\)/);
+  assert.match(billPayment, /if\(incompleteRecipeItems\.length\)/);
   assert.match(billPayment, /The sale was not recorded/);
   assert.match(posSaleContract, /stock_tracking_status/);
   assert.match(inventory, /Finalized POS sales deduct linked products and active recipe ingredients/);
