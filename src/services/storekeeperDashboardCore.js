@@ -85,6 +85,10 @@ export function summarizeStock(products = [], expiry = [], { department = 'All',
   };
 }
 
+export function isStockConsumptionMovement(movement) {
+  return ['usage', 'pos_recipe', 'pos_sale'].includes(String(movement?.source_type || '').toLowerCase());
+}
+
 export function estimateMovementValue(movement) {
   const unitCost = Number(movement?.product?.cost_price);
   if (!Number.isFinite(unitCost)) return null;
@@ -94,7 +98,7 @@ export function estimateMovementValue(movement) {
 export function summarizeMovements(movements = [], { today, products = [] } = {}) {
   const productById = new Map(products.map((product) => [product.id, product]));
   const todayRows = movements.filter((movement) => formatBusinessDate(movement.created_at) === today);
-  const useRows = todayRows.filter((movement) => ['usage', 'pos_recipe'].includes(String(movement.source_type || '').toLowerCase()));
+  const useRows = todayRows.filter((movement) => isStockConsumptionMovement(movement));
   const wasteRows = todayRows.filter((movement) => ['wastage', 'inventory_wastage'].includes(String(movement.source_type || '').toLowerCase()));
   const valueFor = (rows) => rows.reduce((sum, movement) => sum + (estimateMovementValue({
     ...movement,
