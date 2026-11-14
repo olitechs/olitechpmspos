@@ -27,36 +27,58 @@ export function StoreProvider({ children }) {
   const { user } = useAuth();
   const propertyId = user?.property?.id;
 
-  // The floor plan (zones, tables, tile positions) has no Supabase table yet, so
-  // the layout is configuration stored per property in this browser. Table
-  // sessions, printers and kitchen orders are persisted server-side.
+  // Supabase is authoritative; localStorage remains only as a one-time import/backup.
   const zonesKey = propertyId ? `olitech_pos_floor:${propertyId}` : null;
   const [zones, setZones] = useState([]);
   const [zonesFor, setZonesFor] = useState(null);
-  const [sessions, setSessions] = useState({});
+  const [floorLoading, setFloorLoading] = useState(true);
+  const [floorError, setFloorError] = useState('');
+  const floorSaveTimer = useRef(null);
+  const floorWriteQueue = useRef(Promise.resolve());
 
   useEffect(() => {
-    if (!zonesKey) { setZones([]); setZonesFor(null); return; }
-    let stored = [];
-    try {
-      const parsed = JSON.parse(localStorage.getItem(zonesKey) || 'null');
-      if (Array.isArray(parsed)) stored = parsed;
-    } catch (error) {
-      console.error('[POS] floor layout could not be read; starting empty', error);
-    }
-    setZones(stored);
-    setZonesFor(propertyId);
-  }, [zonesKey, propertyId]);
+    let active = true;
+    if (!propertyId) { setZones([]); setZonesFor(null); setFloorLoading(false); setFloorError(''); return undefined; }
+    setFloorLoading(true); setFloorError(''); setZonesFor(null);
+    (async () => {
+      try {
+        const remote = await posService.getFloorLayout(propertyId);
+        if (!active) return;
+        if (remote && Array.isArray(remote.zones)) setZones(remote.zones);
+        else {
+          let legacy = [];
+          try { const parsed = JSON.parse(localStorage.getItem(zonesKey) || 'null'); if (Array.isArray(parsed)) legacy = parsed; }
+          catch (error) { console.warn('[POS] legacy floor backup could not be read', error); }
+          if (legacy.length) {
+            const saved = await posService.saveFloorLayout({ propertyId, zones: legacy });
+            if (!active) return;
+            setZones(Array.isArray(saved?.zones) ? saved.zones : legacy);
+          } else setZones([]);
+        }
+        setZonesFor(propertyId); setFloorError('');
+      } catch (error) {
+        console.error('[POS] shared floor configuration could not be loaded', error);
+        if (active) setFloorError(error?.message || 'Floor configuration could not be loaded.');
+      } finally { if (active) setFloorLoading(false); }
+    })();
+    const channel = posService.subscribeToFloorLayout(propertyId, { onChange: (remoteZones) => {
+      if (active) { setZones(remoteZones); setZonesFor(propertyId); }
+    } });
+    return () => { active = false; channel?.unsubscribe?.(); if (floorSaveTimer.current) clearTimeout(floorSaveTimer.current); };
+  }, [propertyId]);
 
   useEffect(() => {
-    if (!zonesKey || zonesFor !== propertyId) return;
-    try {
-      localStorage.setItem(zonesKey, JSON.stringify(zones));
-    } catch (error) {
-      console.error('[POS] floor layout could not be saved', error);
-    }
-  }, [zones, zonesKey, zonesFor, propertyId]);
-
+    if (!propertyId || zonesFor !== propertyId || floorLoading) return undefined;
+    if (floorSaveTimer.current) clearTimeout(floorSaveTimer.current);
+    floorSaveTimer.current = setTimeout(() => {
+      const snapshot = zones;
+      try { localStorage.setItem(zonesKey, JSON.stringify(snapshot)); } catch { /* best-effort backup */ }
+      floorWriteQueue.current = floorWriteQueue.current.catch(() => null)
+        .then(() => posService.saveFloorLayout({ propertyId, zones: snapshot }))
+        .catch((error) => { console.error('[POS] shared floor configuration could not be saved', error); setFloorError(error?.message || 'Floor configuration could not be saved.'); });
+    }, 400);
+    return () => { if (floorSaveTimer.current) clearTimeout(floorSaveTimer.current); };
+  }, [zones, zonesKey, zonesFor, propertyId, floorLoading]);
   useEffect(() => {
     let active = true;
     if (!propertyId) { setSessions({}); return undefined; }
