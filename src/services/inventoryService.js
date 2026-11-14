@@ -134,7 +134,7 @@ export const inventoryService = {
     if (!propertyId) throw new Error('An active property is required to verify POS stock mappings.');
     const [productsResult, recipesResult] = await Promise.all([
       supabase.from('products').select('id,name').eq('property_id', propertyId),
-      supabase.from('recipes').select('menu_item_name,active').eq('property_id', propertyId).eq('active', true),
+      supabase.from('recipes').select('menu_item_name,active,recipe_ingredients(product_id,qty)').eq('property_id', propertyId).eq('active', true),
     ]);
     if (productsResult.error) throw new Error(productsResult.error.message);
     if (recipesResult.error) throw new Error(recipesResult.error.message);
