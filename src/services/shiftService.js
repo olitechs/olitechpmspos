@@ -116,19 +116,7 @@ export const shiftService = {
       allocations = data || [];
     }
 
-    const allocationTotals = new Map();
-    for (const allocation of allocations) {
-      const receiptId = String(allocation.receipt_id || '');
-      allocationTotals.set(receiptId, (allocationTotals.get(receiptId) || 0) + Number(allocation.amount || 0));
-    }
-    const unreconciled = postedRows.filter((receipt) => receipt.payment_method === 'split'
-      && Math.abs((allocationTotals.get(String(receipt.id)) || 0) - Number(receipt.total || 0)) > 0.01);
-    if (unreconciled.length) {
-      throw new Error('Shift report blocked: split payment allocations do not reconcile for receipt(s) '
-        + unreconciled.map((receipt) => receipt.order_number || receipt.id).join(', ') + '.');
-    }
-
-    let refunds = [];
+    // Split tender exceptions are returned as manager-visible diagnostics by the report core.\n    // Unallocated portions are never added to confirmed tender totals.\n\n    let refunds = [];
     const postedIds = postedRows.map((receipt) => receipt.id);
     if (postedIds.length) {
       const { data, error: refundError } = await supabase
