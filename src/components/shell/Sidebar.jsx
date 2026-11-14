@@ -52,5 +52,5 @@ export default function Sidebar({activeModule,onModuleChange,staffRole}){
   <button type="button" onClick={()=>setMobileOpen(false)} className="absolute right-2 top-3 rounded-lg p-2 text-[var(--text-muted)] hover:bg-[var(--canvas)] md:hidden" aria-label="Close navigation" aria-expanded={mobileOpen}><X size={18}/></button>
  </aside>;
 
- return <>{mobileOpen&&<button type="button" onClick={()=>setMobileOpen(false)} aria-label="Close navigation" className="fixed inset-0 z-40 bg-[var(--primary-soft)]/30 backdrop-blur-sm md:hidden"/>}{sidebar}<button type="button" onClick={()=>setMobileOpen(true)} className="fixed left-3 top-3 z-30 rounded-xl border border-[var(--border)] bg-surface p-2.5 text-[var(--text)] shadow-sm md:hidden" aria-label="Open navigation" aria-expanded={mobileOpen}><Menu size={20}/></button></>;
+ return <>{mobileOpen&&<button type="button" onClick={()=>setMobileOpen(false)} aria-label="Close navigation" className="fixed inset-0 z-40 bg-brand-soft/30 backdrop-blur-sm md:hidden"/>}{sidebar}<button type="button" onClick={()=>setMobileOpen(true)} className="fixed left-3 top-3 z-30 rounded-xl border border-[var(--border)] bg-surface p-2.5 text-[var(--text)] shadow-sm md:hidden" aria-label="Open navigation" aria-expanded={mobileOpen}><Menu size={20}/></button></>;
 }

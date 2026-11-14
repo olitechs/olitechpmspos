@@ -7,8 +7,10 @@ import BrandLogo from '@/components/ui/BrandLogo';
 const CONTACT = {
   phone: '+254 745 043 121',
   phoneHref: 'tel:+254745043121',
+  email: 'info@olitechs.co.ke',
   whatsapp: 'https://wa.me/254745043121',
-  // No verified email address or social profiles yet — see docs/OPEN_QUESTIONS.md.
+  // Email domain spelling and any social profiles still need owner
+  // confirmation — see docs/OPEN_QUESTIONS.md.
 };
 
 const plans = [
@@ -94,10 +96,10 @@ function SectionTitle({ eyebrow, title, description, light = false, centered = f
 
 function WorkspacePreview() {
   const rooms = [
-    ['101', 'Deluxe king', 'James Mwangi · 2 nights', 'stay-blue'],
-    ['102', 'Deluxe king', 'Emily Wanjiku', 'stay-green'],
-    ['103', 'Garden suite', 'Michael Otieno · 4 nights', 'stay-purple'],
-    ['104', 'Twin room', 'Group booking · Safari Tours', 'stay-gold'],
+    ['101', 'Deluxe king', 'Reserved · 2 nights', 'stay-blue'],
+    ['102', 'Deluxe king', 'Occupied', 'stay-green'],
+    ['103', 'Garden suite', 'Reserved · 4 nights', 'stay-teal'],
+    ['104', 'Twin room', 'Group booking · 3 rooms', 'stay-gold'],
   ];
   return (
     <div className="workspace-shell">
@@ -105,7 +107,7 @@ function WorkspacePreview() {
       <div className="workspace-body">
         <aside className="workspace-side">
           <div className="workspace-brand">oli<span>techs</span></div>
-          <small>The Grand Hotel</small><small>Nairobi, Kenya　⌄</small>
+          <small>Sample property</small><small>Coastal Kenya　⌄</small>
           {['Overview', 'Reservations', 'Front desk', 'Room planner', 'Point of sale', 'Housekeeping', 'Reports & insights'].map((item, i) => <div key={item} className={i === 3 ? 'side-active' : ''}>{item}</div>)}
           <small className="side-foot">PROPERTY WORKSPACE</small>
         </aside>
@@ -139,7 +141,7 @@ function POSPreview() {
   ];
   return (
     <div className="pos-preview">
-      <div className="pos-window"><div className="pos-window-top"><span>OliTechs POS</span><span>The Garden Restaurant</span><b>Shift open ●</b></div>
+      <div className="pos-window"><div className="pos-window-top"><span>OliTechs POS</span><span>Restaurant</span><b>Shift open ●</b></div>
         <div className="pos-content"><div className="pos-menu"><div className="pos-tabs">All items　 Food　 Drinks　 Desserts</div><div className="pos-products">{products.map(([tag, name, price]) => <div className="pos-product" key={name}><small>{tag}</small><b>{name}</b><strong>{price}</strong></div>)}</div></div>
           <div className="pos-order"><small>TABLE 08</small><b>2 guests · Dine in</b><hr/><p>2 × Grilled tilapia <strong>2,400</strong></p><p>1 × Garden salad <strong>700</strong></p><p>2 × Fresh juice <strong>900</strong></p><hr/><b className="order-total">Total <strong>KES 4,000</strong></b><button>Charge to room →</button></div>
         </div>
@@ -263,9 +265,6 @@ export default function PublicHome() {
 
       <main>
         <section className="hero-section" id="platform">
-          <video className="hero-background" autoPlay muted loop playsInline preload="metadata" aria-hidden="true" tabIndex={-1}>
-            <source src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260815_040604_b04410ba-c173-4b68-826d-212a24bccdad.mp4" type="video/mp4" />
-          </video>
           <div className="hero-overlay" aria-hidden="true" />
           <div className="hero-kicker">BUILT FOR HOSPITALITY. READY FOR WHAT’S NEXT.</div>
           <h1 className="hero-title">Great stays start with<br/><span>smarter operations.</span></h1>
@@ -280,7 +279,7 @@ export default function PublicHome() {
           <div className="connected-inner">
             <div><Eyebrow light>CONNECTED BY DESIGN</Eyebrow><h2 className="mt-4 text-[clamp(2.1rem,4vw,3.5rem)] font-extrabold leading-[1.02] tracking-[-.05em]">Your entire property.<br/>Finally in sync.</h2><p className="mt-5 max-w-sm text-sm leading-7 text-[var(--mkt-on-dark-muted)]">From the first reservation to the final bill, keep every team and every touchpoint on the same page.</p>
               <div className="connected-list">
-                <article><span>01</span><div><h3>A seamless front desk</h3><p>Manage bookings, room assignments and guest check-ins from one clear workspace.</p></div></article>
+                <article><span>01</span><div><h3>A clear front desk</h3><p>Manage bookings, room assignments and guest check-ins from one clear workspace.</p></div></article>
                 <article><span>02</span><div><h3>Service without the silos</h3><p>Connect restaurant orders and room charges without losing the details.</p></div></article>
                 <article><span>03</span><div><h3>Clarity at every close</h3><p>Bring sales and property activity together for a more informed end of day.</p></div></article>
               </div>
@@ -316,7 +315,7 @@ export default function PublicHome() {
         <section className="final-cta" id="contact"><div><Eyebrow light>MAKE ROOM FOR WHAT’S NEXT</Eyebrow><h2 className="mt-4">Complete hotel management.<br/>Better guest experiences.</h2><p>Discover what a more connected property can look like.</p></div><div className="final-cta-actions"><a href={CONTACT.whatsapp} target="_blank" rel="noreferrer">Request a Demo ↗</a><Link to="/signup">Get Started →</Link></div></section>
       </main>
 
-      <footer className="marketing-footer"><div className="footer-inner"><div><BrandLogo className="h-9 w-auto max-w-[130px] object-contain object-left"/><p className="max-w-xs">Smarter operations.<br/>More memorable hospitality.</p></div><div><h4>Platform</h4><a href="#platform">Property management</a><a href="#solutions">Point of sale</a><a href="#features">Features</a><a href="#pricing">Pricing</a></div><div><h4>Solutions</h4><a href="#solutions">Hotels &amp; resorts</a><a href="#solutions">Restaurants &amp; bars</a><a href="#contact">Request a Demo</a><Link to="/signin">Sign in</Link></div><div><h4>Company</h4><a href="#about">About OliTechs</a><a href={CONTACT.whatsapp}>Contact</a><a href={CONTACT.phoneHref}>{CONTACT.phone}</a></div></div><div className="footer-bottom"><span>© 2026 OliTechs. All rights reserved.</span><span className="flex gap-4"><Link to="/terms" className="hover:underline">Terms</Link><Link to="/privacy" className="hover:underline">Privacy</Link></span><span>olitechs.co.ke</span></div></footer>
+      <footer className="marketing-footer"><div className="footer-inner"><div><BrandLogo className="h-9 w-auto max-w-[130px] object-contain object-left"/><p className="max-w-xs">Smarter operations.<br/>More memorable hospitality.</p></div><div><h4>Platform</h4><a href="#platform">Property management</a><a href="#solutions">Point of sale</a><a href="#features">Features</a><a href="#pricing">Pricing</a></div><div><h4>Solutions</h4><a href="#solutions">Hotels &amp; resorts</a><a href="#solutions">Restaurants &amp; bars</a><a href="#contact">Request a Demo</a><Link to="/signin">Sign in</Link></div><div><h4>Company</h4><a href="#about">About OliTechs</a><a href={CONTACT.whatsapp}>Contact</a><a href={`mailto:${CONTACT.email}`}>{CONTACT.email}</a><a href={CONTACT.phoneHref}>{CONTACT.phone}</a></div></div><div className="footer-bottom"><span>© 2026 OliTechs. All rights reserved.</span><span className="flex gap-4"><Link to="/terms" className="hover:underline">Terms</Link><Link to="/privacy" className="hover:underline">Privacy</Link></span><span>olitechs.co.ke</span></div></footer>
       <SocialFAB/>
     </div>
   );

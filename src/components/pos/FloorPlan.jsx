@@ -215,7 +215,9 @@ export default function FloorPlan({ onTableSelect }) {
             <h4 className="mb-2 text-xs font-bold uppercase tracking-widest text-[var(--primary)]">Legend</h4>
             <Legend label="Open / Available" fill="var(--room-clean)" border="var(--room-clean)" />
             <Legend label="Occupied" fill="var(--room-occupied)" border="var(--room-occupied)" />
+            <Legend label="Reserved" fill="var(--room-checkout)" border="var(--room-checkout)" />
             <Legend label="Printed / Unsettled" fill="var(--danger)" border="var(--danger)" />
+            <Legend label="Paid / closing" fill="var(--success)" border="var(--success)" />
           </div>
         </aside>
       </div>
