@@ -110,3 +110,21 @@ test('department comparison separates reported sales from movement-value estimat
   assert.equal(result.find((row) => row.department === 'Bar').usageEstimate, 20);
   assert.equal(result.find((row) => row.department === 'Kitchen').sales, 800);
 });
+
+
+test('direct POS product sales are included in Storekeeper consumption and department estimates', async () => {
+  const { summarizeMovements } = await import('./storekeeperDashboardCore.js');
+  const movements = [
+    { source_type: 'pos_sale', product_id: 'p1', qty: 2, signed_qty: -2, created_at: '2026-11-07T08:00:00+03:00', product: { name: 'Juice', production_center: 'Bar', cost_price: 30 } },
+    { source_type: 'pos_recipe', product_id: 'p2', qty: 1, signed_qty: -1, created_at: '2026-11-07T09:00:00+03:00', product: { name: 'Milk', production_center: 'Kitchen', cost_price: 40 } },
+    { source_type: 'purchase', product_id: 'p3', qty: 10, signed_qty: 10, created_at: '2026-11-07T10:00:00+03:00', product: { name: 'Milk', production_center: 'Kitchen', cost_price: 40 } },
+  ];
+  const daily = makeSalesConsumptionSeries({ from: '2026-11-07', to: '2026-11-07', movements });
+  assert.equal(daily[0].consumptionEstimate, 100);
+  const comparison = departmentComparison([], movements);
+  assert.equal(comparison.find((row) => row.department === 'Bar').usageEstimate, 60);
+  assert.equal(comparison.find((row) => row.department === 'Kitchen').usageEstimate, 40);
+  const summary = summarizeMovements(movements, { today: '2026-11-07' });
+  assert.equal(summary.useRows.length, 2);
+  assert.equal(summary.issuedOrConsumedEstimatedValue, 100);
+});

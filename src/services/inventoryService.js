@@ -130,6 +130,17 @@ export const inventoryService = {
 
   async listRecipes(propertyId) { const { data, error } = await supabase.from('recipes').select('*, recipe_ingredients(*, product:products(id,name,unit))').eq('property_id', propertyId).eq('active', true).order('menu_item_name'); if (error) throw new Error(error.message); return data || []; },
 
+  async listPosStockMappings(propertyId) {
+    if (!propertyId) throw new Error('An active property is required to verify POS stock mappings.');
+    const [productsResult, recipesResult] = await Promise.all([
+      supabase.from('products').select('id,name').eq('property_id', propertyId),
+      supabase.from('recipes').select('menu_item_name,active,recipe_ingredients(product_id,qty)').eq('property_id', propertyId).eq('active', true),
+    ]);
+    if (productsResult.error) throw new Error(productsResult.error.message);
+    if (recipesResult.error) throw new Error(recipesResult.error.message);
+    return { products: productsResult.data || [], recipes: recipesResult.data || [] };
+  },
+
   async listInventoryReconciliation(propertyId) { const { data,error }=await supabase.rpc('fn_inventory_reconciliation',{p_property_id:propertyId}); if(error) throw new Error(error.message); return data||[]; },
   async listGoodsReceipts(propertyId) { const { data,error }=await supabase.from('goods_receipts').select('*, purchase_order:purchase_orders(invoice_no), goods_receipt_lines(*)').eq('property_id',propertyId).order('received_at',{ascending:false}); if(error) throw new Error(error.message); return data||[]; },
 

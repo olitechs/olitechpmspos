@@ -14,6 +14,64 @@ export function createPosSaleIdempotencyKey({ propertyId, tableKey, orderNumber 
   return `pos-sale:v1:${parts.map(encodeURIComponent).join(':')}`;
 }
 
+function normalizeStockName(value) {
+  return String(value || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toLocaleLowerCase('en');
+}
+
+export function resolvePosSaleStockMappings(orderLines = [], products = [], recipes = [], lookupAvailable = true) {
+  if (!lookupAvailable) {
+    const unverifiableLines = (Array.isArray(orderLines) ? orderLines : []).map((line) => ({ ...line, productId: null, product_id: null }));
+    return buildPosSaleItems(unverifiableLines, [], false);
+  }
+
+  const productById = new Map((products || []).filter((product) => isProductUuid(product?.id)).map((product) => [product.id, product]));
+  const productsByName = new Map();
+  for (const product of products || []) {
+    const key = normalizeStockName(product?.name);
+    if (!key) continue;
+    const matches = productsByName.get(key) || [];
+    matches.push(product);
+    productsByName.set(key, matches);
+  }
+
+  const recipeNames = new Set();
+  const incompleteRecipeNames = new Set();
+  for (const recipe of recipes || []) {
+    if (recipe?.active === false) continue;
+    const recipeName = normalizeName(typeof recipe === 'string' ? recipe : recipe?.menu_item_name);
+    if (!recipeName) continue;
+    const ingredients = Array.isArray(recipe?.recipe_ingredients) ? recipe.recipe_ingredients : [];
+    const hasValidIngredients = ingredients.length > 0 && ingredients.every((ingredient) =>
+      isProductUuid(ingredient?.product_id) &&
+      productById.has(ingredient.product_id) &&
+      Number.isFinite(Number(ingredient?.qty)) &&
+      Number(ingredient.qty) > 0
+    );
+    if (hasValidIngredients) recipeNames.add(recipeName);
+    else incompleteRecipeNames.add(recipeName);
+  }
+
+  const mappedLines = (Array.isArray(orderLines) ? orderLines : []).map((line) => {
+    const name = String(line?.name || line?.item_name || '').trim();
+    const normalizedName = normalizeName(name);
+    const suppliedId = line?.productId || line?.product_id || null;
+    const existingProduct = isProductUuid(suppliedId) ? productById.get(suppliedId) : null;
+
+    if (existingProduct) return { ...line, productId: existingProduct.id, product_id: existingProduct.id };
+    if (recipeNames.has(normalizedName) || incompleteRecipeNames.has(normalizedName)) return { ...line, productId: null, product_id: null };
+
+    const matches = productsByName.get(normalizeStockName(name)) || [];
+    if (matches.length === 1) return { ...line, productId: matches[0].id, product_id: matches[0].id };
+    return { ...line, productId: null, product_id: null };
+  });
+
+  return buildPosSaleItems(mappedLines, [...recipeNames], true).map((item) =>
+    incompleteRecipeNames.has(normalizeName(item.name))
+      ? { ...item, product_id: null, stock_tracking_status: 'recipe_incomplete' }
+      : item
+  );
+}
+
 export function buildPosSaleItems(orderLines = [], recipeMenuNames = [], recipeLookupAvailable = true) {
   const recipeNames = new Set((recipeMenuNames || []).map((recipe) => normalizeName(
     typeof recipe === 'string' ? recipe : recipe?.menu_item_name

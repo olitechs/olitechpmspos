@@ -152,3 +152,19 @@ No database migration was authored or applied. The repository’s `docs/PHASE2_F
 [23]: https://squareup.com/help/us/en/article/7237-stock-conversion-sell-by "Square Stock Conversion"
 [24]: https://www.odoo.com/documentation/19.0/applications/inventory_and_mrp/inventory/product_management/configure/uom.html "Odoo Units of Measure"
 [25]: https://docs.frappe.io/erpnext/Selling-in-different-UOM "ERPNext Selling in Different UOMs"
+
+
+## Implementation follow-up — POS settlement and Storekeeper visibility (2026-11-14)
+
+The application follow-up now resolves every checkout line against the active property's Store products and active recipes before calling the transactional sale RPC. Legacy order lines are recovered only by a unique normalized product-name match. If Store lookup fails, a line remains unmapped, or a quantity is invalid, checkout is stopped before the receipt/payment transaction. This prevents the cashier UI from recording a sale while silently skipping its stock movement.
+
+Storekeeper consumption, department estimates, current issue value and seven-day stock-velocity alerts now include direct `pos_sale` movements as well as recipe (`pos_recipe`) and operational usage (`usage`) movements.
+
+A read-only production snapshot on 2026-11-14 found:
+- 8 receipt lines marked `unlinked`, across posted receipts; six additional older lines had no tracking-status metadata.
+- No active recipes or recipe ingredients were configured at the time of inspection.
+- 6 direct POS sale movements existed, all with a NULL `source_id`.
+- One product, `Dawa Coctail`, showed current stock 9 against a signed movement-ledger total of -1 (10 units of unexplained opening/reconciliation difference).
+- No receipt line with a non-null product UUID pointed to a product outside its property.
+
+No production rows were changed to repair historical receipts or the stock difference. Those need product mapping/recipe decisions and a physical count or verified opening-balance record; automatically posting stock now could double-deduct items already physically issued. The live sale RPC still needs a forward-only server-side validation/source-linkage migration. That migration remains gated on the documented production migration-provenance and database-runtime test requirements; this application change does not claim to close that database gate.

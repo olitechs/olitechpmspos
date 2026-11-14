@@ -8,6 +8,9 @@ const orderTaking = await read('../../src/components/pos/OrderTaking.jsx');
 const floorPlan = await read('../../src/components/pos/FloorPlan.jsx');
 const shiftReport = await read('../../src/pages/ShiftReport.jsx');
 const pmsService = await read('../../src/services/pmsService.js');
+const posSaleContract = await read('../../src/services/posSaleContract.js');
+const storekeeper = await read('../../src/pages/StorekeeperDashboard.jsx');
+const storekeeperCore = await read('../../src/services/storekeeperDashboardCore.js');
 const inventory = await read('../../src/components/modules/Inventory.jsx');
 const ledger = await read('../../supabase/migrations/20261008120000_phase4_authoritative_inventory_ledger.sql');
 const posAuthority = await read('../../supabase/migrations/20261008160000_phase4_pos_inventory_authority.sql');
@@ -59,12 +62,20 @@ test('duplicate sale retries use a unique receipt key and a stable order identit
   assert.match(billPayment, /createPosSaleIdempotencyKey\(\{propertyId,tableKey:table\.id,orderNumber:stableOrderNumber\}\)/);
 });
 
-test('receipt line identity and stock mapping status are durable and unmapped items warn staff', () => {
-  assert.match(billPayment, /buildPosSaleItems\(mappedOrderLines,recipeNames,stockLookupAvailable\)/);
-  assert.match(billPayment, /stock_tracking_status==='unlinked'/);
-  assert.match(billPayment, /line status is stored on the receipt/);
+test('POS settlement verifies every Store mapping and blocks unlinked or invalid order lines', () => {
+  assert.match(billPayment, /listPosStockMappings\(propertyId\)/);
+  assert.match(billPayment, /resolvePosSaleStockMappings\(orderLines,stockMappings\.products,stockMappings\.recipes,true\)/);
+  assert.match(billPayment, /if\(unlinkedStockItems\.length\)/);
+  assert.match(billPayment, /if\(incompleteRecipeItems\.length\)/);
+  assert.match(billPayment, /The sale was not recorded/);
+  assert.match(posSaleContract, /stock_tracking_status/);
   assert.match(inventory, /Finalized POS sales deduct linked products and active recipe ingredients/);
   assert.doesNotMatch(inventory, /Automatic deduction on POS sale is planned/);
+});
+
+test('Storekeeper consumption reporting includes direct POS product movements', () => {
+  assert.match(storekeeper, /isStockConsumptionMovement/);
+  assert.match(storekeeperCore, /'pos_sale'/);
 });
 
 test('POS product grid supports search and explicit catalog loading, empty, error and retry states', () => {
