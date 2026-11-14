@@ -5,7 +5,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 
 const input='h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text)]';
-const colors=['var(--brand-blue)','var(--coastal-teal)','var(--deep-lagoon)','var(--accent)','var(--danger)','var(--text-muted)','var(--success)','var(--warning)'];
+const colors=['#2563EB','#0D9488','#0F766E','#7C3AED','#DC2626','#64748B','#16A34A','#D97706'];
 const kinds=[['guest','Guest'],['room','Room'],['reservation','Reservation']];
 export default function FrontOfficeTags(){
  const {user}=useAuth(),propertyId=user?.property?.id;
