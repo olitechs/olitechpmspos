@@ -368,6 +368,7 @@ export function StoreProvider({ children }) {
     if (!current) return false;
     const number = patch.number === undefined ? current.number : String(patch.number).trim();
     const seats = patch.seats === undefined ? current.seats : Math.max(1, Math.min(50, Number(patch.seats) || 1));
+    if (sessions[tableId] && sessions[tableId].status !== 'closed' && String(number) !== String(current.number)) return false;
     if (!String(number).trim() || zone.tables.some((t) => t.id !== tableId && String(t.number) === String(number))) return false;
     setZones((prev) => prev.map((z) => z.id === zoneId ? { ...z, tables: z.tables.map((t) => t.id === tableId ? { ...t, ...patch, number, seats } : t) } : z)); return true;
   }, [zones]);
