@@ -21,7 +21,11 @@ create policy pos_floor_layouts_member_read
   on public.pos_floor_layouts
   for select
   to authenticated
-  using (public.is_platform_owner() or public.is_member_of_property(property_id));
+  using (
+    public.is_platform_owner()
+    or public.is_member_of_property(property_id)
+    or public.current_staff_role(property_id) is not null
+  );
 
 drop policy if exists pos_floor_layouts_authorized_manage on public.pos_floor_layouts;
 create policy pos_floor_layouts_authorized_manage
@@ -31,9 +35,9 @@ create policy pos_floor_layouts_authorized_manage
   using (
     public.is_platform_owner()
     or (
-      public.is_member_of_property(property_id)
+      (public.is_member_of_property(property_id) or public.current_staff_role(property_id) is not null)
       and (
-        public.property_role(property_id) in ('owner', 'admin', 'manager', 'property_admin')
+        public.property_role(property_id) in ('owner', 'admin', 'manager')
         or public.current_staff_role(property_id) in ('owner', 'admin', 'manager', 'store_manager', 'front_office_manager', 'super_admin')
       )
     )
@@ -41,10 +45,10 @@ create policy pos_floor_layouts_authorized_manage
   with check (
     public.is_platform_owner()
     or (
-      public.is_member_of_property(property_id)
+      (public.is_member_of_property(property_id) or public.current_staff_role(property_id) is not null)
       and (
-        public.property_role(property_id) in ('owner', 'admin', 'manager', 'property_admin')
-        or public.current_staff_role(property_id) in ('owner', 'admin', 'manager', 'store_manager')
+        public.property_role(property_id) in ('owner', 'admin', 'manager')
+        or public.current_staff_role(property_id) in ('owner', 'admin', 'manager', 'store_manager', 'front_office_manager', 'super_admin')
       )
     )
   );
