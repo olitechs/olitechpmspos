@@ -79,7 +79,29 @@ const FrontOfficeStatistics = lazyWithRetry(() => import('@/pages/FrontOfficeSta
 const FrontOfficeTags = lazyWithRetry(() => import('@/pages/FrontOfficeTags'), 'route-pages-frontoffice-tags');
 const StoresPage = lazyWithRetry(() => import('@/components/stores/StoresPage'), 'app-stores-page');
 
-function AuthLoading(){return <div role="status" aria-live="polite" className="fixed inset-0 flex items-center justify-center bg-[var(--canvas)]"><div className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--border)] border-t-[var(--brand-primary)]"/></div>;}
+function AuthLoading(){
+  const block='rounded-lg bg-[var(--border)]/60 animate-pulse motion-reduce:animate-none';
+  return <main role="status" aria-live="polite" aria-label="Loading OliTechs workspace" className="fixed inset-0 z-[9999] overflow-hidden bg-[var(--canvas)] text-[var(--text)]">
+    <span className="sr-only">Loading your workspace. Please wait.</span>
+    <div className="flex h-14 items-center gap-3 border-b border-[var(--border)] bg-[var(--surface)] px-4 sm:px-6">
+      <div className="h-8 w-8 rounded-lg bg-[var(--brand-primary)]/15"/>
+      <div className="text-sm font-bold tracking-wide">OliTechs</div>
+      <div className={block+" ml-auto h-8 w-28 rounded-md"}/>
+      <div className={block+" h-8 w-8 rounded-full"}/>
+    </div>
+    <div className="grid h-[calc(100%-3.5rem)] grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)]">
+      <aside aria-hidden="true" className="hidden border-r border-[var(--border)] bg-[var(--surface)] p-4 md:block">
+        <div className={block+" mb-7 h-3 w-24"}/>
+        <div className="space-y-3">{Array.from({length:8},(_,i)=><div key={i} className="flex items-center gap-3 rounded-lg p-2"><div className={block+" h-7 w-7 rounded-md"}/><div className={block+" h-3 flex-1"}/></div>)}</div>
+      </aside>
+      <section aria-hidden="true" className="min-w-0 overflow-hidden p-4 sm:p-6 lg:p-8">
+        <div className="mb-7 flex items-center justify-between gap-4"><div className="min-w-0 flex-1"><div className={block+" mb-3 h-3 w-28"}/><div className={block+" h-7 w-56 max-w-full"}/><div className={block+" mt-3 h-3 w-72 max-w-full"}/></div><div className={block+" hidden h-9 w-28 rounded-lg sm:block"}/></div>
+        <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">{Array.from({length:4},(_,i)=><div key={i} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"><div className={block+" mb-4 h-3 w-20"}/><div className={block+" h-7 w-16"}/></div>)}</div>
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(260px,1fr)]"><div className="space-y-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"><div className={block+" h-5 w-40"}/><div className={block+" h-52 w-full rounded-lg"}/><div className="grid grid-cols-3 gap-3">{Array.from({length:3},(_,i)=><div key={i} className={block+" h-12 rounded-lg"}/>)}</div></div><div className="space-y-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"><div className={block+" h-5 w-32"}/>{Array.from({length:5},(_,i)=><div key={i} className="flex items-center gap-3"><div className={block+" h-9 w-9 rounded-full"}/><div className="flex-1 space-y-2"><div className={block+" h-3 w-3/4"}/><div className={block+" h-2.5 w-1/2"}/></div></div>)}</div></div>
+      </section>
+    </div>
+  </main>;
+}
 function appRole(user){const s=getSessionStaff();const raw=s?.role||user?.staff?.role||user?.propertyRole||user?.role;return normalizeAppRole(normalizeStaffRole(raw));}
 function PublicRoute(){const {user,isLoadingAuth,isLoadingPublicSettings}=useAuth();if(isLoadingAuth||isLoadingPublicSettings)return <AuthLoading/>;if(user){if(user?.isPlatformOwner)return <Navigate to="/admin" replace/>;const defaultApp=getDefaultApp(appRole(user),user?.property?.package);return defaultApp?<Navigate to={'/'+defaultApp} replace/>:<PendingApproval/>;}return <Outlet/>;}
 function ProtectedRoute({app,children}){const {user,isLoadingAuth,isLoadingPublicSettings}=useAuth();if(isLoadingAuth||isLoadingPublicSettings)return <AuthLoading/>;if(!user)return <Navigate to="/signin" replace/>;if(user?.isPlatformOwner)return <Navigate to="/admin" replace/>;if(!canAccessApp(appRole(user),app,user?.property?.package)){const defaultApp=getDefaultApp(appRole(user),user?.property?.package);return defaultApp?<Navigate to={'/'+defaultApp} replace/>:<PendingApproval/>;}const property=user?.property;const full=property?.status==='active'&&property?.package&&property.package!=='none';if(!full)return <PendingApproval/>;return children||<Outlet/>;}
