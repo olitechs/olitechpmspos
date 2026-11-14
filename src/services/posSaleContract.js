@@ -14,6 +14,46 @@ export function createPosSaleIdempotencyKey({ propertyId, tableKey, orderNumber 
   return `pos-sale:v1:${parts.map(encodeURIComponent).join(':')}`;
 }
 
+function normalizeStockName(value) {
+  return String(value || '').normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '').trim().replace(/\\s+/g, ' ').toLocaleLowerCase('en');
+}
+
+export function resolvePosSaleStockMappings(orderLines = [], products = [], recipes = [], lookupAvailable = true) {
+  if (!lookupAvailable) {
+    return buildPosSaleItems(orderLines, [], false);
+  }
+
+  const productById = new Map((products || []).filter((product) => isProductUuid(product?.id)).map((product) => [product.id, product]));
+  const productsByName = new Map();
+  for (const product of products || []) {
+    const key = normalizeStockName(product?.name);
+    if (!key) continue;
+    const matches = productsByName.get(key) || [];
+    matches.push(product);
+    productsByName.set(key, matches);
+  }
+
+  const recipeNames = new Set((recipes || []).filter((recipe) => recipe?.active !== false).map((recipe) => normalizeName(
+    typeof recipe === 'string' ? recipe : recipe?.menu_item_name
+  )).filter(Boolean));
+
+  const mappedLines = (Array.isArray(orderLines) ? orderLines : []).map((line) => {
+    const name = String(line?.name || line?.item_name || '').trim();
+    const normalizedName = normalizeName(name);
+    const suppliedId = line?.productId || line?.product_id || null;
+    const existingProduct = isProductUuid(suppliedId) ? productById.get(suppliedId) : null;
+
+    if (existingProduct) return { ...line, productId: existingProduct.id, product_id: existingProduct.id };
+    if (recipeNames.has(normalizedName)) return { ...line, productId: null, product_id: null };
+
+    const matches = productsByName.get(normalizeStockName(name)) || [];
+    if (matches.length === 1) return { ...line, productId: matches[0].id, product_id: matches[0].id };
+    return { ...line, productId: null, product_id: null };
+  });
+
+  return buildPosSaleItems(mappedLines, [...recipeNames], true);
+}
+
 export function buildPosSaleItems(orderLines = [], recipeMenuNames = [], recipeLookupAvailable = true) {
   const recipeNames = new Set((recipeMenuNames || []).map((recipe) => normalizeName(
     typeof recipe === 'string' ? recipe : recipe?.menu_item_name
