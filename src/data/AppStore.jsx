@@ -35,6 +35,8 @@ export function StoreProvider({ children }) {
   const [floorError, setFloorError] = useState('');
   // Shared active table sessions are consumed by the effects and callbacks below.
   const [sessions, setSessions] = useState({});
+  const [sessionsLoading, setSessionsLoading] = useState(true);
+  const [sessionsError, setSessionsError] = useState('');
   const floorSaveTimer = useRef(null);
   const floorWriteQueue = useRef(Promise.resolve());
 
@@ -84,7 +86,9 @@ export function StoreProvider({ children }) {
   }, [zones, zonesKey, zonesFor, propertyId, floorLoading]);
   useEffect(() => {
     let active = true;
-    if (!propertyId) { setSessions({}); return undefined; }
+    if (!propertyId) { setSessions({}); setSessionsLoading(false); setSessionsError(''); return undefined; }
+    setSessionsLoading(true);
+    setSessionsError('');
 
     const hydrateSession = (row) => ({
       status: row.status,
@@ -109,7 +113,12 @@ export function StoreProvider({ children }) {
         next[row.table_key] = hydrateSession(row);
       }
       setSessions(next);
-    }).catch((error) => console.error('[POS] failed to load persisted sessions', error));
+    }).catch((error) => {
+      console.error('[POS] failed to load persisted sessions', error);
+      if (active) setSessionsError(error?.message || 'Active table sessions could not be loaded.');
+    }).finally(() => {
+      if (active) setSessionsLoading(false);
+    });
 
     const channel = posService.subscribeToTableSessions?.(propertyId, {
       onChange: ({ eventType, row }) => {
@@ -748,7 +757,7 @@ export function StoreProvider({ children }) {
   }, [orderPrinterForCenter, persistKitchenOrder]);
 
   const value = {
-    zones, floorLoading, floorError, sessions, printers, saleReceipts, kitchenOrders,
+    zones, floorLoading, floorError, sessions, sessionsLoading, sessionsError, printers, saleReceipts, kitchenOrders,
     getSession, openTable, updateSessionTotals, setSessionOrderLines, setKotSentOrderLines, setUnsettled, closeTable,
     addZone, renameZone, removeZone, addTable, removeTable, updateTable, moveTable,
     addPrinter, updatePrinter, removePrinter, togglePurpose,
@@ -762,7 +771,7 @@ export function StoreProvider({ children }) {
 
 // Null-safe hook: degrades to an inert fallback if ever called without a provider.
 const FALLBACK = {
-  zones: [], floorLoading: false, floorError: '', sessions: {}, printers: [], saleReceipts: [], kitchenOrders: [],
+  zones: [], floorLoading: false, floorError: '', sessions: {}, sessionsLoading: false, sessionsError: '', printers: [], saleReceipts: [], kitchenOrders: [],
   getSession: () => null, openTable: () => {}, updateSessionTotals: () => {}, setSessionOrderLines: () => {}, setKotSentOrderLines: () => Promise.resolve(null), setUnsettled: () => {}, closeTable: () => {},
   addZone: () => {}, renameZone: () => {}, removeZone: () => {}, addTable: () => {}, removeTable: () => {}, updateTable: () => {}, moveTable: () => {},
   addPrinter: () => {}, updatePrinter: () => {}, removePrinter: () => {}, togglePurpose: () => {},
