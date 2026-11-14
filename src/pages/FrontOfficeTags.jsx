@@ -7,13 +7,22 @@ import { supabase } from '@/lib/supabaseClient';
 const input='h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text)]';
 const colors=['#2563EB','#0D9488','#0F766E','#7C3AED','#DC2626','#64748B','#16A34A','#D97706'];
 const kinds=[['guest','Guest'],['room','Room'],['reservation','Reservation']];
+function TagsPageSkeleton(){
+ const block='animate-pulse rounded-lg bg-[var(--canvas)]';
+ return <div role="status" aria-label="Loading property tags" className="space-y-4">
+  <span className="sr-only">Loading property tags…</span>
+  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">{[1,2,3].map(i=><div key={i} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3"><div className={block+' h-3 w-24'}/><div className={block+' mt-3 h-7 w-12'}/></div>)}</div>
+  <div className="grid gap-4 xl:grid-cols-2">{[1,2].map(i=><div key={i} className="space-y-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"><div className={block+' h-5 w-40'}/><div className={block+' h-10 w-full'}/><div className={block+' h-10 w-full'}/><div className={block+' h-10 w-28'}/></div>)}</div>
+  <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]"><div className="space-y-3 border-b border-[var(--border)] p-4"><div className={block+' h-5 w-36'}/><div className={block+' h-10 w-full'}/></div><div className="divide-y divide-[var(--border)]">{[1,2,3].map(i=><div key={i} className="flex items-center justify-between gap-3 p-4"><div className="flex-1 space-y-2"><div className={block+' h-4 w-36'}/><div className={block+' h-3 w-52 max-w-full'}/></div><div className={block+' h-9 w-20'}/></div>)}</div></div>
+ </div>;
+}
 export default function FrontOfficeTags(){
  const {user}=useAuth(),propertyId=user?.property?.id;
  const [tags,setTags]=useState([]),[assignments,setAssignments]=useState([]),[guests,setGuests]=useState([]),[rooms,setRooms]=useState([]),[reservations,setReservations]=useState([]);
  const [name,setName]=useState(''),[kind,setKind]=useState('guest'),[color,setColor]=useState(colors[0]);
  const [entityType,setEntityType]=useState('guest'),[entityId,setEntityId]=useState(''),[tagId,setTagId]=useState('');
- const [search,setSearch]=useState(''),[filter,setFilter]=useState('all'),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
- const load=useCallback(async()=>{if(!propertyId){setLoading(false);return;}setLoading(true);try{
+ const [search,setSearch]=useState(''),[filter,setFilter]=useState('all'),[loading,setLoading]=useState(true),[hasLoaded,setHasLoaded]=useState(false),[busy,setBusy]=useState(false);
+ const load=useCallback(async()=>{if(!propertyId){setLoading(false);setHasLoaded(true);return;}setLoading(true);try{
   const [t,a,g,r,b]=await Promise.all([
    supabase.from('property_tags').select('*').eq('property_id',propertyId).order('name'),
    supabase.from('property_tag_assignments').select('id,tag_id,entity_type,entity_id,created_at,tag:property_tags(id,name,color,applies_to)').eq('property_id',propertyId).order('created_at',{ascending:false}).limit(500),
@@ -23,7 +32,7 @@ export default function FrontOfficeTags(){
   ]);
   for(const x of [t,a,g,r,b])if(x.error)throw x.error;
   setTags(t.data||[]);setAssignments(a.data||[]);setGuests(g.data||[]);setRooms(r.data||[]);setReservations(b.data||[]);
- }catch(e){toast.error(e.message||'Unable to load property tags.');}finally{setLoading(false);}},[propertyId]);
+ }catch(e){toast.error(e.message||'Unable to load property tags.');}finally{setLoading(false);setHasLoaded(true);}},[propertyId]);
  useEffect(()=>{load();},[load]);
  const options=entityType==='guest'?guests:entityType==='room'?rooms:reservations;
  const entityLabel=(type,id)=>{const list=type==='guest'?guests:type==='room'?rooms:reservations;const e=list.find(x=>x.id===id);if(!e)return 'Unknown record';if(type==='guest')return e.name;if(type==='room')return 'Room '+(e.number||e.name||'');return (e.guest_name||'Reservation')+' · '+(e.confirmation_code||e.id.slice(0,8));};
@@ -34,6 +43,7 @@ export default function FrontOfficeTags(){
  const counts={guest:assignments.filter(a=>a.entity_type==='guest').length,room:assignments.filter(a=>a.entity_type==='room').length,reservation:assignments.filter(a=>a.entity_type==='reservation').length};
  return <div className="h-full overflow-y-auto bg-[var(--canvas)] p-4 text-[var(--text)] sm:p-6"><div className="mx-auto max-w-7xl space-y-5">
   <header className="flex flex-wrap items-center justify-between gap-3"><div><div className="text-[11px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Front Office · Guest context</div><h1 className="mt-1 text-2xl font-bold">Tags & Guest Profiles</h1><p className="mt-1 text-sm text-[var(--text-muted)]">Label guests, rooms and reservations with reusable property tags such as VIP, repeat guest, allergy or maintenance follow-up.</p></div><button onClick={load} disabled={loading} className="inline-flex h-10 items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm"><RefreshCw size={15}/> Refresh</button></header>
+  {loading&&!hasLoaded?<TagsPageSkeleton/>:<>
   <div className="grid grid-cols-3 gap-3">{[['Guests',counts.guest],['Rooms',counts.room],['Reservations',counts.reservation]].map(([l,n])=><div key={l} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3"><div className="text-xs text-[var(--text-muted)]">{l} tagged</div><div className="mt-1 text-2xl font-bold">{n}</div></div>)}</div>
   <div className="grid gap-4 xl:grid-cols-2">
    <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"><div className="mb-3 flex items-center gap-2"><Tag size={17}/><h2 className="font-semibold">Create a property tag</h2></div><form onSubmit={createTag} className="space-y-3"><label className="block text-xs font-semibold">Tag name<input value={name} onChange={e=>setName(e.target.value)} maxLength={40} required placeholder="VIP, Repeat guest, Allergy…" className={input+' mt-1'}/></label><div className="grid gap-3 sm:grid-cols-2"><label className="block text-xs font-semibold">Applies to<select value={kind} onChange={e=>setKind(e.target.value)} className={input+' mt-1'}>{kinds.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></label><div><div className="text-xs font-semibold">Tag colour</div><div className="mt-2 flex flex-wrap gap-2">{colors.map(c=><button key={c} type="button" aria-label={'Choose '+c} aria-pressed={color===c} onClick={()=>setColor(c)} className={'h-7 w-7 rounded-full border-2 '+(color===c?'border-[var(--text)] ring-2 ring-[var(--brand-primary)]':'border-transparent')} style={{backgroundColor:c}}/>)}</div></div></div><button disabled={busy||loading} className="inline-flex h-10 items-center gap-2 rounded-lg bg-[var(--brand-primary)] px-4 text-sm font-semibold text-[var(--on-primary)] disabled:opacity-50"><Plus size={15}/> Create tag</button></form><div className="mt-4 border-t border-[var(--border)] pt-3"><h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-[var(--text-muted)]">Available tags</h3><div className="flex flex-wrap gap-2">{tags.map(t=><span key={t.id} className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] px-3 py-1.5 text-xs"><i className="h-2.5 w-2.5 rounded-full" style={{backgroundColor:t.color}}/>{t.name}<span className="text-[var(--text-muted)]">{t.applies_to}</span></span>)}{!tags.length&&<span className="text-xs text-[var(--text-muted)]">No tags created yet.</span>}</div></div></section>
@@ -41,6 +51,7 @@ export default function FrontOfficeTags(){
   </div>
   <section className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]"><div className="border-b border-[var(--border)] p-4"><div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">Tag assignments</h2><span className="text-xs text-[var(--text-muted)]">{visible.length} records</span></div><div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto]"><div className="relative"><Search size={14} className="absolute left-3 top-3 text-[var(--text-muted)]"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search tag, guest, room or booking" className={input+' pl-9'}/></div><select value={filter} onChange={e=>setFilter(e.target.value)} className={input+' sm:w-44'}><option value="all">All record types</option>{kinds.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></div></div>
    {loading?<div className="space-y-3 p-4">{[1,2,3].map(i=><div key={i} className="h-12 animate-pulse rounded-lg bg-[var(--canvas)]"/>)}</div>:<div className="divide-y divide-[var(--border)]">{visible.map(a=><div key={a.id} className="flex flex-wrap items-center justify-between gap-3 p-4"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><i className="h-3 w-3 rounded-full" style={{backgroundColor:a.tag?.color||'var(--text-muted)'}}/><b className="text-sm">{a.tag?.name||'Tag'}</b><span className="rounded-full bg-[var(--canvas)] px-2 py-1 text-[10px] uppercase">{a.entity_type}</span></div><div className="mt-1 truncate text-xs text-[var(--text-muted)]">{entityLabel(a.entity_type,a.entity_id)}</div></div><button onClick={()=>remove(a)} disabled={busy} className="inline-flex h-9 items-center gap-1 rounded-lg border border-[var(--border)] px-3 text-xs hover:bg-[var(--canvas)] disabled:opacity-50"><X size={13}/> Remove</button></div>)}{!visible.length&&<p className="p-8 text-center text-sm text-[var(--text-muted)]">No tag assignments match this view.</p>}</div>}
-  </section><p className="text-xs text-[var(--text-muted)]">Tags add operational context only. They do not modify guest identity, reservation status, room inventory or financial records.</p>
+  </section></>}
+  <p className="text-xs text-[var(--text-muted)]">Tags add operational context only. They do not modify guest identity, reservation status, room inventory or financial records.</p>
  </div></div>;
 }
