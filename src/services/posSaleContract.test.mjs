@@ -70,7 +70,7 @@ test('stock mapping resolves valid product IDs, unique legacy names and active r
     { id: PRODUCT_ID, name: 'Grilled fish' },
     { id: '6e5f1b2c-7f3b-4c8e-9a15-3c41f52e2d02', name: 'Fresh juice' },
   ];
-  const recipes = [{ menu_item_name: 'Coconut fish curry', active: true }];
+  const recipes = [{ menu_item_name: 'Coconut fish curry', active: true, recipe_ingredients: [{ product_id: PRODUCT_ID, qty: 1 }] }];
   const items = resolvePosSaleStockMappings([
     { id: 'direct', productId: PRODUCT_ID, name: 'Grilled fish', qty: 1 },
     { id: 'legacy', productId: 'legacy-menu-2', name: 'Fresh juice', qty: 2 },
