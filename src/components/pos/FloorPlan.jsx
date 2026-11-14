@@ -146,6 +146,28 @@ export default function FloorPlan({ onTableSelect }) {
     setDesignMode(false);
   };
 
+  if (store.floorLoading) return (
+    <div role="status" aria-live="polite" className="flex h-full min-h-48 flex-col justify-center gap-4 bg-[var(--canvas)] p-6">
+      <div className="mx-auto w-full max-w-xl space-y-3">
+        <div className="h-10 animate-pulse rounded-xl bg-[var(--surface)]" />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {[1, 2, 3, 4, 5, 6].map((item) => <div key={item} className="h-28 animate-pulse rounded-xl border border-[var(--border)] bg-[var(--surface)]" />)}
+        </div>
+        <p className="text-center text-sm text-[var(--text-muted)]">Loading shared floor zones and tables…</p>
+      </div>
+    </div>
+  );
+
+  if (store.floorError) return (
+    <div role="alert" className="flex h-full min-h-48 items-center justify-center bg-[var(--canvas)] p-6 text-center">
+      <div className="max-w-md rounded-2xl border border-[var(--danger)] bg-[var(--surface)] p-6">
+        <h2 className="text-lg font-black text-[var(--text)]">Floor configuration unavailable</h2>
+        <p className="mt-2 text-sm text-[var(--text-muted)]">{store.floorError}</p>
+        <p className="mt-2 text-xs text-[var(--text-muted)]">No table sessions or orders have been modified.</p>
+      </div>
+    </div>
+  );
+
   if (!zone) return (
     <div role="status" aria-live="polite" className="flex h-full min-h-48 items-center justify-center bg-[var(--canvas)] p-6 text-center">
       <div className="max-w-md rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6">
