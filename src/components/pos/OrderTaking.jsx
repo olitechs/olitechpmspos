@@ -62,7 +62,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
       } else {
         setMenuItems([]);
       }
-      const configuredCategories = categoryRows.map((category) => category.name).filter(Boolean);
+      const configuredCategories = [...new Set(categoryRows.map((category) => category.name).filter(Boolean))];
       setMenuCategoryStyles(Object.fromEntries(categoryRows.map((category) => [category.name, category])));
       setMenuCategories(configuredCategories.length ? configuredCategories : [...new Set(rows.map((p) => p.category || 'General'))]);
     } catch (error) {
@@ -330,6 +330,13 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
     'border-[var(--room-occupied)] bg-[var(--primary-soft)]'
   ];
 
+  // Colour categories by name so tiles keep their colour when the category order changes.
+  const categoryStyleFor = (name) => {
+    let hash = 0;
+    for (let i = 0; i < name.length; i += 1) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+    return categoryTileStyles[hash % categoryTileStyles.length];
+  };
+
   return (
     <div className="pos-shell flex h-full min-h-0 flex-col overflow-hidden bg-[var(--canvas)] lg:flex-row">
       <main className="order-1 flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto p-3 lg:order-none lg:p-5">
@@ -384,14 +391,14 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
             <button type="button" onClick={loadPosMenu} className="min-h-11 rounded-lg bg-[var(--primary)] px-4 text-sm font-bold text-[var(--on-primary)] hover:bg-[var(--primary-hover)]">Retry menu</button>
           </div>
         ) : !activeCategory && !menuSearch.trim() ? (
-          <section aria-label="Menu categories" className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-1.5">
-            {menuCategories.map((cat, index) => (
+          <section aria-label="Menu categories" className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
+            {menuCategories.map((cat) => (
               <button
                 key={cat}
                 type="button"
                 onClick={() => setActiveCategory(cat)}
                 style={{ backgroundColor: menuCategoryStyles[cat]?.tile_color || undefined, color: menuCategoryStyles[cat]?.tile_text_color || undefined, borderColor: menuCategoryStyles[cat]?.tile_color || undefined, ...(menuCategoryStyles[cat]?.tile_image_url ? { backgroundImage: `linear-gradient(var(--overlay-scrim),var(--overlay-scrim)),url("${menuCategoryStyles[cat].tile_image_url}")`, backgroundSize: "cover", backgroundPosition: "center" } : {}) }}
-                className={`group relative flex aspect-square min-w-0 flex-col justify-end overflow-hidden rounded-xl border-2 p-2 text-center shadow-sm transition-all hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 ${categoryTileStyles[index % categoryTileStyles.length]}`}
+                className={`group relative flex aspect-square min-w-0 flex-col justify-end overflow-hidden rounded-xl border-2 p-2 text-center shadow-sm transition-all hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 ${categoryStyleFor(cat)}`}
                 aria-label={`Open ${cat}, ${categoryCounts[cat] || 0} products`}
               >
                 <Folder size={16} className="absolute right-2 top-2" aria-hidden="true" />
@@ -412,7 +419,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
             {!activeCategory && menuSearch.trim() && (
               <div className="mb-3 text-xs font-semibold text-[var(--text-muted)]">{visibleMenuItems.length} matching products across all categories</div>
             )}
-            <div id="pos-product-grid" className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-1.5">
+            <div id="pos-product-grid" className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
               {visibleMenuItems.map((item) => {
                 const inOrderQty = orderLines.reduce((qty, line) => qty + ((line.baseProductId || line.productId || line.id) === (item.productId || item.id) ? Number(line.qty || 0) : 0), 0);
                 const stockStatus = propertyId && menuItems.length > 0 ? getPosStockStatus(item.stock, item.minimumStock) : 'unknown';
@@ -554,7 +561,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
               {modifierGroups.map((group) => {
                 const selected = modifierSelections[group.id] || [];
                 return <div key={group.id} className="rounded-2xl border border-[var(--border)] p-4">
-                  <div className="mb-3 flex items-center justify-between gap-3"><div><div className="font-bold text-[var(--text)]">{group.name}</div><div className="text-xs text-[var(--text-muted)]">{group.selection_type === 'multiple' ? 'Choose up to ' + group.max_selections : 'Choose one'}{group.required ? ' · Required' : ' · Optional'}</div></div><span className="shrink-0 text-xs font-semibold text-[var(--text-muted)]">{selected.length} selected</span></div>
+                  <div className="mb-3 flex items-center justify-between gap-3"><div><div className="font-bold text-[var(--text)]">{group.name}</div><div className="text-xs text-[var(--text-muted)]">{group.selection_type === 'multiple' ? (Number(group.max_selections) > 0 ? `Choose up to ${group.max_selections}` : 'Choose one or more') : 'Choose one'}{group.required ? ' · Required' : ' · Optional'}</div></div><span className="shrink-0 text-xs font-semibold text-[var(--text-muted)]">{selected.length} selected</span></div>
                   <div className="grid gap-2 sm:grid-cols-2">{group.options.map((option) => <button type="button" key={option.id} onClick={() => toggleModifier(group, option)} className={`flex min-h-12 items-center justify-between gap-3 rounded-xl border-2 p-3 text-left ${selected.includes(option.id) ? 'border-[var(--primary)] bg-[var(--primary-soft)]' : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--primary)]'}`}><span className="text-sm font-semibold text-[var(--text)]">{option.name}</span><span className="shrink-0 text-xs font-semibold text-[var(--text-muted)]">{Number(option.price_delta_minor||0)>0?'+KES '+Number(Number(option.price_delta_minor)/100).toLocaleString('en-KE',{minimumFractionDigits:2}):'Included'}</span></button>)}</div>
                 </div>;
               })}

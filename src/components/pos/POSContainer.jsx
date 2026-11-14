@@ -430,7 +430,7 @@ export default function POSContainer({ initialTab = 'floor' } = {}) {
 								<div className="flex items-center gap-2 text-base font-semibold text-foreground"><ArrowRightLeft size={18}/> Move / Join Table</div>
 								<div className="mt-1 text-xs text-muted-foreground">Current bill: <b>{tableLabel(activeTable)}</b>. Select a free table to move it, or an ongoing table to join the bills.</div>
 							</div>
-							<button onClick={() => setTableTransferOpen(false)} className="rounded-xl p-2 text-muted-foreground hover:bg-secondary"><X size={18}/></button>
+							<button type="button" aria-label="Close move or join table dialog" onClick={() => setTableTransferOpen(false)} className="rounded-xl p-2 text-muted-foreground hover:bg-secondary"><X size={18} aria-hidden="true"/></button>
 						</div>
 						<div className="max-h-[55vh] overflow-y-auto p-5">
 							<div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">

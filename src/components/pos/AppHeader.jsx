@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Settings } from 'lucide-react';
 import BrandLogo from '@/components/ui/BrandLogo';
 
@@ -10,7 +10,12 @@ const TABS = [
 ];
 
 export default function AppHeader({ activeTab, onTabChange, activeTable, onCloseShift, shift, hasOpenShift = false, onOpenShifts, onManageMenu, onOpenSettings, propertyName }) {
-  const now = new Date();
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    // Keep the header clock live: re-render on a short interval so the POS never shows a frozen time.
+    const timer = setInterval(() => setNow(new Date()), 15000);
+    return () => clearInterval(timer);
+  }, []);
   const timeStr = now.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' });
   const dateStr = now.toLocaleDateString('en-KE', { weekday: 'short', day: 'numeric', month: 'short' });
 
