@@ -149,6 +149,7 @@ export default function POSContainer({ initialTab = 'floor' } = {}) {
 
 	// Stable per-table order numbers (regenerated each time a table is opened).
 	const orderNumbersRef = useRef({});
+	const sendingTablesRef = useRef(new Set());
 	const orderLines = activeTable ? orderLinesByTable[activeTable.id] || [] : [];
 	useEffect(() => {
 		if (!activeTable) return;
@@ -206,7 +207,7 @@ export default function POSContainer({ initialTab = 'floor' } = {}) {
 	// a printer failure never loses or duplicates the order itself. Any
 	// failed ticket surfaces as a dismissable, retryable toast so staff can
 	// keep working the floor instead of being blocked on a printer issue.
-	const handleSendToKitchen = async () => {
+	const sendToKitchenNow = async () => {
 		const table = activeTable;
 		const orderNumber = orderNumbersRef.current[table.id];
 		const linesSnapshot = orderLinesByTable[table.id] || [];
@@ -308,6 +309,26 @@ export default function POSContainer({ initialTab = 'floor' } = {}) {
 		}
 
 		toast.success(printResult.queued ? `New items for ${orderNumber} queued for the print agent.` : `New items for ${orderNumber} tickets printed.`);
+	};
+
+	// A send now leaves the order screen before its KOT snapshot is persisted, so
+	// staff can reach the same table again while the first send is still running.
+	// Two concurrent sends would create a second KDS order and could write an
+	// older sent-item snapshot over the newer one. Only one send per table may be
+	// in flight; the store additionally serialises snapshot writes per table.
+	const handleSendToKitchen = async () => {
+		const table = activeTable;
+		if (!table) return;
+		if (sendingTablesRef.current.has(table.id)) {
+			toast.info('This order is still being sent. Wait for it to finish before sending again.');
+			return;
+		}
+		sendingTablesRef.current.add(table.id);
+		try {
+			await sendToKitchenNow();
+		} finally {
+			sendingTablesRef.current.delete(table.id);
+		}
 	};
 
 	const openTableTransfer = () => {
