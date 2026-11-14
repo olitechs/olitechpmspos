@@ -89,7 +89,6 @@ export default function FloorPlan({ onTableSelect }) {
   const [activeZoneId, setActiveZoneId] = useState(store.zones[0]?.id);
   const [shape, setShape] = useState(() => safeRead(SHAPE_KEY, 'square'));
   const [designMode, setDesignMode] = useState(false);
-  const [positions, setPositions] = useState(() => safeRead(POSITION_KEY, {}));
   const [now, setNow] = useState(() => Date.now());
   const [arrivalsToday, setArrivalsToday] = useState(null);
   const [arrivalsFailed, setArrivalsFailed] = useState(false);
@@ -122,7 +121,6 @@ export default function FloorPlan({ onTableSelect }) {
   }, [propertyId]);
 
   useEffect(() => { localStorage.setItem(SHAPE_KEY, shape); }, [shape]);
-  useEffect(() => { localStorage.setItem(POSITION_KEY, JSON.stringify(positions)); }, [positions]);
   useEffect(() => {
     const ticker = window.setInterval(() => setNow(Date.now()), 30000);
     return () => window.clearInterval(ticker);
@@ -130,19 +128,16 @@ export default function FloorPlan({ onTableSelect }) {
 
   const displayTables = useMemo(() => (zone?.tables || []).map((t) => ({
     ...t,
-    ...(positions[t.id] || {}),
     zoneId: zone?.id,
     zoneName: zone?.name,
-  })), [zone, positions]);
+  })), [zone]);
 
   const moveTable = (id, x, y) => {
-    setPositions((prev) => ({ ...prev, [id]: { x: Math.round(x), y: Math.round(y) } }));
     const t = zone?.tables.find((item) => item.id === id);
     if (t && store.moveTable) store.moveTable(zone.id, id, x, y);
   };
 
   const saveLayout = () => {
-    try { localStorage.setItem(POSITION_KEY, JSON.stringify(positions)); } catch { /* ignore storage errors */ }
     setDesignMode(false);
   };
 
