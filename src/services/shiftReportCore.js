@@ -118,6 +118,7 @@ export function buildShiftSalesSummary(receipts = [], allocations = [], refunds 
   return {
     payments,
     grossPayments,
+    splitReconciliation,
     refundsByMethod,
     categories,
     grossSales,
