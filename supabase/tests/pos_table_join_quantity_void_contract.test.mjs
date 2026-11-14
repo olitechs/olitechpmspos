@@ -48,3 +48,17 @@ test('sent item voids retain reason, manager approval and audited RPC controls',
   assert.match(migration, /insert into public\.pos_void_items/i);
   assert.match(migration, /insert into public\.pos_order_audit/i);
 });
+
+
+test('recovered floor tables persist movement using their original configured layout ID', () => {
+  const floor = readFileSync(new URL('../../src/components/pos/FloorPlan.jsx', import.meta.url), 'utf8');
+  assert.match(floor, /const layoutId = table\\?\\.layoutId \\|\\| table\\?\\.id/);
+  assert.match(floor, /store\\.moveTable\\(zone\\.id, layoutId, x, y\\)/);
+});
+
+test('split tender rows have stable identities and hide room-charge allocations from unauthorized roles', () => {
+  const bill = readFileSync(new URL('../../src/components/pos/BillPayment.jsx', import.meta.url), 'utf8');
+  assert.match(bill, /key=\\{p\\.id\\}/);
+  assert.match(bill, /m\\.id!==\x27room\x27\\|\\|canRoomCharge/);
+  assert.match(bill, /id:\x27split-\x27\\+Date\\.now\\(\\)\\+\x27-\x27\\+prev\\.length/);
+});
