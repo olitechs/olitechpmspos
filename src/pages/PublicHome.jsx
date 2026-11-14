@@ -7,7 +7,7 @@ import BrandLogo from '@/components/ui/BrandLogo';
 const CONTACT = {
   phone: '+254 745 043 121',
   phoneHref: 'tel:+254745043121',
-  email: 'info@olitech.co.ke',
+  email: 'info@olitechs.co.ke',
   whatsapp: 'https://wa.me/254745043121',
 };
 
@@ -94,10 +94,10 @@ function SectionTitle({ eyebrow, title, description, light = false, centered = f
 
 function WorkspacePreview() {
   const rooms = [
-    ['101', 'Deluxe king', 'James Mwangi · 2 nights', 'stay-blue'],
-    ['102', 'Deluxe king', 'Emily Wanjiku', 'stay-green'],
-    ['103', 'Garden suite', 'Michael Otieno · 4 nights', 'stay-purple'],
-    ['104', 'Twin room', 'Group booking · Safari Tours', 'stay-gold'],
+    ['101', 'Deluxe king', 'Reserved · 2 nights', 'stay-blue'],
+    ['102', 'Deluxe king', 'Occupied', 'stay-green'],
+    ['103', 'Garden suite', 'Reserved · 4 nights', 'stay-teal'],
+    ['104', 'Twin room', 'Group booking · 3 rooms', 'stay-gold'],
   ];
   return (
     <div className="workspace-shell">
@@ -105,7 +105,7 @@ function WorkspacePreview() {
       <div className="workspace-body">
         <aside className="workspace-side">
           <div className="workspace-brand">oli<span>techs</span></div>
-          <small>The Grand Hotel</small><small>Nairobi, Kenya　⌄</small>
+          <small>Sample property</small><small>Coastal Kenya　⌄</small>
           {['Overview', 'Reservations', 'Front desk', 'Room planner', 'Point of sale', 'Housekeeping', 'Reports & insights'].map((item, i) => <div key={item} className={i === 3 ? 'side-active' : ''}>{item}</div>)}
           <small className="side-foot">PROPERTY WORKSPACE</small>
         </aside>
@@ -139,7 +139,7 @@ function POSPreview() {
   ];
   return (
     <div className="pos-preview">
-      <div className="pos-window"><div className="pos-window-top"><span>OliTechs POS</span><span>The Garden Restaurant</span><b>Shift open ●</b></div>
+      <div className="pos-window"><div className="pos-window-top"><span>OliTechs POS</span><span>Restaurant</span><b>Shift open ●</b></div>
         <div className="pos-content"><div className="pos-menu"><div className="pos-tabs">All items　 Food　 Drinks　 Desserts</div><div className="pos-products">{products.map(([tag, name, price]) => <div className="pos-product" key={name}><small>{tag}</small><b>{name}</b><strong>{price}</strong></div>)}</div></div>
           <div className="pos-order"><small>TABLE 08</small><b>2 guests · Dine in</b><hr/><p>2 × Grilled tilapia <strong>2,400</strong></p><p>1 × Garden salad <strong>700</strong></p><p>2 × Fresh juice <strong>900</strong></p><hr/><b className="order-total">Total <strong>KES 4,000</strong></b><button>Charge to room →</button></div>
         </div>
@@ -231,7 +231,7 @@ export default function PublicHome() {
         .workspace-main{padding:20px 22px;min-width:0}.workspace-heading{display:flex;justify-content:space-between;align-items:center;gap:15px}.workspace-heading b{font-size:14px}.workspace-heading p{font-size:10px;color:#8992a5;margin-top:4px}.workspace-heading button{background:#285fe7;color:#fff;border-radius:4px;padding:9px 12px;font-size:9px;font-weight:700}
         .metric-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:18px}.metric-grid>div{border:1px solid #e8edf5;border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:6px}.metric-grid small{font-size:9px;color:#77839b}.metric-grid strong{font-size:clamp(14px,2vw,23px);color:#172341}.metric-grid em{font-size:8px;color:#6b88c6;font-style:normal}
         .planner-toolbar{display:flex;align-items:center;gap:20px;margin:19px 0 10px;font-size:10px;color:#4d5a74}.planner-toolbar small{margin-left:auto;font-size:8px;color:#8992a5}
-        .planner-grid{border:1px solid #e8edf5;border-radius:6px;overflow:hidden}.planner-head,.planner-row{display:grid;grid-template-columns:150px repeat(7,minmax(0,1fr));min-width:680px}.planner-head{background:#f5f7fb;color:#65718a;font-size:8px;font-weight:700}.planner-head span,.planner-row>*{padding:10px 7px;border-right:1px solid #edf0f5}.planner-row{min-height:44px;border-top:1px solid #edf0f5;font-size:8px;color:#596780}.planner-row>b{color:#26344f}.planner-row span:not(:empty){margin:5px 2px;padding:7px 6px;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.stay-blue{background:#e1ebff;color:#2855bd}.stay-green{background:#dff5eb;color:#267b59}.stay-purple{background:#eee7ff;color:#7252ae}.stay-gold{background:#fff0d9;color:#966b22}
+        .planner-grid{border:1px solid #e8edf5;border-radius:6px;overflow:hidden}.planner-head,.planner-row{display:grid;grid-template-columns:150px repeat(7,minmax(0,1fr));min-width:680px}.planner-head{background:#f5f7fb;color:#65718a;font-size:8px;font-weight:700}.planner-head span,.planner-row>*{padding:10px 7px;border-right:1px solid #edf0f5}.planner-row{min-height:44px;border-top:1px solid #edf0f5;font-size:8px;color:#596780}.planner-row>b{color:#26344f}.planner-row span:not(:empty){margin:5px 2px;padding:7px 6px;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.stay-blue{background:#e1ebff;color:#2855bd}.stay-green{background:#dff5eb;color:#267b59}.stay-teal{background:#dff3f3;color:#0f7c86}.stay-gold{background:#fff0d9;color:#966b22}
         .industry-strip{max-width:1200px;margin:0 auto;padding:12px 28px 56px;display:grid;grid-template-columns:repeat(4,1fr);gap:20px;text-align:center}.industry-strip div{font-size:13px;font-weight:750;color:#24324e}.industry-strip div:nth-child(2){color:#285fe7}
         .connected-section{background:#101a35;color:#fff;padding:100px 28px}.connected-inner{max-width:1224px;margin:auto;display:grid;grid-template-columns:.8fr 1.2fr;gap:70px;align-items:center}.connected-list{margin-top:38px;display:grid;gap:24px}.connected-list article{display:grid;grid-template-columns:38px 1fr;gap:14px}.connected-list article>span{font-size:13px;color:#7da0ff;font-weight:800}.connected-list h3{font-size:16px;font-weight:750}.connected-list p{margin-top:6px;color:#aeb9d0;font-size:12px;line-height:1.7}
         .pos-preview{min-width:0}.pos-window{border-radius:12px;background:#fff;color:#15203b;overflow:hidden;box-shadow:0 24px 60px #0005}.pos-window-top{padding:16px 18px;display:flex;align-items:center;gap:20px;border-bottom:1px solid #e9edf3;font-size:11px;font-weight:800}.pos-window-top span:first-child{color:#285fe7}.pos-window-top b{margin-left:auto;color:#3b9a73;font-size:9px}.pos-content{display:grid;grid-template-columns:1.25fr .75fr;gap:16px;padding:17px}.pos-tabs{font-size:9px;color:#68738a;padding:10px 0 15px;border-bottom:1px solid #edf0f5}.pos-products{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;padding-top:13px}.pos-product{min-height:90px;border:1px solid #e9edf3;border-radius:7px;padding:11px;display:flex;flex-direction:column;gap:8px}.pos-product small{font-size:7px;letter-spacing:.13em;color:#285fe7;font-weight:900}.pos-product b{font-size:10px}.pos-product strong{font-size:9px;color:#64718b}.pos-order{border:1px solid #e9edf3;border-radius:8px;padding:14px;font-size:9px}.pos-order>small{color:#285fe7;font-weight:900;letter-spacing:.13em}.pos-order>b{display:block;margin:6px 0 12px}.pos-order p{display:flex;justify-content:space-between;gap:8px;margin:12px 0;color:#68738a}.pos-order hr{border:0;border-top:1px solid #edf0f5;margin:12px 0}.pos-order .order-total{display:flex;justify-content:space-between;font-size:11px}.pos-order button{width:100%;margin-top:15px;padding:11px;background:#285fe7;color:#fff;border-radius:5px;font-size:9px;font-weight:800}.pos-caption{text-align:right;margin-top:13px;color:#aeb9d0;font-size:10px}
@@ -263,9 +263,6 @@ export default function PublicHome() {
 
       <main>
         <section className="hero-section" id="platform">
-          <video className="hero-background" autoPlay muted loop playsInline preload="metadata" aria-hidden="true" tabIndex={-1}>
-            <source src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260815_040604_b04410ba-c173-4b68-826d-212a24bccdad.mp4" type="video/mp4" />
-          </video>
           <div className="hero-overlay" aria-hidden="true" />
           <div className="hero-kicker">BUILT FOR HOSPITALITY. READY FOR WHAT’S NEXT.</div>
           <h1 className="hero-title">Great stays start with<br/><span>smarter operations.</span></h1>
@@ -280,7 +277,7 @@ export default function PublicHome() {
           <div className="connected-inner">
             <div><Eyebrow light>CONNECTED BY DESIGN</Eyebrow><h2 className="mt-4 text-[clamp(2.1rem,4vw,3.5rem)] font-extrabold leading-[1.02] tracking-[-.05em]">Your entire property.<br/>Finally in sync.</h2><p className="mt-5 max-w-sm text-sm leading-7 text-slate-300">From the first reservation to the final bill, keep every team and every touchpoint on the same page.</p>
               <div className="connected-list">
-                <article><span>01</span><div><h3>A seamless front desk</h3><p>Manage bookings, room assignments and guest check-ins from one clear workspace.</p></div></article>
+                <article><span>01</span><div><h3>A clear front desk</h3><p>Manage bookings, room assignments and guest check-ins from one clear workspace.</p></div></article>
                 <article><span>02</span><div><h3>Service without the silos</h3><p>Connect restaurant orders and room charges without losing the details.</p></div></article>
                 <article><span>03</span><div><h3>Clarity at every close</h3><p>Bring sales and property activity together for a more informed end of day.</p></div></article>
               </div>

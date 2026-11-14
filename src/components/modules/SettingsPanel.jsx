@@ -6,9 +6,7 @@ import StaffAdmin from '@/components/admin/StaffAdmin';
 import SubscriptionPanel from '@/components/admin/SubscriptionPanel';
 import SettingsPrinters from '@/pages/SettingsPrinters';
 import ReceiptSettings from '@/components/settings/ReceiptSettings';
-import SystemSettingsPage from '@/components/settings/SystemSettingsPage';
 import { isFeatureEnabled } from '@/lib/featureFlags';
-import { isSystemSettingsPath } from '@/components/settings/systemSettingsNav';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { useAuth } from '@/lib/AuthContext';
 
@@ -36,7 +34,6 @@ export default function SettingsPanel(){
  React.useEffect(()=>{if(location.pathname==='/settings/printers')setView('printers');else if(location.pathname==='/settings/receipt')setView('receipt');else setView('list');},[location.pathname]);
  const {user}=useAuth();
  const canSubscription=Boolean(user?.property?.id||user?.propertyRole||user?.staff?.role);
- if(backoffice&&isSystemSettingsPath(location.pathname)) return <div className="flex-1 overflow-y-auto"><SystemSettingsPage/></div>;
  if(view==='printers') return <div className="flex-1 overflow-y-auto" style={{background:SAND}}><Breadcrumb label="Printers" onBack={()=>{setView('list');navigate('/backoffice?module=settings')}}/><ErrorBoundary label="Printer settings"><SettingsPrinters/></ErrorBoundary></div>;
  if(view==='receipt') return <div className="flex-1 overflow-y-auto" style={{background:SAND}}><Breadcrumb label="Receipt Customization" onBack={()=>{setView('list');navigate('/backoffice?module=settings')}}/><ErrorBoundary label="Receipt settings"><ReceiptSettings/></ErrorBoundary></div>;
  if(view==='users') return <div className="flex-1 overflow-y-auto" style={{background:SAND}}><Breadcrumb label="Users & Roles" onBack={()=>{setView('list');navigate('/backoffice?module=settings')}}/><StaffAdmin/></div>;
