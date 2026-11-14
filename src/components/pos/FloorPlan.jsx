@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Circle, Grid2X2, Move, Pencil, Save, X } from 'lucide-react';
 import { useStore } from '@/data/AppStore';
-import { RESERVATIONS_TONIGHT, tableLabel } from '@/data/mockData';
+import { useAuth } from '@/lib/AuthContext';
+import { pmsService } from '@/services/pmsService';
+import { tableLabel } from '@/lib/posTables';
 
 const SHAPE_KEY = 'tableShapeMode';
 const POSITION_KEY = 'tableLayoutPositions';
@@ -81,13 +83,43 @@ function Tile({ table, session, shape, designMode, onSelect, onMove, now }) {
 }
 export default function FloorPlan({ onTableSelect }) {
   const store = useStore();
+  const { user } = useAuth();
+  const propertyId = user?.property?.id;
   const [selectedTableId, setSelectedTableId] = useState(null);
   const [activeZoneId, setActiveZoneId] = useState(store.zones[0]?.id);
   const [shape, setShape] = useState(() => safeRead(SHAPE_KEY, 'square'));
   const [designMode, setDesignMode] = useState(false);
   const [positions, setPositions] = useState(() => safeRead(POSITION_KEY, {}));
   const [now, setNow] = useState(() => Date.now());
+  const [arrivalsToday, setArrivalsToday] = useState(null);
+  const [arrivalsFailed, setArrivalsFailed] = useState(false);
   const zone = store.zones.find((z) => z.id === activeZoneId) || store.zones[0];
+
+  // Real arrivals for today, so the floor summary never shows an invented
+  // reservation count. `null` means "not loaded", which renders as a dash.
+  useEffect(() => {
+    let active = true;
+    if (!propertyId) { setArrivalsToday(null); setArrivalsFailed(false); return undefined; }
+    const today = new Date();
+    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const closed = new Set(['cancelled', 'canceled', 'no_show', 'no-show', 'checked_out']);
+    pmsService.listReservations(propertyId)
+      .then((rows) => {
+        if (!active) return;
+        setArrivalsToday((rows || []).filter((row) => {
+          const status = String(row.status || row.booking_status || '').toLowerCase();
+          return String(row.arrival || '').slice(0, 10) === todayKey && !closed.has(status);
+        }).length);
+        setArrivalsFailed(false);
+      })
+      .catch((error) => {
+        console.error('[POS] today\'s reservations could not be loaded', error);
+        if (!active) return;
+        setArrivalsToday(null);
+        setArrivalsFailed(true);
+      });
+    return () => { active = false; };
+  }, [propertyId]);
 
   useEffect(() => { localStorage.setItem(SHAPE_KEY, shape); }, [shape]);
   useEffect(() => { localStorage.setItem(POSITION_KEY, JSON.stringify(positions)); }, [positions]);
@@ -171,14 +203,14 @@ export default function FloorPlan({ onTableSelect }) {
 
         <div className="flex shrink-0 flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 lg:hidden">
           <h3 className="text-xs font-bold uppercase tracking-widest text-[var(--primary)]">Today</h3>
-          <div className="grid grid-cols-2 gap-3"><SummaryRow label="Covers Seated" value={covers} /><SummaryRow label="Tables Occupied" value={occupied} /><SummaryRow label="Open Checks" value={openChecks} /><SummaryRow label="Reservations Tonight" value={RESERVATIONS_TONIGHT} /></div>
+          <div className="grid grid-cols-2 gap-3"><SummaryRow label="Covers Seated" value={covers} /><SummaryRow label="Tables Occupied" value={occupied} /><SummaryRow label="Open Checks" value={openChecks} /><SummaryRow label="Arrivals Today" value={arrivalsToday ?? (arrivalsFailed ? 'n/a' : '—')} hint={arrivalsFailed ? 'Reservations could not be loaded.' : 'Reservations arriving today.'} /></div>
         </div>
         <aside className="hidden w-48 shrink-0 flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 xl:flex">
           <h3 className="text-xs font-bold uppercase tracking-widest text-[var(--primary)]">Today</h3>
           <SummaryRow label="Covers Seated" value={covers} />
           <SummaryRow label="Tables Occupied" value={occupied} />
           <SummaryRow label="Open Checks" value={openChecks} />
-          <SummaryRow label="Reservations Tonight" value={RESERVATIONS_TONIGHT} />
+          <SummaryRow label="Arrivals Today" value={arrivalsToday ?? (arrivalsFailed ? 'n/a' : '—')} hint={arrivalsFailed ? 'Reservations could not be loaded.' : 'Reservations arriving today.'} />
           <div className="mt-2 border-t border-[var(--border)] pt-3">
             <h4 className="mb-2 text-xs font-bold uppercase tracking-widest text-[var(--primary)]">Legend</h4>
             <Legend label="Open / Available" fill="var(--room-clean)" border="var(--room-clean)" />
@@ -192,4 +224,4 @@ export default function FloorPlan({ onTableSelect }) {
 }
 
 function Legend({ label, fill, border }) { return <div className="mb-1.5 flex items-center gap-2"><span className="h-3.5 w-3.5 shrink-0 rounded" style={{ background: fill, border: `2px solid ${border}` }} /><span className="text-xs text-[var(--text-muted)]">{label}</span></div>; }
-function SummaryRow({ label, value }) { return <div className="flex min-w-0 flex-col"><span className="text-2xl font-bold text-[var(--text)]">{value}</span><span className="text-xs leading-tight text-[var(--text-muted)]">{label}</span></div>; }
+function SummaryRow({ label, value, hint }) { return <div className="flex min-w-0 flex-col" title={hint}><span className="text-2xl font-bold text-[var(--text)]">{value}</span><span className="text-xs leading-tight text-[var(--text-muted)]">{label}</span></div>; }

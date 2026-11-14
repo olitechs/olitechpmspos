@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
-import { INITIAL_ZONES, INITIAL_STAFF, TABLE_CARD } from './mockData';
+import { TABLE_CARD } from '@/lib/posTables';
 import { useAuth } from '@/lib/AuthContext';
 import { posService } from '@/services/posService';
 import { getUnsettledReceiptSettings } from '@/services/settingsService';
@@ -12,29 +12,49 @@ import {
 
 const StoreContext = createContext(null);
 
-// Demo table sessions — replace with API when backend is ready.
-// Active POS sessions are loaded from Supabase; there are no seeded production sessions.
+// Active POS sessions are loaded from Supabase (public.pos_table_sessions);
+// there are no seeded production sessions.
 // Printers carry a `purposes` list (order / bill / receipt) and, when used as
 // an order printer, a `center` (Kitchen / Bar / Dessert / All) for routing.
 // `status` reflects a REAL connectivity result (see services/printerService)
 // — it is never set to CONNECTED just because a config was saved.
-function seedPrinters() {
-  return [
-    { id: 'p1', name: 'Front Desk Printer', connectionType: 'network', host: '192.168.1.50', port: '9100', agentUrl: '', status: PrinterStatus.NOT_CONFIGURED, lastChecked: null, lastError: null, purposes: ['bill', 'receipt'], center: '' },
-    { id: 'p2', name: 'Bar Printer', connectionType: 'bluetooth', host: '', port: '', agentUrl: '', status: PrinterStatus.NOT_CONFIGURED, lastChecked: null, lastError: null, purposes: ['order'], center: 'Bar' },
-    { id: 'p3', name: 'Kitchen Printer', connectionType: 'usb', host: '', port: '', agentUrl: '', status: PrinterStatus.NOT_CONFIGURED, lastChecked: null, lastError: null, purposes: ['order'], center: 'Kitchen' },
-  ];
-}
 
 let counter = 0;
 const newId = (prefix) => `${prefix}-${Date.now()}-${counter++}`;
 
 export function StoreProvider({ children }) {
-  const [zones, setZones] = useState(INITIAL_ZONES);
-  const [staff, setStaff] = useState(INITIAL_STAFF);
   const { user } = useAuth();
   const propertyId = user?.property?.id;
+
+  // The floor plan (zones, tables, tile positions) has no Supabase table yet, so
+  // the layout is configuration stored per property in this browser. Table
+  // sessions, printers and kitchen orders are persisted server-side.
+  const zonesKey = propertyId ? `olitech_pos_floor:${propertyId}` : null;
+  const [zones, setZones] = useState([]);
+  const [zonesFor, setZonesFor] = useState(null);
   const [sessions, setSessions] = useState({});
+
+  useEffect(() => {
+    if (!zonesKey) { setZones([]); setZonesFor(null); return; }
+    let stored = [];
+    try {
+      const parsed = JSON.parse(localStorage.getItem(zonesKey) || 'null');
+      if (Array.isArray(parsed)) stored = parsed;
+    } catch (error) {
+      console.error('[POS] floor layout could not be read; starting empty', error);
+    }
+    setZones(stored);
+    setZonesFor(propertyId);
+  }, [zonesKey, propertyId]);
+
+  useEffect(() => {
+    if (!zonesKey || zonesFor !== propertyId) return;
+    try {
+      localStorage.setItem(zonesKey, JSON.stringify(zones));
+    } catch (error) {
+      console.error('[POS] floor layout could not be saved', error);
+    }
+  }, [zones, zonesKey, zonesFor, propertyId]);
 
   useEffect(() => {
     let active = true;
@@ -327,17 +347,8 @@ export function StoreProvider({ children }) {
     setZones((prev) => prev.map((z) => (z.id === zoneId ? { ...z, tables: z.tables.map((t) => (t.id === tableId ? { ...t, x: Math.round(x), y: Math.round(y) } : t)) } : z)));
   }, []);
 
-  // Staff ops (Staff admin)
-  const addStaff = useCallback((name) => {
-    if (!name) return;
-    setStaff((prev) => [...prev, { id: newId('s'), name }]);
-  }, []);
-  const updateStaff = useCallback((id, name) => {
-    setStaff((prev) => prev.map((s) => (s.id === id ? { ...s, name } : s)));
-  }, []);
-  const removeStaff = useCallback((id) => {
-    setStaff((prev) => prev.filter((s) => s.id !== id));
-  }, []);
+  // Staff ops (Staff admin) — read-only here. Staff records, roles and PINs are
+  // owned by Supabase (`public.staff`) and managed on the Users & Roles screen.
 
   // Printer ops (Settings > Printers) — see services/printerService for the
   // actual connectivity/printing logic. This layer only owns state.
@@ -706,10 +717,9 @@ export function StoreProvider({ children }) {
   }, [orderPrinterForCenter, persistKitchenOrder]);
 
   const value = {
-    zones, staff, sessions, printers, saleReceipts, kitchenOrders,
+    zones, sessions, printers, saleReceipts, kitchenOrders,
     getSession, openTable, updateSessionTotals, setSessionOrderLines, setKotSentOrderLines, setUnsettled, closeTable,
     addZone, renameZone, removeZone, addTable, removeTable, updateTable, moveTable,
-    addStaff, updateStaff, removeStaff,
     addPrinter, updatePrinter, removePrinter, togglePurpose,
     testPrinterConnection, connectPrinter, disconnectPrinter, testPrint,
     orderPrinters, orderPrinterForCenter, billPrinter, billPrinterName, printBill, receiptPrinter, receiptPrinterName,
@@ -721,10 +731,9 @@ export function StoreProvider({ children }) {
 
 // Null-safe hook: degrades to an inert fallback if ever called without a provider.
 const FALLBACK = {
-  zones: [], staff: [], sessions: {}, printers: [], saleReceipts: [], kitchenOrders: [],
+  zones: [], sessions: {}, printers: [], saleReceipts: [], kitchenOrders: [],
   getSession: () => null, openTable: () => {}, updateSessionTotals: () => {}, setSessionOrderLines: () => {}, setKotSentOrderLines: () => Promise.resolve(null), setUnsettled: () => {}, closeTable: () => {},
   addZone: () => {}, renameZone: () => {}, removeZone: () => {}, addTable: () => {}, removeTable: () => {}, updateTable: () => {}, moveTable: () => {},
-  addStaff: () => {}, updateStaff: () => {}, removeStaff: () => {},
   addPrinter: () => {}, updatePrinter: () => {}, removePrinter: () => {}, togglePurpose: () => {},
   testPrinterConnection: async () => null, connectPrinter: async () => null, disconnectPrinter: () => {}, testPrint: async () => ({ ok: false, friendlyError: 'No provider' }),
   orderPrinters: () => [], orderPrinterForCenter: () => null, billPrinter: () => null, billPrinterName: () => null, printBill: async () => ({ ok: false, friendlyError: 'No provider' }), receiptPrinter: () => null, receiptPrinterName: () => null,

@@ -1,7 +1,7 @@
 import React,{useEffect,useMemo,useState}from'react';
 import{ArrowLeft,Plus,Printer,Receipt,RotateCcw,WalletCards,ArrowRightLeft}from'lucide-react';
 import{toast}from'sonner';
-import{tableLabel}from'@/data/mockData';
+import { tableLabel } from '@/lib/posTables';
 import{useStore}from'@/data/AppStore';
 import{useAuth}from'@/lib/AuthContext';
 import{pmsService}from'@/services/pmsService';

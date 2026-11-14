@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Search, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
-import { tableLabel } from '@/data/mockData';
+import { tableLabel } from '@/lib/posTables';
 
 export default function TopBar({ moduleLabel, activeTable }) {
   const { user } = useAuth();

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, Trash2, Bluetooth, Wifi, Usb, Cable, Monitor, Printer as PrinterIcon, Check, RefreshCw, AlertTriangle, Loader2 } from 'lucide-react';
 import { useStore } from '@/data/AppStore';
-import { CENTERS } from '@/data/mockData';
+import { PRODUCTION_CENTERS } from '@/lib/posProduction';
 import { PrinterStatus, validatePrinterConfig } from '@/services/printerService';
 import { NAVY, TEAL, TEAL_DARK, SURFACE, SURFACE2, BORDER, MUTED, DESTRUCTIVE, ERR } from '@/data/themePalette';
 
@@ -194,7 +194,7 @@ export default function Printers() {
               <label className="block text-xs font-semibold mb-1" style={{ color: NAVY }}>Routes to center</label>
               <select value={form.center} onChange={(e) => setForm({ ...form, center: e.target.value })}
                 className="px-3 py-2 rounded-lg text-sm outline-none" style={{ background: SURFACE2, border: `1px solid ${BORDER}`, color: NAVY }}>
-                {['All', ...CENTERS].map((c) => <option key={c} value={c}>{c}</option>)}
+                {['All', ...PRODUCTION_CENTERS].map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
           )}
@@ -274,7 +274,7 @@ export default function Printers() {
                     <label className="block text-xs font-semibold mb-1" style={{ color: NAVY }}>Routes to center</label>
                     <select value={p.center || 'All'} onChange={(e) => store.updatePrinter(p.id, { center: e.target.value })}
                       className="px-3 py-2 rounded-lg text-sm outline-none" style={{ background: SURFACE2, border: `1px solid ${BORDER}`, color: NAVY }}>
-                      {['All', ...CENTERS].map((c) => <option key={c} value={c}>{c}</option>)}
+                      {['All', ...PRODUCTION_CENTERS].map((c) => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </div>
                 )}

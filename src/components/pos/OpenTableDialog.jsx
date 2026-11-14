@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { tableLabel } from '@/data/mockData';
+import { tableLabel } from '@/lib/posTables';
 
-export default function OpenTableDialog({ open, table, staff, onCancel, onStart }) {
+export default function OpenTableDialog({ open, table, staff, staffError = '', onCancel, onStart }) {
   const [guests, setGuests] = useState('');
   const [waiter, setWaiter] = useState('');
   const [error, setError] = useState('');
@@ -77,7 +77,7 @@ export default function OpenTableDialog({ open, table, staff, onCancel, onStart 
           </select>
           <div id="waiter-guidance" className="mt-1 text-xs text-[var(--text-muted)]">Choose the staff member responsible for this table.</div>
           {staff.length === 0 && (
-            <div className="mt-2 rounded-lg border border-[var(--danger)] bg-[var(--danger-soft)] p-2 text-sm font-semibold text-[var(--danger-text)]">No waiters configured — add staff in the Staff screen first.</div>
+            <div className="mt-2 rounded-lg border border-[var(--danger)] bg-[var(--danger-soft)] p-2 text-sm font-semibold text-[var(--danger-text)]">{staffError || 'No staff are assigned to the Point of Sale yet — add them under Users & Roles first.'}</div>
           )}
 
           {error && <div role="alert" className="mt-3 rounded-lg border border-[var(--danger)] bg-[var(--danger-soft)] p-3 text-sm font-semibold text-[var(--danger-text)]">{error}</div>}

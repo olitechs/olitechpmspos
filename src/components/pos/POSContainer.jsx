@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowRightLeft, GitMerge, X, MoveRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStore } from '@/data/AppStore';
-import { tableLabel } from '@/data/mockData';
+import { tableLabel } from '@/lib/posTables';
 import AppHeader from '@/components/pos/AppHeader';
 import FloorPlan from '@/components/pos/FloorPlan';
 import OrderTaking from '@/components/pos/OrderTaking';
@@ -70,6 +70,7 @@ export default function POSContainer({ initialTab = 'floor' } = {}) {
 	const canCloseShift = Boolean(user?.isPlatformOwner || ['hotel_admin','super_admin','cashier','fb_manager','owner','admin','manager','property_manager','general_manager'].includes(posRole));
 	const propertyName = user?.property?.name || user?.property?.business_name || 'OliTechs PMS + POS';
 	const [posStaff, setPosStaff] = useState([]);
+	const [posStaffError, setPosStaffError] = useState('');
 	const [switchStaff, setSwitchStaff] = useState(null);
 	const [switchError, setSwitchError] = useState('');
 	const [posUnlocked, setPosUnlocked] = useState(false);
@@ -88,7 +89,18 @@ export default function POSContainer({ initialTab = 'floor' } = {}) {
 		setShiftLoadError('');
 		setShiftLoading(true);
 		setActiveTab('shifts');
-		authService.listStaff(propertyId, 'pos').then(setPosStaff).catch(() => {});
+		authService.listStaff(propertyId, 'pos')
+			.then((rows) => {
+				setPosStaff((rows || []).map((row) => ({ id: row.id, name: row.full_name })));
+				setPosStaffError('');
+			})
+			.catch((error) => {
+				// Without this list a table cannot be opened, so the dialog must say
+				// why instead of showing a bare "no waiters configured" message.
+				console.error('[POS] staff list could not be loaded', error);
+				setPosStaff([]);
+				setPosStaffError('The staff list could not be loaded. Check the connection and retry.');
+			});
 		shiftService.getCurrentShift(propertyId)
 			.then((shift) => {
 				setCurrentShift(shift);
@@ -470,7 +482,8 @@ export default function POSContainer({ initialTab = 'floor' } = {}) {
 			<OpenTableDialog
 				open={!!pendingTable}
 				table={pendingTable}
-				staff={store.staff}
+				staff={posStaff}
+				staffError={posStaffError}
 				onCancel={() => setPendingTable(null)}
 				onStart={handleStartTable}
 			/>

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { AlertTriangle, Search, X, ShieldCheck, ChevronLeft, Folder } from 'lucide-react';
-import { CATEGORIES, MENU_ITEMS, VAT_RATE, tableLabel, CATEGORY_CENTER } from '@/data/mockData';
+import { VAT_LABEL, addVat } from '@/lib/posTax';
+import { tableLabel } from '@/lib/posTables';
 import { useStore } from '@/data/AppStore';
 import PrintWarn from '@/components/pos/PrintWarn';
 import PinPad from '@/components/auth/PinPad';
@@ -32,7 +33,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
   const [pinStaff, setPinStaff] = useState(null);
   const [pinError, setPinError] = useState('');
   const [menuItems, setMenuItems] = useState([]);
-  const [menuCategories, setMenuCategories] = useState(CATEGORIES);
+  const [menuCategories, setMenuCategories] = useState([]);
   const [menuCategoryStyles, setMenuCategoryStyles] = useState({});
   const [menuLoading, setMenuLoading] = useState(true);
   const [menuError, setMenuError] = useState('');
@@ -66,7 +67,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
       setMenuCategories(configuredCategories.length ? configuredCategories : [...new Set(rows.map((p) => p.category || 'General'))]);
     } catch (error) {
       console.warn('[POS] menu catalogue unavailable', error);
-      setMenuItems([]); setMenuCategories(CATEGORIES);
+      setMenuItems([]); setMenuCategories([]);
       setMenuError('The menu could not be loaded. Check the connection and retry.');
     } finally {
       setMenuLoading(false);
@@ -115,7 +116,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
         qty: 1, price: unitPrice, basePrice: Number(item.price || 0),
         modifiers: selected.map((option) => ({ id: option.id, name: option.name, price_delta_minor: option.price_delta_minor })),
         modifierTotal, category: item.category || activeCategory,
-        center: item.center || CATEGORY_CENTER[activeCategory] || 'Kitchen'
+        center: item.center || 'Kitchen'
       }];
     });
   };
@@ -228,7 +229,12 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
       try { await store.setKotSentOrderLines(table.id, result?.kot_sent_order_lines || []); }
       catch (snapshotError) { console.error('[POS] voided order KOT snapshot could not be reconciled', snapshotError); setRemoveError('Item was voided. The void ticket will still print, but reconnect before sending more items.'); }
       const voidRow = result?.void;
-      const settings = await getPropertySettings(propertyId).catch(() => null);
+      const settings = await getPropertySettings(propertyId).catch((error) => {
+        // A missing settings row means "use the defaults", so the void slip
+        // still prints; record why the override could not be read.
+        console.warn('[POS] void-slip settings unavailable; using defaults', error);
+        return null;
+      });
       if (settings?.print_void_slips !== false && voidRow) {
         const [printers, assignments] = await Promise.all([getPrinters(propertyId), getAssignments(propertyId)]);
         const assignmentType = voidRow.category === 'drinks' ? 'void_drinks_orders' : 'void_food_orders';
@@ -298,8 +304,9 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
   };
 
   const subtotal = orderLines.reduce((s, l) => s + l.price * l.qty, 0);
-  const vat = Math.round(subtotal * VAT_RATE);
+  const vat = addVat(subtotal);
   const total = subtotal + vat;
+  const propertyName = user?.property?.name || user?.property?.business_name || '';
   const orderNumber = orderNumberProp || `ORD-${String(table.number).padStart(3, '0')}-${Math.floor(Date.now() / 10000) % 1000}`;
 
   // Order-routing warning: any production center in this order lacking a connected order printer.
@@ -310,13 +317,9 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
       if (assignedOrderDepartments.length) return !assignedOrderDepartments.includes(key);
       return !assignedOrderCenters.includes(/bar|drink/i.test(key) ? 'bar' : 'kitchen');
     });
-  const demoMenuItems = Object.entries(MENU_ITEMS).flatMap(([category, items]) => items.map((item) => ({
-    ...item, category, center: CATEGORY_CENTER[category] || 'Kitchen', stock: null, minimumStock: 0
-  })));
-  const allMenuItems = propertyId ? menuItems : demoMenuItems;
-  const categoryMenuItems = activeCategory ? allMenuItems.filter((item) => item.category === activeCategory) : allMenuItems;
+  const categoryMenuItems = activeCategory ? menuItems.filter((item) => item.category === activeCategory) : menuItems;
   const visibleMenuItems = filterPosMenuItems(categoryMenuItems, menuSearch);
-  const categoryCounts = allMenuItems.reduce((counts, item) => {
+  const categoryCounts = menuItems.reduce((counts, item) => {
     counts[item.category] = (counts[item.category] || 0) + 1;
     return counts;
   }, {});
@@ -348,7 +351,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
               <div className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">Order menu</div>
               <h2 className="truncate text-xl font-extrabold text-[var(--text)]">{activeCategory || 'Browse categories'}</h2>
               <p className="mt-0.5 text-xs text-[var(--text-muted)]">
-                {activeCategory ? `${categoryCounts[activeCategory] || 0} items in this category` : `${menuCategories.length} categories · ${allMenuItems.length} menu items`}
+                {activeCategory ? `${categoryCounts[activeCategory] || 0} items in this category` : `${menuCategories.length} categories · ${menuItems.length} menu items`}
               </p>
             </div>
           </div>
@@ -414,7 +417,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
             <div id="pos-product-grid" className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-1.5">
               {visibleMenuItems.map((item) => {
                 const inOrderQty = orderLines.reduce((qty, line) => qty + ((line.baseProductId || line.productId || line.id) === (item.productId || item.id) ? Number(line.qty || 0) : 0), 0);
-                const stockStatus = propertyId && menuItems.length > 0 ? getPosStockStatus(item.stock, item.minimumStock) : 'unknown';
+                const stockStatus = menuItems.length > 0 ? getPosStockStatus(item.stock, item.minimumStock) : 'unknown';
                 const outOfStock = stockStatus === 'out-of-stock';
                 const lowStock = stockStatus === 'low-stock';
                 return (
@@ -469,7 +472,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
         </button>
         <div id="pos-order-panel-content" className={orderPanelExpanded ? 'flex min-h-0 flex-1 flex-col' : 'hidden lg:flex lg:min-h-0 lg:flex-1 lg:flex-col'}>
         <div className="border-b border-dashed border-[var(--border)] px-4 py-3">
-          <div className="text-center text-xs font-bold uppercase tracking-widest text-[var(--primary)]">Visiwa Beach Resort</div>
+          <div className="text-center text-xs font-bold uppercase tracking-widest text-[var(--primary)]">{propertyName}</div>
           <div className="mt-1 text-center text-xs text-[var(--text-muted)]">{orderNumber}</div>
           <div className="mt-2 flex justify-center gap-4 text-xs text-[var(--text-muted)]">
             <span>Table <b className="text-[var(--text)]">{tableLabel(table)}</b></span>
@@ -505,7 +508,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
               <span>Subtotal</span><span className="font-mono">{subtotal.toLocaleString()}</span>
             </div>
             <div className="mb-2 flex justify-between text-sm text-[var(--text-muted)]">
-              <span>VAT 16%</span><span className="font-mono">{vat.toLocaleString()}</span>
+              <span>{VAT_LABEL}</span><span className="font-mono">{vat.toLocaleString()}</span>
             </div>
             <div className="flex justify-between text-base font-bold text-[var(--text)]">
               <span>TOTAL KES</span><span className="font-mono">{total.toLocaleString()}</span>

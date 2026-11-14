@@ -84,7 +84,7 @@ export default function CloseShiftModal({shift,onClosed,onClose}){
     }
     fresh.shift={...fresh.shift,status:'closed',closed_at:fresh.shift?.closed_at||new Date().toISOString(),counted_cash:Number(counted||0),cash_variance:Number(closed?.variance||0)};
     fresh.countedCash=Number(counted||0);fresh.variance=Number(closed?.variance||0);fresh.propertyId=propertyId;fresh.openedBy=fresh.openedBy||'Staff';fresh.closedBy=fresh.closedBy||staff?.full_name||user?.name||'Staff';
-    const settingsRow=await (async()=>{const {data}=await import('@/lib/supabaseClient').then(m=>m.supabase.from('property_settings').select('*').eq('property_id',propertyId).maybeSingle());return data||null;})().catch(()=>null);
+    const settingsRow=await (async()=>{const {data}=await import('@/lib/supabaseClient').then(m=>m.supabase.from('property_settings').select('*').eq('property_id',propertyId).maybeSingle());return data||null;})().catch((error)=>{console.warn('[POS] shift closing report settings unavailable; using defaults',error);return null;});
     fresh.settings=settingsRow;fresh.propertyName=propertyName;
     localStorage.removeItem(`olitech_pos_shift_${propertyId}`);
     setClosedReport(fresh);setPrintStatus('printing');toast.success('Shift closed successfully. Printing the closing report…');await sendClosedReport(fresh);

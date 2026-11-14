@@ -216,3 +216,14 @@ The owner explicitly authorized merging Phase 1 and starting Phase 2. Phase 2 is
 - `--primary-hover` resolves to `--brand-blue-hover` (`#174AC8`), not navy, so primary buttons keep a blue hover state.
 - Report and document theme identifiers are `navy`/`blue`; brand asset templates use `{{BRAND_NAVY}}`/`{{BRAND_BLUE}}`.
 - Known environment gap: `npm run test:reports` needs Poppler `pdfinfo` for its PDF assertions. The Excel assertions and the rest of the report tests pass; this is a missing local tool, not a repo defect.
+
+## 14. Phase 2 — Demo Data Removal — 2026-11-13
+
+- `src/data/mockData.js` is deleted. It seeded a fictional restaurant (menu, VAT, reservation count, zones, tables, waiters) and screens rendered those values when real data was absent, so an unconfigured or offline property looked configured.
+- Replacements: `src/lib/posTax.js` (VAT constant + label + `addVat`), `src/lib/posTables.js` (table labels/geometry), `src/lib/posProduction.js` (production centres). Menu, staff and arrivals now come only from Supabase services and show empty/loading/`n/a` states.
+- POS floor zones/tables have no database table. They are configuration stored per property in this browser under `olitech_pos_floor:<propertyId>`, gated by a `zonesFor` guard so one property cannot write into another's key. Table sessions, printers and kitchen orders remain server-side.
+- `StaffAdmin` is now a read-only view of active `public.staff` rows assigned to `pos`, with a link to Users & Roles. Store-level `staff`/`addStaff`/`updateStaff`/`removeStaff` were removed.
+- `src/data/platformData.js` keeps only `MODULES`; the illustrative dashboard/queue/guest exports were removed.
+- The hard-coded ticket header ("Visiwa Beach Resort") now renders the signed-in property name, and Floor Plan "Reservations Tonight" became a real "Arrivals Today" count.
+- Every remaining fallback is catalogued in `docs/FALLBACK_AUDIT.md`: invented data is not allowed; empty or explicitly-unknown states are. Silent catches are either documented as unable to act or now log with context.
+- Unknown facts (VAT source, multi-terminal floors, legal copy, support contact, `v6/` removal) are recorded in `docs/OPEN_QUESTIONS.md` instead of being guessed.
