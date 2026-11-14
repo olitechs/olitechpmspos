@@ -46,16 +46,25 @@ export function StoreProvider({ children }) {
       try {
         const remote = await posService.getFloorLayout(propertyId);
         if (!active) return;
-        if (remote && Array.isArray(remote.zones)) setZones(remote.zones);
-        else {
-          let legacy = [];
-          try { const parsed = JSON.parse(localStorage.getItem(zonesKey) || 'null'); if (Array.isArray(parsed)) legacy = parsed; }
-          catch (error) { console.warn('[POS] legacy floor backup could not be read', error); }
-          if (legacy.length) {
-            const saved = await posService.saveFloorLayout({ propertyId, zones: legacy });
-            if (!active) return;
-            setZones(Array.isArray(saved?.zones) ? saved.zones : legacy);
-          } else setZones([]);
+        const remoteZones = Array.isArray(remote?.zones) ? remote.zones : [];
+        let legacy = [];
+        try {
+          const parsed = JSON.parse(localStorage.getItem(zonesKey) || 'null');
+          if (Array.isArray(parsed)) legacy = parsed;
+        } catch (error) {
+          console.warn('[POS] legacy floor backup could not be read', error);
+        }
+
+        // An empty row can be left behind after an interrupted setup/import.
+        // Prefer a valid local backup in that case instead of hiding existing tables.
+        if (remoteZones.length) {
+          setZones(remoteZones);
+        } else if (legacy.length) {
+          const saved = await posService.saveFloorLayout({ propertyId, zones: legacy });
+          if (!active) return;
+          setZones(Array.isArray(saved?.zones) && saved.zones.length ? saved.zones : legacy);
+        } else {
+          setZones(remoteZones);
         }
         setZonesFor(propertyId); setFloorError('');
       } catch (error) {
