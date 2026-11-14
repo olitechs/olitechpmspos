@@ -69,10 +69,16 @@ export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrde
    const saleItems=resolvePosSaleStockMappings(orderLines,stockMappings.products,stockMappings.recipes,true);
    const saleIdempotencyKey=createPosSaleIdempotencyKey({propertyId,tableKey:table.id,orderNumber:stableOrderNumber});
    const unlinkedStockItems=saleItems.filter(item=>item.stock_tracking_status==='unlinked');
+   const incompleteRecipeItems=saleItems.filter(item=>item.stock_tracking_status==='recipe_incomplete');
    const invalidQuantityItems=saleItems.filter(item=>!Number.isFinite(Number(item.qty))||Number(item.qty)<=0);
    if(unlinkedStockItems.length){
     const names=[...new Set(unlinkedStockItems.map(item=>item.name||'Unnamed item'))];
     setError(`Cannot complete this sale: link these menu items to a Store product or active recipe first: ${names.join(', ')}.`);
+    return;
+   }
+   if(incompleteRecipeItems.length){
+    const names=[...new Set(incompleteRecipeItems.map(item=>item.name||'Unnamed item'))];
+    setError(`Cannot complete this sale: add valid Store ingredient products and quantities to these recipes first: ${names.join(', ')}.`);
     return;
    }
    if(invalidQuantityItems.length){
