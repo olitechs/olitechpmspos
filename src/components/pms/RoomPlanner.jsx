@@ -638,18 +638,12 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     .room-planner-date-input input{min-width:0;width:100%;height:34px;background:transparent;border:0;outline:0;color:var(--btn-neutral-fg);font-size:16px;font-family:inherit}
     .room-planner-month-select{font-family:inherit;font-weight:500}
     .room-planner-settings-panel{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 0;color:var(--cal-text);font-size:13px}
-     .room-planner-filter-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+    /* Filter row: one definition only. The former duplicate block was dead
+       weight; merged values keep the effective 44px control height. */
+    .room-planner-filter-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
     .room-planner-search{height:36px;min-width:230px;flex:1 1 250px;display:flex;align-items:center;gap:8px;padding:0 10px;border:1px solid var(--btn-neutral-bd);border-radius:6px;background:var(--surface);color:var(--muted)}
     .room-planner-search input{width:100%;min-width:0;border:0;outline:0;background:transparent;color:var(--text);font:inherit;font-size:13px}
-     .room-planner-filter{height:44px;min-height:44px;min-width:0;max-width:none;flex:1 1 150px;padding:0 9px;border:1px solid var(--btn-neutral-bd);border-radius:6px;background:var(--surface);color:var(--text);font-size:12px}
-    .room-planner-filter-count{margin-left:auto;color:var(--muted);font-size:11px;font-weight:600}
-    .room-planner-detail{position:absolute;right:16px;top:16px;bottom:16px;z-index:80;width:min(420px,calc(100vw - 32px));overflow:auto;border:1px solid var(--border);border-radius:14px;background:var(--surface);box-shadow:0 18px 50px color-mix(in srgb,var(--deep-lagoon) 22%,transparent)}
-    .room-planner-detail-action{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border);border-radius:8px;padding:9px 11px;font-size:12px;font-weight:600;color:var(--text);background:var(--surface)}
-    @media(max-width:600px){.room-planner-filter-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.room-planner-search{grid-column:span 2;min-width:0}.room-planner-filter{width:100%;max-width:none}.room-planner-filter-count{grid-column:span 2;margin-left:0}}
-    .room-planner-filter-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-    .room-planner-search{height:36px;min-width:230px;flex:1 1 250px;display:flex;align-items:center;gap:8px;padding:0 10px;border:1px solid var(--btn-neutral-bd);border-radius:6px;background:var(--surface);color:var(--muted)}
-    .room-planner-search input{width:100%;min-width:0;border:0;outline:0;background:transparent;color:var(--text);font:inherit;font-size:13px}
-    .room-planner-filter{height:36px;min-width:145px;max-width:220px;padding:0 9px;border:1px solid var(--btn-neutral-bd);border-radius:6px;background:var(--surface);color:var(--text);font-size:12px}
+    .room-planner-filter{height:44px;min-height:44px;min-width:145px;max-width:220px;flex:1 1 150px;padding:0 9px;border:1px solid var(--btn-neutral-bd);border-radius:6px;background:var(--surface);color:var(--text);font-size:12px}
     .room-planner-filter-count{margin-left:auto;color:var(--muted);font-size:11px;font-weight:600}
     .room-planner-detail{position:absolute;right:16px;top:16px;bottom:16px;z-index:80;width:min(420px,calc(100vw - 32px));overflow:auto;border:1px solid var(--border);border-radius:14px;background:var(--surface);box-shadow:0 18px 50px color-mix(in srgb,var(--deep-lagoon) 22%,transparent)}
     .room-planner-detail-action{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border);border-radius:8px;padding:9px 11px;font-size:12px;font-weight:600;color:var(--text);background:var(--surface)}
