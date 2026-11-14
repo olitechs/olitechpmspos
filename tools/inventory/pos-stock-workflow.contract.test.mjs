@@ -87,5 +87,13 @@ test('floor, payment and shift-report screens expose meaningful waiting, empty o
   assert.match(shiftReport, /role="alert"/);
 });
 
+test('active POS sessions missing from floor configuration are recovered as visible floor tables', () => {
+  assert.match(floorPlan, /function buildFloorZones\\(configuredZones, sessions\\)/);
+  assert.match(floorPlan, /session && session\\.status !== 'closed'/);
+  assert.match(floorPlan, /id: tableKey/);
+  assert.match(floorPlan, /Active tables \\(recovered\\)/);
+  assert.match(floorPlan, /buildFloorZones\\(store\\.zones, store\\.sessions\\)/);
+});
+
 // This is an application/SQL-source contract suite. Database behavior still
 // needs the repository's authorized local/disposable runtime fixtures.
