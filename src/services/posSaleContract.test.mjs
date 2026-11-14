@@ -4,6 +4,7 @@ import {
   buildPosSaleItems,
   createPosSaleIdempotencyKey,
   isProductUuid,
+  resolvePosSaleStockMappings,
 } from './posSaleContract.js';
 
 const PRODUCT_ID = '5e5f1b2c-7f3b-4c8e-9a15-3c41f52e2d01';
@@ -61,4 +62,37 @@ test('product UUID validation excludes malformed and empty catalog identifiers',
   assert.equal(isProductUuid(PRODUCT_ID), true);
   assert.equal(isProductUuid('menu-item-1'), false);
   assert.equal(isProductUuid(''), false);
+});
+
+
+test('stock mapping resolves valid product IDs, unique legacy names and active recipes', () => {
+  const products = [
+    { id: PRODUCT_ID, name: 'Grilled fish' },
+    { id: '6e5f1b2c-7f3b-4c8e-9a15-3c41f52e2d02', name: 'Fresh juice' },
+  ];
+  const recipes = [{ menu_item_name: 'Coconut fish curry', active: true }];
+  const items = resolvePosSaleStockMappings([
+    { id: 'direct', productId: PRODUCT_ID, name: 'Grilled fish', qty: 1 },
+    { id: 'legacy', productId: 'legacy-menu-2', name: 'Fresh juice', qty: 2 },
+    { id: 'recipe', productId: 'legacy-menu-3', name: 'Coconut Fish Curry', qty: 1 },
+  ], products, recipes);
+  assert.deepEqual(items.map((item) => item.stock_tracking_status), ['product', 'product', 'recipe']);
+  assert.equal(items[1].product_id, products[1].id);
+  assert.equal(items[2].product_id, null);
+});
+
+test('stock mapping refuses missing and ambiguous Store product matches', () => {
+  const items = resolvePosSaleStockMappings([
+    { id: 'missing', productId: 'legacy-1', name: 'Unknown dish', qty: 1 },
+    { id: 'ambiguous', productId: 'legacy-2', name: 'Water', qty: 1 },
+  ], [
+    { id: PRODUCT_ID, name: 'Water' },
+    { id: '6e5f1b2c-7f3b-4c8e-9a15-3c41f52e2d02', name: 'Water' },
+  ], []);
+  assert.deepEqual(items.map((item) => item.stock_tracking_status), ['unlinked', 'unlinked']);
+});
+
+test('stock mapping lookup failure marks legacy lines unverified', () => {
+  const [item] = resolvePosSaleStockMappings([{ id: 'legacy', name: 'Unknown dish', qty: 1 }], [], [], false);
+  assert.equal(item.stock_tracking_status, 'unverified');
 });
