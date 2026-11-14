@@ -10,6 +10,7 @@ const shiftReport = await read('../../src/pages/ShiftReport.jsx');
 const pmsService = await read('../../src/services/pmsService.js');
 const posSaleContract = await read('../../src/services/posSaleContract.js');
 const storekeeper = await read('../../src/pages/StorekeeperDashboard.jsx');
+const storekeeperCore = await read('../../src/services/storekeeperDashboardCore.js');
 const inventory = await read('../../src/components/modules/Inventory.jsx');
 const ledger = await read('../../supabase/migrations/20261008120000_phase4_authoritative_inventory_ledger.sql');
 const posAuthority = await read('../../supabase/migrations/20261008160000_phase4_pos_inventory_authority.sql');
@@ -73,7 +74,7 @@ test('POS settlement verifies every Store mapping and blocks unlinked or invalid
 
 test('Storekeeper consumption reporting includes direct POS product movements', () => {
   assert.match(storekeeper, /isStockConsumptionMovement/);
-  assert.match(storekeeper, /pos_sale/);
+  assert.match(storekeeperCore, /'pos_sale'/);
 });
 
 test('POS product grid supports search and explicit catalog loading, empty, error and retry states', () => {
