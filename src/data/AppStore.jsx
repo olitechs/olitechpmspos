@@ -33,6 +33,8 @@ export function StoreProvider({ children }) {
   const [zonesFor, setZonesFor] = useState(null);
   const [floorLoading, setFloorLoading] = useState(true);
   const [floorError, setFloorError] = useState('');
+  // Shared active table sessions are consumed by the effects and callbacks below.
+  const [sessions, setSessions] = useState({});
   const floorSaveTimer = useRef(null);
   const floorWriteQueue = useRef(Promise.resolve());
 
