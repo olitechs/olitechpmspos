@@ -680,7 +680,9 @@ export function buildShiftReportDefinition(report, { propertyName, generatedBy }
   const summaryRows = [
     { metric: 'Opening cash', amount: money(shift.opening_cash), count: 1 },
     ...paymentRows.map((row) => ({ metric: row.method, amount: row.net_amount, count: row.transactions })),
-    { metric: 'Gross sales', amount: money(report?.grossSales), count: toNumber(report?.totalTransactions) },\n    { metric: 'Split receipts', amount: money(splitReconciliation.receiptTotal), count: toNumber(splitReconciliation.splitReceiptCount) },\n    { metric: 'Split tender exceptions', amount: money(splitReconciliation.unallocatedOrVariance), count: toNumber(splitReconciliation.exceptionCount) },
+    { metric: 'Gross sales', amount: money(report?.grossSales), count: toNumber(report?.totalTransactions) },
+    { metric: 'Split receipts', amount: money(splitReconciliation.receiptTotal), count: toNumber(splitReconciliation.splitReceiptCount) },
+    { metric: 'Split tender exceptions', amount: money(splitReconciliation.unallocatedOrVariance), count: toNumber(splitReconciliation.exceptionCount) },
     { metric: 'Refunds', amount: money(report?.refundsTotal), count: '' },
     { metric: 'Voided value', amount: money(report?.voidedValue), count: '' },
     { metric: 'Net sales', amount: money(report?.totalSales), count: toNumber(report?.totalTransactions) },
