@@ -15,7 +15,7 @@ import StorekeeperAlertDetails from '@/components/store/StorekeeperAlertDetails'
 import { getSessionStaff, normalizeStaffRole } from '@/services/authService';
 import { storekeeperDashboardService } from '@/services/storekeeperDashboardService';
 import {
-  departmentComparison, filterProducts, formatBusinessDate, getPeriodRange,
+  departmentComparison, estimateMovementValue, filterProducts, formatBusinessDate, getPeriodRange,
   getStockLocations, makeSalesConsumptionSeries,
   matchesDepartment, matchesLocation, normalizeDepartment, productDepartment, isStockConsumptionMovement,
   summarizeCount, summarizeSalesItems, summarizeStock, summarizeWastage,
@@ -186,8 +186,11 @@ export default function StorekeeperDashboard() {
   const inTransit = (data?.transfers || []).filter((transfer) => ['pending', 'in_transit', 'awaiting_confirmation', 'sent', 'submitted'].includes(String(transfer.status || '').toLowerCase()));
   const todayIssueValue = (data?.movements || []).filter((movement) => {
     const product = movement.product || products.find((entry) => entry.id === movement.product_id);
-    return formatBusinessDate(movement.created_at) === today && ['usage', 'pos_recipe'].includes(String(movement.source_type || '').toLowerCase()) && matchesDepartment(product, department) && matchesLocation(product, location);
-  }).reduce((sum, movement) => sum + Math.abs(Number(movement.qty) || 0) * (Number(movement.product?.cost_price) || 0), 0);
+    return formatBusinessDate(movement.created_at) === today && isStockConsumptionMovement(movement) && matchesDepartment(product, department) && matchesLocation(product, location);
+  }).reduce((sum, movement) => {
+    const product = products.find((entry) => entry.id === movement.product_id);
+    return sum + (estimateMovementValue({ ...movement, product: { ...product, ...movement.product } }) || 0);
+  }, 0);
   const todayWasteValue = (data?.wastageToday || []).reduce((sum, row) => sum + (Number(row.quantity) || 0) * (Number(row.product?.cost_price) || 0), 0);
   const salesToday = Number(data?.salesToday?.sales?.pos_net);
   const salesWeek = Number(data?.salesWeek?.sales?.pos_net);
