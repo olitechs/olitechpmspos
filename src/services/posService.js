@@ -1,6 +1,43 @@
 import { supabase } from '@/lib/supabaseClient';
 
 export const posService = {
+  async getFloorLayout(propertyId) {
+    const { data, error } = await supabase
+      .from('pos_floor_layouts')
+      .select('zones, updated_at')
+      .eq('property_id', propertyId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data || null;
+  },
+
+  async saveFloorLayout({ propertyId, zones }) {
+    const { data, error } = await supabase
+      .from('pos_floor_layouts')
+      .upsert({ property_id: propertyId, zones, updated_at: new Date().toISOString() }, { onConflict: 'property_id' })
+      .select('zones, updated_at')
+      .single();
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  subscribeToFloorLayout(propertyId, { onChange } = {}) {
+    if (!propertyId || typeof onChange !== 'function') return null;
+    return supabase
+      .channel(`pos-floor-layout:${propertyId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'pos_floor_layouts',
+        filter: `property_id=eq.${propertyId}`,
+      }, (payload) => {
+        if (payload.new?.zones && Array.isArray(payload.new.zones)) onChange(payload.new.zones);
+      })
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR') console.error('[POS] floor layout realtime channel failed');
+      });
+  },
+
   async listPrinters(propertyId) {
     const { data, error } = await supabase.rpc('fn_list_pos_printers', {
       p_property_id: propertyId,

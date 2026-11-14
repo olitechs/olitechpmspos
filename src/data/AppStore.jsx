@@ -27,36 +27,59 @@ export function StoreProvider({ children }) {
   const { user } = useAuth();
   const propertyId = user?.property?.id;
 
-  // The floor plan (zones, tables, tile positions) has no Supabase table yet, so
-  // the layout is configuration stored per property in this browser. Table
-  // sessions, printers and kitchen orders are persisted server-side.
+  // Supabase is authoritative; localStorage remains only as a one-time import/backup.
   const zonesKey = propertyId ? `olitech_pos_floor:${propertyId}` : null;
   const [zones, setZones] = useState([]);
   const [zonesFor, setZonesFor] = useState(null);
-  const [sessions, setSessions] = useState({});
+  const [floorLoading, setFloorLoading] = useState(true);
+  const [floorError, setFloorError] = useState('');
+  const floorSaveTimer = useRef(null);
+  const floorWriteQueue = useRef(Promise.resolve());
 
   useEffect(() => {
-    if (!zonesKey) { setZones([]); setZonesFor(null); return; }
-    let stored = [];
-    try {
-      const parsed = JSON.parse(localStorage.getItem(zonesKey) || 'null');
-      if (Array.isArray(parsed)) stored = parsed;
-    } catch (error) {
-      console.error('[POS] floor layout could not be read; starting empty', error);
-    }
-    setZones(stored);
-    setZonesFor(propertyId);
-  }, [zonesKey, propertyId]);
+    let active = true;
+    if (!propertyId) { setZones([]); setZonesFor(null); setFloorLoading(false); setFloorError(''); return undefined; }
+    setFloorLoading(true); setFloorError(''); setZonesFor(null);
+    (async () => {
+      try {
+        const remote = await posService.getFloorLayout(propertyId);
+        if (!active) return;
+        if (remote && Array.isArray(remote.zones)) setZones(remote.zones);
+        else {
+          let legacy = [];
+          try { const parsed = JSON.parse(localStorage.getItem(zonesKey) || 'null'); if (Array.isArray(parsed)) legacy = parsed; }
+          catch (error) { console.warn('[POS] legacy floor backup could not be read', error); }
+          if (legacy.length) {
+            const saved = await posService.saveFloorLayout({ propertyId, zones: legacy });
+            if (!active) return;
+            setZones(Array.isArray(saved?.zones) ? saved.zones : legacy);
+          } else setZones([]);
+        }
+        setZonesFor(propertyId); setFloorError('');
+      } catch (error) {
+        console.error('[POS] shared floor configuration could not be loaded', error);
+        if (active) setFloorError(error?.message || 'Floor configuration could not be loaded.');
+      } finally { if (active) setFloorLoading(false); }
+    })();
+    const channel = posService.subscribeToFloorLayout(propertyId, { onChange: (remoteZones) => {
+      if (active) { setZones(remoteZones); setZonesFor(propertyId); }
+    } });
+    return () => { active = false; channel?.unsubscribe?.(); if (floorSaveTimer.current) clearTimeout(floorSaveTimer.current); };
+  }, [propertyId]);
 
   useEffect(() => {
-    if (!zonesKey || zonesFor !== propertyId) return;
-    try {
-      localStorage.setItem(zonesKey, JSON.stringify(zones));
-    } catch (error) {
-      console.error('[POS] floor layout could not be saved', error);
-    }
-  }, [zones, zonesKey, zonesFor, propertyId]);
-
+    if (!propertyId || zonesFor !== propertyId || floorLoading) return undefined;
+    if (floorSaveTimer.current) clearTimeout(floorSaveTimer.current);
+    floorSaveTimer.current = setTimeout(() => {
+      const snapshot = zones;
+      try { localStorage.setItem(zonesKey, JSON.stringify(snapshot)); } catch { /* best-effort backup */ }
+      floorWriteQueue.current = floorWriteQueue.current.catch(() => null)
+        .then(() => posService.saveFloorLayout({ propertyId, zones: snapshot }))
+        .then(() => setFloorError(''))
+        .catch((error) => { console.error('[POS] shared floor configuration could not be saved', error); setFloorError(error?.message || 'Floor configuration could not be saved.'); });
+    }, 400);
+    return () => { if (floorSaveTimer.current) clearTimeout(floorSaveTimer.current); };
+  }, [zones, zonesKey, zonesFor, propertyId, floorLoading]);
   useEffect(() => {
     let active = true;
     if (!propertyId) { setSessions({}); return undefined; }
@@ -313,50 +336,46 @@ export function StoreProvider({ children }) {
     });
   }, [propertyId]);
 
-  // Zone ops (Floor Setup)
+  // Stable keys are preserved because live sessions and KOTs reference them.
   const addZone = useCallback((name) => {
-    setZones((prev) => [...prev, { id: newId('z'), name: name || 'New Zone', tables: [] }]);
+    const clean = String(name || '').trim(); if (!clean) return false;
+    setZones((prev) => [...prev, { id: newId('z'), name: clean, tables: [] }]); return true;
   }, []);
   const renameZone = useCallback((zoneId, name) => {
-    setZones((prev) => prev.map((z) => (z.id === zoneId ? { ...z, name } : z)));
+    const clean = String(name || '').trim(); if (!clean) return false;
+    setZones((prev) => prev.map((z) => z.id === zoneId ? { ...z, name: clean } : z)); return true;
   }, []);
   const removeZone = useCallback((zoneId) => {
-    setZones((prev) => prev.filter((z) => z.id !== zoneId));
-  }, []);
-  const addTable = useCallback((zoneId) => {
-    setZones((prev) => prev.map((z) => {
-      if (z.id !== zoneId) return z;
-      const nextNo = z.tables.reduce((m, t) => Math.max(m, t.number), 0) + 1;
-      const col = z.tables.length % 5;
-      const row = Math.floor(z.tables.length / 5);
-      const t = {
-        id: newId(zoneId),
-        number: nextNo,
-        seats: 4,
-        x: TABLE_CARD.pad + col * TABLE_CARD.stepX,
-        y: TABLE_CARD.pad + row * TABLE_CARD.stepY,
-        w: TABLE_CARD.w,
-        h: TABLE_CARD.h,
-      };
-      return { ...z, tables: [...z.tables, t] };
-    }));
-  }, []);
+    const zone = zones.find((z) => z.id === zoneId);
+    if (!zone || zone.tables.some((t) => sessions[t.id] && sessions[t.id].status !== 'closed')) return false;
+    setZones((prev) => prev.filter((z) => z.id !== zoneId)); return true;
+  }, [zones, sessions]);
+  const addTable = useCallback((zoneId, options = {}) => {
+    const zone = zones.find((z) => z.id === zoneId); if (!zone) return false;
+    const next = zone.tables.reduce((m, t) => Math.max(m, Number(t.number) || 0), 0) + 1;
+    const number = String(options.number ?? next).trim();
+    const seats = Math.max(1, Math.min(50, Number(options.seats) || 4));
+    if (!number || zone.tables.some((t) => String(t.number) === number)) return false;
+    const col = zone.tables.length % 5, row = Math.floor(zone.tables.length / 5);
+    const table = { id: newId(zoneId), number, seats, x: TABLE_CARD.pad + col * TABLE_CARD.stepX, y: TABLE_CARD.pad + row * TABLE_CARD.stepY, w: TABLE_CARD.w, h: TABLE_CARD.h };
+    setZones((prev) => prev.map((z) => z.id === zoneId ? { ...z, tables: [...z.tables, table] } : z)); return table.id;
+  }, [zones]);
   const removeTable = useCallback((zoneId, tableId) => {
-    setZones((prev) => prev.map((z) => (z.id === zoneId ? { ...z, tables: z.tables.filter((t) => t.id !== tableId) } : z)));
-    setSessions((prev) => {
-      if (!prev[tableId]) return prev;
-      const copy = { ...prev };
-      delete copy[tableId];
-      return copy;
-    });
-  }, []);
+    if (sessions[tableId] && sessions[tableId].status !== 'closed') return false;
+    setZones((prev) => prev.map((z) => z.id === zoneId ? { ...z, tables: z.tables.filter((t) => t.id !== tableId) } : z)); return true;
+  }, [sessions]);
   const updateTable = useCallback((zoneId, tableId, patch) => {
-    setZones((prev) => prev.map((z) => (z.id === zoneId ? { ...z, tables: z.tables.map((t) => (t.id === tableId ? { ...t, ...patch } : t)) } : z)));
-  }, []);
+    const zone = zones.find((z) => z.id === zoneId), current = zone?.tables.find((t) => t.id === tableId);
+    if (!current) return false;
+    const number = patch.number === undefined ? current.number : String(patch.number).trim();
+    const seats = patch.seats === undefined ? current.seats : Math.max(1, Math.min(50, Number(patch.seats) || 1));
+    if (sessions[tableId] && sessions[tableId].status !== 'closed' && String(number) !== String(current.number)) return false;
+    if (!String(number).trim() || zone.tables.some((t) => t.id !== tableId && String(t.number) === String(number))) return false;
+    setZones((prev) => prev.map((z) => z.id === zoneId ? { ...z, tables: z.tables.map((t) => t.id === tableId ? { ...t, ...patch, number, seats } : t) } : z)); return true;
+  }, [zones, sessions]);
   const moveTable = useCallback((zoneId, tableId, x, y) => {
-    setZones((prev) => prev.map((z) => (z.id === zoneId ? { ...z, tables: z.tables.map((t) => (t.id === tableId ? { ...t, x: Math.round(x), y: Math.round(y) } : t)) } : z)));
+    setZones((prev) => prev.map((z) => z.id === zoneId ? { ...z, tables: z.tables.map((t) => t.id === tableId ? { ...t, x: Math.round(x), y: Math.round(y) } : t) } : z));
   }, []);
-
   // Staff ops (Staff admin) — read-only here. Staff records, roles and PINs are
   // owned by Supabase (`public.staff`) and managed on the Users & Roles screen.
 
@@ -727,7 +746,7 @@ export function StoreProvider({ children }) {
   }, [orderPrinterForCenter, persistKitchenOrder]);
 
   const value = {
-    zones, sessions, printers, saleReceipts, kitchenOrders,
+    zones, floorLoading, floorError, sessions, printers, saleReceipts, kitchenOrders,
     getSession, openTable, updateSessionTotals, setSessionOrderLines, setKotSentOrderLines, setUnsettled, closeTable,
     addZone, renameZone, removeZone, addTable, removeTable, updateTable, moveTable,
     addPrinter, updatePrinter, removePrinter, togglePurpose,
@@ -741,7 +760,7 @@ export function StoreProvider({ children }) {
 
 // Null-safe hook: degrades to an inert fallback if ever called without a provider.
 const FALLBACK = {
-  zones: [], sessions: {}, printers: [], saleReceipts: [], kitchenOrders: [],
+  zones: [], floorLoading: false, floorError: '', sessions: {}, printers: [], saleReceipts: [], kitchenOrders: [],
   getSession: () => null, openTable: () => {}, updateSessionTotals: () => {}, setSessionOrderLines: () => {}, setKotSentOrderLines: () => Promise.resolve(null), setUnsettled: () => {}, closeTable: () => {},
   addZone: () => {}, renameZone: () => {}, removeZone: () => {}, addTable: () => {}, removeTable: () => {}, updateTable: () => {}, moveTable: () => {},
   addPrinter: () => {}, updatePrinter: () => {}, removePrinter: () => {}, togglePurpose: () => {},

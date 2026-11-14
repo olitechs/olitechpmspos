@@ -6,7 +6,6 @@ import { pmsService } from '@/services/pmsService';
 import { tableLabel } from '@/lib/posTables';
 
 const SHAPE_KEY = 'tableShapeMode';
-const POSITION_KEY = 'tableLayoutPositions';
 const SHAPES = {
   square: { width: 124, height: 112, radius: 12 },
   circle: { width: 124, height: 124, radius: '50%' },
@@ -89,7 +88,6 @@ export default function FloorPlan({ onTableSelect }) {
   const [activeZoneId, setActiveZoneId] = useState(store.zones[0]?.id);
   const [shape, setShape] = useState(() => safeRead(SHAPE_KEY, 'square'));
   const [designMode, setDesignMode] = useState(false);
-  const [positions, setPositions] = useState(() => safeRead(POSITION_KEY, {}));
   const [now, setNow] = useState(() => Date.now());
   const [arrivalsToday, setArrivalsToday] = useState(null);
   const [arrivalsFailed, setArrivalsFailed] = useState(false);
@@ -122,7 +120,6 @@ export default function FloorPlan({ onTableSelect }) {
   }, [propertyId]);
 
   useEffect(() => { localStorage.setItem(SHAPE_KEY, shape); }, [shape]);
-  useEffect(() => { localStorage.setItem(POSITION_KEY, JSON.stringify(positions)); }, [positions]);
   useEffect(() => {
     const ticker = window.setInterval(() => setNow(Date.now()), 30000);
     return () => window.clearInterval(ticker);
@@ -130,21 +127,40 @@ export default function FloorPlan({ onTableSelect }) {
 
   const displayTables = useMemo(() => (zone?.tables || []).map((t) => ({
     ...t,
-    ...(positions[t.id] || {}),
     zoneId: zone?.id,
     zoneName: zone?.name,
-  })), [zone, positions]);
+  })), [zone]);
 
   const moveTable = (id, x, y) => {
-    setPositions((prev) => ({ ...prev, [id]: { x: Math.round(x), y: Math.round(y) } }));
     const t = zone?.tables.find((item) => item.id === id);
     if (t && store.moveTable) store.moveTable(zone.id, id, x, y);
   };
 
   const saveLayout = () => {
-    try { localStorage.setItem(POSITION_KEY, JSON.stringify(positions)); } catch { /* ignore storage errors */ }
     setDesignMode(false);
   };
+
+  if (store.floorLoading) return (
+    <div role="status" aria-live="polite" className="flex h-full min-h-48 flex-col justify-center gap-4 bg-[var(--canvas)] p-6">
+      <div className="mx-auto w-full max-w-xl space-y-3">
+        <div className="h-10 animate-pulse rounded-xl bg-[var(--surface)]" />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {[1, 2, 3, 4, 5, 6].map((item) => <div key={item} className="h-28 animate-pulse rounded-xl border border-[var(--border)] bg-[var(--surface)]" />)}
+        </div>
+        <p className="text-center text-sm text-[var(--text-muted)]">Loading shared floor zones and tables…</p>
+      </div>
+    </div>
+  );
+
+  if (store.floorError) return (
+    <div role="alert" className="flex h-full min-h-48 items-center justify-center bg-[var(--canvas)] p-6 text-center">
+      <div className="max-w-md rounded-2xl border border-[var(--danger)] bg-[var(--surface)] p-6">
+        <h2 className="text-lg font-black text-[var(--text)]">Floor configuration unavailable</h2>
+        <p className="mt-2 text-sm text-[var(--text-muted)]">{store.floorError}</p>
+        <p className="mt-2 text-xs text-[var(--text-muted)]">No table sessions or orders have been modified.</p>
+      </div>
+    </div>
+  );
 
   if (!zone) return (
     <div role="status" aria-live="polite" className="flex h-full min-h-48 items-center justify-center bg-[var(--canvas)] p-6 text-center">
