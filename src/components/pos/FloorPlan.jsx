@@ -6,7 +6,6 @@ import { pmsService } from '@/services/pmsService';
 import { tableLabel } from '@/lib/posTables';
 
 const SHAPE_KEY = 'tableShapeMode';
-const POSITION_KEY = 'tableLayoutPositions';
 const SHAPES = {
   square: { width: 124, height: 112, radius: 12 },
   circle: { width: 124, height: 124, radius: '50%' },
