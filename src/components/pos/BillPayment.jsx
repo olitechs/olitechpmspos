@@ -47,6 +47,11 @@ export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrde
   if(!orderLines.length){setError('There are no items on this bill.');return}
   if(paymentMethod==='room'&&!chargeReservationId){setError('Select the guest/room to charge.');return}if(paymentMethod==='room'&&room&&!window.confirm('Confirm room charge?\nGuest: '+(room.guest_name||'Guest')+'\nRoom: '+(room.room_number||'—')+'\nReservation: '+room.id+'\nAmount: '+fmt(total)))return;if(paymentMethod==='split'&&(Math.round(splitTotal*100)!==Math.round(total*100)||splitPayments.some(p=>p.method==='room'&&Number(p.amount)>0&&!p.reservationId))){setError(splitPayments.some(p=>p.method==='room'&&Number(p.amount)>0&&!p.reservationId)?'Select a checked-in guest for every room-charge portion.':`Split payments must equal ${fmt(total)}.`);return}
   setBusy(true);setError('');
+  let saleRecorded=false;
+  let released=false;
+  // Releasing the table is a separate concern from printing. Once the sale is in
+  // the ledger the floor must never keep showing a paid table as occupied.
+  const releaseTable=()=>{if(released)return;released=true;onConfirmPayment();};
   try{
    const currentShift=await pmsService.getOpenCashierShift(propertyId);
    if(!currentShift?.id){setError('No open POS shift. Open a shift before taking payments.');return;}
@@ -88,14 +93,25 @@ export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrde
    const unlinkedStockItems=saleItems.filter(item=>item.stock_tracking_status==='unlinked');
    const unverifiedStockItems=saleItems.filter(item=>item.stock_tracking_status==='unverified');
    await pmsService.recordPosSale({propertyId,tableNumber:tableLabel(table),orderNumber:stableOrderNumber,items:saleItems,subtotal,discountAmount:discount,discountId:selectedDiscount?.id || null,discountName:selectedDiscount?.name || null,vat,total,paymentMethod,reservationId:paymentMethod==='room'?chargeReservationId:null,shiftId:currentShift.id,waiter,covers:guestCovers,idempotencyKey:saleIdempotencyKey,vatSnapshot,paymentAllocations:paymentMethod==='split'?splitPayments.filter(p=>Number(p.amount)>0).map(p=>({method:p.method,amount:Number(p.amount),reservation_id:p.method==='room'?p.reservationId||null:null})):null});
+   // The sale and its payment allocations are now committed. Everything after
+   // this point is presentation/printing and must not report the payment as lost.
+   saleRecorded=true;
    const methodLabel=paymentMethod==='split'?'Split Payment':PAYMENT_METHODS.find(x=>x.id===paymentMethod)?.label||paymentMethod;
    await store.completeSale({table,orderLines,total,method:methodLabel,receiptText:'',skipPrint:true});
    const voidRows=propertyId?await pmsService.listVoidedItems(propertyId).catch(()=>[]):[];
    const tableVoids=voidRows.filter(v=>String(v.table_number||'')===String(tableLabel(table)) && String(v.order_number||'')===String(stableOrderNumber));
-   const result=await printReceipt('RECEIPT',{propertyId,orderNumber:stableOrderNumber,checkNo:stableOrderNumber,table:tableLabel(table),waiter,covers:guestCovers,items:orderLines,total,currency:'KES',paymentMethod:methodLabel,room:room?.room_number,voidedCount:tableVoids.length,voidSlipNumber:tableVoids[0]?.void_number||null});
+   let result;
+   try{
+    result=await printReceipt('RECEIPT',{propertyId,orderNumber:stableOrderNumber,checkNo:stableOrderNumber,table:tableLabel(table),waiter,covers:guestCovers,items:orderLines,total,currency:'KES',paymentMethod:methodLabel,room:room?.room_number,voidedCount:tableVoids.length,voidSlipNumber:tableVoids[0]?.void_number||null});
+   }catch(printError){
+    // Printing is a secondary side effect: normalize a transport/query throw so
+    // it can never abort settlement or hide that the payment was recorded.
+    console.warn('[BillPayment] receipt printing threw after the sale was recorded',printError);
+    result={ok:false,outcome:'failed',friendlyError:printError?.message||'Receipt printer failed.'};
+   }
    // Payment is already recorded in PMS at this point. A printer failure must
    // never leave the table occupied or prevent the next guest/waiter using it.
-   onConfirmPayment();
+   releaseTable();
    // Drawer opening is a post-payment convenience only. It must never roll
    // back a recorded sale or prevent the table from being released.
    const cashWasTaken = paymentMethod === 'cash' ||
@@ -124,7 +140,17 @@ export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrde
    if(unlinkedStockItems.length){const names=[...new Set(unlinkedStockItems.map(item=>item.name||'Unnamed item'))];console.warn('[POS] Completed sale includes unlinked stock lines; line status is stored on the receipt.',unlinkedStockItems);toast.warning(`Stock mapping missing for: ${names.join(', ')}.`,{description:'The sale was recorded. Link these items to a Store product or active recipe.'})}
    if(unverifiedStockItems.length){const names=[...new Set(unverifiedStockItems.map(item=>item.name||'Unnamed item'))];console.warn('[POS] Stock mapping could not be verified for these sale lines.',unverifiedStockItems);toast.warning(`Stock mapping could not be verified for: ${names.join(', ')}.`,{description:'Check Store products and active recipes before relying on the stock balance.'})}
 
-  }catch(e){setError('Payment was not recorded: '+e.message);toast.error('Payment was not recorded.');}
+  }catch(e){
+   if(saleRecorded){
+    // The sale/payment rows are committed. Never claim the payment was lost,
+    // and release the table so the same bill cannot be settled a second time.
+    setError('Payment was recorded, but the sale could not be fully completed on this terminal: '+e.message);
+    toast.error('Payment was recorded. Do not charge the guest again.',{description:'Print or reprint the receipt from Receipts. The table was released.'});
+    releaseTable();
+   }else{
+    setError('Payment was not recorded: '+e.message);toast.error('Payment was not recorded.');
+   }
+  }
   finally{setBusy(false)}
  };
  const reprintBill=async()=>{

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useRef, useEff
 import { INITIAL_ZONES, INITIAL_STAFF, TABLE_CARD } from './mockData';
 import { useAuth } from '@/lib/AuthContext';
 import { posService } from '@/services/posService';
+import { createKeyedQueue } from '@/lib/keyedQueue';
 import { getUnsettledReceiptSettings } from '@/services/settingsService';
 import { printOrderByCategory } from '@/services/printService';
 import {
@@ -181,6 +182,11 @@ export function StoreProvider({ children }) {
   const printersRef = useRef(printers);
   printersRef.current = printers;
 
+  // KOT sent-item snapshots are full-column updates per table. Serialise them so
+  // a slow earlier write can never overwrite a newer snapshot written after it.
+  const kotSnapshotQueueRef = useRef(null);
+  if (!kotSnapshotQueueRef.current) kotSnapshotQueueRef.current = createKeyedQueue();
+
   const getSession = useCallback((id) => sessions[id] || null, [sessions]);
 
   const persistSession = useCallback((id, session) => {
@@ -256,9 +262,13 @@ export function StoreProvider({ children }) {
       ? { ...prev, [id]: { ...prev[id], kotSentOrderLines: snapshot, ...(markSent ? { kotSentAt: Date.now() } : {}) } }
       : prev);
     if (!propertyId) return Promise.resolve(null);
-    return markSent
-      ? posService.markKotSent({ propertyId, tableKey: id, orderLines: snapshot })
-      : posService.saveKotSentSnapshot({ propertyId, tableKey: id, orderLines: snapshot });
+    // markKotSent / saveKotSentSnapshot replace the whole snapshot column for the
+    // table, so they must reach the database in the order they were requested.
+    return kotSnapshotQueueRef.current(id, () => (
+      markSent
+        ? posService.markKotSent({ propertyId, tableKey: id, orderLines: snapshot })
+        : posService.saveKotSentSnapshot({ propertyId, tableKey: id, orderLines: snapshot })
+    ));
   }, [propertyId]);
 
   const setUnsettled = useCallback((id) => {
