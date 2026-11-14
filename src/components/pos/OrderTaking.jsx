@@ -21,6 +21,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
   const store = useStore();
   const { user } = useAuth();
   const propertyId = user?.property?.id;
+  const propertyName = user?.property?.name || user?.property?.business_name || 'OliTechs PMS + POS';
   const activeStaff = (() => { try { return JSON.parse(sessionStorage.getItem('olitech_active_staff_v2') || 'null'); } catch { return null; } })();
   const currentRole = String(activeStaff?.role || user?.staff?.role || user?.propertyRole || user?.role || '').toLowerCase();
   const [activeCategory, setActiveCategory] = useState(null);
@@ -469,7 +470,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
         </button>
         <div id="pos-order-panel-content" className={orderPanelExpanded ? 'flex min-h-0 flex-1 flex-col' : 'hidden lg:flex lg:min-h-0 lg:flex-1 lg:flex-col'}>
         <div className="border-b border-dashed border-[var(--border)] px-4 py-3">
-          <div className="text-center text-xs font-bold uppercase tracking-widest text-[var(--primary)]">Visiwa Beach Resort</div>
+          <div className="text-center text-xs font-bold uppercase tracking-widest text-[var(--primary)]">{propertyName}</div>
           <div className="mt-1 text-center text-xs text-[var(--text-muted)]">{orderNumber}</div>
           <div className="mt-2 flex justify-center gap-4 text-xs text-[var(--text-muted)]">
             <span>Table <b className="text-[var(--text)]">{tableLabel(table)}</b></span>
