@@ -75,6 +75,7 @@ export function StoreProvider({ children }) {
       try { localStorage.setItem(zonesKey, JSON.stringify(snapshot)); } catch { /* best-effort backup */ }
       floorWriteQueue.current = floorWriteQueue.current.catch(() => null)
         .then(() => posService.saveFloorLayout({ propertyId, zones: snapshot }))
+        .then(() => setFloorError(''))
         .catch((error) => { console.error('[POS] shared floor configuration could not be saved', error); setFloorError(error?.message || 'Floor configuration could not be saved.'); });
     }, 400);
     return () => { if (floorSaveTimer.current) clearTimeout(floorSaveTimer.current); };
