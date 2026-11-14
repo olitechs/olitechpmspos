@@ -48,11 +48,11 @@ test('every declared navigation destination has a registered route', () => {
   assert.deepEqual(missing, [], 'navigation destinations missing route registrations');
 });
 
-test('public legal footer destinations use registered coming-soon pages', () => {
+test('public legal footer destinations use registered legal pages', () => {
   assert.ok(publicHome.includes('to="/terms"'));
   assert.ok(publicHome.includes('to="/privacy"'));
-  assert.ok(app.includes('<Route path="/terms" element={<LegalComingSoon page="terms"/>}/>'));
-  assert.ok(app.includes('<Route path="/privacy" element={<LegalComingSoon page="privacy"/>}/>'));
+  assert.ok(app.includes('<Route path="/terms" element={<TermsPage/>}/>'));
+  assert.ok(app.includes('<Route path="/privacy" element={<PrivacyPage/>}/>'));
 });
 
 test('store keeper role aliases resolve through app navigation and staff authorization', () => {

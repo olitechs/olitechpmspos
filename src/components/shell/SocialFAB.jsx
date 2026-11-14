@@ -2,13 +2,10 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, X as CloseIcon } from 'lucide-react';
 
-// TODO: swap these for OliTechs' real profile URLs — only WhatsApp below is confirmed real.
+// Only WhatsApp is a confirmed OliTechs channel. Other profiles were removed
+// until the owner supplies real URLs (docs/OPEN_QUESTIONS.md).
 const SOCIALS = [
   { key: 'whatsapp', label: 'WhatsApp', href: 'https://wa.me/254745043121', kind: 'icon' },
-  { key: 'instagram', label: 'Instagram', href: 'https://instagram.com/olitechs', kind: 'mono', mono: 'IG' },
-  { key: 'tiktok', label: 'TikTok', href: 'https://tiktok.com/@olitechs', kind: 'mono', mono: 'TT' },
-  { key: 'linkedin', label: 'LinkedIn', href: 'https://linkedin.com/company/olitechs', kind: 'mono', mono: 'in' },
-  { key: 'facebook', label: 'Facebook', href: 'https://facebook.com/olitechs', kind: 'mono', mono: 'f' },
 ];
 
 /**
@@ -45,8 +42,7 @@ export default function SocialFAB() {
                 <span className="text-[13px] font-black text-primary">
                   {s.mono}
                 </span>
-              )}
-              <span className="pointer-events-none absolute right-full mr-3 whitespace-nowrap rounded-md bg-surface px-2.5 py-1 text-xs font-bold text-foreground opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
+              )}              <span className="pointer-events-none absolute right-full mr-3 whitespace-nowrap rounded-md bg-surface px-2.5 py-1 text-xs font-bold text-foreground opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
                 {s.label}
               </span>
             </motion.a>

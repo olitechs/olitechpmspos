@@ -7,8 +7,8 @@ import BrandLogo from '@/components/ui/BrandLogo';
 const CONTACT = {
   phone: '+254 745 043 121',
   phoneHref: 'tel:+254745043121',
-  email: 'info@olitech.co.ke',
   whatsapp: 'https://wa.me/254745043121',
+  // No verified email address or social profiles yet — see docs/OPEN_QUESTIONS.md.
 };
 
 const plans = [
@@ -316,7 +316,7 @@ export default function PublicHome() {
         <section className="final-cta" id="contact"><div><Eyebrow light>MAKE ROOM FOR WHAT’S NEXT</Eyebrow><h2 className="mt-4">Complete hotel management.<br/>Better guest experiences.</h2><p>Discover what a more connected property can look like.</p></div><div className="final-cta-actions"><a href={CONTACT.whatsapp} target="_blank" rel="noreferrer">Request a Demo ↗</a><Link to="/signup">Get Started →</Link></div></section>
       </main>
 
-      <footer className="marketing-footer"><div className="footer-inner"><div><BrandLogo className="h-9 w-auto max-w-[130px] object-contain object-left"/><p className="max-w-xs">Smarter operations.<br/>More memorable hospitality.</p></div><div><h4>Platform</h4><a href="#platform">Property management</a><a href="#solutions">Point of sale</a><a href="#features">Features</a><a href="#pricing">Pricing</a></div><div><h4>Solutions</h4><a href="#solutions">Hotels &amp; resorts</a><a href="#solutions">Restaurants &amp; bars</a><a href="#contact">Request a Demo</a><Link to="/signin">Sign in</Link></div><div><h4>Company</h4><a href="#about">About OliTechs</a><a href={CONTACT.whatsapp}>Contact</a><a href={`mailto:${CONTACT.email}`}>{CONTACT.email}</a><a href={CONTACT.phoneHref}>{CONTACT.phone}</a></div></div><div className="footer-bottom"><span>© 2026 OliTechs. All rights reserved.</span><span className="flex gap-4"><Link to="/terms" className="hover:underline">Terms</Link><Link to="/privacy" className="hover:underline">Privacy</Link></span><span>olitechs.co.ke</span></div></footer>
+      <footer className="marketing-footer"><div className="footer-inner"><div><BrandLogo className="h-9 w-auto max-w-[130px] object-contain object-left"/><p className="max-w-xs">Smarter operations.<br/>More memorable hospitality.</p></div><div><h4>Platform</h4><a href="#platform">Property management</a><a href="#solutions">Point of sale</a><a href="#features">Features</a><a href="#pricing">Pricing</a></div><div><h4>Solutions</h4><a href="#solutions">Hotels &amp; resorts</a><a href="#solutions">Restaurants &amp; bars</a><a href="#contact">Request a Demo</a><Link to="/signin">Sign in</Link></div><div><h4>Company</h4><a href="#about">About OliTechs</a><a href={CONTACT.whatsapp}>Contact</a><a href={CONTACT.phoneHref}>{CONTACT.phone}</a></div></div><div className="footer-bottom"><span>© 2026 OliTechs. All rights reserved.</span><span className="flex gap-4"><Link to="/terms" className="hover:underline">Terms</Link><Link to="/privacy" className="hover:underline">Privacy</Link></span><span>olitechs.co.ke</span></div></footer>
       <SocialFAB/>
     </div>
   );
