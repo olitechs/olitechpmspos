@@ -1,3 +1,21 @@
+/**
+ * Tailwind cannot apply an opacity modifier to a colour declared as a plain CSS
+ * variable: when `primary` is the string "var(--primary)", Tailwind drops
+ * `bg-primary/10` entirely (no rule is emitted, so the element silently loses
+ * its background/ring/border tint).
+ *
+ * Declaring every palette entry as a colour function gives Tailwind the
+ * requested alpha, so it emits a real `color-mix()` value instead. Without an
+ * alpha modifier the token is used verbatim, exactly as before.
+ */
+const token = (name) => ({ opacityValue } = {}) => {
+  // Plain utilities pass the legacy --tw-bg-opacity indirection, which cannot
+  // be evaluated at build time; only numeric modifiers carry a real alpha.
+  const alpha = Number(opacityValue);
+  if (opacityValue === undefined || Number.isNaN(alpha)) return `var(--${name})`;
+  return `color-mix(in srgb, var(--${name}) ${+(alpha * 100).toFixed(2)}%, transparent)`;
+};
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   darkMode: 'class',
@@ -8,30 +26,31 @@ module.exports = {
       borderRadius: { lg: 'var(--radius)', md: 'var(--radius-control)', sm: '6px' },
       boxShadow: { card: 'none', overlay: 'var(--shadow-overlay)' },
       colors: {
-        brand: { dark: 'var(--deep-lagoon)', charcoal: 'var(--sidebar)', primary: 'var(--primary)', hover: 'var(--primary-hover)', soft: 'var(--primary-soft)' },
-        action: { DEFAULT: 'var(--primary)', hover: 'var(--primary-hover)', foreground: 'var(--on-primary)' },
-        table: { free: 'var(--table-free-bg)', occupied: 'var(--table-occupied-bg)', bill: 'var(--table-bill-bg)' },
-        room: { clean: 'var(--room-clean)', dirty: 'var(--room-dirty)', occupied: 'var(--room-occupied)', checkout: 'var(--room-checkout)', 'out-of-order': 'var(--room-out-of-order)' },
-        payment: { paid: 'var(--status-paid)', deposit: 'var(--status-deposit-paid)', unpaid: 'var(--status-not-paid)' },
-        info: 'var(--info)',
-        success: { DEFAULT: 'var(--success)', foreground: 'var(--success-text)', soft: 'var(--success-soft)' },
-        warning: { DEFAULT: 'var(--warning)', foreground: 'var(--warning-text)', soft: 'var(--warning-soft)' },
-        danger: { DEFAULT: 'var(--danger)', foreground: 'var(--danger-foreground)', text: 'var(--danger-text)', soft: 'var(--danger-soft)' },
-        surface: { DEFAULT: 'var(--surface)', secondary: 'var(--sidebar)' },
-        canvas: 'var(--canvas)',
-        'soft-white': 'var(--soft-white)',
-        text: { DEFAULT: 'var(--text)', muted: 'var(--text-muted)' },
-        background: 'var(--background)', foreground: 'var(--foreground)',
-        card: { DEFAULT: 'var(--card)', foreground: 'var(--card-foreground)' },
-        popover: { DEFAULT: 'var(--popover)', foreground: 'var(--popover-foreground)' },
-        primary: { DEFAULT: 'var(--primary)', foreground: 'var(--on-primary)' },
-        secondary: { DEFAULT: 'var(--secondary)', foreground: 'var(--secondary-foreground)' },
-        muted: { DEFAULT: 'var(--sidebar)', foreground: 'var(--text-muted)' },
-        accent: { DEFAULT: 'var(--accent)', foreground: 'var(--accent-foreground)' },
-        destructive: { DEFAULT: 'var(--destructive)', foreground: 'var(--destructive-foreground)' },
-        border: 'var(--border)', input: 'var(--input)', ring: 'var(--ring)',
-        chart: { '1': 'var(--primary)', '2': 'var(--success)', '3': 'var(--accent)', '4': 'var(--danger)', '5': 'var(--primary-soft)' },
-        sidebar: { DEFAULT: 'var(--sidebar)', foreground: 'var(--text)', primary: 'var(--primary)', 'primary-foreground': 'var(--primary-foreground)', accent: 'var(--primary-soft)', 'accent-foreground': 'var(--primary)', border: 'var(--border)', ring: 'var(--primary)' },
+        brand: { dark: token('deep-lagoon'), charcoal: token('sidebar'), primary: token('primary'), hover: token('primary-hover'), soft: token('primary-soft') },
+        action: { DEFAULT: token('primary'), hover: token('primary-hover'), foreground: token('on-primary') },
+        table: { free: token('table-free-bg'), occupied: token('table-occupied-bg'), bill: token('table-bill-bg') },
+        room: { clean: token('room-clean'), dirty: token('room-dirty'), occupied: token('room-occupied'), checkout: token('room-checkout'), 'out-of-order': token('room-out-of-order') },
+        payment: { paid: token('status-paid'), deposit: token('status-deposit-paid'), unpaid: token('status-not-paid') },
+        info: token('info'),
+        success: { DEFAULT: token('success'), foreground: token('success-text'), soft: token('success-soft') },
+        warning: { DEFAULT: token('warning'), foreground: token('warning-text'), soft: token('warning-soft') },
+        danger: { DEFAULT: token('danger'), foreground: token('danger-foreground'), text: token('danger-text'), soft: token('danger-soft') },
+        surface: { DEFAULT: token('surface'), secondary: token('sidebar') },
+        canvas: token('canvas'),
+        'soft-white': token('soft-white'),
+        text: { DEFAULT: token('text'), muted: token('text-muted') },
+        background: token('background'),
+        foreground: token('foreground'),
+        card: { DEFAULT: token('card'), foreground: token('card-foreground') },
+        popover: { DEFAULT: token('popover'), foreground: token('popover-foreground') },
+        primary: { DEFAULT: token('primary'), foreground: token('on-primary') },
+        secondary: { DEFAULT: token('secondary'), foreground: token('secondary-foreground') },
+        muted: { DEFAULT: token('sidebar'), foreground: token('text-muted') },
+        accent: { DEFAULT: token('accent'), foreground: token('accent-foreground') },
+        destructive: { DEFAULT: token('destructive'), foreground: token('destructive-foreground') },
+        border: token('border'), input: token('input'), ring: token('ring'),
+        chart: { 1: token('primary'), 2: token('success'), 3: token('accent'), 4: token('danger'), 5: token('primary-soft') },
+        sidebar: { DEFAULT: token('sidebar'), foreground: token('text'), primary: token('primary'), 'primary-foreground': token('primary-foreground'), accent: token('primary-soft'), 'accent-foreground': token('primary'), border: token('border'), ring: token('primary') },
       },
       fontFamily: { heading: ['var(--font-heading)'], body: ['var(--font-body)'], display: ['var(--font-display)'], mono: ['var(--font-mono)'] },
       fontSize: {

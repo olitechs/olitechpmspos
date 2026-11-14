@@ -35,9 +35,9 @@ export default function PublicSignIn() {
     <main className="min-h-screen bg-[var(--canvas)] px-4 py-8 sm:px-6 lg:flex lg:items-center lg:justify-center lg:py-10">
       <div className="relative w-full max-w-6xl">
         <section className="relative min-h-[620px] overflow-hidden rounded-[28px] bg-[var(--surface)] shadow-none lg:min-h-[560px]">
-          <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full border border-[var(--border)]/20 bg-[var(--surface)]/[0.012]" />
-          <div className="absolute -bottom-40 left-8 h-96 w-96 rounded-full bg-[var(--primary-soft)]/[0.035]" />
-          <div className="absolute right-[-180px] top-20 h-[420px] w-[420px] rounded-full border border-[var(--border)]/25" />
+          <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full border border-border/20 bg-surface/[0.012]" />
+          <div className="absolute -bottom-40 left-8 h-96 w-96 rounded-full bg-brand-soft/[0.035]" />
+          <div className="absolute right-[-180px] top-20 h-[420px] w-[420px] rounded-full border border-border/25" />
 
           <div className="relative flex min-h-[620px] flex-col lg:min-h-[560px] lg:flex-row">
             <div className="flex w-full flex-col justify-center px-7 pb-10 pt-10 text-[var(--text)] sm:px-12 lg:w-[60%] lg:px-16 lg:py-16">
@@ -48,8 +48,8 @@ export default function PublicSignIn() {
               <div className="max-w-[500px]">
                 <p className="mb-4 text-xs font-medium  text-[var(--primary)]">OliTechs PMS + POS</p>
                 <h1 className="text-4xl font-medium  text-[var(--text)] sm:text-5xl">Welcome</h1>
-                <p className="mt-4 max-w-lg text-base font-medium text-[var(--text)]/85 sm:text-lg">OliTechs PMS + POS</p>
-                <p className="mt-4 max-w-lg text-sm leading-7 text-[var(--text)]/60 sm:text-[15px]">
+                <p className="mt-4 max-w-lg text-base font-medium text-foreground/85 sm:text-lg">OliTechs PMS + POS</p>
+                <p className="mt-4 max-w-lg text-sm leading-7 text-foreground/60 sm:text-[15px]">
                   Manage your hotel operations, reservations, and point of sale from one powerful dashboard.
                 </p>
               </div>
@@ -82,7 +82,7 @@ export default function PublicSignIn() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="Enter your email"
-                        className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-11 pr-4 text-sm text-[var(--text)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                        className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-11 pr-4 text-sm text-[var(--text)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-2 focus:ring-primary/20"
                       />
                     </div>
                   </div>
@@ -100,7 +100,7 @@ export default function PublicSignIn() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="Enter your password"
-                        className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-11 pr-14 text-sm text-[var(--text)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                        className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-11 pr-14 text-sm text-[var(--text)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-2 focus:ring-primary/20"
                       />
                       <button
                         type="button"

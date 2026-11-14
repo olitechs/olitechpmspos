@@ -140,7 +140,7 @@ export default function CategoriesPage() {
                   if (event.key === 'Enter' && !busy) rename();
                   if (event.key === 'Escape' && !busy) setEditing(null);
                 }}
-                className="mt-4 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-[var(--text)] outline-none focus:border-[var(--brand-primary)] focus:ring-2 focus:ring-[var(--brand-primary)]/20"
+                className="mt-4 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-[var(--text)] outline-none focus:border-[var(--brand-primary)] focus:ring-2 focus:ring-primary/20"
               />
               <div className="mt-4 flex justify-end gap-2">
                 <button type="button" onClick={() => setEditing(null)} disabled={busy} className="rounded-xl border border-[var(--border)] px-4 py-2.5 font-semibold text-[var(--text)] disabled:opacity-50">

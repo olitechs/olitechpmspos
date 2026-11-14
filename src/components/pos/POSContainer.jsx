@@ -392,7 +392,7 @@ export default function POSContainer({ initialTab = 'floor' } = {}) {
 
 			<div className="flex-1 min-h-0 overflow-y-auto">
 				{activeTab === 'shifts' && <ShiftManagementPage propertyId={propertyId} currentShift={currentShift} loadError={shiftLoadError} onOpened={(shift) => { setCurrentShift(shift); setActiveTab('floor'); }} onCloseShift={canCloseShift ? () => setCloseShiftOpen(true) : null} />}
-				{activeTab === 'floor' && currentShift && <div className="relative h-full"><FloorPlan onTableSelect={handleTableSelect} /><div className="absolute bottom-3 left-3 z-20 flex items-center gap-1 rounded-2xl border-2 border-border bg-surface p-2 shadow-lg"><span className="px-1 text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)]">Staff</span>{posStaff.slice(0,8).map(person => <button key={person.id} title={`Switch to ${person.full_name}`} onClick={()=>{setSwitchStaff(person);setSwitchError('');}} className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-border bg-primary text-[10px] font-black text-foreground hover:scale-105">{person.avatar || person.full_name?.slice(0,2).toUpperCase()}</button>)}</div>{switchStaff&&<PinPad title="Switch POS Staff" staffName={switchStaff.full_name} error={switchError} onSubmit={verifySwitch} onClose={()=>setSwitchStaff(null)}/>}</div>}
+				{activeTab === 'floor' && currentShift && <div className="relative h-full"><FloorPlan onTableSelect={handleTableSelect} /><div className="absolute bottom-3 left-3 z-20 flex items-center gap-1 rounded-xl border-2 border-border bg-surface p-2 shadow-lg"><span className="px-1 text-[9px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Staff</span>{posStaff.slice(0,8).map(person => <button key={person.id} title={`Switch to ${person.full_name}`} onClick={()=>{setSwitchStaff(person);setSwitchError('');}} className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-border bg-primary text-[10px] font-semibold text-foreground hover:scale-105">{person.avatar || person.full_name?.slice(0,2).toUpperCase()}</button>)}</div>{switchStaff&&<PinPad title="Switch POS Staff" staffName={switchStaff.full_name} error={switchError} onSubmit={verifySwitch} onClose={()=>setSwitchStaff(null)}/>}</div>}
 
 				{activeTab === 'order' && currentShift && activeTable && (
 					<OrderTaking
@@ -424,10 +424,10 @@ export default function POSContainer({ initialTab = 'floor' } = {}) {
 
 			{tableTransferOpen && activeTable && (
 				<div className="fixed inset-0 z-[220] flex items-center justify-center bg-[var(--overlay-scrim)] p-4">
-					<div className="w-full max-w-2xl overflow-hidden rounded-3xl bg-surface shadow-2xl">
+					<div className="w-full max-w-2xl overflow-hidden rounded-2xl bg-surface shadow-2xl">
 						<div className="flex items-center justify-between border-b border-border px-5 py-4">
 							<div>
-								<div className="flex items-center gap-2 text-base font-black text-foreground"><ArrowRightLeft size={18}/> Move / Join Table</div>
+								<div className="flex items-center gap-2 text-base font-semibold text-foreground"><ArrowRightLeft size={18}/> Move / Join Table</div>
 								<div className="mt-1 text-xs text-muted-foreground">Current bill: <b>{tableLabel(activeTable)}</b>. Select a free table to move it, or an ongoing table to join the bills.</div>
 							</div>
 							<button onClick={() => setTableTransferOpen(false)} className="rounded-xl p-2 text-muted-foreground hover:bg-secondary"><X size={18}/></button>
@@ -440,7 +440,7 @@ export default function POSContainer({ initialTab = 'floor' } = {}) {
 									const selected = tableTransferTarget?.table.id === t.id;
 									return (
 										<button key={t.id} onClick={() => { setTableTransferTarget({ table:t, zone, occupied, session }); setTableTransferError(''); }} className="rounded-2xl border-2 p-4 text-left transition hover:-translate-y-0.5" style={{ borderColor: selected ? 'var(--primary)' : occupied ? 'var(--warning)' : 'var(--border)', background: selected ? 'var(--primary-soft)' : 'var(--surface)' }}>
-											<div className="flex items-center justify-between"><span className="text-lg font-black text-foreground">T{t.number}</span>{occupied ? <GitMerge size={17} className="text-[var(--warning-text)]"/> : <MoveRight size={17} className="text-[var(--primary)]"/>}</div>
+											<div className="flex items-center justify-between"><span className="text-lg font-semibold text-foreground">T{t.number}</span>{occupied ? <GitMerge size={17} className="text-[var(--warning-text)]"/> : <MoveRight size={17} className="text-[var(--primary)]"/>}</div>
 											<div className="mt-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{zone.name}</div>
 											<div className="mt-2 text-xs font-semibold text-muted-foreground">{occupied ? `Ongoing · ${session?.orderNumber || 'Open bill'}` : 'Free · Move bill here'}</div>
 										</button>
@@ -449,7 +449,7 @@ export default function POSContainer({ initialTab = 'floor' } = {}) {
 							</div>
 							{tableTransferTarget && (
 								<div className="mt-5 rounded-2xl border border-border bg-secondary p-4">
-									<div className="text-xs font-black uppercase tracking-wider text-muted-foreground">{tableTransferTarget.occupied ? 'Join ongoing table' : 'Move bill to free table'}</div>
+									<div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{tableTransferTarget.occupied ? 'Join ongoing table' : 'Move bill to free table'}</div>
 									<div className="mt-1 text-sm font-bold text-foreground">T{activeTable.number} → T{tableTransferTarget.table.number}</div>
 									<div className="mt-1 text-xs text-muted-foreground">{tableTransferTarget.occupied ? 'All items and covers will be combined. The destination check remains the active check and the source table is closed.' : 'The complete open bill, waiter, check number and production status move to the new table. No duplicate kitchen ticket is printed.'}</div>
 								</div>
@@ -458,7 +458,7 @@ export default function POSContainer({ initialTab = 'floor' } = {}) {
 						</div>
 						<div className="flex items-center justify-between gap-3 border-t border-border px-5 py-4">
 							<div className="text-[11px] font-semibold text-muted-foreground">{tableTransferTarget ? (tableTransferTarget.occupied ? 'Join keeps the destination table open.' : 'Move preserves the current check.') : 'Choose a destination table.'}</div>
-							<div className="flex gap-2"><button onClick={() => setTableTransferOpen(false)} className="rounded-xl border border-border px-4 py-2.5 text-sm font-bold">Cancel</button><button disabled={!tableTransferTarget || tableTransferBusy} onClick={handleTableTransfer} className="rounded-xl bg-primary px-5 py-2.5 text-sm font-black text-foreground disabled:opacity-40">{tableTransferBusy ? 'Processing…' : tableTransferTarget?.occupied ? 'Join Tables' : 'Move Bill'}</button></div>
+							<div className="flex gap-2"><button onClick={() => setTableTransferOpen(false)} className="rounded-xl border border-border px-4 py-2.5 text-sm font-semibold">Cancel</button><button disabled={!tableTransferTarget || tableTransferBusy} onClick={handleTableTransfer} className="rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-foreground disabled:opacity-40">{tableTransferBusy ? 'Processing…' : tableTransferTarget?.occupied ? 'Join Tables' : 'Move Bill'}</button></div>
 						</div>
 					</div>
 				</div>

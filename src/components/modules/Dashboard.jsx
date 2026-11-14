@@ -65,6 +65,15 @@ function EmptyState({ children }) {
   return <div className="px-4 py-8 text-center text-sm text-[var(--text-muted)]">{children}</div>;
 }
 
+/** Card footer link ("View all", "Open room planner"). */
+function TextLink({ onClick, children }) {
+  return (
+    <button type="button" onClick={onClick} className="inline-flex min-h-0 items-center gap-1 text-xs font-medium text-[var(--info)] hover:underline">
+      {children} <ChevronRight size={13} aria-hidden="true" />
+    </button>
+  );
+}
+
 /** Primary KPI tile. Renders as a button when it navigates somewhere. */
 function Kpi({ label, value, sub, icon: Icon, onClick, accent = false }) {
   const Tag = onClick ? 'button' : 'div';
@@ -72,7 +81,7 @@ function Kpi({ label, value, sub, icon: Icon, onClick, accent = false }) {
     <Tag
       type={onClick ? 'button' : undefined}
       onClick={onClick}
-      className={`group flex min-h-[112px] w-full flex-col justify-between rounded-lg border bg-[var(--surface)] p-4 text-left shadow-none ${
+      className={`group flex min-h-[112px] w-full flex-col justify-between rounded-xl border bg-[var(--surface)] p-4 text-left shadow-none ${
         accent ? 'border-[var(--primary)]' : 'border-[var(--border)]'
       } ${onClick ? 'hover:border-[var(--text-muted)]' : ''}`}
     >
@@ -109,9 +118,7 @@ function MovementList({ title, icon, rows, emptyText, onViewAll, timeLabel }) {
         icon={icon}
         meta={rows.length}
         action={onViewAll && (
-          <button type="button" onClick={onViewAll} className="inline-flex min-h-0 items-center gap-1 text-xs font-medium text-[var(--info)] hover:underline">
-            View all <ChevronRight size={13} aria-hidden="true" />
-          </button>
+          <TextLink onClick={onViewAll}>View all</TextLink>
         )}
       />
       {rows.length === 0 ? (
@@ -348,13 +355,7 @@ export default function Dashboard({ onNavigateToPOS, onNavigateToRooms, onNaviga
                   </li>
                 ))}
               </ul>
-              <button
-                type="button"
-                onClick={goRooms}
-                className="mt-4 inline-flex min-h-0 items-center gap-1 text-xs font-medium text-[var(--info)] hover:underline"
-              >
-                Open room planner <ChevronRight size={13} aria-hidden="true" />
-              </button>
+              <div className="mt-4"><TextLink onClick={goRooms}>Open room planner</TextLink></div>
             </div>
           </Card>
         </div>
