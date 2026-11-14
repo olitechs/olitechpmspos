@@ -205,6 +205,11 @@ test('shift report includes category, payment shares, guest covers and mapped re
     categories: { food: { qty: 2, amount: 300 }, drinks: { qty: 0, amount: 0 } },
     totalSales: 300, grossSales: 350, refundsTotal: 50, voidedValue: 50, totalTransactions: 1, totalCovers: 2, itemsSold: 2,
     expectedCash: 300, countedCash: 305, variance: 5,
+    splitReconciliation: {
+      splitReceiptCount: 2, reconciledCount: 1, exceptionCount: 1, missingAllocationCount: 0,
+      mismatchedAllocationCount: 1, receiptTotal: 500, allocatedTotal: 450, unallocatedOrVariance: 50,
+      exceptions: [{ receipt_id: 'receipt-2', receipt_number: 'R-1002', status: 'mismatched', expected_total: 200, allocated_total: 150, difference: 50, allocations: [{ payment_method: 'cash', amount: 150 }] }],
+    },
   }, period);
   const sections = Object.fromEntries(definition.sections.map((section) => [section.name, section]));
   assert.equal(sections['detailed-receipts'].rows[0].payment_method, 'Split Payment');
@@ -213,6 +218,9 @@ test('shift report includes category, payment shares, guest covers and mapped re
   assert.equal(sections['payment-breakdown'].rows[0].share_percent, 1);
   assert.ok(sections['items-sold'].rows.some((row) => row.category === 'Food' && row.quantity === 2));
   assert.ok(sections['shift-summary'].rows.some((row) => row.metric === 'Variance' && row.amount === 5));
+  assert.equal(sections['split-tender-reconciliation'].rows[0].receipt, 'R-1002');
+  assert.equal(sections['split-tender-reconciliation'].rows[0].difference, 50);
+  assert.ok(definition.notes.some((note) => note.includes('not assigned to a tender')));
 });
 
 test('export audit metadata keeps safe filters only and records format, delivery, and included row count', () => {
