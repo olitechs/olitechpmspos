@@ -119,7 +119,7 @@ export function makeSalesConsumptionSeries({ from, to, salesDaily = [], movement
   const salesByDate = new Map(salesDaily.map((row) => [String(row.business_date).slice(0, 10), Number(row.revenue) || 0]));
   const consumeByDate = new Map();
   for (const movement of movements) {
-    if (!['usage', 'pos_recipe'].includes(String(movement.source_type || '').toLowerCase())) continue;
+    if (!isStockConsumptionMovement(movement)) continue;
     const day = formatBusinessDate(movement.created_at);
     consumeByDate.set(day, (consumeByDate.get(day) || 0) + (estimateMovementValue(movement) || 0));
   }
@@ -197,7 +197,7 @@ export function departmentComparison(salesDepartments = [], movements = []) {
   }
   const useValues = new Map();
   for (const movement of movements) {
-    if (!['usage', 'pos_recipe'].includes(String(movement.source_type || '').toLowerCase())) continue;
+    if (!isStockConsumptionMovement(movement)) continue;
     const dept = productDepartment(movement.product || {});
     useValues.set(dept, (useValues.get(dept) || 0) + (estimateMovementValue(movement) || 0));
   }
