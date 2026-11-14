@@ -17,7 +17,7 @@ import { storekeeperDashboardService } from '@/services/storekeeperDashboardServ
 import {
   departmentComparison, filterProducts, formatBusinessDate, getPeriodRange,
   getStockLocations, makeSalesConsumptionSeries,
-  matchesDepartment, matchesLocation, normalizeDepartment, productDepartment,
+  matchesDepartment, matchesLocation, normalizeDepartment, productDepartment, isStockConsumptionMovement,
   summarizeCount, summarizeSalesItems, summarizeStock, summarizeWastage,
 } from '@/services/storekeeperDashboardCore';
 
@@ -81,7 +81,7 @@ function deriveAlerts({ products, expiry, movements, today, department, location
   from.setUTCDate(from.getUTCDate() - 6);
   const recentFrom = from.toISOString().slice(0, 10);
   for (const movement of movements) {
-    if (!['usage', 'pos_recipe'].includes(String(movement.source_type || '').toLowerCase())) continue;
+    if (!isStockConsumptionMovement(movement)) continue;
     const day = formatBusinessDate(movement.created_at);
     if (day < recentFrom || day > today) continue;
     usage7.set(movement.product_id, (usage7.get(movement.product_id) || 0) + Math.abs(Number(movement.signed_qty ?? movement.qty) || 0));
