@@ -205,7 +205,7 @@ export default function FloorPlan({ onTableSelect }) {
     setDesignMode(false);
   };
 
-  if (store.floorLoading) return (
+  if (store.floorLoading || store.sessionsLoading) return (
     <div role="status" aria-live="polite" className="flex h-full min-h-48 flex-col justify-center gap-4 bg-[var(--canvas)] p-6">
       <div className="mx-auto w-full max-w-xl space-y-3">
         <div className="h-10 animate-pulse rounded-xl bg-[var(--surface)]" />
