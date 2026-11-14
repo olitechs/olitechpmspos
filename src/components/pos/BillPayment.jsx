@@ -12,7 +12,7 @@ import{getUnsettledReceiptSettings}from'@/services/settingsService';
 import{posService}from'@/services/posService';
 import{posPhase3Service}from'@/services/posPhase3Service';
 import{inventoryService}from'@/services/inventoryService';
-import{buildPosSaleItems,createPosSaleIdempotencyKey,isProductUuid}from'@/services/posSaleContract';
+import{resolvePosSaleStockMappings,createPosSaleIdempotencyKey}from'@/services/posSaleContract';
 
 const PAYMENT_METHODS=[{id:'cash',label:'Cash'},{id:'card',label:'Card'},{id:'mpesa',label:'M-Pesa'},{id:'bank',label:'Bank Transfer'},{id:'room',label:'Room Charge'},{id:'split',label:'Split Payment'}];
 const fmt=n=>'KES '+Number(n||0).toLocaleString('en-KE',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -55,43 +55,30 @@ export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrde
   try{
    const currentShift=await pmsService.getOpenCashierShift(propertyId);
    if(!currentShift?.id){setError('No open POS shift. Open a shift before taking payments.');return;}
-   const needsStockMappingLookup=orderLines.some(line=>!isProductUuid(line.productId||line.product_id));
-   let recipeNames=[];let productRows=[];let stockLookupAvailable=true;
-   if(needsStockMappingLookup){
-    try{
-     const [recipes,products]=await Promise.all([
-      inventoryService.listRecipes(propertyId),
-      inventoryService.listProducts(propertyId)
-     ]);
-     recipeNames=(recipes||[]).filter(recipe=>recipe.active!==false).map(recipe=>recipe.menu_item_name).filter(Boolean);
-     productRows=products||[];
-    }catch(stockLookupError){
-     stockLookupAvailable=false;
-     console.warn('[POS] Store product / recipe stock mapping could not be checked',stockLookupError);
-    }
+   // Verify every line against this property's Store products and active recipes,
+   // including UUIDs restored from older open table sessions. Checkout fails closed
+   // if the lookup is unavailable or any line has no unambiguous stock mapping.
+   let stockMappings;
+   try{
+    stockMappings=await inventoryService.listPosStockMappings(propertyId);
+   }catch(stockLookupError){
+    console.warn('[POS] Store product / recipe stock mapping could not be verified',stockLookupError);
+    setError('Stock verification is unavailable. The sale was not recorded. Check the Store connection and retry.');
+    return;
    }
-   // Older open table sessions can contain menu lines without a product UUID.
-   // Recover only an unambiguous exact-name match within this property; never
-   // guess between duplicate Store products or create a new inventory item.
-   const normalizeStockName=value=>String(value||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').trim().replace(/\s+/g,' ').toLocaleLowerCase('en');
-   const productsByName=new Map();
-   for(const product of productRows){
-    const key=normalizeStockName(product.name);
-    if(!key)continue;
-    const matches=productsByName.get(key)||[];
-    matches.push(product);
-    productsByName.set(key,matches);
-   }
-   const mappedOrderLines=orderLines.map(line=>{
-    if(isProductUuid(line.productId||line.product_id))return line;
-    const matches=productsByName.get(normalizeStockName(line.name||line.item_name))||[];
-    if(matches.length!==1)return line;
-    return {...line,productId:matches[0].id,product_id:matches[0].id};
-   });
-   const saleItems=buildPosSaleItems(mappedOrderLines,recipeNames,stockLookupAvailable);
+   const saleItems=resolvePosSaleStockMappings(orderLines,stockMappings.products,stockMappings.recipes,true);
    const saleIdempotencyKey=createPosSaleIdempotencyKey({propertyId,tableKey:table.id,orderNumber:stableOrderNumber});
    const unlinkedStockItems=saleItems.filter(item=>item.stock_tracking_status==='unlinked');
-   const unverifiedStockItems=saleItems.filter(item=>item.stock_tracking_status==='unverified');
+   const invalidQuantityItems=saleItems.filter(item=>!Number.isFinite(Number(item.qty))||Number(item.qty)<=0);
+   if(unlinkedStockItems.length){
+    const names=[...new Set(unlinkedStockItems.map(item=>item.name||'Unnamed item'))];
+    setError(`Cannot complete this sale: link these menu items to a Store product or active recipe first: ${names.join(', ')}.`);
+    return;
+   }
+   if(invalidQuantityItems.length){
+    setError('Cannot complete this sale because one or more order lines have an invalid quantity. Review the order and retry.');
+    return;
+   }
    await pmsService.recordPosSale({propertyId,tableNumber:tableLabel(table),orderNumber:stableOrderNumber,items:saleItems,subtotal,discountAmount:discount,discountId:selectedDiscount?.id || null,discountName:selectedDiscount?.name || null,vat,total,paymentMethod,reservationId:paymentMethod==='room'?chargeReservationId:null,shiftId:currentShift.id,waiter,covers:guestCovers,idempotencyKey:saleIdempotencyKey,vatSnapshot,paymentAllocations:paymentMethod==='split'?splitPayments.filter(p=>Number(p.amount)>0).map(p=>({method:p.method,amount:Number(p.amount),reservation_id:p.method==='room'?p.reservationId||null:null})):null});
    // The sale and its payment allocations are now committed. Everything after
    // this point is presentation/printing and must not report the payment as lost.
