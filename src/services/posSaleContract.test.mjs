@@ -92,9 +92,12 @@ test('stock mapping refuses missing and ambiguous Store product matches', () => 
   assert.deepEqual(items.map((item) => item.stock_tracking_status), ['unlinked', 'unlinked']);
 });
 
-test('stock mapping lookup failure marks legacy lines unverified', () => {
-  const [item] = resolvePosSaleStockMappings([{ id: 'legacy', name: 'Unknown dish', qty: 1 }], [], [], false);
-  assert.equal(item.stock_tracking_status, 'unverified');
+test('stock mapping lookup failure marks every line unverified, including UUID-backed lines', () => {
+  const items = resolvePosSaleStockMappings([
+    { id: 'legacy', name: 'Unknown dish', qty: 1 },
+    { id: 'direct', productId: PRODUCT_ID, name: 'Grilled fish', qty: 1 },
+  ], [], [], false);
+  assert.deepEqual(items.map((item) => item.stock_tracking_status), ['unverified', 'unverified']);
 });
 
 
