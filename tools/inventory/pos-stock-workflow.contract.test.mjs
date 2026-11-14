@@ -62,9 +62,9 @@ test('duplicate sale retries use a unique receipt key and a stable order identit
 });
 
 test('POS settlement verifies every Store mapping and blocks unlinked or invalid order lines', () => {
-  assert.match(billPayment, /listPosStockMappings\\(propertyId\\)/);
-  assert.match(billPayment, /resolvePosSaleStockMappings\\(orderLines,stockMappings\\.products,stockMappings\\.recipes,true\\)/);
-  assert.match(billPayment, /if\\(unlinkedStockItems\\.length\\)/);
+  assert.match(billPayment, /listPosStockMappings\(propertyId\)/);
+  assert.match(billPayment, /resolvePosSaleStockMappings\(orderLines,stockMappings\.products,stockMappings\.recipes,true\)/);
+  assert.match(billPayment, /if\(unlinkedStockItems\.length\)/);
   assert.match(billPayment, /The sale was not recorded/);
   assert.match(posSaleContract, /stock_tracking_status/);
   assert.match(inventory, /Finalized POS sales deduct linked products and active recipe ingredients/);
