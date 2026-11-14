@@ -196,6 +196,29 @@ export default function ShiftReport() {
                         ['Expected drawer cash', selectedReport.expectedCash], ['Counted cash', selectedReport.countedCash], ['Cash variance', selectedReport.variance], ['Posted receipts', selectedReport.totalTransactions],
                       ].map(([label, value]) => <div key={label} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3"><div className="text-[10px] font-semibold text-[var(--text-muted)]">{label}</div><div className="mt-1 text-sm font-bold tabular-nums">{value == null ? '—' : label === 'Posted receipts' ? Number(value).toLocaleString('en-KE') : `KES ${money(value)}`}</div></div>)}
                     </div>}
+                    {selectedReport?.splitReconciliation?.exceptionCount > 0 && <section role="alert" className="mt-4 overflow-hidden rounded-xl border border-[var(--warning)] bg-[var(--warning-soft)]">
+                      <div className="border-b border-[var(--warning)]/30 px-3 py-3">
+                        <h4 className="text-sm font-bold text-[var(--warning-text)]">Split-payment reconciliation needs attention</h4>
+                        <p className="mt-1 text-xs text-[var(--warning-text)]">{selectedReport.splitReconciliation.exceptionCount} receipt(s) need review · {selectedReport.splitReconciliation.missingAllocationCount} missing allocation(s) · {selectedReport.splitReconciliation.mismatchedAllocationCount} mismatched allocation(s).</p>
+                        <p className="mt-1 text-xs text-[var(--warning-text)]">KES {money(selectedReport.splitReconciliation.unallocatedOrVariance)} is not reconciled. It has not been assigned to a confirmed payment method.</p>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full min-w-[680px] text-left text-xs">
+                          <thead className="text-[var(--warning-text)]"><tr><th className="p-3">Receipt</th><th className="p-3">Issue</th><th className="p-3 text-right">Receipt total</th><th className="p-3 text-right">Allocated</th><th className="p-3 text-right">Difference</th><th className="p-3">Recorded allocations</th></tr></thead>
+                          <tbody>{selectedReport.splitReconciliation.exceptions.map((item) => <tr key={item.receipt_id} className="border-t border-[var(--warning)]/20 text-[var(--warning-text)]">
+                            <td className="p-3 font-bold">{item.receipt_number}</td><td className="p-3 capitalize">{item.status === 'missing' ? 'Missing allocations' : 'Allocation mismatch'}</td>
+                            <td className="p-3 text-right tabular-nums">KES {money(item.expected_total)}</td><td className="p-3 text-right tabular-nums">KES {money(item.allocated_total)}</td>
+                            <td className="p-3 text-right font-bold tabular-nums">KES {money(item.difference)}</td>
+                            <td className="p-3">{item.allocations.length ? item.allocations.map((allocation) => `${allocation.payment_method}: KES ${money(allocation.amount)}`).join(' · ') : 'No tender allocations recorded'}</td>
+                          </tr>)}</tbody>
+                        </table>
+                      </div>
+                    </section>}
+                    {selectedReport && selectedReport.splitReconciliation && <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                      <Metric label="Split receipts" value={selectedReport.splitReconciliation.splitReceiptCount}/>
+                      <Metric label="Reconciled split receipts" value={selectedReport.splitReconciliation.reconciledCount}/>
+                      <Metric label="Split allocation exceptions" value={selectedReport.splitReconciliation.exceptionCount}/>
+                    </div>}
                     {selectedReport && <div className="mt-4 overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--surface)]">
                       <div className="border-b border-[var(--border)] px-3 py-2 text-xs font-bold">Posted receipts</div>
                       <table className="w-full min-w-[650px] text-left text-xs"><thead className="bg-[var(--surface-2)] text-[var(--text-muted)]"><tr><th className="p-3">Receipt</th><th className="p-3">Time</th><th className="p-3">Table</th><th className="p-3">Waiter</th><th className="p-3">Payment</th><th className="p-3 text-right">Total</th></tr></thead><tbody>{(selectedReport.orders || []).map((receipt) => <tr key={receipt.id} className="border-t border-[var(--border)]"><td className="p-3 font-semibold">{receipt.order_number || '—'}</td><td className="p-3">{dateTime(receipt.created_at)}</td><td className="p-3">{receipt.table_number || '—'}</td><td className="p-3">{receipt.waiter || '—'}</td><td className="p-3 capitalize">{String(receipt.payment_method || '—').replaceAll('_', ' ')}</td><td className="p-3 text-right font-semibold">KES {money(receipt.total)}</td></tr>)}{!selectedReport.orders?.length && <tr><td colSpan={6} className="p-5 text-center text-[var(--text-muted)]">No posted receipts are linked to this shift.</td></tr>}</tbody></table>
