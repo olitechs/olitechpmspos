@@ -116,7 +116,10 @@ export const shiftService = {
       allocations = data || [];
     }
 
-    // Split tender exceptions are returned as manager-visible diagnostics by the report core.\n    // Unallocated portions are never added to confirmed tender totals.\n\n    let refunds = [];
+    // Split tender exceptions are returned as manager-visible diagnostics by the report core.
+    // Unallocated portions are never added to confirmed tender totals.
+
+    let refunds = [];
     const postedIds = postedRows.map((receipt) => receipt.id);
     if (postedIds.length) {
       const { data, error: refundError } = await supabase
