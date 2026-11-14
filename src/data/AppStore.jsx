@@ -35,6 +35,7 @@ export function StoreProvider({ children }) {
   const [floorError, setFloorError] = useState('');
   // Shared active table sessions are consumed by the effects and callbacks below.
   const [sessions, setSessions] = useState({});
+  const [sessionsLoading, setSessionsLoading] = useState(true);
   const floorSaveTimer = useRef(null);
   const floorWriteQueue = useRef(Promise.resolve());
 
@@ -46,16 +47,25 @@ export function StoreProvider({ children }) {
       try {
         const remote = await posService.getFloorLayout(propertyId);
         if (!active) return;
-        if (remote && Array.isArray(remote.zones)) setZones(remote.zones);
-        else {
-          let legacy = [];
-          try { const parsed = JSON.parse(localStorage.getItem(zonesKey) || 'null'); if (Array.isArray(parsed)) legacy = parsed; }
-          catch (error) { console.warn('[POS] legacy floor backup could not be read', error); }
-          if (legacy.length) {
-            const saved = await posService.saveFloorLayout({ propertyId, zones: legacy });
-            if (!active) return;
-            setZones(Array.isArray(saved?.zones) ? saved.zones : legacy);
-          } else setZones([]);
+        const remoteZones = Array.isArray(remote?.zones) ? remote.zones : [];
+        let legacy = [];
+        try {
+          const parsed = JSON.parse(localStorage.getItem(zonesKey) || 'null');
+          if (Array.isArray(parsed)) legacy = parsed;
+        } catch (error) {
+          console.warn('[POS] legacy floor backup could not be read', error);
+        }
+
+        // An empty row can be left behind after an interrupted setup/import.
+        // Prefer a valid local backup in that case instead of hiding existing tables.
+        if (remoteZones.length) {
+          setZones(remoteZones);
+        } else if (legacy.length) {
+          const saved = await posService.saveFloorLayout({ propertyId, zones: legacy });
+          if (!active) return;
+          setZones(Array.isArray(saved?.zones) && saved.zones.length ? saved.zones : legacy);
+        } else {
+          setZones(remoteZones);
         }
         setZonesFor(propertyId); setFloorError('');
       } catch (error) {
@@ -84,7 +94,9 @@ export function StoreProvider({ children }) {
   }, [zones, zonesKey, zonesFor, propertyId, floorLoading]);
   useEffect(() => {
     let active = true;
-    if (!propertyId) { setSessions({}); return undefined; }
+    if (!propertyId) { setSessions({}); setSessionsLoading(false); return undefined; }
+    setSessions({});
+    setSessionsLoading(true);
 
     const hydrateSession = (row) => ({
       status: row.status,
@@ -109,7 +121,11 @@ export function StoreProvider({ children }) {
         next[row.table_key] = hydrateSession(row);
       }
       setSessions(next);
-    }).catch((error) => console.error('[POS] failed to load persisted sessions', error));
+    }).catch((error) => {
+      console.error('[POS] failed to load persisted sessions', error);
+    }).finally(() => {
+      if (active) setSessionsLoading(false);
+    });
 
     const channel = posService.subscribeToTableSessions?.(propertyId, {
       onChange: ({ eventType, row }) => {
@@ -748,7 +764,7 @@ export function StoreProvider({ children }) {
   }, [orderPrinterForCenter, persistKitchenOrder]);
 
   const value = {
-    zones, floorLoading, floorError, sessions, printers, saleReceipts, kitchenOrders,
+    zones, floorLoading, floorError, sessions, sessionsLoading, printers, saleReceipts, kitchenOrders,
     getSession, openTable, updateSessionTotals, setSessionOrderLines, setKotSentOrderLines, setUnsettled, closeTable,
     addZone, renameZone, removeZone, addTable, removeTable, updateTable, moveTable,
     addPrinter, updatePrinter, removePrinter, togglePurpose,
@@ -762,7 +778,7 @@ export function StoreProvider({ children }) {
 
 // Null-safe hook: degrades to an inert fallback if ever called without a provider.
 const FALLBACK = {
-  zones: [], floorLoading: false, floorError: '', sessions: {}, printers: [], saleReceipts: [], kitchenOrders: [],
+  zones: [], floorLoading: false, floorError: '', sessions: {}, sessionsLoading: false, printers: [], saleReceipts: [], kitchenOrders: [],
   getSession: () => null, openTable: () => {}, updateSessionTotals: () => {}, setSessionOrderLines: () => {}, setKotSentOrderLines: () => Promise.resolve(null), setUnsettled: () => {}, closeTable: () => {},
   addZone: () => {}, renameZone: () => {}, removeZone: () => {}, addTable: () => {}, removeTable: () => {}, updateTable: () => {}, moveTable: () => {},
   addPrinter: () => {}, updatePrinter: () => {}, removePrinter: () => {}, togglePurpose: () => {},

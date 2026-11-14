@@ -85,13 +85,78 @@ export default function FloorPlan({ onTableSelect }) {
   const { user } = useAuth();
   const propertyId = user?.property?.id;
   const [selectedTableId, setSelectedTableId] = useState(null);
-  const [activeZoneId, setActiveZoneId] = useState(store.zones[0]?.id);
+  const [activeZoneId, setActiveZoneId] = useState(null);
   const [shape, setShape] = useState(() => safeRead(SHAPE_KEY, 'square'));
   const [designMode, setDesignMode] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [arrivalsToday, setArrivalsToday] = useState(null);
   const [arrivalsFailed, setArrivalsFailed] = useState(false);
-  const zone = store.zones.find((z) => z.id === activeZoneId) || store.zones[0];
+  // Recover tables belonging to active sessions if an older floor layout is
+  // empty or a table was removed from the layout while its shift was still open.
+  // The session's original table_key remains the clickable ID, so orders and
+  // unsettled bills continue to address the existing server-side session.
+  const displayZones = useMemo(() => {
+    const zones = (store.zones || []).map((item) => ({
+      ...item,
+      tables: Array.isArray(item.tables) ? [...item.tables] : [],
+    }));
+    const sessions = Object.entries(store.sessions || {}).filter(([, session]) => (
+      session && session.status && session.status !== 'closed'
+    ));
+    const recovered = new Map();
+
+    sessions.forEach(([tableKey, session], index) => {
+      if (zones.some((item) => item.tables.some((table) => table.id === tableKey))) return;
+      const number = String(session.tableNumber || tableKey);
+      let target = session.zoneId
+        ? zones.find((item) => item.id === session.zoneId)
+        : null;
+
+      if (!target && !session.zoneId) {
+        const matches = zones.filter((item) => item.tables.some((table) => String(table.number) === number));
+        if (matches.length === 1) target = matches[0];
+      }
+
+      if (target) {
+        const matchIndex = target.tables.findIndex((table) => String(table.number) === number);
+        if (matchIndex >= 0) {
+          const original = target.tables[matchIndex];
+          target.tables[matchIndex] = { ...original, id: tableKey, layoutId: original.id };
+        } else {
+          target.tables.push({
+            id: tableKey, number, seats: Math.max(4, Number(session.guests) || 1),
+            x: 32 + (target.tables.length % 5) * 150,
+            y: 32 + Math.floor(target.tables.length / 5) * 130,
+          });
+        }
+        return;
+      }
+
+      const recoveredZoneId = session.zoneId || '__open_shift_recovered__';
+      if (!recovered.has(recoveredZoneId)) {
+        recovered.set(recoveredZoneId, {
+          id: recoveredZoneId,
+          name: session.zoneId ? 'Recovered floor zone' : 'Open shift tables',
+          tables: [],
+        });
+      }
+      const recoveredZone = recovered.get(recoveredZoneId);
+      recoveredZone.tables.push({
+        id: tableKey, number, seats: Math.max(4, Number(session.guests) || 1),
+        x: 32 + (recoveredZone.tables.length % 5) * 150,
+        y: 32 + Math.floor(recoveredZone.tables.length / 5) * 130,
+      });
+    });
+
+    return [...zones, ...recovered.values()];
+  }, [store.zones, store.sessions]);
+  const zone = displayZones.find((z) => z.id === activeZoneId) || displayZones[0];
+
+  useEffect(() => {
+    if (!displayZones.some((item) => item.id === activeZoneId)) {
+      setActiveZoneId(displayZones[0]?.id || null);
+    }
+  }, [displayZones, activeZoneId]);
 
   // Real arrivals for today, so the floor summary never shows an invented
   // reservation count. `null` means "not loaded", which renders as a dash.
@@ -140,7 +205,7 @@ export default function FloorPlan({ onTableSelect }) {
     setDesignMode(false);
   };
 
-  if (store.floorLoading) return (
+  if (store.floorLoading || store.sessionsLoading) return (
     <div role="status" aria-live="polite" className="flex h-full min-h-48 flex-col justify-center gap-4 bg-[var(--canvas)] p-6">
       <div className="mx-auto w-full max-w-xl space-y-3">
         <div className="h-10 animate-pulse rounded-xl bg-[var(--surface)]" />
@@ -175,7 +240,7 @@ export default function FloorPlan({ onTableSelect }) {
   const canvasW = Math.max(620, ...displayTables.map((t) => t.x + geometry.width + 24));
   const canvasH = Math.max(430, ...displayTables.map((t) => t.y + geometry.height + 24));
   let covers = 0, occupied = 0, openChecks = 0;
-  store.zones.forEach((z) => z.tables.forEach((t) => {
+  displayZones.forEach((z) => z.tables.forEach((t) => {
     const s = store.getSession(t.id);
     if (!s) return;
     if (s.status === 'occupied') { occupied++; openChecks++; covers += s.guests || 0; }
@@ -185,7 +250,7 @@ export default function FloorPlan({ onTableSelect }) {
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[var(--canvas)] text-[var(--text)]">
       <div className="flex shrink-0 flex-wrap items-center gap-2 overflow-x-auto border-b border-[var(--border)] bg-[var(--surface)] px-3 pb-2 pt-3 lg:px-4">
-        {store.zones.map((z) => (
+        {displayZones.map((z) => (
           <button key={z.id} type="button" onClick={() => setActiveZoneId(z.id)} className={`min-h-11 shrink-0 whitespace-nowrap rounded-full border-2 px-5 text-sm font-bold ${z.id===zone.id?'border-[var(--primary)] bg-[var(--primary)] text-[var(--on-primary)]':'border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--primary-soft)]'}`}>{z.name}</button>
         ))}
         <div className="flex shrink-0 flex-wrap items-center gap-1 rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] p-1 lg:ml-auto">
