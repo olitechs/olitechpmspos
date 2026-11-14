@@ -1,6 +1,6 @@
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-const normalizeName = (value) => String(value || '').normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '').replace(/\\s+/g, ' ').trim().toLocaleLowerCase('en');
+const normalizeName = (value) => String(value || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toLocaleLowerCase('en');
 
 export function isProductUuid(value) {
   return UUID_PATTERN.test(String(value || '').trim());
@@ -15,7 +15,7 @@ export function createPosSaleIdempotencyKey({ propertyId, tableKey, orderNumber 
 }
 
 function normalizeStockName(value) {
-  return String(value || '').normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '').trim().replace(/\\s+/g, ' ').toLocaleLowerCase('en');
+  return normalizeName(value);
 }
 
 export function resolvePosSaleStockMappings(orderLines = [], products = [], recipes = [], lookupAvailable = true) {
