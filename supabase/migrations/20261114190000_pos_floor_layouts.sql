@@ -34,7 +34,7 @@ create policy pos_floor_layouts_authorized_manage
       public.is_member_of_property(property_id)
       and (
         public.property_role(property_id) in ('owner', 'admin', 'manager', 'property_admin')
-        or public.current_staff_role(property_id) in ('owner', 'admin', 'manager', 'store_manager')
+        or public.current_staff_role(property_id) in ('owner', 'admin', 'manager', 'store_manager', 'front_office_manager', 'super_admin')
       )
     )
   )
