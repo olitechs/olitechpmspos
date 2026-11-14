@@ -24,6 +24,52 @@ function safeRead(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key) || 'null') ?? fallback; } catch { return fallback; }
 }
 
+// Active sessions are authoritative operational records. If a session's table
+// is missing from the saved floor layout, surface it as a recovered floor tile
+// instead of hiding an open order that still blocks shift closing.
+function buildFloorZones(configuredZones, sessions) {
+  const zones = Array.isArray(configuredZones) ? configuredZones : [];
+  const knownTableIds = new Set(zones.flatMap((zone) => (zone.tables || []).map((table) => String(table.id))));
+  const orphanSessions = Object.entries(sessions || {}).filter(([tableKey, session]) => (
+    session && session.status !== 'closed' && !knownTableIds.has(String(tableKey))
+  ));
+  if (!orphanSessions.length) return zones;
+
+  const recoveredByZone = new Map();
+  orphanSessions.forEach(([tableKey, session]) => {
+    const groupId = session.zoneId || '__recovered_active_sessions__';
+    const existing = recoveredByZone.get(groupId) || [];
+    const index = existing.length;
+    existing.push({
+      id: tableKey,
+      number: String(session.tableNumber || tableKey),
+      seats: Math.max(1, Number(session.guests) || 4),
+      x: 24 + (index % 5) * 148,
+      y: 24 + Math.floor(index / 5) * 136,
+      w: 124,
+      h: 112,
+      recovered: true,
+    });
+    recoveredByZone.set(groupId, existing);
+  });
+
+  let result = [...zones];
+  recoveredByZone.forEach((tables, groupId) => {
+    const existingIndex = result.findIndex((zone) => String(zone.id) === String(groupId));
+    if (existingIndex >= 0) {
+      result[existingIndex] = { ...result[existingIndex], tables: [...(result[existingIndex].tables || []), ...tables] };
+    } else {
+      result.push({
+        id: groupId,
+        name: groupId === '__recovered_active_sessions__' ? 'Active tables (recovered)' : 'Previously configured zone',
+        tables,
+        recovered: true,
+      });
+    }
+  });
+  return result;
+}
+
 function Tile({ table, session, shape, designMode, onSelect, onMove, now }) {
   const rawStatus = session?.status || table.status || 'free';
   const status = rawStatus === 'unsettled' ? 'bill' : rawStatus;
@@ -91,7 +137,8 @@ export default function FloorPlan({ onTableSelect }) {
   const [now, setNow] = useState(() => Date.now());
   const [arrivalsToday, setArrivalsToday] = useState(null);
   const [arrivalsFailed, setArrivalsFailed] = useState(false);
-  const zone = store.zones.find((z) => z.id === activeZoneId) || store.zones[0];
+  const floorZones = useMemo(() => buildFloorZones(store.zones, store.sessions), [store.zones, store.sessions]);
+  const zone = floorZones.find((z) => z.id === activeZoneId) || floorZones[0];
 
   // Real arrivals for today, so the floor summary never shows an invented
   // reservation count. `null` means "not loaded", which renders as a dash.
@@ -175,7 +222,7 @@ export default function FloorPlan({ onTableSelect }) {
   const canvasW = Math.max(620, ...displayTables.map((t) => t.x + geometry.width + 24));
   const canvasH = Math.max(430, ...displayTables.map((t) => t.y + geometry.height + 24));
   let covers = 0, occupied = 0, openChecks = 0;
-  store.zones.forEach((z) => z.tables.forEach((t) => {
+  floorZones.forEach((z) => z.tables.forEach((t) => {
     const s = store.getSession(t.id);
     if (!s) return;
     if (s.status === 'occupied') { occupied++; openChecks++; covers += s.guests || 0; }
@@ -185,7 +232,7 @@ export default function FloorPlan({ onTableSelect }) {
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[var(--canvas)] text-[var(--text)]">
       <div className="flex shrink-0 flex-wrap items-center gap-2 overflow-x-auto border-b border-[var(--border)] bg-[var(--surface)] px-3 pb-2 pt-3 lg:px-4">
-        {store.zones.map((z) => (
+        {floorZones.map((z) => (
           <button key={z.id} type="button" onClick={() => setActiveZoneId(z.id)} className={`min-h-11 shrink-0 whitespace-nowrap rounded-full border-2 px-5 text-sm font-bold ${z.id===zone.id?'border-[var(--primary)] bg-[var(--primary)] text-[var(--on-primary)]':'border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--primary-soft)]'}`}>{z.name}</button>
         ))}
         <div className="flex shrink-0 flex-wrap items-center gap-1 rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] p-1 lg:ml-auto">
