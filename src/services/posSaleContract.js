@@ -20,7 +20,8 @@ function normalizeStockName(value) {
 
 export function resolvePosSaleStockMappings(orderLines = [], products = [], recipes = [], lookupAvailable = true) {
   if (!lookupAvailable) {
-    return buildPosSaleItems(orderLines, [], false);
+    const unverifiableLines = (Array.isArray(orderLines) ? orderLines : []).map((line) => ({ ...line, productId: null, product_id: null }));
+    return buildPosSaleItems(unverifiableLines, [], false);
   }
 
   const productById = new Map((products || []).filter((product) => isProductUuid(product?.id)).map((product) => [product.id, product]));
