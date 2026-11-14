@@ -33,9 +33,22 @@ export function resolvePosSaleStockMappings(orderLines = [], products = [], reci
     productsByName.set(key, matches);
   }
 
-  const recipeNames = new Set((recipes || []).filter((recipe) => recipe?.active !== false).map((recipe) => normalizeName(
-    typeof recipe === 'string' ? recipe : recipe?.menu_item_name
-  )).filter(Boolean));
+  const recipeNames = new Set();
+  const incompleteRecipeNames = new Set();
+  for (const recipe of recipes || []) {
+    if (recipe?.active === false) continue;
+    const recipeName = normalizeName(typeof recipe === 'string' ? recipe : recipe?.menu_item_name);
+    if (!recipeName) continue;
+    const ingredients = Array.isArray(recipe?.recipe_ingredients) ? recipe.recipe_ingredients : [];
+    const hasValidIngredients = ingredients.length > 0 && ingredients.every((ingredient) =>
+      isProductUuid(ingredient?.product_id) &&
+      productById.has(ingredient.product_id) &&
+      Number.isFinite(Number(ingredient?.qty)) &&
+      Number(ingredient.qty) > 0
+    );
+    if (hasValidIngredients) recipeNames.add(recipeName);
+    else incompleteRecipeNames.add(recipeName);
+  }
 
   const mappedLines = (Array.isArray(orderLines) ? orderLines : []).map((line) => {
     const name = String(line?.name || line?.item_name || '').trim();
@@ -44,14 +57,18 @@ export function resolvePosSaleStockMappings(orderLines = [], products = [], reci
     const existingProduct = isProductUuid(suppliedId) ? productById.get(suppliedId) : null;
 
     if (existingProduct) return { ...line, productId: existingProduct.id, product_id: existingProduct.id };
-    if (recipeNames.has(normalizedName)) return { ...line, productId: null, product_id: null };
+    if (recipeNames.has(normalizedName) || incompleteRecipeNames.has(normalizedName)) return { ...line, productId: null, product_id: null };
 
     const matches = productsByName.get(normalizeStockName(name)) || [];
     if (matches.length === 1) return { ...line, productId: matches[0].id, product_id: matches[0].id };
     return { ...line, productId: null, product_id: null };
   });
 
-  return buildPosSaleItems(mappedLines, [...recipeNames], true);
+  return buildPosSaleItems(mappedLines, [...recipeNames], true).map((item) =>
+    incompleteRecipeNames.has(normalizeName(item.name))
+      ? { ...item, product_id: null, stock_tracking_status: 'recipe_incomplete' }
+      : item
+  );
 }
 
 export function buildPosSaleItems(orderLines = [], recipeMenuNames = [], recipeLookupAvailable = true) {
