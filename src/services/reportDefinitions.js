@@ -668,10 +668,21 @@ export function buildShiftReportDefinition(report, { propertyName, generatedBy }
     time: dateLabel(receipt.created_at), items: (Array.isArray(receipt.items) ? receipt.items : []).map((item) => `${cleanText(item.name ?? item.item_name, 'Item')} × ${toNumber(item.qty ?? item.quantity ?? 1)}`).join(', '),
     payment_method: cleanText(receipt.payment_method).toLowerCase() === 'split' ? 'Split Payment' : cleanText(receipt.payment_method).replaceAll('_', ' '), amount: money(receipt.total), guest: cleanText(receipt.guest_name), covers: toNumber(receipt.covers || 1),
   }));
+  const splitReconciliation = report?.splitReconciliation || {};
+  const splitExceptionRows = (splitReconciliation.exceptions || []).map((row) => ({
+    receipt: cleanText(row.receipt_number || row.receipt_id),
+    status: cleanText(row.status),
+    receipt_total: money(row.expected_total),
+    allocated_total: money(row.allocated_total),
+    difference: money(row.difference),
+    allocations: (row.allocations || []).map((allocation) => `${cleanText(allocation.payment_method)}: KES ${money(allocation.amount)}`).join(', '),
+  }));
   const summaryRows = [
     { metric: 'Opening cash', amount: money(shift.opening_cash), count: 1 },
     ...paymentRows.map((row) => ({ metric: row.method, amount: row.net_amount, count: row.transactions })),
     { metric: 'Gross sales', amount: money(report?.grossSales), count: toNumber(report?.totalTransactions) },
+    { metric: 'Split receipts', amount: money(splitReconciliation.receiptTotal), count: toNumber(splitReconciliation.splitReceiptCount) },
+    { metric: 'Split tender exceptions', amount: money(splitReconciliation.unallocatedOrVariance), count: toNumber(splitReconciliation.exceptionCount) },
     { metric: 'Refunds', amount: money(report?.refundsTotal), count: '' },
     { metric: 'Voided value', amount: money(report?.voidedValue), count: '' },
     { metric: 'Net sales', amount: money(report?.totalSales), count: toNumber(report?.totalTransactions) },
@@ -690,6 +701,7 @@ export function buildShiftReportDefinition(report, { propertyName, generatedBy }
       { name: 'shift-summary', title: 'Shift Summary', columns: [textColumn('metric', 'Metric', 28), sumColumn('amount', 'Amount', 'currency', 18), sumColumn('count', 'Count')], rows: summaryRows },
       { name: 'detailed-receipts', title: 'Detailed Receipts', columns: [textColumn('receipt', 'Receipt', 18), textColumn('table', 'Table', 12), textColumn('waiter', 'Waiter', 18), dateTimeColumn('time', 'Time', 22), textColumn('items', 'Items', 40), textColumn('payment_method', 'Payment method', 18), sumColumn('amount', 'Amount', 'currency', 18), textColumn('guest', 'Guest', 24), sumColumn('covers', 'Covers')], rows: receiptRows },
       { name: 'voided-receipts', title: 'Voided Receipts', columns: [textColumn('receipt', 'Receipt', 18), textColumn('table', 'Table', 14), dateTimeColumn('time', 'Time', 22), sumColumn('amount', 'Voided value', 'currency', 20)], rows: (report?.voidedOrders || []).map((receipt) => ({ receipt: cleanText(receipt.order_number), table: cleanText(receipt.table_number), time: dateLabel(receipt.created_at), amount: money(receipt.total) })) },
+      { name: 'split-tender-reconciliation', title: 'Split Tender Reconciliation', columns: [textColumn('receipt', 'Receipt', 22), textColumn('status', 'Status', 14), sumColumn('receipt_total', 'Receipt total', 'currency', 18), sumColumn('allocated_total', 'Allocated', 'currency', 18), sumColumn('difference', 'Unallocated / variance', 'currency', 22), textColumn('allocations', 'Recorded allocations', 34)], rows: splitExceptionRows },
       { name: 'payment-breakdown', title: 'Payment Breakdown', columns: [textColumn('method', 'Payment method', 22), sumColumn('transactions', 'Transactions'), sumColumn('gross_amount', 'Gross', 'currency', 18), sumColumn('refunds', 'Refunds', 'currency', 18), sumColumn('net_amount', 'Net', 'currency', 18), { key: 'share_percent', label: '% of Net Sales', type: 'number', format: 'percent', width: 16, align: 'right' }], rows: paymentRows },
       { name: 'refund-details', title: 'Refund Details', columns: [textColumn('receipt', 'Receipt', 24), textColumn('method', 'Settlement method', 22), sumColumn('amount', 'Refund amount', 'currency', 20)], rows: (report?.refunds || []).map((refund) => { const receipt = orders.find((item) => item.id === refund.receipt_id); return { receipt: cleanText(receipt?.order_number || refund.receipt_id), method: cleanText(refund.settlement_method || refund.method), amount: money(refund.amount) }; }) },
       { name: 'items-sold', title: 'Items Sold by Category', columns: [textColumn('category', 'Category', 22), sumColumn('quantity', 'Quantity', 'quantity'), sumColumn('gross_sales', 'Gross sales', 'currency', 20)], rows: [
@@ -698,7 +710,7 @@ export function buildShiftReportDefinition(report, { propertyName, generatedBy }
         { category: 'All Items', quantity: money(report?.itemsSold), gross_sales: money(report?.grossSales) },
       ] },
     ],
-    notes: ['The document includes internal shift financial and transaction information. Apply existing Shift Reports access restrictions. Thermal Re-print and Print & Close Shift are not affected.'],
+    notes: ['Split tender exceptions are shown by receipt. Only recorded allocation amounts appear in confirmed payment-method totals; missing or unallocated amounts are not assigned to a tender.', 'The document includes internal shift financial and transaction information. Apply existing Shift Reports access restrictions. Thermal Re-print and Print & Close Shift are not affected.'],
   });
 }
 
