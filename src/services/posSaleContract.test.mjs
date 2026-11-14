@@ -96,3 +96,19 @@ test('stock mapping lookup failure marks legacy lines unverified', () => {
   const [item] = resolvePosSaleStockMappings([{ id: 'legacy', name: 'Unknown dish', qty: 1 }], [], [], false);
   assert.equal(item.stock_tracking_status, 'unverified');
 });
+
+
+test('active recipes require valid ingredient product links and positive quantities', () => {
+  const validIngredient = { product_id: PRODUCT_ID, qty: 0.25 };
+  const recipes = [
+    { menu_item_name: 'Complete recipe', active: true, recipe_ingredients: [validIngredient] },
+    { menu_item_name: 'Missing recipe ingredients', active: true, recipe_ingredients: [] },
+    { menu_item_name: 'Foreign or missing ingredient', active: true, recipe_ingredients: [{ product_id: '6e5f1b2c-7f3b-4c8e-9a15-3c41f52e2d02', qty: 1 }] },
+  ];
+  const items = resolvePosSaleStockMappings([
+    { id: 'valid', name: 'Complete recipe', qty: 1 },
+    { id: 'empty', name: 'Missing recipe ingredients', qty: 1 },
+    { id: 'foreign', name: 'Foreign or missing ingredient', qty: 1 },
+  ], [{ id: PRODUCT_ID, name: 'Ingredient' }], recipes);
+  assert.deepEqual(items.map((item) => item.stock_tracking_status), ['recipe', 'recipe_incomplete', 'recipe_incomplete']);
+});
