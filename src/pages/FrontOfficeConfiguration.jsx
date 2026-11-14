@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
 
 const field = 'min-h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--brand-primary)]';
-const primary = 'inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50';
+const primary = 'inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-[var(--brand-primary)] px-4 py-2 text-sm font-semibold text-[var(--on-primary)] disabled:opacity-50';
 const blankRate = { code: '', name: '', description: '', meal_plan: 'room_only', cancellation_policy: '', default_rate: '0', active: true };
 
 export default function FrontOfficeConfiguration() {
@@ -121,7 +121,7 @@ export default function FrontOfficeConfiguration() {
         {[['Rate plans', rates.length], ['Active plans', rates.filter(r => r.active).length], ['Booking engine', booking.enabled ? 'Enabled' : 'Disabled'], ['Property currency', currency]].map(([label,value]) => <div key={label} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"><div className="text-xs text-[var(--text-muted)]">{label}</div><div className="mt-1 text-xl font-black text-[var(--text)]">{loading ? '—' : value}</div></div>)}
       </div>
       <nav className="flex flex-wrap gap-2 border-b border-[var(--border)] pb-3" aria-label="Configuration sections">
-        {tabs.map(item => { const Icon = item.icon; return <button key={item.id} type="button" onClick={() => setTab(item.id)} aria-pressed={tab === item.id} className={['inline-flex min-h-10 items-center gap-2 rounded-lg px-3 text-sm font-semibold', tab === item.id ? 'bg-[var(--brand-primary)] text-white' : 'border border-[var(--border)] bg-[var(--surface)] text-[var(--text)]'].join(' ')}><Icon size={15}/>{item.label}</button>; })}
+        {tabs.map(item => { const Icon = item.icon; return <button key={item.id} type="button" onClick={() => setTab(item.id)} aria-pressed={tab === item.id} className={['inline-flex min-h-10 items-center gap-2 rounded-lg px-3 text-sm font-semibold', tab === item.id ? 'bg-[var(--brand-primary)] text-[var(--on-primary)]' : 'border border-[var(--border)] bg-[var(--surface)] text-[var(--text)]'].join(' ')}><Icon size={15}/>{item.label}</button>; })}
       </nav>
       {loading ? <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-12 text-center text-sm text-[var(--text-muted)]">Loading property configuration…</div> : <>
         {tab === 'rates' && <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
