@@ -66,7 +66,8 @@ export function buildShiftSalesSummary(receipts = [], allocations = [], refunds 
     allocationMap.get(receiptId).push(allocation);
   }
 
-  const splitReconciliation = diagnoseSplitTenderAllocations(receipts, allocations);\n  const countedByMethod = new Map(PAYMENT_METHODS.map((method) => [method, new Set()]));
+  const splitReconciliation = diagnoseSplitTenderAllocations(receipts, allocations);
+  const countedByMethod = new Map(PAYMENT_METHODS.map((method) => [method, new Set()]));
   const categories = { food: { qty: 0, amount: 0 }, drinks: { qty: 0, amount: 0 } };
   let grossSales = 0;
   let refundsTotal = 0;
