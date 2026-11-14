@@ -81,9 +81,9 @@ export default function PublicSignUp() {
     <main className="min-h-screen bg-[var(--canvas)] px-4 py-8 sm:px-6 lg:flex lg:items-center lg:justify-center lg:py-10">
       <div className="relative w-full max-w-6xl">
         <section className="relative min-h-[700px] overflow-hidden rounded-[28px] bg-[var(--surface)] shadow-none lg:min-h-[600px]">
-          <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full border border-[var(--border)]/20 bg-[var(--surface)]/[0.012]" />
-          <div className="absolute -bottom-40 left-8 h-96 w-96 rounded-full bg-[var(--primary-soft)]/[0.035]" />
-          <div className="absolute right-[-180px] top-20 h-[420px] w-[420px] rounded-full border border-[var(--border)]/25" />
+          <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full border border-border/20 bg-surface/[0.012]" />
+          <div className="absolute -bottom-40 left-8 h-96 w-96 rounded-full bg-brand-soft/[0.035]" />
+          <div className="absolute right-[-180px] top-20 h-[420px] w-[420px] rounded-full border border-border/25" />
 
           <div className="relative flex min-h-[700px] flex-col lg:min-h-[600px] lg:flex-row">
             <div className="flex w-full flex-col justify-center px-7 pb-10 pt-10 text-[var(--text)] sm:px-12 lg:w-[60%] lg:px-16 lg:py-16">
@@ -95,8 +95,8 @@ export default function PublicSignUp() {
               <div className="max-w-[500px]">
                 <p className="mb-4 text-xs font-medium  text-[var(--primary)]">OliTechs PMS + POS</p>
                 <h1 className="text-4xl font-medium  text-[var(--text)] sm:text-5xl">Welcome</h1>
-                <p className="mt-4 max-w-lg text-base font-medium text-[var(--text)]/85 sm:text-lg">OliTechs PMS + POS</p>
-                <p className="mt-4 max-w-lg text-sm leading-7 text-[var(--text)]/60 sm:text-[15px]">
+                <p className="mt-4 max-w-lg text-base font-medium text-foreground/85 sm:text-lg">OliTechs PMS + POS</p>
+                <p className="mt-4 max-w-lg text-sm leading-7 text-foreground/60 sm:text-[15px]">
                   Manage your hotel operations, reservations, and point of sale from one powerful dashboard.
                 </p>
               </div>
@@ -129,7 +129,7 @@ export default function PublicSignUp() {
                         value={form.name}
                         onChange={(e) => update('name', e.target.value)}
                         placeholder="Enter your full name"
-                        className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-11 pr-4 text-sm text-[var(--text)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                        className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-11 pr-4 text-sm text-[var(--text)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-2 focus:ring-primary/20"
                       />
                     </div>
                   </div>
@@ -147,7 +147,7 @@ export default function PublicSignUp() {
                         value={form.email}
                         onChange={(e) => update('email', e.target.value)}
                         placeholder="Enter your email"
-                        className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-11 pr-4 text-sm text-[var(--text)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                        className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-11 pr-4 text-sm text-[var(--text)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-2 focus:ring-primary/20"
                       />
                     </div>
                   </div>
@@ -166,7 +166,7 @@ export default function PublicSignUp() {
                         value={form.password}
                         onChange={(e) => update('password', e.target.value)}
                         placeholder="Create a password"
-                        className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-11 pr-14 text-sm text-[var(--text)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                        className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-11 pr-14 text-sm text-[var(--text)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-2 focus:ring-primary/20"
                       />
                       <button type="button" onClick={() => setShowPassword((value) => !value)} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-[var(--text-muted)] hover:text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]" aria-label={showPassword ? 'Hide password' : 'Show password'}>
                         {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -188,7 +188,7 @@ export default function PublicSignUp() {
                         value={form.confirm}
                         onChange={(e) => update('confirm', e.target.value)}
                         placeholder="Confirm your password"
-                        className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-11 pr-14 text-sm text-[var(--text)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20"
+                        className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] pl-11 pr-14 text-sm text-[var(--text)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-2 focus:ring-primary/20"
                       />
                       <button type="button" onClick={() => setShowConfirm((value) => !value)} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-[var(--text-muted)] hover:text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]" aria-label={showConfirm ? 'Hide confirm password' : 'Show confirm password'}>
                         {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
