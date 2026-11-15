@@ -168,6 +168,13 @@ test('target viewport widths select the correct navigation, toolbar and planner 
   }
 });
 
+test('today is re-evaluated at midnight instead of being frozen for the tab lifetime', () => {
+  assert.ok(source.includes('const [todayDate, setTodayDate] = useState(() => getPmsTodayDate());'));
+  assert.ok(!source.includes('const todayDate = useMemo(() => getPmsTodayDate(), []);'));
+  assert.ok(source.includes('setTodayDate(current => (dateKey(current) === dateKey(next) ? current : next))'));
+  assert.ok(source.includes("document.addEventListener('visibilitychange', onVisibility)"));
+});
+
 test('planner room-status colours follow the dashboard housekeeping semantics', () => {
   assert.ok(source.includes("available: { fill: 'var(--room-clean)', label: 'Vacant clean' }"));
   assert.ok(source.includes("dirty: { fill: 'var(--room-dirty)', label: 'Vacant dirty' }"));

@@ -148,8 +148,21 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   const plannerReservations = reservations;
   const { user } = useAuth();
   const propertyId = user?.property?.id;
-  const todayDate = useMemo(() => getPmsTodayDate(), []);
+  // "Today" must move at midnight (Africa/Nairobi) instead of staying frozen
+  // for the lifetime of the tab. Re-check every minute and whenever the tab
+  // becomes visible again after being left open overnight.
+  const [todayDate, setTodayDate] = useState(() => getPmsTodayDate());
   const today = dateKey(todayDate);
+  useEffect(() => {
+    const syncToday = () => {
+      const next = getPmsTodayDate();
+      setTodayDate(current => (dateKey(current) === dateKey(next) ? current : next));
+    };
+    const timer = setInterval(syncToday, 60000);
+    const onVisibility = () => { if (document.visibilityState === 'visible') syncToday(); };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => { clearInterval(timer); document.removeEventListener('visibilitychange', onVisibility); };
+  }, []);
   useEffect(() => { const timer = setInterval(() => setClockNow(Date.now()), 1000); return () => clearInterval(timer); }, []);
   useEffect(() => {
     if (!propertyId) return undefined;
