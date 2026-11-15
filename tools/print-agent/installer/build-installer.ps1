@@ -175,13 +175,89 @@ $setup = Get-ChildItem -Path $DistRoot -Filter 'OliTechsPrintAgentSetup-*.exe' -
 if (-not $setup) { throw 'Inno Setup reported success but no installer was produced.' }
 
 # 6. Sign and verify. An unsigned setup is not a release artifact.
-$signtool = Resolve-Tool -Explicit '' -Candidates @(
-  (Join-Path ${env:ProgramFiles(x86)} 'Windows Kits\10\bin\x64\signtool.exe')
-) -Label 'signtool'
+$signtool = ''
+# Hosted Windows images install versioned Windows SDK folders, for example
+# Windows Kits\10\bin\10.0.26100.0\x64\signtool.exe. Do not assume
+# signtool.exe lives directly under bin\x64.
+$sdkBin = Join-Path ${env:ProgramFiles(x86)} 'Windows Kits\10\bin'
+if (Test-Path $sdkBin) {
+  $sdkSignTools = Get-ChildItem -Path $sdkBin -Filter 'signtool.exe' -File -Recurse -ErrorAction SilentlyContinue |
+    Where-Object { $_.FullName -match '\\\\x64\\\\signtool\\.exe
+
+$canSign = $CertificateThumbprint -or $PfxPath
+if ($canSign) {
+  if (-not $signtool) { throw 'signtool.exe was not found. Install the Windows SDK signing tools.' }
+  if ($CertificateThumbprint) {
+    & $signtool sign /sha1 $CertificateThumbprint /fd SHA256 /tr $TimestampUrl /td SHA256 $setup.FullName
+  } else {
+    & $signtool sign /f $PfxPath /p $PfxPassword /fd SHA256 /tr $TimestampUrl /td SHA256 $setup.FullName
+  }
+  if ($LASTEXITCODE -ne 0) { throw "Code signing failed (exit code $LASTEXITCODE)." }
+
+  $verification = Get-AuthenticodeSignature $setup.FullName
+  if ($verification.Status -ne 'Valid') {
+    throw "The signed installer is not valid: $($verification.Status) $($verification.StatusMessage)"
+  }
+  Write-Host "Signed and verified: $($setup.FullName)" -ForegroundColor Green
+  Write-Host "Publisher: $($verification.SignerCertificate.Subject)"
+  Write-Host "SHA-256:  $((Get-FileHash $setup.FullName -Algorithm SHA256).Hash)"
+} elseif ($AllowUnsigned) {
+  $unsigned = Join-Path $setup.DirectoryName ($setup.BaseName + '-UNSIGNED.exe')
+  Move-Item -Path $setup.FullName -Destination $unsigned -Force
+  Write-Host 'WARNING: this build is UNSIGNED. Windows SmartScreen will warn, and it must not be given to a customer.' -ForegroundColor Yellow
+  Write-Host "Unsigned test artifact: $unsigned"
+} else {
+  throw 'Refusing to produce an unsigned release installer. Pass -CertificateThumbprint or -PfxPath/-PfxPassword, or -AllowUnsigned for an internal test build.'
+}
+
+Write-Host ''
+Write-Host 'Installer build complete.' -ForegroundColor Green
+Write-Host "Version: $Version"
+Write-Host 'Next: install it on a spare Windows 10/11 x64 computer and run Part 13 of WINDOWS-ACCEPTANCE-CHECKLIST.md.'
+ -or $_.FullName -match '\\\\x64\\\\signtool\\.exe
+
+$canSign = $CertificateThumbprint -or $PfxPath
+if ($canSign) {
+  if (-not $signtool) { throw 'signtool.exe was not found. Install the Windows SDK signing tools.' }
+  if ($CertificateThumbprint) {
+    & $signtool sign /sha1 $CertificateThumbprint /fd SHA256 /tr $TimestampUrl /td SHA256 $setup.FullName
+  } else {
+    & $signtool sign /f $PfxPath /p $PfxPassword /fd SHA256 /tr $TimestampUrl /td SHA256 $setup.FullName
+  }
+  if ($LASTEXITCODE -ne 0) { throw "Code signing failed (exit code $LASTEXITCODE)." }
+
+  $verification = Get-AuthenticodeSignature $setup.FullName
+  if ($verification.Status -ne 'Valid') {
+    throw "The signed installer is not valid: $($verification.Status) $($verification.StatusMessage)"
+  }
+  Write-Host "Signed and verified: $($setup.FullName)" -ForegroundColor Green
+  Write-Host "Publisher: $($verification.SignerCertificate.Subject)"
+  Write-Host "SHA-256:  $((Get-FileHash $setup.FullName -Algorithm SHA256).Hash)"
+} elseif ($AllowUnsigned) {
+  $unsigned = Join-Path $setup.DirectoryName ($setup.BaseName + '-UNSIGNED.exe')
+  Move-Item -Path $setup.FullName -Destination $unsigned -Force
+  Write-Host 'WARNING: this build is UNSIGNED. Windows SmartScreen will warn, and it must not be given to a customer.' -ForegroundColor Yellow
+  Write-Host "Unsigned test artifact: $unsigned"
+} else {
+  throw 'Refusing to produce an unsigned release installer. Pass -CertificateThumbprint or -PfxPath/-PfxPassword, or -AllowUnsigned for an internal test build.'
+}
+
+Write-Host ''
+Write-Host 'Installer build complete.' -ForegroundColor Green
+Write-Host "Version: $Version"
+Write-Host 'Next: install it on a spare Windows 10/11 x64 computer and run Part 13 of WINDOWS-ACCEPTANCE-CHECKLIST.md.'
+ }
+  $sdkSignTool = $sdkSignTools | Sort-Object { [version]($_.Directory.Parent.Name) } -Descending | Select-Object -First 1
+  if ($sdkSignTool) { $signtool = $sdkSignTool.FullName }
+}
 if (-not $signtool) {
   $found = Get-Command signtool.exe -ErrorAction SilentlyContinue
   if ($found) { $signtool = $found.Source }
 }
+if (-not $signtool) {
+  throw "signtool.exe was not found. Windows SDK signing tools are required. Searched: $sdkBin and PATH."
+}
+Write-Host "Using Windows SDK signing tool: $signtool" -ForegroundColor Cyan
 
 $canSign = $CertificateThumbprint -or $PfxPath
 if ($canSign) {
