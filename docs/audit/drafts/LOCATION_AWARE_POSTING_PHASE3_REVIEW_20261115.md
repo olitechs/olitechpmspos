@@ -59,7 +59,7 @@ The internal helper functions are not executable by anon, authenticated or servi
 
 The new UI generates a request key and keeps it unchanged after a failed request, so retrying the same form submission returns the original source record. The database stores a payload fingerprint and rejects reuse of a key with different details.
 
-For compatibility during rollout, `p_request_key` has a database default. An older frontend that omits it can still call the RPC, but receives a generated legacy key and does **not** get retry deduplication. The updated UI passes the key explicitly.
+For compatibility during rollout, adjustment and wastage RPCs accept an omitted `p_request_key` from an older frontend by generating a legacy key; those older calls do **not** get retry deduplication. Count creation is stricter: an omitted key is rejected with a refresh message because the old count UI submitted property-wide stock as location-level counted quantities. The updated UI passes a stable key and location-only lines explicitly.
 
 ### Physical-count UI correction
 
