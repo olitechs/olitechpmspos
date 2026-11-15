@@ -1028,6 +1028,8 @@ REVOKE INSERT, UPDATE, DELETE ON TABLE
   public.inventory_wastage
 FROM anon, authenticated;
 
+NOTIFY pgrst, 'reload schema';
+
 COMMIT;
 
 -- Post-apply checks required on a disposable production-equivalent database:
