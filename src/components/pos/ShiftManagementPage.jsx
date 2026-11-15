@@ -106,10 +106,10 @@ export default function ShiftManagementPage({ propertyId, currentShift, loadErro
               <p className="mt-1 text-xs text-[var(--text-muted)]">Live totals from posted receipts, refunds and active table sessions.</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <button type="button" onClick={printLiveSummary} disabled={!summary || summaryLoading || printingSummary} className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[var(--border)] px-3 text-xs font-bold text-[var(--text)] disabled:opacity-50">
+              <button type="button" onClick={printLiveSummary} disabled={!summary || summaryLoading || printingSummary} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[var(--border)] px-3 text-xs font-bold text-[var(--text)] disabled:opacity-50">
                 <Printer size={14} /> {printingSummary ? 'Printing…' : 'Print live summary'}
               </button>
-              <button type="button" onClick={loadSummary} disabled={summaryLoading} className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[var(--border)] px-3 text-xs font-bold text-[var(--text)] disabled:opacity-50">
+              <button type="button" onClick={loadSummary} disabled={summaryLoading} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[var(--border)] px-3 text-xs font-bold text-[var(--text)] disabled:opacity-50">
                 <RefreshCw size={14} className={summaryLoading ? 'animate-spin' : ''} /> Refresh
               </button>
             </div>
@@ -178,7 +178,7 @@ export default function ShiftManagementPage({ propertyId, currentShift, loadErro
               <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Active property shift</p>
               <h2 className="mt-1 text-lg font-bold text-[var(--text)]">{currentShift.shift_no || 'Current shift'}</h2>
             </div>
-            <div className="flex items-center gap-2"><span className="rounded-full bg-[var(--status-paid)] px-3 py-1 text-xs font-bold text-[var(--pay-paid-fg)]">OPEN</span>{onCloseShift && <button type="button" onClick={onCloseShift} className="inline-flex min-h-9 items-center gap-2 rounded-lg bg-[var(--primary)] px-3 py-2 text-xs font-bold text-primary-foreground hover:brightness-95"><LockKeyhole size={14} /> Close shift</button>}</div>
+            <div className="flex items-center gap-2"><span className="rounded-full bg-[var(--status-paid)] px-3 py-1 text-xs font-bold text-[var(--pay-paid-fg)]">OPEN</span>{onCloseShift && <button type="button" onClick={onCloseShift} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-[var(--primary)] px-3 py-2 text-xs font-bold text-primary-foreground hover:brightness-95"><LockKeyhole size={14} /> Close shift</button>}</div>
           </div>
           <div className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3">
             <div className="rounded-2xl border border-[var(--border)] p-4">
