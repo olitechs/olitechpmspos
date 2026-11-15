@@ -49,7 +49,8 @@ test('inventory count snapshots its location and approval reconciles to the live
 
 test('client direct DML is revoked only for RPC-owned stock operation records', () => {
   assert.match(migration,/revoke insert, update, delete on table[\s\S]*?product_stock_locations[\s\S]*?inventory_counts[\s\S]*?inventory_count_lines[\s\S]*?stock_adjustments[\s\S]*?inventory_wastage[\s\S]*?from anon, authenticated/i);
-  assert.match(migration,/drop constraint if exists product_stock_locations_qty_check/i);
+  assert.match(migration,/if p_change < 0 and v_location_qty \+ p_change < 0 then/i);
+  assert.doesNotMatch(migration,/drop constraint if exists product_stock_locations_qty_check/i);
 });
 
 test('rollback-only runtime gate covers location deltas, retries, authorization and trigger retention', () => {
