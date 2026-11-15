@@ -87,6 +87,10 @@ const kitchenPrintersPage = await readFile(
   new URL('../../src/components/settings/KitchenPrintersPage.jsx', import.meta.url),
   'utf8',
 );
+const printService = await readFile(
+  new URL('../../src/services/printService.js', import.meta.url),
+  'utf8',
+);
 const dashboard = await readFile(
   new URL('../../src/components/modules/Dashboard.jsx', import.meta.url),
   'utf8',
@@ -98,9 +102,12 @@ test('kitchen printer route uses the production property-scoped printer schema',
   // already be on paper, so reprinting them requires a paper check first.
   assert.match(kitchenPrintersPage, /listFnbPrintJobs\(propertyId, \{ statuses: \['failed', 'uncertain'\], limit: 25 \}\)/);
   assert.match(kitchenPrintersPage, /job\.status === 'uncertain' && !window\.confirm/);
-  assert.match(kitchenPrintersPage, /table: 'fnb_print_jobs'/);
+  // The realtime recovery feed moved to printService with the other fnb_print_jobs
+  // transport; the tenant guard now asserts the channel spec there.
+  assert.match(printService, /table: 'fnb_print_jobs'/);
+  assert.match(printService, /subscribeToFnbPrintRecovery/);
   assert.match(kitchenPrintersPage, /retryFnbPrintJob\(job\.id, propertyId\)/);
-  assert.doesNotMatch(kitchenPrintersPage, /printer_groups|printer_group_categories|print_agents|from\('printers'\)/);
+  assert.doesNotMatch(kitchenPrintersPage, /supabaseClient|printer_groups|printer_group_categories|print_agents|from\('printers'\)/);
 });
 
 test('legacy workspace printer store remains fail-soft when optional relations are absent', () => {

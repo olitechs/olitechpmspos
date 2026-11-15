@@ -34,6 +34,12 @@ export const inventoryService = {
     return data || [];
   },
 
+  async listInventoryCounts(propertyId) {
+    const { data, error } = await supabase.from('inventory_counts').select('*, inventory_count_lines(*)').eq('property_id', propertyId).order('created_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    return data || [];
+  },
+
   async renameProductCategory(propertyId, oldName, newName) {
     const { error } = await supabase.from('products').update({ category: newName })
       .eq('property_id', propertyId).eq('category', oldName);

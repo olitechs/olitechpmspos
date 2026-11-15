@@ -6,11 +6,10 @@ import PrinterSetupWizard from '@/components/settings/PrinterSetupWizard';
 import { fetchPrintHealth, retryPrintJob } from '@/services/printerHealthCore';
 import { fetchPrinterHistory } from '@/services/printerHistory';
 import { jobStatusLabel, jobTone, recentPrinterJobs, summarizeAllPrinters, tidyError } from '@/services/printerHistoryCore';
-import { pairWorkstation, createPairingCode, listPairedWorkstations, revokePairedWorkstation } from '@/services/printerAgentPairing';
+import { printerSetupService } from '@/services/printerSetupService';
 import { workstationPresence } from '@/services/printerAgentCredentialsCore';
 import { exportPrintDiagnostics } from '@/services/printerDiagnostics';
 import { getPrinterPrintSettings, savePrinterPrintSettings } from '@/services/printerPrintSettings';
-import { supabase } from '@/lib/supabaseClient';
 
 const normalizeNetworkEndpoint = (value, fallbackPort = 9100) => {
   let host = String(value || '').trim();
@@ -159,7 +158,7 @@ export default function SettingsPrinters() {
   const pairThisComputer = async () => {
     setPairing({ loading:true, message:'' });
     try {
-      const result = await pairWorkstation({ client: supabase, propertyId, agentUrl, agentName: 'POS computer' });
+      const result = await printerSetupService.pairWorkstation({ propertyId, agentUrl, agentName: 'POS computer' });
       setPairing({
         loading:false,
         message: result.ok
@@ -178,8 +177,7 @@ export default function SettingsPrinters() {
   const showPairingCode = async () => {
     setPairingCode((current)=>({ ...current, loading:true, error:'', code:'' }));
     try {
-      const result = await createPairingCode({
-        client: supabase,
+      const result = await printerSetupService.createPairingCode({
         propertyId,
         agentName: String(pairingCode.agentName || '').trim() || 'POS computer',
       });
@@ -196,7 +194,7 @@ export default function SettingsPrinters() {
     if (!propertyId) return;
     setWorkstations((current)=>({ ...current, loading:true }));
     try {
-      const rows = await listPairedWorkstations({ client: supabase, propertyId });
+      const rows = await printerSetupService.listPairedWorkstations({ propertyId });
       setWorkstations({ loading:false, rows, message:'' });
     } catch (error) {
       setWorkstations({ loading:false, rows:[], message: error?.message || 'Could not load paired workstations.' });
@@ -209,7 +207,7 @@ export default function SettingsPrinters() {
     if (!window.confirm(`Revoke "${row.name}"? That computer stops printing immediately and must be paired again.`)) return;
     setWorkstations((current)=>({ ...current, message:'' }));
     try {
-      await revokePairedWorkstation({ client: supabase, propertyId, credentialId: row.id });
+      await printerSetupService.revokePairedWorkstation({ propertyId, credentialId: row.id });
       await Promise.all([refreshWorkstations(), refreshHealth()]);
       setWorkstations((current)=>({ ...current, message:`${row.name} can no longer print. Its unfinished jobs are marked for checking.` }));
     } catch (error) {
@@ -365,33 +363,35 @@ export default function SettingsPrinters() {
       last_error:null,
     };
 
-    const result = editing.id
-      ? await supabase.from('property_printers').update(payload).eq('id',editing.id).eq('property_id',propertyId).select().single()
-      : await supabase.from('property_printers').insert(payload).select().single();
+    let saved;
+    try {
+      saved = await printerDb.savePrinter({ propertyId, payload, id: editing.id || null });
+    } catch (saveError) {
+      return setError(saveError.message);
+    }
 
-    if (result.error) return setError(result.error.message);
-
-    const printerId=result.data.id;
-    savePrinterPrintSettings(printerId, { feedLinesBeforeCut:Number(feedLinesBeforeCut), feedDotsBeforeCut:Number(feedDotsBeforeCut), cutCommand, extraFeedAfterCut:Number(extraFeedAfterCut), paperWidth:result.data.paper_width || editing.paper_width || '80mm' });
+    const printerId = saved.id;
+    savePrinterPrintSettings(printerId, { feedLinesBeforeCut:Number(feedLinesBeforeCut), feedDotsBeforeCut:Number(feedDotsBeforeCut), cutCommand, extraFeedAfterCut:Number(extraFeedAfterCut), paperWidth:saved.paper_width || editing.paper_width || '80mm' });
     // The printer row is already saved at this point. Keep its id so a retry
     // updates it instead of adding a duplicate printer, and record the failure
     // so the card does not stay stuck on "Testing…" forever.
     const routingFailed = async (message) => {
       setEditing(current=>current?{...current,id:printerId}:current);
-      await supabase.from('property_printers').update({last_status:'failed',last_error:message}).eq('id',printerId).eq('property_id',propertyId);
+      await printerDb.markPrinterFailed(printerId, propertyId, message).catch(()=>{});
       await load(true).catch((refreshError)=>console.warn('[Printers] list refresh after a failed routing save did not complete', refreshError));
       setError(`Printer saved, but its routing could not be updated: ${message}`);
     };
-    const deleted=await supabase.from('printer_assignments').delete().eq('printer_id',printerId).eq('property_id',propertyId);
-    if (deleted.error) { await routingFailed(deleted.error.message); return; }
-    if (assignmentTypes.length) {
-      const inserted=await supabase.from('printer_assignments').insert(assignmentTypes.map(type=>({property_id:propertyId,printer_id:printerId,assignment_type:type})));
-      if (inserted.error) { await routingFailed(inserted.error.message); return; }
+    try {
+      await printerDb.clearPrinterAssignments(printerId, propertyId);
+      if (assignmentTypes.length) await printerDb.addPrinterAssignments(propertyId, printerId, assignmentTypes);
+    } catch (routingError) {
+      await routingFailed(routingError.message);
+      return;
     }
 
     setEditing(null);
     await load(true);
-    await verify(printerId,result.data);
+    await verify(printerId, saved);
   };
 
   const runCutCalibration = async () => {
@@ -462,15 +462,21 @@ export default function SettingsPrinters() {
 
   const remove = async id => {
     if (!window.confirm('Delete this printer and its routing assignments?')) return;
-    const result=await supabase.from('property_printers').delete().eq('id',id).eq('property_id',propertyId);
-    if (result.error) setError(result.error.message);
-    else setNotice('Printer removed.');
+    try {
+      await printerDb.deletePrinter(id, propertyId);
+      setNotice('Printer removed.');
+    } catch (e) {
+      setError(e.message);
+    }
     await load(true);
   };
 
   const removeAssignment = async assignment => {
-    const result=await supabase.from('printer_assignments').delete().eq('id',assignment.id).eq('property_id',propertyId);
-    if (result.error) setError(result.error.message);
+    try {
+      await printerDb.deleteAssignment(assignment.id, propertyId);
+    } catch (e) {
+      setError(e.message);
+    }
     await load(true);
   };
 
@@ -478,9 +484,12 @@ export default function SettingsPrinters() {
     if (!printerId) return;
     const exists=assignments.some(a=>a.printer_id===printerId && a.assignment_type===type);
     if (exists) return;
-    const result=await supabase.from('printer_assignments').insert({property_id:propertyId,printer_id:printerId,assignment_type:type});
-    if (result.error) setError(result.error.message);
-    else setNotice('Printer routing updated.');
+    try {
+      await printerDb.createAssignment({ propertyId, printerId, assignmentType:type });
+      setNotice('Printer routing updated.');
+    } catch (e) {
+      setError(e.message);
+    }
     await load(true);
   };
 
