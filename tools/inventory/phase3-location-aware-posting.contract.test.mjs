@@ -6,6 +6,8 @@ const read = (path) => readFile(new URL(path, import.meta.url), 'utf8');
 
 const migration = await read('../../docs/audit/drafts/LOCATION_AWARE_ADJUSTMENT_WASTAGE_COUNT_CANDIDATE_20261115.sql');
 const runtimeGate = await read('../../supabase/tests/phase3_location_aware_posting_runtime_regression.sql');
+const inventoryUi = await read('../../src/components/modules/InventoryOperations.jsx');
+const inventoryService = await read('../../src/services/inventoryService.js');
 
 test('candidate keeps the default-location trigger and uses a private transaction context', () => {
   assert.match(migration, /create schema if not exists stock_internal/i);
@@ -60,4 +62,14 @@ test('rollback-only runtime gate covers location deltas, retries, authorization 
   ]) assert.ok(runtimeGate.includes(assertion), `missing runtime assertion ${assertion}`);
   assert.match(runtimeGate,/begin;[\s\S]*set local role authenticated[\s\S]*rollback;/i);
   assert.match(runtimeGate,/Never run this test against production/i);
+});
+
+test('inventory UI counts selected-location stock and sends request keys', () => {
+  assert.match(inventoryUi,/from\('product_stock_locations'\)/);
+  assert.match(inventoryUi,/System at location:/);
+  assert.match(inventoryUi,/track_stock!==false/);
+  assert.doesNotMatch(inventoryUi,/counted_qty:Number\(lines\[p\.id\]\?\?p\.current_stock/);
+  assert.match(inventoryService,/p_request_key: payload\.requestKey/);
+  assert.match(inventoryService,/safe adjustment retries/);
+  assert.match(inventoryService,/safe wastage retries/);
 });
