@@ -907,10 +907,10 @@ GRANT EXECUTE ON FUNCTION public.fn_create_inventory_count(
   uuid, uuid, jsonb, text, text
 ) TO authenticated, service_role;
 
--- Approval is a one-way transition. The applied variance is calculated against
--- the live location balance at approval time (not the potentially stale count-start
--- snapshot), then stored in inventory_count_lines.variance. expected_qty is retained
--- as the original snapshot for audit.
+-- Approval is a one-way transition. The applied variance is counted_qty minus the
+-- expected_qty snapshot. The shared writer applies that delta to the current live
+-- location balance so intervening sales/receipts are preserved. expected_qty remains
+-- the original snapshot for audit.
 CREATE OR REPLACE FUNCTION public.fn_approve_inventory_count(
   p_count_id uuid
 )
@@ -924,7 +924,6 @@ DECLARE
   v_line record;
   v_product public.products%ROWTYPE;
   v_location_id uuid;
-  v_current_qty numeric;
   v_applied_variance numeric;
 BEGIN
   SELECT *
@@ -978,15 +977,11 @@ BEGIN
         COALESCE(v_line.location_id, v_count.location_id)
       );
 
-    SELECT COALESCE(qty, 0)
-    INTO v_current_qty
-    FROM public.product_stock_locations
-    WHERE product_id = v_line.product_id
-      AND location_id = v_location_id
-    FOR UPDATE;
-
+    -- Apply the physical-count variance against the original expected snapshot.
+    -- The shared writer applies this delta to the current live balance, preserving
+    -- any sales/receipts that occurred after the count snapshot was taken.
     v_applied_variance :=
-      ROUND(v_line.counted_qty - COALESCE(v_current_qty, 0), 2);
+      ROUND(v_line.counted_qty - v_line.expected_qty, 2);
 
     UPDATE public.inventory_count_lines
     SET location_id = v_location_id,
