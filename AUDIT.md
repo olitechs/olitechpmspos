@@ -200,6 +200,21 @@ Everything else (128 `to=` targets, all `href` anchors, all public/ assets, all 
 | F18 | `/booking` search button 404s (B1) and `/settings/system/*` slug-loss redirect (B2) — counted once each, listed here because they are functional breakages too. | BookingEngine.jsx / App.jsx:118 | HIGH |
 | F19 | AdminRecovery uses `window.print()` for a historical folio export — per printerService rules this *system* printer usage may be intentional; verify intent before Phase 3 changes. | `src/pages/Admin/AdminRecovery.jsx:15` | LOW (informational) |
 
+### 4e close-out (2026-11-15)
+
+Every finding above is closed except one that is explicitly left open:
+
+| Finding | Resolution |
+|---|---|
+| F1 | Fixed: the report test now expects the current brand navy (`FF101A35`); `npm run test:reports` is green (12/12). |
+| F2 | **Still open (environment).** `reportDocumentEngine.test.mjs` shells out to `pdfinfo`/`pdftotext`; no workflow installs poppler and no workflow runs `test:reports`, so it is a local-only check that goes red on any machine without poppler. Needs its own batch (bundle a JS PDF parser or skip the page/text assertions gracefully). |
+| F3 | Fixed: the POS header clock resyncs on an interval. |
+| F4, F8, F9, F10 | Fixed in PR #153 — see `docs/audit/PHASE3_BEHAVIOUR_IMPACT.md`. F9's migration still has to be applied in production. |
+| F5, F6, F11, F12 | Fixed in PR #166 — see `docs/audit/PHASE3_MONEY_PRINT_IMPACT.md`. F11 adds `property_settings.pos_cash_variance_threshold`; apply `20261115120000_pos_cash_variance_threshold.sql` before deploying that frontend. |
+| F7, F14, F15, F16, F17 | Already resolved on `main`: split rows keyed by id, stable kids-age keys, per-room index instead of an O(n²) filter, civil-date resync, and category `Set` dedupe with hash colours. |
+| F13, F18 | Fixed in PR #165 and PR #150. |
+| F19 | **Accepted as intentional (owner decision, 2026-11-15).** The only `window.print()` in `src/` is the A4 historical guest folio in `AdminRecovery`; receipt reprints go through `printReceipt`/`printService`, and `printerService.js` documents system/browser printers as a supported path. Keep it; do not migrate the folio to the PDF engine. Recorded in `Memory.md` §16. |
+
 **Print-agent integration status (Phase 0 verification):** all 107 agent unit/contract tests pass locally; the agent's health-check URL and all frontend call sites are consistent on `127.0.0.1:8631`. Full runtime verification (agent + real/virtual printer) is deferred to Phase 3 as planned.
 
 ---
