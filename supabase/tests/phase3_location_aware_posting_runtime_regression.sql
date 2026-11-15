@@ -241,8 +241,8 @@ BEGIN
     RAISE EXCEPTION 'WASTAGE-001: wastage must change aggregate and selected location once';
   END IF;
 
-  -- Count creation is idempotent. A later movement occurs before approval so the
-  -- approval must apply counted_qty minus the live location quantity.
+  -- Count creation is idempotent. A later movement occurs before approval; the
+  -- snapshot variance is applied to the live balance so that later movement remains.
   v_counted_qty := v_selected_after+3.00;
 
   SELECT * INTO v_count
