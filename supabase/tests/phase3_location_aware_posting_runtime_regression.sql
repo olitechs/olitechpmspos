@@ -286,8 +286,8 @@ BEGIN
   WHERE count_id=v_count.id AND product_id=v_product_id;
 
   IF v_count_approved.status <> 'approved'
-     OR v_variance <> -1.00 THEN
-    RAISE EXCEPTION 'COUNT-001: approval must post the live balance variance and preserve the original expected snapshot';
+     OR v_variance <> 3.00 THEN
+    RAISE EXCEPTION 'COUNT-001: approval must post counted minus expected snapshot';
   END IF;
 
   SELECT current_stock INTO v_total_after FROM public.products WHERE id=v_product_id;
@@ -298,10 +298,10 @@ BEGIN
   SELECT COALESCE(SUM(qty),0) INTO v_location_sum
   FROM public.product_stock_locations WHERE product_id=v_product_id;
 
-  IF v_selected_after <> v_counted_qty
+  IF v_selected_after <> v_counted_qty+1.00
      OR v_default_after <> v_default_before
      OR ABS(v_location_sum-v_total_after) > 0.01 THEN
-    RAISE EXCEPTION 'COUNT-002: approved count must set the selected location to counted quantity and preserve aggregate reconciliation';
+    RAISE EXCEPTION 'COUNT-002: approved count must apply the snapshot variance to the live location balance and preserve aggregate reconciliation';
   END IF;
 
   SELECT COUNT(*) INTO v_movement_count_after
