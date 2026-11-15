@@ -247,6 +247,7 @@ DECLARE
   v_default_qty numeric;
   v_other_location_qty numeric;
   v_location_total numeric;
+  v_ledger_stock numeric;
   v_policy text;
   v_new_stock numeric;
   v_idempotency_key text;
@@ -275,6 +276,27 @@ BEGIN
 
   IF NOT COALESCE(v_product.track_stock, true) THEN
     RAISE EXCEPTION 'This product is not configured for stock tracking';
+  END IF;
+
+  -- Do not compound a pre-existing ledger discrepancy. The live catalog currently
+  -- contains one known product-level variance; that product must be physically
+  -- reconciled before any new location-aware posting can proceed.
+  SELECT COALESCE(SUM(
+    CASE
+      WHEN sm.type = 'in' THEN sm.qty
+      WHEN sm.type = 'out' THEN -sm.qty
+      ELSE 0
+    END
+  ), 0)
+  INTO v_ledger_stock
+  FROM public.stock_movements sm
+  WHERE sm.property_id = p_property_id
+    AND sm.product_id = p_product_id;
+
+  IF ABS(v_ledger_stock - v_product.current_stock) > 0.01 THEN
+    RAISE EXCEPTION
+      'Stock ledger does not reconcile for %; perform a verified stocktake before posting',
+      v_product.name;
   END IF;
 
   -- Ensure the default-location projection exists before skipping the trigger's
