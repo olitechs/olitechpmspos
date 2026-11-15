@@ -73,3 +73,16 @@ test('inventory UI counts selected-location stock and sends request keys', () =>
   assert.match(inventoryService,/safe adjustment retries/);
   assert.match(inventoryService,/safe wastage retries/);
 });
+
+test('legacy adjustment and wastage calls remain accepted, but stale count calls are rejected', () => {
+  const countStart=migration.toLowerCase().indexOf('create or replace function public.fn_create_inventory_count');
+  const countEnd=migration.indexOf('REVOKE ALL ON FUNCTION public.fn_create_inventory_count',countStart);
+  const countBody=migration.slice(countStart,countEnd);
+  assert.match(countBody,/refresh the inventory screen and submit the count with a request key/i);
+  assert.doesNotMatch(countBody,/legacy:' \|\| gen_random_uuid\(\)::text/i);
+  for (const fn of ['fn_post_stock_adjustment','fn_post_wastage']) {
+    const start=migration.toLowerCase().indexOf(`create or replace function public.${fn}`);
+    const end=migration.indexOf(`REVOKE ALL ON FUNCTION public.${fn}`,start);
+    assert.match(migration.slice(start,end),/legacy:' \|\| gen_random_uuid\(\)::text/i);
+  }
+});
