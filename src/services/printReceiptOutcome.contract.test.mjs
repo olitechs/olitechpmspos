@@ -13,7 +13,7 @@ test('receipt, shift-report and void paths report an honest aggregate outcome', 
     'receipts, shift reports and single results must each summarise',
   );
   assert.match(service, /return \{ ok: summary\.ok, outcome: summary\.outcome, summary, results \}/);
-  assert.match(service, /return \{ok:summary\.ok,outcome:summary\.outcome,summary,skippedExisting:done\.length,results\}/);
+  assert.match(service, /return \{ok:summary\.ok,outcome:summary\.outcome,summary,skippedExisting,results,friendlyError:/);
 });
 
 test('cashier reprints and refunds never tell staff a job failed when it may have printed', async () => {
@@ -38,9 +38,9 @@ test('a partial failure is finished, not duplicated, and only explicit reprints 
   assert.match(service, /copiesToPrint\(copies\.map\(copyKey\), alreadyPrinted\)/);
   // Skipping must never run without a document identifier.
   assert.match(service, /force \|\| !documentNumber \? \[\]/);
-  assert.match(service, /shiftData\.forceReprint === true \|\| !shiftId/);
-  assert.match(service, /done\.includes\('cashier'\)/);
-  assert.match(service, /done\.includes\('manager'\)/);
+  assert.match(service, /const forceReprint = shiftData\.forceReprint === true;/);
+  assert.match(service, /forceReprint \|\| !shiftId \? \[\]/);
+  assert.match(service, /if \(done\.includes\(copy\.copyType\)\)/);
 
   assert.match(bill, /forceReprint:true/);
   assert.match(cashier, /forceReprint: true/);

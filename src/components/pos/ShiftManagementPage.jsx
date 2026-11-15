@@ -59,10 +59,10 @@ export default function ShiftManagementPage({ propertyId, currentShift, loadErro
         toast.warning('No printer is assigned to Shift Closing Reports.');
         return;
       }
-      const result = await printShiftPreview({ ...summary, propertyId }, assigned[0]);
+      const result = await printShiftPreview({ ...summary, propertyId }, assigned);
       if (result.outcome === 'uncertain') toast.warning('The live shift summary may have printed — check the paper before printing it again.');
-      else if (!result.ok) toast.error(result.friendlyError || 'The live shift summary could not be printed.');
-      else toast.success('Live shift summary sent to the assigned printer.');
+      else if (!result.ok) toast.error(result.friendlyError || 'The live shift summary could not be printed on every assigned printer.');
+      else toast.success(assigned.length > 1 ? `Live shift summary sent to ${assigned.length} assigned printers.` : 'Live shift summary sent to the assigned printer.');
     } catch (error) {
       toast.error(error?.message || 'Unable to print the live shift summary.');
     } finally {
