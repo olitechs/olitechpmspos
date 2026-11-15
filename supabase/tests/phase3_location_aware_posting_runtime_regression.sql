@@ -139,12 +139,14 @@ BEGIN
 
   SELECT current_stock INTO v_total_before
   FROM public.products WHERE id=v_product_id;
-  SELECT COALESCE(qty,0) INTO v_selected_before
-  FROM public.product_stock_locations
-  WHERE product_id=v_product_id AND location_id=v_selected_location_id;
-  SELECT COALESCE(qty,0) INTO v_default_before
-  FROM public.product_stock_locations
-  WHERE product_id=v_product_id AND location_id=v_default_location_id;
+  SELECT COALESCE((
+    SELECT qty FROM public.product_stock_locations
+    WHERE product_id=v_product_id AND location_id=v_selected_location_id
+  ),0) INTO v_selected_before;
+  SELECT COALESCE((
+    SELECT qty FROM public.product_stock_locations
+    WHERE product_id=v_product_id AND location_id=v_default_location_id
+  ),0) INTO v_default_before;
   SELECT COALESCE(SUM(qty),0) INTO v_location_sum
   FROM public.product_stock_locations WHERE product_id=v_product_id;
 
