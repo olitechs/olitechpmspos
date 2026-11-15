@@ -51,7 +51,7 @@ test('Phase 1 movement writer locks the product and checks tenant membership', (
 test('Phase 1 is not mistaken for the complete location-aware posting cutover', () => {
   // This guard documents current scope: Phase 1 adds location metadata, but its
   // writer does not yet accept an explicit location or enforce Stores entitlement.
-  assert.match(migration, /p_source_id uuid default null/i);
+  assert.match(migration, /p_source_id uuid default null(?:::uuid)?/i);
   assert.doesNotMatch(migration, /p_location_id\s+uuid/i);
   assert.doesNotMatch(migration, /can_store_write\s*\(/i);
   assert.doesNotMatch(migration, /drop trigger[^;]*products_sync_default_location/i);
