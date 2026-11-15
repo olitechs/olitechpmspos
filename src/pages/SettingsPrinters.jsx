@@ -11,6 +11,8 @@ import { workstationPresence } from '@/services/printerAgentCredentialsCore';
 import { exportPrintDiagnostics } from '@/services/printerDiagnostics';
 import { getPrinterPrintSettings, savePrinterPrintSettings } from '@/services/printerPrintSettings';
 
+const PRINT_AGENT_RELEASE_URL = 'https://github.com/olitechs/olitechpmspos/releases/tag/print-agent-unsigned-2.2.0';
+
 const normalizeNetworkEndpoint = (value, fallbackPort = 9100) => {
   let host = String(value || '').trim();
   let port = Number(fallbackPort || 9100);
@@ -269,7 +271,7 @@ export default function SettingsPrinters() {
       }
       if(!healthy){
         setWindowsPrinters([]);
-        setAgentError('OliTechs Print Agent is not running on this POS computer. Start it with npm run print-agent, then refresh.');
+        setAgentError('OliTechs Print Agent is not installed or running on this computer. Download and install the Print Agent, then return here and select Check agent.');
         return;
       }
       const response=await fetch(base+'/windows-printers');
@@ -700,6 +702,7 @@ function PrintHealthStrip({health,loading,notice,pairing,diagnostics,onRefresh,o
         </div>
         <div className="mt-1 text-sm font-semibold text-foreground">{loading ? 'Checking the print agent…' : (health?.headline || 'Checking the print agent…')}</div>
         {health?.detail && <div className="mt-1 max-w-2xl text-xs text-muted-foreground">{health.detail}</div>}
+        <div className="mt-2 max-w-2xl text-[11px] leading-5 text-muted-foreground">First time here? Download the Windows installer, double-click it, approve the Windows prompt, then return and choose Check agent. No terminal or commands are needed. <span className="font-semibold text-[var(--warning-text)]">This release is an unsigned test build; Windows may show an unknown-publisher warning.</span></div>
         {notice && <div className="mt-1 text-xs font-bold text-foreground">{notice}</div>}
         {health?.paired?.paired
           ? <div className="mt-1 text-[11px] font-semibold text-muted-foreground">Paired as {health.paired.agentName}. Queued jobs print even when no browser is open.</div>
@@ -717,6 +720,7 @@ function PrintHealthStrip({health,loading,notice,pairing,diagnostics,onRefresh,o
         </div>}
       </div>
       <div className="flex flex-wrap gap-2">
+        <a href={PRINT_AGENT_RELEASE_URL} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-xl bg-primary px-3 py-2 text-xs font-black text-primary-foreground hover:bg-[var(--primary-hover)]"><FileDown size={14}/>Download Print Agent</a>
         <button onClick={onRefresh} disabled={loading} className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-bold text-foreground hover:bg-secondary disabled:opacity-50"><RefreshCw size={14}/>{loading?'Checking…':'Check agent'}</button>
         <button onClick={onDiagnostics} disabled={diagnostics?.loading || !health?.reachable} className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-bold text-foreground hover:bg-secondary disabled:opacity-50"><FileDown size={14}/>{diagnostics?.loading?'Preparing…':'Save diagnostics file'}</button>
       </div>
