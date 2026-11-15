@@ -109,6 +109,25 @@ BEGIN
   END IF;
 
   IF NOT EXISTS (
+    SELECT 1
+    FROM public.products p
+    JOIN public.inventory_locations il
+      ON il.property_id=p.property_id
+     AND il.name=COALESCE(NULLIF(BTRIM(p.location),''),'Main Store')
+    WHERE p.id=v_product_id
+      AND il.id=v_default_location_id
+  ) THEN
+    RAISE EXCEPTION 'FIXTURE-004: supplied default location must match products.location';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM public.product_stock_locations
+    WHERE product_id=v_product_id AND location_id=v_default_location_id
+  ) THEN
+    RAISE EXCEPTION 'FIXTURE-005: default location balance row must exist before the test';
+  END IF;
+
+  IF NOT EXISTS (
     SELECT 1 FROM pg_trigger t
     JOIN pg_class c ON c.oid=t.tgrelid
     JOIN pg_namespace n ON n.oid=c.relnamespace
