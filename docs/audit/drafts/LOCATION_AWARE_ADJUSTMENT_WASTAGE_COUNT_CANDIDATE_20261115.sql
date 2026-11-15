@@ -244,6 +244,11 @@ DECLARE
   v_product public.products%ROWTYPE;
   v_location_name text;
   v_location_qty numeric;
+  v_default_location_id uuid;
+  v_default_location_name text;
+  v_default_qty numeric;
+  v_other_location_qty numeric;
+  v_location_total numeric;
   v_policy text;
   v_new_stock numeric;
   v_idempotency_key text;
@@ -272,6 +277,58 @@ BEGIN
 
   IF NOT COALESCE(v_product.track_stock, true) THEN
     RAISE EXCEPTION 'This product is not configured for stock tracking';
+  END IF;
+
+  -- Ensure the default-location projection exists before skipping the trigger's
+  -- automatic update. If it is missing, seed it as the residual between the
+  -- product aggregate and all existing non-default location balances.
+  v_default_location_name :=
+    COALESCE(NULLIF(BTRIM(v_product.location), ''), 'Main Store');
+
+  INSERT INTO public.inventory_locations(property_id, name)
+  VALUES (p_property_id, v_default_location_name)
+  ON CONFLICT (property_id, name) DO NOTHING;
+
+  SELECT id
+  INTO v_default_location_id
+  FROM public.inventory_locations
+  WHERE property_id = p_property_id
+    AND name = v_default_location_name
+  FOR UPDATE;
+
+  SELECT qty
+  INTO v_default_qty
+  FROM public.product_stock_locations
+  WHERE product_id = p_product_id
+    AND location_id = v_default_location_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    SELECT COALESCE(SUM(qty), 0)
+    INTO v_other_location_qty
+    FROM public.product_stock_locations
+    WHERE product_id = p_product_id
+      AND location_id <> v_default_location_id;
+
+    v_default_qty := v_product.current_stock - COALESCE(v_other_location_qty, 0);
+
+    INSERT INTO public.product_stock_locations(
+      property_id, product_id, location_id, qty
+    )
+    VALUES (
+      p_property_id, p_product_id, v_default_location_id, v_default_qty
+    )
+    ON CONFLICT (product_id, location_id) DO NOTHING;
+  END IF;
+
+  SELECT COALESCE(SUM(qty), 0)
+  INTO v_location_total
+  FROM public.product_stock_locations
+  WHERE product_id = p_product_id;
+
+  IF ABS(v_location_total - v_product.current_stock) > 0.01 THEN
+    RAISE EXCEPTION
+      'Product and location balances do not reconcile; resolve the existing variance before posting';
   END IF;
 
   SELECT COALESCE(
