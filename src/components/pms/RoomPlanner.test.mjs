@@ -168,6 +168,12 @@ test('target viewport widths select the correct navigation, toolbar and planner 
   }
 });
 
+test('room rows render from the precomputed per-room index instead of rescanning every reservation', () => {
+  assert.ok(source.includes('const filteredReservationsByRoom = useMemo'));
+  assert.ok(source.includes('{roomReservations.map(rv=>{'));
+  assert.ok(!source.includes('roomReservations.filter(rv=>filteredReservations.some('));
+});
+
 test('today is re-evaluated at midnight instead of being frozen for the tab lifetime', () => {
   assert.ok(source.includes('const [todayDate, setTodayDate] = useState(() => getPmsTodayDate());'));
   assert.ok(!source.includes('const todayDate = useMemo(() => getPmsTodayDate(), []);'));
