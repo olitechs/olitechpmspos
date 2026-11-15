@@ -185,6 +185,26 @@ BEGIN
   FROM public.stock_movements
   WHERE property_id=v_property_id AND product_id=v_product_id;
 
+  -- Stale count clients that omit the request key must fail before creating a count;
+  -- their old payload treated property-wide current_stock as location-level count.
+  BEGIN
+    PERFORM public.fn_create_inventory_count(
+      v_property_id,
+      v_selected_location_id,
+      jsonb_build_array(jsonb_build_object(
+        'product_id',v_product_id,
+        'counted_qty',v_selected_before
+      )),
+      NULL,
+      'stale-client-must-refresh'
+    );
+    RAISE EXCEPTION 'LEGACY-COUNT-001: stale count call unexpectedly succeeded';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM = 'LEGACY-COUNT-001: stale count call unexpectedly succeeded' THEN
+      RAISE;
+    END IF;
+  END;
+
   -- Adjustment posts once to the selected location, not the default location.
   SELECT * INTO v_adjustment
   FROM public.fn_post_stock_adjustment(
