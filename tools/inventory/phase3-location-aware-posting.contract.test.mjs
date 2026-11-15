@@ -57,7 +57,7 @@ test('client direct DML is revoked only for RPC-owned stock operation records', 
 
 test('rollback-only runtime gate covers location deltas, retries, authorization and trigger retention', () => {
   for (const assertion of [
-    'AUTH-002','TRIGGER-001','TRIGGER-002','ACL-001','ADJUST-001','WASTAGE-001',
+    'AUTH-002','TRIGGER-001','TRIGGER-002','ACL-001','LEGACY-COUNT-001','ADJUST-001','WASTAGE-001',
     'COUNT-001','COUNT-002','IDEMP-001','IDEMP-005','SOURCE-001',
   ]) assert.ok(runtimeGate.includes(assertion), `missing runtime assertion ${assertion}`);
   assert.match(runtimeGate,/begin;[\s\S]*set local role authenticated[\s\S]*rollback;/i);
