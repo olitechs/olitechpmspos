@@ -234,6 +234,12 @@ SET search_path = ''
 AS $function$
 DECLARE
   v_product public.products%ROWTYPE;
+  v_default_location_id uuid;
+  v_default_location_name text;
+  v_default_qty numeric;
+  v_other_location_qty numeric;
+  v_location_total numeric;
+  v_ledger_stock numeric;
 BEGIN
   SELECT *
   INTO v_product
@@ -334,12 +340,6 @@ DECLARE
   v_product public.products%ROWTYPE;
   v_location_name text;
   v_location_qty numeric;
-  v_default_location_id uuid;
-  v_default_location_name text;
-  v_default_qty numeric;
-  v_other_location_qty numeric;
-  v_location_total numeric;
-  v_ledger_stock numeric;
   v_policy text;
   v_new_stock numeric;
   v_idempotency_key text;
