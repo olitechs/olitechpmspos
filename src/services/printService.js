@@ -862,17 +862,20 @@ const copyKey = (label) => String(label || '').trim().toLowerCase().replaceAll('
  * copy. Lookups are deliberately fail-soft: if the history cannot be read,
  * printing proceeds exactly as before rather than blocking a receipt.
  */
-async function confirmedCopies({ propertyId, jobType, orderNumber = null, shiftId = null, withinHours = 12 }) {
+async function confirmedCopies({ propertyId, jobType, orderNumber = null, shiftId = null, printerId = null, withinHours = 12 }) {
   if (!propertyId || !jobType) return [];
   try {
     let query = supabase.from('fnb_print_jobs')
-      .select('copy_type,status,payload,created_at')
+      .select('copy_type,status,payload,created_at,printer_id')
       .eq('property_id', propertyId)
       .eq('job_type', jobType)
       .in('status', ['printed', 'uncertain'])
       .gte('created_at', new Date(Date.now() - withinHours * 3600 * 1000).toISOString());
     if (orderNumber) query = query.eq('payload->>orderNumber', String(orderNumber));
     if (shiftId) query = query.eq('payload->>shiftId', String(shiftId));
+    // Copies are tracked per destination printer so a retry only re-sends the
+    // copy that actually failed, and never the one already on paper.
+    if (printerId) query = query.eq('printer_id', String(printerId));
     const { data, error } = await query;
     if (error) return [];
     return (data || []).map((row) => row.copy_type).filter(Boolean);
@@ -1028,35 +1031,70 @@ function shiftPreviewHtml(data) {
   return `<div class="receipt"><div class="copy">PRE-CLOSE · SHIFT STILL OPEN</div>${data.settings?.logo_url ? `<img class="logo" src="${esc(data.settings.logo_url)}">` : ''}<div class="center bold">${esc(data.settings?.property_name || data.propertyName || 'OliTechs PMS + POS')}</div><div class="center">${esc(data.settings?.address_line1 || '')}<br>${esc(data.settings?.address_line2 || '')}<br>${esc(data.settings?.phone || '')}</div><div class="divider"></div><div class="center bold" style="font-size:15px">LIVE SHIFT SUMMARY</div><div>Shift No: <b>${esc(data.shift?.shift_no || '—')}</b></div><div>Business date: ${esc(businessDate)}</div><div>Opened by: ${esc(data.openedBy || 'Staff')}</div><div>Opened at: ${esc(openedAt)}</div><div class="divider"></div><div class="bold">OPENING CASH FLOAT: KES ${money(data.shift?.opening_cash)}</div><div class="section">PAYMENT SUMMARY</div>${row('Cash','cash')}${row('M-Pesa','mpesa')}${row('Card','card')}${row('Bank transfer','bank')}${row('Room charge','room_charge')}${row('Other','other')}<div class="divider"></div><div>GROSS SALES: KES ${money(data.grossSales)}</div><div>REFUNDS: - KES ${money(data.refundsTotal)}</div><div>VOIDED RECEIPTS: ${esc(data.voidedOrders?.length || 0)} · KES ${money(data.voidedValue)}</div><div class="total">NET SALES TO DATE: KES ${money(data.totalSales)}</div><div>TOTAL RECEIPTS: ${esc(data.totalTransactions || 0)}</div><div>GUEST COVERS: ${esc(data.totalCovers || 0)}</div><div>ITEMS SOLD: ${esc(data.itemsSold || 0)}</div><div class="section">ITEM CATEGORY SUMMARY</div><div style="display:flex;justify-content:space-between"><span>Food · ${esc(data.categories?.food?.qty || 0)} items</span><span>KES ${money(data.categories?.food?.amount)}</span></div><div style="display:flex;justify-content:space-between"><span>Drinks · ${esc(data.categories?.drinks?.qty || 0)} items</span><span>KES ${money(data.categories?.drinks?.amount)}</span></div><div class="divider"></div><div class="bold">EXPECTED CASH IN DRAWER: KES ${money(data.expectedCash)}</div><div class="divider"></div><div class="center bold">NOT A CLOSING REPORT</div><div class="footer">This shift remains open. Totals may change as more sales are posted.<br>Printed ${esc(new Date().toLocaleString('en-KE',{dateStyle:'medium',timeStyle:'short'}))}</div></div>`;
 }
 
-export async function printShiftPreview(shiftData, printer) {
-  if (!printer) return { ok: false, friendlyError: 'Shift report printer not configured.' };
-  return printToPrinter(printer, shiftPreviewHtml(shiftData), {
-    propertyId: shiftData.propertyId,
-    jobType: 'shift_preview',
-    copyType: 'pre_close',
-    assignmentType: 'shift_reports',
-    payload: { shiftId: shiftData.shift?.id || null, preview: true },
-    title: 'Live Shift Summary',
+// A property can assign shift reports to more than one printer (cashier desk,
+// accounts office, ...). Every assigned destination must receive the report;
+// callers pass the whole assignment list, not just the first printer.
+function normalizePrinters(value) {
+  const seen = new Set();
+  const list = Array.isArray(value) ? value : [value];
+  return list.filter((printer) => {
+    if (!printer?.id || seen.has(printer.id)) return false;
+    seen.add(printer.id);
+    return true;
   });
 }
 
-export async function printShiftReport(shiftData, printer) {
-  if (!printer) return {ok:false,friendlyError:'Shift report printer not configured.'};
+const SHIFT_REPORT_COPIES = [
+  { copyType: 'cashier', label: 'CASHIER COPY' },
+  { copyType: 'manager', label: 'MANAGER / ACCOUNTANT COPY' },
+];
+
+export async function printShiftPreview(shiftData, printerOrPrinters) {
+  const printers = normalizePrinters(printerOrPrinters);
+  if (!printers.length) return { ok: false, friendlyError: 'Shift report printer not configured.' };
+  const results = [];
+  for (const printer of printers) {
+    results.push(await printToPrinter(printer, shiftPreviewHtml(shiftData), {
+      propertyId: shiftData.propertyId,
+      jobType: 'shift_preview',
+      copyType: 'pre_close',
+      assignmentType: 'shift_reports',
+      payload: { shiftId: shiftData.shift?.id || null, preview: true },
+      title: 'Live Shift Summary',
+    }));
+  }
+  const summary = summarizePrintOutcomes(results);
+  return { ok: summary.ok, outcome: summary.outcome, summary, results, friendlyError: results.find((result) => !result.ok && result.friendlyError)?.friendlyError };
+}
+
+export async function printShiftReport(shiftData, printerOrPrinters) {
+  const printers = normalizePrinters(printerOrPrinters);
+  if (!printers.length) return {ok:false,friendlyError:'Shift report printer not configured.'};
   const propertyId=shiftData.propertyId;
   const shiftId=shiftData.shift?.id||null;
-  // The "Retry print" button after a partial failure must not reprint the copy
-  // that already reached the printer.
-  const done = shiftData.forceReprint === true || !shiftId ? [] : await confirmedCopies({propertyId, jobType:'shift_report', shiftId});
+  // One assigned printer keeps the cashier + manager pair. With more than one
+  // destination each printer receives a single copy, alternating the labels so
+  // the cashier copy and the manager/accountant copy are still both produced.
+  const plan = printers.length === 1
+    ? SHIFT_REPORT_COPIES.map((copy) => ({ ...copy, printer: printers[0] }))
+    : printers.map((printer, index) => ({ ...SHIFT_REPORT_COPIES[index % SHIFT_REPORT_COPIES.length], printer }));
+  const forceReprint = shiftData.forceReprint === true;
   const results=[];
-  if (!done.includes('cashier')) results.push(await printToPrinter(printer,shiftReportHtml(shiftData,'CASHIER COPY'),{propertyId,jobType:'shift_report',copyType:'cashier',assignmentType:'shift_reports',payload:{shiftId},title:'Shift Closing Report'}));
-  if (!done.includes('manager')) results.push(await printToPrinter(printer,shiftReportHtml(shiftData,'MANAGER / ACCOUNTANT COPY'),{propertyId,jobType:'shift_report',copyType:'manager',assignmentType:'shift_reports',payload:{shiftId},title:'Shift Closing Report'}));
+  let skippedExisting=0;
+  for (const copy of plan) {
+    // The "Retry print" button after a partial failure must not reprint the
+    // copy that already reached this printer.
+    const done = forceReprint || !shiftId ? [] : await confirmedCopies({propertyId, jobType:'shift_report', shiftId, printerId:copy.printer.id});
+    if (done.includes(copy.copyType)) { skippedExisting += 1; continue; }
+    results.push(await printToPrinter(copy.printer,shiftReportHtml(shiftData,copy.label),{propertyId,jobType:'shift_report',copyType:copy.copyType,assignmentType:'shift_reports',payload:{shiftId},title:'Shift Closing Report'}));
+  }
   if (!results.length) {
     // Nothing was sent because every copy is already on paper. Reporting a
     // failed print here would push staff into reprinting a full set.
-    return {ok:true,outcome:'already_printed',summary:summarizePrintOutcomes([]),skippedExisting:done.length,results};
+    return {ok:true,outcome:'already_printed',summary:summarizePrintOutcomes([]),skippedExisting,results};
   }
   const summary = summarizePrintOutcomes(results);
-  return {ok:summary.ok,outcome:summary.outcome,summary,skippedExisting:done.length,results};
+  return {ok:summary.ok,outcome:summary.outcome,summary,skippedExisting,results,friendlyError:results.find((result) => !result.ok && result.friendlyError)?.friendlyError};
 }
 export async function listFnbPrintJobs(propertyId,{status=null,statuses=null,limit=50}={}) { if (!propertyId) return []; let q=supabase.from('fnb_print_jobs').select('*').eq('property_id',propertyId).order('created_at',{ascending:false}).limit(Math.min(100,Math.max(1,limit))); if(status) q=q.eq('status',status); else if(Array.isArray(statuses)&&statuses.length) q=q.in('status',statuses); const {data,error}=await q; if(error) throw error; return data||[]; }
 export async function retryFnbPrintJob(jobId,propertyId) {
