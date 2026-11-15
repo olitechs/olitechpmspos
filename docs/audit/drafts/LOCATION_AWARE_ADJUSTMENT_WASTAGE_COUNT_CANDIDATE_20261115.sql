@@ -795,12 +795,12 @@ BEGIN
     RAISE EXCEPTION 'Stores access and an authorized stock role are required';
   END IF;
 
-  IF p_request_key IS NOT NULL
-     AND (NULLIF(BTRIM(p_request_key), '') IS NULL OR LENGTH(BTRIM(p_request_key)) > 128) THEN
-    RAISE EXCEPTION 'Request key must contain 1–128 non-whitespace characters';
+  IF p_request_key IS NULL
+     OR NULLIF(BTRIM(p_request_key), '') IS NULL
+     OR LENGTH(BTRIM(p_request_key)) > 128 THEN
+    RAISE EXCEPTION 'Refresh the inventory screen and submit the count with a request key';
   END IF;
-  v_request_key :=
-    COALESCE(NULLIF(BTRIM(p_request_key), ''), 'legacy:' || gen_random_uuid()::text);
+  v_request_key := BTRIM(p_request_key);
 
   IF p_lines IS NULL OR jsonb_typeof(p_lines) <> 'array' OR jsonb_array_length(p_lines) = 0 THEN
     RAISE EXCEPTION 'Inventory count lines must be a non-empty JSON array';
