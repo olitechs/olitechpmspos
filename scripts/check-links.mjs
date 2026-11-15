@@ -1,5 +1,5 @@
 // Link checker: verifies every static internal navigation target in src/
-// resolves to a route defined in src/App.jsx, and that every /-rooted asset
+// resolves to a route defined in src/routes/AppRoutes.jsx, and that every /-rooted asset
 // path referenced from src/ exists in public/.
 //
 // Usage: node scripts/check-links.mjs
@@ -14,7 +14,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = path.join(ROOT, 'src');
 const PUBLIC = path.join(ROOT, 'public');
 
-/* ---------- route extraction from src/App.jsx ---------- */
+/* ---------- route extraction from src/routes/AppRoutes.jsx ---------- */
 
 // Walk the JSX <Route> tree of AppRoutes with a stack, resolving relative
 // child paths against their parent <Route> paths. Dynamic segments and
@@ -154,7 +154,7 @@ function publicHas(relPath) {
 /* ---------- main ---------- */
 
 export function runCheck({ log = console.log, error = console.error } = {}) {
-  const appJsx = fs.readFileSync(path.join(SRC, 'App.jsx'), 'utf8');
+  const appJsx = fs.readFileSync(path.join(SRC, 'routes', 'AppRoutes.jsx'), 'utf8');
   const routes = extractRoutes(appJsx);
   const matchers = [...routes].map(routeToMatcher);
 
@@ -173,7 +173,7 @@ export function runCheck({ log = console.log, error = console.error } = {}) {
     if (!matchers.some((matcher) => matcher.matches(segs))) broken.push(target);
   }
 
-  log(`check-links: ${routes.size} routes extracted from src/App.jsx`);
+  log(`check-links: ${routes.size} routes extracted from src/routes/AppRoutes.jsx`);
   if (routes.size === 0) {
     error('check-links: could not extract any routes — aborting (parser failure).');
     return 2;

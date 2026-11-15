@@ -9,131 +9,27 @@ import {
 } from 'date-fns';
 import { toast } from 'sonner';
 import { pmsService } from '@/services/pmsService';
-import { Select } from '@/components/ui/select';
 import { useAuth } from '@/lib/AuthContext';
 import DocumentExportMenu from '@/components/shared/DocumentExportMenu';
 import ReportDataTable from '@/components/shared/ReportDataTable';
 import Folio from '@/components/modules/Folio';
 import { buildRoomPlannerDefinition } from '@/services/reportDefinitions';
-import { findRoomReservationOverlap, getPmsTodayDate, overlapsStayRanges } from '@/lib/pmsDateUtils';
+import { getPmsTodayDate } from '@/lib/pmsDateUtils';
 import { getRoomPlannerResponsiveMode } from '@/lib/roomPlannerResponsive';
 import { resizeStableKeys } from '@/lib/stableKeys';
-import { NAVY, TEAL, SAND, SURFACE, SURFACE2, BORDER, MUTED, DESTRUCTIVE } from '@/data/palette';
-import { getStayBarGeometry, getPastStayOpacity, getPaymentStatusFromAmounts as derivePaymentStatus } from '@/lib/roomPlannerGeometry';
-
-export const CHANNELS = ['direct', 'booking_com', 'unknown'];
-export const MEAL_PLANS = ['bed_only', 'bb', 'half_board', 'full_board'];
-export const BOOKING_STATUSES = ['booked', 'checked_in', 'checked_out'];
+import { NAVY, TEAL, SAND, SURFACE2, BORDER, MUTED, DESTRUCTIVE } from '@/data/palette';
+import { getStayBarGeometry } from '@/lib/roomPlannerGeometry';
+import {
+  getPaymentStatusFromAmounts, getPaymentStyle, getBarOpacity,
+  checkOverlap, calculateDailyStats, ROOM_STATUS, UNKNOWN_ROOM_STATUS, channelLabel, mealLabel, paymentLabel,
+  dateKey, getRollingPlannerRange, parseDate, normalizeReservation, formatGuests, formatPlannerDate,
+  formatPlannerAmount, getPlannerReservationNumber, getPlannerCurrency, getPlannerMealDescription,
+  getPlannerPaymentDetails, emptyForm,
+} from './planner/plannerModel';
+import { SelectField, InputField, Field, Modal } from './planner/plannerControls';
 
 const DAY_WIDTH = 56;
 const ROOM_COL_WIDTH = 208;
-
-// CALENDAR THEME: fill/foreground/border triplets per Design.md; payment
-// status tints the bar, booking state shows in the legend and hover card.
-export const getPaymentStatusFromAmounts = derivePaymentStatus;
-export const getPaymentStyle = (status) => ({
-  fully_paid: { background: 'var(--pay-paid)', color: 'var(--pay-paid-fg)', border: 'var(--pay-paid-bd)', label: 'Total Paid' },
-  partially_paid: { background: 'var(--pay-part)', color: 'var(--pay-part-fg)', border: 'var(--pay-part-bd)', label: 'Partially Paid' },
-  not_paid: { background: 'var(--pay-none)', color: 'var(--pay-none-fg)', border: 'var(--pay-none-bd)', label: 'No Amount Paid' },
-}[status] || { background: 'var(--pay-none)', color: 'var(--pay-none-fg)', border: 'var(--pay-none-bd)', label: 'No Amount Paid' });
-
-export function getBarOpacity(bookingStatus, checkOut, today) { return checkOut && today ? getPastStayOpacity(checkOut, today) : bookingStatus === 'checked_out' ? 0.55 : 1; }
-export function isOverlapping(r1, r2) {
-  return r1.roomId === r2.roomId && overlapsStayRanges(r1.checkIn, r1.checkOut, r2.checkIn, r2.checkOut);
-}
-export function checkOverlap(reservationList, newRoomId, newCheckIn, newCheckOut, excludeReservationId) {
-  return findRoomReservationOverlap(reservationList, newRoomId, newCheckIn, newCheckOut, excludeReservationId);
-}
-export function calculateDailyStats(reservations, date) {
-  const key = typeof date === 'string' ? date : format(date, 'yyyy-MM-dd');
-  const active = reservations.filter((r) => r.status !== 'cancelled');
-  return {
-    arrivals: active.filter((r) => (r.checkIn || r.arrival)?.slice(0, 10) === key).length,
-    inHouse: active.filter((r) => {
-      const ci = (r.checkIn || r.arrival)?.slice(0, 10);
-      const co = (r.checkOut || r.departure)?.slice(0, 10);
-      return ci <= key && co > key && (r.bookingStatus || normalizeBookingStatus(r.status)) !== 'checked_out';
-    }).length,
-    checkOuts: active.filter((r) => (r.checkOut || r.departure)?.slice(0, 10) === key).length,
-  };
-}
-
-// Room status keeps the same housekeeping semantics as the Dashboard: an
-// available room is clean, and dirty/cleaning share the vacant-dirty colour.
-// Do not map `available` to a neutral grey or `cleaning` to the clean colour.
-const ROOM_STATUS = {
-  available: { fill: 'var(--room-clean)', label: 'Vacant clean' }, booked: { fill: 'var(--primary)', label: 'Booked' }, occupied: { fill: 'var(--room-occupied)', label: 'Occupied' },
-  dirty: { fill: 'var(--room-dirty)', label: 'Vacant dirty' }, cleaning: { fill: 'var(--room-dirty)', label: 'Cleaning' }, maintenance: { fill: 'var(--room-out-of-order)', label: 'Out of order' },
-  out_of_service: { fill: 'var(--room-out-of-order)', label: 'Out of service' }, blocked: { fill: 'var(--room-out-of-order)', label: 'Blocked' },
-};
-const UNKNOWN_ROOM_STATUS = { fill: 'var(--text-muted)', label: 'Status not set' };
-const channelLabel = { direct: 'Direct', booking_com: 'Booking.com', unknown: 'Unknown' };
-const mealLabel = { bed_only: 'Bed Only', bb: 'BB', half_board: 'HB', full_board: 'FB' };
-const paymentLabel = { fully_paid: 'Fully Paid', partially_paid: 'Deposit / Partially Paid', not_paid: 'Not Paid' };
-
-const dateKey = (d) => format(d, 'yyyy-MM-dd');
-
-// The rolling planner is a 15-day window: two days before today plus today and
-// twelve following days, keeping today visible immediately beside the room column.
-export const getRollingPlannerRange = (today) => ({
-  from: dateKey(subDays(today, 2)),
-  to: dateKey(addDays(today, 12)),
-});
-const parseDate = (v) => { if (!v) return null; const [y, m, d] = String(v).slice(0, 10).split('-').map(Number); return new Date(y, m - 1, d); };
-const normalizeBookingStatus = (status) => ({ 'checked-in': 'checked_in', 'checked-out': 'checked_out', booked: 'booked' }[status] || status || 'booked');
-const normalizeReservation = (r) => ({
-  ...r,
-  guestName: r.guestName || r.guest || r.guest_name || '',
-  roomId: r.roomId || r.room_id,
-  roomType: r.roomType || r.room_type || '',
-  checkIn: (r.checkIn || r.arrival || r.check_in || '')?.slice(0, 10),
-  checkOut: (r.checkOut || r.departure || r.check_out || '')?.slice(0, 10),
-  bookingStatus: r.bookingStatus || normalizeBookingStatus(r.status),
-  optionExpiresAt: r.optionExpiresAt || r.option_expires_at || null,
-  plannerStatus: r.plannerStatus || ((r.optionExpiresAt || r.option_expires_at) && new Date(r.optionExpiresAt || r.option_expires_at).getTime() > Date.now() ? 'optioned' : undefined),
-  paymentStatus: r.paymentStatus || 'not_paid',
-  channel: r.channel || 'direct',
-  mealPlan: r.mealPlan || 'bed_only',
-  adults: Number(r.adults ?? r.partySize ?? 1),
-  kidsCount: Number(r.kidsCount ?? 0),
-  kidsAges: Array.isArray(r.kidsAges) ? r.kidsAges : [],
-  totalAmount: Number(r.totalAmount ?? r.total ?? r.rate ?? 0),
-  amountPaid: Number(r.amountPaid ?? 0),
-});
-const formatGuests = (r) => `${r.adults || 1}A${r.kidsCount ? `,${r.kidsCount}K` : ''}`;
-const formatPlannerDate = (value) => {
-  const date = parseDate(value);
-  return date ? format(date, 'dd/MM/yyyy') : '—';
-};
-const formatPlannerAmount = (value) => Number(value || 0).toLocaleString('en-US', { maximumFractionDigits: 2 });
-const getPlannerReservationNumber = (rv) => rv.reservationNumber || rv.reservation_number || rv.bookingReference || rv.booking_reference || String(rv.id || '').slice(0, 6).toUpperCase() || '—';
-const getPlannerCurrency = (rv) => rv.currency || rv.bookingDetails?.currency || rv.booking_details?.currency || 'USD';
-const getPlannerMealDescription = (mealPlan) => ({
-  bed_only: 'Room only',
-  bb: 'Breakfast included',
-  half_board: 'Breakfast and dinner included',
-  full_board: 'Breakfast, lunch and dinner included',
-}[mealPlan] || 'Meal plan not specified');
-const getPlannerPaymentDetails = (rv) => {
-  const details = rv.bookingDetails || rv.booking_details || {};
-  const method = rv.paymentMethod || rv.payment_method || details.paymentMethod || details.payment_method || '';
-  const paidAt = rv.paidAt || rv.paid_at || rv.paymentDate || rv.payment_date || details.paidAt || details.paid_at || details.paymentDate || details.payment_date || '';
-  return { method, paidAt };
-};
-
-
-function SelectField({ value, onChange, children, className = '' }) { return <Select value={value} onValueChange={onChange} className={className}>{children}</Select>; }
-function InputField({ className = '', ...props }) { return <input {...props} className={`room-planner-input w-full h-10 rounded-lg px-3 text-sm outline-none ${className}`} style={{ background: SURFACE2, border: `1px solid ${BORDER}`, color: NAVY }} />; }
-function Field({ label, children }) { return <label className="block text-xs font-semibold" style={{ color: NAVY }}>{label}<div className="mt-1">{children}</div></label>; }
-function Modal({ title, children, onClose, wide = false }) { return <div className="room-planner-modal-backdrop fixed inset-0 z-[100] bg-[var(--overlay-scrim)] flex items-center justify-center p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}><div role="dialog" aria-modal="true" aria-label={typeof title === 'string' ? title : undefined} className={`room-planner-modal w-full ${wide ? 'max-w-6xl' : 'max-w-xl'} max-h-[92vh] overflow-y-auto rounded-2xl`} style={{ background: SURFACE }}><div className="sticky top-0 z-10 flex items-center justify-between px-5 py-3.5" style={{ background: SURFACE, borderBottom: `1px solid ${BORDER}` }}><h2 className="text-base font-semibold" style={{ color: NAVY }}>{title}</h2><button type="button" aria-label="Close" onClick={onClose} className="room-planner-icon-close rounded-lg p-2" style={{ color: MUTED }}><X size={18}/></button></div>{children}</div></div>; }
-
-const emptyForm = (room, date) => ({
-  guestName: '', firstName: '', lastName: '', phone: '', alternativePhone: '', email: '', nationality: '', residenceCountry: '', address: '', idType: 'passport', idNumber: '', guestNotes: '',
-  checkIn: dateKey(date), checkOut: dateKey(addDays(date, 1)), arrivalTime: '14:00', departureTime: '10:00', paymentStatus: 'not_paid', bookingStatus: 'confirmed', channel: 'direct', mealPlan: 'bed_only',
-  adults: 1, kidsCount: 0, kidsAges: [], totalAmount: Number(room?.base_rate || 0), amountPaid: 0, depositRequired: 0, depositMethod: 'cash', rate: Number(room?.base_rate || 0), ratePlanId: '', services: 0, discount: 0, tax: 0,
-  company: '', agent: '', externalReference: '', groupReference: '', specialRequests: '', bookingNotes: '',
-  roomTypeId: room?.room_type_id || '', roomId: room?.id || '', joint: false, selectedRoomIds: room?.id ? [room.id] : [], notes: '',
-});
 
 
 export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }) {

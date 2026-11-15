@@ -47,7 +47,7 @@ test('close-shift approval controls use the defined manager permission flag', ()
 });
 
 test('POS PIN reset is routed to an admin-only page with first-time creation copy', () => {
-  const app = readFileSync(new URL('../../src/App.jsx', import.meta.url), 'utf8');
+  const app = readFileSync(new URL('../../src/routes/AppRoutes.jsx', import.meta.url), 'utf8');
   const container = readFileSync(new URL('../../src/components/pos/POSContainer.jsx', import.meta.url), 'utf8');
   const page = readFileSync(new URL('../../src/pages/POSPinSettingsPage.jsx', import.meta.url), 'utf8');
   const pinTab = readFileSync(new URL('../../src/components/pos/AccessPinTab.jsx', import.meta.url), 'utf8');

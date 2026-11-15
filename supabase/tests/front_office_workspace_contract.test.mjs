@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const app = readFileSync(new URL('../../src/App.jsx', import.meta.url), 'utf8');
+const app = readFileSync(new URL('../../src/routes/AppRoutes.jsx', import.meta.url), 'utf8');
 const read = (name) => readFileSync(new URL('../../src/pages/' + name + '.jsx', import.meta.url), 'utf8');
 const pages = {
   assistance: read('FrontOfficeAssistance'), configuration: read('FrontOfficeConfiguration'),

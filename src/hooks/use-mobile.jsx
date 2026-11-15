@@ -3,7 +3,7 @@ import * as React from "react"
 const MOBILE_BREAKPOINT = 768
 
 // Standard shadcn-style mobile breakpoint hook. This file previously
-// contained a duplicate copy of use-size.jsx's contents (a leftover export
+// contained a duplicate copy of another hook's contents (a leftover export
 // mismatch from the project export) instead of an actual mobile detector.
 export function useIsMobile() {
   const [isMobile, setIsMobile] = React.useState(

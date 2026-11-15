@@ -15,6 +15,7 @@ const publicHomeBrand = readFileSync(new URL('../../src/pages/PublicHome.jsx', i
 const theme = readFileSync(new URL('../../src/index.css', import.meta.url), 'utf8');
 const html = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
 const roomPlanner = readFileSync(new URL('../../src/components/pms/RoomPlanner.jsx', import.meta.url), 'utf8');
+const plannerModel = readFileSync(new URL('../../src/components/pms/planner/plannerModel.js', import.meta.url), 'utf8');
 const reservations = readFileSync(new URL('../../src/components/modules/Reservations.jsx', import.meta.url), 'utf8');
 const folio = readFileSync(new URL('../../src/components/modules/Folio.jsx', import.meta.url), 'utf8');
 const posDevices = readFileSync(new URL('../../src/components/stores/POSDevicesPage.jsx', import.meta.url), 'utf8');
@@ -39,7 +40,6 @@ const roomsPage = readFileSync(new URL('../../src/components/pms/Rooms.jsx', imp
 const billPayment = readFileSync(new URL('../../src/components/pos/BillPayment.jsx', import.meta.url), 'utf8');
 const orderTaking = readFileSync(new URL('../../src/components/pos/OrderTaking.jsx', import.meta.url), 'utf8');
 const adminRoute = readFileSync(new URL('../../src/lib/AdminRoute.jsx', import.meta.url), 'utf8');
-const protectedRoute = readFileSync(new URL('../../src/components/ui/ProtectedRoute.jsx', import.meta.url), 'utf8');
 const employeeList = readFileSync(new URL('../../src/components/settings/EmployeeListPage.jsx', import.meta.url), 'utf8');
 const sharedSelect = readFileSync(new URL('../../src/components/ui/select.jsx', import.meta.url), 'utf8');
 const productTable = readFileSync(new URL('../../src/components/store/ProductTable.jsx', import.meta.url), 'utf8');
@@ -167,7 +167,7 @@ test('mobile sidebar exposes expanded state and closes with Escape', () => {
 
 test('operational screens use semantic theme tokens for text, surfaces, focus and feedback', () => {
   const screens = {
-    reservations, folio, posDevices, receiptSettings, operationalSettings, catalogue, accessError, nightAudit, cashier, housekeeping, subscriptionPanel, printerSettings, adminProperties, adminRoute, protectedRoute, employeeList, sharedSelect, productTable, pageNotFound,
+    reservations, folio, posDevices, receiptSettings, operationalSettings, catalogue, accessError, nightAudit, cashier, housekeeping, subscriptionPanel, printerSettings, adminProperties, adminRoute, employeeList, sharedSelect, productTable, pageNotFound,
   };
   for (const [name, source] of Object.entries(screens)) {
     assert.doesNotMatch(
@@ -193,7 +193,6 @@ test('operational screens use semantic theme tokens for text, surfaces, focus an
   assert.match(printerSettings, /text-primary-foreground/);
   assert.match(adminProperties, /var\(--danger-soft\)/);
   assert.match(adminRoute, /border-\[var\(--border\)\]/);
-  assert.match(protectedRoute, /border-\[var\(--border\)\]/);
   for (const [name, source] of Object.entries({nightAudit, cashier, housekeeping, subscriptionPanel, printerSettings, adminProperties})) {
     assert.doesNotMatch(source, /(?:text|bg|border)-(?:red|amber|emerald|teal|blue|rose)-(?:50|100|200|300|400|500|600|700|800|900)\b/, name + ' should use semantic status colours');
   }
@@ -266,8 +265,8 @@ test('Room Planner toolbar exposes the approved controls and responsive dimensio
   assert.match(roomPlanner, /shiftVisibleRange\(-\(Number\(viewLength\)\|\|15\)\)/);
   assert.match(roomPlanner, /shiftVisibleRange\(Number\(viewLength\)\|\|15\)/);
   assert.match(roomPlanner, /applyViewLength\(days\)/);
-  assert.match(roomPlanner, /subDays\(today, 2\)/);
-  assert.match(roomPlanner, /addDays\(today, 12\)/);
+  assert.match(plannerModel, /subDays\(today, 2\)/);
+  assert.match(plannerModel, /addDays\(today, 12\)/);
   assert.match(roomPlanner, /onClick=\{addClosure\}/);
   assert.match(roomPlanner, /onClick=\{\(\) => openCreate/);
 });
