@@ -155,13 +155,11 @@ export const inventoryService = {
     if (error) throw new Error(error.message); return data || [];
   },
   async postAdjustment(payload) {
-    if (!payload.requestKey) throw new Error('A request key is required for safe adjustment retries.');
-    const { data, error } = await supabase.rpc('fn_post_stock_adjustment', { p_property_id: payload.propertyId, p_product_id: payload.productId, p_change: Number(payload.changeQty), p_reason: payload.reason, p_request_key: payload.requestKey, p_location_id: payload.locationId || null });
+    const { data, error } = await supabase.rpc('fn_post_stock_adjustment', { p_property_id: payload.propertyId, p_product_id: payload.productId, p_change: Number(payload.changeQty), p_reason: payload.reason, p_location_id: payload.locationId || null });
     if (error) throw new Error(error.message); return data;
   },
   async createInventoryCount(payload) {
-    if (!payload.requestKey) throw new Error('A request key is required for safe count retries.');
-    const { data, error } = await supabase.rpc('fn_create_inventory_count', { p_property_id: payload.propertyId, p_location_id: payload.locationId, p_lines: payload.lines || [], p_request_key: payload.requestKey, p_reference: payload.reference || null });
+    const { data, error } = await supabase.rpc('fn_create_inventory_count', { p_property_id: payload.propertyId, p_location_id: payload.locationId, p_lines: payload.lines || [], p_reference: payload.reference || null });
     if (error) throw new Error(error.message); return data;
   },
   async approveInventoryCount(countId) {
@@ -169,8 +167,7 @@ export const inventoryService = {
     if (error) throw new Error(error.message); return data;
   },
   async postWastage(payload) {
-    if (!payload.requestKey) throw new Error('A request key is required for safe wastage retries.');
-    const { data, error } = await supabase.rpc('fn_post_wastage', { p_property_id: payload.propertyId, p_product_id: payload.productId, p_quantity: Number(payload.quantity), p_reason: payload.reason, p_request_key: payload.requestKey, p_location_id: payload.locationId || null, p_expiry_date: payload.expiryDate || null });
+    const { data, error } = await supabase.rpc('fn_post_wastage', { p_property_id: payload.propertyId, p_product_id: payload.productId, p_quantity: Number(payload.quantity), p_reason: payload.reason, p_location_id: payload.locationId || null, p_expiry_date: payload.expiryDate || null });
     if (error) throw new Error(error.message); return data;
   },
   async postProduction(payload) {
