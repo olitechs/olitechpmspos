@@ -21,7 +21,17 @@ test('Phase 1 adds product tracking and base-unit metadata without replacing exi
   assert.match(migration, /add column if not exists stock_item_type text/i);
   assert.match(migration, /add column if not exists base_unit text/i);
   assert.match(migration, /set base_unit = 'pcs' where base_unit is null/i);
-  assert.doesNotMatch(migration, /update public\.products\s+set current_stock\s*=/i);
+  // The migration preserves the legacy adjust_product_stock function body inside
+  // $function$ ... $function$ dollar-quoted blocks for backwards compatibility;
+  // those quoted bodies legitimately contain `UPDATE public.products
+  // SET current_stock = current_stock + p_change`. The guarantee under test is
+  // that the migration's own statements never reset existing stock, so strip
+  // dollar-quoted bodies before asserting.
+  const statements = migration.replace(
+    /\$function\$[\s\S]*?\$function\$/gi,
+    '-- [dollar-quoted legacy function body preserved elsewhere] --'
+  );
+  assert.doesNotMatch(statements, /update public\.products\s+set current_stock\s*=/i);
 });
 
 test('Phase 1 adds movement provenance, reversal and idempotency constraints', () => {
