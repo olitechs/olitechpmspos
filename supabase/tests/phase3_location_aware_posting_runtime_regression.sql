@@ -170,7 +170,15 @@ BEGIN
   FROM public.product_stock_locations WHERE product_id=v_product_id;
 
   IF ABS(COALESCE(v_location_sum,0)-v_total_before) > 0.01 THEN
-    RAISE EXCEPTION 'FIXTURE-004: product aggregate and location balances must reconcile before the test';
+    RAISE EXCEPTION 'FIXTURE-006: product aggregate and location balances must reconcile before the test';
+  END IF;
+
+  IF ABS(v_total_before - COALESCE((
+    SELECT SUM(CASE WHEN type='in' THEN qty WHEN type='out' THEN -qty ELSE 0 END)
+    FROM public.stock_movements
+    WHERE property_id=v_property_id AND product_id=v_product_id
+  ),0)) > 0.01 THEN
+    RAISE EXCEPTION 'FIXTURE-007: product movement ledger must reconcile before the test';
   END IF;
 
   SELECT COUNT(*) INTO v_movement_count_before
