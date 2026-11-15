@@ -10,6 +10,20 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# Capture installer failures separately from the running agent logs. The service
+# may fail before Node starts, so agent.log cannot explain registration errors.
+$InstallLogDir = Join-Path $env:ProgramData 'OliTechs\\PrintAgent\\logs'
+New-Item -ItemType Directory -Force -Path $InstallLogDir | Out-Null
+$InstallLogPath = Join-Path $InstallLogDir 'install-service.log'
+try { Start-Transcript -Path $InstallLogPath -Append -Force | Out-Null } catch {}
+trap {
+  try {
+    "INSTALL ERROR: $($_.Exception.Message)" | Out-File -FilePath $InstallLogPath -Append -Encoding utf8
+    Stop-Transcript | Out-Null
+  } catch {}
+  throw
+}
+
 $ServiceId = 'OliTechsPrintAgent'
 $ServiceDisplayName = 'OliTechs Print Agent'
 $LegacyTaskName = 'OliTechs Print Agent'
@@ -110,8 +124,19 @@ Set-Content -Path $ConfigPath -Value $xml -Encoding UTF8
 
 Copy-Item -Path $resolvedWinSW -Destination $WrapperPath -Force
 
-& $WrapperPath install
-if ($LASTEXITCODE -ne 0) { throw "Installing the Windows service failed (exit code $LASTEXITCODE)." }
+# WinSW can return a generic non-zero code when a stale service registration
+# still exists (for example, Windows has marked it for deletion). Capture its
+# actual output so support can distinguish that from access/configuration errors.
+$winswOutput = & $WrapperPath install 2>&1
+$winswExitCode = $LASTEXITCODE
+if ($winswOutput) {
+  $winswOutput | Tee-Object -FilePath $InstallLogPath -Append | Out-Null
+}
+if ($winswExitCode -ne 0) {
+  $serviceCheck = & sc.exe query $ServiceId 2>&1
+  if ($serviceCheck) { $serviceCheck | Out-File -FilePath $InstallLogPath -Append -Encoding utf8 }
+  throw "Installing the Windows service failed (WinSW exit code $winswExitCode). See $InstallLogPath for the detailed installer log."
+}
 
 # Service Control Manager recovery: restart after a crash with increasing delay.
 sc.exe failure $ServiceId reset= 86400 actions= restart/5000/restart/15000/restart/60000 | Out-Null
@@ -143,7 +168,7 @@ for ($attempt = 0; $attempt -lt 20; $attempt++) {
   try {
     $health = Invoke-RestMethod -Uri 'http://127.0.0.1:8631/health' -TimeoutSec 2
     if ($health.ok) { $healthy = $true; break }
-  } catch (_) {
+  } catch {
     Start-Sleep -Milliseconds 500
   }
 }
@@ -166,3 +191,4 @@ if ($healthy) {
   Write-Host 'Health:   the service is running but /health did not answer yet. Check the logs above.' -ForegroundColor Yellow
 }
 Write-Host ''
+try { Stop-Transcript | Out-Null } catch {}
