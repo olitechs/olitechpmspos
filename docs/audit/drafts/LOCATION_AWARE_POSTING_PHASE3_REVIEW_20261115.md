@@ -8,8 +8,8 @@ Status: candidate SQL and application changes committed; **not applied to any da
 - Candidate SQL: `docs/audit/drafts/LOCATION_AWARE_ADJUSTMENT_WASTAGE_COUNT_CANDIDATE_20261115.sql`
 - Runtime gate: `supabase/tests/phase3_location_aware_posting_runtime_regression.sql`
 - Source contract: `tools/inventory/phase3-location-aware-posting.contract.test.mjs`
-- Service RPC updates: `src/services/inventoryService.js`
-- Inventory UI updates: `src/components/modules/InventoryOperations.jsx`
+- Active service/UI compatibility guard: `src/services/inventoryService.js` and `src/components/modules/InventoryOperations.jsx` remain on the current production RPC contract until the candidate database migration is promoted.
+- The future request-key service and location-aware count UI were prototyped in the commit history, then deliberately removed from active source after confirming that commits to `main` automatically create production Vercel deployments.
 - The source contract is included in `npm run test:architecture`.
 
 ## Live behavior confirmed before drafting
@@ -61,9 +61,9 @@ The new UI generates a request key and keeps it unchanged after a failed request
 
 For compatibility during rollout, adjustment and wastage RPCs accept an omitted `p_request_key` from an older frontend by generating a legacy key; those older calls do **not** get retry deduplication. Count creation is stricter: an omitted key is rejected with a refresh message because the old count UI submitted property-wide stock as location-level counted quantities. The updated UI passes a stable key and location-only lines explicitly.
 
-### Physical-count UI correction
+### Planned physical-count UI correction (held until migration promotion)
 
-The count screen now loads `product_stock_locations` for the selected location, displays that location's system quantity, and submits only tracked products for which the user entered a counted quantity. It no longer treats `products.current_stock` as the count for a single location.
+The future count-screen patch loads `product_stock_locations` for the selected location, displays that location's system quantity, and submits only tracked products for which the user entered a counted quantity. It no longer treats `products.current_stock` as the count for a single location.
 
 ## Deliberate limits and remaining risks
 
@@ -94,7 +94,9 @@ The candidate is intentionally stored under `docs/audit/drafts/`, not `supabase/
 ## Current deployment state
 
 - Candidate SQL committed to `main`.
-- Application service and UI changes committed to `main`.
-- Contract and runtime test sources committed and integrated into the architecture suite.
+- Active application service and UI remain compatible with the live Supabase RPC signatures.
+- The future request-key service and location-aware count UI are not active yet; reapply them only with the database migration rollout.
+- Contract and runtime test sources are committed; the source contract is integrated into the architecture suite.
 - No production DDL, grants, trigger changes, RPC changes or stock quantities have been applied.
+- A temporary frontend patch was observed in a Vercel production build before the database migration existed. The active GitHub source has since been restored to the existing RPC contract; verify the newest Vercel production deployment before declaring the live frontend restored.
 - Node test suite and PostgreSQL runtime suite have **not** been executed in a checked-out, production-equivalent environment.
