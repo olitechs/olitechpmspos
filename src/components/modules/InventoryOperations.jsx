@@ -32,7 +32,7 @@ function Adjustments({propertyId,locations,products,onSaved}){
  return <Panel title="Stock Adjustment">
   <Select label="Product" value={f.productId} set={v=>change({productId:v})} options={products.filter(x=>x.track_stock!==false).map(x=>[x.id,x.name])}/>
   <Select label="Location" value={f.locationId} set={v=>change({locationId:v})} options={locations.map(x=>[x.id,x.name])}/>
-  <label className="text-xs font-bold">Quantity change<input type="number" value={f.changeQty} onChange={e=>change({changeQty:e.target.value})} className={input} placeholder="Negative reduces stock"/></label>
+  <label className="text-xs font-bold">Quantity change<input type="number" step="0.01" value={f.changeQty} onChange={e=>change({changeQty:e.target.value})} className={input} placeholder="Negative reduces stock"/></label>
   <label className="text-xs font-bold">Reason<input value={f.reason} onChange={e=>change({reason:e.target.value})} className={input}/></label>
   <button onClick={save} className="px-4 py-2 rounded-lg bg-[var(--success)] text-foreground font-bold">Post Adjustment</button>
  </Panel>
@@ -57,7 +57,7 @@ function Counts({propertyId,locations,products,counts,onSaved}){
   return()=>{active=false};
  },[loc,propertyId]);
 
- const changeLocation=value=>{setLoc(value);setLines({});setRequestKey(makeInventoryRequestKey())};
+ const changeLocation=value=>{setLoc(value);setLines({});setLocationStock({});setRequestKey(makeInventoryRequestKey())};
  const save=async()=>{
   const countLines=products
    .filter(p=>p.track_stock!==false&&lines[p.id]!==undefined&&String(lines[p.id]).trim()!=='')
