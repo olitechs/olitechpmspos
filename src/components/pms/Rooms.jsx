@@ -84,7 +84,9 @@ export default function Rooms() {
                   </td>
                 </tr>
                 );
-              })}</tbody>
+              })}
+              {!pms.reservations.length && <tr style={{ borderBottom: `1px solid ${BORDER}`, background: SURFACE }}><td colSpan={8} className="p-10 text-center text-sm" style={{ color: MUTED }}>No reservations yet. Create one from the Reservations tab.</td></tr>}
+            </tbody>
             </table>
           </div>
         </div>

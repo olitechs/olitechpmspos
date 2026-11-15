@@ -28,16 +28,8 @@ export const BOOKING_STATUSES = ['booked', 'checked_in', 'checked_out'];
 const DAY_WIDTH = 56;
 const ROOM_COL_WIDTH = 208;
 
-// CALENDAR THEME: Green/Yellow/Orange - Rectangle bars, English
-export const getReservationBarStyle = (status = 'occupied') => ({
-  optioned:{background:'var(--stay-optioned)',color:'var(--payment-text)',border:'var(--stay-optioned)',label:'Optioned'},
-  confirmed:{background:'transparent',color:'var(--text)',border:'var(--stay-occupied)',label:'Confirmed / arriving'},
-  occupied:{background:'var(--stay-occupied)',color:'var(--payment-text)',border:'var(--stay-occupied)',label:'In-house'},
-  checkout:{background:'var(--stay-checkout)',color:'var(--payment-text)',border:'var(--stay-checkout)',label:'Checking out today'},
-  checked_out:{background:'var(--stay-occupied)',color:'var(--payment-text)',border:'var(--stay-occupied)',label:'Checked out'},
-  closed:{background:'var(--stay-closed)',color:'var(--text)',border:'var(--stay-closed)',label:'Out of order / closure'},
-}[status] || {background:'var(--stay-occupied)',color:'var(--payment-text)',border:'var(--stay-occupied)',label:'In-house'});
-
+// CALENDAR THEME: fill/foreground/border triplets per Design.md; payment
+// status tints the bar, booking state shows in the legend and hover card.
 export const getPaymentStatusFromAmounts = derivePaymentStatus;
 export const getPaymentStyle = (status) => ({
   fully_paid: { background: 'var(--pay-paid)', color: 'var(--pay-paid-fg)', border: 'var(--pay-paid-bd)', label: 'Total Paid' },
@@ -837,7 +829,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
             {roomReservations.map(rv=>{
               const l=visibleReservation(rv);if(!l)return null;
               const stayStatus=rv.plannerStatus || (rv.bookingStatus==='checked_out'?'checked_out':rv.bookingStatus==='checked_in'?'occupied':'confirmed');
-              const ps=getReservationBarStyle(stayStatus); const pay=getPaymentStyle(getPaymentStatusFromAmounts(rv.amountPaid, rv.totalAmount));
+              const pay=getPaymentStyle(getPaymentStatusFromAmounts(rv.amountPaid, rv.totalAmount));
               const checked=rv.bookingStatus==='checked_out';
               const geometry=getStayBarGeometry({startIndex:l.start,span:l.span,dayWidth,roomColumnWidth:ROOM_COL_WIDTH,continuesBefore:l.continuesBefore,continuesAfter:l.continuesAfter});
               const left=geometry.left;
@@ -846,7 +838,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
               const firstTag = Array.isArray(rv.tags) ? rv.tags[0] : rv.tag;
               const tagName = typeof firstTag === 'string' ? firstTag : firstTag?.name;
               const tagColor = typeof firstTag === 'object' ? firstTag?.color : null;
-              return <div key={rv.id} draggable onPointerDown={e=>beginTouchDrag(e,rv)} onPointerUp={finishTouchDrag} onPointerCancel={()=>{touchDragRef.current=null}} onDragStart={e=>beginDrag(e,rv)} onDragEnd={()=>{setDrag(null);setDragTarget(null)}} onClick={e=>{e.stopPropagation();setSelectedReservation(rv)}} className="reservation-bar absolute h-[23px] cursor-grab active:cursor-grabbing group" data-room-planner-bar="true" onMouseEnter={e=>showReservationHover(e,rv)} onMouseLeave={hideReservationHover} style={{top:Math.max(2,(ROOM_ROW_HEIGHT-23)/2),left,width,background:stayStatus==='optioned'?'var(--pay-opt)':pastOpacity<1?`color-mix(in srgb, ${pay.background} 55%, transparent)`:pay.background,color:stayStatus==='optioned'?'var(--pay-opt-fg)':pay.color,border:`1.5px ${stayStatus==='optioned'?'dashed':'solid'} ${stayStatus==='optioned'?'var(--pay-opt-bd)':pay.border}`,borderLeft:stayStatus==='optioned'?'1.5px dashed var(--pay-opt-bd)':`1.5px solid ${pay.border}`,zIndex:10}} aria-label={`Reservation ${getPlannerReservationNumber(rv)} for ${rv.guestName || 'Guest'}`}>
+              return <div key={rv.id} draggable onPointerDown={e=>beginTouchDrag(e,rv)} onPointerUp={finishTouchDrag} onPointerCancel={()=>{touchDragRef.current=null}} onDragStart={e=>beginDrag(e,rv)} onDragEnd={()=>{setDrag(null);setDragTarget(null)}} onClick={e=>{e.stopPropagation();setSelectedReservation(rv)}} className="reservation-bar absolute h-[23px] cursor-grab rounded-[4px] active:cursor-grabbing group" data-room-planner-bar="true" onMouseEnter={e=>showReservationHover(e,rv)} onMouseLeave={hideReservationHover} style={{top:Math.max(2,(ROOM_ROW_HEIGHT-23)/2),left,width,background:stayStatus==='optioned'?'var(--pay-opt)':pastOpacity<1?`color-mix(in srgb, ${pay.background} 55%, transparent)`:pay.background,color:stayStatus==='optioned'?'var(--pay-opt-fg)':pay.color,border:`1.5px ${stayStatus==='optioned'?'dashed':'solid'} ${stayStatus==='optioned'?'var(--pay-opt-bd)':pay.border}`,zIndex:10}} aria-label={`Reservation ${getPlannerReservationNumber(rv)} for ${rv.guestName || 'Guest'}`}>
               {tagName && <span aria-label={`Tag: ${tagName}`} title={tagName} className="mr-1 inline-block h-2 w-2 shrink-0 rounded-full" style={{background:tagColor || 'var(--accent)'}}/>}<span className="min-w-0 flex-1 truncate font-semibold text-[11px]" title={`${rv.guestName} · ${rv.checkIn} → ${rv.checkOut}`}>{geometry.continuesBefore?'‹ ':''}{rv.guestName || 'Guest'}{geometry.continuesAfter?' ›':''}</span><span className="ml-1.5 shrink-0 text-[10px] opacity-90 font-medium tabular-nums">♙ {formatGuests(rv)}</span>
 
               <span role="separator" aria-label={`Resize ${rv.guestName || 'reservation'} check-in`} title="Drag to change check-in date" onPointerDown={e=>beginResize(e,rv,'start')} onPointerUp={finishResize} onPointerCancel={()=>{resizeStartRef.current=null}} onClick={e=>e.stopPropagation()} className="room-planner-handle absolute left-0 top-0 h-full w-2 cursor-ew-resize touch-none rounded-l" style={{background:'color-mix(in srgb,var(--text) 22%,transparent)',zIndex:20}}/>
