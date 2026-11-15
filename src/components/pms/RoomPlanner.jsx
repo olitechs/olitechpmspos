@@ -17,6 +17,7 @@ import Folio from '@/components/modules/Folio';
 import { buildRoomPlannerDefinition } from '@/services/reportDefinitions';
 import { findRoomReservationOverlap, getPmsTodayDate, overlapsStayRanges } from '@/lib/pmsDateUtils';
 import { getRoomPlannerResponsiveMode } from '@/lib/roomPlannerResponsive';
+import { resizeStableKeys } from '@/lib/stableKeys';
 import { NAVY, TEAL, SAND, SURFACE, SURFACE2, BORDER, MUTED, DESTRUCTIVE } from '@/data/palette';
 import { getStayBarGeometry, getPastStayOpacity, getPaymentStatusFromAmounts as derivePaymentStatus } from '@/lib/roomPlannerGeometry';
 
@@ -65,11 +66,15 @@ export function calculateDailyStats(reservations, date) {
   };
 }
 
+// Room status keeps the same housekeeping semantics as the Dashboard: an
+// available room is clean, and dirty/cleaning share the vacant-dirty colour.
+// Do not map `available` to a neutral grey or `cleaning` to the clean colour.
 const ROOM_STATUS = {
-  available: { fill: 'var(--text-muted)', label: 'Available' }, booked: { fill: 'var(--primary)', label: 'Booked' }, occupied: { fill: 'var(--room-occupied)', label: 'Occupied' },
-  dirty: { fill: 'var(--room-dirty)', label: 'Dirty' }, cleaning: { fill: 'var(--room-clean)', label: 'Cleaning' }, maintenance: { fill: 'var(--room-out-of-order)', label: 'Maintenance' },
-  out_of_service: { fill: 'var(--room-out-of-order)', label: 'Out of Service' }, blocked: { fill: 'var(--room-out-of-order)', label: 'Blocked' },
+  available: { fill: 'var(--room-clean)', label: 'Vacant clean' }, booked: { fill: 'var(--primary)', label: 'Booked' }, occupied: { fill: 'var(--room-occupied)', label: 'Occupied' },
+  dirty: { fill: 'var(--room-dirty)', label: 'Vacant dirty' }, cleaning: { fill: 'var(--room-dirty)', label: 'Cleaning' }, maintenance: { fill: 'var(--room-out-of-order)', label: 'Out of order' },
+  out_of_service: { fill: 'var(--room-out-of-order)', label: 'Out of service' }, blocked: { fill: 'var(--room-out-of-order)', label: 'Blocked' },
 };
+const UNKNOWN_ROOM_STATUS = { fill: 'var(--text-muted)', label: 'Status not set' };
 const channelLabel = { direct: 'Direct', booking_com: 'Booking.com', unknown: 'Unknown' };
 const mealLabel = { bed_only: 'Bed Only', bb: 'BB', half_board: 'HB', full_board: 'FB' };
 const paymentLabel = { fully_paid: 'Fully Paid', partially_paid: 'Deposit / Partially Paid', not_paid: 'Not Paid' };
@@ -144,8 +149,21 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   const plannerReservations = reservations;
   const { user } = useAuth();
   const propertyId = user?.property?.id;
-  const todayDate = useMemo(() => getPmsTodayDate(), []);
+  // "Today" must move at midnight (Africa/Nairobi) instead of staying frozen
+  // for the lifetime of the tab. Re-check every minute and whenever the tab
+  // becomes visible again after being left open overnight.
+  const [todayDate, setTodayDate] = useState(() => getPmsTodayDate());
   const today = dateKey(todayDate);
+  useEffect(() => {
+    const syncToday = () => {
+      const next = getPmsTodayDate();
+      setTodayDate(current => (dateKey(current) === dateKey(next) ? current : next));
+    };
+    const timer = setInterval(syncToday, 60000);
+    const onVisibility = () => { if (document.visibilityState === 'visible') syncToday(); };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => { clearInterval(timer); document.removeEventListener('visibilitychange', onVisibility); };
+  }, []);
   useEffect(() => { const timer = setInterval(() => setClockNow(Date.now()), 1000); return () => clearInterval(timer); }, []);
   useEffect(() => {
     if (!propertyId) return undefined;
@@ -167,6 +185,10 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   const [focusToday, setFocusToday] = useState(true);
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState(emptyForm(plannerRooms[0], todayDate));
+  // One age input per child is positional, but each input keeps its DOM
+  // identity when the child count changes (see src/lib/stableKeys.js).
+  const kidKeysRef = useRef([]);
+  kidKeysRef.current = resizeStableKeys(kidKeysRef.current, Number(form.kidsCount) || 0);
   const [ratePlans, setRatePlans] = useState([]);
   const [ratePlansError, setRatePlansError] = useState('');
   const [formError, setFormError] = useState('');
@@ -809,10 +831,10 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
         </div>
 
         {topSpacerHeight > 0 && <div aria-hidden="true" style={{height:topSpacerHeight,gridColumn:'1 / -1'}}/>}
-        {virtualRows.map((entry)=>{if(entry.kind==='group'){const collapsed=collapsedRoomTypes.includes(entry.typeName);return <div key={`group-${entry.typeName}`} className="room-planner-grid-row grid relative" style={{gridTemplateColumns:`${ROOM_COL_WIDTH}px repeat(${columns.length}, ${dayWidth}px)`,height:ROOM_ROW_HEIGHT,minHeight:ROOM_ROW_HEIGHT}}><div className="room-planner-room-cell sticky left-0 z-20 flex items-center px-3" style={{background:'var(--soft-white)',borderRight:`2px solid var(--border)`,borderBottom:`1px solid var(--border)`}}><button type="button" aria-expanded={!collapsed} onClick={()=>setCollapsedRoomTypes(current=>collapsed?current.filter(item=>item!==entry.typeName):[...current,entry.typeName])} className="flex w-full items-center justify-between gap-2 text-left text-[11px] font-bold" style={{color:'var(--text)',minHeight:ROOM_ROW_HEIGHT===30?24:32}}><span className="truncate">{entry.typeName}</span><span className="flex shrink-0 items-center gap-1 text-[10px] font-semibold tabular-nums" style={{color:'var(--muted)'}}>{entry.count}<ChevronDown size={13} aria-hidden="true" style={{transform:collapsed?'rotate(-90deg)':'none',transition:'transform 160ms ease-out'}}/><span className="sr-only">{collapsed?'Show':'Hide'} {entry.typeName}</span></span></button></div><div className="flex items-center px-3 text-[10px] font-semibold" style={{gridColumn:'2 / -1',background:'var(--soft-white)',color:'var(--muted)',borderBottom:`1px solid var(--border)`}}>{entry.count} {entry.count===1?'room':'rooms'} in this group</div></div>;}const {room,typeName}=entry;const roomReservations=filteredReservationsByRoom.get(room.id)||[]; return <div key={room.id} className="room-planner-grid-row grid relative" style={{gridTemplateColumns:`${ROOM_COL_WIDTH}px repeat(${columns.length}, ${dayWidth}px)`, height:ROOM_ROW_HEIGHT,minHeight:ROOM_ROW_HEIGHT}}>
-            <div className="room-planner-room-cell sticky left-0 z-20 px-3 flex items-center gap-2" style={{background:'var(--surface)',borderRight:`2px solid var(--border)`,borderBottom:`1px solid var(--border)`,paddingTop:ROOM_ROW_HEIGHT===30?0:8,paddingBottom:ROOM_ROW_HEIGHT===30?0:8}}><div><div className="flex items-center gap-2"><div className="font-medium text-[13px] leading-3" style={{color:'var(--text)'}}>{room.number}</div>{roomReservations.length>0&&<span className="rounded-full px-1.5 py-0.5 text-[9px] font-medium tabular-nums" style={{background:'var(--bg)',color:'var(--muted)'}}>{roomReservations.length} stay{roomReservations.length===1?'':'s'}</span>}</div><div className="text-[10px] font-semibold leading-3 truncate max-w-[160px]" style={{color:'var(--muted)'}}>{room.name || typeName}</div></div></div>
+        {virtualRows.map((entry)=>{if(entry.kind==='group'){const collapsed=collapsedRoomTypes.includes(entry.typeName);return <div key={`group-${entry.typeName}`} className="room-planner-grid-row grid relative" style={{gridTemplateColumns:`${ROOM_COL_WIDTH}px repeat(${columns.length}, ${dayWidth}px)`,height:ROOM_ROW_HEIGHT,minHeight:ROOM_ROW_HEIGHT}}><div className="room-planner-room-cell sticky left-0 z-20 flex items-center px-3" style={{background:'var(--soft-white)',borderRight:`2px solid var(--border)`,borderBottom:`1px solid var(--border)`}}><button type="button" aria-expanded={!collapsed} onClick={()=>setCollapsedRoomTypes(current=>collapsed?current.filter(item=>item!==entry.typeName):[...current,entry.typeName])} className="flex w-full items-center justify-between gap-2 text-left text-[11px] font-bold" style={{color:'var(--text)',minHeight:ROOM_ROW_HEIGHT===30?24:32}}><span className="truncate">{entry.typeName}</span><span className="flex shrink-0 items-center gap-1 text-[10px] font-semibold tabular-nums" style={{color:'var(--muted)'}}>{entry.count}<ChevronDown size={13} aria-hidden="true" style={{transform:collapsed?'rotate(-90deg)':'none',transition:'transform 160ms ease-out'}}/><span className="sr-only">{collapsed?'Show':'Hide'} {entry.typeName}</span></span></button></div><div className="flex items-center px-3 text-[10px] font-semibold" style={{gridColumn:'2 / -1',background:'var(--soft-white)',color:'var(--muted)',borderBottom:`1px solid var(--border)`}}>{entry.count} {entry.count===1?'room':'rooms'} in this group</div></div>;}const {room,typeName}=entry;const roomReservations=filteredReservationsByRoom.get(room.id)||[];const roomStatus=ROOM_STATUS[room.status]||UNKNOWN_ROOM_STATUS; return <div key={room.id} className="room-planner-grid-row grid relative" style={{gridTemplateColumns:`${ROOM_COL_WIDTH}px repeat(${columns.length}, ${dayWidth}px)`, height:ROOM_ROW_HEIGHT,minHeight:ROOM_ROW_HEIGHT}}>
+            <div className="room-planner-room-cell sticky left-0 z-20 px-3 flex items-center gap-2" style={{background:'var(--surface)',borderRight:`2px solid var(--border)`,borderBottom:`1px solid var(--border)`,paddingTop:ROOM_ROW_HEIGHT===30?0:8,paddingBottom:ROOM_ROW_HEIGHT===30?0:8}}><div><div className="flex items-center gap-2"><span className="inline-block h-2 w-2 shrink-0 rounded-full" style={{background:roomStatus.fill}} role="img" aria-label={`Room status: ${roomStatus.label}`} title={`Room status: ${roomStatus.label}`}/><div className="font-medium text-[13px] leading-3" style={{color:'var(--text)'}}>{room.number}</div>{roomReservations.length>0&&<span className="rounded-full px-1.5 py-0.5 text-[9px] font-medium tabular-nums" style={{background:'var(--bg)',color:'var(--muted)'}}>{roomReservations.length} stay{roomReservations.length===1?'':'s'}</span>}</div><div className="text-[10px] font-semibold leading-3 truncate max-w-[160px]" style={{color:'var(--muted)'}}>{room.name || typeName}</div></div></div>
             {columns.map(d=>{const weekend=d.getDay()===0||d.getDay()===6;const key=dateKey(d);const target=dragTarget?.roomId===room.id&&dragTarget?.date===key;return <div key={key} data-room-id={room.id} data-date={key} onPointerDown={e=>beginCreateDrag(e,room,d)} onPointerUp={finishCreateDrag} onPointerCancel={()=>{createDragRef.current=null}} onClick={()=>{if(!drag&&!suppressCellClick.current)openCreate(room,d)}} onDragOver={e=>handleCellDragOver(e,room,d)} onDrop={e=>handleCellDrop(e,room,d)} className={`room-planner-day-cell cursor-pointer ${weekend?'room-planner-weekend':''} ${key===today?'room-planner-today-cell':''}`} style={{background:target?'color-mix(in srgb, var(--primary) 28%, var(--surface))':closures.some(item => item.room_id === room.id && item.start_date <= key && key < item.end_date) ? 'repeating-linear-gradient(135deg, color-mix(in srgb, var(--stay-closed) 72%, var(--surface)) 0 5px, var(--surface) 5px 10px)' : key===today?'color-mix(in srgb, var(--primary) 9%, var(--surface))':weekend?'color-mix(in srgb, var(--grid-weekend) 78%, var(--surface))':'var(--surface)',borderRight:`1px solid var(--border)`,borderBottom:`1px solid var(--border)`, minHeight:ROOM_ROW_HEIGHT}} title={closures.filter(item => item.room_id === room.id && item.start_date <= key && key < item.end_date).map(item => `${item.reason} · ${item.start_date} to ${item.end_date}`).join(' | ') || undefined}/>})}
-            {roomReservations.filter(rv=>filteredReservations.some(item=>item.id===rv.id)).map(rv=>{
+            {roomReservations.map(rv=>{
               const l=visibleReservation(rv);if(!l)return null;
               const stayStatus=rv.plannerStatus || (rv.bookingStatus==='checked_out'?'checked_out':rv.bookingStatus==='checked_in'?'occupied':'confirmed');
               const ps=getReservationBarStyle(stayStatus); const pay=getPaymentStyle(getPaymentStatusFromAmounts(rv.amountPaid, rv.totalAmount));
@@ -923,7 +945,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
           <div className="grid md:grid-cols-2 gap-3"><Field label="Arrival date *"><InputField type="date" value={form.checkIn} onChange={e=>setForm({...form,checkIn:e.target.value})}/></Field><Field label="Departure date (exclusive) *"><InputField type="date" min={form.checkIn} value={form.checkOut} onChange={e=>setForm({...form,checkOut:e.target.value})}/></Field></div>
           <div className="grid md:grid-cols-2 gap-3"><Field label="Arrival time"><InputField type="time" value={form.arrivalTime} onChange={e=>setForm({...form,arrivalTime:e.target.value})}/></Field><Field label="Departure time"><InputField type="time" value={form.departureTime} onChange={e=>setForm({...form,departureTime:e.target.value})}/></Field></div>
           <div className="grid md:grid-cols-2 gap-3"><Field label="Adults"><InputField type="number" min="1" max="10" value={form.adults} onChange={e=>setForm({...form,adults:Number(e.target.value)})}/></Field><Field label="Children"><InputField type="number" min="0" max="6" value={form.kidsCount} onChange={e=>{const count=Math.max(0,Math.min(6,Number(e.target.value)||0));setForm({...form,kidsCount:count,kidsAges:Array.from({length:count},(_,i)=>form.kidsAges[i]??'')})}}/></Field></div>
-          {Number(form.kidsCount)>0&&<div className="grid grid-cols-2 md:grid-cols-3 gap-3">{Array.from({length:Number(form.kidsCount)},(_,i)=><Field key={i} label={`Child ${i+1} age`}><InputField type="number" min="0" max="17" value={form.kidsAges[i]??''} onChange={e=>{const ages=[...form.kidsAges];ages[i]=e.target.value;setForm({...form,kidsAges:ages})}}/></Field>)}</div>}
+          {Number(form.kidsCount)>0&&<div className="grid grid-cols-2 md:grid-cols-3 gap-3">{Array.from({length:Number(form.kidsCount)},(_,i)=><Field key={kidKeys[i] ?? i} label={`Child ${i+1} age`}><InputField type="number" min="0" max="17" value={form.kidsAges[i]??''} onChange={e=>{const ages=[...form.kidsAges];ages[i]=e.target.value;setForm({...form,kidsAges:ages})}}/></Field>)}</div>}
           <div className="flex items-center gap-2"><input type="checkbox" checked={!!form.joint} onChange={e=>setForm({...form,joint:e.target.checked,selectedRoomIds:e.target.checked?(form.selectedRoomIds.length?form.selectedRoomIds:[form.roomId]):[form.roomId]})}/><span className="text-xs font-semibold" style={{color:NAVY}}>Joint / multi-room reservation</span></div>
           {form.joint&&<div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">{plannerRooms.filter(r=>r.active!==false&&!['maintenance','out_of_service','blocked'].includes(r.status)).map(r=><label key={r.id} className="flex items-center gap-2 rounded-lg p-2 text-xs" style={{border:`1px solid ${BORDER}`,color:NAVY}}><input type="checkbox" checked={form.selectedRoomIds.includes(r.id)} onChange={e=>setForm({...form,selectedRoomIds:e.target.checked?[...form.selectedRoomIds,r.id]:form.selectedRoomIds.filter(id=>id!==r.id)})}/><span>Room {r.number} · {r.roomTypeName||r.room_type||'Room'}</span></label>)}</div>}
           {!form.joint&&<div className="grid md:grid-cols-2 gap-3"><Field label="Assigned room"><SelectField value={form.roomId} onChange={v=>setForm({...form,roomId:v,roomTypeId:plannerRooms.find(r=>r.id===v)?.room_type_id||''})}>{plannerRooms.map(r=><option key={r.id} value={r.id}>Room {r.number} · {r.roomTypeName||r.room_type||'Room'}</option>)}</SelectField></Field><div className="rounded-lg p-3 text-xs" style={{background:SURFACE2,color:NAVY}}>Capacity: {plannerRooms.find(r=>r.id===form.roomId)?.capacity||2} guests</div></div>}

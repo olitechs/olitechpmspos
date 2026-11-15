@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   CalendarDays, CheckCircle2, ChevronRight, DoorOpen, LogOut, MoveRight,
@@ -8,6 +8,7 @@ import { usePms } from '@/data/PmsStore';
 import { useAuth } from '@/lib/AuthContext';
 import { pmsService } from '@/services/pmsService';
 import { getPmsDateKey } from '@/lib/pmsDateUtils';
+import { resizeStableKeys } from '@/lib/stableKeys';
 
 const STATUS = {
   booked: 'Booked',
@@ -258,6 +259,10 @@ function NewReservationModal({ rooms, reservations, ratePlans, onClose, onCreate
   });
   const [error, setError] = useState('');
   const [activeSection, setActiveSection] = useState('guest');
+  // Child age inputs are positional, but each input keeps its DOM identity
+  // when the child count changes (see src/lib/stableKeys.js).
+  const kidKeysRef = useRef([]);
+  kidKeysRef.current = resizeStableKeys(kidKeysRef.current, Number(data.kidsCount) || 0);
   const [submitting, setSubmitting] = useState(false);
   const [submissionId, setSubmissionId] = useState(() => crypto.randomUUID());
   const nights = dateNights(data.arrival, data.departure);
@@ -336,7 +341,7 @@ function NewReservationModal({ rooms, reservations, ratePlans, onClose, onCreate
     </div>;
     if (activeSection === 'stay') return <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2"><Field label="Arrival date *"><input type="date" required className={inputClass} value={data.arrival} onChange={(e) => set('arrival', e.target.value)} /></Field><Field label="Arrival time"><input type="time" className={inputClass} value={data.arrivalTime} onChange={(e) => set('arrivalTime', e.target.value)} /></Field><Field label="Departure date *"><input type="date" required min={data.arrival || undefined} className={inputClass} value={data.departure} onChange={(e) => set('departure', e.target.value)} /></Field><Field label="Departure time"><input type="time" className={inputClass} value={data.departureTime} onChange={(e) => set('departureTime', e.target.value)} /></Field><Field label="Adults *"><input type="number" min="1" max="10" className={inputClass} value={data.adults} onChange={(e) => set('adults', e.target.value)} /></Field><Field label="Children"><input type="number" min="0" max="6" className={inputClass} value={data.kidsCount} onChange={(e) => { const count = Math.max(0, Math.min(6, Number(e.target.value) || 0)); setData((current) => ({ ...current, kidsCount: String(count), kidsAges: Array.from({ length: count }, (_, i) => current.kidsAges[i] ?? '') })); }} /></Field></div>
-      {Number(data.kidsCount) > 0 && <div className="grid grid-cols-2 gap-3">{data.kidsAges.map((age, index) => <Field key={index} label={`Child ${index + 1} age`}><input type="number" min="0" max="17" className={inputClass} value={age} onChange={(e) => setData((current) => ({ ...current, kidsAges: current.kidsAges.map((item, i) => i === index ? e.target.value : item) }))} /></Field>)}</div>}
+      {Number(data.kidsCount) > 0 && <div className="grid grid-cols-2 gap-3">{data.kidsAges.map((age, index) => <Field key={kidKeys[index] ?? index} label={`Child ${index + 1} age`}><input type="number" min="0" max="17" className={inputClass} value={age} onChange={(e) => setData((current) => ({ ...current, kidsAges: current.kidsAges.map((item, i) => i === index ? e.target.value : item) }))} /></Field>)}</div>}
       <div><div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Select rooms · {selectedRooms.length} selected</div><div className="grid gap-2 sm:grid-cols-2">{selectableRooms.map((room) => <label key={room.id} className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 ${data.roomIds.includes(room.id) ? 'border-[var(--primary)] bg-[var(--primary-soft)]' : 'border-border bg-surface'}`}><input type="checkbox" checked={data.roomIds.includes(room.id)} onChange={() => toggleRoom(room.id)} /><span className="min-w-0"><span className="block text-sm font-semibold text-foreground">Room {room.number}</span><span className="block text-xs text-muted-foreground">{room.roomTypeName || room.roomType || 'Room'} · Capacity {room.capacity || 2}</span></span></label>)}</div>{conflictingSelectedRooms.length > 0 && <p className="mt-2 text-xs text-[var(--danger-text)]">One or more selected rooms conflict with these dates. Change the dates or room selection.</p>}</div>
       <div className="rounded-lg bg-secondary px-3 py-2 text-sm text-foreground">{nights} night(s) · {guestCount} guest(s) · room capacity {capacity}</div>
     </div>;

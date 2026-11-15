@@ -167,3 +167,31 @@ test('target viewport widths select the correct navigation, toolbar and planner 
     assert.deepEqual(getRoomPlannerResponsiveMode(width), { navigation, toolbar, planner, toolbarActions }, `Unexpected layout mode at ${width}px`);
   }
 });
+
+test('child age inputs use stable per-row keys in the planner form', () => {
+  assert.ok(source.includes("import { resizeStableKeys } from '@/lib/stableKeys';"));
+  assert.ok(source.includes('kidKeysRef.current = resizeStableKeys(kidKeysRef.current, Number(form.kidsCount) || 0);'));
+  assert.ok(source.includes('<Field key={kidKeys[i] ?? i} label={`Child ${i+1} age`}>'));
+  assert.ok(!source.includes('<Field key={i} label={`Child ${i+1} age`}>'));
+});
+
+test('room rows render from the precomputed per-room index instead of rescanning every reservation', () => {
+  assert.ok(source.includes('const filteredReservationsByRoom = useMemo'));
+  assert.ok(source.includes('{roomReservations.map(rv=>{'));
+  assert.ok(!source.includes('roomReservations.filter(rv=>filteredReservations.some('));
+});
+
+test('today is re-evaluated at midnight instead of being frozen for the tab lifetime', () => {
+  assert.ok(source.includes('const [todayDate, setTodayDate] = useState(() => getPmsTodayDate());'));
+  assert.ok(!source.includes('const todayDate = useMemo(() => getPmsTodayDate(), []);'));
+  assert.ok(source.includes('setTodayDate(current => (dateKey(current) === dateKey(next) ? current : next))'));
+  assert.ok(source.includes("document.addEventListener('visibilitychange', onVisibility)"));
+});
+
+test('planner room-status colours follow the dashboard housekeeping semantics', () => {
+  assert.ok(source.includes("available: { fill: 'var(--room-clean)', label: 'Vacant clean' }"));
+  assert.ok(source.includes("dirty: { fill: 'var(--room-dirty)', label: 'Vacant dirty' }"));
+  assert.ok(source.includes("cleaning: { fill: 'var(--room-dirty)', label: 'Cleaning' }"));
+  assert.ok(source.includes('const roomStatus=ROOM_STATUS[room.status]||UNKNOWN_ROOM_STATUS;'));
+  assert.ok(source.includes('aria-label={`Room status: ${roomStatus.label}`}'));
+});
