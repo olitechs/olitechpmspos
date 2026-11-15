@@ -154,7 +154,7 @@ BEGIN
       AND c.relname = 'products'
       AND t.tgname = 'products_sync_default_location'
       AND NOT t.tgisinternal
-      AND t.tgenabled <> 'D'
+      AND t.tgenabled IN ('O','A')
   ) THEN
     RAISE EXCEPTION
       'Required trigger products_sync_default_location is missing or disabled; refusing location-aware posting setup';
