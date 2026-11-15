@@ -17,6 +17,7 @@ import Folio from '@/components/modules/Folio';
 import { buildRoomPlannerDefinition } from '@/services/reportDefinitions';
 import { findRoomReservationOverlap, getPmsTodayDate, overlapsStayRanges } from '@/lib/pmsDateUtils';
 import { getRoomPlannerResponsiveMode } from '@/lib/roomPlannerResponsive';
+import { resizeStableKeys } from '@/lib/stableKeys';
 import { NAVY, TEAL, SAND, SURFACE, SURFACE2, BORDER, MUTED, DESTRUCTIVE } from '@/data/palette';
 import { getStayBarGeometry, getPastStayOpacity, getPaymentStatusFromAmounts as derivePaymentStatus } from '@/lib/roomPlannerGeometry';
 
@@ -184,6 +185,10 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   const [focusToday, setFocusToday] = useState(true);
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState(emptyForm(plannerRooms[0], todayDate));
+  // One age input per child is positional, but each input keeps its DOM
+  // identity when the child count changes (see src/lib/stableKeys.js).
+  const kidKeysRef = useRef([]);
+  kidKeysRef.current = resizeStableKeys(kidKeysRef.current, Number(form.kidsCount) || 0);
   const [ratePlans, setRatePlans] = useState([]);
   const [ratePlansError, setRatePlansError] = useState('');
   const [formError, setFormError] = useState('');
@@ -940,7 +945,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
           <div className="grid md:grid-cols-2 gap-3"><Field label="Arrival date *"><InputField type="date" value={form.checkIn} onChange={e=>setForm({...form,checkIn:e.target.value})}/></Field><Field label="Departure date (exclusive) *"><InputField type="date" min={form.checkIn} value={form.checkOut} onChange={e=>setForm({...form,checkOut:e.target.value})}/></Field></div>
           <div className="grid md:grid-cols-2 gap-3"><Field label="Arrival time"><InputField type="time" value={form.arrivalTime} onChange={e=>setForm({...form,arrivalTime:e.target.value})}/></Field><Field label="Departure time"><InputField type="time" value={form.departureTime} onChange={e=>setForm({...form,departureTime:e.target.value})}/></Field></div>
           <div className="grid md:grid-cols-2 gap-3"><Field label="Adults"><InputField type="number" min="1" max="10" value={form.adults} onChange={e=>setForm({...form,adults:Number(e.target.value)})}/></Field><Field label="Children"><InputField type="number" min="0" max="6" value={form.kidsCount} onChange={e=>{const count=Math.max(0,Math.min(6,Number(e.target.value)||0));setForm({...form,kidsCount:count,kidsAges:Array.from({length:count},(_,i)=>form.kidsAges[i]??'')})}}/></Field></div>
-          {Number(form.kidsCount)>0&&<div className="grid grid-cols-2 md:grid-cols-3 gap-3">{Array.from({length:Number(form.kidsCount)},(_,i)=><Field key={i} label={`Child ${i+1} age`}><InputField type="number" min="0" max="17" value={form.kidsAges[i]??''} onChange={e=>{const ages=[...form.kidsAges];ages[i]=e.target.value;setForm({...form,kidsAges:ages})}}/></Field>)}</div>}
+          {Number(form.kidsCount)>0&&<div className="grid grid-cols-2 md:grid-cols-3 gap-3">{Array.from({length:Number(form.kidsCount)},(_,i)=><Field key={kidKeys[i] ?? i} label={`Child ${i+1} age`}><InputField type="number" min="0" max="17" value={form.kidsAges[i]??''} onChange={e=>{const ages=[...form.kidsAges];ages[i]=e.target.value;setForm({...form,kidsAges:ages})}}/></Field>)}</div>}
           <div className="flex items-center gap-2"><input type="checkbox" checked={!!form.joint} onChange={e=>setForm({...form,joint:e.target.checked,selectedRoomIds:e.target.checked?(form.selectedRoomIds.length?form.selectedRoomIds:[form.roomId]):[form.roomId]})}/><span className="text-xs font-semibold" style={{color:NAVY}}>Joint / multi-room reservation</span></div>
           {form.joint&&<div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">{plannerRooms.filter(r=>r.active!==false&&!['maintenance','out_of_service','blocked'].includes(r.status)).map(r=><label key={r.id} className="flex items-center gap-2 rounded-lg p-2 text-xs" style={{border:`1px solid ${BORDER}`,color:NAVY}}><input type="checkbox" checked={form.selectedRoomIds.includes(r.id)} onChange={e=>setForm({...form,selectedRoomIds:e.target.checked?[...form.selectedRoomIds,r.id]:form.selectedRoomIds.filter(id=>id!==r.id)})}/><span>Room {r.number} · {r.roomTypeName||r.room_type||'Room'}</span></label>)}</div>}
           {!form.joint&&<div className="grid md:grid-cols-2 gap-3"><Field label="Assigned room"><SelectField value={form.roomId} onChange={v=>setForm({...form,roomId:v,roomTypeId:plannerRooms.find(r=>r.id===v)?.room_type_id||''})}>{plannerRooms.map(r=><option key={r.id} value={r.id}>Room {r.number} · {r.roomTypeName||r.room_type||'Room'}</option>)}</SelectField></Field><div className="rounded-lg p-3 text-xs" style={{background:SURFACE2,color:NAVY}}>Capacity: {plannerRooms.find(r=>r.id===form.roomId)?.capacity||2} guests</div></div>}

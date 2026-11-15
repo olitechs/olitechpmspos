@@ -168,6 +168,13 @@ test('target viewport widths select the correct navigation, toolbar and planner 
   }
 });
 
+test('child age inputs use stable per-row keys in the planner form', () => {
+  assert.ok(source.includes("import { resizeStableKeys } from '@/lib/stableKeys';"));
+  assert.ok(source.includes('kidKeysRef.current = resizeStableKeys(kidKeysRef.current, Number(form.kidsCount) || 0);'));
+  assert.ok(source.includes('<Field key={kidKeys[i] ?? i} label={`Child ${i+1} age`}>'));
+  assert.ok(!source.includes('<Field key={i} label={`Child ${i+1} age`}>'));
+});
+
 test('room rows render from the precomputed per-room index instead of rescanning every reservation', () => {
   assert.ok(source.includes('const filteredReservationsByRoom = useMemo'));
   assert.ok(source.includes('{roomReservations.map(rv=>{'));
