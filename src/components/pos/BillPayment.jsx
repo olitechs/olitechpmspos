@@ -98,8 +98,7 @@ export default function BillPayment({table,orderLines,onConfirmPayment,onAddOrde
    saleRecorded=true;
    const methodLabel=paymentMethod==='split'?'Split Payment':PAYMENT_METHODS.find(x=>x.id===paymentMethod)?.label||paymentMethod;
    await store.completeSale({table,orderLines,total,method:methodLabel,receiptText:'',skipPrint:true});
-   const voidRows=propertyId?await pmsService.listVoidedItems(propertyId).catch(()=>[]):[];
-   const tableVoids=voidRows.filter(v=>String(v.table_number||'')===String(tableLabel(table)) && String(v.order_number||'')===String(stableOrderNumber));
+   const tableVoids=propertyId?await pmsService.listVoidedItems(propertyId,{orderNumber:stableOrderNumber,tableNumber:tableLabel(table)}).catch(()=>[]):[];
    let result;
    try{
     result=await printReceipt('RECEIPT',{propertyId,orderNumber:stableOrderNumber,checkNo:stableOrderNumber,table:tableLabel(table),waiter,covers:guestCovers,items:orderLines,total,currency:'KES',paymentMethod:methodLabel,room:room?.room_number,voidedCount:tableVoids.length,voidSlipNumber:tableVoids[0]?.void_number||null});

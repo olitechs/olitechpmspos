@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 const migration = readFileSync(new URL('../migrations/20261110190000_fix_pos_table_join_and_quantity_voids.sql', import.meta.url), 'utf8');
 const orderTaking = readFileSync(new URL('../../src/components/pos/OrderTaking.jsx', import.meta.url), 'utf8');
 const container = readFileSync(new URL('../../src/components/pos/POSContainer.jsx', import.meta.url), 'utf8');
+const pmsService = readFileSync(new URL('../../src/services/pmsService.js', import.meta.url), 'utf8');
 
 test('POS table joins aggregate all distinct lines in a single JSON array', () => {
   assert.ok(migration.includes('jsonb_agg(merged.line order by merged.first_ord)'));
@@ -60,4 +61,14 @@ test('split tender rows have stable identities and hide room-charge allocations 
   assert.ok(bill.includes('key={p.id}'));
   assert.ok(bill.includes("m.id!=='room'||canRoomCharge"));
   assert.ok(bill.includes("id:'split-'+Date.now()+'-'+prev.length"));
+});
+
+test('receipt void lookup is scoped in the query instead of filtering the whole property day client-side', () => {
+  const bill = readFileSync(new URL('../../src/components/pos/BillPayment.jsx', import.meta.url), 'utf8');
+  assert.ok(pmsService.includes("q = q.eq('order_number', String(orderNumber))"));
+  assert.ok(pmsService.includes("q = q.eq('table_number', String(tableNumber))"));
+  // The operational day is a half-open window so 23:59:59.999 voids are included.
+  assert.ok(pmsService.includes(".gte('created_at', `${effectiveDate}T00:00:00+03:00`).lt('created_at', `${nextDate}T00:00:00+03:00`)"));
+  assert.ok(bill.includes('listVoidedItems(propertyId,{orderNumber:stableOrderNumber,tableNumber:tableLabel(table)})'));
+  assert.ok(!bill.includes('voidRows.filter'));
 });

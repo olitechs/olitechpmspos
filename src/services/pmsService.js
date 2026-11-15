@@ -16,10 +16,20 @@ export const pmsService = {
 		if (error) throw new Error(error.message);
 		return data || null;
 	},
-	async listVoidedItems(propertyId, { date = null } = {}) {
+	// Voids are scoped on the server. Callers that need a single receipt pass the
+	// order/table so the database does the matching instead of downloading the
+	// whole property day and string-comparing row by row.
+	async listVoidedItems(propertyId, { date = null, orderNumber = null, tableNumber = null } = {}) {
 		const effectiveDate = date || new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Nairobi' }).format(new Date());
 		let q = supabase.from('pos_void_items').select('*').eq('property_id', propertyId).order('created_at', { ascending: false });
-		if (effectiveDate) q = q.gte('created_at', `${effectiveDate}T00:00:00+03:00`).lt('created_at', `${effectiveDate}T23:59:59+03:00`);
+		if (effectiveDate) {
+			// Half-open window on the operational day so a void at 23:59:59.999
+			// cannot fall through the gap a `23:59:59` upper bound leaves behind.
+			const nextDate = new Date(Date.parse(`${effectiveDate}T00:00:00Z`) + 86400000).toISOString().slice(0, 10);
+			q = q.gte('created_at', `${effectiveDate}T00:00:00+03:00`).lt('created_at', `${nextDate}T00:00:00+03:00`);
+		}
+		if (orderNumber) q = q.eq('order_number', String(orderNumber));
+		if (tableNumber) q = q.eq('table_number', String(tableNumber));
 		const { data, error } = await q;
 		if (error) throw new Error(error.message);
 		return data || [];
