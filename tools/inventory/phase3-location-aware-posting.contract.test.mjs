@@ -44,7 +44,7 @@ test('adjustment and wastage require Stores authorization and stable retry keys'
 test('inventory count snapshots its location and approval reconciles to the live counted balance', () => {
   assert.match(migration,/add column if not exists location_id uuid/i);
   assert.match(migration,/insert into public\.inventory_count_lines\([\s\S]*?location_id, expected_qty, counted_qty/i);
-  assert.match(migration,/v_applied_variance :=[\s\S]*?v_line\.counted_qty - coalesce\(v_current_qty, 0\)/i);
+  assert.match(migration,/v_applied_variance :=[\s\S]*?v_line\.counted_qty - v_line\.expected_qty/i);
   assert.match(migration,/if v_count\.status = 'approved' then[\s\S]*?return v_count/i);
   assert.match(migration,/can_store_write\(v_count\.property_id, null\)/i);
 });
