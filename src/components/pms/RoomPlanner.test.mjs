@@ -167,3 +167,11 @@ test('target viewport widths select the correct navigation, toolbar and planner 
     assert.deepEqual(getRoomPlannerResponsiveMode(width), { navigation, toolbar, planner, toolbarActions }, `Unexpected layout mode at ${width}px`);
   }
 });
+
+test('planner room-status colours follow the dashboard housekeeping semantics', () => {
+  assert.ok(source.includes("available: { fill: 'var(--room-clean)', label: 'Vacant clean' }"));
+  assert.ok(source.includes("dirty: { fill: 'var(--room-dirty)', label: 'Vacant dirty' }"));
+  assert.ok(source.includes("cleaning: { fill: 'var(--room-dirty)', label: 'Cleaning' }"));
+  assert.ok(source.includes('const roomStatus=ROOM_STATUS[room.status]||UNKNOWN_ROOM_STATUS;'));
+  assert.ok(source.includes('aria-label={`Room status: ${roomStatus.label}`}'));
+});
