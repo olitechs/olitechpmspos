@@ -168,7 +168,7 @@ for ($attempt = 0; $attempt -lt 20; $attempt++) {
   try {
     $health = Invoke-RestMethod -Uri 'http://127.0.0.1:8631/health' -TimeoutSec 2
     if ($health.ok) { $healthy = $true; break }
-  } catch (_) {
+  } catch {
     Start-Sleep -Milliseconds 500
   }
 }
