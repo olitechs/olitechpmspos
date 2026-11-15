@@ -4,6 +4,7 @@ import { ArrowRightLeft, GitMerge, X, MoveRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStore } from '@/data/AppStore';
 import { tableLabel } from '@/lib/posTables';
+import { fromMinor, toMinor } from '@/lib/money';
 import AppHeader from '@/components/pos/AppHeader';
 import FloorPlan from '@/components/pos/FloorPlan';
 import OrderTaking from '@/components/pos/OrderTaking';
@@ -166,7 +167,7 @@ export default function POSContainer({ initialTab = 'floor' } = {}) {
 	useEffect(() => {
 		if (!activeTable) return;
 		const lines = orderLinesByTable[activeTable.id] || [];
-		const total = lines.reduce((sum, line) => sum + Number(line.price || 0) * Number(line.qty || 0), 0);
+		const total = fromMinor(toMinor(lines.reduce((sum, line) => sum + Number(line.price || 0) * Number(line.qty || 0), 0)));
 		store.updateSessionTotals(activeTable.id, { total, orderCount: lines.length });
 	}, [activeTable, orderLinesByTable, store.updateSessionTotals]);
 

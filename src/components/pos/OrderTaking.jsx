@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { AlertTriangle, Search, X, ShieldCheck, ChevronLeft, Folder } from 'lucide-react';
 import { VAT_LABEL, addVat } from '@/lib/posTax';
+import { fromMinor, toMinor } from '@/lib/money';
 import { tableLabel } from '@/lib/posTables';
 import { useStore } from '@/data/AppStore';
 import PrintWarn from '@/components/pos/PrintWarn';
@@ -304,7 +305,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
     }
   };
 
-  const subtotal = orderLines.reduce((s, l) => s + l.price * l.qty, 0);
+  const subtotal = fromMinor(toMinor(orderLines.reduce((s, l) => s + l.price * l.qty, 0)));
   const vat = addVat(subtotal);
   const total = subtotal + vat;
   const orderNumber = orderNumberProp || `ORD-${String(table.number).padStart(3, '0')}-${Math.floor(Date.now() / 10000) % 1000}`;
