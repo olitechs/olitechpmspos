@@ -64,14 +64,11 @@ test('rollback-only runtime gate covers location deltas, retries, authorization 
   assert.match(runtimeGate,/Never run this test against production/i);
 });
 
-test('inventory UI counts selected-location stock and sends request keys', () => {
-  assert.match(inventoryUi,/from\('product_stock_locations'\)/);
-  assert.match(inventoryUi,/System at location:/);
-  assert.match(inventoryUi,/track_stock!==false/);
-  assert.doesNotMatch(inventoryUi,/counted_qty:Number\(lines\[p\.id\]\?\?p\.current_stock/);
-  assert.match(inventoryService,/p_request_key: payload\.requestKey/);
-  assert.match(inventoryService,/safe adjustment retries/);
-  assert.match(inventoryService,/safe wastage retries/);
+test('active inventory client stays compatible until the database migration is promoted', () => {
+  assert.doesNotMatch(inventoryService,/p_request_key: payload\.requestKey/);
+  assert.match(inventoryService,/p_location_id: payload\.locationId/);
+  assert.doesNotMatch(inventoryUi,/makeInventoryRequestKey/);
+  assert.doesNotMatch(inventoryUi,/from\('product_stock_locations'\)/);
 });
 
 test('legacy adjustment and wastage calls remain accepted, but stale count calls are rejected', () => {
