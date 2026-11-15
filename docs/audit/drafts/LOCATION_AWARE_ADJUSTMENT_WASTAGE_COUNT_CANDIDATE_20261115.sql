@@ -78,12 +78,10 @@ $$;
 CREATE UNIQUE INDEX IF NOT EXISTS inventory_count_lines_count_product_key
   ON public.inventory_count_lines(count_id, product_id);
 
--- The current non-negative location constraint conflicts with the already configured
--- warn_allow stock policy. Removing the constraint permits a location balance to go
--- negative when policy=warn_allow; policy=block is enforced by the writer below.
--- No existing quantity is changed by dropping this constraint.
-ALTER TABLE public.product_stock_locations
-  DROP CONSTRAINT IF EXISTS product_stock_locations_qty_check;
+-- Keep the existing non-negative location-balance constraint. Location-specific
+-- adjustment/wastage operations cannot overdraw the selected location; warn_allow
+-- remains available to aggregate-only legacy flows. This avoids changing the behavior
+-- of POS/GRN/transfer/product-import writers before their own migration phases.
 
 -- Keep products_sync_default_location installed. The trusted location-aware writer
 -- marks its product update in a private table; this trigger consumes that marker and
@@ -372,9 +370,7 @@ BEGIN
     AND location_id = p_location_id
   FOR UPDATE;
 
-  IF p_change < 0
-     AND v_location_qty + p_change < 0
-     AND v_policy = 'block' THEN
+  IF p_change < 0 AND v_location_qty + p_change < 0 THEN
     RAISE EXCEPTION 'Insufficient stock at selected location (available %, required %)',
       v_location_qty, ABS(p_change);
   END IF;
@@ -1008,7 +1004,9 @@ COMMIT;
 --    delta; the trigger consumes the private context and does not apply a second delta.
 -- 4. A legacy fn_apply_stock_movement call without private context still syncs the
 --    product default location through the trigger.
--- 5. warn_allow permits negative total/location balances; block rejects negative
---    total and selected-location balances.
+-- 5. block rejects negative aggregate stock; all location-specific adjustment and
+--    wastage events reject a negative selected-location balance under the existing
+--    product_stock_locations non-negative constraint. warn_allow remains available
+--    to aggregate-only legacy flows until their own migration phases.
 -- 6. Store entitlement, role, tenant, count status, duplicate line, and retry cases
 --    are tested under authenticated identities.
