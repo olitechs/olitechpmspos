@@ -32,6 +32,30 @@ REVOKE ALL ON TABLE stock_internal.location_posting_context
 ALTER TABLE public.inventory_count_lines
   ADD COLUMN IF NOT EXISTS location_id uuid;
 
+ALTER TABLE public.stock_adjustments
+  ADD COLUMN IF NOT EXISTS request_key text,
+  ADD COLUMN IF NOT EXISTS request_fingerprint text;
+
+ALTER TABLE public.inventory_wastage
+  ADD COLUMN IF NOT EXISTS request_key text,
+  ADD COLUMN IF NOT EXISTS request_fingerprint text;
+
+ALTER TABLE public.inventory_counts
+  ADD COLUMN IF NOT EXISTS request_key text,
+  ADD COLUMN IF NOT EXISTS request_fingerprint text;
+
+CREATE UNIQUE INDEX IF NOT EXISTS stock_adjustments_property_request_key
+  ON public.stock_adjustments(property_id, request_key)
+  WHERE request_key IS NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS inventory_wastage_property_request_key
+  ON public.inventory_wastage(property_id, request_key)
+  WHERE request_key IS NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS inventory_counts_property_request_key
+  ON public.inventory_counts(property_id, request_key)
+  WHERE request_key IS NOT NULL;
+
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -374,13 +398,16 @@ REVOKE ALL ON FUNCTION stock_internal.fn_post_stock_movement_at_location(
   uuid, uuid, uuid, numeric, text, text, uuid, text
 ) FROM PUBLIC, anon, authenticated, service_role;
 
--- Manual stock adjustment: create the source record first, then post exactly one
--- linked movement in the same transaction.
+-- Replace the old RPC signature so every new adjustment supplies a stable
+-- request key. The frontend is updated in the same commit.
+DROP FUNCTION IF EXISTS public.fn_post_stock_adjustment(uuid, uuid, numeric, text, uuid);
+
 CREATE OR REPLACE FUNCTION public.fn_post_stock_adjustment(
   p_property_id uuid,
   p_product_id uuid,
   p_change numeric,
   p_reason text,
+  p_request_key text,
   p_location_id uuid DEFAULT NULL::uuid
 )
 RETURNS public.stock_adjustments
@@ -392,6 +419,7 @@ DECLARE
   v_product public.products%ROWTYPE;
   v_location_id uuid;
   v_adjustment public.stock_adjustments%ROWTYPE;
+  v_fingerprint text;
 BEGIN
   IF NOT (
     public.is_platform_owner()
@@ -404,11 +432,36 @@ BEGIN
     RAISE EXCEPTION 'Stores access and an authorized stock role are required';
   END IF;
 
+  IF NULLIF(BTRIM(p_request_key), '') IS NULL OR LENGTH(BTRIM(p_request_key)) > 128 THEN
+    RAISE EXCEPTION 'A valid request key (1–128 characters) is required';
+  END IF;
+
   IF p_change IS NULL
      OR p_change = 0
      OR p_change <> ROUND(p_change, 2)
      OR NULLIF(BTRIM(p_reason), '') IS NULL THEN
     RAISE EXCEPTION 'Adjustment quantity (up to 2 decimals) and reason are required';
+  END IF;
+
+  v_fingerprint := MD5(JSONB_BUILD_OBJECT(
+    'product_id', p_product_id,
+    'change', p_change,
+    'reason', BTRIM(p_reason),
+    'location_id', p_location_id
+  )::text);
+
+  SELECT *
+  INTO v_adjustment
+  FROM public.stock_adjustments
+  WHERE property_id = p_property_id
+    AND request_key = BTRIM(p_request_key)
+  FOR UPDATE;
+
+  IF FOUND THEN
+    IF v_adjustment.request_fingerprint IS DISTINCT FROM v_fingerprint THEN
+      RAISE EXCEPTION 'This request key was already used with different adjustment details';
+    END IF;
+    RETURN v_adjustment;
   END IF;
 
   SELECT *
@@ -428,13 +481,30 @@ BEGIN
     );
 
   INSERT INTO public.stock_adjustments(
-    property_id, product_id, location_id, change_qty, reason, created_by
+    property_id, product_id, location_id, change_qty, reason, created_by,
+    request_key, request_fingerprint
   )
   VALUES (
     p_property_id, p_product_id, v_location_id, p_change,
-    BTRIM(p_reason), auth.uid()
+    BTRIM(p_reason), auth.uid(), BTRIM(p_request_key), v_fingerprint
   )
+  ON CONFLICT (property_id, request_key) WHERE request_key IS NOT NULL
+  DO NOTHING
   RETURNING * INTO v_adjustment;
+
+  IF NOT FOUND THEN
+    SELECT *
+    INTO v_adjustment
+    FROM public.stock_adjustments
+    WHERE property_id = p_property_id
+      AND request_key = BTRIM(p_request_key)
+    FOR UPDATE;
+
+    IF NOT FOUND OR v_adjustment.request_fingerprint IS DISTINCT FROM v_fingerprint THEN
+      RAISE EXCEPTION 'Adjustment request key conflict';
+    END IF;
+    RETURN v_adjustment;
+  END IF;
 
   PERFORM stock_internal.fn_post_stock_movement_at_location(
     p_property_id, p_product_id, v_location_id, p_change,
@@ -445,13 +515,22 @@ BEGIN
 END
 $function$;
 
--- Wastage: validate the product/location tenant relationship, create the source
--- record, then post one negative movement. A failed movement rolls back the source.
+REVOKE ALL ON FUNCTION public.fn_post_stock_adjustment(
+  uuid, uuid, numeric, text, text, uuid
+) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.fn_post_stock_adjustment(
+  uuid, uuid, numeric, text, text, uuid
+) TO authenticated, service_role;
+
+-- Replace the old RPC signature with a stable request key for safe retries.
+DROP FUNCTION IF EXISTS public.fn_post_wastage(uuid, uuid, numeric, text, uuid, date);
+
 CREATE OR REPLACE FUNCTION public.fn_post_wastage(
   p_property_id uuid,
   p_product_id uuid,
   p_quantity numeric,
   p_reason text,
+  p_request_key text,
   p_location_id uuid DEFAULT NULL::uuid,
   p_expiry_date date DEFAULT NULL::date
 )
@@ -464,6 +543,7 @@ DECLARE
   v_product public.products%ROWTYPE;
   v_location_id uuid;
   v_wastage public.inventory_wastage%ROWTYPE;
+  v_fingerprint text;
 BEGIN
   IF NOT (
     public.is_platform_owner()
@@ -476,11 +556,37 @@ BEGIN
     RAISE EXCEPTION 'Stores access and an authorized stock role are required';
   END IF;
 
+  IF NULLIF(BTRIM(p_request_key), '') IS NULL OR LENGTH(BTRIM(p_request_key)) > 128 THEN
+    RAISE EXCEPTION 'A valid request key (1–128 characters) is required';
+  END IF;
+
   IF p_quantity IS NULL
      OR p_quantity <= 0
      OR p_quantity <> ROUND(p_quantity, 2)
      OR NULLIF(BTRIM(p_reason), '') IS NULL THEN
     RAISE EXCEPTION 'Wastage quantity (up to 2 decimals) and reason are required';
+  END IF;
+
+  v_fingerprint := MD5(JSONB_BUILD_OBJECT(
+    'product_id', p_product_id,
+    'quantity', p_quantity,
+    'reason', BTRIM(p_reason),
+    'location_id', p_location_id,
+    'expiry_date', p_expiry_date
+  )::text);
+
+  SELECT *
+  INTO v_wastage
+  FROM public.inventory_wastage
+  WHERE property_id = p_property_id
+    AND request_key = BTRIM(p_request_key)
+  FOR UPDATE;
+
+  IF FOUND THEN
+    IF v_wastage.request_fingerprint IS DISTINCT FROM v_fingerprint THEN
+      RAISE EXCEPTION 'This request key was already used with different wastage details';
+    END IF;
+    RETURN v_wastage;
   END IF;
 
   SELECT *
@@ -501,13 +607,30 @@ BEGIN
 
   INSERT INTO public.inventory_wastage(
     property_id, product_id, location_id, quantity, reason,
-    expiry_date, created_by
+    expiry_date, created_by, request_key, request_fingerprint
   )
   VALUES (
     p_property_id, p_product_id, v_location_id, p_quantity,
-    BTRIM(p_reason), p_expiry_date, auth.uid()
+    BTRIM(p_reason), p_expiry_date, auth.uid(),
+    BTRIM(p_request_key), v_fingerprint
   )
+  ON CONFLICT (property_id, request_key) WHERE request_key IS NOT NULL
+  DO NOTHING
   RETURNING * INTO v_wastage;
+
+  IF NOT FOUND THEN
+    SELECT *
+    INTO v_wastage
+    FROM public.inventory_wastage
+    WHERE property_id = p_property_id
+      AND request_key = BTRIM(p_request_key)
+    FOR UPDATE;
+
+    IF NOT FOUND OR v_wastage.request_fingerprint IS DISTINCT FROM v_fingerprint THEN
+      RAISE EXCEPTION 'Wastage request key conflict';
+    END IF;
+    RETURN v_wastage;
+  END IF;
 
   PERFORM stock_internal.fn_post_stock_movement_at_location(
     p_property_id, p_product_id, v_location_id, -p_quantity,
@@ -518,12 +641,21 @@ BEGIN
 END
 $function$;
 
--- Count creation snapshots the selected location on each line. When the caller
--- omits a header location, each product's current default location is stored.
+REVOKE ALL ON FUNCTION public.fn_post_wastage(
+  uuid, uuid, numeric, text, text, uuid, date
+) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.fn_post_wastage(
+  uuid, uuid, numeric, text, text, uuid, date
+) TO authenticated, service_role;
+
+-- Replace the old count-creation RPC with request-key deduplication.
+DROP FUNCTION IF EXISTS public.fn_create_inventory_count(uuid, uuid, jsonb, text);
+
 CREATE OR REPLACE FUNCTION public.fn_create_inventory_count(
   p_property_id uuid,
   p_location_id uuid,
   p_lines jsonb,
+  p_request_key text,
   p_reference text DEFAULT NULL::text
 )
 RETURNS public.inventory_counts
@@ -541,6 +673,7 @@ DECLARE
   v_expected_qty numeric;
   v_seen_products uuid[] := ARRAY[]::uuid[];
   v_line_count integer := 0;
+  v_fingerprint text;
 BEGIN
   IF NOT (
     public.is_platform_owner()
@@ -553,8 +686,12 @@ BEGIN
     RAISE EXCEPTION 'Stores access and an authorized stock role are required';
   END IF;
 
-  IF p_lines IS NULL OR jsonb_typeof(p_lines) <> 'array' THEN
-    RAISE EXCEPTION 'Inventory count lines must be a JSON array';
+  IF NULLIF(BTRIM(p_request_key), '') IS NULL OR LENGTH(BTRIM(p_request_key)) > 128 THEN
+    RAISE EXCEPTION 'A valid request key (1–128 characters) is required';
+  END IF;
+
+  IF p_lines IS NULL OR jsonb_typeof(p_lines) <> 'array' OR jsonb_array_length(p_lines) = 0 THEN
+    RAISE EXCEPTION 'Inventory count lines must be a non-empty JSON array';
   END IF;
 
   IF p_location_id IS NOT NULL
@@ -567,14 +704,52 @@ BEGIN
     RAISE EXCEPTION 'Inventory location does not belong to the selected property';
   END IF;
 
+  v_fingerprint := MD5(JSONB_BUILD_OBJECT(
+    'location_id', p_location_id,
+    'reference', NULLIF(BTRIM(p_reference), ''),
+    'lines', p_lines
+  )::text);
+
+  SELECT *
+  INTO v_count
+  FROM public.inventory_counts
+  WHERE property_id = p_property_id
+    AND request_key = BTRIM(p_request_key)
+  FOR UPDATE;
+
+  IF FOUND THEN
+    IF v_count.request_fingerprint IS DISTINCT FROM v_fingerprint THEN
+      RAISE EXCEPTION 'This request key was already used with different count details';
+    END IF;
+    RETURN v_count;
+  END IF;
+
   INSERT INTO public.inventory_counts(
-    property_id, location_id, reference, counted_by
+    property_id, location_id, reference, counted_by,
+    request_key, request_fingerprint
   )
   VALUES (
     p_property_id, p_location_id,
-    NULLIF(BTRIM(p_reference), ''), auth.uid()
+    NULLIF(BTRIM(p_reference), ''), auth.uid(),
+    BTRIM(p_request_key), v_fingerprint
   )
+  ON CONFLICT (property_id, request_key) WHERE request_key IS NOT NULL
+  DO NOTHING
   RETURNING * INTO v_count;
+
+  IF NOT FOUND THEN
+    SELECT *
+    INTO v_count
+    FROM public.inventory_counts
+    WHERE property_id = p_property_id
+      AND request_key = BTRIM(p_request_key)
+    FOR UPDATE;
+
+    IF NOT FOUND OR v_count.request_fingerprint IS DISTINCT FROM v_fingerprint THEN
+      RAISE EXCEPTION 'Inventory count request key conflict';
+    END IF;
+    RETURN v_count;
+  END IF;
 
   FOR v_line IN
     SELECT value FROM jsonb_array_elements(p_lines)
@@ -638,6 +813,13 @@ BEGIN
 END
 $function$;
 
+REVOKE ALL ON FUNCTION public.fn_create_inventory_count(
+  uuid, uuid, jsonb, text, text
+) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.fn_create_inventory_count(
+  uuid, uuid, jsonb, text, text
+) TO authenticated, service_role;
+
 -- Approval is a one-way transition. The applied variance is calculated against
 -- the live location balance at approval time (not the potentially stale count-start
 -- snapshot), then stored in inventory_count_lines.variance. expected_qty is retained
@@ -674,6 +856,10 @@ BEGIN
 
   IF NOT public.can_store_write(v_count.property_id, NULL) THEN
     RAISE EXCEPTION 'Stores access and an authorized stock role are required';
+  END IF;
+
+  IF v_count.status = 'approved' THEN
+    RETURN v_count;
   END IF;
 
   IF v_count.status <> 'submitted' THEN
