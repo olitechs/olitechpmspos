@@ -482,7 +482,7 @@ CREATE OR REPLACE FUNCTION public.fn_post_stock_adjustment(
   p_product_id uuid,
   p_change numeric,
   p_reason text,
-  p_request_key text,
+  p_request_key text DEFAULT NULL::text,
   p_location_id uuid DEFAULT NULL::uuid
 )
 RETURNS public.stock_adjustments
@@ -495,6 +495,7 @@ DECLARE
   v_location_id uuid;
   v_adjustment public.stock_adjustments%ROWTYPE;
   v_fingerprint text;
+  v_request_key text;
 BEGIN
   IF NOT (
     public.is_platform_owner()
@@ -507,9 +508,12 @@ BEGIN
     RAISE EXCEPTION 'Stores access and an authorized stock role are required';
   END IF;
 
-  IF NULLIF(BTRIM(p_request_key), '') IS NULL OR LENGTH(BTRIM(p_request_key)) > 128 THEN
-    RAISE EXCEPTION 'A valid request key (1–128 characters) is required';
+  IF p_request_key IS NOT NULL
+     AND (NULLIF(BTRIM(p_request_key), '') IS NULL OR LENGTH(BTRIM(p_request_key)) > 128) THEN
+    RAISE EXCEPTION 'Request key must contain 1–128 non-whitespace characters';
   END IF;
+  v_request_key :=
+    COALESCE(NULLIF(BTRIM(p_request_key), ''), 'legacy:' || gen_random_uuid()::text);
 
   IF p_change IS NULL
      OR p_change = 0
@@ -529,7 +533,7 @@ BEGIN
   INTO v_adjustment
   FROM public.stock_adjustments
   WHERE property_id = p_property_id
-    AND request_key = BTRIM(p_request_key)
+    AND request_key = v_request_key
   FOR UPDATE;
 
   IF FOUND THEN
@@ -561,7 +565,7 @@ BEGIN
   )
   VALUES (
     p_property_id, p_product_id, v_location_id, p_change,
-    BTRIM(p_reason), auth.uid(), BTRIM(p_request_key), v_fingerprint
+    BTRIM(p_reason), auth.uid(), v_request_key, v_fingerprint
   )
   ON CONFLICT (property_id, request_key) WHERE request_key IS NOT NULL
   DO NOTHING
@@ -605,7 +609,7 @@ CREATE OR REPLACE FUNCTION public.fn_post_wastage(
   p_product_id uuid,
   p_quantity numeric,
   p_reason text,
-  p_request_key text,
+  p_request_key text DEFAULT NULL::text,
   p_location_id uuid DEFAULT NULL::uuid,
   p_expiry_date date DEFAULT NULL::date
 )
@@ -619,6 +623,7 @@ DECLARE
   v_location_id uuid;
   v_wastage public.inventory_wastage%ROWTYPE;
   v_fingerprint text;
+  v_request_key text;
 BEGIN
   IF NOT (
     public.is_platform_owner()
@@ -631,9 +636,12 @@ BEGIN
     RAISE EXCEPTION 'Stores access and an authorized stock role are required';
   END IF;
 
-  IF NULLIF(BTRIM(p_request_key), '') IS NULL OR LENGTH(BTRIM(p_request_key)) > 128 THEN
-    RAISE EXCEPTION 'A valid request key (1–128 characters) is required';
+  IF p_request_key IS NOT NULL
+     AND (NULLIF(BTRIM(p_request_key), '') IS NULL OR LENGTH(BTRIM(p_request_key)) > 128) THEN
+    RAISE EXCEPTION 'Request key must contain 1–128 non-whitespace characters';
   END IF;
+  v_request_key :=
+    COALESCE(NULLIF(BTRIM(p_request_key), ''), 'legacy:' || gen_random_uuid()::text);
 
   IF p_quantity IS NULL
      OR p_quantity <= 0
@@ -654,7 +662,7 @@ BEGIN
   INTO v_wastage
   FROM public.inventory_wastage
   WHERE property_id = p_property_id
-    AND request_key = BTRIM(p_request_key)
+    AND request_key = v_request_key
   FOR UPDATE;
 
   IF FOUND THEN
@@ -687,7 +695,7 @@ BEGIN
   VALUES (
     p_property_id, p_product_id, v_location_id, p_quantity,
     BTRIM(p_reason), p_expiry_date, auth.uid(),
-    BTRIM(p_request_key), v_fingerprint
+    v_request_key, v_fingerprint
   )
   ON CONFLICT (property_id, request_key) WHERE request_key IS NOT NULL
   DO NOTHING
@@ -730,7 +738,7 @@ CREATE OR REPLACE FUNCTION public.fn_create_inventory_count(
   p_property_id uuid,
   p_location_id uuid,
   p_lines jsonb,
-  p_request_key text,
+  p_request_key text DEFAULT NULL::text,
   p_reference text DEFAULT NULL::text
 )
 RETURNS public.inventory_counts
@@ -749,6 +757,7 @@ DECLARE
   v_seen_products uuid[] := ARRAY[]::uuid[];
   v_line_count integer := 0;
   v_fingerprint text;
+  v_request_key text;
 BEGIN
   IF NOT (
     public.is_platform_owner()
@@ -761,9 +770,12 @@ BEGIN
     RAISE EXCEPTION 'Stores access and an authorized stock role are required';
   END IF;
 
-  IF NULLIF(BTRIM(p_request_key), '') IS NULL OR LENGTH(BTRIM(p_request_key)) > 128 THEN
-    RAISE EXCEPTION 'A valid request key (1–128 characters) is required';
+  IF p_request_key IS NOT NULL
+     AND (NULLIF(BTRIM(p_request_key), '') IS NULL OR LENGTH(BTRIM(p_request_key)) > 128) THEN
+    RAISE EXCEPTION 'Request key must contain 1–128 non-whitespace characters';
   END IF;
+  v_request_key :=
+    COALESCE(NULLIF(BTRIM(p_request_key), ''), 'legacy:' || gen_random_uuid()::text);
 
   IF p_lines IS NULL OR jsonb_typeof(p_lines) <> 'array' OR jsonb_array_length(p_lines) = 0 THEN
     RAISE EXCEPTION 'Inventory count lines must be a non-empty JSON array';
@@ -789,7 +801,7 @@ BEGIN
   INTO v_count
   FROM public.inventory_counts
   WHERE property_id = p_property_id
-    AND request_key = BTRIM(p_request_key)
+    AND request_key = v_request_key
   FOR UPDATE;
 
   IF FOUND THEN
@@ -806,7 +818,7 @@ BEGIN
   VALUES (
     p_property_id, p_location_id,
     NULLIF(BTRIM(p_reference), ''), auth.uid(),
-    BTRIM(p_request_key), v_fingerprint
+    v_request_key, v_fingerprint
   )
   ON CONFLICT (property_id, request_key) WHERE request_key IS NOT NULL
   DO NOTHING
