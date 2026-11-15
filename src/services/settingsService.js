@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabaseClient';
+import { DEFAULT_CASH_VARIANCE_THRESHOLD, normalizeCashVarianceThreshold } from '@/lib/posShiftPolicy';
 
 export const DEFAULT_RECEIPT_SETTINGS = {
   logo_url: '',
@@ -82,6 +83,15 @@ export async function getPropertySettings(propertyId) {
   return data || { property_id: propertyId, ...DEFAULT_RECEIPT_SETTINGS };
 }
 
+// Tolerance used when a cashier closes a shift: a difference larger than this
+// needs a manager PIN. A property without a saved value, or a database that
+// predates the column, keeps the historical default.
+export async function getPosCashVarianceThreshold(propertyId) {
+  if (!propertyId) return DEFAULT_CASH_VARIANCE_THRESHOLD;
+  const settings = await getPropertySettings(propertyId);
+  return normalizeCashVarianceThreshold(settings?.pos_cash_variance_threshold);
+}
+
 export async function savePropertySettings(propertyId, values) {
   if (!propertyId) throw new Error('Property is required.');
 
@@ -106,6 +116,11 @@ export async function savePropertySettings(propertyId, values) {
     unsettled_receipt_front_office_copy: values?.unsettled_receipt_front_office_copy ?? existing?.unsettled_receipt_front_office_copy ?? DEFAULT_RECEIPT_SETTINGS.unsettled_receipt_front_office_copy,
     updated_at: new Date().toISOString(),
   };
+  // Only write the shift tolerance when this save actually carries it, so
+  // receipt-only saves keep working on a database that predates the column.
+  if (values?.pos_cash_variance_threshold !== undefined) {
+    payload.pos_cash_variance_threshold = normalizeCashVarianceThreshold(values.pos_cash_variance_threshold);
+  }
   UNSETTLED_RECEIPT_SETTING_KEYS.forEach((key) => delete payload[key]);
   const { data, error } = await supabase
     .from('property_settings')
