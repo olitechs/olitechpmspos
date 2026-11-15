@@ -2,7 +2,7 @@ import React,{useCallback,useEffect,useMemo,useState} from 'react';
 import {Activity,Monitor,Plus,RefreshCw,Search,Smartphone,Tablet,ToggleLeft,ToggleRight,Trash2,X} from 'lucide-react';
 import {toast} from 'sonner';
 import {useAuth} from '@/lib/AuthContext';
-import {supabase} from '@/lib/supabaseClient';
+import {posService} from '@/services/posService';
 
 const input='mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--focus)]';
 const emptyForm={name:'',terminal_code:'',device_type:'desktop',store_name:'Main Store',notes:''};
@@ -14,7 +14,7 @@ export default function POSDevicesPage(){
  const load=useCallback(async()=>{
   if(!propertyId){setDevices([]);setLoading(false);return}
   setLoading(true);
-  try{const {data,error}=await supabase.from('pos_devices').select('id,name,terminal_code,device_type,status,store_name,notes,property_id,created_at,updated_at,last_seen_at').eq('property_id',propertyId).order('created_at',{ascending:false});if(error)throw error;setDevices(data||[])}
+  try{const data=await posService.listPosDevices(propertyId);setDevices(data)}
   catch(e){toast.error(e.message||'Unable to load POS terminals.')}finally{setLoading(false)}
  },[propertyId]);
  useEffect(()=>{load()},[load]);
@@ -26,11 +26,11 @@ export default function POSDevicesPage(){
   if(!form.name.trim()||!form.terminal_code.trim()||!form.store_name.trim())return toast.error('Enter a terminal name, terminal code and store/outlet.');
   const payload={name:form.name.trim(),terminal_code:form.terminal_code.trim().toUpperCase(),device_type:form.device_type,store_name:form.store_name.trim(),notes:form.notes.trim()||null};
   setSaving(true);
-  try{const result=editing?await supabase.from('pos_devices').update(payload).eq('id',editing.id).eq('property_id',propertyId).select().single():await supabase.from('pos_devices').insert({...payload,property_id:propertyId,status:'active'}).select().single();if(result.error)throw result.error;toast.success(editing?'Terminal details updated.':'POS terminal registered.');setModal(false);await load()}
+  try{await posService.savePosDevice({propertyId,payload,id:editing?editing.id:null});toast.success(editing?'Terminal details updated.':'POS terminal registered.');setModal(false);await load()}
   catch(e){toast.error(e.message||'Unable to save terminal.')}finally{setSaving(false)}
  };
- const toggleStatus=async d=>{const next=d.status==='active'?'disabled':'active';try{const {error}=await supabase.from('pos_devices').update({status:next}).eq('id',d.id).eq('property_id',propertyId);if(error)throw error;setDevices(rows=>rows.map(x=>x.id===d.id?{...x,status:next}:x));toast.success(next==='active'?'Terminal enabled.':'Terminal disabled.')}catch(e){toast.error(e.message||'Unable to change terminal status.')}}
- const remove=async d=>{if(!window.confirm('Delete terminal '+d.terminal_code+'? This removes its registration record.'))return;try{const {error}=await supabase.from('pos_devices').delete().eq('id',d.id).eq('property_id',propertyId);if(error)throw error;setDevices(rows=>rows.filter(x=>x.id!==d.id));toast.success('Terminal registration deleted.')}catch(e){toast.error(e.message||'Unable to delete terminal.')}}
+ const toggleStatus=async d=>{const next=d.status==='active'?'disabled':'active';try{await posService.setPosDeviceStatus(d.id,propertyId,next);setDevices(rows=>rows.map(x=>x.id===d.id?{...x,status:next}:x));toast.success(next==='active'?'Terminal enabled.':'Terminal disabled.')}catch(e){toast.error(e.message||'Unable to change terminal status.')}}
+ const remove=async d=>{if(!window.confirm('Delete terminal '+d.terminal_code+'? This removes its registration record.'))return;try{await posService.deletePosDevice(d.id,propertyId);setDevices(rows=>rows.filter(x=>x.id!==d.id));toast.success('Terminal registration deleted.')}catch(e){toast.error(e.message||'Unable to delete terminal.')}}
  const active=devices.filter(d=>d.status==='active').length;
  return <div className="min-h-full bg-secondary p-4 md:p-6"><div className="mx-auto max-w-7xl space-y-5">
   <header className="flex flex-wrap items-start justify-between gap-3"><div><div className="text-[11px] font-bold uppercase tracking-[.18em] text-muted-foreground">Stores / Device management</div><h1 className="mt-1 text-2xl font-black tracking-tight text-foreground">POS Devices</h1><p className="mt-1 max-w-2xl text-sm text-muted-foreground">Register cashier terminals, assign each terminal to a store or outlet, and control whether it is enabled for use.</p></div><div className="flex gap-2"><button type="button" onClick={load} disabled={loading} className="inline-flex h-10 items-center gap-2 rounded-xl border border-border bg-surface px-3 text-sm font-bold text-foreground"><RefreshCw size={15} className={loading?'animate-spin':''}/> Refresh</button><button type="button" onClick={openNew} className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground shadow-sm"><Plus size={16}/> Register device</button></div></header>

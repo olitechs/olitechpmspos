@@ -28,6 +28,18 @@ function cleanProduct(row, propertyId, supplierId = null) {
 }
 
 export const inventoryService = {
+  async listProductCategories(propertyId) {
+    const { data, error } = await supabase.from('products').select('category').eq('property_id', propertyId);
+    if (error) throw error;
+    return data || [];
+  },
+
+  async renameProductCategory(propertyId, oldName, newName) {
+    const { error } = await supabase.from('products').update({ category: newName })
+      .eq('property_id', propertyId).eq('category', oldName);
+    if (error) throw error;
+  },
+
   async listProducts(propertyId, { category, location, search } = {}) {
     let query = supabase.from('products').select('*, supplier:suppliers(id,name)').eq('property_id', propertyId).order('name');
     if (category && category !== 'all') query = query.eq('category', category);

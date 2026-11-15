@@ -295,4 +295,33 @@ export const posService = {
     if (error) throw new Error(error.message);
     return data;
   },
+
+  async listPosDevices(propertyId) {
+    const { data, error } = await supabase.from('pos_devices')
+      .select('id,name,terminal_code,device_type,status,store_name,notes,property_id,created_at,updated_at,last_seen_at')
+      .eq('property_id', propertyId)
+      .order('created_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    return data || [];
+  },
+
+  async savePosDevice({ propertyId, payload, id = null }) {
+    const result = id
+      ? await supabase.from('pos_devices').update(payload).eq('id', id).eq('property_id', propertyId).select().single()
+      : await supabase.from('pos_devices').insert({ ...payload, property_id: propertyId, status: 'active' }).select().single();
+    if (result.error) throw new Error(result.error.message);
+    return result.data;
+  },
+
+  async setPosDeviceStatus(id, propertyId, status) {
+    const { error } = await supabase.from('pos_devices').update({ status })
+      .eq('id', id).eq('property_id', propertyId);
+    if (error) throw new Error(error.message);
+  },
+
+  async deletePosDevice(id, propertyId) {
+    const { error } = await supabase.from('pos_devices').delete()
+      .eq('id', id).eq('property_id', propertyId);
+    if (error) throw new Error(error.message);
+  },
 };
