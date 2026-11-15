@@ -1,4 +1,4 @@
-# OliTechs Coastal Linen Color Audit
+# OliTechs Brand System Color Audit
 
 **Audit date:** 2026-11-07
 
@@ -6,7 +6,7 @@
 
 ## Color source and result
 
-`src/index.css` is the only source of literal color values. It now holds the 15 required Coastal Linen, payment and room-state literals plus two print-only literals that preserve existing black-on-white receipt text and the red void-slip warning. Components, Tailwind and asset templates use semantic CSS variables. The public SVGs/manifest and the retained documentation wordmark are rendered from `tools/brand-assets/*.in` by `scripts/prepare-brand-assets.mjs` during `predev`/`prebuild`, then restored to placeholder templates by the signal-aware dev wrapper or `postbuild`; the production `dist/` output retains rendered assets.
+`src/index.css` is the only source of literal color values. It now holds the 15 approved brand, payment and room-state literals plus two print-only literals that preserve existing black-on-white receipt text and the red void-slip warning. Components, Tailwind and asset templates use semantic CSS variables. The public SVGs/manifest and the retained documentation wordmark are rendered from `tools/brand-assets/*.in` by `scripts/prepare-brand-assets.mjs` during `predev`/`prebuild`, then restored to placeholder templates by the signal-aware dev wrapper or `postbuild`; the production `dist/` output retains rendered assets.
 
 The strict audit scanned 218 active source/template files and passed: no active raw hex/RGB/HSL colors, palette-specific Tailwind utilities, literal black/white CSS colors, or unresolved `var(--token)` references remain outside `src/index.css`. The active palette contains no purple; the blue-indigo `--room-checkout` token is intentional and required for “checking out today.”
 
@@ -19,13 +19,13 @@ The active application uses the exact `OliTechs` casing in the HTML title, READM
 | File(s) | Old value or treatment | New token / result |
 |---|---|---|
 | `src/index.css` | 117 distinct legacy hex values, including mixed light/dark palettes (`#081E22`, `#102B30`, `#173D40`, `#F3F7F7`), duplicated per-page values, and conflicting greens/reds/purples | Central tokens: `--deep-lagoon`, `--coastal-teal`, `--white`, `--soft-white`, `--canvas`, `--sidebar`, `--text`, `--accent`, `--status-*`, `--room-*`; print-only `--print-ink` and `--print-void` preserve output inks |
-| `Design.md`, `design-system/olitechs-pms-pos/MASTER.md` | Competing palette examples and dark/legacy status values such as `#0E1417`, `#FA003F`, `#74C365`, `#C70032`, `#FAFAFA` | Document the single `src/index.css` token source and exact Coastal Linen/payment/room-state mappings |
+| `Design.md`, `design-system/olitechs-pms-pos/MASTER.md` | Competing palette examples and dark/legacy status values such as `#0E1417`, `#FA003F`, `#74C365`, `#C70032`, `#FAFAFA` | Document the single `src/index.css` token source and exact brand/payment/room-state mappings |
 | `tailwind.config.js` | Semantic aliases depended on the old palette; `darkMode: false` triggered Tailwind’s system-media fallback warning | Color aliases map to `var(--token)`; `darkMode: 'class'` prevents OS dark mode from activating, and no `.dark` class is applied |
 | `src/theme/ThemeProvider.jsx`, `index.html` | Dark/system mode and literal browser-theme colors (`#10171A`, `#F4F7F8`, `#0A3F4A`) | Fixed light mode; browser theme metadata is read from the `--deep-lagoon` token |
 | `public/olitechs-logo.svg`, `public/app-icon.svg`, `public/favicon.svg`, `public/manifest.json` | Repeated brand hex values (`#0A3F4A`, `#0F7C86`, `#F5F8F8`, `#FFFFFF`, `#fff`) | Existing paths retained as token-placeholder templates; build/dev generation substitutes values from `src/index.css` |
 | `docs/assets/olitechs-horizontal-light.svg` | Duplicate `#0A3F4A`, `#0F7C86`, `#F5F8F8`, and `#fff` values | File retained and generated from the same logo template/tokens; it is not a second palette source |
 | `src/components/admin/SubscriptionPanel.jsx` | `bg-orange-50`, `border-orange-200`, `text-orange-700` | `--warning-soft`, `--warning`, `--warning-text` |
-| `src/components/admin/TableSetup.jsx`, `src/components/admin/Printers.jsx`, `src/components/admin/StaffAdmin.jsx` | `#090C11`, `#fff`, or Coastal Teal fill paired with body-text foreground | `--text`, `--white`, `--primary`, `--on-primary` |
+| `src/components/admin/TableSetup.jsx`, `src/components/admin/Printers.jsx`, `src/components/admin/StaffAdmin.jsx` | `#090C11`, `#fff`, or a brand-blue fill paired with body-text foreground | `--text`, `--white`, `--primary`, `--on-primary` |
 | `src/components/modules/Folio.jsx` | `#17212b`, `#e5eaee`, `print:bg-white`, `print:border-black`, `text-amber-700` | `--print-ink`, `--print-border`, `--print-paper`, and the deposit/status foreground tokens |
 | `src/components/modules/KitchenDisplay.jsx` | `border-white` | `--border` / semantic surface border |
 | `src/components/pms/RoomManagement.jsx`, `RoomPanel.jsx` | `#090C11`, `#FDECEC`, dark-on-teal primary buttons | `--text`, `--danger-soft`, `--primary`, `--on-primary` |
@@ -42,7 +42,7 @@ The active application uses the exact `OliTechs` casing in the HTML title, READM
 | `src/services/printService.js`, `printTemplates.js`, `src/utils/printTheme.js` | `#DC2626`, `#fff`, and named `black`/`white` print CSS values | Runtime values resolve from `--print-void`, `--print-void-foreground`, `--print-paper`, `--print-ink`, `--print-border`; receipt and void-slip output colors are preserved |
 | `supabase/functions/print-proxy/index.ts`, `tools/print-agent/server.mjs` | Fixed/fallback print colors or inconsistent brand copy | Theme-derived print aliases and exact `OliTechs` casing; printer workflow behavior is retained |
 | `README.md` | Literal color badge/logo values and inconsistent brand variants | Exact `OliTechs` spelling and token/template guidance |
-| `src/components/ui/ThemeToggle.jsx` | Light/dark/system selector | File retained as a compatibility component showing only “Coastal Linen · Light”; it cannot set dark/system mode |
+| `src/components/ui/ThemeToggle.jsx` | Light/dark/system selector | File retained as a compatibility component showing only “OliTechs · Light”; it cannot set dark/system mode |
 
 ## Status and screen findings
 
@@ -57,7 +57,7 @@ The active application uses the exact `OliTechs` casing in the HTML title, READM
 
 ## Validation
 
-- `npm run lint` — passed, including the Coastal Linen contract and strict token scan.
+- `npm run lint` — passed, including the brand contract (`npm run check:brand`) and strict token scan.
 - `npm run typecheck` — passed.
 - `npm run test:architecture` — 166 tests passed.
 - `npm run build` — passed; Vite still reports the existing large-main-chunk advisory (>500 kB).

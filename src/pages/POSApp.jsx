@@ -5,7 +5,6 @@ import { StoreProvider } from '@/data/AppStore';
 import { PmsProvider } from '@/data/PmsStore';
 import { MODULES } from '@/data/platformData';
 import { getSubscriptionEntitlement } from '@/data/modules/navArchitecture';
-import { SAND, NAVY, MUTED } from '@/data/themePalette';
 import { useIsMobile } from '@/hooks/use-mobile';
 import Sidebar from '@/components/shell/Sidebar';
 import POSTabs from '@/components/shell/POSTabs';
@@ -40,21 +39,6 @@ const Reports = lazyWithRetry(() => import('@/components/modules/Reports'), 'pos
 const Store = lazyWithRetry(() => import('@/pages/Store'), 'posapp-store');
 const KitchenDisplay = lazyWithRetry(() => import('@/components/modules/KitchenDisplay'), 'posapp-kitchen-display');
 
-const COMING_SOON_IDS = new Set(MODULES.filter((module) => module.comingSoon).map((module) => module.id));
-
-function ComingSoon({ label }) {
-  return (
-    <div className="flex flex-1 items-center justify-center" style={{ background: SAND }}>
-      <div className="max-w-sm text-center">
-        <h2 className="mb-2 text-lg font-medium" style={{ color: NAVY }}>{label}</h2>
-        <p className="text-sm" style={{ color: MUTED }}>
-          This module isn't wired up to real data yet — it's on the roadmap.
-        </p>
-      </div>
-    </div>
-  );
-}
-
 // The global workspace shell owns navigation when embedded. The legacy sidebar
 // remains available only for standalone POSApp entry points.
 export default function POSApp({
@@ -78,10 +62,7 @@ export default function POSApp({
   const currentModule = MODULES.find((module) => module.id === activeModule);
 
   let content;
-  if (COMING_SOON_IDS.has(activeModule)) {
-    content = <ComingSoon label={currentModule?.label || 'Module'} />;
-  } else {
-    switch (activeModule) {
+  switch (activeModule) {
       case 'dashboard':
         content = <Dashboard onNavigateToPOS={() => setActiveModule('pos')} />;
         break;
@@ -164,8 +145,6 @@ export default function POSApp({
       default:
         content = <Dashboard onNavigateToPOS={() => setActiveModule('pos')} />;
     }
-  }
-
   // POS renders its own floor/order/bill controls and should not get a second
   // generic TopBar. Embedded workspaces also suppress the legacy sidebar.
   const showTopBar = activeModule !== 'pos';

@@ -69,7 +69,7 @@ Phase 0 is documentation only. No application code is authorized until all seven
 - RLS can expose latent assumptions in existing services.
 - Existing local stores contain UI behavior that can be lost in a premature rewrite.
 - Duplicate migration prefixes make deployment order ambiguous.
-- Legacy consumers can drift from the approved Coastal Linen theme if they bypass the canonical token layer.
+- Legacy consumers can drift from the approved OliTechs brand theme if they bypass the canonical token layer.
 
 ---
 

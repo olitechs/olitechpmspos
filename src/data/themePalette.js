@@ -1,4 +1,4 @@
-// Compatibility exports mapped to the canonical Coastal Linen CSS tokens.
+// Compatibility exports mapped to the canonical OliTechs brand tokens.
 export const NAVY = 'var(--text)';
 export const NAVY2 = 'var(--text)';
 export const SLATE = 'var(--text-muted)';

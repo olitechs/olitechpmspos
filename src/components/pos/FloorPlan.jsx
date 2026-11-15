@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Circle, Grid2X2, Move, Pencil, Save, X } from 'lucide-react';
 import { useStore } from '@/data/AppStore';
-import { RESERVATIONS_TONIGHT, tableLabel } from '@/data/mockData';
+import { useAuth } from '@/lib/AuthContext';
+import { pmsService } from '@/services/pmsService';
+import { tableLabel } from '@/lib/posTables';
 
 const SHAPE_KEY = 'tableShapeMode';
-const POSITION_KEY = 'tableLayoutPositions';
 const SHAPES = {
   square: { width: 124, height: 112, radius: 12 },
   circle: { width: 124, height: 124, radius: '50%' },
@@ -81,16 +82,109 @@ function Tile({ table, session, shape, designMode, onSelect, onMove, now }) {
 }
 export default function FloorPlan({ onTableSelect }) {
   const store = useStore();
+  const { user } = useAuth();
+  const propertyId = user?.property?.id;
   const [selectedTableId, setSelectedTableId] = useState(null);
-  const [activeZoneId, setActiveZoneId] = useState(store.zones[0]?.id);
+  const [activeZoneId, setActiveZoneId] = useState(null);
   const [shape, setShape] = useState(() => safeRead(SHAPE_KEY, 'square'));
   const [designMode, setDesignMode] = useState(false);
-  const [positions, setPositions] = useState(() => safeRead(POSITION_KEY, {}));
   const [now, setNow] = useState(() => Date.now());
-  const zone = store.zones.find((z) => z.id === activeZoneId) || store.zones[0];
+  const [arrivalsToday, setArrivalsToday] = useState(null);
+  const [arrivalsFailed, setArrivalsFailed] = useState(false);
+  // Recover tables belonging to active sessions if an older floor layout is
+  // empty or a table was removed from the layout while its shift was still open.
+  // The session's original table_key remains the clickable ID, so orders and
+  // unsettled bills continue to address the existing server-side session.
+  const displayZones = useMemo(() => {
+    const zones = (store.zones || []).map((item) => ({
+      ...item,
+      tables: Array.isArray(item.tables) ? [...item.tables] : [],
+    }));
+    const sessions = Object.entries(store.sessions || {}).filter(([, session]) => (
+      session && session.status && session.status !== 'closed'
+    ));
+    const recovered = new Map();
+
+    sessions.forEach(([tableKey, session], index) => {
+      if (zones.some((item) => item.tables.some((table) => table.id === tableKey))) return;
+      const number = String(session.tableNumber || tableKey);
+      let target = session.zoneId
+        ? zones.find((item) => item.id === session.zoneId)
+        : null;
+
+      if (!target && !session.zoneId) {
+        const matches = zones.filter((item) => item.tables.some((table) => String(table.number) === number));
+        if (matches.length === 1) target = matches[0];
+      }
+
+      if (target) {
+        const matchIndex = target.tables.findIndex((table) => String(table.number) === number);
+        if (matchIndex >= 0) {
+          const original = target.tables[matchIndex];
+          target.tables[matchIndex] = { ...original, id: tableKey, layoutId: original.id };
+        } else {
+          target.tables.push({
+            id: tableKey, number, seats: Math.max(4, Number(session.guests) || 1),
+            x: 32 + (target.tables.length % 5) * 150,
+            y: 32 + Math.floor(target.tables.length / 5) * 130,
+          });
+        }
+        return;
+      }
+
+      const recoveredZoneId = session.zoneId || '__open_shift_recovered__';
+      if (!recovered.has(recoveredZoneId)) {
+        recovered.set(recoveredZoneId, {
+          id: recoveredZoneId,
+          name: session.zoneId ? 'Recovered floor zone' : 'Open shift tables',
+          tables: [],
+        });
+      }
+      const recoveredZone = recovered.get(recoveredZoneId);
+      recoveredZone.tables.push({
+        id: tableKey, number, seats: Math.max(4, Number(session.guests) || 1),
+        x: 32 + (recoveredZone.tables.length % 5) * 150,
+        y: 32 + Math.floor(recoveredZone.tables.length / 5) * 130,
+      });
+    });
+
+    return [...zones, ...recovered.values()];
+  }, [store.zones, store.sessions]);
+  const zone = displayZones.find((z) => z.id === activeZoneId) || displayZones[0];
+
+  useEffect(() => {
+    if (!displayZones.some((item) => item.id === activeZoneId)) {
+      setActiveZoneId(displayZones[0]?.id || null);
+    }
+  }, [displayZones, activeZoneId]);
+
+  // Real arrivals for today, so the floor summary never shows an invented
+  // reservation count. `null` means "not loaded", which renders as a dash.
+  useEffect(() => {
+    let active = true;
+    if (!propertyId) { setArrivalsToday(null); setArrivalsFailed(false); return undefined; }
+    const today = new Date();
+    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const closed = new Set(['cancelled', 'canceled', 'no_show', 'no-show', 'checked_out']);
+    pmsService.listReservations(propertyId)
+      .then((rows) => {
+        if (!active) return;
+        setArrivalsToday((rows || []).filter((row) => {
+          const status = String(row.status || row.booking_status || '').toLowerCase();
+          return String(row.arrival || '').slice(0, 10) === todayKey && !closed.has(status);
+        }).length);
+        setArrivalsFailed(false);
+      })
+      .catch((error) => {
+        console.error('[POS] today\'s reservations could not be loaded', error);
+        if (!active) return;
+        setArrivalsToday(null);
+        setArrivalsFailed(true);
+      });
+    return () => { active = false; };
+  }, [propertyId]);
 
   useEffect(() => { localStorage.setItem(SHAPE_KEY, shape); }, [shape]);
-  useEffect(() => { localStorage.setItem(POSITION_KEY, JSON.stringify(positions)); }, [positions]);
   useEffect(() => {
     const ticker = window.setInterval(() => setNow(Date.now()), 30000);
     return () => window.clearInterval(ticker);
@@ -98,21 +192,45 @@ export default function FloorPlan({ onTableSelect }) {
 
   const displayTables = useMemo(() => (zone?.tables || []).map((t) => ({
     ...t,
-    ...(positions[t.id] || {}),
     zoneId: zone?.id,
     zoneName: zone?.name,
-  })), [zone, positions]);
+  })), [zone]);
 
   const moveTable = (id, x, y) => {
-    setPositions((prev) => ({ ...prev, [id]: { x: Math.round(x), y: Math.round(y) } }));
-    const t = zone?.tables.find((item) => item.id === id);
-    if (t && store.moveTable) store.moveTable(zone.id, id, x, y);
+    const table = zone?.tables.find((item) => item.id === id);
+    // Recovered active sessions retain their server table key as the UI ID.
+    // Persist coordinates against the original configured layout ID instead.
+    const layoutId = table?.layoutId || table?.id;
+    if (table && store.moveTable && !String(zone.id).startsWith('__open_shift_recovered__') && layoutId) {
+      store.moveTable(zone.id, layoutId, x, y);
+    }
   };
 
   const saveLayout = () => {
-    try { localStorage.setItem(POSITION_KEY, JSON.stringify(positions)); } catch { /* ignore storage errors */ }
     setDesignMode(false);
   };
+
+  if (store.floorLoading || store.sessionsLoading) return (
+    <div role="status" aria-live="polite" className="flex h-full min-h-48 flex-col justify-center gap-4 bg-[var(--canvas)] p-6">
+      <div className="mx-auto w-full max-w-xl space-y-3">
+        <div className="h-10 animate-pulse rounded-xl bg-[var(--surface)]" />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {[1, 2, 3, 4, 5, 6].map((item) => <div key={item} className="h-28 animate-pulse rounded-xl border border-[var(--border)] bg-[var(--surface)]" />)}
+        </div>
+        <p className="text-center text-sm text-[var(--text-muted)]">Loading shared floor zones and tables…</p>
+      </div>
+    </div>
+  );
+
+  if (store.floorError) return (
+    <div role="alert" className="flex h-full min-h-48 items-center justify-center bg-[var(--canvas)] p-6 text-center">
+      <div className="max-w-md rounded-2xl border border-[var(--danger)] bg-[var(--surface)] p-6">
+        <h2 className="text-lg font-black text-[var(--text)]">Floor configuration unavailable</h2>
+        <p className="mt-2 text-sm text-[var(--text-muted)]">{store.floorError}</p>
+        <p className="mt-2 text-xs text-[var(--text-muted)]">No table sessions or orders have been modified.</p>
+      </div>
+    </div>
+  );
 
   if (!zone) return (
     <div role="status" aria-live="polite" className="flex h-full min-h-48 items-center justify-center bg-[var(--canvas)] p-6 text-center">
@@ -127,7 +245,7 @@ export default function FloorPlan({ onTableSelect }) {
   const canvasW = Math.max(620, ...displayTables.map((t) => t.x + geometry.width + 24));
   const canvasH = Math.max(430, ...displayTables.map((t) => t.y + geometry.height + 24));
   let covers = 0, occupied = 0, openChecks = 0;
-  store.zones.forEach((z) => z.tables.forEach((t) => {
+  displayZones.forEach((z) => z.tables.forEach((t) => {
     const s = store.getSession(t.id);
     if (!s) return;
     if (s.status === 'occupied') { occupied++; openChecks++; covers += s.guests || 0; }
@@ -137,7 +255,7 @@ export default function FloorPlan({ onTableSelect }) {
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[var(--canvas)] text-[var(--text)]">
       <div className="flex shrink-0 flex-wrap items-center gap-2 overflow-x-auto border-b border-[var(--border)] bg-[var(--surface)] px-3 pb-2 pt-3 lg:px-4">
-        {store.zones.map((z) => (
+        {displayZones.map((z) => (
           <button key={z.id} type="button" onClick={() => setActiveZoneId(z.id)} className={`min-h-11 shrink-0 whitespace-nowrap rounded-full border-2 px-5 text-sm font-bold ${z.id===zone.id?'border-[var(--primary)] bg-[var(--primary)] text-[var(--on-primary)]':'border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--primary-soft)]'}`}>{z.name}</button>
         ))}
         <div className="flex shrink-0 flex-wrap items-center gap-1 rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] p-1 lg:ml-auto">
@@ -171,14 +289,14 @@ export default function FloorPlan({ onTableSelect }) {
 
         <div className="flex shrink-0 flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 lg:hidden">
           <h3 className="text-xs font-bold uppercase tracking-widest text-[var(--primary)]">Today</h3>
-          <div className="grid grid-cols-2 gap-3"><SummaryRow label="Covers Seated" value={covers} /><SummaryRow label="Tables Occupied" value={occupied} /><SummaryRow label="Open Checks" value={openChecks} /><SummaryRow label="Reservations Tonight" value={RESERVATIONS_TONIGHT} /></div>
+          <div className="grid grid-cols-2 gap-3"><SummaryRow label="Covers Seated" value={covers} /><SummaryRow label="Tables Occupied" value={occupied} /><SummaryRow label="Open Checks" value={openChecks} /><SummaryRow label="Arrivals Today" value={arrivalsToday ?? (arrivalsFailed ? 'n/a' : '—')} hint={arrivalsFailed ? 'Reservations could not be loaded.' : 'Reservations arriving today.'} /></div>
         </div>
         <aside className="hidden w-48 shrink-0 flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 xl:flex">
           <h3 className="text-xs font-bold uppercase tracking-widest text-[var(--primary)]">Today</h3>
           <SummaryRow label="Covers Seated" value={covers} />
           <SummaryRow label="Tables Occupied" value={occupied} />
           <SummaryRow label="Open Checks" value={openChecks} />
-          <SummaryRow label="Reservations Tonight" value={RESERVATIONS_TONIGHT} />
+          <SummaryRow label="Arrivals Today" value={arrivalsToday ?? (arrivalsFailed ? 'n/a' : '—')} hint={arrivalsFailed ? 'Reservations could not be loaded.' : 'Reservations arriving today.'} />
           <div className="mt-2 border-t border-[var(--border)] pt-3">
             <h4 className="mb-2 text-xs font-bold uppercase tracking-widest text-[var(--primary)]">Legend</h4>
             <Legend label="Open / Available" fill="var(--room-clean)" border="var(--room-clean)" />
@@ -194,4 +312,4 @@ export default function FloorPlan({ onTableSelect }) {
 }
 
 function Legend({ label, fill, border }) { return <div className="mb-1.5 flex items-center gap-2"><span className="h-3.5 w-3.5 shrink-0 rounded" style={{ background: fill, border: `2px solid ${border}` }} /><span className="text-xs text-[var(--text-muted)]">{label}</span></div>; }
-function SummaryRow({ label, value }) { return <div className="flex min-w-0 flex-col"><span className="text-2xl font-bold text-[var(--text)]">{value}</span><span className="text-xs leading-tight text-[var(--text-muted)]">{label}</span></div>; }
+function SummaryRow({ label, value, hint }) { return <div className="flex min-w-0 flex-col" title={hint}><span className="text-2xl font-bold text-[var(--text)]">{value}</span><span className="text-xs leading-tight text-[var(--text-muted)]">{label}</span></div>; }

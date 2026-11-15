@@ -14,7 +14,7 @@
 | Data access | `src/services/pmsService.js` | Reservation reads and planner RPC calls are delegated here; inspect in implementation phases before changing behaviour. |
 | Global tokens/theme | `src/index.css` | Canonical tokens and planner component styles. |
 | Tailwind/shadcn mappings | `tailwind.config.js` | Semantic Tailwind colours map to CSS variables; legacy aliases remain. |
-| Design documentation | `Design.md` | Currently documents Coastal Linen, including light-only contract, room/floor states and current planner payment exception. Must be reconciled in Phase 1 with the newly approved light+dark brief. |
+| Design documentation | `Design.md` | Currently documents the light-only OliTechs brand palette, including light-only contract, room/floor states and current planner payment exception. Must be reconciled in Phase 1 with the newly approved light+dark brief. |
 | Schema | `supabase/migrations/0013_room_planner_schema_repair.sql`, `0014_room_planner_production.sql`, `0015_room_planner_date_inventory.sql` | Existing reservation schema already includes children counts/ages and date-based availability. |
 
 ## 2. Geometry and positioning today
@@ -74,7 +74,7 @@ This is a targeted initial inventory from the planner, store mapper and global s
 | `src/components/modules/Reservations.jsx` | Tailwind fixed palette classes `border-slate-200`, `text-slate-900`, `focus:border-slate-500`, `focus:ring-slate-200`, `text-slate-800`, `bg-red-50`, `text-red-700`, `divide-slate-100`, `bg-slate-900` | `border-input`, `text-foreground`, `ring`, `bg-danger-soft`, `text-danger`, `divide-border`, semantic status tokens. |
 | `src/index.css` | Current planner values `--pay-paid: #3FA77A`, `--pay-deposit: #F2C14E`, `--pay-unpaid: #EE8A3C` | New `--pay-none*`, `--pay-part*`, `--pay-paid*`, `--pay-opt*` tokens from approved brief. |
 | `src/index.css` | Room/floor/table literals and light-only dark-theme overrides | Approved app-wide light/dark semantic tokens; preserve receipt/print exception. |
-| `Design.md` | Existing light-only Coastal Linen palette and old planner payment exception | Update only after Phase 1 tokens are implemented and verified. |
+| `Design.md` | Existing light-only OliTechs brand palette and old planner payment exception | Update only after Phase 1 tokens are implemented and verified. |
 
 ## 7. Reference and verification gaps
 - The uploaded material available for this task contains the written master prompt; the three referenced screenshot image files were not present in the accessible upload. Exact pixel comparison cannot be completed until those images are supplied.

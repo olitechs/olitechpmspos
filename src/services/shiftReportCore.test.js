@@ -64,3 +64,48 @@ test('normalizes room charge and unknown tenders without losing receipt totals',
   assert.equal(report.totalSales, 300);
   assert.equal(report.totalCovers, 2);
 });
+
+test('split tender diagnostics identify missing and mismatched receipt allocations without confirming unallocated money', () => {
+  const receipts = [
+    { id: 'split-ok', order_number: 'R-100', payment_method: 'split', total: 100, items: [] },
+    { id: 'split-missing', order_number: 'R-101', payment_method: 'split', total: 75, items: [] },
+    { id: 'split-short', order_number: 'R-102', payment_method: 'split', total: 200, items: [] },
+    { id: 'cash', order_number: 'R-103', payment_method: 'cash', total: 50, items: [] },
+  ];
+  const allocations = [
+    { receipt_id: 'split-ok', payment_method: 'cash', amount: 40 },
+    { receipt_id: 'split-ok', payment_method: 'mpesa', amount: 60 },
+    { receipt_id: 'split-short', payment_method: 'cash', amount: 120 },
+  ];
+  const report = buildShiftSalesSummary(receipts, allocations);
+  assert.deepEqual(report.splitReconciliation, {
+    splitReceiptCount: 3,
+    reconciledCount: 1,
+    exceptionCount: 2,
+    missingAllocationCount: 1,
+    mismatchedAllocationCount: 1,
+    receiptTotal: 375,
+    allocatedTotal: 220,
+    unallocatedOrVariance: 155,
+    exceptions: [
+      { receipt_id: 'split-missing', receipt_number: 'R-101', expected_total: 75, allocated_total: 0, difference: 75, status: 'missing', allocations: [] },
+      { receipt_id: 'split-short', receipt_number: 'R-102', expected_total: 200, allocated_total: 120, difference: 80, status: 'mismatched', allocations: [{ payment_method: 'cash', amount: 120 }] },
+    ],
+  });
+  assert.equal(report.grossSales, 425);
+  assert.equal(report.payments.cash.amount, 210);
+  assert.equal(report.payments.mpesa.amount, 60);
+  assert.equal(report.payments.cash.amount + report.payments.mpesa.amount, 270);
+  assert.notEqual(report.payments.cash.amount + report.payments.mpesa.amount, report.grossSales);
+});
+
+test('split tender diagnostics flag over-allocation and retain confirmed tender amounts', () => {
+  const report = buildShiftSalesSummary(
+    [{ id: 'split-over', order_number: 'R-200', payment_method: 'split', total: 100, items: [] }],
+    [{ receipt_id: 'split-over', payment_method: 'card', amount: 110 }],
+  );
+  assert.equal(report.splitReconciliation.exceptions[0].status, 'mismatched');
+  assert.equal(report.splitReconciliation.exceptions[0].difference, -10);
+  assert.equal(report.payments.card.amount, 110);
+  assert.equal(report.grossSales, 100);
+});

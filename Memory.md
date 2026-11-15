@@ -196,7 +196,7 @@ The seven foundation documents are the decision baseline. If a later agent propo
 
 The owner has authorized the scoped Phase 1 implementation described in the implementation brief supplied for this task. This authorization covers the design-token/shared-shell foundation only, must be delivered on a dedicated feature branch and pull request, and does not authorize merging the existing open Phase 1 foundation PR, changing the Room Planner behavior, or advancing to a later phase without a separate approval.
 
-The implementation brief's approved yellow/charcoal palette supersedes the older blue/slate target palette in the previous draft of `Design.md` and `design-system/olitechs-pms-pos/MASTER.md`. Record the corresponding ADR in `Architecture.md` and keep the docs and implementation aligned.
+The implementation brief's approved yellow/charcoal palette superseded the older blue/slate target palette at the time. It was itself superseded on 2026-11-13 by the approved OliTechs navy/blue brand block recorded in section 13; `Design.md` and `MASTER.md` now document only that block.
 
 The current repository already has an open PR #10 named `feat: Phase 1 foundation architecture and security`. This UI/design-system work is isolated on `feature/phase-1-design-system-shell`; do not alter or close PR #10.
 
@@ -206,3 +206,46 @@ The current repository already has an open PR #10 named `feat: Phase 1 foundatio
 ## 12. Owner Authorization — Phase 2 — 2026-10-09
 
 The owner explicitly authorized merging Phase 1 and starting Phase 2. Phase 2 is isolated on `feature/phase-2-core-pms` and covers Front Office / Core PMS integrity: timezone-safe date handling, reservation overlap and concurrency safety, Room Planner month and rolling 15-day views, check-in/out, room moves and stay extensions, folio balance enforcement/posting, housekeeping synchronization, and auditable operations. Preserve existing functionality and do not touch POS financial behavior outside a required PMS integration fix. No Phase 2 changes are authorized on `main`; use a dedicated PR and stop at the Phase 2 acceptance gate.
+
+## 13. Brand Consolidation — 2026-11-13
+
+- The approved palette is the single OliTechs navy/blue block in `src/index.css`: `--brand-navy`, `--brand-blue`, `--brand-blue-hover`, `--brand-blue-soft`, `--brand-canvas`, `--brand-white`, the approved compatibility names `--deep-lagoon`/`--coastal-teal`, the surface tokens, `--text` and `--accent`. Values are fixed by the owner; gates compare them exactly.
+- `--accent: #E8955A` is for small highlights and warnings only. Never use it as a large surface or in the logo.
+- `tools/design-system/check-coastal-linen.mjs` is now `check-brand-system.mjs` and runs as `npm run check:brand`; `npm run lint` chains it before the colour audit.
+- Public marketing surfaces use the derived `--mkt-*` token family in `src/index.css`. `src/pages/PublicHome.jsx` is no longer exempt from `scripts/check-colors.mjs`; add a `color-mix()`-derived token instead of a hex/rgba literal.
+- `--primary-hover` resolves to `--brand-blue-hover` (`#174AC8`), not navy, so primary buttons keep a blue hover state.
+- Report and document theme identifiers are `navy`/`blue`; brand asset templates use `{{BRAND_NAVY}}`/`{{BRAND_BLUE}}`.
+- Known environment gap: `npm run test:reports` needs Poppler `pdfinfo` for its PDF assertions. The Excel assertions and the rest of the report tests pass; this is a missing local tool, not a repo defect.
+
+## 14. Phase 2 — Demo Data Removal — 2026-11-13
+
+- `src/data/mockData.js` is deleted. It seeded a fictional restaurant (menu, VAT, reservation count, zones, tables, waiters) and screens rendered those values when real data was absent, so an unconfigured or offline property looked configured.
+- Replacements: `src/lib/posTax.js` (VAT constant + label + `addVat`), `src/lib/posTables.js` (table labels/geometry), `src/lib/posProduction.js` (production centres). Menu, staff and arrivals now come only from Supabase services and show empty/loading/`n/a` states.
+- POS floor zones/tables have no database table. They are configuration stored per property in this browser under `olitech_pos_floor:<propertyId>`, gated by a `zonesFor` guard so one property cannot write into another's key. Table sessions, printers and kitchen orders remain server-side.
+- `StaffAdmin` is now a read-only view of active `public.staff` rows assigned to `pos`, with a link to Users & Roles. Store-level `staff`/`addStaff`/`updateStaff`/`removeStaff` were removed.
+- `src/data/platformData.js` keeps only `MODULES`; the illustrative dashboard/queue/guest exports were removed.
+- The hard-coded ticket header ("Visiwa Beach Resort") now renders the signed-in property name, and Floor Plan "Reservations Tonight" became a real "Arrivals Today" count.
+- Every remaining fallback is catalogued in `docs/FALLBACK_AUDIT.md`: invented data is not allowed; empty or explicitly-unknown states are. Silent catches are either documented as unable to act or now log with context.
+- Unknown facts (VAT source, multi-terminal floors, legal copy, support contact, `v6/` removal) are recorded in `docs/OPEN_QUESTIONS.md` instead of being guessed.
+
+## 15. Phase 3 — Link audit and dead-end removal — 2026-11-14
+
+- `scripts/audit-links.mjs` (wired into `npm run lint` and `npm run check:links`) parses the `<Route>` tree in `src/App.jsx` — nesting, index routes, `:params`, `*` catch-alls and `<Navigate>` redirects — then checks every `Link`/`NavLink`/`navigate()`/`href` target and route-like nav literal in `src/`. A target matched only by a catch-all counts as unresolved. Hash targets are verified against `id="..."` in the same file set. It is static only; it does not run the app.
+- Front Office placeholder routes replaced with real screens: `assistance` → Help Centre, `statistics/reports` → the real transactional Reports screen (occupancy/ADR/RevPAR/revenue), `services/laundry` and `services/maintenance` → the real Laundry/Maintenance modules via `POSApp`. The Front Office `*` catch-all now renders `PageNotFound` instead of a "reserved route" page.
+- Nav entries with no backing module (Configuration, Tags, Minibar, Guest Requests/Transfers and Tours) and their routes were removed — never linked, never reachable. The Statistics submenu's seven labels (Occupancy, ADR/RevPAR, …) all described data inside the one real Reports screen, so the submenu became a single Statistics link. Recorded in `docs/OPEN_QUESTIONS.md` (#10).
+- The Front Office user menu's "Profile / Preferences" item pointed at the removed Configuration page and was deleted.
+- `/terms` and `/privacy` are real pages now (`TermsPage`, `PrivacyPage`): plain wording about what the product actually does with data, with a "Draft — pending legal review" banner and no invented certifications or jurisdictions. `LegalComingSoon.jsx` deleted.
+- The System Settings trio (`SystemSettingsPage`, `SystemSettingsLayout`, `systemSettingsNav`) was unreachable — no route serves `/settings/system/*` (it redirects). Deleted, and `SettingsPanel` no longer checks those paths or shows a "Coming soon" badge; sections without a working screen are simply not listed.
+- `BookingEngine.jsx` no longer pretends to search availability: the form navigated to `/booking`, which has no route, and no public availability RPC exists. It now shows the real engine configuration with an honest note. Open question #8 covers building the guest page.
+- `SocialFAB` keeps only the confirmed WhatsApp link; `PublicHome` keeps phone/WhatsApp and dropped the unverified `info@olitech.co.ke` mailto. Open question #9.
+- `POSApp.jsx`'s `ComingSoon`/`COMING_SOON_IDS` path is gone (no module carries a `comingSoon` flag since Phase 2). `ModuleStatusPage` remains only where content is honest and directional: the employee-report status page and the Stores requisitions capability page.
+
+### Reconciliation with the parallel `origin/main` workstream — 2026-11-14
+
+While Phase 3 was in flight on `chore/product-cleanup`, a parallel workstream landed on `origin/main` (`f807f2e..848cf49b`, ~25 commits incl. PR #150–#153) doing overlapping Phase 1–3 work with some opposite decisions. Owner chose **rebase & reconcile; main wins where it covers the same ground**. Outcome:
+
+- **Superseded by main:** the placeholder-route removals (#10 above) — main shipped real `FrontOffice{Tags,Configuration,Minibar,GuestRequests,Statistics,Assistance,Laundry,Maintenance}` pages + migrations + `supabase/tests/front_office_workspace_contract.test.mjs` (now wired into `test:architecture`). Front Office nav entries restored; "Profile / Preferences" menu item restored (Configuration is real). OPEN_QUESTIONS #10 closed.
+- **Superseded by main:** `BookingEngine.jsx` — main's version opens the property's configured `booking_url` (schema migration added) or honestly errors; `/booking` is no longer referenced.
+- **Kept from our branch:** Phase 1 brand consolidation (17-hex gate, `--mkt-*` derived marketing tokens, `check-brand-system.mjs` rename — main's lint still referenced the old `check-coastal-linen` name, merged chain now uses the new one), Phase 2 honest-data work, `TermsPage`/`PrivacyPage` + real `/terms` `/privacy` routes, `PageNotFound` for unknown Front Office URLs, `scripts/audit-links.mjs` (strict catch-all resolver) coexisting with main's `scripts/check-links.mjs`, the Front Office `*` catch-all stays `PageNotFound`.
+- **Merged details:** `PublicHome` adopts main's normalized `info@olitechs.co.ke` email (kept an OPEN_QUESTIONS note); `CloseShiftModal` uses main's `getPropertySettings` service call with our logged-failure fallback; `test:architecture` takes main's superset test list + the FO contract test; `check:links` runs both link checkers.
+- Removed-then-restored caveat: `SystemSettingsPage/Layout/systemSettingsNav` stay deleted — main's `/settings/system/:slug` deep-link handling routes through `LegacySystemSettingsRedirect` → `/backoffice/settings/:slug`, which needs none of them.

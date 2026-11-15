@@ -6,6 +6,55 @@ export function normalizeShiftPaymentMethod(value) {
   return PAYMENT_METHODS.includes(method) ? method : 'other';
 }
 
+export function diagnoseSplitTenderAllocations(receipts = [], allocations = []) {
+  const byReceipt = new Map();
+  for (const allocation of Array.isArray(allocations) ? allocations : []) {
+    const id = String(allocation.receipt_id || '');
+    if (!id) continue;
+    if (!byReceipt.has(id)) byReceipt.set(id, []);
+    byReceipt.get(id).push(allocation);
+  }
+  const exceptions = [];
+  let splitReceiptCount = 0;
+  let allocatedTotal = 0;
+  let receiptTotal = 0;
+  for (const receipt of Array.isArray(receipts) ? receipts : []) {
+    if (String(receipt?.payment_method || '').toLowerCase() !== 'split') continue;
+    splitReceiptCount += 1;
+    const expected = Number(receipt.total || 0);
+    const rows = byReceipt.get(String(receipt.id)) || [];
+    const allocated = rows.reduce((sum, row) => sum + Number(row.amount || 0), 0);
+    const difference = Math.round((expected - allocated) * 100) / 100;
+    receiptTotal += expected;
+    allocatedTotal += allocated;
+    if (!rows.length || Math.abs(difference) > 0.01) {
+      exceptions.push({
+        receipt_id: receipt.id,
+        receipt_number: String(receipt.order_number || receipt.receipt_number || receipt.id || 'Unknown receipt'),
+        expected_total: expected,
+        allocated_total: allocated,
+        difference,
+        status: rows.length ? 'mismatched' : 'missing',
+        allocations: rows.map((row) => ({
+          payment_method: normalizeShiftPaymentMethod(row.payment_method),
+          amount: Number(row.amount || 0),
+        })),
+      });
+    }
+  }
+  return {
+    splitReceiptCount,
+    reconciledCount: splitReceiptCount - exceptions.length,
+    exceptionCount: exceptions.length,
+    missingAllocationCount: exceptions.filter((row) => row.status === 'missing').length,
+    mismatchedAllocationCount: exceptions.filter((row) => row.status === 'mismatched').length,
+    receiptTotal: Math.round(receiptTotal * 100) / 100,
+    allocatedTotal: Math.round(allocatedTotal * 100) / 100,
+    unallocatedOrVariance: Math.round((receiptTotal - allocatedTotal) * 100) / 100,
+    exceptions,
+  };
+}
+
 export function buildShiftSalesSummary(receipts = [], allocations = [], refunds = [], voidedReceipts = []) {
   const payments = Object.fromEntries(PAYMENT_METHODS.map((method) => [method, { amount: 0, count: 0 }]));
   const grossPayments = Object.fromEntries(PAYMENT_METHODS.map((method) => [method, { amount: 0, count: 0 }]));
@@ -17,6 +66,7 @@ export function buildShiftSalesSummary(receipts = [], allocations = [], refunds 
     allocationMap.get(receiptId).push(allocation);
   }
 
+  const splitReconciliation = diagnoseSplitTenderAllocations(receipts, allocations);
   const countedByMethod = new Map(PAYMENT_METHODS.map((method) => [method, new Set()]));
   const categories = { food: { qty: 0, amount: 0 }, drinks: { qty: 0, amount: 0 } };
   let grossSales = 0;
@@ -68,6 +118,7 @@ export function buildShiftSalesSummary(receipts = [], allocations = [], refunds 
   return {
     payments,
     grossPayments,
+    splitReconciliation,
     refundsByMethod,
     categories,
     grossSales,

@@ -4,8 +4,8 @@ const FONT_FAMILY = 'OliTechsReportSans';
 let fontPromise;
 
 const COLOR_TOKENS = {
-  deepLagoon: '--deep-lagoon',
-  coastalTeal: '--coastal-teal',
+  navy: '--brand-navy',
+  blue: '--brand-blue',
   white: '--white',
   softWhite: '--soft-white',
   sidebar: '--sidebar',
@@ -34,7 +34,7 @@ const rgbToHex = (value) => {
   if (/^#[0-9a-f]{3}$/i.test(value)) return value.slice(1).split('').map((part) => part + part).join('').toUpperCase();
   const match = String(value).match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
   if (match) return match.slice(1, 4).map((part) => Number(part).toString(16).padStart(2, '0')).join('').toUpperCase();
-  throw new Error(`The Coastal Linen document token is not a supported RGB color: ${value}`);
+  throw new Error(`The OliTechs document token is not a supported RGB color: ${value}`);
 };
 
 const colorToRgb = (value) => {
@@ -128,12 +128,12 @@ function addWorksheet(workbook, section, definition, theme, landscape) {
   const endColumn = colLetter(columnCount);
   worksheet.mergeCells(`A1:${endColumn}1`);
   worksheet.getCell('A1').value = escapeSpreadsheetFormula(definition.title);
-  worksheet.getCell('A1').font = { name: 'Aptos Display', size: 16, bold: true, color: { argb: colorARGB(theme.deepLagoon) } };
+  worksheet.getCell('A1').font = { name: 'Aptos Display', size: 16, bold: true, color: { argb: colorARGB(theme.navy) } };
   worksheet.getCell('A1').alignment = { vertical: 'middle' };
   worksheet.getRow(1).height = 28;
   worksheet.mergeCells(`A2:${endColumn}2`);
   worksheet.getCell('A2').value = escapeSpreadsheetFormula(section.title || definition.subtitle || 'Report data');
-  worksheet.getCell('A2').font = { name: 'Aptos', size: 11, color: { argb: colorARGB(theme.coastalTeal) } };
+  worksheet.getCell('A2').font = { name: 'Aptos', size: 11, color: { argb: colorARGB(theme.blue) } };
   worksheet.mergeCells(`A3:${endColumn}3`);
   worksheet.getCell('A3').value = escapeSpreadsheetFormula(`${definition.propertyName || 'OliTechs'} · ${definition.period?.from || 'Current'}${definition.period?.to ? ` to ${definition.period.to}` : ''}`);
   worksheet.getCell('A3').font = { name: 'Aptos', size: 9, color: { argb: colorARGB(theme.text) } };
@@ -148,9 +148,9 @@ function addWorksheet(workbook, section, definition, theme, landscape) {
   header.height = 24;
   header.eachCell((cell) => {
     cell.font = { name: 'Aptos', size: 10, bold: true, color: { argb: colorARGB(theme.white) } };
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colorARGB(theme.deepLagoon) } };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colorARGB(theme.navy) } };
     cell.alignment = { vertical: 'middle', wrapText: true };
-    cell.border = { bottom: { style: 'thin', color: { argb: colorARGB(theme.coastalTeal) } } };
+    cell.border = { bottom: { style: 'thin', color: { argb: colorARGB(theme.blue) } } };
   });
 
   const dataRows = Array.isArray(section.rows) ? section.rows : [];
@@ -182,7 +182,7 @@ function addWorksheet(workbook, section, definition, theme, landscape) {
       const letter = colLetter(index + 1);
       return { formula: `SUM(${letter}${firstDataRow}:${letter}${headerRow + dataRows.length})` };
     }));
-    totalRow.font = { name: 'Aptos', size: 10, bold: true, color: { argb: colorARGB(theme.deepLagoon) } };
+    totalRow.font = { name: 'Aptos', size: 10, bold: true, color: { argb: colorARGB(theme.navy) } };
     totalRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colorARGB(theme.sidebar) } };
     totalRow.eachCell((cell, columnIndex) => {
       const column = columns[columnIndex - 1];
@@ -260,10 +260,10 @@ export async function createExcelBlob(definition, { theme: themeOverrides } = {}
   const summaryData = workbookSummaryRows(report);
   summarySheet.mergeCells('A1:C1');
   summarySheet.getCell('A1').value = escapeSpreadsheetFormula(report.title);
-  summarySheet.getCell('A1').font = { name: 'Aptos Display', size: 17, bold: true, color: { argb: colorARGB(theme.deepLagoon) } };
+  summarySheet.getCell('A1').font = { name: 'Aptos Display', size: 17, bold: true, color: { argb: colorARGB(theme.navy) } };
   summarySheet.mergeCells('A2:C2');
   summarySheet.getCell('A2').value = escapeSpreadsheetFormula(report.subtitle || 'OliTechs report');
-  summarySheet.getCell('A2').font = { name: 'Aptos', size: 11, color: { argb: colorARGB(theme.coastalTeal) } };
+  summarySheet.getCell('A2').font = { name: 'Aptos', size: 11, color: { argb: colorARGB(theme.blue) } };
   summaryData.metadata.forEach((row) => {
     summarySheet.addRow(row.map((value) => typeof value === 'string' ? escapeSpreadsheetFormula(value) : value));
   });
@@ -271,7 +271,7 @@ export async function createExcelBlob(definition, { theme: themeOverrides } = {}
   if (summaryData.summary.length) {
     const header = summarySheet.addRow(['Metric', 'Value', 'Format']);
     header.font = { name: 'Aptos', bold: true, color: { argb: colorARGB(theme.white) } };
-    header.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colorARGB(theme.deepLagoon) } };
+    header.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colorARGB(theme.navy) } };
     summaryData.summary.forEach((row) => {
       const excelRow = summarySheet.addRow(row.map((value) => typeof value === 'string' ? escapeSpreadsheetFormula(value) : value));
       const metricFormat = row[2];
@@ -352,8 +352,8 @@ export async function createPdfBlob(definition, { theme: themeOverrides, fontBas
       const response = await fetch('/olitechs-logo.svg');
       if (response.ok) {
         const svg = (await response.text())
-          .replaceAll('{{COASTAL_TEAL}}', theme.coastalTeal)
-          .replaceAll('{{DEEP_LAGOON}}', theme.deepLagoon)
+          .replaceAll('{{BRAND_BLUE}}', theme.blue)
+          .replaceAll('{{BRAND_NAVY}}', theme.navy)
           .replaceAll('{{WHITE}}', theme.white)
           .replaceAll('{{SOFT_WHITE}}', theme.softWhite);
         const objectUrl = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
@@ -389,8 +389,8 @@ export async function createPdfBlob(definition, { theme: themeOverrides, fontBas
   pdf.addFont(FONT_VFS_NAME, FONT_FAMILY, 'normal');
   pdf.setFont(FONT_FAMILY, 'normal');
   const rgb = {
-    deepLagoon: colorToRgb(theme.deepLagoon),
-    coastalTeal: colorToRgb(theme.coastalTeal),
+    navy: colorToRgb(theme.navy),
+    blue: colorToRgb(theme.blue),
     white: colorToRgb(theme.white),
     softWhite: colorToRgb(theme.softWhite),
     sidebar: colorToRgb(theme.sidebar),
@@ -409,7 +409,7 @@ export async function createPdfBlob(definition, { theme: themeOverrides, fontBas
     }
     pdf.setFont(FONT_FAMILY, 'normal');
     pdf.setFontSize(10);
-    pdf.setTextColor(...rgb.coastalTeal);
+    pdf.setTextColor(...rgb.blue);
     pdf.text(safeReportText(section.title || section.name), 10, cursorY);
     cursorY += 3;
     const body = (section.rows || []).map((row) => columns.map((column) => pdfCellValue(column, row[column.key])));
@@ -432,7 +432,7 @@ export async function createPdfBlob(definition, { theme: themeOverrides, fontBas
       showHead: 'everyPage',
       rowPageBreak: 'avoid',
       styles: { font: FONT_FAMILY, fontStyle: 'normal', fontSize: maxColumns > 7 ? 6.5 : 8, cellPadding: 2, overflow: 'linebreak', textColor: rgb.text, lineColor: rgb.sidebar, lineWidth: 0.15, valign: 'middle' },
-      headStyles: { fillColor: rgb.deepLagoon, textColor: rgb.white, font: FONT_FAMILY, fontStyle: 'normal', fontSize: maxColumns > 7 ? 7 : 8 },
+      headStyles: { fillColor: rgb.navy, textColor: rgb.white, font: FONT_FAMILY, fontStyle: 'normal', fontSize: maxColumns > 7 ? 7 : 8 },
       alternateRowStyles: { fillColor: rgb.softWhite },
       bodyStyles: { minCellHeight: 7 },
       columnStyles: Object.fromEntries(columns.map((column, index) => [index, { cellWidth: Math.min(availableWidth / columns.length, Math.min(62, Math.max(12, Number(column.width) || 18)) * widthScale), halign: column.align || (column.type === 'number' ? 'right' : 'left') }])),
@@ -440,7 +440,7 @@ export async function createPdfBlob(definition, { theme: themeOverrides, fontBas
         if (hasTotals && data.row.index === body.length - 1 && (section.rows || []).length && data.section === 'body') {
           data.cell.styles.fillColor = rgb.sidebar;
           data.cell.styles.fontStyle = 'normal';
-          data.cell.styles.textColor = rgb.deepLagoon;
+          data.cell.styles.textColor = rgb.navy;
         }
       },
     });
@@ -465,7 +465,7 @@ export async function createPdfBlob(definition, { theme: themeOverrides, fontBas
     pdf.setPage(page);
     const width = pdf.internal.pageSize.getWidth();
     pdf.setFont(FONT_FAMILY, 'normal');
-    pdf.setTextColor(...rgb.deepLagoon);
+    pdf.setTextColor(...rgb.navy);
     if (page === 1) {
       if (logoDataUrl) pdf.addImage(logoDataUrl, 'PNG', 10, 5, 40, 13.57);
       else {

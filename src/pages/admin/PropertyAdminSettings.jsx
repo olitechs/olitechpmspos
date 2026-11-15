@@ -38,7 +38,7 @@ export default function PropertyAdminSettings() {
 
       <section className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-5 sm:flex-row sm:items-center">
         <div className="rounded-xl bg-secondary p-3 text-primary"><Sun size={20} /></div>
-        <div><h2 className="text-base font-medium text-foreground">Appearance</h2><p className="mt-1 text-sm text-muted-foreground">OliTechs uses the Coastal Linen light theme throughout the workspace.</p></div>
+        <div><h2 className="text-base font-medium text-foreground">Appearance</h2><p className="mt-1 text-sm text-muted-foreground">OliTechs uses the navy and blue light theme throughout the workspace.</p></div>
       </section>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

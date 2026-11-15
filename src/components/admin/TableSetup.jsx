@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { useStore } from '@/data/AppStore';
-import { TABLE_CARD, tableLabel } from '@/data/mockData';
+import { TABLE_CARD, tableLabel } from '@/lib/posTables';
 const NAVY = 'var(--text)';
 const TEAL = 'var(--primary)';
 const SAND = 'var(--canvas)';
@@ -77,9 +77,9 @@ export default function TableSetup() {
             onClick={() => { setActiveZoneId(z.id); setSelectedId(null); }}
             className="px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap shrink-0"
             style={{
-              background: z.id === zone.id ? TEAL : SURFACE,
-              color: z.id === zone.id ? 'var(--on-primary)' : MUTED,
-              border: `1.5px solid ${z.id === zone.id ? TEAL : BORDER}`,
+              background: z.id === zone?.id ? TEAL : SURFACE,
+              color: z.id === zone?.id ? 'var(--on-primary)' : MUTED,
+              border: `1.5px solid ${z.id === zone?.id ? TEAL : BORDER}`,
             }}
           >
             {z.name} <span style={{ opacity: 0.6 }}>· {z.tables.length}</span>
@@ -101,6 +101,14 @@ export default function TableSetup() {
         </div>
       </div>
 
+      {!zone ? (
+        <div className="flex flex-1 items-center justify-center p-6">
+          <div className="max-w-sm rounded-2xl p-6 text-center" style={{ background: SURFACE, border: `1px solid ${BORDER}` }}>
+            <h2 className="text-base font-bold" style={{ color: NAVY }}>No floor zones yet</h2>
+            <p className="mt-1 text-sm" style={{ color: MUTED }}>Create a zone above — for example Bar, Pool or Restaurant Room — then place tables on it.</p>
+          </div>
+        </div>
+      ) : (
       <div className="flex flex-1 min-h-0">
         {/* Canvas */}
         <div className="flex-1 overflow-auto p-3">
@@ -230,6 +238,7 @@ export default function TableSetup() {
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }

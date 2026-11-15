@@ -1,8 +1,8 @@
-# Pull Request: OliTechs POS hardening and Coastal Linen theme
+# Pull Request: OliTechs POS hardening and brand theme
 
 ## Summary
 
-This feature branch contains the route/link audit fixes, POS-to-stock workflow design and client-side safeguards, plus the OliTechs Coastal Linen theme migration. It does not include an applied database migration or a production deployment.
+This feature branch contains the route/link audit fixes, POS-to-stock workflow design and client-side safeguards, plus the OliTechs brand theme migration. It does not include an applied database migration or a production deployment.
 
 ## Part 1 — Routes and links
 
@@ -22,9 +22,9 @@ This feature branch contains the route/link audit fixes, POS-to-stock workflow d
 ## Part 3 — Theme and POS UI
 
 - Consolidated literal colors into `src/index.css` and mapped Tailwind, shadcn, components, print helpers and templates to semantic CSS variables.
-- Enforced light-only Coastal Linen styling, status colors, diagonal-striped out-of-order rooms, accessible room/status labels and token-based warning/error states.
+- Enforced light-only OliTechs brand styling, status colors, diagonal-striped out-of-order rooms, accessible room/status labels and token-based warning/error states.
 - Updated shared POS presentation for tablet/touch targets; added searchable category products, explicit catalog loading/empty/error/retry states, and low-/out-of-stock badges. A failed property catalog request no longer falls through to saleable demo products. Floor Plan now explains no-zone/no-table states; payment and Shift Reports expose waiting, error, empty and retry feedback while preserving payment, printing and export behavior.
-- Preserved existing public asset paths and the `ThemeToggle.jsx` file; SVG/manifest paths are template-backed and generated from CSS tokens. The retained compatibility component displays only “Coastal Linen · Light.”
+- Preserved existing public asset paths and the `ThemeToggle.jsx` file; SVG/manifest paths are template-backed and generated from CSS tokens. The retained compatibility component displays only “OliTechs · Light.”
 - Kept receipt paper/ink and the void-slip warning colors visually unchanged through `--print-*` tokens.
 - Standardized visible product-name casing to exact `OliTechs` across the HTML title, UI, manifest, README and receipt/print copy. No app-owned email template was found; provider-managed auth email branding remains unverified outside this repository.
 - Added strict color/token and contrast checks plus the per-file audit in `docs/audit/COASTAL_LINEN_COLOR_AUDIT.md`.

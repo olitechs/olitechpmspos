@@ -379,7 +379,7 @@ export default function SettingsPrinters() {
     const routingFailed = async (message) => {
       setEditing(current=>current?{...current,id:printerId}:current);
       await supabase.from('property_printers').update({last_status:'failed',last_error:message}).eq('id',printerId).eq('property_id',propertyId);
-      await load(true).catch(()=>{});
+      await load(true).catch((refreshError)=>console.warn('[Printers] list refresh after a failed routing save did not complete', refreshError));
       setError(`Printer saved, but its routing could not be updated: ${message}`);
     };
     const deleted=await supabase.from('printer_assignments').delete().eq('printer_id',printerId).eq('property_id',propertyId);
@@ -435,8 +435,8 @@ export default function SettingsPrinters() {
     } finally {
       setTestingId(null);
       // Always refresh the persisted status after the test, including failures.
-      await load(true).catch(() => {});
-      await refreshHistory().catch(() => {});
+      await load(true).catch((refreshError)=>console.warn('[Printers] status refresh after a connection test failed', refreshError));
+      await refreshHistory().catch((refreshError)=>console.warn('[Printers] print history refresh after a connection test failed', refreshError));
     }
   };
 
@@ -579,7 +579,7 @@ export default function SettingsPrinters() {
       </div>
 
       {editing && <PrinterModal form={editing} setForm={setEditing} onClose={()=>setEditing(null)} onSave={save} onCalibration={runCutCalibration} windowsPrinters={windowsPrinters} refreshLocalDevices={refreshLocalDevices}/>}
-      {wizardOpen && <PrinterSetupWizard open propertyId={propertyId} onClose={()=>setWizardOpen(false)} onSaved={()=>load(true).catch(()=>{})}/>} 
+      {wizardOpen && <PrinterSetupWizard open propertyId={propertyId} onClose={()=>setWizardOpen(false)} onSaved={()=>load(true).catch((refreshError)=>console.warn('[Printers] list refresh after the setup wizard did not complete', refreshError))}/>} 
     </div>
   );
 }

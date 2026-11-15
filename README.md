@@ -431,7 +431,7 @@ The repository includes a source-controlled engineering handbook so a coding age
 
 ## Brand identity
 
-The product name is always spelled **OliTechs**. Application color values are defined once in `src/index.css` as the Coastal Linen theme tokens; Tailwind utilities and compatibility exports map to those variables. Public logo, favicon, app-icon, and manifest assets are generated from the theme tokens while `npm run dev` or `npm run build` runs, then their tracked paths are restored to placeholder templates when the dev wrapper exits or the postbuild hook completes. The production `dist/` output contains the rendered assets, so source files and documentation do not carry duplicate palette values.
+The product name is always spelled **OliTechs**. Application color values are defined once in `src/index.css` as the approved OliTechs brand tokens (`--brand-navy`, `--brand-blue` and their derived surfaces); Tailwind utilities and compatibility exports map to those variables. Public logo, favicon, app-icon, and manifest assets are generated from the theme tokens while `npm run dev` or `npm run build` runs, then their tracked paths are restored to placeholder templates when the dev wrapper exits or the postbuild hook completes. The production `dist/` output contains the rendered assets, so source files and documentation do not carry duplicate palette values.
 
 ## License
 
