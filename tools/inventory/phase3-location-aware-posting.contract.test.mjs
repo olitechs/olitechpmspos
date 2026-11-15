@@ -28,7 +28,7 @@ test('shared location writer locks the product and posts one source-linked movem
 
 test('adjustment and wastage require Stores authorization and stable retry keys', () => {
   for (const fn of ['fn_post_stock_adjustment','fn_post_wastage']) {
-    const i=migration.indexOf(`create or replace function public.${fn}`);
+    const i=migration.toLowerCase().indexOf(`create or replace function public.${fn}`);
     assert.ok(i>=0, `missing ${fn}`);
     const body=migration.slice(i,migration.indexOf('$function$;',i)+11);
     assert.match(body,/can_store_write\(p_property_id, null\)/i);
