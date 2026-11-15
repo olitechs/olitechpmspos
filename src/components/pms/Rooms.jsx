@@ -20,6 +20,14 @@ export default function Rooms() {
     catch (error) { setActionError(error?.message || 'The operation failed.'); }
   };
 
+  // fn_remove_reservation cancels the booking (it does not delete history) and
+  // releases the room when no other active booking remains. It is still
+  // irreversible from this screen, so ask before running it.
+  const confirmRemove = (rv) => window.confirm(
+    `Cancel the booking for ${rv.guest || 'this guest'}${rv.roomNumber ? ` in room ${rv.roomNumber}` : ''}?\n\n`
+    + 'The reservation will be marked cancelled and the room released where no other active booking remains.'
+  );
+
   return (
     <div className={`flex h-full min-h-0 w-full flex-col overflow-hidden ${isDedicatedPlanner ? 'h-[100dvh]' : ''}`} style={{ background: 'var(--bg)' }}>
       {!isDedicatedPlanner && (
@@ -51,21 +59,32 @@ export default function Rooms() {
               <thead><tr style={{ background: SURFACE2, borderBottom: `1px solid ${BORDER}` }}>
                 {['Guest', 'Phone', 'Room', 'Arrival', 'Departure', 'Party', 'Status', ''].map((h) => <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide" style={{ color: MUTED }}>{h}</th>)}
               </tr></thead>
-              <tbody>{pms.reservations.map((rv, i) => (
+              <tbody>{pms.reservations.map((rv, i) => {
+                const room = (pms.rooms || []).find((item) => item.id === rv.roomId);
+                return (
                 <tr key={rv.id} style={{ borderBottom: `1px solid ${BORDER}`, background: i % 2 ? SURFACE2 : SURFACE }}>
                   <td className="px-4 py-3 font-medium" style={{ color: NAVY }}>{rv.guest}</td>
                   <td className="px-4 py-3 text-xs" style={{ color: MUTED }}>{rv.phone}</td>
-                  <td className="px-4 py-3 font-mono font-medium" style={{ color: NAVY }}>{rv.roomNumber}</td>
+                  <td className="p-0" style={{ color: NAVY }}>
+                    {room ? (
+                      <button type="button" onClick={() => setOpenRoom(room)}
+                        className="flex min-h-11 w-full items-center px-4 text-left font-mono font-medium underline decoration-transparent underline-offset-4 transition-colors hover:decoration-current focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus)]"
+                        aria-label={`Open room ${room.number} panel`}>
+                        {room.number}
+                      </button>
+                    ) : <span className="block px-4 py-3 font-mono font-medium">{rv.roomNumber || '—'}</span>}
+                  </td>
                   <td className="px-4 py-3 text-xs" style={{ color: MUTED }}>{rv.arrival}</td>
                   <td className="px-4 py-3 text-xs" style={{ color: MUTED }}>{rv.departure}</td>
                   <td className="px-4 py-3 text-xs" style={{ color: MUTED }}>{rv.partySize}</td>
                   <td className="px-4 py-3"><span className="rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: rv.status === 'booked' ? 'var(--warning-soft)' : rv.status === 'checked-in' ? 'var(--success-soft)' : 'var(--surface-2)', color: rv.status === 'booked' ? 'var(--warning-text)' : rv.status === 'checked-in' ? 'var(--success-text)' : MUTED }}>{rv.status === 'checked-in' ? 'Checked in' : rv.status === 'checked-out' ? 'Checked out' : 'Booked'}</span></td>
                   <td className="px-4 py-3">
                     {rv.status === 'booked' && <button onClick={() => runAction(() => pms.checkInReservation(rv.id))} className="rounded-lg px-3 py-1.5 text-xs font-medium" style={{ background: TEAL, color: 'var(--primary-foreground)' }}>Check In</button>}
-                    {rv.status === 'booked' && <button onClick={() => runAction(() => pms.removeReservation(rv.id))} className="ml-1 rounded-lg px-3 py-1.5 text-xs font-medium" style={{ background: SURFACE, border: `1px solid ${BORDER}`, color: DESTRUCTIVE }}>Remove</button>}
+                    {rv.status === 'booked' && <button onClick={() => { if (confirmRemove(rv)) runAction(() => pms.removeReservation(rv.id)); }} className="ml-1 rounded-lg px-3 py-1.5 text-xs font-medium" style={{ background: SURFACE, border: `1px solid ${BORDER}`, color: DESTRUCTIVE }}>Remove</button>}
                   </td>
                 </tr>
-              ))}</tbody>
+                );
+              })}</tbody>
             </table>
           </div>
         </div>
