@@ -47,7 +47,7 @@ The trigger remains installed and enabled. The candidate does not use a caller-c
 - **Adjustment:** source record first, followed by one signed movement in the same transaction.
 - **Wastage:** source record first, followed by one negative movement in the same transaction.
 - **Count creation:** stores the resolved location on each count line and snapshots that location's expected quantity.
-- **Count approval:** locks the count and lines, calculates the applied variance against the live location balance at approval time, stores that applied delta in `inventory_count_lines.variance`, posts one movement per changed line, and makes approval one-way. Repeated approval returns the already-approved count without another movement.
+- **Count approval:** locks the count and lines, calculates the applied variance as counted quantity minus the original expected snapshot, applies that delta to the live location balance (so intervening sales/receipts are preserved), stores the delta in `inventory_count_lines.variance`, posts one movement per changed line, and makes approval one-way. Repeated approval returns the already-approved count without another movement.
 
 ### Authorization and direct writes
 
