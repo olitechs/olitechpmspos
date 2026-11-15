@@ -200,7 +200,7 @@ BEGIN
     );
     RAISE EXCEPTION 'LEGACY-COUNT-001: stale count call unexpectedly succeeded';
   EXCEPTION WHEN OTHERS THEN
-    IF SQLERRM = 'LEGACY-COUNT-001: stale count call unexpectedly succeeded' THEN
+    IF POSITION('Refresh the inventory screen and submit the count with a request key' IN SQLERRM) = 0 THEN
       RAISE;
     END IF;
   END;
