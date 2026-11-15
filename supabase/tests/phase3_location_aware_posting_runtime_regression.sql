@@ -1,4 +1,4 @@
-\\set ON_ERROR_STOP on
+\set ON_ERROR_STOP on
 
 -- RUN ONLY on a production-equivalent disposable database with known fixtures.
 -- Never run this test against production.
@@ -10,31 +10,31 @@
 -- Product must be tracked, and the two locations must be distinct and belong to
 -- the same property. Product aggregate must reconcile to the sum of its locations.
 
-\\if :{?test_user_id}
-\\else
-  \\echo 'Missing test_user_id'
-  \\quit 2
-\\endif
-\\if :{?test_property_id}
-\\else
-  \\echo 'Missing test_property_id'
-  \\quit 2
-\\endif
-\\if :{?test_product_id}
-\\else
-  \\echo 'Missing test_product_id'
-  \\quit 2
-\\endif
-\\if :{?test_selected_location_id}
-\\else
-  \\echo 'Missing test_selected_location_id'
-  \\quit 2
-\\endif
-\\if :{?test_default_location_id}
-\\else
-  \\echo 'Missing test_default_location_id'
-  \\quit 2
-\\endif
+\if :{?test_user_id}
+\else
+  \echo 'Missing test_user_id'
+  \quit 2
+\endif
+\if :{?test_property_id}
+\else
+  \echo 'Missing test_property_id'
+  \quit 2
+\endif
+\if :{?test_product_id}
+\else
+  \echo 'Missing test_product_id'
+  \quit 2
+\endif
+\if :{?test_selected_location_id}
+\else
+  \echo 'Missing test_selected_location_id'
+  \quit 2
+\endif
+\if :{?test_default_location_id}
+\else
+  \echo 'Missing test_default_location_id'
+  \quit 2
+\endif
 
 BEGIN;
 SELECT set_config('test.user_id', :'test_user_id', true);
@@ -291,11 +291,18 @@ BEGIN
     RAISE EXCEPTION 'IDEMP-005: repeat count approval must not create another movement';
   END IF;
 
-  IF EXISTS (
-    SELECT 1 FROM stock_internal.location_posting_context
-    WHERE transaction_id=txid_current()
-  ) THEN
-    RAISE EXCEPTION 'CONTEXT-001: trigger posting context must be consumed within the transaction';
+  -- A legacy aggregate-only posting still uses the installed default-location trigger.
+  PERFORM public.fn_apply_stock_movement(
+    v_product_id,1.00,'phase3 legacy trigger test','phase3_legacy',NULL
+  );
+  SELECT current_stock INTO v_total_after FROM public.products WHERE id=v_product_id;
+  SELECT COALESCE(qty,0) INTO v_default_after FROM public.product_stock_locations
+  WHERE product_id=v_product_id AND location_id=v_default_location_id;
+  SELECT COALESCE(SUM(qty),0) INTO v_location_sum
+  FROM public.product_stock_locations WHERE product_id=v_product_id;
+  IF v_default_after <> v_default_before+1.00
+     OR ABS(v_location_sum-v_total_after) > 0.01 THEN
+    RAISE EXCEPTION 'TRIGGER-002: legacy aggregate posting must still sync through the retained default-location trigger';
   END IF;
 
   IF NOT EXISTS (
@@ -319,4 +326,4 @@ END
 $test$;
 
 ROLLBACK;
-\\echo 'Location-aware inventory runtime regression completed; fixture mutations rolled back.'
+\echo 'Location-aware inventory runtime regression completed; fixture mutations rolled back.'
