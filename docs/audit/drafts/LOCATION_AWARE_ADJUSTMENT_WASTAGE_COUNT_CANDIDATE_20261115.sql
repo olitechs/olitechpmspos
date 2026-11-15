@@ -576,7 +576,7 @@ BEGIN
     INTO v_adjustment
     FROM public.stock_adjustments
     WHERE property_id = p_property_id
-      AND request_key = BTRIM(p_request_key)
+      AND request_key = v_request_key
     FOR UPDATE;
 
     IF NOT FOUND OR v_adjustment.request_fingerprint IS DISTINCT FROM v_fingerprint THEN
@@ -706,7 +706,7 @@ BEGIN
     INTO v_wastage
     FROM public.inventory_wastage
     WHERE property_id = p_property_id
-      AND request_key = BTRIM(p_request_key)
+      AND request_key = v_request_key
     FOR UPDATE;
 
     IF NOT FOUND OR v_wastage.request_fingerprint IS DISTINCT FROM v_fingerprint THEN
@@ -829,7 +829,7 @@ BEGIN
     INTO v_count
     FROM public.inventory_counts
     WHERE property_id = p_property_id
-      AND request_key = BTRIM(p_request_key)
+      AND request_key = v_request_key
     FOR UPDATE;
 
     IF NOT FOUND OR v_count.request_fingerprint IS DISTINCT FROM v_fingerprint THEN
