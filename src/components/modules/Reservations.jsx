@@ -443,7 +443,16 @@ function ReservationDrawer({ reservation: r, rooms, pms, propertyId, busy, onClo
 
   const checkIn = () => onRun(() => pms.checkInReservation(r.id));
   const checkOut = () => onRun(() => pms.checkOutRoom(r.roomId));
-  const cancel = () => onRun(() => pms.removeReservation(r.id));
+  // fn_remove_reservation cancels the booking (it does not delete history) and
+  // releases the room when no other active booking remains. It is irreversible
+  // from this screen, so ask before running it (moved from the old Rooms tab).
+  const cancel = () => {
+    if (!window.confirm(
+      `Cancel the booking for ${r.guestName || 'this guest'}${r.roomNumber ? ` in room ${r.roomNumber}` : ''}?\n\n`
+      + 'The reservation will be marked cancelled and the room released where no other active booking remains.'
+    )) return;
+    onRun(() => pms.removeReservation(r.id));
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-[var(--overlay-scrim)]" role="dialog" aria-modal="true">
