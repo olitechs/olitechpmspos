@@ -375,6 +375,13 @@ export default function POSContainer({ initialTab = 'floor' } = {}) {
 				delete next[activeTable.id];
 				return next;
 			});
+			// The RPC already closed the source and wrote the merged/moved state.
+			// Reflect both locally instead of waiting for the realtime channel:
+			// without this, a slow/offline channel left the source as a ghost order
+			// and a later touch on the destination could wipe the server lines.
+			store.closeTableLocal(activeTable.id);
+			delete orderNumbersRef.current[activeTable.id];
+			store.applyServerSession(target.id, session);
 			// Update the local status first so the subsequent session persistence
 			// cannot race with an older "occupied" status after a printed bill join.
 			if (session.status === 'unsettled') store.setUnsettled(target.id);

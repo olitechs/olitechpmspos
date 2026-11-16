@@ -29,6 +29,25 @@ test('joined table updates the local destination session before reopening it', (
   assert.ok(container.indexOf("if (session.status === 'unsettled') store.setUnsettled(target.id)") < container.indexOf('store.setSessionOrderLines(target.id'));
 });
 
+test('table transfers repair local floor state instead of waiting for realtime', () => {
+  // The RPC closes the source and writes the target server-side; the client
+  // must adopt that state locally (or a slow/offline realtime channel leaves a
+  // ghost source order and a destination touch can wipe the server lines).
+  assert.ok(container.includes('store.closeTableLocal(activeTable.id)'));
+  assert.ok(container.includes('store.applyServerSession(target.id, session)'));
+  assert.ok(container.includes('delete orderNumbersRef.current[activeTable.id]'));
+  const appStore = readFileSync(new URL('../../src/data/AppStore.jsx', import.meta.url), 'utf8');
+  assert.ok(appStore.includes('const closeTableLocal = useCallback'), 'local-only close must not re-persist a closed session');
+  assert.ok(appStore.includes('const applyServerSession = useCallback'), 'server session adoption must exist');
+});
+
+test('order cart can only be cleared before anything was sent to the kitchen', () => {
+  assert.ok(orderTaking.includes("sessionForClear?.status === 'unsettled'"));
+  assert.ok(orderTaking.includes('disabled={!orderLines.length || hasSentItems}'));
+  assert.ok(orderTaking.includes('Clear order'));
+  assert.ok(orderTaking.includes('Nothing has been sent to the kitchen yet.'));
+});
+
 test('POS item removal asks for an explicit quantity and validates the current line quantity', () => {
   assert.ok(orderTaking.includes("Quantity to {removeTarget.sent ? 'void' : 'remove'}"));
   assert.ok(orderTaking.includes('max={removeTarget.sent ? removeTarget.sentQty : removeTarget.unsentQty}'));
