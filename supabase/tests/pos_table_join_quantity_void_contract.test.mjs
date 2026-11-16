@@ -82,8 +82,8 @@ test('recovered floor tables persist movement using their original configured la
 test('split tender rows have stable identities and hide room-charge allocations from unauthorized roles', () => {
   const bill = readFileSync(new URL('../../src/components/pos/BillPayment.jsx', import.meta.url), 'utf8');
   assert.ok(bill.includes('key={p.id}'));
-  assert.ok(bill.includes("m.id!=='room'||canRoomCharge"));
-  assert.ok(bill.includes("id:'split-'+Date.now()+'-'+prev.length"));
+  assert.match(bill, /m\.id\s*!==\s*'room'\s*\|\|\s*canRoomCharge/);
+  assert.match(bill, /id:\s*'split-'\s*\+\s*Date\.now\(\)\s*\+\s*'-'\s*\+\s*prev\.length/);
 });
 
 test('receipt void lookup is scoped in the query instead of filtering the whole property day client-side', () => {
@@ -92,7 +92,10 @@ test('receipt void lookup is scoped in the query instead of filtering the whole 
   assert.ok(pmsService.includes("q = q.eq('table_number', String(tableNumber))"));
   // The operational day is a half-open window so 23:59:59.999 voids are included.
   assert.ok(pmsService.includes(".gte('created_at', `${effectiveDate}T00:00:00+03:00`).lt('created_at', `${nextDate}T00:00:00+03:00`)"));
-  assert.ok(bill.includes('listVoidedItems(propertyId,{orderNumber:stableOrderNumber,tableNumber:tableLabel(table)})'));
+  assert.match(
+    bill,
+    /listVoidedItems\(\s*propertyId,\s*\{\s*orderNumber:\s*stableOrderNumber,\s*tableNumber:\s*tableLabel\(table\)\s*\}\s*\)/,
+  );
   assert.ok(!bill.includes('voidRows.filter'));
 });
 

@@ -21,7 +21,7 @@ test('cashier reprints and refunds never tell staff a job failed when it may hav
   const cashier = await read('../components/modules/Cashier.jsx');
   const shiftHistory = await read('../components/pos/ShiftReceiptHistory.jsx');
 
-  assert.match(bill, /result\.outcome==='uncertain'/);
+  assert.match(bill, /result\.outcome\s*===\s*'uncertain'/);
   assert.match(bill, /check the paper before reprinting/);
   assert.match(cashier, /r\.outcome === 'uncertain'/);
   assert.match(cashier, /result\.outcome === 'uncertain'/);
@@ -42,7 +42,7 @@ test('a partial failure is finished, not duplicated, and only explicit reprints 
   assert.match(service, /forceReprint \|\| !shiftId \? \[\]/);
   assert.match(service, /if \(done\.includes\(copy\.copyType\)\)/);
 
-  assert.match(bill, /forceReprint:true/);
+  assert.match(bill, /forceReprint:\s*true/);
   assert.match(cashier, /forceReprint: true/);
   assert.match(shiftHistory, /forceReprint: true/);
 });
