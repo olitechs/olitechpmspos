@@ -117,9 +117,27 @@ begin
   Result := Code = 0;
 end;
 
+{ True once the service reached STOPPED or is no longer registered.
+  STOP_PENDING must not pass here: replacing files or re-registering while the
+  previous service is still shutting down is what turns an upgrade into a
+  "marked for deletion" failure with exit code 1. }
+function AgentServiceStoppedOrGone(): Boolean;
+var
+  Code: Integer;
+begin
+  if not AgentServiceExists() then begin
+    Result := True;
+    exit;
+  end;
+  Result := False;
+  if not Exec(ExpandConstant('{cmd}'), '/C sc.exe query OliTechsPrintAgent | findstr /I "STOPPED"', '', SW_HIDE, ewWaitUntilTerminated, Code) then
+    exit;
+  Result := Code = 0;
+end;
+
 { Files in the install folder are replaced right after ssInstall. A running
-  service holds the bundled node.exe open, so it must be stopped before any
-  file is copied. An upgrade must not need a reboot or a manual "sc stop".
+  service holds the bundled node.exe open, so it must be fully stopped before
+  any file is copied. An upgrade must not need a reboot or a manual "sc stop".
   (Do not write brace constants such as the app folder inside a brace comment:
   Inno ends the comment at the first closing brace.) }
 procedure StopExistingAgentService();
@@ -132,10 +150,13 @@ begin
   Exec(ExpandConstant('{cmd}'), '/C sc.exe stop OliTechsPrintAgent', '', SW_HIDE, ewWaitUntilTerminated, Code);
   for I := 1 to 40 do
   begin
-    if not AgentServiceRunning() then
+    if AgentServiceStoppedOrGone() then
       exit;
     Sleep(500);
   end;
+  { The service is still shutting down. Ask again and let the service installer
+    wait for the Stopped state itself before it removes the old registration. }
+  Exec(ExpandConstant('{cmd}'), '/C sc.exe stop OliTechsPrintAgent', '', SW_HIDE, ewWaitUntilTerminated, Code);
 end;
 
 { The pairing dialog only makes sense when the agent actually installed. }
@@ -144,10 +165,28 @@ begin
   Result := not ServiceInstallFailed;
 end;
 
+{ The service installer writes this small companion file when a stage fails so
+  staff see the failed step, not just an exit code. It is ASCII-only. }
+function LastErrorDetail(): String;
+var
+  FilePath: String;
+  Content: AnsiString;
+begin
+  Result := '';
+  FilePath := ExpandConstant('{commonappdata}\OliTechs\PrintAgent\logs\install-last-error.txt');
+  if LoadStringFromFile(FilePath, Content) then
+  begin
+    Result := Trim(String(Content));
+    if Length(Result) > 600 then
+      Result := Copy(Result, 1, 600) + '...';
+  end;
+end;
+
 procedure RunServiceInstaller();
 var
   Code: Integer;
   Params: String;
+  Detail: String;
 begin
   Params := '-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "' +
     ExpandConstant('{app}\tools\print-agent\service\install-service.ps1') + '"' +
@@ -167,11 +206,20 @@ begin
   if Code <> 0 then
   begin
     ServiceInstallFailed := True;
-    MsgBox('The OliTechs Print Agent service could not be installed (exit code ' + IntToStr(Code) + ').' + #13#10#13#10 +
-      'Printing will not work until this is fixed. Restart Windows and run this installer again.' + #13#10#13#10 +
-      'If it still fails, send this diagnostic file to OliTechs support:' + #13#10 +
-      ExpandConstant('{commonappdata}\\OliTechs\\PrintAgent\\logs\\install-service.log'),
-      mbError, MB_OK);
+    Detail := LastErrorDetail();
+    if Detail <> '' then
+      MsgBox('The OliTechs Print Agent service could not be installed (exit code ' + IntToStr(Code) + ').' + #13#10#13#10 +
+        Detail + #13#10#13#10 +
+        'Printing will not work until this is fixed. Restart Windows and run this installer again — no manual cleanup is needed.' + #13#10#13#10 +
+        'If it still fails, send this diagnostic file to OliTechs support:' + #13#10 +
+        ExpandConstant('{commonappdata}\OliTechs\PrintAgent\logs\install-service.log'),
+        mbError, MB_OK)
+    else
+      MsgBox('The OliTechs Print Agent service could not be installed (exit code ' + IntToStr(Code) + ').' + #13#10#13#10 +
+        'Printing will not work until this is fixed. Restart Windows and run this installer again.' + #13#10#13#10 +
+        'If it still fails, send this diagnostic file to OliTechs support:' + #13#10 +
+        ExpandConstant('{commonappdata}\OliTechs\PrintAgent\logs\install-service.log'),
+        mbError, MB_OK);
   end;
 end;
 
