@@ -383,6 +383,7 @@ export default function POSContainer({ initialTab = 'floor' } = {}) {
 			// and a later touch on the destination could wipe the server lines.
 			store.closeTableLocal(activeTable.id);
 			delete orderNumbersRef.current[activeTable.id];
+			store.applyServerSession(target.id, session);
 			// applyServerSession adopts the complete authoritative row (including
 			// KOT and VAT snapshots) without issuing another write. Do not call
 			// setSessionOrderLines / setKotSentOrderLines here: those would enqueue
