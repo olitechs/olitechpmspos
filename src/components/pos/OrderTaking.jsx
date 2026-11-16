@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { AlertTriangle, Search, X, ShieldCheck, ChevronLeft, Eraser, Folder } from 'lucide-react';
 import { VAT_LABEL, addVat } from '@/lib/posTax';
 import { fromMinor, toMinor } from '@/lib/money';
+import { formatAmount, formatKes } from '@/lib/posMoney';
 import { tableLabel } from '@/lib/posTables';
 import { useStore } from '@/data/AppStore';
 import PrintWarn from '@/components/pos/PrintWarn';
@@ -14,10 +15,6 @@ import { getPropertySettings } from '@/services/settingsService';
 import { inventoryService } from '@/services/inventoryService';
 import { posPhase3Service } from '@/services/posPhase3Service';
 import { filterPosMenuItems, getPosStockStatus } from '@/components/pos/stockStatus';
-
-function fmt(n) {
-  return `KES ${n.toLocaleString('en-KE', { minimumFractionDigits: 0 })}`;
-}
 
 export default function OrderTaking({ table, orderLines, setOrderLines, onSendToKitchen, onBill, onMoveTable, orderNumber: orderNumberProp }) {
   const store = useStore();
@@ -451,7 +448,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
                     type="button"
                     onClick={() => addItem(item)}
                     disabled={outOfStock || modifierLoading}
-                    aria-label={`${item.name}, ${outOfStock ? 'out of stock' : lowStock ? 'low stock' : fmt(item.price)}`}
+                    aria-label={`${item.name}, ${outOfStock ? 'out of stock' : lowStock ? 'low stock' : formatKes(item.price)}`}
                     style={{ backgroundColor: item.tile_color || undefined, color: item.tile_text_color || undefined, borderColor: item.tile_color || undefined, ...(item.tile_image_url ? { backgroundImage: `linear-gradient(var(--overlay-scrim),var(--overlay-scrim)),url("${item.tile_image_url}")`, backgroundSize: "cover", backgroundPosition: "center" } : {}) }}
                     className={`relative flex aspect-square min-w-0 flex-col justify-between overflow-hidden rounded-xl border-2 p-2 text-left transition-all active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 ${outOfStock ? 'cursor-not-allowed border-[var(--danger)] bg-[var(--danger-soft)] opacity-75' : inOrderQty > 0 ? 'border-[var(--primary)] bg-[var(--primary-soft)] shadow-sm' : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--primary)] hover:bg-[var(--primary-soft)]'}`}
                   >
@@ -463,7 +460,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
                     </div>
                     <div className="my-2 w-full break-words text-center text-[11px] font-bold leading-tight sm:text-xs">{item.name}{item.sku && <span className="mt-1 block text-[9px] font-semibold tracking-wide opacity-80">SKU {item.sku}</span>}</div>
                     <div className="flex w-full items-end justify-between gap-2">
-                      <span className="text-sm font-extrabold text-[var(--primary)]">{fmt(item.price)}</span>
+                      <span className="text-sm font-extrabold text-[var(--primary)]">{formatKes(item.price)}</span>
                       {stockStatus !== 'unknown' && (
                         <span className={`text-[10px] font-bold ${outOfStock ? 'text-[var(--danger-text)]' : lowStock ? 'text-[var(--warning-text)]' : 'text-[var(--text-muted)]'}`}>
                           {outOfStock ? 'OUT OF STOCK' : lowStock ? `LOW · ${item.stock} ${item.unit}` : `${item.stock} ${item.unit}`}
@@ -488,7 +485,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
         >
           <span className="min-w-0">
             <span className="block text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">Current order · {tableLabel(table)}</span>
-            <span className="mt-1 block truncate text-sm font-extrabold text-[var(--text)]">{orderLines.length} items · {fmt(total)}</span>
+            <span className="mt-1 block truncate text-sm font-extrabold text-[var(--text)]">{orderLines.length} items · {formatKes(total)}</span>
           </span>
           <span className="flex shrink-0 items-center gap-2 rounded-xl bg-[var(--primary)] px-4 py-2.5 text-xs font-bold text-[var(--on-primary)]">
             {orderPanelExpanded ? 'Hide order' : 'View order'}
@@ -521,7 +518,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
                   {line.modifiers?.length > 0 && <div className="mt-0.5 text-xs leading-tight text-[var(--primary)]">{line.modifiers.map((m) => m.name).join(' · ')}</div>}
                   {line.center && <div className="mt-0.5 text-xs text-[var(--text-muted)]">{line.center}</div>}
                 </div>
-                <div className="shrink-0 text-sm font-bold text-[var(--text)]">{(line.price * line.qty).toLocaleString()}</div>
+                <div className="shrink-0 text-sm font-bold tabular-nums text-[var(--text)]">{formatAmount(line.price * line.qty)}</div>
               </div>
             ))
           )}
@@ -530,13 +527,13 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
         {orderLines.length > 0 && (
           <div className="border-t border-dashed border-[var(--border)] px-4 py-3">
             <div className="mb-1 flex justify-between text-sm text-[var(--text-muted)]">
-              <span>Subtotal</span><span className="font-mono">{subtotal.toLocaleString()}</span>
+              <span>Subtotal</span><span className="font-mono tabular-nums">{formatAmount(subtotal)}</span>
             </div>
             <div className="mb-2 flex justify-between text-sm text-[var(--text-muted)]">
-              <span>{VAT_LABEL}</span><span className="font-mono">{vat.toLocaleString()}</span>
+              <span>{VAT_LABEL}</span><span className="font-mono tabular-nums">{formatAmount(vat)}</span>
             </div>
-            <div className="flex justify-between text-base font-bold text-[var(--text)]">
-              <span>TOTAL KES</span><span className="font-mono">{total.toLocaleString()}</span>
+            <div className="flex items-baseline justify-between text-base font-bold text-[var(--text)]">
+              <span>Total</span><span className="font-mono tabular-nums">{formatKes(total)}</span>
             </div>
           </div>
         )}
@@ -548,32 +545,34 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
             disabled={orderLines.length === 0}
             className={`min-h-12 w-full rounded-xl px-3 text-sm font-bold transition-colors ${orderLines.length > 0 ? 'bg-[var(--primary)] text-[var(--on-primary)] hover:bg-[var(--primary-hover)]' : 'cursor-not-allowed bg-[var(--sidebar)] text-[var(--text-muted)]'}`}
           >
-            Send &amp; Print Ticket
+            Send &amp; print ticket
           </button>
-          <button
-            type="button"
-            onClick={onBill}
-            disabled={orderLines.length === 0}
-            className={`min-h-12 w-full rounded-xl border-2 px-3 text-sm font-bold transition-colors ${orderLines.length > 0 ? 'border-[var(--primary)] bg-[var(--surface)] text-[var(--primary)] hover:bg-[var(--primary-soft)]' : 'cursor-not-allowed border-[var(--border)] bg-[var(--sidebar)] text-[var(--text-muted)]'}`}
-          >
-            Request Bill →
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onBill}
+              disabled={orderLines.length === 0}
+              className={`min-h-11 flex-1 rounded-xl border px-3 text-xs font-bold transition-colors ${orderLines.length > 0 ? 'border-[var(--primary)] bg-[var(--surface)] text-[var(--primary)] hover:bg-[var(--primary-soft)]' : 'cursor-not-allowed border-[var(--border)] bg-[var(--sidebar)] text-[var(--text-muted)]'}`}
+            >
+              Request bill
+            </button>
+            <button
+              type="button"
+              onClick={onMoveTable}
+              disabled={!onMoveTable || orderLines.length === 0}
+              className={`min-h-11 flex-1 rounded-xl border px-3 text-xs font-bold transition-colors ${onMoveTable && orderLines.length > 0 ? 'border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--sidebar)]' : 'cursor-not-allowed border-[var(--border)] bg-[var(--sidebar)] text-[var(--text-muted)]'}`}
+            >
+              Move / join
+            </button>
+          </div>
           <button
             type="button"
             onClick={clearOrder}
             disabled={!orderLines.length || hasSentItems}
             title={hasSentItems ? 'Items already sent to the kitchen can only be voided individually with a reason.' : undefined}
-            className={`min-h-10 w-full rounded-xl border px-3 text-xs font-bold transition-colors ${orderLines.length > 0 && !hasSentItems ? 'border-[var(--border)] bg-[var(--surface)] text-[var(--danger)] hover:bg-[var(--danger-soft)]' : 'cursor-not-allowed border-[var(--border)] bg-[var(--sidebar)] text-[var(--text-muted)]'}`}
+            className={`inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl px-3 text-xs font-semibold transition-colors ${orderLines.length > 0 && !hasSentItems ? 'text-[var(--danger-text)] hover:bg-[var(--danger-soft)]' : 'cursor-not-allowed text-[var(--text-muted)] opacity-60'}`}
           >
-            <span className="inline-flex items-center gap-2"><Eraser size={14} /> Clear order</span>
-          </button>
-          <button
-            type="button"
-            onClick={onMoveTable}
-            disabled={!onMoveTable || orderLines.length === 0}
-            className={`min-h-12 w-full rounded-xl border-2 px-3 text-sm font-bold transition-colors ${onMoveTable && orderLines.length > 0 ? 'border-[var(--border)] bg-[var(--surface)] text-[var(--primary)] hover:bg-[var(--primary-soft)]' : 'cursor-not-allowed border-[var(--border)] bg-[var(--sidebar)] text-[var(--text-muted)]'}`}
-          >
-            Move / Join Table
+            <Eraser size={14} aria-hidden="true" /> Clear order
           </button>
         </div>
         </div>
@@ -591,7 +590,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
                 const selected = modifierSelections[group.id] || [];
                 return <div key={group.id} className="rounded-2xl border border-[var(--border)] p-4">
                   <div className="mb-3 flex items-center justify-between gap-3"><div><div className="font-bold text-[var(--text)]">{group.name}</div><div className="text-xs text-[var(--text-muted)]">{group.selection_type === 'multiple' ? (Number(group.max_selections) > 0 ? `Choose up to ${group.max_selections}` : 'Choose one or more') : 'Choose one'}{group.required ? ' · Required' : ' · Optional'}</div></div><span className="shrink-0 text-xs font-semibold text-[var(--text-muted)]">{selected.length} selected</span></div>
-                  <div className="grid gap-2 sm:grid-cols-2">{group.options.map((option) => <button type="button" key={option.id} onClick={() => toggleModifier(group, option)} className={`flex min-h-12 items-center justify-between gap-3 rounded-xl border-2 p-3 text-left ${selected.includes(option.id) ? 'border-[var(--primary)] bg-[var(--primary-soft)]' : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--primary)]'}`}><span className="text-sm font-semibold text-[var(--text)]">{option.name}</span><span className="shrink-0 text-xs font-semibold text-[var(--text-muted)]">{Number(option.price_delta_minor||0)>0?'+KES '+Number(Number(option.price_delta_minor)/100).toLocaleString('en-KE',{minimumFractionDigits:2}):'Included'}</span></button>)}</div>
+                  <div className="grid gap-2 sm:grid-cols-2">{group.options.map((option) => <button type="button" key={option.id} onClick={() => toggleModifier(group, option)} className={`flex min-h-12 items-center justify-between gap-3 rounded-xl border-2 p-3 text-left ${selected.includes(option.id) ? 'border-[var(--primary)] bg-[var(--primary-soft)]' : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--primary)]'}`}><span className="text-sm font-semibold text-[var(--text)]">{option.name}</span><span className="shrink-0 text-xs font-semibold text-[var(--text-muted)]">{Number(option.price_delta_minor||0)>0?'+'+formatKes(fromMinor(option.price_delta_minor)):'Included'}</span></button>)}</div>
                 </div>;
               })}
             </div>
