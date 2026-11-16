@@ -53,21 +53,80 @@ function makeDefinition(rowCount) {
   });
 }
 
-test('generated PDFs use landscape for wide tables, embed Unicode text, repeat headers, and number pages at 1/50/500 rows', async () => {
+// PDF text extraction is delegated to poppler (`pdfinfo`/`pdftotext`). Those are
+// optional local tools, not npm dependencies, so the text checks must not turn
+// the suite red on a machine (or CI runner) that has not installed them. The
+// structural checks below need nothing but Node and always run; the extraction
+// test skips explicitly instead of failing.
+function binaryAvailable(name) {
+  try {
+    execFileSync(name, ['-v'], { stdio: 'ignore' });
+    return true;
+  } catch (error) {
+    // ENOENT is the only proof the tool is absent; any other failure means it
+    // ran and disagreed about the flag, which is not our concern here.
+    return error?.code !== 'ENOENT';
+  }
+}
+
+const PDF_TEXT_TOOLS_MISSING = [
+  binaryAvailable('pdfinfo') ? null : 'pdfinfo',
+  binaryAvailable('pdftotext') ? null : 'pdftotext',
+].filter(Boolean);
+
+const pdfTextToolsSkipReason = PDF_TEXT_TOOLS_MISSING.length
+  ? `poppler text tools not installed (${PDF_TEXT_TOOLS_MISSING.join(', ')}); run "npm run test:reports" on a machine with poppler-utils to verify extracted text`
+  : false;
+
+function pdfPageCount(bytes) {
+  // jsPDF writes one `/Type /Page` object per page; `/Type /Pages` is the tree node.
+  return (bytes.toString('latin1').match(/\/Type\s*\/Page[^s]/g) || []).length;
+}
+
+function pdfMediaBoxes(bytes) {
+  return [...bytes.toString('latin1').matchAll(/\/MediaBox\s*\[([^\]]+)\]/g)]
+    .map((match) => match[1].trim().split(/\s+/).map(Number));
+}
+
+test('generated PDFs are valid, landscape, self-contained and paginated at 1/50/500 rows', async () => {
+  const pageCounts = [];
+  const byteSizes = [];
+  for (const count of [1, 50, 500]) {
+    const blob = await createPdfBlob(makeDefinition(count), { theme: THEME, fontBase64 });
+    assert.equal(blob.type, 'application/pdf');
+    const bytes = Buffer.from(await blob.arrayBuffer());
+    assert.equal(bytes.subarray(0, 5).toString('ascii'), '%PDF-');
+    assert.ok(bytes.toString('latin1').trimEnd().endsWith('%%EOF'), 'PDF should end with its trailer marker');
+    // Every page box must be wider than it is tall: wide report tables are landscape.
+    const boxes = pdfMediaBoxes(bytes);
+    assert.ok(boxes.length > 0, `Expected page geometry for ${count} rows`);
+    boxes.forEach(([left, bottom, right, top]) => {
+      assert.ok(right - left > top - bottom, `Expected a landscape MediaBox for ${count} rows, got ${right - left}x${top - bottom}`);
+    });
+    // An embedded TrueType program is what makes Unicode text (Café, ·, —) survive.
+    assert.match(bytes.toString('latin1'), /\/FontFile2/, 'Expected the report font to be embedded in the PDF');
+    const pages = pdfPageCount(bytes);
+    assert.ok(pages >= 1, `Expected a page count for ${count} rows`);
+    if (count >= 50) assert.ok(pages > pageCounts[0], `${count} rows should paginate beyond one page`);
+    if (count === 500) assert.ok(pages >= 5, '500 rows should span multiple pages');
+    pageCounts.push(pages);
+    byteSizes.push(bytes.length);
+  }
+  assert.deepEqual([...pageCounts].sort((a, b) => a - b), pageCounts, 'Page count must grow with row count');
+  assert.deepEqual([...byteSizes].sort((a, b) => a - b), byteSizes, 'Byte size must grow with row count');
+});
+
+test('generated PDFs repeat headers and number pages, verified by extracted text', { skip: pdfTextToolsSkipReason }, async () => {
   const directory = await mkdtemp(join(tmpdir(), 'olitechs-report-pdf-'));
   try {
     for (const count of [1, 50, 500]) {
       const blob = await createPdfBlob(makeDefinition(count), { theme: THEME, fontBase64 });
-      assert.equal(blob.type, 'application/pdf');
       const bytes = Buffer.from(await blob.arrayBuffer());
-      assert.equal(bytes.subarray(0, 5).toString('ascii'), '%PDF-');
       const filePath = join(directory, `synthetic-${count}.pdf`);
       await writeFile(filePath, bytes);
       const info = execFileSync('pdfinfo', [filePath], { encoding: 'utf8' });
       const pages = Number(info.match(/^Pages:\s+(\d+)/m)?.[1]);
-      assert.ok(pages >= 1, `Expected a page count for ${count} rows`);
-      if (count >= 50) assert.ok(pages > 1, `${count} rows should paginate`);
-      if (count === 500) assert.ok(pages >= 5, '500 rows should span multiple pages');
+      assert.equal(pages, pdfPageCount(bytes), `pdfinfo and the raw page objects disagree for ${count} rows`);
       const text = execFileSync('pdftotext', ['-layout', filePath, '-'], { encoding: 'utf8' });
       assert.match(text, /Synthetic Sales & Stock Report/);
       assert.match(text, /Page 1 of/);
