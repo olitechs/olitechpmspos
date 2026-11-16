@@ -256,8 +256,8 @@ While Phase 3 was in flight on `chore/product-cleanup`, a parallel workstream la
 - **Two production migrations are still unapplied** (code is merged; DB must lead the frontend deploy):
   1. `supabase/migrations/20261114100000_pos_shift_opening_notes.sql` — additive `cashier_shifts.opening_notes` (F9). Apply before deploying the shift-close frontend.
   2. `supabase/migrations/20261115120000_pos_cash_variance_threshold.sql` — additive `property_settings.pos_cash_variance_threshold` default 500 (F11). Apply before deploying POS Settings → Shift policy.
-- **F2 remains open (environment only).** `src/services/reportDocumentEngine.test.mjs` shells out to `pdfinfo`/`pdftotext`; no CI workflow installs poppler and none runs `test:reports`, so the check is green only on machines with poppler. Needs its own batch (bundle a JS PDF parser, or skip the page/text assertions gracefully when the binaries are missing).
-- All other Phase 3 audit findings (F1, F3–F18) are resolved; F17/F18/F1 had already been fixed on `main` before the final sweep.
+- **F2 is closed.** `src/services/reportDocumentEngine.test.mjs` no longer depends on a locally installed poppler to pass: the structural checks (valid `%PDF-` document, landscape `MediaBox` on every page, embedded `FontFile2`, page counts growing at 1/50/500 rows) run on plain Node, and only the text-extraction test skips when `pdfinfo`/`pdftotext` are missing (with an explicit reason). Outstanding follow-up: install `poppler-utils` and run the whole `npm run test:reports` in `.github/workflows/validate-build.yml` so CI verifies header repetition, page numbering and Unicode text too — this needs a git token with `workflow` scope, which the automation token does not have.
+- All Phase 3 audit findings (F1–F19) are now closed; F17/F18/F1 had already been fixed on `main` before the final sweep.
 
 ## 17. Phase 4 — Design-token polish and broken-links/UI audit — 2026-11-15
 

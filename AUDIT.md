@@ -207,7 +207,7 @@ Every finding above is closed except one that is explicitly left open:
 | Finding | Resolution |
 |---|---|
 | F1 | Fixed: the report test now expects the current brand navy (`FF101A35`); `npm run test:reports` is green (12/12). |
-| F2 | **Still open (environment).** `reportDocumentEngine.test.mjs` shells out to `pdfinfo`/`pdftotext`; no workflow installs poppler and no workflow runs `test:reports`, so it is a local-only check that goes red on any machine without poppler. Needs its own batch (bundle a JS PDF parser or skip the page/text assertions gracefully). |
+| F2 | Fixed: `reportDocumentEngine.test.mjs` now has a poppler-free structural test (valid PDF, landscape page boxes, embedded font, page counts grow at 1/50/500 rows) and skips only the text-extraction assertions when `pdfinfo`/`pdftotext` are absent, with an explicit reason. Follow-up (needs a token with `workflow` scope): install `poppler-utils` and run the full `npm run test:reports` in `validate-build.yml` so CI also verifies extracted text. |
 | F3 | Fixed: the POS header clock resyncs on an interval. |
 | F4, F8, F9, F10 | Fixed in PR #153 — see `docs/audit/PHASE3_BEHAVIOUR_IMPACT.md`. F9's migration still has to be applied in production. |
 | F5, F6, F11, F12 | Fixed in PR #166 — see `docs/audit/PHASE3_MONEY_PRINT_IMPACT.md`. F11 adds `property_settings.pos_cash_variance_threshold`; apply `20261115120000_pos_cash_variance_threshold.sql` before deploying that frontend. |
