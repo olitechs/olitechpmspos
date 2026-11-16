@@ -56,12 +56,12 @@ test('negative stock is rejected by the shared stock movement contract', () => {
 test('duplicate sale retries use a unique receipt key and a stable order identity', () => {
   assert.match(saleRpc, /pos_receipts_property_idempotency_key_uidx/);
   assert.match(saleRpc, /idempotency_key=v_key/);
-  assert.match(billPayment, /createPosSaleIdempotencyKey\(\{propertyId,tableKey:table\.id,orderNumber:stableOrderNumber\}\)/);
+  assert.match(billPayment, /createPosSaleIdempotencyKey\(\s*\{\s*propertyId,\s*tableKey:\s*table\.id,\s*orderNumber:\s*stableOrderNumber\s*\}\s*\)/);
 });
 
 test('receipt line identity and stock mapping status are durable and unmapped items warn staff', () => {
-  assert.match(billPayment, /buildPosSaleItems\(mappedOrderLines,recipeNames,stockLookupAvailable\)/);
-  assert.match(billPayment, /stock_tracking_status==='unlinked'/);
+  assert.match(billPayment, /buildPosSaleItems\(\s*mappedOrderLines,\s*recipeNames,\s*stockLookupAvailable\s*\)/);
+  assert.match(billPayment, /stock_tracking_status\s*===\s*'unlinked'/);
   assert.match(billPayment, /line status is stored on the receipt/);
   assert.match(inventory, /Finalized POS sales deduct linked products and active recipe ingredients/);
   assert.doesNotMatch(inventory, /Automatic deduction on POS sale is planned/);

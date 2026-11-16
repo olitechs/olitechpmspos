@@ -48,12 +48,12 @@ test('Room Planner opens the shared full Folio component for the selected reserv
 
 test('POS room charge picker preserves room metadata, supports searching, and confirms the guest', () => {
   assert.match(service, /room_number: row\.room_number/);
-  assert.match(billPayment, /filteredStays=activeStays\.filter/);
+  assert.match(billPayment, /filteredStays\s*=\s*activeStays\.filter/);
   assert.match(billPayment, /Search guest, room or reservation/);
   assert.match(billPayment, /Confirm guest \/ room[\s\S]*?filteredStays\.map/);
-  assert.match(billPayment, /window\.confirm\('Confirm room charge/);
-  assert.match(billPayment, /paymentMethod==='room'\?chargeReservationId:null/);
+  assert.match(billPayment, /window\.confirm\(\s*'Confirm room charge/);
+  assert.match(billPayment, /paymentMethod\s*===\s*'room'\s*\?\s*chargeReservationId\s*:\s*null/);
   assert.match(billPayment, /saleIdempotencyKey/);
-  assert.match(billPayment, /idempotencyKey:saleIdempotencyKey/);
-  assert.match(billPayment, /paymentMethod,reservationId:paymentMethod==='room'\?chargeReservationId:null/);
+  assert.match(billPayment, /idempotencyKey:\s*saleIdempotencyKey/);
+  assert.match(billPayment, /paymentMethod,\s*reservationId:\s*paymentMethod\s*===\s*'room'\s*\?\s*chargeReservationId\s*:\s*null/);
 });
