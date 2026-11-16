@@ -3,8 +3,8 @@ import { pmsService } from '@/services/pmsService';
 import { shiftService } from '@/services/shiftService';
 import { printReceipt } from '@/services/printService';
 import { toast } from 'sonner';
+import { formatAmount, formatKes } from '@/lib/posMoney';
 
-const money = (value) => Number(value || 0).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const dateTime = (value) => value ? new Date(value).toLocaleString('en-KE', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
 
 export default function ShiftReceiptHistory({ propertyId, currentShift }) {
@@ -165,7 +165,7 @@ export default function ShiftReceiptHistory({ propertyId, currentShift }) {
       <div className="overflow-x-auto">
         <table className="w-full min-w-[820px] text-sm">
           <thead><tr className="border-b border-[var(--border)] text-left text-xs text-[var(--text-muted)]">
-            <th className="px-4 py-3">Receipt / Order</th><th className="px-4 py-3">Time</th><th className="px-4 py-3">Guest / Table</th><th className="px-4 py-3">Payment</th><th className="px-4 py-3 text-right">Total</th><th className="px-4 py-3 text-right">Refunded</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Actions</th>
+            <th className="px-4 py-3">Receipt / Order</th><th className="px-4 py-3">Time</th><th className="px-4 py-3">Guest / Table</th><th className="px-4 py-3">Payment</th><th className="px-4 py-3 text-right">Total (KES)</th><th className="px-4 py-3 text-right">Refunded (KES)</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Actions</th>
           </tr></thead>
           <tbody>
             {receipts.map((receipt) => (
@@ -174,8 +174,8 @@ export default function ShiftReceiptHistory({ propertyId, currentShift }) {
                 <td className="px-4 py-3 text-xs text-[var(--text-muted)]">{dateTime(receipt.created_at)}</td>
                 <td className="px-4 py-3">{receipt.guest_name || (receipt.table_number ? 'Table ' + receipt.table_number : 'Walk-in')}</td>
                 <td className="px-4 py-3 capitalize">{receipt.payment_method}</td>
-                <td className="px-4 py-3 text-right font-semibold tabular-nums">KES {money(receipt.total)}</td>
-                <td className="px-4 py-3 text-right tabular-nums">KES {money(receipt.refunded_total)}</td>
+                <td className="px-4 py-3 text-right font-semibold tabular-nums">{formatAmount(receipt.total)}</td>
+                <td className="px-4 py-3 text-right tabular-nums">{formatAmount(receipt.refunded_total)}</td>
                 <td className="px-4 py-3"><span className="rounded-full bg-[var(--canvas)] px-2 py-1 text-xs font-bold">{receipt.status}</span></td>
                 <td className="px-4 py-3"><div className="flex items-center gap-3">
                   <button type="button" className="font-semibold text-[var(--primary)] hover:underline" onClick={() => { setSelected(receipt); setRefundAmount(String(receipt.refundable_balance || '')); setRefundMethod(receipt.payment_method === 'split' ? '' : receipt.payment_method); setRefundReason(''); }}>View items</button>
@@ -201,24 +201,24 @@ export default function ShiftReceiptHistory({ propertyId, currentShift }) {
               {(Array.isArray(selected.items) ? selected.items : []).map((item, index) => (
                 <div key={item.id || item.product_id || index} className="flex items-start justify-between gap-3 border-b border-[var(--border)] px-4 py-3 last:border-0">
                   <div><p className="text-sm font-semibold text-[var(--text)]">{Number(item.qty || item.quantity || 0)} × {item.name || item.item_name || 'Item'}</p>{item.modifiers?.length > 0 && <p className="mt-1 text-xs text-[var(--text-muted)]">{item.modifiers.map((modifier) => modifier.name || modifier.label).join(' · ')}</p>}{item.notes && <p className="mt-1 text-xs text-[var(--text-muted)]">{item.notes}</p>}</div>
-                  <p className="whitespace-nowrap text-sm font-semibold tabular-nums text-[var(--text)]">KES {money(Number(item.price || 0) * Number(item.qty || item.quantity || 0))}</p>
+                  <p className="whitespace-nowrap text-sm font-semibold tabular-nums text-[var(--text)]">{formatKes(Number(item.price || 0) * Number(item.qty || item.quantity || 0))}</p>
                 </div>
               ))}
               <div className="space-y-1 border-t border-[var(--border)] px-4 py-3 text-sm">
-                <div className="flex justify-between"><span className="text-[var(--text-muted)]">Subtotal</span><span>KES {money(selected.subtotal)}</span></div>
-                <div className="flex justify-between"><span className="text-[var(--text-muted)]">Discount</span><span>- KES {money(selected.discount_amount)}</span></div>
-                <div className="flex justify-between"><span className="text-[var(--text-muted)]">VAT</span><span>KES {money(selected.vat)}</span></div>
-                <div className="flex justify-between border-t border-[var(--border)] pt-2 font-bold"><span>Total</span><span>KES {money(selected.total)}</span></div>
-                <div className="flex justify-between text-[var(--text-muted)]"><span>Refunded</span><span>KES {money(selected.refunded_total)}</span></div>
-                <div className="flex justify-between text-[var(--text-muted)]"><span>Pending approval</span><span>KES {money(selected.pending_refund_total)}</span></div>
-                <div className="flex justify-between font-bold"><span>Remaining refundable</span><span>KES {money(selected.refundable_balance)}</span></div>
+                <div className="flex justify-between"><span className="text-[var(--text-muted)]">Subtotal</span><span>{formatKes(selected.subtotal)}</span></div>
+                <div className="flex justify-between"><span className="text-[var(--text-muted)]">Discount</span><span>-{formatKes(selected.discount_amount)}</span></div>
+                <div className="flex justify-between"><span className="text-[var(--text-muted)]">VAT</span><span>{formatKes(selected.vat)}</span></div>
+                <div className="flex justify-between border-t border-[var(--border)] pt-2 font-bold"><span>Total</span><span>{formatKes(selected.total)}</span></div>
+                <div className="flex justify-between text-[var(--text-muted)]"><span>Refunded</span><span>{formatKes(selected.refunded_total)}</span></div>
+                <div className="flex justify-between text-[var(--text-muted)]"><span>Pending approval</span><span>{formatKes(selected.pending_refund_total)}</span></div>
+                <div className="flex justify-between font-bold"><span>Remaining refundable</span><span>{formatKes(selected.refundable_balance)}</span></div>
               </div>
             </div>
             <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
               <h4 className="font-bold text-[var(--text)]">Refund receipt</h4>
               <p className="mt-1 text-xs text-[var(--text-muted)]">Refunds stay linked to the original receipt and shift. Existing manager-approval controls are preserved.</p>
-              {selected.refunds?.length > 0 && <div className="my-3 rounded-lg bg-[var(--canvas)] p-3"><p className="text-xs font-bold text-[var(--text-muted)]">Previous refunds</p>{selected.refunds.map((refundRow) => <div key={refundRow.id} className="mt-1 flex justify-between gap-2 text-xs"><span>{refundRow.settlement_method || refundRow.method} · {dateTime(refundRow.created_at)}</span><b>KES {money(refundRow.amount)}</b></div>)}</div>}
-              {selected.pending_refunds?.length > 0 && <div className="my-3 rounded-lg border border-[var(--warning)] bg-[var(--warning-soft)] p-3"><p className="text-xs font-bold text-[var(--warning-text)]">Refunds awaiting manager approval</p>{selected.pending_refunds.map((pending) => <div key={pending.id} className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs"><span>KES {money(pending.amount)} · {pending.refund_method || 'Original tender'} · {pending.reason}</span><span className="flex gap-2"><button type="button" disabled={refundBusy} onClick={() => decidePendingRefund(pending.id, true)} className="font-bold text-[var(--primary)] disabled:opacity-50">Approve</button><button type="button" disabled={refundBusy} onClick={() => decidePendingRefund(pending.id, false)} className="font-bold text-[var(--danger-text)] disabled:opacity-50">Reject</button></span></div>)}</div>}
+              {selected.refunds?.length > 0 && <div className="my-3 rounded-lg bg-[var(--canvas)] p-3"><p className="text-xs font-bold text-[var(--text-muted)]">Previous refunds</p>{selected.refunds.map((refundRow) => <div key={refundRow.id} className="mt-1 flex justify-between gap-2 text-xs"><span>{refundRow.settlement_method || refundRow.method} · {dateTime(refundRow.created_at)}</span><b>{formatKes(refundRow.amount)}</b></div>)}</div>}
+              {selected.pending_refunds?.length > 0 && <div className="my-3 rounded-lg border border-[var(--warning)] bg-[var(--warning-soft)] p-3"><p className="text-xs font-bold text-[var(--warning-text)]">Refunds awaiting manager approval</p>{selected.pending_refunds.map((pending) => <div key={pending.id} className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs"><span>{formatKes(pending.amount)} · {pending.refund_method || 'Original tender'} · {pending.reason}</span><span className="flex gap-2"><button type="button" disabled={refundBusy} onClick={() => decidePendingRefund(pending.id, true)} className="font-bold text-[var(--primary)] disabled:opacity-50">Approve</button><button type="button" disabled={refundBusy} onClick={() => decidePendingRefund(pending.id, false)} className="font-bold text-[var(--danger-text)] disabled:opacity-50">Reject</button></span></div>)}</div>}
               {selected.status === 'posted' && Number(selected.refundable_balance) > 0 ? (
                 <div className="mt-3 space-y-3">
                   {selected.payment_method === 'split' && <label className="block text-xs font-semibold text-[var(--text-muted)]">Refund tender<select value={refundMethod} onChange={(event) => setRefundMethod(event.target.value)} className="mt-1 min-h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm"><option value="">Select payment method</option><option value="cash">Cash</option><option value="card">Card</option><option value="mpesa">M-Pesa</option><option value="bank">Bank</option><option value="room">Room charge</option></select></label>}
