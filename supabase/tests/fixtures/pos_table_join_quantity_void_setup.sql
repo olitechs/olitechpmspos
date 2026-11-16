@@ -14,7 +14,9 @@ $$;
 create or replace function public.is_platform_owner()
 returns boolean language sql stable as $$ select false $$;
 create or replace function public.property_role(p_property_id uuid)
-returns text language sql stable as $$ select 'cashier'::text $$;
+returns text language sql stable as $ select 'cashier'::text $;
+create or replace function public.is_member_of_property(p_property_id uuid)
+returns boolean language sql stable as $ select true $;
 create or replace function public.current_staff_role(p_property_id uuid)
 returns text language sql stable as $$ select null::text $$;
 
@@ -79,3 +81,55 @@ create table public.pos_order_audit (
   actor_id uuid,
   created_at timestamptz not null default now()
 );
+
+
+-- The race-fence migration wraps this RPC; this minimal implementation
+-- provides the same return contract for the isolated integration fixture.
+create or replace function public.fn_touch_pos_table_session(
+  p_property_id uuid,
+  p_table_key text,
+  p_table_number text,
+  p_zone_id text,
+  p_status text,
+  p_guests integer,
+  p_waiter text,
+  p_order_number text,
+  p_order_lines jsonb
+) returns public.pos_table_sessions
+language plpgsql
+security definer
+as $$
+declare
+  v_row public.pos_table_sessions;
+begin
+  if p_status = 'closed' then
+    update public.pos_table_sessions
+      set status='closed', closed_at=now(), updated_at=now(),
+          order_lines=coalesce(p_order_lines,order_lines)
+    where property_id=p_property_id and table_key=p_table_key and status <> 'closed'
+    returning * into v_row;
+  else
+    insert into public.pos_table_sessions(
+      property_id,table_key,table_number,zone_id,status,guests,waiter,
+      order_number,order_lines,opened_by,updated_at,closed_at
+    ) values (
+      p_property_id,p_table_key,p_table_number,p_zone_id,p_status,
+      greatest(coalesce(p_guests,1),1),p_waiter,p_order_number,
+      coalesce(p_order_lines,'[]'::jsonb),auth.uid(),now(),null
+    )
+    on conflict (property_id,table_key) where status <> 'closed'
+    do update set
+      table_number=excluded.table_number,
+      zone_id=excluded.zone_id,
+      status=excluded.status,
+      guests=excluded.guests,
+      waiter=coalesce(excluded.waiter,public.pos_table_sessions.waiter),
+      order_number=coalesce(excluded.order_number,public.pos_table_sessions.order_number),
+      order_lines=excluded.order_lines,
+      updated_at=now(),
+      closed_at=null
+    returning * into v_row;
+  end if;
+  return v_row;
+end;
+$$;
