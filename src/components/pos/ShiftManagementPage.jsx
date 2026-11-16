@@ -5,11 +5,7 @@ import { getPrinters, getAssignments, printShiftPreview } from '@/services/print
 import { toast } from 'sonner';
 import { OpenShiftModal } from '@/components/pos/CloseShiftModal';
 import ShiftReceiptHistory from '@/components/pos/ShiftReceiptHistory';
-
-const money = (value) => Number(value || 0).toLocaleString('en-KE', {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
+import { formatKes } from '@/lib/posMoney';
 
 const formatDateTime = (value) => {
   if (!value) return '—';
@@ -135,7 +131,7 @@ export default function ShiftManagementPage({ propertyId, currentShift, loadErro
                   ].map(([label, value]) => (
                     <div key={label} className="rounded-xl border border-[var(--border)] bg-[var(--canvas)] p-3">
                       <p className="text-xs font-semibold text-[var(--text-muted)]">{label}</p>
-                      <p className="mt-1 text-base font-bold tabular-nums text-[var(--text)]">KES {money(value)}</p>
+                      <p className="mt-1 text-base font-bold tabular-nums text-[var(--text)]">{formatKes(value)}</p>
                     </div>
                   ))}
                   <div className="rounded-xl border border-[var(--border)] bg-[var(--canvas)] p-3">
@@ -187,7 +183,7 @@ export default function ShiftManagementPage({ propertyId, currentShift, loadErro
             </div>
             <div className="rounded-2xl border border-[var(--border)] p-4">
               <div className="flex items-center gap-2 text-xs font-semibold text-[var(--text-muted)]"><Wallet size={15} /> Opening cash float</div>
-              <p className="mt-2 text-sm font-bold text-[var(--text)]">KES {money(currentShift.opening_cash)}</p>
+              <p className="mt-2 text-sm font-bold tabular-nums text-[var(--text)]">{formatKes(currentShift.opening_cash)}</p>
             </div>
             <div className="rounded-2xl border border-[var(--border)] p-4">
               <div className="text-xs font-semibold text-[var(--text-muted)]">Business date</div>
