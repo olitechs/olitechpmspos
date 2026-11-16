@@ -103,6 +103,18 @@ jobs:
           [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:PFX_BASE64))
           $cert = Import-PfxCertificate -FilePath $pfx -CertStoreLocation Cert:\CurrentUser\My -Password (ConvertTo-SecureString $env:PFX_PASSWORD -AsPlainText -Force)
           Remove-Item $pfx -Force
+
+          # Hosted runners are ephemeral and do not know this private publisher.
+          # Trust only the public certificate from the supplied PFX for this job,
+          # so Authenticode verification can validate the complete chain.
+          $publicCert = Join-Path $env:RUNNER_TEMP 'olitechs-code-signing.cer'
+          Export-Certificate -Cert $cert -FilePath $publicCert | Out-Null
+          Import-Certificate -FilePath $publicCert -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
+          Import-Certificate -FilePath $publicCert -CertStoreLocation Cert:\LocalMachine\TrustedPublisher | Out-Null
+          Remove-Item $publicCert -Force
+
+          $trusted = Get-ChildItem Cert:\LocalMachine\Root | Where-Object Thumbprint -eq $cert.Thumbprint
+          if (-not $trusted) { throw 'The OliTechs signing certificate was not installed in the runner Root store.' }
           "thumbprint=$($cert.Thumbprint)" >> $env:GITHUB_OUTPUT
 
       - name: Refuse to build an unsigned release
