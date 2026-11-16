@@ -1,4 +1,18 @@
 import { supabase } from '@/lib/supabaseClient';
+import { createKeyedQueue } from '@/lib/keyedQueue';
+
+// All session writes and table transfers share these per-property/table queues.
+// Sorted multi-table locking avoids deadlocks when two terminals transfer in
+// opposite directions at the same time.
+const sessionWriteQueue = createKeyedQueue();
+
+function withSessionTableLocks(propertyId, tableKeys, task) {
+  const keys = [...new Set((tableKeys || []).filter(Boolean).map(String))].sort();
+  const run = (index) => index >= keys.length
+    ? task()
+    : sessionWriteQueue(`${propertyId}:${keys[index]}`, () => run(index + 1));
+  return run(0);
+}
 
 export const posService = {
   async getFloorLayout(propertyId) {
@@ -129,19 +143,21 @@ export const posService = {
     orderNumber = null,
     orderLines = [],
   }) {
-    const { data, error } = await supabase.rpc('fn_touch_pos_table_session', {
-      p_property_id: propertyId,
-      p_table_key: tableKey,
-      p_table_number: String(tableNumber ?? ''),
-      p_zone_id: zoneId || null,
-      p_status: status,
-      p_guests: Math.max(1, Number(guests || 1)),
-      p_waiter: waiter || null,
-      p_order_number: orderNumber || null,
-      p_order_lines: Array.isArray(orderLines) ? orderLines : [],
+    return withSessionTableLocks(propertyId, [tableKey], async () => {
+      const { data, error } = await supabase.rpc('fn_touch_pos_table_session', {
+        p_property_id: propertyId,
+        p_table_key: tableKey,
+        p_table_number: String(tableNumber ?? ''),
+        p_zone_id: zoneId || null,
+        p_status: status,
+        p_guests: Math.max(1, Number(guests || 1)),
+        p_waiter: waiter || null,
+        p_order_number: orderNumber || null,
+        p_order_lines: Array.isArray(orderLines) ? orderLines : [],
+      });
+      if (error) throw new Error(error.message);
+      return data;
     });
-    if (error) throw new Error(error.message);
-    return data;
   },
 
 
@@ -171,15 +187,22 @@ export const posService = {
   },
 
   async moveOrMergeTable({ propertyId, sourceTableKey, targetTableKey, targetTableNumber, mode }) {
-    const { data, error } = await supabase.rpc('fn_move_or_merge_pos_table', {
-      p_property_id: propertyId,
-      p_source_table_key: sourceTableKey,
-      p_target_table_key: targetTableKey,
-      p_target_table_number: String(targetTableNumber ?? targetTableKey ?? ''),
-      p_mode: mode,
+    // Acquiring both table queues waits for every earlier save to settle and
+    // prevents later writes from running until the atomic RPC has returned.
+    return withSessionTableLocks(propertyId, [sourceTableKey, targetTableKey], async () => {
+      const { data, error } = await supabase.rpc('fn_move_or_merge_pos_table', {
+        p_property_id: propertyId,
+        p_source_table_key: sourceTableKey,
+        p_target_table_key: targetTableKey,
+        p_target_table_number: String(targetTableNumber ?? targetTableKey ?? ''),
+        p_mode: mode,
+      });
+      if (error) throw new Error(error.message);
+      if (!data?.session || data?.source_closed !== true || data?.source_session?.status !== 'closed') {
+        throw new Error('The table transfer did not return a definitive destination and closed source session.');
+      }
+      return data;
     });
-    if (error) throw new Error(error.message);
-    return data || null;
   },
 
   async markKotSent({ propertyId, tableKey, orderLines = [] }) {
@@ -210,11 +233,23 @@ export const posService = {
     return data || null;
   },
   async closeSession({ propertyId, tableKey, orderLines = [] }) {
-    return this.saveSession({
+    // Read the active check number so a delayed close cannot close a different
+    // order subsequently opened at the same physical table.
+    const { data: activeSession, error } = await supabase
+      .from('pos_table_sessions')
+      .select('order_number')
+      .eq('property_id', propertyId)
+      .eq('table_key', tableKey)
+      .neq('status', 'closed')
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!activeSession) return null;
+    return posService.saveSession({
       propertyId,
       tableKey,
       tableNumber: '',
       status: 'closed',
+      orderNumber: activeSession.order_number || null,
       orderLines,
     });
   },
