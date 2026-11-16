@@ -6,6 +6,7 @@ import { useStore } from '@/data/AppStore';
 import { tableLabel } from '@/lib/posTables';
 import { fromMinor, toMinor } from '@/lib/money';
 import AppHeader from '@/components/pos/AppHeader';
+import StaffDock from '@/components/pos/StaffDock';
 import FloorPlan from '@/components/pos/FloorPlan';
 import OrderTaking from '@/components/pos/OrderTaking';
 import BillPayment from '@/components/pos/BillPayment';
@@ -73,6 +74,8 @@ export default function POSContainer({ initialTab = 'floor' } = {}) {
 	const [posStaff, setPosStaff] = useState([]);
 	const [posStaffError, setPosStaffError] = useState('');
 	const [switchStaff, setSwitchStaff] = useState(null);
+	// The active till operator, so the staff dock can show who is signed in.
+	const [activeStaffId, setActiveStaffId] = useState(() => sessionStaff?.id ?? null);
 	const [switchError, setSwitchError] = useState('');
 	const [posUnlocked, setPosUnlocked] = useState(false);
 	const [posAccessError, setPosAccessError] = useState('');
@@ -122,7 +125,7 @@ export default function POSContainer({ initialTab = 'floor' } = {}) {
 		window.addEventListener('beforeunload', clearWindowAccess);
 		return () => window.removeEventListener('beforeunload', clearWindowAccess);
 	}, [propertyId]);
-	const verifySwitch = async (pin) => { try { const result = await authService.verifyStaffPin({ propertyId, module: 'pos', pin }); if (!result?.ok) { setSwitchError('Wrong PIN'); return; } sessionStorage.setItem('olitech_active_staff_v2', JSON.stringify(result.staff)); window.dispatchEvent(new CustomEvent('olitech:staff-changed', { detail: result.staff })); setSwitchStaff(null); setSwitchError(''); } catch (e) { setSwitchError(e.message); } };
+	const verifySwitch = async (pin) => { try { const result = await authService.verifyStaffPin({ propertyId, module: 'pos', pin }); if (!result?.ok) { setSwitchError('Wrong PIN'); return; } sessionStorage.setItem('olitech_active_staff_v2', JSON.stringify(result.staff)); setActiveStaffId(result.staff?.id ?? null); window.dispatchEvent(new CustomEvent('olitech:staff-changed', { detail: result.staff })); setSwitchStaff(null); setSwitchError(''); } catch (e) { setSwitchError(e.message); } };
 	const verifyPosAccess = async (pin) => {
 		setPosAccessBusy(true);
 		setPosAccessError('');
@@ -426,7 +429,15 @@ export default function POSContainer({ initialTab = 'floor' } = {}) {
 
 			<div className="flex-1 min-h-0 overflow-y-auto">
 				{activeTab === 'shifts' && <ShiftManagementPage propertyId={propertyId} currentShift={currentShift} loadError={shiftLoadError} onOpened={(shift) => { setCurrentShift(shift); setActiveTab('floor'); }} onCloseShift={canCloseShift ? () => setCloseShiftOpen(true) : null} />}
-				{activeTab === 'floor' && currentShift && <div className="relative h-full"><FloorPlan onTableSelect={handleTableSelect} /><div className="absolute bottom-3 left-3 z-20 flex items-center gap-1 rounded-xl border-2 border-border bg-surface p-2 shadow-lg"><span className="px-1 text-[9px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Staff</span>{posStaff.slice(0,8).map(person => <button key={person.id} title={`Switch to ${person.full_name}`} onClick={()=>{setSwitchStaff(person);setSwitchError('');}} className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-border bg-primary text-[10px] font-semibold text-foreground hover:scale-105">{person.avatar || person.full_name?.slice(0,2).toUpperCase()}</button>)}</div>{switchStaff&&<PinPad title="Switch POS Staff" staffName={switchStaff.full_name} error={switchError} onSubmit={verifySwitch} onClose={()=>setSwitchStaff(null)}/>}</div>}
+				{activeTab === 'floor' && currentShift && (
+					<div className="flex h-full min-h-0 flex-col">
+						<div className="min-h-0 flex-1">
+							<FloorPlan onTableSelect={handleTableSelect} />
+						</div>
+						<StaffDock staff={posStaff} activeStaffId={activeStaffId} onSelect={(person) => { setSwitchStaff(person); setSwitchError(''); }} />
+						{switchStaff && <PinPad title="Switch POS Staff" staffName={switchStaff.name} error={switchError} onSubmit={verifySwitch} onClose={() => setSwitchStaff(null)} />}
+					</div>
+				)}
 
 				{activeTab === 'order' && currentShift && activeTable && (
 					<OrderTaking
