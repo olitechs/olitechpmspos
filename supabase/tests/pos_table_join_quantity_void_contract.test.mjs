@@ -28,7 +28,8 @@ test('table move and join preserve VAT and kitchen-sent snapshots', () => {
 
 test('joined table updates the local destination session before reopening it', () => {
   assert.ok(container.includes('store.applyServerSession(target.id, session)'));
-  assert.ok(container.includes('Do not call setSessionOrderLines / setKotSentOrderLines here'));
+  assert.ok(container.includes('applyServerSession adopts the complete authoritative row'));
+  assert.ok(!container.includes('store.setSessionOrderLines(target.id, nextLines'));
   assert.ok(!container.includes('store.setSessionOrderLines(target.id, nextLines'));
 });
 
