@@ -327,4 +327,17 @@ export const authService = {
 		if (error) throw new Error(error.message);
 		return { ok: true };
 	},
+
+	// Recovery-link screens: a recovery token in the URL hash is exchanged into
+	// a session by supabase-js, so the screen only needs to know whether a
+	// session exists and subscribe to PASSWORD_RECOVERY while it waits.
+	async getSession() {
+		const { data: { session } } = await supabase.auth.getSession();
+		return session || null;
+	},
+
+	onAuthStateChange(callback) {
+		const { data: { subscription } } = supabase.auth.onAuthStateChange(callback);
+		return subscription;
+	},
 };

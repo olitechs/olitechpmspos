@@ -3,8 +3,7 @@ import { RefreshCw, RotateCw, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/AuthContext';
 import SettingsPrinters from '@/pages/SettingsPrinters';
-import { supabase } from '@/lib/supabaseClient';
-import { listFnbPrintJobs, retryFnbPrintJob } from '@/services/printService';
+import { listFnbPrintJobs, retryFnbPrintJob, subscribeToFnbPrintRecovery, unsubscribeFromFnbPrintRecovery } from '@/services/printService';
 
 /**
  * The production schema uses property_printers, printer_assignments and
@@ -46,18 +45,10 @@ export default function KitchenPrintersPage() {
         console.warn('[KitchenPrintersPage] print recovery refresh failed', error);
       }
     };
-    const channel = supabase
-      .channel('fnb-print-recovery-' + propertyId)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'fnb_print_jobs',
-        filter: 'property_id=eq.' + propertyId,
-      }, refresh)
-      .subscribe();
+    const channel = subscribeToFnbPrintRecovery(propertyId, { onChange: refresh });
     return () => {
       active = false;
-      supabase.removeChannel(channel);
+      unsubscribeFromFnbPrintRecovery(channel);
     };
   }, [propertyId, loadFailedJobs]);
 

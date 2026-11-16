@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 
 const read = (path) => readFile(new URL(path, import.meta.url), 'utf8');
 const [app, posApp, reservations, channels, registration, walkIn, expressCheckout, service, store, shell, styles] = await Promise.all([
-  read('../../App.jsx'),
+  read('../../routes/AppRoutes.jsx'),
   read('../../pages/POSApp.jsx'),
   read('../../components/modules/Reservations.jsx'),
   read('../../components/modules/ChannelManager.jsx'),

@@ -3,9 +3,9 @@ import {
   AlertCircle, ArrowLeft, ArrowRight, CheckCircle2, Loader2, Network, Printer,
   RefreshCw, Usb, X,
 } from 'lucide-react';
-import { supabase } from '@/lib/supabaseClient';
 import { testPrint } from '@/services/printService';
 import { savePrinterPrintSettings } from '@/services/printerPrintSettings';
+import { printerSetupService } from '@/services/printerSetupService';
 import {
   PRINTER_ROLES,
   buildPrinterSetup,
@@ -18,7 +18,6 @@ import {
   nextStep,
   previousStep,
   roleById,
-  savePrinterSetup,
 } from '@/services/printerSetupCore';
 
 const STEP_TITLES = {
@@ -162,8 +161,7 @@ export default function PrinterSetupWizard({ open, propertyId, agentUrl = 'http:
       // Going back after a failed test and changing the name, paper or role must
       // save those edits. Updating the same printer also avoids inserting a
       // second copy when the test is retried.
-      const saved = await savePrinterSetup({
-        client: supabase,
+      const saved = await printerSetupService.savePrinterSetup({
         propertyId,
         setup: built,
         agentUrl,

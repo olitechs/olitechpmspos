@@ -1097,6 +1097,25 @@ export async function printShiftReport(shiftData, printerOrPrinters) {
   return {ok:summary.ok,outcome:summary.outcome,summary,skippedExisting,results,friendlyError:results.find((result) => !result.ok && result.friendlyError)?.friendlyError};
 }
 export async function listFnbPrintJobs(propertyId,{status=null,statuses=null,limit=50}={}) { if (!propertyId) return []; let q=supabase.from('fnb_print_jobs').select('*').eq('property_id',propertyId).order('created_at',{ascending:false}).limit(Math.min(100,Math.max(1,limit))); if(status) q=q.eq('status',status); else if(Array.isArray(statuses)&&statuses.length) q=q.in('status',statuses); const {data,error}=await q; if(error) throw error; return data||[]; }
+// Realtime recovery feed for the kitchen printers page: every insert/update on
+// the property's fnb_print_jobs re-triggers the caller's refresh so failed or
+// unconfirmed jobs surface without polling. Returns the channel for cleanup.
+export function subscribeToFnbPrintRecovery(propertyId,{onChange}={}) {
+  if (!propertyId || typeof onChange !== 'function') return null;
+  const channel = supabase
+    .channel('fnb-print-recovery-' + propertyId)
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'fnb_print_jobs',
+      filter: 'property_id=eq.' + propertyId,
+    }, onChange)
+    .subscribe();
+  return channel;
+}
+export function unsubscribeFromFnbPrintRecovery(channel) {
+  if (channel) supabase.removeChannel(channel);
+}
 export async function retryFnbPrintJob(jobId,propertyId) {
   const {data:job,error}=await supabase.from('fnb_print_jobs').select('*').eq('id',jobId).eq('property_id',propertyId).single();
   if(error) throw error;

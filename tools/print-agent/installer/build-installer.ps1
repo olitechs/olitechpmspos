@@ -175,13 +175,25 @@ $setup = Get-ChildItem -Path $DistRoot -Filter 'OliTechsPrintAgentSetup-*.exe' -
 if (-not $setup) { throw 'Inno Setup reported success but no installer was produced.' }
 
 # 6. Sign and verify. An unsigned setup is not a release artifact.
-$signtool = Resolve-Tool -Explicit '' -Candidates @(
-  (Join-Path ${env:ProgramFiles(x86)} 'Windows Kits\10\bin\x64\signtool.exe')
-) -Label 'signtool'
+$signtool = ''
+# Windows SDK binaries are stored in versioned folders on hosted Windows runners.
+$sdkBin = Join-Path ${env:ProgramFiles(x86)} 'Windows Kits\10\bin'
+if (Test-Path $sdkBin) {
+  $sdkSignTools = Get-ChildItem -Path $sdkBin -Filter 'signtool.exe' -File -Recurse -ErrorAction SilentlyContinue |
+    Where-Object { $_.FullName -like '*\x64\signtool.exe' }
+  $sdkSignTool = $sdkSignTools | Sort-Object {
+    try { [version]$_.Directory.Parent.Name } catch { [version]'0.0' }
+  } -Descending | Select-Object -First 1
+  if ($sdkSignTool) { $signtool = $sdkSignTool.FullName }
+}
 if (-not $signtool) {
   $found = Get-Command signtool.exe -ErrorAction SilentlyContinue
   if ($found) { $signtool = $found.Source }
 }
+if (-not $signtool) {
+  throw "signtool.exe was not found. Windows SDK signing tools are required. Searched: $sdkBin and PATH."
+}
+Write-Host "Using Windows SDK signing tool: $signtool" -ForegroundColor Cyan
 
 $canSign = $CertificateThumbprint -or $PfxPath
 if ($canSign) {

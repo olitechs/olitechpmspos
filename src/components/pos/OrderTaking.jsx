@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle, Search, X, ShieldCheck, ChevronLeft, Folder } from 'lucide-react';
+import { AlertTriangle, Search, X, ShieldCheck, ChevronLeft, Eraser, Folder } from 'lucide-react';
 import { VAT_LABEL, addVat } from '@/lib/posTax';
 import { fromMinor, toMinor } from '@/lib/money';
 import { tableLabel } from '@/lib/posTables';
@@ -196,6 +196,23 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
 
   const managerRoles = new Set(['hotel_admin','super_admin','cashier','fb_manager','front_office_manager','property_manager','general_manager','manager','admin','owner']);
   const needsManagerPin = !(user?.isPlatformOwner || managerRoles.has(currentRole));
+
+  // One-tap cart clearing is only allowed while nothing has been fired. Once
+  // any item was sent to the kitchen (or the bill was requested/printed, which
+  // marks the session unsettled), removals must go through the audited
+  // per-item void flow so production does not prepare cleared items.
+  const sessionForClear = store.getSession(table.id);
+  const kotSentLinesForClear = Array.isArray(sessionForClear?.kotSentOrderLines) ? sessionForClear.kotSentOrderLines : [];
+  const hasSentItems = sessionForClear?.status === 'unsettled'
+    || orderLines.some((line) => kotSentLinesForClear.some((s) => s.id === line.id && Number(s.qty || 0) > 0));
+
+  const clearOrder = () => {
+    if (!orderLines.length || hasSentItems) return;
+    if (!window.confirm('Clear all items from this order? Nothing has been sent to the kitchen yet.')) return;
+    // setOrderLines persists the empty cart through setSessionOrderLines, so a
+    // reopen (or another device) sees the same cleared order.
+    setOrderLines([]);
+  };
 
   const performRemoval = async () => {
     if (!removeTarget || !propertyId) return;
@@ -540,6 +557,15 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
             className={`min-h-12 w-full rounded-xl border-2 px-3 text-sm font-bold transition-colors ${orderLines.length > 0 ? 'border-[var(--primary)] bg-[var(--surface)] text-[var(--primary)] hover:bg-[var(--primary-soft)]' : 'cursor-not-allowed border-[var(--border)] bg-[var(--sidebar)] text-[var(--text-muted)]'}`}
           >
             Request Bill →
+          </button>
+          <button
+            type="button"
+            onClick={clearOrder}
+            disabled={!orderLines.length || hasSentItems}
+            title={hasSentItems ? 'Items already sent to the kitchen can only be voided individually with a reason.' : undefined}
+            className={`min-h-10 w-full rounded-xl border px-3 text-xs font-bold transition-colors ${orderLines.length > 0 && !hasSentItems ? 'border-[var(--border)] bg-[var(--surface)] text-[var(--danger)] hover:bg-[var(--danger-soft)]' : 'cursor-not-allowed border-[var(--border)] bg-[var(--sidebar)] text-[var(--text-muted)]'}`}
+          >
+            <span className="inline-flex items-center gap-2"><Eraser size={14} /> Clear order</span>
           </button>
           <button
             type="button"
