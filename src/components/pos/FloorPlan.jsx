@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Circle, Grid2X2, Move, Pencil, Save, X } from 'lucide-react';
+import { Check, Move, Pencil } from 'lucide-react';
+import { SegmentedControl } from '@/components/ui/system';
 import { useStore } from '@/data/AppStore';
 import { useAuth } from '@/lib/AuthContext';
 import { pmsService } from '@/services/pmsService';
@@ -254,20 +255,28 @@ export default function FloorPlan({ onTableSelect }) {
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[var(--canvas)] text-[var(--text)]">
-      <div className="flex shrink-0 flex-wrap items-center gap-2 overflow-x-auto border-b border-[var(--border)] bg-[var(--surface)] px-3 pb-2 pt-3 lg:px-4">
-        {displayZones.map((z) => (
-          <button key={z.id} type="button" onClick={() => setActiveZoneId(z.id)} className={`min-h-11 shrink-0 whitespace-nowrap rounded-full border-2 px-5 text-sm font-bold ${z.id===zone.id?'border-[var(--primary)] bg-[var(--primary)] text-[var(--on-primary)]':'border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--primary-soft)]'}`}>{z.name}</button>
-        ))}
-        <div className="flex shrink-0 flex-wrap items-center gap-1 rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] p-1 lg:ml-auto">
-          <button type="button" onClick={() => setShape('square')} className={`flex min-h-11 items-center gap-1 rounded-lg px-3 text-xs font-bold ${shape==='square'?'bg-[var(--primary)] text-[var(--on-primary)]':'bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--primary-soft)]'}`}><Grid2X2 size={14} /> Square</button>
-          <button type="button" onClick={() => setShape('circle')} className={`flex min-h-11 items-center gap-1 rounded-lg px-3 text-xs font-bold ${shape==='circle'?'bg-[var(--primary)] text-[var(--on-primary)]':'bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--primary-soft)]'}`}><Circle size={14} /> Circle</button>
-          <button type="button" onClick={() => setDesignMode((v) => !v)} className={`flex min-h-11 items-center gap-1 rounded-lg px-3 text-xs font-bold ${designMode?'bg-[var(--primary-soft)] text-[var(--primary)]':'bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--primary-soft)]'}`}><Pencil size={14} /> Design Layout</button>
-          {designMode && <button type="button" onClick={saveLayout} className="flex min-h-11 items-center gap-1 rounded-lg bg-[var(--primary)] px-3 text-xs font-bold text-[var(--on-primary)]"><Save size={14} /> Save</button>}
-          {designMode && <button type="button" onClick={() => setDesignMode(false)} className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-[var(--text)] hover:bg-[var(--primary-soft)]" title="Close design mode" aria-label="Close design mode"><X size={14} /></button>}
+      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-[var(--border)] bg-[var(--surface)] px-3 py-2 lg:px-4">
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5" role="group" aria-label="Floor zones">
+          {displayZones.map((z) => (
+            <button key={z.id} type="button" onClick={() => setActiveZoneId(z.id)} aria-pressed={z.id === zone.id} className={`min-h-11 shrink-0 whitespace-nowrap rounded-full border-2 px-4 text-sm font-bold transition-colors ${z.id === zone.id ? 'border-[var(--primary)] bg-[var(--primary)] text-[var(--on-primary)]' : 'border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:border-[var(--primary)] hover:bg-[var(--primary-soft)]'}`}>{z.name}</button>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5 lg:ml-auto">
+          <SegmentedControl
+            ariaLabel="Table tile shape"
+            value={shape}
+            onChange={setShape}
+            options={[{ value: 'square', label: 'Square' }, { value: 'circle', label: 'Round' }]}
+          />
+          {designMode ? (
+            <button type="button" onClick={saveLayout} className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl bg-[var(--primary)] px-3 text-xs font-bold text-[var(--on-primary)] hover:bg-[var(--primary-hover)]" title="Table positions save automatically as you drag"><Check size={14} aria-hidden="true" /> Done arranging</button>
+          ) : (
+            <button type="button" onClick={() => setDesignMode(true)} className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-xs font-bold text-[var(--text)] hover:bg-[var(--sidebar)]"><Pencil size={14} aria-hidden="true" /> Design layout</button>
+          )}
         </div>
       </div>
 
-      {designMode && <div className="mx-3 mb-2 shrink-0 rounded-lg bg-[var(--primary)] px-3 py-3 text-sm font-bold text-[var(--on-primary)] lg:mx-4">Design Layout ON — drag tables to rearrange them. Amounts are intentionally hidden from the floor.</div>}
+      {designMode && <div className="mx-3 mb-2 flex shrink-0 items-center gap-2 rounded-xl bg-[var(--primary-soft)] px-3 py-2.5 text-sm font-semibold text-[var(--primary)] lg:mx-4"><Move size={16} aria-hidden="true" /> Drag tables to rearrange them — the layout saves automatically. Amounts stay hidden from the floor.</div>}
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 px-3 pb-3 lg:flex-row lg:px-4 lg:pb-4">
         <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-[var(--border)] bg-[var(--canvas)]">
@@ -288,21 +297,16 @@ export default function FloorPlan({ onTableSelect }) {
         </div>
 
         <div className="flex shrink-0 flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 lg:hidden">
-          <h3 className="text-xs font-bold uppercase tracking-widest text-[var(--primary)]">Today</h3>
-          <div className="grid grid-cols-2 gap-3"><SummaryRow label="Covers Seated" value={covers} /><SummaryRow label="Tables Occupied" value={occupied} /><SummaryRow label="Open Checks" value={openChecks} /><SummaryRow label="Arrivals Today" value={arrivalsToday ?? (arrivalsFailed ? 'n/a' : '—')} hint={arrivalsFailed ? 'Reservations could not be loaded.' : 'Reservations arriving today.'} /></div>
+          <FloorSummary covers={covers} occupied={occupied} openChecks={openChecks} arrivalsToday={arrivalsToday} arrivalsFailed={arrivalsFailed} layout="grid" />
         </div>
         <aside className="hidden w-48 shrink-0 flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 xl:flex">
-          <h3 className="text-xs font-bold uppercase tracking-widest text-[var(--primary)]">Today</h3>
-          <SummaryRow label="Covers Seated" value={covers} />
-          <SummaryRow label="Tables Occupied" value={occupied} />
-          <SummaryRow label="Open Checks" value={openChecks} />
-          <SummaryRow label="Arrivals Today" value={arrivalsToday ?? (arrivalsFailed ? 'n/a' : '—')} hint={arrivalsFailed ? 'Reservations could not be loaded.' : 'Reservations arriving today.'} />
+          <FloorSummary covers={covers} occupied={occupied} openChecks={openChecks} arrivalsToday={arrivalsToday} arrivalsFailed={arrivalsFailed} />
           <div className="mt-2 border-t border-[var(--border)] pt-3">
-            <h4 className="mb-2 text-xs font-bold uppercase tracking-widest text-[var(--primary)]">Legend</h4>
-            <Legend label="Open / Available" fill="var(--room-clean)" border="var(--room-clean)" />
+            <h4 className="mb-2 text-[11px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Legend</h4>
+            <Legend label="Open / available" fill="var(--room-clean)" border="var(--room-clean)" />
             <Legend label="Occupied" fill="var(--room-occupied)" border="var(--room-occupied)" />
             <Legend label="Reserved" fill="var(--room-checkout)" border="var(--room-checkout)" />
-            <Legend label="Printed / Unsettled" fill="var(--danger)" border="var(--danger)" />
+            <Legend label="Printed / unsettled" fill="var(--danger)" border="var(--danger)" />
             <Legend label="Paid / closing" fill="var(--success)" border="var(--success)" />
           </div>
         </aside>
@@ -311,5 +315,22 @@ export default function FloorPlan({ onTableSelect }) {
   );
 }
 
+function FloorSummary({ covers, occupied, openChecks, arrivalsToday, arrivalsFailed, layout = 'stack' }) {
+  const rows = [
+    { label: 'Covers seated', value: covers },
+    { label: 'Tables occupied', value: occupied },
+    { label: 'Open checks', value: openChecks },
+    { label: 'Arrivals today', value: arrivalsToday ?? (arrivalsFailed ? 'n/a' : '—'), hint: arrivalsFailed ? 'Reservations could not be loaded.' : 'Reservations arriving today.' },
+  ];
+  return (
+    <>
+      <h3 className="text-[11px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Today</h3>
+      <div className={layout === 'grid' ? 'grid grid-cols-2 gap-3' : 'flex flex-col gap-3'}>
+        {rows.map((row) => <SummaryRow key={row.label} {...row} />)}
+      </div>
+    </>
+  );
+}
+
 function Legend({ label, fill, border }) { return <div className="mb-1.5 flex items-center gap-2"><span className="h-3.5 w-3.5 shrink-0 rounded" style={{ background: fill, border: `2px solid ${border}` }} /><span className="text-xs text-[var(--text-muted)]">{label}</span></div>; }
-function SummaryRow({ label, value, hint }) { return <div className="flex min-w-0 flex-col" title={hint}><span className="text-2xl font-bold text-[var(--text)]">{value}</span><span className="text-xs leading-tight text-[var(--text-muted)]">{label}</span></div>; }
+function SummaryRow({ label, value, hint }) { return <div className="flex min-w-0 flex-col" title={hint}><span className="text-2xl font-bold tabular-nums text-[var(--text)]">{value}</span><span className="text-xs leading-tight text-[var(--text-muted)]">{label}</span></div>; }
