@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Building2, Trash2, Plus, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabase } from '@/lib/supabaseClient';
+import { storeService } from '@/services/storeService';
 import { usePrinterStore } from '@/data/modules/printerStore';
 import { useAuth } from '@/lib/AuthContext';
 
@@ -22,16 +22,11 @@ export default function StoresPage() {
       return;
     }
     setLoading(true);
-    const { data, error } = await supabase
-      .from('stores')
-      .select('*')
-      .eq('property_id', propertyId)
-      .order('is_default', { ascending: false })
-      .order('name');
-    if (error) {
+    try {
+      const data = await storeService.listStores(propertyId);
+      usePrinterStore.setState({ stores: data, propertyId });
+    } catch (error) {
       toast.error('Could not load stores: ' + error.message);
-    } else {
-      usePrinterStore.setState({ stores: data || [], propertyId });
     }
     setLoading(false);
   };
@@ -61,18 +56,9 @@ export default function StoresPage() {
 
     setSaving(true);
     try {
-      const payload = { name: cleanName, address: address.trim() || null };
-      let query;
-      if (editing) {
-        query = supabase.from('stores').update(payload)
-          .eq('id', editing).eq('property_id', propertyId);
-      } else {
-        payload.property_id = propertyId;
-        payload.is_default = stores.length === 0;
-        query = supabase.from('stores').insert(payload);
-      }
-      const { data, error } = await query.select().single();
-      if (error) throw error;
+      const data = editing
+        ? await storeService.updateStore(editing, propertyId, { name: cleanName, address: address.trim() || null })
+        : await storeService.createStore({ propertyId, name: cleanName, address: address.trim() || null, isDefault: stores.length === 0 });
       usePrinterStore.setState(state => ({
         stores: editing
           ? state.stores.map(store => store.id === editing ? data : store)
@@ -95,9 +81,7 @@ export default function StoresPage() {
     if (!propertyId || !window.confirm(`Delete "${store.name}"? Printer groups or devices linked to this store may be affected.`)) return;
     setDeletingId(store.id);
     try {
-      const { error } = await supabase.from('stores').delete()
-        .eq('id', store.id).eq('property_id', propertyId);
-      if (error) throw error;
+      await storeService.deleteStore(store.id, propertyId);
       usePrinterStore.setState(state => ({ stores: state.stores.filter(item => item.id !== store.id) }));
       if (editing === store.id) resetForm();
       toast.success('Store deleted.');

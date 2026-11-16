@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
-const app = read('../../App.jsx');
+const app = read('../../routes/AppRoutes.jsx');
 const shell = read('../../components/layout/AppShell.jsx');
 const topNav = read('../../components/layout/TopAppNav.jsx');
 const frontLayout = read('../../components/layout/FrontOfficeLayout.jsx');
@@ -17,6 +17,7 @@ const inventoryOperations = read('../../components/modules/InventoryOperations.j
 const navArchitecture = read('./navArchitecture.js');
 const sidebarNavigation = read('./sidebarNavigation.js');
 const roomPlanner = read('../../components/pms/RoomPlanner.jsx');
+const roomPlannerModel = read('../../components/pms/planner/plannerModel.js');
 const legacySidebar = read('../../components/shell/Sidebar.jsx');
 const pmsService = read('../../services/pmsService.js');
 const distributionOps = read('../../components/modules/DistributionOps.jsx');
@@ -71,7 +72,7 @@ test('navigation-related source files contain no unresolved merge separators', (
   ]) {
     assert.doesNotMatch(source, /^={7}$/m, name + ' must not contain merge separator lines');
   }
-  assert.match(roomPlanner, /getPaymentStatusFromAmounts/);
+  assert.match(roomPlannerModel, /getPaymentStatusFromAmounts/);
   assert.match(legacySidebar, /SIDEBAR_SECTIONS/);
   assert.match(pmsService, /fn_subscription_access/);
 });

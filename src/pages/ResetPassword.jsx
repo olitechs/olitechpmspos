@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Lock, Loader2, AlertTriangle } from "lucide-react";
 import AuthLayout from "@/components/ui/AuthLayout";
-import { supabase } from "@/lib/supabaseClient";
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
@@ -18,14 +17,14 @@ export default function ResetPassword() {
   useEffect(() => {
     let active = true;
     const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const session = await authService.getSession();
       if (active) {
         setHasRecoverySession(Boolean(session) || Boolean(resetToken));
         setCheckingRecovery(false);
       }
     };
     checkSession();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const subscription = authService.onAuthStateChange((event, session) => {
       if (active && (event === "PASSWORD_RECOVERY" || session)) {
         setHasRecoverySession(true);
         setCheckingRecovery(false);

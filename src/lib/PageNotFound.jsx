@@ -131,7 +131,7 @@ export default function PageNotFound() {
         .ot404-glow__ball_10 { left:120px; width:4px; height:4px; animation:ot404-fadeUp 9s infinite; animation-delay:.92s; }
 
         .ot404-numbers { z-index:20; top:0; left:122px; color:var(--surface); font-family:var(--font-heading); font-size:200px; display:flex; }
-        .ot404-numbers__item { margin:0 10px; animation:ot404-bounceUpDown 5s infinite; }
+        .ot404-numbers__item { margin:0 10px; animation:ot404-floatDown 5s infinite ease-in-out; }
         .ot404-numbers__item_1 { animation-delay:.3s; } .ot404-numbers__item_2 { animation-duration:5.4s; animation-delay:.5s; } .ot404-numbers__item_3 { animation-delay:.3s; }
 
         .ot404-copy { position:absolute; z-index:30; left:50%; bottom:22px; width:min(620px,calc(100% - 40px)); transform:translateX(-50%); text-align:center; color:var(--surface); }
@@ -142,7 +142,7 @@ export default function PageNotFound() {
         .ot404-copy__link:hover { background:var(--primary-soft); }
 
         @keyframes ot404-fadeUp { 0% { transform:translateY(160px); opacity:1; } 60% { opacity:1; } 100% { transform:translateY(-10px); opacity:0; } }
-        @keyframes ot404-bounceUpDown { 0%,100% { transform:translateY(0); } 50% { transform:translateY(50px); } }
+        @keyframes ot404-floatDown { 0%,100% { transform:translateY(0); } 50% { transform:translateY(50px); } }
 
         @media (prefers-reduced-motion: reduce) {
           .ot404-case, .ot404-glow__ball, .ot404-numbers__item { animation:none !important; transition:none !important; }

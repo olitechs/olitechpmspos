@@ -199,7 +199,7 @@ export default function PublicHome() {
   return (
     <div className="olitechs-marketing min-h-screen overflow-x-hidden bg-[var(--brand-white)] text-[var(--brand-navy)]">
       <style>{`
-        .olitechs-marketing{overflow-x:clip;font-family:Inter,ui-sans-serif,system-ui,sans-serif}
+        .olitechs-marketing{overflow-x:clip;font-family:var(--font-body)}
         .olitechs-marketing button,.olitechs-marketing a{transition:all .2s ease}
         .marketing-reveal{opacity:0;transform:translate3d(0,28px,0);transition:opacity .7s ease,transform .7s cubic-bezier(.2,.7,.2,1);will-change:opacity,transform}
         .marketing-reveal.is-visible{opacity:1;transform:translate3d(0,0,0);will-change:auto}

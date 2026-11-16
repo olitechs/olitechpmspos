@@ -366,7 +366,9 @@ export default function POSContainer({ initialTab = 'floor' } = {}) {
 				mode,
 			});
 			const session = result?.session;
-			if (!session) throw new Error('The table transfer completed without returning the new table session.');
+			if (!session || result?.source_closed !== true || result?.source_session?.status !== 'closed') {
+				throw new Error('The table transfer completed without returning the definitive destination and closed source sessions.');
+			}
 			const nextLines = Array.isArray(session.order_lines) ? session.order_lines : (Array.isArray(session.orderLines) ? session.orderLines : []);
 			const target = tableTransferTarget.table;
 			orderNumbersRef.current[target.id] = session.order_number || sourceSession?.orderNumber || null;
@@ -375,16 +377,17 @@ export default function POSContainer({ initialTab = 'floor' } = {}) {
 				delete next[activeTable.id];
 				return next;
 			});
-			// Update the local status first so the subsequent session persistence
-			// cannot race with an older "occupied" status after a printed bill join.
-			if (session.status === 'unsettled') store.setUnsettled(target.id);
-			// Keep the in-memory AppStore session in sync with the atomic database
-			// merge. Otherwise reopening the destination can restore its old lines.
-			store.setSessionOrderLines(target.id, nextLines, session.order_number || sourceSession?.orderNumber || null);
-			store.setKotSentOrderLines(
-				target.id,
-				Array.isArray(session.kot_sent_order_lines) ? session.kot_sent_order_lines : [],
-			).catch((syncError) => console.warn('[POS] joined-table KOT snapshot sync failed', syncError));
+			// The RPC already closed the source and wrote the merged/moved state.
+			// Reflect both locally instead of waiting for the realtime channel:
+			// without this, a slow/offline channel left the source as a ghost order
+			// and a later touch on the destination could wipe the server lines.
+			store.closeTableLocal(activeTable.id);
+			delete orderNumbersRef.current[activeTable.id];
+			store.applyServerSession(target.id, session);
+			// applyServerSession adopts the complete authoritative row (including
+			// KOT and VAT snapshots) without issuing another write. Do not call
+			// setSessionOrderLines / setKotSentOrderLines here: those would enqueue
+			// a second full-row save immediately after the atomic transaction.
 			setActiveTable(target);
 			setActiveTab(session.status === 'unsettled' ? 'bill' : 'order');
 			setTableTransferOpen(false);

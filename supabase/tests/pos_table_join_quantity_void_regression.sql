@@ -92,6 +92,38 @@ begin
   if jsonb_array_length(v_move_session->'kot_sent_order_lines') <> 1 then
     raise exception 'Move did not preserve the KOT snapshot.';
   end if;
+  if v_result->'source_session'->>'status' <> 'closed' then
+    raise exception 'Transfer RPC did not return the definitive closed source row.';
+  end if;
+
+  -- A delayed save for the old source check must not reopen it after the move.
+  begin
+    perform public.fn_touch_pos_table_session(
+      v_property,'T4','4',null,'occupied',2,'Asha','ORD-004',
+      '[{"id":"juice","productId":"juice","name":"Juice","qty":2,"price":4}]'::jsonb
+    );
+    raise exception 'Expected a stale source save to be rejected after transfer.';
+  exception when others then
+    if sqlerrm not like 'This table check has already been moved or joined%' then raise; end if;
+  end;
+
+  -- The stale-write fence also applies when the delayed client omitted an
+  -- order number; the most recent transfer still identifies T4 as the source.
+  begin
+    perform public.fn_touch_pos_table_session(
+      v_property,'T4','4',null,'occupied',2,'Asha',null,
+      '[{"id":"juice","productId":"juice","name":"Juice","qty":2,"price":4}]'::jsonb
+    );
+    raise exception 'Expected a null-order-number stale save to be rejected.';
+  exception when others then
+    if sqlerrm not like 'This table check has already been moved or joined%' then raise; end if;
+  end;
+
+  -- A table that became the destination remains writable for the current check.
+  perform public.fn_touch_pos_table_session(
+    v_property,'T5','5',null,'unsettled',2,'Asha','ORD-004',
+    '[{"id":"juice","productId":"juice","name":"Juice","qty":2,"price":4}]'::jsonb
+  );
 
   -- Partial void quantity, audit trail, and database-side over-void protection.
   select value->>'id' into v_line_id

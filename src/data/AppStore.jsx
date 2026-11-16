@@ -354,6 +354,44 @@ export function StoreProvider({ children }) {
     });
   }, [propertyId]);
 
+  // Local-only session removal for flows where the database session was already
+  // closed by an atomic RPC (table move/join). Re-closing through the service
+  // would write a second closed row from stale client state.
+  const closeTableLocal = useCallback((id) => {
+    setSessions((prev) => {
+      if (!prev[id]) return prev;
+      const copy = { ...prev };
+      delete copy[id];
+      return copy;
+    });
+  }, []);
+
+  // Adopt a server-returned session row (snake_case) into local state without
+  // writing back. Used after atomic RPCs (move/merge) whose result is the
+  // source of truth; without this, a table with no local session stayed absent
+  // from the floor and a later touch could overwrite the server order lines.
+  const applyServerSession = useCallback((id, row) => {
+    if (!row || !row.table_key) return;
+    setSessions((prev) => ({
+      ...prev,
+      [id]: {
+        status: row.status,
+        guests: Number(row.guests || 1),
+        waiter: row.waiter || '',
+        openedAt: row.opened_at ? new Date(row.opened_at).getTime() : Date.now(),
+        kotSentAt: row.kot_sent_at ? new Date(row.kot_sent_at).getTime() : null,
+        kotSentOrderLines: Array.isArray(row.kot_sent_order_lines) ? row.kot_sent_order_lines : [],
+        vatSnapshot: row.vat_snapshot || null,
+        total: 0,
+        orderCount: Array.isArray(row.order_lines) ? row.order_lines.length : 0,
+        tableNumber: row.table_number,
+        zoneId: row.zone_id || null,
+        orderNumber: row.order_number || null,
+        orderLines: Array.isArray(row.order_lines) ? row.order_lines : [],
+      },
+    }));
+  }, []);
+
   // Stable keys are preserved because live sessions and KOTs reference them.
   const addZone = useCallback((name) => {
     const clean = String(name || '').trim(); if (!clean) return false;
@@ -766,6 +804,7 @@ export function StoreProvider({ children }) {
   const value = {
     zones, floorLoading, floorError, sessions, sessionsLoading, printers, saleReceipts, kitchenOrders,
     getSession, openTable, updateSessionTotals, setSessionOrderLines, setKotSentOrderLines, setUnsettled, closeTable,
+    closeTableLocal, applyServerSession,
     addZone, renameZone, removeZone, addTable, removeTable, updateTable, moveTable,
     addPrinter, updatePrinter, removePrinter, togglePurpose,
     testPrinterConnection, connectPrinter, disconnectPrinter, testPrint,
@@ -780,6 +819,7 @@ export function StoreProvider({ children }) {
 const FALLBACK = {
   zones: [], floorLoading: false, floorError: '', sessions: {}, sessionsLoading: false, printers: [], saleReceipts: [], kitchenOrders: [],
   getSession: () => null, openTable: () => {}, updateSessionTotals: () => {}, setSessionOrderLines: () => {}, setKotSentOrderLines: () => Promise.resolve(null), setUnsettled: () => {}, closeTable: () => {},
+  closeTableLocal: () => {}, applyServerSession: () => {},
   addZone: () => {}, renameZone: () => {}, removeZone: () => {}, addTable: () => {}, removeTable: () => {}, updateTable: () => {}, moveTable: () => {},
   addPrinter: () => {}, updatePrinter: () => {}, removePrinter: () => {}, togglePurpose: () => {},
   testPrinterConnection: async () => null, connectPrinter: async () => null, disconnectPrinter: () => {}, testPrint: async () => ({ ok: false, friendlyError: 'No provider' }),

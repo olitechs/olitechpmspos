@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { getRoomPlannerResponsiveMode } from '../../lib/roomPlannerResponsive.js';
 
 const source = readFileSync(new URL('./RoomPlanner.jsx', import.meta.url), 'utf8');
+const model = readFileSync(new URL('./planner/plannerModel.js', import.meta.url), 'utf8');
 
 test('reservation hover card shows booking, stay, meal plan, payment and Folio details', () => {
   assert.ok(source.includes('className="reservation-hover-card"'));
@@ -30,9 +31,9 @@ test('PMS reservation mapping supplies reference, currency and payment metadata 
 });
 
 test('room planner defaults to a 15-day window centred around today', () => {
-  assert.ok(source.includes('export const getRollingPlannerRange = (today) =>'));
-  assert.ok(source.includes('from: dateKey(subDays(today, 2))'));
-  assert.ok(source.includes('to: dateKey(addDays(today, 12))'));
+  assert.ok(model.includes('export const getRollingPlannerRange = (today) =>'));
+  assert.ok(model.includes('from: dateKey(subDays(today, 2))'));
+  assert.ok(model.includes('to: dateKey(addDays(today, 12))'));
   assert.ok(source.includes('useState(initialRange)'));
 });
 
@@ -189,9 +190,9 @@ test('today is re-evaluated at midnight instead of being frozen for the tab life
 });
 
 test('planner room-status colours follow the dashboard housekeeping semantics', () => {
-  assert.ok(source.includes("available: { fill: 'var(--room-clean)', label: 'Vacant clean' }"));
-  assert.ok(source.includes("dirty: { fill: 'var(--room-dirty)', label: 'Vacant dirty' }"));
-  assert.ok(source.includes("cleaning: { fill: 'var(--room-dirty)', label: 'Cleaning' }"));
+  assert.ok(model.includes("available: { fill: 'var(--room-clean)', label: 'Vacant clean' }"));
+  assert.ok(model.includes("dirty: { fill: 'var(--room-dirty)', label: 'Vacant dirty' }"));
+  assert.ok(model.includes("cleaning: { fill: 'var(--room-dirty)', label: 'Cleaning' }"));
   assert.ok(source.includes('const roomStatus=ROOM_STATUS[room.status]||UNKNOWN_ROOM_STATUS;'));
   assert.ok(source.includes('aria-label={`Room status: ${roomStatus.label}`}'));
 });

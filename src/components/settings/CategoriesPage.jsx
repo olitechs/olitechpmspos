@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Pencil, RefreshCw, Save } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
-import { supabase } from '@/lib/supabaseClient';
+import { inventoryService } from '@/services/inventoryService';
 import { toast } from 'sonner';
 
 export default function CategoriesPage() {
@@ -19,10 +19,12 @@ export default function CategoriesPage() {
       return;
     }
     setLoading(true);
-    const { data, error } = await supabase
-      .from('products')
-      .select('category')
-      .eq('property_id', propertyId);
+    let data, error;
+    try {
+      data = await inventoryService.listProductCategories(propertyId);
+    } catch (e) {
+      error = e;
+    }
 
     if (error) {
       toast.error(error.message);
@@ -57,12 +59,7 @@ export default function CategoriesPage() {
 
     setBusy(true);
     try {
-      const { error } = await supabase
-        .from('products')
-        .update({ category: newName })
-        .eq('property_id', propertyId)
-        .eq('category', oldName);
-      if (error) throw error;
+      await inventoryService.renameProductCategory(propertyId, oldName, newName);
       toast.success('Category renamed and products updated.');
       setEditing(null);
       await load();

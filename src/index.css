@@ -295,28 +295,9 @@
   .legend-closed { color: var(--room-out-of-order); background: var(--room-out-of-order-stripe); }
   .payment-chip { width: 18px; height: 5px; border-radius: 999px; display: inline-block; }
 
-  .room-planner {
-    --pay-unpaid: var(--pay-none);
-    --pay-deposit: var(--pay-part);
-    --payment-text: var(--text);
-    --payment-deposit-text: var(--status-deposit-foreground);
-    --stay-occupied: var(--room-occupied);
-    --stay-checkout: var(--room-checkout);
-    --stay-optioned: var(--pay-opt);
-    --stay-closed: var(--room-out-of-order);
-  }
   .room-planner .payment-none { background: var(--pay-none); color: var(--pay-none-fg); border: 1px solid var(--pay-none-bd); }
   .room-planner .payment-partial { background: var(--pay-part); color: var(--pay-part-fg); border: 1px solid var(--pay-part-bd); }
   .room-planner .payment-total { background: var(--pay-paid); color: var(--pay-paid-fg); border: 1px solid var(--pay-paid-bd); }
-  .room-planner .stay { background: var(--stay-color); color: var(--stay-text, var(--white)); border-radius: 4px; padding: 2px 8px; border-left: 4px solid var(--pay-color, transparent); transition: opacity 150ms ease; }
-  .room-planner .stay[data-status="occupied"] { --stay-color: var(--room-occupied); }
-  .room-planner .stay[data-status="checkout"] { --stay-color: var(--room-checkout); }
-  .room-planner .stay[data-status="optioned"] { --stay-color: var(--pay-opt); color: var(--pay-opt-fg); border: 1px solid var(--pay-opt-bd); border-style: dashed; }
-  .room-planner .stay[data-status="confirmed"] { background: var(--pay-paid); color: var(--pay-paid-fg); border: 1px solid var(--pay-paid-bd); }
-  .room-planner .stay[data-status="checked_out"] { opacity: .62; }
-  .room-planner .stay[data-pay="none"] { --pay-color: var(--pay-none); }
-  .room-planner .stay[data-pay="partial"] { --pay-color: var(--pay-part); color: var(--pay-part-fg); border-color: var(--pay-part-bd); }
-  .room-planner .stay[data-pay="total"] { --pay-color: var(--pay-paid); color: var(--pay-paid-fg); border-color: var(--pay-paid-bd); }
   .closure { background: var(--room-out-of-order-stripe); color: var(--text); }
   .room-dot { width: 9px; height: 9px; border-radius: 999px; display: inline-block; flex: none; }
   .room-dot[data-hk="clean"] { background: var(--room-clean); }

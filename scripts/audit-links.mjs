@@ -1,8 +1,8 @@
 // Static link audit: every internal navigation target used in src/ must resolve
-// to a route declared in src/App.jsx. Run: node scripts/audit-links.mjs
+// to a route declared in src/routes/AppRoutes.jsx. Run: node scripts/audit-links.mjs
 //
 // Scope and limits (documented in docs/OPEN_QUESTIONS.md):
-// - Parses the <Route> tree in src/App.jsx, including nesting, :params, * and
+// - Parses the <Route> tree in src/routes/AppRoutes.jsx, including nesting, :params, * and
 //   <Navigate> redirects, by normalizing element={...} groups first.
 // - Collects targets from Link/NavLink `to`, navigate(), href, and route-like
 //   string literals in nav data files.
@@ -80,7 +80,7 @@ function collectTargets(files) {
     targets.get(target).push(`${relative(ROOT, file)}:${line}`);
   };
   for (const file of files) {
-    const isApp = file.endsWith('src' + separator() + 'App.jsx');
+    const isApp = file.endsWith(['src', 'routes', 'AppRoutes.jsx'].join(separator()));
     const source = readFileSync(file, 'utf8');
     const lines = source.split('\n');
 
@@ -140,7 +140,7 @@ function resolve(target, routes, redirects) {
 }
 
 // ---------- main ----------
-const appSource = readFileSync(join(SRC, 'App.jsx'), 'utf8');
+const appSource = readFileSync(join(SRC, 'routes', 'AppRoutes.jsx'), 'utf8');
 const { routes, redirects } = parseRoutes(appSource);
 const files = walk(SRC);
 const targets = collectTargets(files);
@@ -172,7 +172,7 @@ for (const [target, locations] of [...targets].sort()) {
   if (!result.ok) unresolved.push([target, unique]);
 }
 
-console.log(`Routes declared in src/App.jsx: ${routes.length}`);
+console.log(`Routes declared in src/routes/AppRoutes.jsx: ${routes.length}`);
 console.log(`Internal targets checked: ${[...targets.keys()].length}`);
 if (unresolved.length) {
   console.log('\nUNRESOLVED targets:');

@@ -71,7 +71,7 @@ When reporting status, use **implemented / partial / planned / unverified** and 
 
 | Area | Entry points / key files |
 |---|---|
-| App bootstrap and routes | `src/main.jsx`, `src/App.jsx` |
+| App bootstrap and routes | `src/main.jsx`, `src/App.jsx`, `src/routes/AppRoutes.jsx` |
 | Main hotel shell | `src/pages/POSApp.jsx`, `src/components/shell/`, `src/components/layout/` |
 | Authentication | `src/lib/AuthContext.jsx`, `src/services/authService.js`, `src/lib/supabaseClient.js` |
 | Route and feature access | `src/lib/AdminRoute.jsx`, `src/lib/FeatureGate.jsx`, `src/lib/entitlements.js`, `src/data/modules/navArchitecture.js` |
