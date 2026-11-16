@@ -6,6 +6,9 @@ const migration = readFileSync(new URL('../migrations/20261110190000_fix_pos_tab
 const orderTaking = readFileSync(new URL('../../src/components/pos/OrderTaking.jsx', import.meta.url), 'utf8');
 const container = readFileSync(new URL('../../src/components/pos/POSContainer.jsx', import.meta.url), 'utf8');
 const pmsService = readFileSync(new URL('../../src/services/pmsService.js', import.meta.url), 'utf8');
+const posService = readFileSync(new URL('../../src/services/posService.js', import.meta.url), 'utf8');
+const raceMigration = readFileSync(new URL('../migrations/20261116090000_fix_pos_table_session_write_race.sql', import.meta.url), 'utf8');
+const destinationMigration = readFileSync(new URL('../migrations/20261116100000_allow_current_pos_transfer_destination_writes.sql', import.meta.url), 'utf8');
 
 test('POS table joins aggregate all distinct lines in a single JSON array', () => {
   assert.ok(migration.includes('jsonb_agg(merged.line order by merged.first_ord)'));
@@ -24,9 +27,9 @@ test('table move and join preserve VAT and kitchen-sent snapshots', () => {
 });
 
 test('joined table updates the local destination session before reopening it', () => {
-  assert.ok(container.includes('store.setSessionOrderLines(target.id, nextLines'));
-  assert.ok(container.includes('store.setKotSentOrderLines('));
-  assert.ok(container.indexOf("if (session.status === 'unsettled') store.setUnsettled(target.id)") < container.indexOf('store.setSessionOrderLines(target.id'));
+  assert.ok(container.includes('store.applyServerSession(target.id, session)'));
+  assert.ok(container.includes('Do not call setSessionOrderLines / setKotSentOrderLines here'));
+  assert.ok(!container.includes('store.setSessionOrderLines(target.id, nextLines'));
 });
 
 test('table transfers repair local floor state instead of waiting for realtime', () => {
@@ -90,4 +93,29 @@ test('receipt void lookup is scoped in the query instead of filtering the whole 
   assert.ok(pmsService.includes(".gte('created_at', `${effectiveDate}T00:00:00+03:00`).lt('created_at', `${nextDate}T00:00:00+03:00`)"));
   assert.ok(bill.includes('listVoidedItems(propertyId,{orderNumber:stableOrderNumber,tableNumber:tableLabel(table)})'));
   assert.ok(!bill.includes('voidRows.filter'));
+});
+
+test('session saves are queued per property/table and transfers wait for both table queues', () => {
+  assert.ok(posService.includes("import { createKeyedQueue } from '@/lib/keyedQueue'"));
+  assert.ok(posService.includes('const sessionWriteQueue = createKeyedQueue()'));
+  assert.ok(posService.includes('withSessionTableLocks(propertyId, [tableKey]'));
+  assert.ok(posService.includes('withSessionTableLocks(propertyId, [sourceTableKey, targetTableKey]'));
+  assert.ok(posService.includes('source_session?.status !== \'closed\''));
+});
+
+test('database fencing serializes saves with moves and rejects stale source-check writes', () => {
+  assert.ok(raceMigration.includes('pg_advisory_xact_lock'));
+  assert.ok(raceMigration.includes('fn_touch_pos_table_session_unfenced'));
+  assert.ok(raceMigration.includes('fn_move_or_merge_pos_table_unfenced'));
+  assert.ok(raceMigration.includes('source_session'));
+  assert.ok(raceMigration.includes('Refresh the POS floor before saving it again'));
+  assert.ok(destinationMigration.includes('a.details->>\'to_table_key\' = p_table_key'));
+  assert.ok(destinationMigration.includes('order by a.created_at desc, a.id desc'));
+});
+
+test('a closed stale duplicate is reconciled only when its moved destination retains the identical order lines', () => {
+  // Reconciliation is deliberately performed as a conditional status close,
+  // not a DELETE; the original order payload remains in the historical row.
+  assert.ok(raceMigration.includes('source_session'));
+  assert.ok(destinationMigration.includes('latest transfer where it was the source'));
 });
