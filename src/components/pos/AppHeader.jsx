@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Settings } from 'lucide-react';
+import { LogOut, Settings, UtensilsCrossed } from 'lucide-react';
 import BrandLogo from '@/components/ui/BrandLogo';
 
 const TABS = [
@@ -8,6 +8,13 @@ const TABS = [
   { id: 'bill', label: 'Bill & Payment' },
   { id: 'shifts', label: 'Shifts' },
 ];
+
+// One shape for every header action: same height, radius and border. Emphasis
+// is carried by colour only, so the row reads as a group instead of three
+// competing buttons.
+const ACTION_BASE = 'inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl border px-3 text-xs font-bold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]';
+const ACTION_NEUTRAL = `${ACTION_BASE} border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--sidebar)]`;
+const ACTION_PRIMARY = `${ACTION_BASE} border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)] hover:bg-[var(--sidebar)]`;
 
 export default function AppHeader({ activeTab, onTabChange, activeTable, onCloseShift, shift, hasOpenShift = false, onOpenShifts, onManageMenu, onOpenSettings, propertyName }) {
   const [now, setNow] = useState(() => new Date());
@@ -35,10 +42,10 @@ export default function AppHeader({ activeTab, onTabChange, activeTable, onClose
           const isActive = activeTab === tab.id;
           const isDisabled = (!hasOpenShift && tab.id !== 'shifts') || ((tab.id === 'order' || tab.id === 'bill') && !activeTable);
           const stateClass = isActive
-            ? '-mb-px bg-[var(--primary)] text-[var(--on-primary)]'
+            ? 'bg-[var(--primary)] text-[var(--on-primary)] shadow-sm'
             : isDisabled
-              ? 'cursor-not-allowed text-[var(--text-muted)]'
-              : 'text-[var(--primary)] hover:bg-[var(--primary-soft)]';
+              ? 'cursor-not-allowed text-[var(--text-muted)] opacity-60'
+              : 'text-[var(--text)] hover:bg-[var(--primary-soft)] hover:text-[var(--primary)]';
           return (
             <button
               key={tab.id}
@@ -46,7 +53,7 @@ export default function AppHeader({ activeTab, onTabChange, activeTable, onClose
               onClick={() => { if (tab.id === 'shifts') onOpenShifts?.(); else if (!isDisabled) onTabChange(tab.id); }}
               disabled={isDisabled}
               aria-current={isActive ? 'page' : undefined}
-              className={`min-h-11 shrink-0 rounded-t px-3 py-2 text-xs font-semibold transition-colors sm:px-4 sm:text-sm ${stateClass}`}
+              className={`min-h-11 shrink-0 rounded-xl px-3 py-2 text-xs font-semibold transition-colors sm:px-4 sm:text-sm ${stateClass}`}
             >
               {tab.label}
               {tab.id === 'order' && activeTable && <span className="ml-1 text-xs opacity-90">· T{activeTable.number}</span>}
@@ -56,11 +63,23 @@ export default function AppHeader({ activeTab, onTabChange, activeTable, onClose
       </nav>
 
       <div className="ml-auto flex min-w-0 items-center gap-1.5 sm:gap-2">
-        {onManageMenu && <button type="button" onClick={onManageMenu} className="min-h-11 rounded-xl border border-[var(--border)] bg-[var(--primary-soft)] px-2.5 text-xs font-bold text-[var(--primary)] hover:bg-[var(--sidebar)] sm:px-3">Menu</button>}
-        {onOpenSettings && <button type="button" onClick={onOpenSettings} className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2.5 text-xs font-bold text-[var(--text)] hover:bg-[var(--sidebar)] sm:px-3" aria-label="Open POS settings"><Settings size={16} /> <span className="hidden sm:inline">Settings</span></button>}
-        {shift?.status === 'open' && onCloseShift && <button type="button" onClick={onCloseShift} className="min-h-11 rounded-xl border border-[var(--border)] bg-[var(--primary-soft)] px-2.5 text-xs font-bold text-[var(--primary)] hover:bg-[var(--sidebar)] sm:px-3">Close Shift</button>}
+        {onManageMenu && (
+          <button type="button" onClick={onManageMenu} className={ACTION_NEUTRAL} aria-label="Manage the POS menu">
+            <UtensilsCrossed size={16} aria-hidden="true" /> <span className="hidden sm:inline">Menu</span>
+          </button>
+        )}
+        {onOpenSettings && (
+          <button type="button" onClick={onOpenSettings} className={ACTION_NEUTRAL} aria-label="Open POS settings">
+            <Settings size={16} aria-hidden="true" /> <span className="hidden sm:inline">Settings</span>
+          </button>
+        )}
+        {shift?.status === 'open' && onCloseShift && (
+          <button type="button" onClick={onCloseShift} className={ACTION_PRIMARY} aria-label="Close the current POS shift">
+            <LogOut size={16} aria-hidden="true" /> <span className="hidden sm:inline">Close Shift</span>
+          </button>
+        )}
         <div className="hidden text-right md:block">
-          <div className="font-mono text-sm font-bold text-[var(--primary)]">{timeStr}</div>
+          <div className="font-mono text-sm font-bold tabular-nums text-[var(--primary)]">{timeStr}</div>
           <div className="text-xs text-[var(--text-muted)]">{dateStr}</div>
         </div>
       </div>
