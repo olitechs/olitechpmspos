@@ -14,9 +14,9 @@ $$;
 create or replace function public.is_platform_owner()
 returns boolean language sql stable as $$ select false $$;
 create or replace function public.property_role(p_property_id uuid)
-returns text language sql stable as $ select 'cashier'::text $;
+returns text language sql stable as $$ select 'cashier'::text $$;
 create or replace function public.is_member_of_property(p_property_id uuid)
-returns boolean language sql stable as $ select true $;
+returns boolean language sql stable as $$ select true $$;
 create or replace function public.current_staff_role(p_property_id uuid)
 returns text language sql stable as $$ select null::text $$;
 
