@@ -3,7 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Activity, BarChart3, BedDouble, Bell, BookOpen, Building2, CalendarDays, ChevronDown, ChevronRight, ClipboardCheck, HelpCircle, LayoutDashboard, LockKeyhole, LogOut, Menu, MessageCircle, Settings, Sparkles, Tags, Users, X } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import TopAppNav from './TopAppNav';
-import { getSessionStaff, normalizeStaffRole } from '@/services/authService';
+import { getSessionStaff, normalizeStaffRole, hasPermissionCode } from '@/services/authService';
 
 const ITEMS = [
   { id:'manuals', label:'Manuals', path:'/frontoffice/manuals', icon:BookOpen },
@@ -31,6 +31,24 @@ export default function FrontOfficeShell() {
   const location = useLocation();
   const navigate = useNavigate();
   const role = roleFor(user);
+  const permissionForItem = (item) => {
+    if (!user?.staff) return !item.roles || item.roles.includes(role);
+    const codes = {
+      reservations: 'front_office.reservations.view',
+      'check-in': 'front_office.checkin',
+      rooms: 'front_office.reservations.view',
+      statistics: 'back_office.reports.view',
+      'suite-services': 'front_office.access',
+      structure: 'back_office.settings.manage',
+      configuration: 'back_office.settings.manage',
+      tags: 'back_office.settings.manage',
+      calendar: 'front_office.access',
+      dashboard: 'front_office.access',
+      manuals: 'front_office.access',
+      assistance: 'front_office.access',
+    };
+    return hasPermissionCode(user, codes[item.id] || 'front_office.access');
+  };
   const key = 'olitech-frontoffice-sidebar-' + String(user?.id || user?.email || 'user');
   const [collapsed, setCollapsed] = useState(() => { try { return localStorage.getItem(key) === '1'; } catch { return false; } });
   const [drawer, setDrawer] = useState(false);
@@ -46,7 +64,7 @@ export default function FrontOfficeShell() {
   useEffect(() => { setDrawer(false); }, [location.pathname]);
   useEffect(() => {
     const currentItem = ITEMS.find(item => item.path === location.pathname || item.children?.some(([,path]) => path === location.pathname));
-    if (currentItem?.roles && !currentItem.roles.includes(role)) navigate('/frontoffice/dashboard', { replace: true });
+    if (currentItem && !permissionForItem(currentItem)) navigate('/frontoffice/dashboard', { replace: true });
   }, [location.pathname, role, navigate]);
 
   useEffect(() => {
@@ -71,7 +89,7 @@ export default function FrontOfficeShell() {
     <nav aria-label="Front Office navigation" className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
       {ITEMS.map(item => {
         const Icon = item.icon;
-        const disabled = item.roles && !item.roles.includes(role);
+        const disabled = !permissionForItem(item);
         const active = (item.path && location.pathname.startsWith(item.path)) || item.children?.some(([,path]) => location.pathname.startsWith(path));
         const open = expanded.includes(item.id) || active;
         return <div key={item.id} className="mb-1">
