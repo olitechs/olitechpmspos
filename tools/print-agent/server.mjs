@@ -11,6 +11,7 @@ import { createJobClaimer } from './claim.mjs';
 import { readAgentCredential, pairAgent } from './pairing.mjs';
 import { createRateLimiter } from './ratelimit.mjs';
 import { createDiagnostics } from './diagnostics.mjs';
+import { sentry } from './sentry.mjs';
 
 // Loopback by default. startPrintAgent() applies the resolved configuration so a
 // Windows service and a console run agree on host, port, origins and data paths.
@@ -1101,12 +1102,16 @@ export async function startPrintAgent({ config = loadConfig(), logger = null } =
   process.once('SIGINT', stopOnSignal);
   // A service must crash loudly (so Windows restarts it) instead of hanging in
   // an unknown state where receipts silently stop appearing.
-  process.once('uncaughtException', (error) => {
+  process.once('uncaughtException', async (error) => {
     log.error('uncaught exception', { error: error?.stack || String(error) });
+    await sentry.captureException(error, { phase: 'runtime', source: 'uncaught-exception' });
+    await sentry.flush(1800);
     process.exit(1);
   });
-  process.once('unhandledRejection', (reason) => {
+  process.once('unhandledRejection', async (reason) => {
     log.error('unhandled rejection', { error: reason?.stack || String(reason) });
+    await sentry.captureException(reason, { phase: 'runtime', source: 'unhandled-rejection' });
+    await sentry.flush(1800);
     process.exit(1);
   });
 

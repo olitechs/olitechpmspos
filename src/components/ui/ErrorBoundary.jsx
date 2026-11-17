@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlertTriangle, Home, RefreshCw } from 'lucide-react';
+import { captureException } from '@/lib/sentry';
 
 export class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -12,6 +13,7 @@ export class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, info) {
+    captureException(error, { component: 'react-error-boundary' });
     // eslint-disable-next-line no-console
     console.error('[ErrorBoundary]', this.props.label || '', error, info?.componentStack);
   }
