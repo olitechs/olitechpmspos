@@ -12,7 +12,7 @@
 // UI-friendly wrapper around that.
 
 import { supabase } from '@/lib/supabaseClient';
-import { canAccessApp, normalizeAppRole } from '@/data/modules/navArchitecture';
+import { canAccessApp, normalizeAppRole, getPackageModules } from '@/data/modules/navArchitecture';
 
 export const STAFF_ROLES = [
   'super_admin','hotel_admin','front_office_manager','receptionist','front_desk',
@@ -69,39 +69,51 @@ export function canUseModule(user, module) { return hasSubscriptionModule(user, 
 // out of its own workspaces.
 // ---------------------------------------------------------------------------
 export function isEmployeeScopedUser(user) {
-  if (!user || user.isPlatformOwner) return false;
-  if (['owner', 'admin'].includes(String(user?.propertyRole || '').toLowerCase())) return false;
-  if (!user.permissions) return false;
-  const workspaces = Array.isArray(user.permissions.workspaces) ? user.permissions.workspaces : [];
-  const codes = Array.isArray(user.permissions.codes) ? user.permissions.codes : [];
-  return workspaces.length > 0 || codes.length > 0;
+  return !!user && !user.isPlatformOwner
+    && !['owner', 'admin'].includes(String(user?.propertyRole || '').toLowerCase())
+    && !!user.staff;
 }
 
+const APP_WORKSPACE = { pos: 'pos', frontoffice: 'frontoffice', stores: 'store', backoffice: 'backoffice' };
 export function canUseApp(user, app) {
   if (!user || !app) return false;
-  if (user.isPlatformOwner) return true;
-  const s = getSessionStaff();
-  const raw = s?.role || user?.staff?.role || user?.propertyRole || user?.role;
-  const packageName = user?.property?.package;
-  if (!canAccessApp(normalizeAppRole(normalizeStaffRole(raw)), app, packageName)) return false;
-  if (!isEmployeeScopedUser(user)) return true;
-  const appWorkspace = { pos: 'pos', frontoffice: 'frontoffice', stores: 'store', backoffice: 'backoffice' }[app];
-  const workspaces = Array.isArray(user.permissions?.workspaces) ? user.permissions.workspaces : [];
-  return workspaces.includes(appWorkspace);
+  if (user.isPlatformOwner || ['owner', 'admin'].includes(String(user?.propertyRole || '').toLowerCase())) return true;
+  if (!user.staff || user.staff.is_active === false || !user.permissions) return false;
+  const workspace = APP_WORKSPACE[app];
+  const codes = Array.isArray(user.permissions.codes) ? user.permissions.codes : [];
+  const workspaces = Array.isArray(user.permissions.workspaces) ? user.permissions.workspaces : [];
+  const accessCode = ({ pos: 'pos.access', frontoffice: 'front_office.access', stores: 'stores.access', backoffice: 'back_office.access' })[app];
+  if (!workspace || !codes.includes(accessCode) || !workspaces.includes(workspace)) return false;
+  const pkg = String(user?.property?.package || 'none').toLowerCase();
+  return pkg === 'none' ? false : getPackageModules(pkg).includes(app);
 }
 
-// Permission-code check for navigation items. Administrators (platform owner,
-// property owner/admin) implicitly hold every permission, mirroring the server
-// resolver; scoped employees need the code in their server-resolved summary.
-// Users without a summary (legacy deployments) keep legacy behavior = true so
-// the missing migration can never hide existing screens.
+// Individual page access is separate from workspace access. Unknown routes
+// default to the workspace access gate; sensitive areas require their own code.
+const PATH_PERMISSION_RULES = [
+  [/^\\/backoffice\\/reports(?:\\/|$)/, 'back_office.reports.view'],
+  [/^\\/backoffice\\/employees(?:\\/|$)/, 'back_office.employees.manage'],
+  [/^\\/backoffice\\/settings(?:\\/|$)/, 'back_office.settings.manage'],
+  [/^\\/backoffice\\/billing(?:\\/|$)/, 'back_office.billing.manage'],
+  [/^\\/frontoffice\\/reservations(?:\\/|$)/, 'front_office.reservations.view'],
+  [/^\\/frontoffice\\/check-in(?:\\/|$)/, 'front_office.checkin'],
+  [/^\\/frontoffice\\/folio(?:\\/|$)/, 'front_office.folio.view'],
+];
+export function canAccessPath(user, pathname) {
+  if (!user) return false;
+  if (user.isPlatformOwner || ['owner', 'admin'].includes(String(user?.propertyRole || '').toLowerCase())) return true;
+  const path = String(pathname || '/').split('?')[0].replace(/\\/$/, '') || '/';
+  const rule = PATH_PERMISSION_RULES.find(([pattern]) => pattern.test(path));
+  return rule ? hasPermissionCode(user, rule[1]) : true;
+}
+
+// Employee UI checks fail closed. The database RPC/RLS layer remains the
+// authoritative enforcement point for reads and writes.
 export function hasPermissionCode(user, code) {
   if (!user) return false;
-  if (user.isPlatformOwner) return true;
-  if (['owner', 'admin'].includes(String(user?.propertyRole || '').toLowerCase())) return true;
-  if (!user.permissions) return true;
+  if (user.isPlatformOwner || ['owner', 'admin'].includes(String(user?.propertyRole || '').toLowerCase())) return true;
+  if (!user.staff || !user.permissions) return false;
   const codes = Array.isArray(user.permissions.codes) ? user.permissions.codes : [];
-  if (!codes.length) return true;
   return codes.includes(code);
 }
 
