@@ -361,7 +361,7 @@ export const authService = {
 	},
 
 	async listAllStaff(propertyId) {
-		const { data, error } = await supabase.from('staff').select('id,full_name,email,phone,role,assigned_modules,is_active,property_id,avatar,last_login,user_id,created_at').eq('property_id', propertyId).order('full_name');
+		const { data, error } = await supabase.from('staff').select('id,full_name,email,phone,role,assigned_modules,is_active,property_id,avatar,last_login,user_id,role_id,department_id,created_at').eq('property_id', propertyId).order('full_name');
 		if (error) throw new Error(error.message); return data || [];
 	},
 
