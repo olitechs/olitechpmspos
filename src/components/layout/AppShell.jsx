@@ -44,6 +44,9 @@ const BACK_OFFICE_PERMISSION = {
   'store-admin': 'back_office.settings.manage',
   customers: 'back_office.access',
   integrations: 'back_office.settings.manage',
+  'pos-devices': 'back_office.settings.manage',
+  printers: 'back_office.settings.manage',
+  billing: 'back_office.billing.manage',
 };
 function backOfficeAllowed(item, role, user) {
   if (user?.staff) {
