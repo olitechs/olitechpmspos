@@ -93,6 +93,20 @@ export function canUseApp(user, app) {
 // Individual page access is separate from workspace access. Unknown routes
 // default to the workspace access gate; sensitive areas require their own code.
 const PATH_PERMISSION_RULES = [
+  [/^\\/backoffice\\/?$/, 'back_office.access'],
+  [/^\\/backoffice\\/help(?:\\/|$)/, 'back_office.access'],
+  [/^\\/backoffice\\/customers(?:\\/|$)/, 'back_office.access'],
+  [/^\\/backoffice\\/integrations(?:\\/|$)/, 'back_office.settings.manage'],
+  [/^\\/frontoffice\\/?$/, 'front_office.access'],
+  [/^\\/frontoffice\\/(?:room-planner|rooms|housekeeping|channels|manuals|assistance)(?:\\/|$)/, 'front_office.access'],
+  [/^\\/frontoffice\\/(?:structure|configuration|tags)(?:\\/|$)/, 'back_office.settings.manage'],
+  [/^\\/frontoffice\\/statistics(?:\\/|$)/, 'back_office.reports.view'],
+  [/^\\/frontoffice\\/services\\/(?:room-charges|minibar)(?:\\/|$)/, 'front_office.folio.post_charge'],
+  [/^\\/frontoffice\\/services(?:\\/|$)/, 'front_office.access'],
+  [/^\\/stores\\/?$/, 'stores.access'],
+  [/^\\/stores\\/(?:kds|stock-alerts)(?:\\/|$)/, 'stores.inventory.view'],
+  [/^\\/stores\\/reports(?:\\/|$)/, 'stores.inventory.view'],
+  [/^\\/stores\\/manage(?:\\/|$)/, 'back_office.settings.manage'],
   [/^\/backoffice\/reports(?:\/|$)/, 'back_office.reports.view'],
   [/^\/backoffice\/employees(?:\/|$)/, 'back_office.employees.manage'],
   [/^\/backoffice\/settings(?:\/|$)/, 'back_office.settings.manage'],
@@ -117,7 +131,7 @@ export function canAccessPath(user, pathname) {
   if (user.isPlatformOwner || ['owner', 'admin'].includes(String(user?.propertyRole || '').toLowerCase())) return true;
   const path = String(pathname || '/').split('?')[0].replace(/\/$/, '') || '/';
   const rule = PATH_PERMISSION_RULES.find(([pattern]) => pattern.test(path));
-  return rule ? hasPermissionCode(user, rule[1]) : true;
+  return rule ? hasPermissionCode(user, rule[1]) : false;
 }
 
 // Employee UI checks fail closed. The database RPC/RLS layer remains the
