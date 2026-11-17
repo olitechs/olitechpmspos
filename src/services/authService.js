@@ -57,6 +57,53 @@ export function canRoleUseModule(user, module) {
 }
 export function canUseModule(user, module) { return hasSubscriptionModule(user, module) && canRoleUseModule(user, module); }
 
+// ---------------------------------------------------------------------------
+// Workspace-level access with employee permissions.
+//
+// `isEmployeeScopedUser` is deliberately narrow: only an account that
+// (a) is not a platform owner, (b) is not a property owner/administrator and
+// (c) has a server-resolved permission summary is treated as a scoped
+// employee. Everyone else keeps the pre-existing role/package behavior, so a
+// missing employee-management migration can never lock an existing property
+// out of its own workspaces.
+// ---------------------------------------------------------------------------
+export function isEmployeeScopedUser(user) {
+  if (!user || user.isPlatformOwner) return false;
+  if (['owner', 'admin'].includes(String(user?.propertyRole || '').toLowerCase())) return false;
+  if (!user.permissions) return false;
+  const workspaces = Array.isArray(user.permissions.workspaces) ? user.permissions.workspaces : [];
+  const codes = Array.isArray(user.permissions.codes) ? user.permissions.codes : [];
+  return workspaces.length > 0 || codes.length > 0;
+}
+
+export function canUseApp(user, app) {
+  if (!user || !app) return false;
+  if (user.isPlatformOwner) return true;
+  const s = getSessionStaff();
+  const raw = s?.role || user?.staff?.role || user?.propertyRole || user?.role;
+  const packageName = user?.property?.package;
+  if (!canAccessApp(normalizeAppRole(normalizeStaffRole(raw)), app, packageName)) return false;
+  if (!isEmployeeScopedUser(user)) return true;
+  const appWorkspace = { pos: 'pos', frontoffice: 'frontoffice', stores: 'store', backoffice: 'backoffice' }[app];
+  const workspaces = Array.isArray(user.permissions?.workspaces) ? user.permissions.workspaces : [];
+  return workspaces.includes(appWorkspace);
+}
+
+// Permission-code check for navigation items. Administrators (platform owner,
+// property owner/admin) implicitly hold every permission, mirroring the server
+// resolver; scoped employees need the code in their server-resolved summary.
+// Users without a summary (legacy deployments) keep legacy behavior = true so
+// the missing migration can never hide existing screens.
+export function hasPermissionCode(user, code) {
+  if (!user) return false;
+  if (user.isPlatformOwner) return true;
+  if (['owner', 'admin'].includes(String(user?.propertyRole || '').toLowerCase())) return true;
+  if (!user.permissions) return true;
+  const codes = Array.isArray(user.permissions.codes) ? user.permissions.codes : [];
+  if (!codes.length) return true;
+  return codes.includes(code);
+}
+
 export function generatePin(length = 4) {
   const digits = [];
   const bytes = new Uint32Array(length);
@@ -77,7 +124,7 @@ export async function hashPin(pin) {
   return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2,'0')).join('');
 }
 
-function toAppUser({ profile, property, propertyRole, staff = null, subscription = null }) {
+function toAppUser({ profile, property, propertyRole, staff = null, subscription = null, permissions = null }) {
 	if (!profile) return null;
 	return {
 		id: profile.id,
@@ -92,6 +139,7 @@ function toAppUser({ profile, property, propertyRole, staff = null, subscription
 		propertyRole: propertyRole || null,
 		staff,
 		subscription,
+		permissions,
 		package: property?.package || 'none',
 	};
 }
@@ -147,12 +195,24 @@ async function loadCurrentUserDetails() {
 	const propertyId = membership?.property?.id;
 	let staff = null;
 	let subscription = null;
+	let permissions = null;
 	if (propertyId) {
-		const { data: staffRow } = await supabase.from('staff').select('id,full_name,email,phone,role,assigned_modules,is_active,property_id,avatar,last_login,user_id').eq('property_id', propertyId).ilike('email', authUser.email || '').maybeSingle();
+		const { data: staffRow } = await supabase.from('staff').select('id,full_name,email,phone,role,assigned_modules,is_active,property_id,avatar,last_login,user_id,role_id,department_id').eq('property_id', propertyId).ilike('email', authUser.email || '').maybeSingle();
 		staff = staffRow || null;
 		const { data: subscriptionRow, error: subscriptionError } = await supabase.rpc('fn_get_subscription', { p_property_id: propertyId });
 		if (subscriptionError) console.error('[authService] subscription lookup failed:', subscriptionError.message);
 		subscription = subscriptionRow || null;
+		// Employee permission resolution is server-side (fn_employee_permission_
+		// summary). Older deployments without the employee-management migration
+		// simply leave `permissions` undefined; every consumer falls back to the
+		// pre-existing role/assigned_modules behavior.
+		try {
+			const { data: permissionSummary, error: permissionError } = await supabase.rpc('fn_employee_permission_summary', { p_property_id: propertyId });
+			if (permissionError) throw permissionError;
+			permissions = permissionSummary || null;
+		} catch (permissionError) {
+			console.error('[authService] permission summary lookup failed:', permissionError?.message);
+		}
 	}
 
 	return toAppUser({
@@ -161,6 +221,7 @@ async function loadCurrentUserDetails() {
 		propertyRole: membership?.role || null,
 		staff,
 		subscription,
+		permissions,
 	});
 }
 
