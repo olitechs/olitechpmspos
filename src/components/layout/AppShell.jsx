@@ -107,7 +107,7 @@ export default function AppShell({ workspace = 'backoffice' }) {
         || item.children?.some(([, path]) => pathname === path || pathname.startsWith(path + '/')),
     })).filter(item => !query || item.label.toLowerCase().includes(query.toLowerCase())
       || item.children?.some(([label]) => label.toLowerCase().includes(query.toLowerCase())));
-  }, [workspace, role, pathname, query]);
+  }, [workspace, role, pathname, query, user]);
 
   const hotelName = user?.property?.name || user?.property?.business_name || 'OliTechs Hotel';
   const email = user?.email || getSessionStaff()?.email || '';
