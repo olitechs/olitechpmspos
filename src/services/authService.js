@@ -1,3 +1,405 @@
+// Platform authentication service — Supabase-backed.
+//
+// This replaces the previous localStorage-only implementation. The public
+// interface (getCurrentUser/register/login/logout/requestPasswordReset/
+// resetPassword) is kept identical on purpose so AuthContext.jsx and every
+// page that calls it (Login, Register, ForgotPassword, ResetPassword)
+// needed no changes.
+//
+// Real security now lives server-side: Supabase Auth verifies passwords
+// and issues sessions; Postgres RLS (see supabase/migrations) decides what
+// each authenticated user can read/write. This file is just a thin,
+// UI-friendly wrapper around that.
+
 import { supabase } from '@/lib/supabaseClient';
 import { canAccessApp, normalizeAppRole } from '@/data/modules/navArchitecture';
 
+export const STAFF_ROLES = [
+  'super_admin','hotel_admin','front_office_manager','receptionist','front_desk',
+  'pos_staff','waiter','cashier','store_manager','fb_manager','housekeeping_supervisor',
+];
+export const MODULE_NAMES = ['backoffice','frontoffice','pos','store'];
+export const ROLE_LABELS = {
+  super_admin: 'Super Admin / Owner', hotel_admin: 'Hotel Admin', front_office_manager: 'Front Office Manager',
+  receptionist: 'Receptionist', front_desk: 'Front Desk', pos_staff: 'POS Staff', waiter: 'Waiter', cashier: 'Cashier',
+  store_manager: 'Store Manager', fb_manager: 'F&B Manager', housekeeping_supervisor: 'Housekeeping Supervisor',
+};
+export function normalizeStaffRole(role) {
+  const value = String(role || '').toLowerCase().trim().replace(/\s+/g, '_');
+	const aliases = { owner:'hotel_admin', administrator:'hotel_admin', general_manager:'hotel_admin', manager:'front_office_manager', storekeeper:'store_manager', store_keeper:'store_manager', housekeeping:'housekeeping_supervisor' };
+  return aliases[value] || value;
+}
+export function getDefaultModulesForRole(role) {
+  switch (normalizeStaffRole(role)) {
+    case 'super_admin': case 'hotel_admin': return [...MODULE_NAMES];
+    case 'front_office_manager': return ['frontoffice'];
+    case 'receptionist': case 'front_desk': return ['frontoffice','pos'];
+    case 'pos_staff': case 'waiter': case 'cashier': return ['pos'];
+    case 'store_manager': return ['store'];
+    case 'fb_manager': return ['pos','store'];
+    case 'housekeeping_supervisor': return ['frontoffice'];
+    default: return [];
+  }
+}
+
+export function hasSubscriptionModule(user, module) {
+  if (user?.isPlatformOwner) return true;
+  const modules = user?.subscription?.enabled_modules || [];
+  const normalized = module === 'stores' ? 'store' : module;
+  return modules.includes(normalized);
+}
+export function canRoleUseModule(user, module) {
+  if (user?.isPlatformOwner) return true;
+  const role = normalizeStaffRole(getSessionStaff()?.role || user?.staff?.role || user?.propertyRole || user?.role);
+  if (role === 'super_admin' || role === 'hotel_admin') return true;
+  const assigned = getSessionStaff()?.assigned_modules || user?.staff?.assigned_modules || [];
+  if (assigned.length) return assigned.includes(module === 'stores' ? 'store' : module);
+  return getDefaultModulesForRole(role).includes(module === 'stores' ? 'store' : module);
+}
+export function canUseModule(user, module) { return hasSubscriptionModule(user, module) && canRoleUseModule(user, module); }
+
+// ---------------------------------------------------------------------------
+// Workspace-level access with employee permissions.
+//
+// `isEmployeeScopedUser` is deliberately narrow: only an account that
+// (a) is not a platform owner, (b) is not a property owner/administrator and
+// (c) has a server-resolved permission summary is treated as a scoped
+// employee. Everyone else keeps the pre-existing role/package behavior, so a
+// missing employee-management migration can never lock an existing property
+// out of its own workspaces.
+// ---------------------------------------------------------------------------
+export function isEmployeeScopedUser(user) {
+  if (!user || user.isPlatformOwner) return false;
+  if (['owner', 'admin'].includes(String(user?.propertyRole || '').toLowerCase())) return false;
+  if (!user.permissions) return false;
+  const workspaces = Array.isArray(user.permissions.workspaces) ? user.permissions.workspaces : [];
+  const codes = Array.isArray(user.permissions.codes) ? user.permissions.codes : [];
+  return workspaces.length > 0 || codes.length > 0;
+}
+
+export function canUseApp(user, app) {
+  if (!user || !app) return false;
+  if (user.isPlatformOwner) return true;
+  const s = getSessionStaff();
+  const raw = s?.role || user?.staff?.role || user?.propertyRole || user?.role;
+  const packageName = user?.property?.package;
+  if (!canAccessApp(normalizeAppRole(normalizeStaffRole(raw)), app, packageName)) return false;
+  if (!isEmployeeScopedUser(user)) return true;
+  const appWorkspace = { pos: 'pos', frontoffice: 'frontoffice', stores: 'store', backoffice: 'backoffice' }[app];
+  const workspaces = Array.isArray(user.permissions?.workspaces) ? user.permissions.workspaces : [];
+  return workspaces.includes(appWorkspace);
+}
+
+// Permission-code check for navigation items. Administrators (platform owner,
+// property owner/admin) implicitly hold every permission, mirroring the server
+// resolver; scoped employees need the code in their server-resolved summary.
+// Users without a summary (legacy deployments) keep legacy behavior = true so
+// the missing migration can never hide existing screens.
+export function hasPermissionCode(user, code) {
+  if (!user) return false;
+  if (user.isPlatformOwner) return true;
+  if (['owner', 'admin'].includes(String(user?.propertyRole || '').toLowerCase())) return true;
+  if (!user.permissions) return true;
+  const codes = Array.isArray(user.permissions.codes) ? user.permissions.codes : [];
+  if (!codes.length) return true;
+  return codes.includes(code);
+}
+
+export function generatePin(length = 4) {
+  const digits = [];
+  const bytes = new Uint32Array(length);
+  globalThis.crypto?.getRandomValues?.(bytes);
+  for (let i = 0; i < length; i += 1) digits.push(String((bytes[i] || Math.floor(Math.random() * 10)) % 10));
+  if (digits[0] === '0') digits[0] = '1';
+  return digits.join('');
+}
+export function getSessionStaff() {
+  try { return JSON.parse(sessionStorage.getItem('olitech_active_staff_v2') || 'null'); } catch { return null; }
+}
+export async function hashPin(pin) {
+  const value = String(pin || '');
+  if (!/^\d{4,6}$/.test(value)) throw new Error('PIN must contain 4 to 6 digits.');
+  if (!globalThis.crypto?.subtle) throw new Error('Secure PIN hashing is not available in this browser.');
+  const bytes = new TextEncoder().encode(`OliTechs::PIN::${value}`);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2,'0')).join('');
+}
+
+function toAppUser({ profile, property, propertyRole, staff = null, subscription = null, permissions = null }) {
+	if (!profile) return null;
+	return {
+		id: profile.id,
+		name: profile.full_name || profile.email,
+		email: profile.email,
+		// Kept for backward compatibility with existing UI that reads
+		// `user.role` as a simple display label.
+		role: profile.platform_role === 'platform_owner' ? 'Platform Owner' : propertyRole === 'owner' ? 'Administrator' : 'Staff',
+		platformRole: profile.platform_role,
+		isPlatformOwner: profile.platform_role === 'platform_owner',
+		property: property || null,
+		propertyRole: propertyRole || null,
+		staff,
+		subscription,
+		permissions,
+		package: property?.package || 'none',
+	};
+}
+
+// Property applications are created server-side by the auth trigger.
+// The authenticated safety-net below also repairs older accounts and makes
+// the registration flow idempotent without weakening RLS.
+
+async function loadCurrentUserDetails() {
+	const { data: authData } = await supabase.auth.getUser();
+	const authUser = authData?.user;
+	if (!authUser) return null;
+
+	const { data: profile, error: profileError } = await supabase
+		.from('profiles')
+		.select('*')
+		.eq('id', authUser.id)
+		.single();
+	if (profileError || !profile) return null;
+
+	// Platform owners aren't necessarily tied to a property.
+	if (profile.platform_role === 'platform_owner') {
+		return toAppUser({ profile, property: null, propertyRole: null });
+	}
+
+	// Ensure every regular signed-in registrant has a real property application.
+	// This is an idempotent safety net for older accounts and deployments where
+	// the signup trigger was not installed when the account was created.
+	const { error: ensureError } = await supabase.rpc('ensure_my_pending_property', {
+		p_business_name: authUser.user_metadata?.pending_business_name || null,
+	});
+	if (ensureError) {
+		console.error('[authService] ensure_my_pending_property failed:', ensureError.message);
+	}
+	// A regular user's primary property — a person can technically belong
+	// to more than one property later, but the login/onboarding flow only
+	// needs "their" property today.
+	const { data: memberships, error: membershipError } = await supabase
+		.from('property_users')
+		.select('role, property:properties(*)')
+		.eq('user_id', authUser.id)
+		.limit(10);
+
+	// A user can be assigned to more than one property. The previous
+	// maybeSingle() call returned no membership when that happened, which made
+	// the entire hotel/backoffice side appear unavailable. Always resolve one
+	// valid property from the returned membership rows.
+	if (membershipError) {
+		console.error('[authService] property membership lookup failed:', membershipError.message);
+	}
+	const membershipRows = Array.isArray(memberships) ? memberships : [];
+	const membership = membershipRows.find((row) => row?.property?.id) || null;
+	const propertyId = membership?.property?.id;
+	let staff = null;
+	let subscription = null;
+	let permissions = null;
+	if (propertyId) {
+		const { data: staffRow } = await supabase.from('staff').select('id,full_name,email,phone,role,assigned_modules,is_active,property_id,avatar,last_login,user_id,role_id,department_id').eq('property_id', propertyId).ilike('email', authUser.email || '').maybeSingle();
+		staff = staffRow || null;
+		const { data: subscriptionRow, error: subscriptionError } = await supabase.rpc('fn_get_subscription', { p_property_id: propertyId });
+		if (subscriptionError) console.error('[authService] subscription lookup failed:', subscriptionError.message);
+		subscription = subscriptionRow || null;
+		// Employee permission resolution is server-side (fn_employee_permission_
+		// summary). Older deployments without the employee-management migration
+		// simply leave `permissions` undefined; every consumer falls back to the
+		// pre-existing role/assigned_modules behavior.
+		try {
+			const { data: permissionSummary, error: permissionError } = await supabase.rpc('fn_employee_permission_summary', { p_property_id: propertyId });
+			if (permissionError) throw permissionError;
+			permissions = permissionSummary || null;
+		} catch (permissionError) {
+			console.error('[authService] permission summary lookup failed:', permissionError?.message);
+		}
+	}
+
+	return toAppUser({
+		profile,
+		property: membership?.property || null,
+		propertyRole: membership?.role || null,
+		staff,
+		subscription,
+		permissions,
+	});
+}
+
+export const authService = {
+	async getCurrentUser() {
+		try {
+			return await loadCurrentUserDetails();
+		} catch {
+			return null;
+		}
+	},
+
+	// Registers a NEW property application, per spec section 19-20:
+	// account is created, a property is created in `pending` / `none`
+	// package status, and the caller is added as that property's `owner`.
+	// This does NOT grant PMS/POS access — the onboarding screen handles
+	// showing the pending state until the platform owner approves.
+	//
+	// Returns either:
+	//   { needsEmailConfirmation: true }              — no session yet;
+	//     the property application has already been created server-side; the owner
+	//     simply confirms their email and signs in to see its pending status.
+	//   the app user object                            — session existed
+	//     immediately (confirmation disabled/auto-confirmed project), so
+	//     the property was created right away, same as before.
+	async register({ name, email, password, businessName }) {
+		if (!name || !email || !password) {
+			throw new Error('Name, email and password are required.');
+		}
+		const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+			email: email.trim().toLowerCase(),
+			password,
+			options: {
+				data: {
+					full_name: name,
+					// These metadata fields are consumed by the server-side auth trigger
+					// so the pending application exists even when email confirmation
+					// means this signUp call returns without a session.
+					pending_owner_signup: true,
+					pending_business_name: businessName || null,
+				},
+			},
+		});
+		if (signUpError) throw new Error(signUpError.message);
+
+		const authUser = signUpData?.user;
+		if (!authUser) {
+			throw new Error('Could not create your account. Please try again.');
+		}
+
+		if (!signUpData.session) {
+			// Email confirmation is required before a session exists. The
+			// server-side auth trigger has already created the pending property,
+			// so there is nothing to insert from this anonymous browser request.
+			return { needsEmailConfirmation: true, email: authUser.email };
+		}
+
+		// We already have a session (confirmation is off, or this Supabase
+		// project auto-confirms new users). The trigger should already have created
+		// the application; this idempotent safety-net repairs partially deployed
+		// databases without weakening RLS.
+		const { error: ensureError } = await supabase.rpc('ensure_my_pending_property', {
+			p_business_name: businessName || null,
+		});
+		if (ensureError) {
+			console.error('[authService] ensure_my_pending_property failed:', ensureError.message);
+			throw new Error(
+				"Your account was created, but the property application could not be completed. Apply migration 0011_fix_property_registration_rls.sql in Supabase, then sign in again."
+			);
+		}
+
+		return loadCurrentUserDetails();
+	},
+
+	async login({ email, password }) {
+		if (!email || !password) {
+			throw new Error('Email and password are required.');
+		}
+		const { error } = await supabase.auth.signInWithPassword({
+			email: email.trim().toLowerCase(),
+			password,
+		});
+		if (error) throw new Error(error.message);
+		return loadCurrentUserDetails();
+	},
+
+	async logout() {
+		try { await supabase.rpc('clear_active_staff_session'); } catch { /* migration may not be applied yet */ }
+		await supabase.auth.signOut();
+	},
+	async listStaff(propertyId, module) {
+		let query = supabase.from('staff').select('id,full_name,email,phone,role,assigned_modules,is_active,property_id,avatar,last_login,user_id').eq('property_id', propertyId).eq('is_active', true).order('full_name');
+		const { data, error } = await query;
+		if (error) throw new Error(error.message);
+		const rows = data || [];
+		return module ? rows.filter((row) => Array.isArray(row.assigned_modules) && row.assigned_modules.includes(module)) : rows;
+	},
+
+	async listAllStaff(propertyId) {
+		const { data, error } = await supabase.from('staff').select('id,full_name,email,phone,role,assigned_modules,is_active,property_id,avatar,last_login,user_id,created_at').eq('property_id', propertyId).order('full_name');
+		if (error) throw new Error(error.message); return data || [];
+	},
+
+	async createStaff({ propertyId, fullName, email, phone, role, assignedModules, pin, avatar, userId }) {
+		const pinHash = await hashPin(pin);
+		const { data, error } = await supabase.rpc('create_staff_member', { p_property_id: propertyId, p_full_name: fullName, p_email: email || null, p_phone: phone || null, p_role: role, p_assigned_modules: assignedModules || getDefaultModulesForRole(role), p_pin_hash: pinHash, p_avatar: avatar || null, p_user_id: userId || null });
+		if (error) throw new Error(error.message); return data;
+	},
+
+	async updateStaff(id, patch) {
+		const safe = { ...patch }; delete safe.pin; delete safe.pin_hash;
+		const { data, error } = await supabase.from('staff').update(safe).eq('id', id).select('id,full_name,email,phone,role,assigned_modules,is_active,property_id,avatar,last_login,user_id,created_at').single();
+		if (error) throw new Error(error.message); return data;
+	},
+
+	async resetStaffPin(id, pin) {
+		const pinHash = await hashPin(pin);
+		const { error } = await supabase.rpc('reset_staff_pin', { p_staff_id: id, p_pin_hash: pinHash });
+		if (error) throw new Error(error.message); return true;
+	},
+
+	async listStaffLogs(propertyId) {
+		const { data, error } = await supabase.from('staff_logs').select('id,staff_id,staff_name,module,action,created_at').eq('property_id', propertyId).order('created_at', { ascending: false }).limit(200);
+		if (error) throw new Error(error.message); return data || [];
+	},
+
+	async deleteStaff(id) {
+		const { error } = await supabase.from('staff').delete().eq('id', id);
+		if (error) throw new Error(error.message); return true;
+	},
+
+	async touchActiveStaffSession() {
+		const { error } = await supabase.rpc('touch_active_staff_session');
+		if (error) throw new Error(error.message);
+	},
+
+	async clearActiveStaffSession() {
+		const { error } = await supabase.rpc('clear_active_staff_session');
+		if (error) throw new Error(error.message);
+	},
+
+	async verifyStaffPin({ propertyId, module, pin }) {
+		const pinHash = await hashPin(pin);
+		const { data, error } = await supabase.rpc('verify_staff_pin', { p_property_id: propertyId, p_module: module, p_pin_hash: pinHash });
+		if (error) throw new Error(error.message); return data || { ok: false };
+	},
+
+
+	async requestPasswordReset({ email }) {
+		// Use the canonical production app URL for every recovery email.
+		const redirectTo = 'https://app.olitechs.co.ke/reset-password';
+		const { error } = await supabase.auth.resetPasswordForEmail(
+			(email || '').trim().toLowerCase(),
+			{ redirectTo }
+		);
+		if (error) throw new Error(error.message);
+		// Always resolve successfully — don't reveal whether the email exists.
+		return { sent: true };
+	},
+
+	async resetPassword({ newPassword }) {
+		if (!newPassword) throw new Error('New password is required.');
+		const { error } = await supabase.auth.updateUser({ password: newPassword });
+		if (error) throw new Error(error.message);
+		return { ok: true };
+	},
+
+	// Recovery-link screens: a recovery token in the URL hash is exchanged into
+	// a session by supabase-js, so the screen only needs to know whether a
+	// session exists and subscribe to PASSWORD_RECOVERY while it waits.
+	async getSession() {
+		const { data: { session } } = await supabase.auth.getSession();
+		return session || null;
+	},
+
+	onAuthStateChange(callback) {
+		const { data: { subscription } } = supabase.auth.onAuthStateChange(callback);
+		return subscription;
+	},
+};
