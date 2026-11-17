@@ -39,6 +39,11 @@ const BACK_OFFICE_PERMISSION = {
   reports: 'back_office.reports.view',
   employees: 'back_office.employees.manage',
   settings: 'back_office.settings.manage',
+  items: 'back_office.items.manage',
+  inventory: 'back_office.items.manage',
+  'store-admin': 'back_office.settings.manage',
+  customers: 'back_office.access',
+  integrations: 'back_office.settings.manage',
 };
 function backOfficeAllowed(item, role, user) {
   if (user?.staff) {
