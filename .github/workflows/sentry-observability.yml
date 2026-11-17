@@ -1,0 +1,46 @@
+name: Sentry observability verification
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/lib/sentry.js'
+      - 'src/lib/sentry.test.mjs'
+      - 'tools/print-agent/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'docs/SENTRY_OBSERVABILITY.md'
+      - '.env.example'
+  push:
+    branches: [main]
+    paths:
+      - 'src/lib/sentry.js'
+      - 'src/lib/sentry.test.mjs'
+      - 'tools/print-agent/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'docs/SENTRY_OBSERVABILITY.md'
+      - '.env.example'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install exact locked dependencies
+        run: npm ci --ignore-scripts
+      - name: Verify browser Sentry independently
+        run: npm run test:sentry:frontend
+      - name: Verify Node SDK and event privacy independently
+        run: npm run test:sentry:node
+      - name: Run Print Agent regression tests
+        run: npm run test:print-agent
+      - name: Build the frontend
+        run: npm run build
