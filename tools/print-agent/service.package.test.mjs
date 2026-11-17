@@ -23,7 +23,7 @@ test('service definition starts with Windows and restarts after a failure', asyn
 test('install script renders the template, sets SCM recovery and removes the legacy task', async () => {
   const script = await read('./service/install-service.ps1');
   assert.match(script, /OliTechsPrintAgent\.xml\.template/);
-  for (const placeholder of ['{{NODE_EXE}}', '{{AGENT_SCRIPT}}', '{{WORKING_DIR}}', '{{DATA_DIR}}', '{{LOG_DIR}}']) {
+  for (const placeholder of ['{{NODE_EXE}}', '{{AGENT_SCRIPT}}', '{{INSTRUMENT_SCRIPT}}', '{{WORKING_DIR}}', '{{DATA_DIR}}', '{{LOG_DIR}}']) {
     assert.ok(script.includes(placeholder), `install script must render ${placeholder}`);
   }
   assert.match(script, /sc\.exe failure \$ServiceId reset= 86400 actions= restart\/5000\/restart\/15000\/restart\/60000/);
