@@ -77,15 +77,17 @@ export function isEmployeeScopedUser(user) {
 const APP_WORKSPACE = { pos: 'pos', frontoffice: 'frontoffice', stores: 'store', backoffice: 'backoffice' };
 export function canUseApp(user, app) {
   if (!user || !app) return false;
-  if (user.isPlatformOwner || ['owner', 'admin'].includes(String(user?.propertyRole || '').toLowerCase())) return true;
+  if (user.isPlatformOwner) return true;
+  const pkg = String(user?.property?.package || 'none').toLowerCase();
+  if (pkg === 'none' || !getPackageModules(pkg).includes(app)) return false;
+  if (['owner', 'admin'].includes(String(user?.propertyRole || '').toLowerCase())) return true;
   if (!user.staff || user.staff.is_active === false || !user.permissions) return false;
   const workspace = APP_WORKSPACE[app];
   const codes = Array.isArray(user.permissions.codes) ? user.permissions.codes : [];
   const workspaces = Array.isArray(user.permissions.workspaces) ? user.permissions.workspaces : [];
   const accessCode = ({ pos: 'pos.access', frontoffice: 'front_office.access', stores: 'stores.access', backoffice: 'back_office.access' })[app];
   if (!workspace || !codes.includes(accessCode) || !workspaces.includes(workspace)) return false;
-  const pkg = String(user?.property?.package || 'none').toLowerCase();
-  return pkg === 'none' ? false : getPackageModules(pkg).includes(app);
+  return true;
 }
 
 // Individual page access is separate from workspace access. Unknown routes
