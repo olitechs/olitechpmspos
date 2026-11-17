@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 // source as text (the established contract-test pattern in this repo); runtime
 // verification happens when the migration is applied to a Supabase project.
 
-const sql = readFileSync(new URL('../migrations/20261116100000_phase1_employee_management_licensing.sql', import.meta.url), 'utf8');
+const sql = readFileSync(new URL('../migrations/20261117105534_phase1_employee_management_licensing.sql', import.meta.url), 'utf8');
 const inviteFn = readFileSync(new URL('../functions/employee-invite/index.ts', import.meta.url), 'utf8');
 const managerFn = readFileSync(new URL('../functions/manager-authorize/index.ts', import.meta.url), 'utf8');
 const employeeService = readFileSync(new URL('../../src/services/employeeService.js', import.meta.url), 'utf8');
