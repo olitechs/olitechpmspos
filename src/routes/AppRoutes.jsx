@@ -39,7 +39,7 @@ import PublicSignUp from "@/pages/PublicSignUp";
 import TermsPage from "@/pages/TermsPage";
 import PrivacyPage from "@/pages/PrivacyPage";
 import { getDefaultApp, normalizeAppRole, MAIN_NAV } from "@/data/modules/navArchitecture";
-import { canUseApp, getSessionStaff, normalizeStaffRole } from "@/services/authService";
+import { canUseApp, canAccessPath, getSessionStaff, normalizeStaffRole } from "@/services/authService";
 import BackOfficeLayout from "@/components/layout/BackOfficeLayout";
 import FrontOfficeLayout from "@/components/layout/FrontOfficeLayout";
 import StoresLayout from "@/components/layout/StoresLayout";
