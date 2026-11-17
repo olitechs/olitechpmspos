@@ -21,7 +21,8 @@ test('migration uses built-in PostgreSQL types without invalid public qualificat
   assert.doesNotMatch(sql, /\\bpublic\\.(jsonb|text|uuid|integer|boolean|numeric|timestamptz)\\b/i);
   assert.match(sql, /declare v jsonb;/i);
 });
-\ntest('new tables enable RLS and credential tables expose nothing to clients', () => {
+
+test('new tables enable RLS and credential tables expose nothing to clients', () => {
   for (const table of [
     'employee_permission_codes', 'employee_departments', 'employee_roles',
     'employee_invitations', 'manager_credentials', 'manager_auth_attempts',
