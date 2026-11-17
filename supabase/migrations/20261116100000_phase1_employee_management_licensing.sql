@@ -1014,7 +1014,7 @@ begin
   if not exists (
     select 1 from public.profiles where id = auth.uid() and lower(email) = lower(v_inv.email)
   ) then
-    raise exception 'This invitation was issued to a different email address. Sign in with %.' using errcode = '42501';
+    raise exception 'This invitation was issued to a different email address. Sign in with %.', v_inv.email using errcode = '42501';
   end if;
 
   -- Idempotent acceptance.
