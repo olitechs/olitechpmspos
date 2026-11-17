@@ -35,7 +35,7 @@ test('migration uses built-in PostgreSQL types without invalid public qualificat
   assert.match(sql, /revoke all on public\.manager_authorization_tickets from public, anon, authenticated/i);
 });
 
-test('invitation token hashes never leave the server', () => {
+test('invitation mismatch errors include the expected email format argument', () => {\n  assert.match(sql, /raise exception 'This invitation was issued to a different email address\\. Sign in with %\\.', v_inv\\.email using errcode = '42501'/i);\n});\n\ntest('invitation token hashes never leave the server', () => {
   assert.match(sql, /revoke select\(token_hash\) on public\.employee_invitations from anon, authenticated/i);
   assert.match(sql, /grant select\(id, property_id, email[\s\S]*?on public\.employee_invitations to authenticated/i);
   assert.match(sql, /token_hash text not null check \(length\(token_hash\) >= 32\)/i);
