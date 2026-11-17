@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { BACK_OFFICE_NAV, FRONT_OFFICE_NAV, STORES_NAV, normalizeAppPath, normalizeAppRole } from '@/data/modules/navArchitecture';
 import { useAuth } from '@/lib/AuthContext';
-import { getSessionStaff, normalizeStaffRole } from '@/services/authService';
+import { getSessionStaff, normalizeStaffRole, hasPermissionCode } from '@/services/authService';
 import TopAppNav from './TopAppNav';
 import BrandLogo from '@/components/ui/BrandLogo';
 
@@ -35,7 +35,17 @@ function currentRole(user) {
   return normalizeAppRole(normalizeStaffRole(staff?.role || user?.staff?.role || user?.propertyRole || user?.role));
 }
 
-function backOfficeAllowed(item, role) {
+const BACK_OFFICE_PERMISSION = {
+  reports: 'back_office.reports.view',
+  employees: 'back_office.employees.manage',
+  settings: 'back_office.settings.manage',
+};
+function backOfficeAllowed(item, role, user) {
+  if (user?.staff) {
+    const required = BACK_OFFICE_PERMISSION[item.id];
+    if (required) return hasPermissionCode(user, required);
+    return hasPermissionCode(user, 'back_office.access');
+  }
   if (['admin', 'owner', 'store_manager'].includes(role)) return true;
   if (role === 'pos_staff') return ['items', 'inventory'].includes(item.id);
   if (role === 'accountant') return item.id === 'reports';
@@ -73,7 +83,7 @@ export default function AppShell({ workspace = 'backoffice' }) {
         id, label, path, icon: STORE_ICONS[id], active: pathname === path || pathname.startsWith(path + '/'),
       }));
     }
-    return BACK_OFFICE_NAV.filter(item => backOfficeAllowed(item, role)).map(item => ({
+    return BACK_OFFICE_NAV.filter(item => backOfficeAllowed(item, role, user)).map(item => ({
       ...item,
       icon: BACK_ICONS[item.id] || LayoutDashboard,
       active: (item.path && (pathname === item.path || pathname.startsWith(item.path + '/')))
