@@ -178,7 +178,7 @@ export default function InvitationsPanel({ propertyId, reloadKey }) {
           </thead>
           <tbody>
             {loading && <tr><td colSpan={6} className="p-6 text-center text-[var(--text-muted)]">Loading…</td></tr>}
-            {!loading && !rows.length && <tr><td colSpan={5} className="p-6 text-center text-[var(--text-muted)]">No invitations yet.</td></tr>}
+            {!loading && !rows.length && <tr><td colSpan={6} className="p-6 text-center text-[var(--text-muted)]">No invitations yet.</td></tr>}
             {rows.map((row) => {
               const delivery = latestInvitationDelivery.get(row.id);
               return (
