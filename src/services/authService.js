@@ -207,14 +207,16 @@ async function loadCurrentUserDetails() {
 		return toAppUser({ profile, property: null, propertyRole: null });
 	}
 
-	// Ensure every regular signed-in registrant has a real property application.
-	// This is an idempotent safety net for older accounts and deployments where
-	// the signup trigger was not installed when the account was created.
-	const { error: ensureError } = await supabase.rpc('ensure_my_pending_property', {
-		p_business_name: authUser.user_metadata?.pending_business_name || null,
-	});
-	if (ensureError) {
-		console.error('[authService] ensure_my_pending_property failed:', ensureError.message);
+	// Only genuine owner signups may create a pending property. Invited employees
+	// must never run this safety-net: they join the administrator's existing
+	// property through fn_accept_employee_invitation instead.
+	if (authUser.user_metadata?.pending_owner_signup === true) {
+		const { error: ensureError } = await supabase.rpc('ensure_my_pending_property', {
+			p_business_name: authUser.user_metadata?.pending_business_name || null,
+		});
+		if (ensureError) {
+			console.error('[authService] ensure_my_pending_property failed:', ensureError.message);
+		}
 	}
 	// A regular user's primary property — a person can technically belong
 	// to more than one property later, but the login/onboarding flow only
