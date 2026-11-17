@@ -96,6 +96,9 @@ export const employeeService = {
   listInvitations(propertyId) {
     return callRpc('fn_list_employee_invitations', { p_property_id: propertyId });
   },
+  listInvitationEmailDelivery(propertyId) {
+    return callRpc('fn_list_employee_email_delivery', { p_property_id: propertyId });
+  },
   createInvitation({ propertyId, email, fullName, staffRole, assignedModules, roleId, departmentId }) {
     return callRpc('fn_create_employee_invitation', {
       p_property_id: propertyId, p_email: email, p_full_name: fullName,
