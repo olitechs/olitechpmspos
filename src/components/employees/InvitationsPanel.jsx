@@ -1,9 +1,6 @@
-// Invitations panel — email invitations with one-time claim tokens.
-//
-// Tokens are bcrypt-hashed at rest by the server; the raw token is returned
-// to the admin exactly once and either emailed through the employee-invite
-// edge function or shown once here for manual sharing. Acceptance happens on
-// the public /accept-invite screen.
+// Invitations panel — secure email invitations and delivery status.
+// Claim tokens are hashed at rest and delivered only through the server-side
+// employee-invite Edge Function. Acceptance happens on /accept-invite.
 
 import React, { useEffect, useState } from 'react';
 import { Loader2, Mail, Plus, Send, Trash2, RefreshCw } from 'lucide-react';
@@ -15,6 +12,7 @@ const emptyForm = { email: '', fullName: '', role: 'waiter', departmentId: '', r
 
 export default function InvitationsPanel({ propertyId, reloadKey }) {
   const [rows, setRows] = useState([]);
+  const [deliveryRows, setDeliveryRows] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -26,12 +24,14 @@ export default function InvitationsPanel({ propertyId, reloadKey }) {
     if (!propertyId) return;
     setLoading(true);
     try {
-      const [invitationRows, depts, roleRows] = await Promise.all([
+      const [invitationRows, depts, roleRows, emailRows] = await Promise.all([
         employeeService.listInvitations(propertyId),
         employeeService.listDepartments(propertyId),
         employeeService.listRoles(propertyId),
+        employeeService.listInvitationEmailDelivery(propertyId),
       ]);
       setRows(invitationRows || []);
+      setDeliveryRows(emailRows || []);
       setDepartments(depts || []);
       setRoles(roleRows || []);
     } catch (e) {
@@ -60,7 +60,6 @@ export default function InvitationsPanel({ propertyId, reloadKey }) {
       const token = result?.token;
       setForm(emptyForm);
       setFormOpen(false);
-      load();
       if (token) {
         try {
           await employeeService.sendInvitationEmail(result.invitation.id, token);
@@ -69,6 +68,7 @@ export default function InvitationsPanel({ propertyId, reloadKey }) {
           toast.error(emailError?.message || 'Invitation created, but email delivery failed. Use Resend to try again.');
         }
       }
+      await load();
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -100,6 +100,13 @@ export default function InvitationsPanel({ propertyId, reloadKey }) {
       load();
     } catch (e) { toast.error(e.message); }
   };
+
+  const latestInvitationDelivery = new Map();
+  deliveryRows.forEach((delivery) => {
+    if (delivery.event_type === 'employee_invitation' && delivery.invitation_id && !latestInvitationDelivery.has(delivery.invitation_id)) {
+      latestInvitationDelivery.set(delivery.invitation_id, delivery);
+    }
+  });
 
   const inputClass = 'w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--brand-primary)]';
 
@@ -167,12 +174,14 @@ export default function InvitationsPanel({ propertyId, reloadKey }) {
       <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-surface">
         <table className="w-full text-sm">
           <thead className="bg-primary text-primary-foreground">
-            <tr><th className="p-3 text-left">Invitee</th><th className="p-3 text-left">Staff role</th><th className="p-3 text-left">Status</th><th className="p-3 text-left">Expires</th><th className="p-3 text-right">Actions</th></tr>
+            <tr><th className="p-3 text-left">Invitee</th><th className="p-3 text-left">Staff role</th><th className="p-3 text-left">Status</th><th className="p-3 text-left">Email delivery</th><th className="p-3 text-left">Expires</th><th className="p-3 text-right">Actions</th></tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan={5} className="p-6 text-center text-[var(--text-muted)]">Loading…</td></tr>}
+            {loading && <tr><td colSpan={6} className="p-6 text-center text-[var(--text-muted)]">Loading…</td></tr>}
             {!loading && !rows.length && <tr><td colSpan={5} className="p-6 text-center text-[var(--text-muted)]">No invitations yet.</td></tr>}
-            {rows.map((row) => (
+            {rows.map((row) => {
+              const delivery = latestInvitationDelivery.get(row.id);
+              return (
               <tr key={row.id} className="border-b border-[var(--border)]">
                 <td className="p-3">
                   <div className="font-bold text-[var(--text)]">{row.full_name}</div>
@@ -181,6 +190,12 @@ export default function InvitationsPanel({ propertyId, reloadKey }) {
                 <td className="p-3 capitalize text-[var(--text)]">{String(row.staff_role || '').replaceAll('_', ' ')}</td>
                 <td className="p-3">
                   <span className={`rounded-md px-2 py-0.5 text-xs font-bold ${row.status === 'pending' ? 'bg-[var(--primary-soft)] text-[var(--primary)]' : row.status === 'accepted' ? 'bg-[var(--success-soft)] text-[var(--success-text)]' : 'bg-[var(--canvas)] text-[var(--text-muted)]'}`}>{row.status}</span>
+                </td>
+                <td className="p-3">
+                  {delivery ? <>
+                    <span className={`rounded-md px-2 py-0.5 text-xs font-bold ${delivery.status === 'sent' ? 'bg-[var(--success-soft)] text-[var(--success-text)]' : delivery.status === 'failed' ? 'bg-[var(--danger-soft)] text-[var(--danger-text)]' : 'bg-[var(--primary-soft)] text-[var(--primary)]'}`}>{delivery.status}</span>
+                    {delivery.status === 'failed' && <div title={delivery.last_error || ''} className="mt-1 max-w-[220px] truncate text-[10px] text-[var(--danger-text)]">{delivery.last_error || 'Delivery failed'} · {delivery.attempts} attempt(s)</div>}
+                  </> : <span className="text-xs text-[var(--text-muted)]">Not sent</span>}
                 </td>
                 <td className="p-3 text-xs text-[var(--text-muted)]">{row.expires_at ? new Date(row.expires_at).toLocaleDateString() : '—'}</td>
                 <td className="p-3 text-right">
@@ -196,7 +211,8 @@ export default function InvitationsPanel({ propertyId, reloadKey }) {
                   </div>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
