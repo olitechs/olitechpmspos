@@ -6,7 +6,7 @@ const SAFE_ERROR_TYPES = new Set([
 ]);
 const safeTag = (value) => typeof value === 'string' && /^[a-zA-Z0-9_.-]{1,64}$/.test(value);
 
-Sentry.init({
+export function sanitizeSentryEvent(event) {
   dsn: process.env.SENTRY_DSN || undefined,
   environment: process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'production',
   release: process.env.SENTRY_RELEASE || undefined,
@@ -39,7 +39,15 @@ Sentry.init({
       }
     }
     return event;
-  },
+}
+
+Sentry.init({
+  dsn: process.env.SENTRY_DSN || undefined,
+  environment: process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'production',
+  release: process.env.SENTRY_RELEASE || undefined,
+  sendDefaultPii: false,
+  maxBreadcrumbs: 0,
+  beforeSend: sanitizeSentryEvent,
 });
 
 export { Sentry };
