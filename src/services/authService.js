@@ -94,10 +94,21 @@ const PATH_PERMISSION_RULES = [
   [/^\\/backoffice\\/reports(?:\\/|$)/, 'back_office.reports.view'],
   [/^\\/backoffice\\/employees(?:\\/|$)/, 'back_office.employees.manage'],
   [/^\\/backoffice\\/settings(?:\\/|$)/, 'back_office.settings.manage'],
+  [/^\\/backoffice\\/items(?:\\/|$)/, 'back_office.items.manage'],
+  [/^\\/backoffice\\/inventory(?:\\/|$)/, 'back_office.items.manage'],
+  [/^\\/backoffice\\/stores(?:\\/|$)/, 'back_office.items.manage'],
+  [/^\\/backoffice\\/pos-devices(?:\\/|$)/, 'back_office.settings.manage'],
+  [/^\\/backoffice\\/printers(?:\\/|$)/, 'back_office.settings.manage'],
+  [/^\\/stores\\/stock(?:\\/|$)/, 'stores.inventory.view'],
+  [/^\\/stores\\/purchasing(?:\\/|$)/, 'stores.suppliers.manage'],
+  [/^\\/stores\\/transfers(?:\\/|$)/, 'stores.stock.transfer'],
+  [/^\\/stores\\/inventory\\/(?:counts|stock-adjustments)(?:\\/|$)/, 'stores.stock.adjust'],
+  [/^\\/pos(?:\\/|$)/, 'pos.access'],
   [/^\\/backoffice\\/billing(?:\\/|$)/, 'back_office.billing.manage'],
   [/^\\/frontoffice\\/reservations(?:\\/|$)/, 'front_office.reservations.view'],
   [/^\\/frontoffice\\/check-in(?:\\/|$)/, 'front_office.checkin'],
   [/^\\/frontoffice\\/folio(?:\\/|$)/, 'front_office.folio.view'],
+  [/^\\/frontoffice\\/night-audit(?:\\/|$)/, 'back_office.reports.view'],
 ];
 export function canAccessPath(user, pathname) {
   if (!user) return false;
