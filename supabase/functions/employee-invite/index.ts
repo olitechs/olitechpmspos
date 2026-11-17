@@ -279,14 +279,12 @@ Deno.serve(async (req) => {
     if (!membership || !['owner','admin','manager'].includes(String(membership.role))) {
       return json({ error: 'Only property administrators can retry notification delivery.' }, req, 403);
     }
-    const { data: exhausted } = await admin.from('employee_email_outbox').select('id')
-      .eq('property_id', propertyId).eq('status', 'failed');
-    if (exhausted?.length) {
-      await admin.from('employee_email_outbox').update({
-        status: 'pending', attempts: 0, next_attempt_at: new Date().toISOString(),
-        last_error: null, locked_at: null, updated_at: new Date().toISOString(),
-      }).eq('property_id', propertyId).eq('status', 'failed');
-    }
+    // An administrator-requested retry explicitly makes all failed and
+    // backoff-delayed pending notifications eligible now.
+    await admin.from('employee_email_outbox').update({
+      status: 'pending', attempts: 0, next_attempt_at: new Date().toISOString(),
+      last_error: null, locked_at: null, updated_at: new Date().toISOString(),
+    }).eq('property_id', propertyId).in('status', ['failed', 'pending']);
     try {
       const result = await processOutbox(propertyId, 50);
       return json({ ok: true, ...result }, req);
