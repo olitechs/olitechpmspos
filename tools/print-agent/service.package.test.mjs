@@ -14,7 +14,7 @@ test('service definition starts with Windows and restarts after a failure', asyn
   assert.match(xml, /<stoptimeout>20 sec<\/stoptimeout>/);
   assert.match(xml, /<log mode="roll-by-size">/);
   assert.match(xml, /<env name="PRINT_AGENT_MODE" value="service"\/>/);
-  for (const placeholder of ['{{NODE_EXE}}', '{{AGENT_SCRIPT}}', '{{WORKING_DIR}}', '{{DATA_DIR}}', '{{LOG_DIR}}']) {
+  for (const placeholder of ['{{NODE_EXE}}', '{{AGENT_SCRIPT}}', '{{INSTRUMENT_SCRIPT}}', '{{WORKING_DIR}}', '{{DATA_DIR}}', '{{LOG_DIR}}']) {
     assert.ok(xml.includes(placeholder), `template must keep the ${placeholder} placeholder`);
   }
   assert.ok(!/<password|<username/i.test(xml), 'the service definition must not contain credentials');
