@@ -36,7 +36,11 @@ test('new tables enable RLS and credential tables expose nothing to clients', ()
   assert.match(sql, /revoke all on public\.manager_authorization_tickets from public, anon, authenticated/i);
 });
 
-test('invitation mismatch errors include the expected email format argument', () => {\n  assert.match(sql, /raise exception 'This invitation was issued to a different email address\\. Sign in with %\\.', v_inv\\.email using errcode = '42501'/i);\n});\n\ntest('invitation token hashes never leave the server', () => {
+test('invitation mismatch errors include the expected email format argument', () => {
+  assert.match(sql, /raise exception 'This invitation was issued to a different email address\\. Sign in with %\\.', v_inv\\.email using errcode = '42501'/i);
+});
+
+test('invitation token hashes never leave the server', () => {
   assert.match(sql, /revoke select\(token_hash\) on public\.employee_invitations from anon, authenticated/i);
   assert.match(sql, /grant select\(id, property_id, email[\s\S]*?on public\.employee_invitations to authenticated/i);
   assert.match(sql, /token_hash text not null check \(length\(token_hash\) >= 32\)/i);
@@ -63,7 +67,8 @@ test('permission resolver follows grant -> custom role -> built-in map -> legacy
   assert.match(sql, /function public\.fn_employee_permission_codes\(p_property_id uuid, p_staff_id uuid default null\)/i);
   assert.match(sql, /select coalesce\(array_agg\(distinct g\.permission_code\), '\{\}'\)/i);
   assert.match(sql, /when 'front_office_manager' then array\[/i);
-  assert.match(sql, /assigned_modules\) m\s*\n\s*join public\.employee_permission_codes c on c\.workspace = m and c\.code like '%\.access'/i);
+  assert.match(sql, /assigned_modules\) m\s*
+\s*join public\.employee_permission_codes c on c\.workspace = m and c\.code like '%\.access'/i);
 });
 
 test('licence accounting counts staff and pending invitations, not property admins', () => {
@@ -78,19 +83,25 @@ test('licence add-on activation is idempotent per request and refuses unconfigur
   assert.match(sql, /unique \(property_id, request_id\)/i);
   assert.match(sql, /on conflict \(property_id, request_id\) do nothing/i);
   assert.match(sql, /Additional employee pricing has not been configured\./i);
-  assert.match(sql, /addon_monthly_price numeric\(12,2\),\r?\n\s*addon_currency text not null default 'KES'/i);
+  assert.match(sql, /addon_monthly_price numeric\(12,2\),\r?
+\s*addon_currency text not null default 'KES'/i);
 });
 
 test('manager authorization tickets are single-use, short-lived and redeemed by the requester only', () => {
-  assert.match(sql, /expires_at timestamptz not null default now\(\) \+ interval '90 seconds',\r?\n\s*used_at timestamptz/i);
+  assert.match(sql, /expires_at timestamptz not null default now\(\) \+ interval '90 seconds',\r?
+\s*used_at timestamptz/i);
   assert.match(sql, /if v_ticket\.requester_user_id <> auth\.uid\(\) then/i);
-  assert.match(sql, /used_at is null and expires_at > now\(\)\s*\n\s*for update;/i);
-  assert.match(sql, /manager_staff_id uuid references public\.staff\(id\) on delete cascade,\r?\n\s*permission_code text not null/i);
+  assert.match(sql, /used_at is null and expires_at > now\(\)\s*
+\s*for update;/i);
+  assert.match(sql, /manager_staff_id uuid references public\.staff\(id\) on delete cascade,\r?
+\s*permission_code text not null/i);
 });
 
 test('deactivating or suspending an employee revokes active grants; reactivation consumes a seat', () => {
-  assert.match(sql, /if not p_active or p_suspended then\s*\n\s*update public\.module_access_grants/i);
-  assert.match(sql, /if p_active then\s*\n\s*perform public\.fn_assert_licence_available\(v_property\);/i);
+  assert.match(sql, /if not p_active or p_suspended then\s*
+\s*update public\.module_access_grants/i);
+  assert.match(sql, /if p_active then\s*
+\s*perform public\.fn_assert_licence_available\(v_property\);/i);
   assert.match(sql, /Employees cannot change their own account status\./i);
   assert.match(sql, /Employees cannot change their own role\./i);
 });
@@ -113,13 +124,17 @@ test('employee-invite edge function verifies the caller and never exposes the to
 });
 
 test('manager-authorize edge function verifies the password via Supabase Auth under the manager JWT', () => {
-  assert.match(managerFn, /signInWithPassword\(\{\s*\n?\s*email: managerEmail,\s*\n?\s*password: managerPassword,\s*\n?\s*\}\)/);
+  assert.match(managerFn, /signInWithPassword\(\{\s*
+?\s*email: managerEmail,\s*
+?\s*password: managerPassword,\s*
+?\s*\}\)/);
   assert.match(managerFn, /managerUser\.id === requesterId/);
   assert.match(managerFn, /Authorization: `Bearer \$\{managerSession\.access_token\}`/);
   assert.match(managerFn, /fn_employee_has_permission/);
   assert.match(managerFn, /manager_authorization_tickets'\)\.insert/);
   assert.match(managerFn, /manager_staff_id: managerStaff\?\.id \?\? null/);
-  assert.ok(!/manager_password[^\n]*log/i.test(managerFn));
+  assert.ok(!/manager_password[^
+]*log/i.test(managerFn));
 });
 
 test('employeeService pins the server RPC names and never writes tables directly', () => {
