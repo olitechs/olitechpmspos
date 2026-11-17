@@ -100,7 +100,8 @@ test('store administration, devices and printers are Back Office-only destinatio
   assert.match(app, /path="pos-devices" element={<Navigate to="\/backoffice\/pos-devices" replace\/>}/);
   assert.match(app, /path="printers" element={<Navigate to="\/backoffice\/printers" replace\/>}/);
   assert.match(app, /index element={<StorekeeperDashboard\/>}/);
-  assert.match(shell, /STORES_NAV\.filter\(\(\[, , , roles\]\) => !roles \|\| roles\.includes\(role\)\)/);
+  assert.ok(shell.includes('STORES_NAV.filter(([, , id, roles]) => user?.staff'));
+  assert.ok(shell.includes('hasPermissionCode(user, ({'));
 });
 
 test('Storekeeper KPI/action routes target registered operational screens', () => {
