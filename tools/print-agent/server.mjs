@@ -1104,13 +1104,11 @@ export async function startPrintAgent({ config = loadConfig(), logger = null } =
   // an unknown state where receipts silently stop appearing.
   process.once('uncaughtException', async (error) => {
     log.error('uncaught exception', { error: error?.stack || String(error) });
-    await sentry.captureException(error, { phase: 'runtime', source: 'uncaught-exception' });
     await sentry.flush(1800);
     process.exit(1);
   });
   process.once('unhandledRejection', async (reason) => {
     log.error('unhandled rejection', { error: reason?.stack || String(reason) });
-    await sentry.captureException(reason, { phase: 'runtime', source: 'unhandled-rejection' });
     await sentry.flush(1800);
     process.exit(1);
   });
