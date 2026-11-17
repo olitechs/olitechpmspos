@@ -701,7 +701,7 @@ create or replace function public.fn_assert_licence_available(p_property_id uuid
 returns jsonb
 language plpgsql security definer set search_path = public
 as $$
-declare v public.jsonb;
+declare v jsonb;
 begin
   v := public.fn_employee_licence_state(p_property_id);
   if (v->>'over_limit')::int > 0 or (v->>'available_licences')::int < 1 then
