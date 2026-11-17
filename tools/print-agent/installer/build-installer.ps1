@@ -97,6 +97,14 @@ foreach ($dir in @($agentDest, $servicesDest, $nodeDest, $serviceDest)) {
 }
 
 Copy-Item -Path (Join-Path $AgentDir '*') -Destination $agentDest -Recurse -Force
+
+# The agent runs on a bundled Node runtime, so its SDK dependencies must be
+# installed into the staged payload rather than relying on a developer machine.
+$npm = Get-Command npm.cmd -ErrorAction SilentlyContinue
+if (-not $npm) { $npm = Get-Command npm -ErrorAction SilentlyContinue }
+if (-not $npm) { throw 'npm was not found. Install Node.js 20 or newer on the build computer before creating the Print Agent installer.' }
+& $npm.Source install --omit=dev --no-audit --no-fund --prefix $agentDest
+if ($LASTEXITCODE -ne 0) { throw "Installing Print Agent runtime dependencies failed (exit code $LASTEXITCODE)." }
 # Tests, docs and source patches have no place on a reception PC.
 Get-ChildItem -Path $agentDest -Filter '*.test.mjs' -File | Remove-Item -Force
 Get-ChildItem -Path $agentDest -Filter '*.patch' -File | Remove-Item -Force
