@@ -20,12 +20,22 @@ const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
 const APP_URL = (Deno.env.get('INVITE_APP_URL') || 'https://app.olitechs.co.ke').replace(/\/+$/, '');
 const ALLOWED_ORIGIN = (Deno.env.get('INVITE_ALLOWED_ORIGIN') || 'https://olitechpmspos.vercel.app').replace(/\/+$/, '');
 
-const CORS = {
-  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  Vary: 'Origin',
-};
+// The production app is hosted on app.olitechs.co.ke. Keep the configured
+// staging origin as an additional allowed origin, but never let a stale
+// INVITE_ALLOWED_ORIGIN value block the canonical production app.
+const APP_ORIGIN = new URL(APP_URL).origin;
+const ALLOWED_ORIGINS = new Set([APP_ORIGIN, new URL(ALLOWED_ORIGIN).origin]);
+
+function corsHeaders(req: Request) {
+  const requestOrigin = req.headers.get('Origin') || '';
+  const allowOrigin = ALLOWED_ORIGINS.has(requestOrigin) ? requestOrigin : APP_ORIGIN;
+  return {
+    'Access-Control-Allow-Origin': allowOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    Vary: 'Origin',
+  };
+}
 
 // One resend per minute per caller keeps the mailbox and the GoTrue
 // rate limiter safe from double-clicks.
@@ -43,8 +53,8 @@ function rateLimited(clientKey: string) {
   return bucket.count > RATE_LIMIT;
 }
 
-function corsJson(data: unknown, status = 200) {
-  return new Response(JSON.stringify(data), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
+function corsJson(data: unknown, req: Request, status = 200) {
+  return new Response(JSON.stringify(data), { status, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } });
 }
 
 const admin = createClient(SUPABASE_URL, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '', {
@@ -52,30 +62,30 @@ const admin = createClient(SUPABASE_URL, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY
 });
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
-  if (req.method !== 'POST') return corsJson({ error: 'Method not allowed.' }, 405);
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders(req) });
+  if (req.method !== 'POST') return corsJson({ error: 'Method not allowed.' }, req, 405);
 
   const authHeader = req.headers.get('Authorization') || '';
   const callerKey = authHeader.slice(0, 64) || 'anonymous';
-  if (rateLimited(callerKey)) return corsJson({ error: 'Too many requests. Try again shortly.' }, 429);
+  if (rateLimited(callerKey)) return corsJson({ error: 'Too many requests. Try again shortly.' }, req, 429);
 
   const caller = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     global: { headers: { Authorization: authHeader } },
     auth: { autoRefreshToken: false, persistSession: false },
-  });
+  }, req);
 
   const { data: userData, error: userError } = await caller.auth.getUser();
-  if (userError || !userData?.user) return corsJson({ error: 'Sign in to send invitations.' }, 401);
+  if (userError || !userData?.user) return corsJson({ error: 'Sign in to send invitations.' }, req, 401);
 
   let body: Record<string, unknown>;
   try {
     body = await req.json();
   } catch {
-    return corsJson({ error: 'Invalid request body.' }, 400);
+    return corsJson({ error: 'Invalid request body.' }, req, 400);
   }
 
   const invitationId = typeof body.invitation_id === 'string' ? body.invitation_id : '';
-  if (!/^[0-9a-f-]{36}$/i.test(invitationId)) return corsJson({ error: 'invitation_id is required.' }, 400);
+  if (!/^[0-9a-f-]{36}$/i.test(invitationId)) return corsJson({ error: 'invitation_id is required.' }, req, 400);
 
   // The caller must be an administrator of the invitation's property. Verified
   // server-side here: a stale or forged invitation_id cannot be emailed out.
@@ -84,8 +94,8 @@ Deno.serve(async (req) => {
     .select('id, property_id, email, status, expires_at')
     .eq('id', invitationId)
     .maybeSingle();
-  if (invitationError || !invitation) return corsJson({ error: 'Invitation not found.' }, 404);
-  if (invitation.status !== 'pending') return corsJson({ error: 'Only pending invitations can be emailed.' }, 409);
+  if (invitationError || !invitation) return corsJson({ error: 'Invitation not found.' }, req, 404);
+  if (invitation.status !== 'pending') return corsJson({ error: 'Only pending invitations can be emailed.' }, req, 409);
 
   const { data: membership, error: membershipError } = await admin
     .from('property_users')
@@ -94,7 +104,7 @@ Deno.serve(async (req) => {
     .eq('user_id', userData.user.id)
     .maybeSingle();
   if (membershipError || !membership || !['owner', 'admin', 'manager'].includes(String(membership.role))) {
-    return corsJson({ error: 'Only property administrators can send invitations.' }, 403);
+    return corsJson({ error: 'Only property administrators can send invitations.' }, req, 403);
   }
 
   // The one-time acceptance token is regenerated by the admin UI before
@@ -102,12 +112,12 @@ Deno.serve(async (req) => {
   // metadata so the /accept-invite screen can read it back. It is never
   // written to the invitation row in clear text.
   const token = typeof body.token === 'string' ? body.token : '';
-  if (token.length < 16) return corsJson({ error: 'A valid invitation token is required.' }, 400);
+  if (token.length < 16) return corsJson({ error: 'A valid invitation token is required.' }, req, 400);
 
   const { error: inviteError } = await admin.auth.inviteUserByEmail(invitation.email, {
     redirectTo: `${APP_URL}/accept-invite`,
     data: { invitation_id: invitation.id, invitation_token: token, invitation_property: invitation.property_id },
-  });
+  }, req);
   if (inviteError) {
     const message = String(inviteError.message || 'Invitation email failed.');
     await admin.from('audit_logs').insert({
@@ -116,7 +126,7 @@ Deno.serve(async (req) => {
       property_id: invitation.property_id,
       new_value: { invitation_id: invitation.id, error: message.slice(0, 200) },
     });
-    return corsJson({ error: message }, 502);
+    return corsJson({ error: message }, req, 502);
   }
 
   await admin.from('audit_logs').insert({
@@ -124,7 +134,7 @@ Deno.serve(async (req) => {
     action: 'employee_invitation_email_sent',
     property_id: invitation.property_id,
     new_value: { invitation_id: invitation.id, email: invitation.email },
-  });
+  }, req);
 
-  return corsJson({ ok: true, email: invitation.email });
+  return corsJson({ ok: true, email: invitation.email }, req);
 });
