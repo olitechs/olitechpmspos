@@ -5,6 +5,7 @@ const SAFE_ERROR_TYPES = new Set([
   'URIError', 'EvalError', 'AggregateError', 'AbortError',
 ]);
 const safeTag = (value) => typeof value === 'string' && /^[a-zA-Z0-9_.-]{1,64}$/.test(value);
+const SAFE_TAG_KEYS = new Set(['component', 'phase', 'source', 'operation']);
 
 export function sanitizeSentryEvent(event) {
   // Preserve only operational metadata. Exception messages and request/user
@@ -16,7 +17,7 @@ export function sanitizeSentryEvent(event) {
   delete event.message;
   event.breadcrumbs = [];
   const tags = Object.fromEntries(Object.entries(event.tags || {})
-    .filter(([key, value]) => /^[a-zA-Z0-9_.-]{1,32}$/.test(key) && safeTag(value))
+    .filter(([key, value]) => SAFE_TAG_KEYS.has(key) && safeTag(value))
     .slice(0, 8));
   event.tags = { component: 'print-agent', ...tags };
   for (const exception of event.exception?.values || []) {
