@@ -1,32 +1,65 @@
 // Public invitation acceptance screen.
 //
-// The invitee arrives from their email link with a one-time token. They must
-// already be signed in with the invited email address (the server verifies
-// the match); otherwise they are pointed to sign in / sign up first. The
-// token is consumed by fn_accept_employee_invitation, which bcrypt-verifies
-// it and binds their auth user to the invited employee identity.
+// Supabase's built-in invite email verifies its own token_hash and redirects
+// back to this page with a session (not our application token in the query
+// string). The employee-invite Edge Function stores our one-time claim token
+// in auth user_metadata, so resolve it from the verified Supabase user when
+// the email link is used. Manual fallback links continue to use ?token=.
 
 import React, { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { CheckCircle2, MailX } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
+import { supabase } from '@/lib/supabaseClient';
 import { employeeService } from '@/services/employeeService';
 import BrandLogo from '@/components/ui/BrandLogo';
 
 export default function AcceptInvitePage() {
   const [params] = useSearchParams();
-  const token = params.get('token') || '';
+  const queryToken = params.get('token') || '';
+  const [token, setToken] = useState(queryToken);
   const { user, isLoadingAuth } = useAuth();
-  const [status, setStatus] = useState(token ? 'pending' : 'invalid'); // pending | ok | error
+  const [status, setStatus] = useState(queryToken ? 'pending' : 'resolving'); // resolving | pending | signin | ok | already | error | invalid
   const [message, setMessage] = useState('');
   const [propertyId, setPropertyId] = useState(null);
   const [busy, setBusy] = useState(false);
 
+  // Supabase invite links carry a Supabase verification token, then establish
+  // a session and redirect here. The separate employee claim token is in the
+  // invited user's metadata; it is deliberately not exposed in the email URL.
+  useEffect(() => {
+    let cancelled = false;
+    if (token || isLoadingAuth) return undefined;
+
+    (async () => {
+      try {
+        const { data: { user: authUser }, error } = await supabase.auth.getUser();
+        if (error) throw error;
+        const metadataToken = authUser?.user_metadata?.invitation_token;
+        if (typeof metadataToken === 'string' && metadataToken.length >= 16) {
+          if (!cancelled) {
+            setToken(metadataToken);
+            setStatus('pending');
+          }
+          return;
+        }
+        if (!cancelled) setStatus('invalid');
+      } catch (error) {
+        if (!cancelled) {
+          setMessage(error?.message || 'We could not verify this invitation. Please ask your administrator to resend it.');
+          setStatus('error');
+        }
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [token, isLoadingAuth]);
+
   useEffect(() => {
     if (!token || status !== 'pending' || isLoadingAuth || busy) return;
     if (!user) {
-      // The invitee has not signed in yet. Preserve the token through the
-      // sign-in flow and come straight back here.
+      // Preserve a manual claim token through the sign-in flow. Supabase
+      // email invitations normally establish the session before this page.
       setStatus('signin');
       return;
     }
@@ -81,13 +114,13 @@ export default function AcceptInvitePage() {
             <MailX size={40} className="mx-auto mt-6 text-[var(--danger)]" aria-hidden="true" />
             <h1 className="mt-3 text-2xl font-black text-[var(--text)]">Invitation unavailable</h1>
             <p className="mt-2 text-sm text-[var(--text-muted)]">
-              {status === 'invalid' ? 'This invitation link is missing its token.' : message}
+              {status === 'invalid' ? 'This invitation link is missing its token or the invitation session could not be verified.' : message}
             </p>
             <p className="mt-2 text-sm text-[var(--text-muted)]">Ask your administrator to resend the invitation.</p>
             <Link to="/signin" className="mt-6 inline-flex min-h-11 items-center rounded-xl border border-[var(--border)] px-6 text-sm font-bold text-[var(--text)]">Go to sign in</Link>
           </>
         )}
-        {status === 'pending' && <p className="mt-6 text-sm text-[var(--text-muted)]">Validating your invitation…</p>}
+        {(status === 'pending' || status === 'resolving') && <p className="mt-6 text-sm text-[var(--text-muted)]">Validating your invitation…</p>}
       </div>
     </div>
   );
