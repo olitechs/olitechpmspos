@@ -6,7 +6,7 @@
 // the public /accept-invite screen.
 
 import React, { useEffect, useState } from 'react';
-import { Copy, Loader2, Mail, Plus, Send, Trash2 } from 'lucide-react';
+import { Loader2, Mail, Plus, Send, Trash2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { getDefaultModulesForRole, ROLE_LABELS, STAFF_ROLES } from '@/services/authService';
 import { employeeService } from '@/services/employeeService';
@@ -25,9 +25,6 @@ export default function InvitationsPanel({ propertyId, reloadKey }) {
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [busy, setBusy] = useState(false);
-  // Shown exactly once after creation/resend; never stored in component state
-  // beyond this session and never persisted anywhere.
-  const [oneTimeLink, setOneTimeLink] = useState(null);
 
   const load = async () => {
     if (!propertyId) return;
@@ -49,15 +46,6 @@ export default function InvitationsPanel({ propertyId, reloadKey }) {
   };
 
   useEffect(() => { load(); }, [propertyId, reloadKey]);
-
-  const copy = async (text) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.success('Copied to clipboard.');
-    } catch {
-      toast.error('Could not copy — select the link manually.');
-    }
-  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -82,10 +70,7 @@ export default function InvitationsPanel({ propertyId, reloadKey }) {
           await employeeService.sendInvitationEmail(result.invitation.id, token);
           toast.success(`Invitation email sent to ${result.invitation.email}.`);
         } catch (emailError) {
-          // Edge function not deployed or transport failed: the token is still
-          // valid, so fall back to the manual link.
-          setOneTimeLink({ email: result.invitation.email, url: inviteUrl(token) });
-          toast.warning('Invitation created, but the email could not be sent. Share the link manually.');
+          toast.error(emailError?.message || 'Invitation created, but email delivery failed. Use Resend to try again.');
         }
       }
     } catch (err) {
@@ -103,9 +88,8 @@ export default function InvitationsPanel({ propertyId, reloadKey }) {
         try {
           await employeeService.sendInvitationEmail(row.id, result.token);
           toast.success(`Invitation email re-sent to ${result.email}.`);
-        } catch {
-          setOneTimeLink({ email: result.email, url: inviteUrl(result.token) });
-          toast.warning('Token regenerated; the email could not be sent. Share the link manually.');
+        } catch (emailError) {
+          toast.error(emailError?.message || 'The invitation link was rotated, but email delivery failed. Please retry.');
         }
       }
       load();
@@ -125,19 +109,17 @@ export default function InvitationsPanel({ propertyId, reloadKey }) {
 
   return (
     <div>
-      {oneTimeLink && (
-        <div role="alert" className="mb-3 rounded-xl border border-[var(--brand-blue)] bg-[var(--primary-soft)] px-4 py-3 text-sm text-[var(--text)]">
-          <p className="font-bold">One-time invitation link for {oneTimeLink.email}</p>
-          <p className="mt-1 break-all text-xs text-[var(--text-muted)]">{oneTimeLink.url}</p>
-          <div className="mt-2 flex gap-2">
-            <button type="button" onClick={() => copy(oneTimeLink.url)} className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[var(--border)] px-3 text-xs font-bold text-[var(--text)]"><Copy size={13} /> Copy link</button>
-            <button type="button" onClick={() => setOneTimeLink(null)} className="min-h-9 rounded-lg border border-[var(--border)] px-3 text-xs font-bold text-[var(--text)]">Done</button>
-          </div>
-          <p className="mt-2 text-[11px] text-[var(--text-muted)]">This link is shown only once. It expires in 7 days and works for exactly one claim.</p>
-        </div>
-      )}
-
-      <div className="mb-3 flex justify-end">
+      <div className="mb-3 flex flex-wrap justify-end gap-2">
+        <button type="button" disabled={busy} onClick={async () => {
+          setBusy(true);
+          try {
+            const result = await employeeService.retryEmailNotifications(propertyId);
+            toast.success('Email retry complete: ' + (result.sent || 0) + ' sent, ' + (result.failed || 0) + ' still failing.');
+          } catch (error) { toast.error(error.message); }
+          finally { setBusy(false); }
+        }} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-[var(--border)] px-3 text-xs font-bold text-[var(--text)] disabled:opacity-50">
+          <RefreshCw size={14} /> Retry failed notifications
+        </button>
         <button type="button" onClick={() => setFormOpen((v) => !v)}
           className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[var(--primary)] px-4 text-xs font-bold text-primary-foreground">
           <Plus size={15} /> Invite employee
