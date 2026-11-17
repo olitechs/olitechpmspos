@@ -8,7 +8,7 @@ const container = readFileSync(new URL('../../src/components/pos/POSContainer.js
 const pmsService = readFileSync(new URL('../../src/services/pmsService.js', import.meta.url), 'utf8');
 const posService = readFileSync(new URL('../../src/services/posService.js', import.meta.url), 'utf8');
 const raceMigration = readFileSync(new URL('../migrations/20261116090000_fix_pos_table_session_write_race.sql', import.meta.url), 'utf8');
-const destinationMigration = readFileSync(new URL('../migrations/20261116100000_allow_current_pos_transfer_destination_writes.sql', import.meta.url), 'utf8');
+const destinationMigration = readFileSync(new URL('../migrations/20261116083241_allow_current_pos_transfer_destination_writes.sql', import.meta.url), 'utf8');
 
 test('POS table joins aggregate all distinct lines in a single JSON array', () => {
   assert.ok(migration.includes('jsonb_agg(merged.line order by merged.first_ord)'));
