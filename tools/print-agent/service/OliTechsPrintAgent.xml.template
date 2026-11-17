@@ -14,7 +14,7 @@
   <description>Prints Olitech PMS/POS receipts and kitchen tickets to LAN ESC/POS and Windows-installed printers.</description>
 
   <executable>{{NODE_EXE}}</executable>
-  <arguments>"{{AGENT_SCRIPT}}"</arguments>
+  <arguments>--import "{{INSTRUMENT_SCRIPT}}" "{{AGENT_SCRIPT}}"</arguments>
   <workingdirectory>{{WORKING_DIR}}</workingdirectory>
 
   <!-- Start with Windows, without waiting for a user to sign in. -->

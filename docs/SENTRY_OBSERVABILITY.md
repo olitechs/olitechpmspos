@@ -1,48 +1,59 @@
 # Sentry error monitoring
 
-OliTechs sends sanitized JavaScript error events to the Sentry project configured by its DSN. Monitoring is optional: when the DSN is blank or invalid, the application and Print Agent continue normally with no Sentry requests.
+OliTechs uses two independent Sentry integrations. The browser reporter remains in `src/lib/sentry.js` and is initialized by the Vite/React application. The Windows Print Agent uses the official `@sentry/node` SDK and preloads it before the agent entry point. Monitoring is optional; without a valid DSN, both applications continue normally.
 
-## Configure the web application
+## Browser application
 
-In Vercel, open the OliTechs project → Settings → Environment Variables and add:
-- `VITE_SENTRY_DSN`: the Sentry project DSN supplied by the project owner.
-- `VITE_SENTRY_RELEASE`: optional release identifier, ideally the deployed Git commit SHA or release version.
+In Vercel, configure:
+- `VITE_SENTRY_DSN`: the Sentry project DSN.
+- `VITE_SENTRY_RELEASE`: optional release identifier.
 
-Apply the variables to Production and Preview as required, then redeploy. Vite variables are embedded at build time, so changing them requires a new deployment.
+Vite variables are embedded at build time, so redeploy after changing them. Browser verification is independent:
 
-## Configure each Windows Print Agent
-
-The Print Agent reads these machine environment variables:
-- `SENTRY_DSN`: the same Sentry project DSN.
-- `SENTRY_ENVIRONMENT`: use `production` for hotel workstations, or `staging` for test machines.
-- `SENTRY_RELEASE`: optional agent release/version.
-
-From an elevated PowerShell window, configure the machine-level values (replace the placeholder with the project's DSN):
-
-```powershell
-[Environment]::SetEnvironmentVariable('SENTRY_DSN', 'https://PUBLIC_KEY@o0.ingest.sentry.io/PROJECT_ID', 'Machine')
-[Environment]::SetEnvironmentVariable('SENTRY_ENVIRONMENT', 'production', 'Machine')
-Restart-Service -Name OliTechsPrintAgent
+```bash
+npm run test:sentry:frontend
 ```
 
-If the service is not installed, set the variables before starting the agent. Machine-level environment changes are read by newly started processes; restart the service after changing them.
+These tests verify that the browser reporter stays disabled without a DSN and emits a sanitized event envelope when enabled.
 
-## What is sent
+## Node.js Print Agent
 
-This implementation uses Sentry's envelope ingestion protocol with built-in browser and Node networking, so it adds no runtime package dependency and does not change the npm lockfile.
+The repository dependency is `@sentry/node`. The agent initializes the SDK in `tools/print-agent/instrument.mjs` and loads it before application modules with Node's `--import` flag.
 
-- Captures uncaught browser errors, unhandled promise rejections and React ErrorBoundary failures.
-- Captures Print Agent startup failures, uncaught exceptions and unhandled rejections.
-- Includes environment, optional release, safe component/source tags, error type and sanitized stack-frame locations.
-- Removes query strings and fragments from browser stack URLs.
-- Does not send exception messages, request bodies, user identity, cookies, headers, form values, order/guest details, receipt/ESC-POS data, printer addresses or credentials.
-- Does not enable session replay, user feedback capture, tracing or performance sampling.
-- Sentry transport failures are swallowed and must never block hotel operations or printing.
+The supported launch command is:
 
-The Sentry DSN is a public ingestion identifier, not an authentication secret. Never put a Supabase service-role key, database password, printer credential or other private secret in a Vite variable or Sentry event.
+```bash
+node --import ./tools/print-agent/instrument.mjs tools/print-agent/print-agent-v2.js
+```
 
-## Verify safely
+Configure each Windows workstation/service with:
+- `SENTRY_DSN`: the Sentry project DSN.
+- `SENTRY_ENVIRONMENT`: `production` for hotel workstations or `staging` for test machines.
+- `SENTRY_RELEASE`: optional agent version or commit SHA.
 
-Run `npm run test:sentry`, `npm run build` and `npm run test:print-agent`.
+The Windows service template preloads the same instrumentation. The click-once installer installs the SDK runtime dependencies into its staged Print Agent payload, so the bundled Node runtime can resolve `@sentry/node` without requiring Node or npm on the hotel workstation.
 
-For an end-to-end check, use a Sentry test project or staging environment and trigger a controlled test exception in a non-production session. Confirm that an event arrives without customer or printer data. Do not deliberately crash a live hotel workstation.
+After setting machine-level variables, restart the Windows service so the new process reads them. Do not use a real guest workstation to trigger test failures.
+
+Node verification is independent:
+
+```bash
+npm run test:sentry:node
+npm run test:print-agent
+```
+
+The SDK adapter tests use a controlled mock SDK and do not send a live event. The Node instrumentation's `beforeSend` hook strips exception messages, request/user context, breadcrumbs and unsafe tags while retaining a generic error type and sanitized stack locations. `sendDefaultPii` is disabled.
+
+## Privacy and transport
+
+- The browser integration continues using its existing sanitized envelope reporter; it is not replaced with the Node SDK.
+- The Print Agent uses the official SDK for exception capture, delivery retries/transport and process integrations.
+- Exception messages, user identity, request bodies, cookies, headers, guest/order/payment details, receipt contents, printer addresses and credentials must not be sent.
+- Sentry transport failures must not block printing or agent startup.
+- No Session Replay or performance tracing is enabled.
+
+The DSN is a public ingestion identifier, not an authentication secret. Never put a Supabase service-role key or another private credential in a Vite variable or Sentry event.
+
+## Controlled end-to-end check
+
+Use a Sentry staging project or staging environment and trigger a controlled exception only on a test workstation. Confirm receipt in the Sentry project and verify that the event contains no customer or printer data. The automated tests above validate local reporting behavior; they do not prove that a live Sentry project received an event.
