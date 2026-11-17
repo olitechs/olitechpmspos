@@ -52,6 +52,8 @@ export const PERMISSION_CODES = [
   { code: 'back_office.settings.manage', workspace: 'backoffice', label: 'Manage property settings', sensitive: true },
   { code: 'back_office.employees.manage', workspace: 'backoffice', label: 'Manage employees, departments and permissions', sensitive: true },
   { code: 'back_office.billing.manage', workspace: 'backoffice', label: 'View subscription and licence billing', sensitive: false },
+  { code: 'back_office.items.manage', workspace: 'backoffice', label: 'Manage catalogue items, categories, modifiers and discounts', sensitive: true },
+  { code: 'pos.menu.manage', workspace: 'pos', label: 'Manage POS menu and pricing', sensitive: true },
 ];
 
 export const PERMISSION_BY_CODE = new Map(PERMISSION_CODES.map((p) => [p.code, p]));
