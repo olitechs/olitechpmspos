@@ -72,14 +72,14 @@ test('licence add-on activation is idempotent per request and refuses unconfigur
   assert.match(sql, /unique \(property_id, request_id\)/i);
   assert.match(sql, /on conflict \(property_id, request_id\) do nothing/i);
   assert.match(sql, /Additional employee pricing has not been configured\./i);
-  assert.match(sql, /addon_monthly_price numeric\(12,2\),\n\s*addon_currency text not null default 'KES'/i);
+  assert.match(sql, /addon_monthly_price numeric\(12,2\),\r?\n\s*addon_currency text not null default 'KES'/i);
 });
 
 test('manager authorization tickets are single-use, short-lived and redeemed by the requester only', () => {
-  assert.match(sql, /expires_at timestamptz not null default now\(\) \+ interval '90 seconds',\n\s*used_at timestamptz/i);
+  assert.match(sql, /expires_at timestamptz not null default now\(\) \+ interval '90 seconds',\r?\n\s*used_at timestamptz/i);
   assert.match(sql, /if v_ticket\.requester_user_id <> auth\.uid\(\) then/i);
   assert.match(sql, /used_at is null and expires_at > now\(\)\s*\n\s*for update;/i);
-  assert.match(sql, /manager_staff_id uuid references public\.staff\(id\) on delete cascade,\n\s*permission_code text not null/i);
+  assert.match(sql, /manager_staff_id uuid references public\.staff\(id\) on delete cascade,\r?\n\s*permission_code text not null/i);
 });
 
 test('deactivating or suspending an employee revokes active grants; reactivation consumes a seat', () => {
@@ -133,7 +133,7 @@ test('frontend scoping is deliberately narrow so a missing migration cannot lock
   assert.match(authService, /export function canUseApp\(user, app\)/);
   assert.match(authService, /export function hasPermissionCode\(user, code\)/);
   assert.match(authService, /fn_employee_permission_summary/);
-  assert.match(permissions, /a permission list supplied by the\n\/\/ browser is never trusted by the server/i);
+  assert.match(permissions, /a permission list supplied by the\s+\/\/ browser is never trusted by the server/i);
 });
 
 test('routes expose the employee console and the public invitation acceptance screen', () => {
