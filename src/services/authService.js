@@ -102,7 +102,7 @@ const PATH_PERMISSION_RULES = [
 export function canAccessPath(user, pathname) {
   if (!user) return false;
   if (user.isPlatformOwner || ['owner', 'admin'].includes(String(user?.propertyRole || '').toLowerCase())) return true;
-  const path = String(pathname || '/').split('?')[0].replace(/\\/$/, '') || '/';
+  const path = String(pathname || '/').split('?')[0].replace(/\/$/, '') || '/';
   const rule = PATH_PERMISSION_RULES.find(([pattern]) => pattern.test(path));
   return rule ? hasPermissionCode(user, rule[1]) : true;
 }
