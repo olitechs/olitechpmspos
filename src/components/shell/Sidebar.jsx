@@ -2,7 +2,7 @@ import React,{useEffect,useMemo,useState}from"react";
 import{useLocation,useNavigate}from"react-router-dom";
 import{ChevronLeft,ChevronRight,ChevronDown,Menu,X,Building2,Search,LogOut}from"lucide-react";
 import{useAuth}from"@/lib/AuthContext";
-import{getDefaultModulesForRole,getSessionStaff,normalizeStaffRole,canUseModule}from"@/services/authService";
+import{getDefaultModulesForRole,getSessionStaff,normalizeStaffRole,canUseModule,hasPermissionCode}from"@/services/authService";
 import{MASTER_ROLES,SIDEBAR_SECTIONS}from"@/data/modules/sidebarNavigation";
 import BrandLogo from"@/components/ui/BrandLogo";
 
@@ -18,7 +18,7 @@ export default function Sidebar({activeModule,onModuleChange,staffRole}){
  useEffect(()=>{if(!mobileOpen)return;const onKeyDown=event=>{if(event.key==="Escape")setMobileOpen(false)};window.addEventListener("keydown",onKeyDown);return()=>window.removeEventListener("keydown",onKeyDown)},[mobileOpen]);
  const setCollapsed=v=>{setCollapsedState(v);try{localStorage.setItem("olitech_sidebar_collapsed",String(v))}catch{}};
  const role=normalizeStaffRole(staffRole||getRole(user));const assigned=useMemo(()=>getAssigned(user,role),[user,role]);const master=!!user?.isPlatformOwner||MASTER_ROLES.has(role);
- const canAccess=item=>master||(item.roles.includes(role)&&(itemModule(item)==="admin"||canUseModule(user,itemModule(item))));
+ const canAccess=item=>master||(item.roles.includes(role)&&(!item.permission||hasPermissionCode(user,item.permission))&&(itemModule(item)==="admin"||canUseModule(user,itemModule(item))));
  const sections=SIDEBAR_SECTIONS.map(s=>({...s,items:s.items.filter(canAccess).filter(i=>!query||i.label.toLowerCase().includes(query.toLowerCase()))})).filter(s=>s.items.length);
  const hotelName=user?.property?.name||user?.property?.business_name||"OliTechs Hotel";
  const staff=getSessionStaff();const displayName=user?.name||staff?.full_name||"Staff";

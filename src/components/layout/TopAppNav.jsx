@@ -1,8 +1,8 @@
 import React from 'react';
 import { ExternalLink, LockKeyhole } from 'lucide-react';
-import { MAIN_NAV, canAccessApp, normalizeAppRole } from '@/data/modules/navArchitecture';
+import { MAIN_NAV, normalizeAppRole } from '@/data/modules/navArchitecture';
 import { useAuth } from '@/lib/AuthContext';
-import { getSessionStaff, normalizeStaffRole } from '@/services/authService';
+import { canUseApp, getSessionStaff, normalizeStaffRole } from '@/services/authService';
 
 const STAFF_SESSION_KEY = 'olitech_active_staff_v2';
 
@@ -34,15 +34,12 @@ export default function TopAppNav({ workspace = 'backoffice' }) {
   // Keep the package-authorised workspace switcher available from every workspace.
   // Standard subscribers do not have Back Office, so Front Office and POS must
   // provide the same route to one another without requiring a hidden Back Office shell.
+  const workspaces = MAIN_NAV.filter((a) => canUseApp(user, a.id));
   const s = getSessionStaff();
-  const raw = s?.role || user?.staff?.role || user?.propertyRole || user?.role;
-  const role = normalizeAppRole(normalizeStaffRole(raw));
-  const packageName = user?.property?.package;
-  const workspaces = MAIN_NAV.filter((a) => canAccessApp(role, a.id, packageName));
   const propertyRole = String(user?.propertyRole || '').toLowerCase();
   const isPropertyAdmin = !!user?.isPlatformOwner
     || ['owner', 'admin', 'manager'].includes(propertyRole)
-    || ['owner', 'admin'].includes(role)
+    || ['owner', 'admin'].includes(normalizeAppRole(normalizeStaffRole(s?.role || user?.staff?.role || user?.propertyRole || user?.role)))
     || ['hotel_admin', 'super_admin'].includes(normalizeStaffRole(user?.staff?.role));
   const showLock = !!user && !isPropertyAdmin && !!s;
   const lockWorkspace = () => {

@@ -2,6 +2,7 @@ import React,{useCallback,useEffect,useState}from'react';
 import{Building2,CalendarDays,CheckCircle2,CreditCard,RefreshCw,ShieldCheck,Users,Hotel,AlertCircle}from'lucide-react';
 import{useAuth}from'@/lib/AuthContext';
 import{pmsService}from'@/services/pmsService';
+import{employeeService}from'@/services/employeeService';
 
 const STATUS={
  trial:{label:'Trial',className:'bg-[var(--warning-soft)] text-[var(--warning-text)] border-[var(--warning)]'},
@@ -45,6 +46,8 @@ export default function SubscriptionPanel(){
  const[overview,setOverview]=useState(null);
  const[loading,setLoading]=useState(true);
  const[error,setError]=useState('');
+ const[licence,setLicence]=useState(null);
+ const propertyId=user?.property?.id;
 
  const load=useCallback(async()=>{
    setLoading(true);setError('');
@@ -54,6 +57,16 @@ export default function SubscriptionPanel(){
  },[]);
 
  useEffect(()=>{load()},[load]);
+
+ // Employee licence overview is informational and additive: an older
+ // deployment without the employee-management migration simply leaves the
+ // section out.
+ useEffect(()=>{
+   if(!propertyId)return;
+   let active=true;
+   employeeService.licenceState(propertyId).then(state=>{if(active)setLicence(state)}).catch(()=>{});
+   return()=>{active=false};
+ },[propertyId]);
 
  if(loading)return <div className="flex flex-1 items-center justify-center p-8"><RefreshCw className="animate-spin text-muted-foreground"/></div>;
 
@@ -121,6 +134,16 @@ export default function SubscriptionPanel(){
        <div className="flex items-center justify-between gap-3"><div><h2 className="font-black text-foreground">Enabled modules</h2><p className="mt-1 text-xs text-muted-foreground">Modules explicitly enabled for this property.</p></div><span className="rounded-full bg-secondary px-3 py-1 text-xs font-bold">{modules.length} enabled</span></div>
        {modules.length?<div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{modules.map(module=><div key={module} className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2.5 text-sm font-semibold"><CheckCircle2 size={15} className="text-[var(--success-text)]"/>{MODULE_LABELS[module]||String(module).replaceAll('_',' ')}</div>)}</div>:<div className="mt-4 rounded-2xl bg-canvas p-4 text-sm text-muted-foreground">No explicit module overrides are recorded. Access follows the package configuration controlled by the Platform Admin.</div>}
      </section>
+
+     {licence&&<section className="rounded-3xl border border-border bg-surface p-5">
+       <div className="flex items-center justify-between gap-3"><div><h2 className="font-black text-foreground">Employee licences</h2><p className="mt-1 text-xs text-muted-foreground">Employee seats included with the plan and additional monthly licences.</p></div><a href="/backoffice/employees/licences" className="rounded-xl border border-border bg-surface px-3 py-2 text-xs font-bold text-foreground">Manage licences</a></div>
+       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+         <Stat icon={Users} label="Included" value={licence.included_employees} sub={`${licence.plan_code?String(licence.plan_code).toUpperCase():'—'} plan`}/>
+         <Stat icon={Users} label="Registered" value={licence.registered_employees} sub={`${licence.pending_invitations} pending invitation(s)`}/>
+         <Stat icon={Users} label="Additional licences" value={licence.additional_employees} sub={licence.addon_monthly_price===null?'Price not configured':`KES ${Number(licence.addon_monthly_price).toLocaleString()} / seat / month`}/>
+         <Stat icon={CheckCircle2} label="Available" value={licence.available_licences} sub={Number(licence.over_limit||0)>0?`${licence.over_limit} over allowance`:'Within allowance'}/>
+       </div>
+     </section>}
 
      <div className="flex justify-end"><button onClick={load} className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-4 py-2 text-xs font-bold text-foreground"><RefreshCw size={14}/> Refresh subscription</button></div>
    </div>

@@ -7,8 +7,9 @@ import { tableLabel } from '@/lib/posTables';
 import { useStore } from '@/data/AppStore';
 import PrintWarn from '@/components/pos/PrintWarn';
 import PinPad from '@/components/auth/PinPad';
+import ManagerAuthorizationScreen from '@/components/auth/ManagerAuthorizationScreen';
 import { useAuth } from '@/lib/AuthContext';
-import { authService } from '@/services/authService';
+import { authService, isEmployeeScopedUser } from '@/services/authService';
 import { pmsService } from '@/services/pmsService';
 import { getPrinters, getAssignments, printVoidTicket } from '@/services/printService';
 import { getPropertySettings } from '@/services/settingsService';
@@ -31,6 +32,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
   const [removeBusy, setRemoveBusy] = useState(false);
   const [pinStaff, setPinStaff] = useState(null);
   const [pinError, setPinError] = useState('');
+  const [managerAuth, setManagerAuth] = useState(null);
   const [menuItems, setMenuItems] = useState([]);
   const [menuCategories, setMenuCategories] = useState([]);
   const [menuCategoryStyles, setMenuCategoryStyles] = useState({});
@@ -298,10 +300,22 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
   const requestRemoval = () => {
     if (removeTarget?.sent && needsManagerPin) {
       setPinError('');
+      // Employee-scoped accounts (server-resolved permission summary) get the
+      // full-screen, permission-based manager authorization with an audited,
+      // time-limited grant. Everyone else keeps the legacy staff-PIN flow.
+      if (isEmployeeScopedUser(user)) {
+        setManagerAuth({ action: 'void' });
+        return;
+      }
       setPinStaff({ name: 'Manager approval required' });
       return;
     }
     performRemoval();
+  };
+
+  const handleManagerAuthorization = async (result) => {
+    setManagerAuth(null);
+    if (result?.ok || result?.grant) await performRemoval();
   };
 
   const handleManagerPin = async (pin) => {
@@ -623,6 +637,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
         </div>
       )}
       {pinStaff && <PinPad title="Manager PIN Required" staffName={pinStaff.name} error={pinError} onSubmit={handleManagerPin} onClose={()=>setPinStaff(null)} />}
+      {managerAuth && <ManagerAuthorizationScreen title="Manager approval required" description="Voiding an item that was already sent to the kitchen/bar needs an approving manager. The approval is logged and time-limited." permissionCode="pos.void" permissionLabel="Void orders or sent items" onAuthorized={handleManagerAuthorization} onClose={()=>setManagerAuth(null)} />}
     </div>
   );
 }
