@@ -16,6 +16,11 @@ function safeLabel(value) {
   return String(value || '').replace(/[^a-zA-Z0-9_.-]/g, '').slice(0, 64) || 'application';
 }
 
+function safeErrorType(error) {
+  const allowed = new Set(['Error', 'TypeError', 'RangeError', 'ReferenceError', 'SyntaxError', 'URIError', 'EvalError', 'AggregateError', 'AbortError']);
+  return allowed.has(error?.name) ? error.name : 'Error';
+}
+
 function stackFrames(error) {
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   return String(error?.stack || '').split('\n').slice(1).flatMap((line) => {
@@ -28,7 +33,7 @@ function stackFrames(error) {
       const url = new URL(filename, origin || 'https://localhost');
       url.search = ''; url.hash = ''; filename = url.href;
     } catch { filename = filename.split(/[?#]/, 1)[0]; }
-    return [{ filename, function: safeLabel(match[1] || '<anonymous>'), lineno: Number(match[3]), colno: Number(match[4]), in_app: Boolean(origin && filename.startsWith(origin)) }];
+    return [{ filename: 'app://frontend', function: '<anonymous>', lineno: Number(match[3]), colno: Number(match[4]), in_app: true }];
   }).slice(0, 30);
 }
 
@@ -51,7 +56,7 @@ export function createBrowserSentryReporter({
       environment: safeLabel(environment), ...(release ? { release: safeLabel(release) } : {}),
       ...(Object.keys(safeTags).length ? { tags: safeTags } : {}),
       exception: { values: [{
-        type: safeLabel(error?.name || 'Error'),
+        type: safeErrorType(error),
         value: 'Unhandled application error (details withheld to protect customer data).',
         ...(frames.length ? { stacktrace: { frames: frames.reverse() } } : {}),
       }] },

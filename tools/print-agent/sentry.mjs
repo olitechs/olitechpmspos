@@ -10,12 +10,12 @@ function parseDsn(value) {
   } catch { return null; }
 }
 const safeLabel = (value, fallback = 'Error') => String(value || '').replace(/[^a-zA-Z0-9_.-]/g, '').slice(0, 64) || fallback;
+const safeErrorType = (error) => ['Error', 'TypeError', 'RangeError', 'ReferenceError', 'SyntaxError', 'URIError', 'EvalError', 'AggregateError', 'AbortError'].includes(error?.name) ? error.name : 'Error';
 function stackFrames(error) {
   return String(error?.stack || '').split('\n').slice(1, 31).flatMap((line) => {
     const match = line.match(/^\s*at (?:(.*?) \()?(.+?):(\d+):(\d+)\)?$/);
     if (!match) return [];
-    const filename = match[2].split(/[?#]/, 1)[0].slice(0, 500);
-    return [{ filename, function: safeLabel(match[1], '<anonymous>'), lineno: Number(match[3]), colno: Number(match[4]), in_app: filename.includes('/tools/print-agent/') }];
+    return [{ filename: 'app://print-agent', function: '<anonymous>', lineno: Number(match[3]), colno: Number(match[4]), in_app: true }];
   }).reverse();
 }
 
@@ -40,7 +40,7 @@ export function createSentryReporter({
       environment: safeLabel(environment, 'production'), ...(release ? { release: safeLabel(release) } : {}),
       tags: { component: 'print-agent', ...safeTags },
       exception: { values: [{
-        type: safeLabel(error?.name),
+        type: safeErrorType(error),
         value: 'Unexpected Print Agent failure (details withheld to protect customer and printer data).',
         ...(frames.length ? { stacktrace: { frames } } : {}),
       }] },
