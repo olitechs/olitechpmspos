@@ -118,13 +118,27 @@ export const employeeService = {
   // the claim link for manual sharing in that case.
   async sendInvitationEmail(invitationId, token) {
     const { data, error } = await supabase.functions.invoke('employee-invite', {
-      body: { invitation_id: invitationId, token },
+      body: { action: 'invite', invitation_id: invitationId, token },
     });
-    if (error) {
-      const err = new Error(error.message || 'Invitation email could not be sent.');
+    if (error || !data?.ok) {
+      const err = new Error(data?.error || error?.message || 'Invitation email could not be sent.');
       err.code = 'invite_email_failed';
       throw err;
     }
+    return data;
+  },
+  async notifyInvitationAccepted(invitationId) {
+    const { data, error } = await supabase.functions.invoke('employee-invite', {
+      body: { action: 'accepted', invitation_id: invitationId },
+    });
+    if (error || !data?.ok) throw new Error(data?.error || error?.message || 'Welcome notification could not be processed.');
+    return data;
+  },
+  async retryEmailNotifications(propertyId) {
+    const { data, error } = await supabase.functions.invoke('employee-invite', {
+      body: { action: 'retry', property_id: propertyId },
+    });
+    if (error || !data?.ok) throw new Error(data?.error || error?.message || 'Email notification retry failed.');
     return data;
   },
 
