@@ -198,7 +198,7 @@ Deno.serve(async (req) => {
         : await admin.auth.admin.generateLink({
             type: 'magiclink',
             email: invitation.email,
-            options: { redirectTo: `${redirect}?token=${encodeURIComponent(token)}` },
+            options: { redirectTo: `${redirect}?token=${encodeURIComponent(token)}&invitation_id=${encodeURIComponent(invitation.id)}` },
           });
       if (generated.error) throw generated.error;
       actionLink = generated.data?.properties?.action_link || '';
