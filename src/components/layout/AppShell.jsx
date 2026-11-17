@@ -73,13 +73,25 @@ export default function AppShell({ workspace = 'backoffice' }) {
 
   const nav = useMemo(() => {
     if (workspace === 'frontoffice') {
-      return FRONT_OFFICE_NAV.filter(item => item[3].includes(role)).map(([label, path, id]) => ({
+      return FRONT_OFFICE_NAV.filter(item => user?.staff
+        ? hasPermissionCode(user, ({
+            dashboard: 'front_office.access', 'room-planner': 'front_office.access',
+            reservations: 'front_office.reservations.view', folio: 'front_office.folio.view',
+            housekeeping: 'front_office.access', 'night-audit': 'back_office.reports.view',
+          })[item[2]] || 'front_office.access')
+        : item[3].includes(role)).map(([label, path, id]) => ({
         id, label, path, icon: FRONT_ICONS[id], active: pathname === path || pathname.startsWith(path + '/'),
       }));
     }
     if (workspace === 'pos') return [];
     if (workspace === 'stores') {
-      return STORES_NAV.filter(([, , , roles]) => !roles || roles.includes(role)).map(([label, path, id]) => ({
+      return STORES_NAV.filter(([, , id, roles]) => user?.staff
+        ? hasPermissionCode(user, ({
+            dashboard: 'stores.access', inventory: 'stores.inventory.view',
+            purchasing: 'stores.suppliers.manage', transfers: 'stores.stock.transfer',
+            counts: 'stores.stock.adjust', reports: 'stores.inventory.view', kds: 'stores.access',
+          })[id] || 'stores.access')
+        : (!roles || roles.includes(role))).map(([label, path, id]) => ({
         id, label, path, icon: STORE_ICONS[id], active: pathname === path || pathname.startsWith(path + '/'),
       }));
     }
