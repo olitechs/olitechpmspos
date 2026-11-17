@@ -36,6 +36,8 @@ $TemplatePath = Join-Path $ServiceRoot 'OliTechsPrintAgent.xml.template'
 if (-not (Test-Path $TemplatePath)) { throw "Service template not found: $TemplatePath" }
 
 $AgentScript = Join-Path $AgentDir 'print-agent-v2.js'
+$InstrumentScript = Join-Path $AgentDir 'instrument.mjs'
+if (-not (Test-Path $InstrumentScript)) { throw "Sentry instrumentation file not found: $InstrumentScript" }
 if (-not (Test-Path $AgentScript)) { throw "Print agent entry point not found: $AgentScript" }
 
 # The packaged OliTechs installer ships its own Node runtime, so a POS computer
@@ -94,6 +96,7 @@ $escape = [System.Security.SecurityElement]::Escape
 $xml = Get-Content -Raw -Path $TemplatePath
 $xml = $xml.Replace('{{NODE_EXE}}', $escape.Invoke($nodeExePath))
 $xml = $xml.Replace('{{AGENT_SCRIPT}}', $escape.Invoke($AgentScript))
+$xml = $xml.Replace('{{INSTRUMENT_SCRIPT}}', $escape.Invoke($InstrumentScript))
 $xml = $xml.Replace('{{WORKING_DIR}}', $escape.Invoke($RepoRoot))
 $xml = $xml.Replace('{{DATA_DIR}}', $escape.Invoke($DataDir))
 $xml = $xml.Replace('{{LOG_DIR}}', $escape.Invoke($LogDir))
