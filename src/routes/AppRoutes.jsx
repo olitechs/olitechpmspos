@@ -38,7 +38,7 @@ import PublicSignIn from "@/pages/PublicSignIn";
 import PublicSignUp from "@/pages/PublicSignUp";
 import TermsPage from "@/pages/TermsPage";
 import PrivacyPage from "@/pages/PrivacyPage";
-import { getDefaultApp, normalizeAppRole } from "@/data/modules/navArchitecture";
+import { getDefaultApp, normalizeAppRole, MAIN_NAV } from "@/data/modules/navArchitecture";
 import { canUseApp, getSessionStaff, normalizeStaffRole } from "@/services/authService";
 import BackOfficeLayout from "@/components/layout/BackOfficeLayout";
 import FrontOfficeLayout from "@/components/layout/FrontOfficeLayout";
@@ -129,8 +129,8 @@ function AuthLoading(){
   </main>;
 }
 function appRole(user){const s=getSessionStaff();const raw=s?.role||user?.staff?.role||user?.propertyRole||user?.role;return normalizeAppRole(normalizeStaffRole(raw));}
-function PublicRoute(){const {user,isLoadingAuth,isLoadingPublicSettings}=useAuth();if(isLoadingAuth||isLoadingPublicSettings)return <AuthLoading/>;if(user){if(user?.isPlatformOwner)return <Navigate to="/admin" replace/>;const defaultApp=getDefaultApp(appRole(user),user?.property?.package);return defaultApp?<Navigate to={'/'+defaultApp} replace/>:<PendingApproval/>;}return <Outlet/>;}
-function ProtectedRoute({app,children}){const {user,isLoadingAuth,isLoadingPublicSettings}=useAuth();if(isLoadingAuth||isLoadingPublicSettings)return <AuthLoading/>;if(!user)return <Navigate to="/signin" replace/>;if(user?.isPlatformOwner)return <Navigate to="/admin" replace/>;if(!canUseApp(user,app)){const defaultApp=getDefaultApp(appRole(user),user?.property?.package);return defaultApp?<Navigate to={'/'+defaultApp} replace/>:<PendingApproval/>;}if(!canAccessPath(user,window.location.pathname))return <Navigate to={'/'+app} replace/>;const property=user?.property;const full=property?.status==='active'&&property?.package&&property.package!=='none';if(!full)return <PendingApproval/>;return children||<Outlet/>;}
+function PublicRoute(){const {user,isLoadingAuth,isLoadingPublicSettings}=useAuth();if(isLoadingAuth||isLoadingPublicSettings)return <AuthLoading/>;if(user){if(user?.isPlatformOwner)return <Navigate to="/admin" replace/>;const allowed=MAIN_NAV.find(item=>canUseApp(user,item.id));return allowed?<Navigate to={allowed.path} replace/>:<PendingApproval/>;}return <Outlet/>;}
+function ProtectedRoute({app,children}){const {user,isLoadingAuth,isLoadingPublicSettings}=useAuth();if(isLoadingAuth||isLoadingPublicSettings)return <AuthLoading/>;if(!user)return <Navigate to="/signin" replace/>;if(user?.isPlatformOwner)return <Navigate to="/admin" replace/>;if(!canUseApp(user,app)){const allowed=MAIN_NAV.find(item=>canUseApp(user,item.id));return allowed?<Navigate to={allowed.path} replace/>:<PendingApproval/>;}if(!canAccessPath(user,window.location.pathname))return <Navigate to={'/'+app} replace/>;const property=user?.property;const full=property?.status==='active'&&property?.package&&property.package!=='none';if(!full)return <PendingApproval/>;return children||<Outlet/>;}
 function BackOfficeStorePage({tab="overview"}){return <Store initialTab={tab}/>;}
 function BackOfficeReportPage({kind}){if(kind==="sales")return <Reports/>;if(kind==="inventory")return <InventoryReports/>;return <ModuleStatusPage title={kind==="employees"?"Employee Report":"Reports"} description="This report is not yet implemented as a dedicated reporting workflow. Open Timecards for attendance records." module={kind || "reports"} back="/backoffice"/>;}
 function BackOfficeSettingsPage(){
