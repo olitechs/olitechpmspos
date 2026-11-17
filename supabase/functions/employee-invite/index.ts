@@ -98,6 +98,7 @@ async function processOutbox(propertyId: string, limit = 20) {
     .select('*')
     .eq('property_id', propertyId)
     .eq('status', 'pending')
+    .neq('event_type', 'employee_invitation')
     .lte('next_attempt_at', new Date().toISOString())
     .order('created_at', { ascending: true })
     .limit(limit);
@@ -284,7 +285,10 @@ Deno.serve(async (req) => {
     await admin.from('employee_email_outbox').update({
       status: 'pending', attempts: 0, next_attempt_at: new Date().toISOString(),
       last_error: null, locked_at: null, updated_at: new Date().toISOString(),
-    }).eq('property_id', propertyId).in('status', ['failed', 'pending']);
+    }).eq('property_id', propertyId).neq('event_type', 'employee_invitation').in('status', ['failed', 'pending']);
+    // Recover abandoned notification jobs from a crashed invocation.
+    await admin.from('employee_email_outbox').update({ status: 'pending', locked_at: null, next_attempt_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .eq('property_id', propertyId).eq('status', 'processing').lt('locked_at', new Date(Date.now() - 10 * 60_000).toISOString()).neq('event_type', 'employee_invitation');
     try {
       const result = await processOutbox(propertyId, 50);
       return json({ ok: true, ...result }, req);
