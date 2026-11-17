@@ -4,7 +4,7 @@
 // Every call goes through a Postgres security-definer RPC; nothing here
 // writes permission lists, licence counts or manager credentials directly.
 // The server re-validates every input (see
-// supabase/migrations/20261116100000_phase1_employee_management_licensing.sql).
+// supabase/migrations/20261117105534_phase1_employee_management_licensing.sql).
 
 import { supabase } from '@/lib/supabaseClient';
 
