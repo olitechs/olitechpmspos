@@ -1,5 +1,7 @@
 // Entry point for both the Windows service and a manual console run.
 // All behaviour lives in server.mjs so it can be imported and tested.
+// This import is a fallback for direct launches; production launchers also use --import.
+import './instrument.mjs';
 import { startPrintAgent } from './server.mjs';
 import { sentry } from './sentry.mjs';
 
