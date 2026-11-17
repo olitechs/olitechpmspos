@@ -77,6 +77,9 @@ export const employeeService = {
       p_role_id: roleId || null, p_department_id: departmentId || null, p_avatar: avatar || null,
     });
   },
+  setModules(staffId, modules) {
+    return callRpc('fn_set_employee_modules', { p_staff_id: staffId, p_modules: modules || [] });
+  },
   setDepartment(staffId, departmentId) {
     return callRpc('fn_set_employee_department', { p_staff_id: staffId, p_department_id: departmentId });
   },
