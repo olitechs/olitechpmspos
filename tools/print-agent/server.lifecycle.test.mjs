@@ -36,7 +36,7 @@ function agentEnv(dataDir) {
 }
 
 function startAgent(dataDir) {
-  const child = spawn(process.execPath, [entry], {
+  const child = spawn(process.execPath, ['--import', fileURLToPath(new URL('./instrument.mjs', import.meta.url)), entry], {
     env: agentEnv(dataDir),
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -152,7 +152,7 @@ test('an occupied port produces a clear error instead of a silent half-start', a
   assert.ok(lock, `first agent should start. stderr: ${first.stderrText}`);
 
   const otherDir = fs.mkdtempSync(path.join(os.tmpdir(), 'olitechs-agent-'));
-  const conflicting = spawn(process.execPath, [entry], {
+  const conflicting = spawn(process.execPath, ['--import', fileURLToPath(new URL('./instrument.mjs', import.meta.url)), entry], {
     env: { ...agentEnv(otherDir), PRINT_AGENT_PORT: String(lock.port) },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
