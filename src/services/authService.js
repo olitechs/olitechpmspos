@@ -119,6 +119,8 @@ const PATH_PERMISSION_RULES = [
   [/^\/stores\/purchasing(?:\/|$)/, 'stores.suppliers.manage'],
   [/^\/stores\/transfers(?:\/|$)/, 'stores.stock.transfer'],
   [/^\/stores\/inventory\/(?:counts|stock-adjustments)(?:\/|$)/, 'stores.stock.adjust'],
+  [/^\/stores\/inventory(?:\/|$)/, 'stores.inventory.view'],
+  [/^\/stores\/requisitions(?:\/|$)/, 'stores.suppliers.manage'],
   [/^\/pos(?:\/|$)/, 'pos.access'],
   [/^\/backoffice\/billing(?:\/|$)/, 'back_office.billing.manage'],
   [/^\/frontoffice\/reservations(?:\/|$)/, 'front_office.reservations.view'],
