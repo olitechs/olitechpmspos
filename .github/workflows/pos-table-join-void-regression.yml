@@ -5,7 +5,7 @@ on:
     paths:
       - "supabase/migrations/20261110190000_fix_pos_table_join_and_quantity_voids.sql"
       - "supabase/migrations/20261116090000_fix_pos_table_session_write_race.sql"
-      - "supabase/migrations/20261116100000_allow_current_pos_transfer_destination_writes.sql"
+      - "supabase/migrations/20261116083241_allow_current_pos_transfer_destination_writes.sql"
       - "supabase/migrations/20261116103000_fence_null_order_number_pos_writes.sql"
       - "supabase/tests/fixtures/pos_table_join_quantity_void_setup.sql"
       - "supabase/tests/pos_table_join_quantity_void_contract.test.mjs"
@@ -49,7 +49,7 @@ jobs:
         run: |
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261110190000_fix_pos_table_join_and_quantity_voids.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261116090000_fix_pos_table_session_write_race.sql
-          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261116100000_allow_current_pos_transfer_destination_writes.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261116083241_allow_current_pos_transfer_destination_writes.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261116103000_fence_null_order_number_pos_writes.sql
       - name: Run table join, move, VAT, KOT and void quantity regressions
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/pos_table_join_quantity_void_regression.sql
