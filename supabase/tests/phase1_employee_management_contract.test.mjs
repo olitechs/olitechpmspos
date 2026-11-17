@@ -16,7 +16,12 @@ const authService = readFileSync(new URL('../../src/services/authService.js', im
 const permissions = readFileSync(new URL('../../src/lib/permissions.js', import.meta.url), 'utf8');
 const routes = readFileSync(new URL('../../src/routes/AppRoutes.jsx', import.meta.url), 'utf8');
 
-test('new tables enable RLS and credential tables expose nothing to clients', () => {
+
+test('migration uses built-in PostgreSQL types without invalid public qualification', () => {
+  assert.doesNotMatch(sql, /\\bpublic\\.(jsonb|text|uuid|integer|boolean|numeric|timestamptz)\\b/i);
+  assert.match(sql, /declare v jsonb;/i);
+});
+\ntest('new tables enable RLS and credential tables expose nothing to clients', () => {
   for (const table of [
     'employee_permission_codes', 'employee_departments', 'employee_roles',
     'employee_invitations', 'manager_credentials', 'manager_auth_attempts',
