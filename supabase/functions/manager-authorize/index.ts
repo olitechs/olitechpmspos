@@ -25,14 +25,28 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
-const ALLOWED_ORIGIN = (Deno.env.get('INVITE_ALLOWED_ORIGIN') || 'https://olitechpmspos.vercel.app').replace(/\/+$/, '');
 
-const CORS = {
-  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  Vary: 'Origin',
-};
+// Browser origins allowed to call this function. Both official production
+// domains are always allowed; INVITE_ALLOWED_ORIGIN may add further origins
+// (comma-separated, e.g. a staging deploy) without losing the defaults.
+const BASE_ORIGINS = ['https://app.olitechs.co.ke', 'https://olitechpmspos.vercel.app'];
+const configuredOrigins = (Deno.env.get('INVITE_ALLOWED_ORIGIN') || '')
+  .split(',')
+  .map((origin) => origin.trim().replace(/\/+$/, ''))
+  .filter(Boolean);
+const ALLOWED_ORIGINS = new Set([...BASE_ORIGINS, ...configuredOrigins]);
+
+// Echoes the request's own origin when allow-listed, so every supported
+// production domain works without per-domain secrets.
+function corsHeaders(req: Request) {
+  const origin = req.headers.get('origin') || '';
+  return {
+    'Access-Control-Allow-Origin': ALLOWED_ORIGINS.has(origin) ? origin : BASE_ORIGINS[0],
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    Vary: 'Origin',
+  };
+}
 
 const RATE_LIMIT = 10;
 const RATE_WINDOW_MS = 60_000;
@@ -48,8 +62,8 @@ function rateLimited(clientKey: string) {
   return bucket.count > RATE_LIMIT;
 }
 
-function corsJson(data: unknown, status = 200) {
-  return new Response(JSON.stringify(data), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
+function corsJson(req: Request, data: unknown, status = 200) {
+  return new Response(JSON.stringify(data), { status, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } });
 }
 
 const admin = createClient(SUPABASE_URL, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '', {
@@ -61,26 +75,26 @@ const MANAGER_STAFF_ROLES = new Set([
 ]);
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
-  if (req.method !== 'POST') return corsJson({ error: 'Method not allowed.' }, 405);
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders(req) });
+  if (req.method !== 'POST') return corsJson(req, { error: 'Method not allowed.' }, 405);
 
   const authHeader = req.headers.get('Authorization') || '';
   const callerKey = authHeader.slice(0, 64) || 'anonymous';
-  if (rateLimited(callerKey)) return corsJson({ error: 'Too many attempts. Try again shortly.' }, 429);
+  if (rateLimited(callerKey)) return corsJson(req, { error: 'Too many attempts. Try again shortly.' }, 429);
 
   const caller = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     global: { headers: { Authorization: authHeader } },
     auth: { autoRefreshToken: false, persistSession: false },
   });
   const { data: userData, error: userError } = await caller.auth.getUser();
-  if (userError || !userData?.user) return corsJson({ error: 'Sign in to request manager authorization.' }, 401);
+  if (userError || !userData?.user) return corsJson(req, { error: 'Sign in to request manager authorization.' }, 401);
   const requesterId = userData.user.id;
 
   let body: Record<string, unknown>;
   try {
     body = await req.json();
   } catch {
-    return corsJson({ error: 'Invalid request body.' }, 400);
+    return corsJson(req, { error: 'Invalid request body.' }, 400);
   }
 
   const propertyId = typeof body.property_id === 'string' ? body.property_id : '';
@@ -92,7 +106,7 @@ Deno.serve(async (req) => {
 
   const uuidPattern = /^[0-9a-f-]{36}$/i;
   if (!uuidPattern.test(propertyId) || !permissionCode || !managerEmail || !managerPassword) {
-    return corsJson({ error: 'property_id, permission_code, manager_email and manager_password are required.' }, 400);
+    return corsJson(req, { error: 'property_id, permission_code, manager_email and manager_password are required.' }, 400);
   }
 
   // 1. The requester must belong to this property.
@@ -102,7 +116,7 @@ Deno.serve(async (req) => {
     .eq('property_id', propertyId)
     .eq('user_id', requesterId)
     .maybeSingle();
-  if (!membership) return corsJson({ error: 'You do not belong to this property.' }, 403);
+  if (!membership) return corsJson(req, { error: 'You do not belong to this property.' }, 403);
 
   // 2. The requester must have an active employee identity to receive the grant.
   const { data: requesterStaff } = await admin
@@ -112,7 +126,7 @@ Deno.serve(async (req) => {
     .eq('user_id', requesterId)
     .maybeSingle();
   if (!requesterStaff?.is_active) {
-    return corsJson({ error: 'Your employee profile is not active for this property.' }, 403);
+    return corsJson(req, { error: 'Your employee profile is not active for this property.' }, 403);
   }
 
   // 3. Verify the manager's credentials with Supabase Auth itself. The
@@ -125,13 +139,13 @@ Deno.serve(async (req) => {
     password: managerPassword,
   });
   if (managerError || !managerSession?.user) {
-    return corsJson({ ok: false, reason: 'wrong_credentials', error: 'Manager email or password is incorrect.' }, 401);
+    return corsJson(req, { ok: false, reason: 'wrong_credentials', error: 'Manager email or password is incorrect.' }, 401);
   }
   const managerUser = managerSession.user;
 
   // A manager cannot authorize their own restricted action.
   if (managerUser.id === requesterId) {
-    return corsJson({ ok: false, reason: 'self_approval', error: 'A manager cannot approve their own request.' }, 403);
+    return corsJson(req, { ok: false, reason: 'self_approval', error: 'A manager cannot approve their own request.' }, 403);
   }
 
   // 4. The approver must belong to the same property.
@@ -142,7 +156,7 @@ Deno.serve(async (req) => {
     .eq('user_id', managerUser.id)
     .maybeSingle();
   if (!managerMembership) {
-    return corsJson({ ok: false, reason: 'manager_not_authorized', error: 'The approving manager does not belong to this property.' }, 403);
+    return corsJson(req, { ok: false, reason: 'manager_not_authorized', error: 'The approving manager does not belong to this property.' }, 403);
   }
 
   // 5. Resolve the manager's employee identity (required for the permission
@@ -158,7 +172,7 @@ Deno.serve(async (req) => {
   const isManagerStaff = !!managerStaff?.is_active
     && MANAGER_STAFF_ROLES.has(String(managerStaff.role));
   if (!isPropertyAdmin && !isManagerStaff) {
-    return corsJson({ ok: false, reason: 'manager_not_authorized', error: 'This account cannot approve manager authorizations.' }, 403);
+    return corsJson(req, { ok: false, reason: 'manager_not_authorized', error: 'This account cannot approve manager authorizations.' }, 403);
   }
 
   // 6. The manager must hold the requested permission. Re-checked under the
@@ -184,7 +198,7 @@ Deno.serve(async (req) => {
       result: 'rejected',
       details: { reason: 'manager_not_authorized', manager_user_id: managerUser.id, path: 'password' },
     });
-    return corsJson({ ok: false, reason: 'manager_not_authorized', error: 'The approving manager is not authorized to grant this permission.' }, 403);
+    return corsJson(req, { ok: false, reason: 'manager_not_authorized', error: 'The approving manager is not authorized to grant this permission.' }, 403);
   }
 
   // 7. Issue the single-use ticket. The employee's own session redeems it via
@@ -201,10 +215,10 @@ Deno.serve(async (req) => {
     reason,
   });
   if (ticketError) {
-    return corsJson({ error: 'Could not record the authorization ticket.' }, 500);
+    return corsJson(req, { error: 'Could not record the authorization ticket.' }, 500);
   }
 
-  return corsJson({
+  return corsJson(req, {
     ok: true,
     ticket_id: ticketId,
     manager: { name: managerStaff?.full_name || managerUser.email },
