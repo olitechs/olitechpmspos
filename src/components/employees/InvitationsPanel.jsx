@@ -13,10 +13,6 @@ import { employeeService } from '@/services/employeeService';
 
 const emptyForm = { email: '', fullName: '', role: 'waiter', departmentId: '', roleId: '' };
 
-function inviteUrl(token) {
-  return `${window.location.origin}/accept-invite?token=${encodeURIComponent(token)}`;
-}
-
 export default function InvitationsPanel({ propertyId, reloadKey }) {
   const [rows, setRows] = useState([]);
   const [departments, setDepartments] = useState([]);
