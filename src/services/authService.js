@@ -235,14 +235,27 @@ async function loadCurrentUserDetails() {
 		console.error('[authService] property membership lookup failed:', membershipError.message);
 	}
 	const membershipRows = Array.isArray(memberships) ? memberships : [];
-	const membership = membershipRows.find((row) => row?.property?.id) || null;
+	// Prefer the property where this authenticated account has an active staff
+	// assignment. This matters when an existing OliTechs user accepts an invite
+	// to a second property: do not accidentally keep loading the unrelated
+	// property membership as the employee's active workspace.
+	const { data: staffAssignments } = await supabase
+		.from('staff')
+		.select('property_id')
+		.eq('user_id', authUser.id)
+		.eq('is_active', true);
+	const staffPropertyIds = new Set((staffAssignments || []).map((row) => row.property_id));
+	const membership = membershipRows.find((row) => row?.property?.id && staffPropertyIds.has(row.property.id))
+		|| membershipRows.find((row) => row?.property?.id)
+		|| null;
 	const propertyId = membership?.property?.id;
 	let staff = null;
 	let subscription = null;
 	let permissions = null;
 	if (propertyId) {
-		const { data: staffRow } = await supabase.from('staff').select('id,full_name,email,phone,role,assigned_modules,is_active,property_id,avatar,last_login,user_id,role_id,department_id').eq('property_id', propertyId).ilike('email', authUser.email || '').maybeSingle();
-		staff = staffRow || null;
+		const { data: staffByUserId } = await supabase.from('staff').select('id,full_name,email,phone,role,assigned_modules,is_active,property_id,avatar,last_login,user_id,role_id,department_id').eq('property_id', propertyId).eq('user_id', authUser.id).maybeSingle();
+		const { data: staffByEmail } = staffByUserId ? { data: null } : await supabase.from('staff').select('id,full_name,email,phone,role,assigned_modules,is_active,property_id,avatar,last_login,user_id,role_id,department_id').eq('property_id', propertyId).ilike('email', authUser.email || '').maybeSingle();
+		staff = staffByUserId || staffByEmail || null;
 		const { data: subscriptionRow, error: subscriptionError } = await supabase.rpc('fn_get_subscription', { p_property_id: propertyId });
 		if (subscriptionError) console.error('[authService] subscription lookup failed:', subscriptionError.message);
 		subscription = subscriptionRow || null;
