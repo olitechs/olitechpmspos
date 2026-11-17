@@ -14,7 +14,14 @@ import { authService, generatePin, getDefaultModulesForRole, ROLE_LABELS, STAFF_
 import { employeeService } from '@/services/employeeService';
 import { WORKSPACE_LABELS } from '@/lib/permissions';
 
-const emptyForm = { fullName: '', email: '', phone: '', role: 'waiter', departmentId: '', roleId: '', pin: '' };
+const WORKSPACE_OPTIONS = [
+  { value: 'backoffice', label: WORKSPACE_LABELS.backoffice },
+  { value: 'frontoffice', label: WORKSPACE_LABELS.frontoffice },
+  { value: 'pos', label: WORKSPACE_LABELS.pos },
+  { value: 'store', label: WORKSPACE_LABELS.stores },
+];
+
+const emptyForm = { fullName: '', email: '', phone: '', role: 'waiter', departmentId: '', roleId: '', pin: '', assignedModules: ['pos'] };
 
 export default function EmployeesPanel({ propertyId, reloadKey, licenceState, onLicenceRefused }) {
   const [staff, setStaff] = useState([]);
@@ -63,7 +70,7 @@ export default function EmployeesPanel({ propertyId, reloadKey, licenceState, on
         email: form.email,
         phone: form.phone,
         staffRole: form.role,
-        assignedModules: getDefaultModulesForRole(form.role),
+        assignedModules: form.assignedModules,
         pinHash,
         roleId: form.roleId || null,
         departmentId: form.departmentId || null,
@@ -82,6 +89,14 @@ export default function EmployeesPanel({ propertyId, reloadKey, licenceState, on
     } finally {
       setBusy(false);
     }
+  };
+
+  const assignModules = async (staffId, modules) => {
+    try {
+      await employeeService.setModules(staffId, modules);
+      toast.success('Workspace access updated.');
+      load();
+    } catch (e) { toast.error(e.message); }
   };
 
   const assignDepartment = async (staffId, departmentId) => {
@@ -158,7 +173,7 @@ export default function EmployeesPanel({ propertyId, reloadKey, licenceState, on
             </div>
             <div>
               <label htmlFor="emp-role" className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">Staff role</label>
-              <select id="emp-role" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className={`mt-1 ${inputClass}`}>
+              <select id="emp-role" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value, assignedModules: getDefaultModulesForRole(e.target.value) })} className={`mt-1 ${inputClass}`}>
                 {STAFF_ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r] || r}</option>)}
               </select>
             </div>
@@ -183,6 +198,19 @@ export default function EmployeesPanel({ propertyId, reloadKey, licenceState, on
                 placeholder="Auto-generated if empty" className={`mt-1 ${inputClass}`} />
             </div>
           </div>
+          <fieldset className="mt-4 rounded-xl border border-[var(--border)] p-3">
+            <legend className="px-1 text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">Assigned workspaces</legend>
+            <p className="mb-2 text-xs text-[var(--text-muted)]">The employee can only enter the workspaces selected here. Their permission bundle is further restricted to these workspaces.</p>
+            <div className="flex flex-wrap gap-3">
+              {WORKSPACE_OPTIONS.map((workspace) => (
+                <label key={workspace.value} className="inline-flex items-center gap-2 text-sm text-[var(--text)]">
+                  <input type="checkbox" checked={form.assignedModules.includes(workspace.value)}
+                    onChange={(e) => setForm({ ...form, assignedModules: e.target.checked ? [...form.assignedModules, workspace.value] : form.assignedModules.filter((value) => value !== workspace.value) })} />
+                  {workspace.label}
+                </label>
+              ))}
+            </div>
+          </fieldset>
           <div className="mt-3 flex justify-end gap-2">
             <button type="button" onClick={() => { setFormOpen(false); setForm(emptyForm); }}
               className="min-h-10 rounded-xl border border-[var(--border)] px-4 text-sm font-semibold text-[var(--text)]">Cancel</button>
@@ -201,13 +229,14 @@ export default function EmployeesPanel({ propertyId, reloadKey, licenceState, on
               <th className="p-3 text-left">Staff role</th>
               <th className="p-3 text-left">Department</th>
               <th className="p-3 text-left">Permission bundle</th>
+              <th className="p-3 text-left">Assigned workspaces</th>
               <th className="p-3 text-left">Status</th>
               <th className="p-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan={6} className="p-6 text-center text-[var(--text-muted)]">Loading…</td></tr>}
-            {!loading && !staff.length && <tr><td colSpan={6} className="p-6 text-center text-[var(--text-muted)]">No employees yet.</td></tr>}
+            {loading && <tr><td colSpan={7} className="p-6 text-center text-[var(--text-muted)]">Loading…</td></tr>}
+            {!loading && !staff.length && <tr><td colSpan={7} className="p-6 text-center text-[var(--text-muted)]">No employees yet.</td></tr>}
             {staff.map((row) => (
               <tr key={row.id} className="border-b border-[var(--border)]">
                 <td className="p-3">
@@ -226,6 +255,17 @@ export default function EmployeesPanel({ propertyId, reloadKey, licenceState, on
                     <option value="">— role defaults —</option>
                     {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
                   </select>
+                </td>
+                <td className="p-3">
+                  <div className="flex min-w-[190px] flex-wrap gap-x-3 gap-y-2">
+                    {WORKSPACE_OPTIONS.map((workspace) => (
+                      <label key={workspace.value} className="inline-flex items-center gap-1.5 text-[11px] text-[var(--text)]">
+                        <input type="checkbox" checked={(row.assigned_modules || []).includes(workspace.value)}
+                          onChange={(e) => assignModules(row.id, e.target.checked ? [...(row.assigned_modules || []), workspace.value] : (row.assigned_modules || []).filter((value) => value !== workspace.value))} />
+                        {workspace.label}
+                      </label>
+                    ))}
+                  </div>
                 </td>
                 <td className="p-3">
                   {row.is_active
