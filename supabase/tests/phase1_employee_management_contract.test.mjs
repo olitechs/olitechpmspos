@@ -133,9 +133,9 @@ test('employeeService pins the server RPC names and never writes tables directly
   assert.match(employeeService, /licence_limit_reached/);
 });
 
-test('frontend scoping is deliberately narrow so a missing migration cannot lock properties out', () => {
+test('frontend workspace and page authorization fails closed for unscoped employees', () => {
   assert.match(authService, /export function isEmployeeScopedUser\(user\)/);
-  assert.match(authService, /if \(!user\.permissions\) return false;/);
+  assert.match(authService, /if \(!user\.staff \|\| user\.staff\.is_active === false \|\| !user\.permissions\) return false;/);
   assert.match(authService, /export function canUseApp\(user, app\)/);
   assert.match(authService, /export function hasPermissionCode\(user, code\)/);
   assert.match(authService, /fn_employee_permission_summary/);
