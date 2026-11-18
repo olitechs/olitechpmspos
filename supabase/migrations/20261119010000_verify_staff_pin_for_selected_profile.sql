@@ -153,9 +153,6 @@ end;
 $$;
 
 grant execute on function public.verify_staff_pin_for_staff(uuid, text, text, uuid) to authenticated;
-revoke execute on function public.verify_staff_pin(uuid, text, text) from anon, public;
-
-grant execute on function public.verify_staff_pin_for_staff(uuid, text, text, uuid) to authenticated;
 revoke execute on function public.verify_staff_pin_for_staff(uuid, text, text, uuid) from anon, public;
 
 notify pgrst, 'reload schema';
