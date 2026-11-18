@@ -141,7 +141,7 @@ export const shiftService = {
     let staffNames = {};
     if (staffIds.length) {
       const { data: staffRows, error: staffError } = await supabase
-        .from('staff')
+        .from('staff_directory')
         .select('user_id,full_name,email')
         .eq('property_id', shift.property_id)
         .in('user_id', staffIds);
