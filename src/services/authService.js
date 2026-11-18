@@ -265,7 +265,7 @@ async function loadCurrentUserDetails() {
 	// to a second property: do not accidentally keep loading the unrelated
 	// property membership as the employee's active workspace.
 	const { data: staffAssignments } = await supabase
-		.from('staff')
+		.from('staff_directory')
 		.select('property_id')
 		.eq('user_id', authUser.id)
 		.eq('is_active', true);
@@ -279,7 +279,7 @@ async function loadCurrentUserDetails() {
 	let permissions = null;
 	let entitlement = null;
 	if (propertyId) {
-		const { data: staffByUserId } = await supabase.from('staff').select('id,full_name,email,phone,role,assigned_modules,is_active,property_id,avatar,last_login,user_id,role_id,department_id').eq('property_id', propertyId).eq('user_id', authUser.id).maybeSingle();
+		const { data: staffByUserId } = await supabase.from('staff_directory').select('id,full_name,email,phone,role,assigned_modules,is_active,property_id,avatar,last_login,user_id,role_id,department_id').eq('property_id', propertyId).eq('user_id', authUser.id).maybeSingle();
 		const { data: staffByEmail } = staffByUserId ? { data: null } : await supabase.from('staff').select('id,full_name,email,phone,role,assigned_modules,is_active,property_id,avatar,last_login,user_id,role_id,department_id').eq('property_id', propertyId).ilike('email', authUser.email || '').maybeSingle();
 		staff = staffByUserId || staffByEmail || null;
 		const { data: subscriptionRow, error: subscriptionError } = await supabase.rpc('fn_get_subscription', { p_property_id: propertyId });
@@ -407,7 +407,7 @@ export const authService = {
 		await supabase.auth.signOut();
 	},
 	async listStaff(propertyId, module) {
-		let query = supabase.from('staff').select('id,full_name,email,phone,role,assigned_modules,is_active,property_id,avatar,last_login,user_id').eq('property_id', propertyId).eq('is_active', true).order('full_name');
+		let query = supabase.from('staff_directory').select('id,full_name,email,phone,role,assigned_modules,is_active,property_id,avatar,last_login,user_id').eq('property_id', propertyId).eq('is_active', true).order('full_name');
 		const { data, error } = await query;
 		if (error) throw new Error(error.message);
 		const rows = data || [];
@@ -415,7 +415,7 @@ export const authService = {
 	},
 
 	async listAllStaff(propertyId) {
-		const { data, error } = await supabase.from('staff').select('id,full_name,email,phone,role,assigned_modules,is_active,property_id,avatar,last_login,user_id,role_id,department_id,created_at').eq('property_id', propertyId).order('full_name');
+		const { data, error } = await supabase.from('staff_directory').select('id,full_name,email,phone,role,assigned_modules,is_active,property_id,avatar,last_login,user_id,role_id,department_id,created_at').eq('property_id', propertyId).order('full_name');
 		if (error) throw new Error(error.message); return data || [];
 	},
 
@@ -427,7 +427,9 @@ export const authService = {
 
 	async updateStaff(id, patch) {
 		const safe = { ...patch }; delete safe.pin; delete safe.pin_hash;
-		const { data, error } = await supabase.from('staff').update(safe).eq('id', id).select('id,full_name,email,phone,role,assigned_modules,is_active,property_id,avatar,last_login,user_id,created_at').single();
+		const { error: updateError } = await supabase.from('staff').update(safe).eq('id', id);
+		if (updateError) throw new Error(updateError.message);
+		const { data, error } = await supabase.from('staff_directory').select('id,full_name,email,phone,role,assigned_modules,is_active,property_id,avatar,last_login,user_id,created_at').eq('id', id).single();
 		if (error) throw new Error(error.message); return data;
 	},
 
