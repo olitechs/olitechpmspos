@@ -7,7 +7,7 @@ import RoomPlanner from '@/components/pms/RoomPlanner';
 export default function Rooms() {
   const pms = usePms();
   const { pathname } = useLocation();
-  const isDedicatedPlanner = /^\\/frontoffice\\/room-planner\\/?$/.test(pathname);
+  const isDedicatedPlanner = /^\/frontoffice\/room-planner\/?$/.test(pathname);
 
   // The Rooms & Apartments workspace is configuration-only.
   // Keep the dedicated Room Planner route available in its own workspace.
