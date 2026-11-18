@@ -17,7 +17,7 @@ export default function FrontOfficeMaintenance(){
   const [t,r,s,d]=await Promise.all([
    pmsService.listMaintenanceTickets(propertyId),
    supabase.from('rooms').select('id,number,name,status,floor').eq('property_id',propertyId).eq('active',true).order('number'),
-   supabase.from('staff').select('id,user_id,full_name,email,role,is_active').eq('property_id',propertyId).eq('is_active',true).order('full_name'),
+   supabase.from('staff_directory').select('id,user_id,full_name,email,role,is_active').eq('property_id',propertyId).eq('is_active',true).order('full_name'),
    pmsService.getMaintenanceDashboard(propertyId)
   ]);if(r.error)throw r.error;if(s.error)throw s.error;setTickets(t||[]);setRooms(r.data||[]);setStaff(s.data||[]);setSummary(d||{});
  }catch(e){toast.error(e.message||'Unable to load maintenance workspace.');}finally{setLoading(false);}},[propertyId]);

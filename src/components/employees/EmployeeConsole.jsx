@@ -8,7 +8,6 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Building2, RefreshCw, ShieldAlert, Users } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import { hasPermissionCode } from '@/services/authService';
 import { employeeService } from '@/services/employeeService';
@@ -73,7 +72,6 @@ export default function EmployeeConsole({ tab = 'employees' }) {
           ({licenceState.included_employees} included{Number(licenceState.additional_employees || 0) > 0 ? ` + ${licenceState.additional_employees} additional` : ''})
         </span>
         {over && <span className="font-semibold">— over the plan allowance; deactivate employees or add licences.</span>}
-        <Link to="/backoffice/employees/licences" className="ml-auto text-xs font-bold text-[var(--primary)] hover:underline">Manage licences</Link>
       </div>
     );
   }, [licenceState]);
@@ -105,19 +103,6 @@ export default function EmployeeConsole({ tab = 'employees' }) {
             <RefreshCw size={17} />
           </button>
         </div>
-
-        <nav className="mb-4 flex flex-wrap gap-1.5" aria-label="Employee management sections">
-          {TABS.map((t) => {
-            const active = t.id === activeTab;
-            return (
-              <Link key={t.id} to={t.path}
-                className={`rounded-xl px-3 py-2 text-xs font-bold transition ${active ? 'bg-[var(--primary)] text-primary-foreground' : 'border border-[var(--border)] bg-surface text-[var(--text)] hover:bg-[var(--primary-soft)]'}`}
-                aria-current={active ? 'page' : undefined}>
-                {t.label}
-              </Link>
-            );
-          })}
-        </nav>
 
         {activeTab !== 'licences' && licenceBanner}
 
