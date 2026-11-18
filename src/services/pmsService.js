@@ -325,7 +325,7 @@ export const pmsService = {
 	},
 
 	async listFolioEmployees(propertyId) {
-		const { data, error } = await supabase.from('staff').select('id,full_name,user_id').eq('property_id', propertyId).eq('is_active', true).order('full_name');
+		const { data, error } = await supabase.from('staff_directory').select('id,full_name,user_id').eq('property_id', propertyId).eq('is_active', true).order('full_name');
 		if (error) throw new Error(error.message);
 		return data || [];
 	},
