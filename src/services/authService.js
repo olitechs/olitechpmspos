@@ -75,9 +75,30 @@ export function isEmployeeScopedUser(user) {
 }
 
 const APP_WORKSPACE = { pos: 'pos', frontoffice: 'frontoffice', stores: 'store', backoffice: 'backoffice' };
+
+// Phase 4: a blocked entitlement (expired, suspended, cancelled, pending…)
+// removes every operational workspace. Platform owners always keep full
+// access. A missing entitlement (older deployment before the engine
+// migration) defers to the database instead of locking sessions out locally.
+export function isSubscriptionBlocked(user) {
+  if (!user || user.isPlatformOwner) return false;
+  const ent = user.entitlement;
+  if (!ent || typeof ent !== 'object') return false;
+  return ent.allowed !== true;
+}
+
+// The only paths an owner of a blocked property may still reach: renewal,
+// billing and support. Everything else renders the suspension screen.
+export function isRenewalPath(pathname) {
+  const path = String(pathname || '/').split('?')[0].replace(/\/+$/, '');
+  return /^\/backoffice\/(?:settings\/)?billing$/.test(path)
+    || /^\/backoffice\/help(?:\/|$)/.test(path);
+}
+
 export function canUseApp(user, app) {
   if (!user || !app) return false;
   if (user.isPlatformOwner) return true;
+  if (isSubscriptionBlocked(user)) return false;
   const pkg = String(user?.property?.package || 'none').toLowerCase();
   if (pkg === 'none' || !getPackageModules(pkg).includes(app)) return false;
   if (['owner', 'admin'].includes(String(user?.propertyRole || '').toLowerCase())) return true;
@@ -166,7 +187,7 @@ export async function hashPin(pin) {
   return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2,'0')).join('');
 }
 
-function toAppUser({ profile, property, propertyRole, staff = null, subscription = null, permissions = null }) {
+function toAppUser({ profile, property, propertyRole, staff = null, subscription = null, permissions = null, entitlement = null }) {
 	if (!profile) return null;
 	return {
 		id: profile.id,
@@ -182,6 +203,10 @@ function toAppUser({ profile, property, propertyRole, staff = null, subscription
 		staff,
 		subscription,
 		permissions,
+		// Phase 4: server-computed subscription entitlement (fn_property_
+		// entitlement). The database evaluator is authoritative; the client
+		// only renders its decision and never computes access itself.
+		entitlement,
 		package: property?.package || 'none',
 	};
 }
@@ -252,6 +277,7 @@ async function loadCurrentUserDetails() {
 	let staff = null;
 	let subscription = null;
 	let permissions = null;
+	let entitlement = null;
 	if (propertyId) {
 		const { data: staffByUserId } = await supabase.from('staff').select('id,full_name,email,phone,role,assigned_modules,is_active,property_id,avatar,last_login,user_id,role_id,department_id').eq('property_id', propertyId).eq('user_id', authUser.id).maybeSingle();
 		const { data: staffByEmail } = staffByUserId ? { data: null } : await supabase.from('staff').select('id,full_name,email,phone,role,assigned_modules,is_active,property_id,avatar,last_login,user_id,role_id,department_id').eq('property_id', propertyId).ilike('email', authUser.email || '').maybeSingle();
@@ -259,6 +285,16 @@ async function loadCurrentUserDetails() {
 		const { data: subscriptionRow, error: subscriptionError } = await supabase.rpc('fn_get_subscription', { p_property_id: propertyId });
 		if (subscriptionError) console.error('[authService] subscription lookup failed:', subscriptionError.message);
 		subscription = subscriptionRow || null;
+		// Server-computed entitlement. Older deployments without the engine
+		// simply leave `entitlement` null; every consumer treats a missing
+		// value as "defer to the database" instead of blocking locally.
+		try {
+			const { data: entitlementRow, error: entitlementError } = await supabase.rpc('fn_get_my_subscription_entitlement');
+			if (entitlementError) throw entitlementError;
+			entitlement = entitlementRow || null;
+		} catch (entitlementError) {
+			console.error('[authService] entitlement lookup failed:', entitlementError?.message);
+		}
 		// Employee permission resolution is server-side (fn_employee_permission_
 		// summary). Older deployments without the employee-management migration
 		// simply leave `permissions` undefined; every consumer falls back to the
@@ -279,6 +315,7 @@ async function loadCurrentUserDetails() {
 		staff,
 		subscription,
 		permissions,
+		entitlement,
 	});
 }
 

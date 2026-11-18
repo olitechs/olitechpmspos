@@ -39,6 +39,38 @@ export function AuthProvider({ children }) {
     checkUserAuth();
   }, [checkUserAuth]);
 
+  // Silent entitlement revalidation (Phase 4/6): a browser tab left open
+  // across a subscription expiry must not keep a stale active status. The
+  // database entitlement is re-fetched on focus/visibility and on a bounded
+  // interval — without flipping isLoadingAuth, so no skeleton flash. The
+  // realtime listeners above already cover platform-side changes; this covers
+  // pure time-based expiry. The database check remains authoritative.
+  const refreshUser = useCallback(async () => {
+    try {
+      const current = await authService.getCurrentUser();
+      if (current) setUser(current);
+    } catch {
+      // Keep the current session on transient failures; the next tick retries.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!user || user.isPlatformOwner) return undefined;
+    const FOCUS_RECHECK_MS = 5 * 60 * 1000;
+    const recheck = () => {
+      if (typeof document === 'undefined' || document.visibilityState !== 'visible') return;
+      refreshUser();
+    };
+    const interval = setInterval(recheck, FOCUS_RECHECK_MS);
+    window.addEventListener('focus', recheck);
+    document.addEventListener('visibilitychange', recheck);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', recheck);
+      document.removeEventListener('visibilitychange', recheck);
+    };
+  }, [user?.id, user?.isPlatformOwner, refreshUser]);
+
   // Keep React auth state synchronized with the real Supabase session.
   // This covers token refresh, sign-out in another tab, and sign-in/session
   // restoration events instead of relying on the initial page load only.
