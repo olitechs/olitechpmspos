@@ -238,3 +238,31 @@ An empty evidence log means unvalidated, not "probably fine".
 - Treat a green test suite as hardware proof: the code is tested, the printers
   and Windows service are not until this checklist has been walked on a real POS
   computer.
+
+
+## Installer lifecycle and failure diagnostics (2026-11-19)
+
+The installer must create its diagnostic destination before launching PowerShell. The primary log is:
+
+`%ProgramData%\OliTechs\PrintAgent\logs\install-service.log`
+
+If ProgramData logging cannot be initialized, the PowerShell installer falls back to:
+
+`%TEMP%\OliTechs-PrintAgent-install.log`
+
+The installer records initialization, payload handoff, PowerShell exit code, service-registration output, service start and health verification. A failure dialog must show the exact diagnostic path; it must not direct staff to a folder that may not exist.
+
+### Installation lifecycle gates
+
+1. **Preflight:** verify the staged service script, XML template, agent entry point, Sentry preload, bundled Node executable and WinSW executable before removing an existing service.
+2. **Persistent storage:** create and verify ProgramData service, log and queue directories. Never delete or overwrite the pairing credential, queue journal or snapshot during install/upgrade.
+3. **Existing service:** request stop and verify Stopped. Uninstall the old service wrapper and wait for Service Control Manager to report the service absent. Handle `ERROR_SERVICE_MARKED_FOR_DELETE` (1072) explicitly; do not attempt a second registration while Windows still holds it.
+4. **Registration:** write the WinSW XML, copy the wrapper, capture wrapper output and exit code, and verify service registration.
+5. **Legacy task:** stop/remove the old logon scheduled task before starting the Windows service, preventing two agents from competing for port 8631.
+6. **Start and health:** start the service, wait for Running, then require `http://127.0.0.1:8631/health` to return `ok=true`. A running service without a healthy endpoint is a failed installation.
+7. **Failure rollback:** if this attempt registered a service but later start/health checks fail, stop and unregister that service where possible. Retain ProgramData pairing, queue, logs and diagnostics. Record rollback failure in the install log.
+8. **Uninstall:** stop and verify the service, unregister it, wait until SCM confirms it is absent, and only then remove the wrapper/config. Preserve persistent state unless an administrator explicitly uses `-RemoveData`.
+
+### Current validation boundary
+
+The source-level lifecycle safeguards and contract assertions are not a substitute for running the signed installer on clean and upgrade Windows 10/11 x64 machines. Do not deploy to a reception workstation until the Windows release workflow is green, the Authenticode signature and SHA-256 are verified, and acceptance tests cover clean install, in-place upgrade, restart, pairing, queue recovery and physical receipt/kitchen printing.
