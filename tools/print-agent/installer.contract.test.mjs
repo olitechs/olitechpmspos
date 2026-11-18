@@ -63,6 +63,20 @@ test('service reinstall waits for Windows to release a deleted service registrat
   assert.match(install, /WinSW exit code \$uninstallExitCode/);
 });
 
+test('service installation preflights stale SCM entries and uninstall waits before deleting wrapper files', async () => {
+  const install = await read('./service/install-service.ps1');
+  const uninstall = await read('./service/uninstall-service.ps1');
+
+  assert.match(install, /registrationCode -eq 1072/);
+  assert.match(install, /registrationCode -ne 1060/);
+  assert.match(install, /registrationDeadline/);
+  assert.match(install, /ServiceRegistrationAttempted/);
+  assert.match(uninstall, /Stop-Service -Name \$ServiceId -Force -ErrorAction Stop/);
+  assert.match(uninstall, /queryCode -eq 1072/);
+  assert.match(uninstall, /queryCode -ne 1060/);
+  assert.match(uninstall, /Persistent printer pairing, queue, logs and diagnostics were retained/);
+});
+
 test('installer diagnostics exist before PowerShell starts and survive early failures', async () => {
   const iss = await read('./installer/OliTechsPrintAgent.iss');
   const install = await read('./service/install-service.ps1');
