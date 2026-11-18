@@ -88,10 +88,24 @@ Type: filesandordirs; Name: "{app}"
 [Code]
 var
   ServiceInstallFailed: Boolean;
+  InstallDiagnosticPath: String;
+
+procedure WriteInstallerDiagnostic(Message: String);
+begin
+  if InstallDiagnosticPath <> '' then
+    SaveStringToFile(InstallDiagnosticPath, GetDateTimeString('yyyy-mm-dd hh:nn:ss', '-', ':') + ' ' + Message + #13#10, True);
+end;
 
 function InitializeSetup(): Boolean;
+var
+  LogDir: String;
 begin
   ServiceInstallFailed := False;
+  LogDir := ExpandConstant('{commonappdata}\\OliTechs\\PrintAgent\\logs');
+  InstallDiagnosticPath := ExpandConstant('{tmp}\\OliTechs-PrintAgent-install.log');
+  if ForceDirectories(LogDir) then
+    InstallDiagnosticPath := AddBackslash(LogDir) + 'install-service.log';
+  WriteInstallerDiagnostic('Installer initialized. Windows=' + GetWindowsVersionString());
   Result := True;
 end;
 
@@ -162,6 +176,7 @@ begin
 
   if not Exec('powershell.exe', Params, ExpandConstant('{app}'), SW_HIDE, ewWaitUntilTerminated, Code) then
   begin
+    WriteInstallerDiagnostic('ERROR: Windows could not start powershell.exe.');
     ServiceInstallFailed := True;
     MsgBox('Windows could not start the OliTechs Print Agent service installer.' + #13#10#13#10 +
       'Printing will not work until this is fixed. Restart the computer and run this installer again, ' +
@@ -170,6 +185,7 @@ begin
     exit;
   end;
 
+  WriteInstallerDiagnostic('PowerShell service installer exit code: ' + IntToStr(Code));
   if Code <> 0 then
   begin
     ServiceInstallFailed := True;
