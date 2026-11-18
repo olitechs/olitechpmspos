@@ -160,10 +160,18 @@ export default function POSContainer({ initialTab = 'floor' } = {}) {
 	// is a deliberate platform decision that has NOT been taken yet.
 	const [posPinSetup, setPosPinSetup] = useState(null);
 	const verifyPosAccess = async (pin) => {
+		if (posAccessBusy) return;
 		setPosAccessBusy(true);
 		setPosAccessError('');
+		let timeoutId;
 		try {
-			const result = await posAccessService.verifyPin({ propertyId, pin });
+			const timeout = new Promise((_, reject) => {
+				timeoutId = window.setTimeout(() => reject(new Error('POS PIN verification is taking too long. Check your connection and try again.')), 20000);
+			});
+			const result = await Promise.race([
+				posAccessService.verifyPin({ propertyId, pin }),
+				timeout,
+			]);
 			if (!result?.ok) {
 				setPosAccessError(result?.message || 'Incorrect POS PIN. Try again.');
 				return;
@@ -185,6 +193,7 @@ export default function POSContainer({ initialTab = 'floor' } = {}) {
 			}
 			setPosAccessError(message);
 		} finally {
+			window.clearTimeout(timeoutId);
 			setPosAccessBusy(false);
 		}
 	};
