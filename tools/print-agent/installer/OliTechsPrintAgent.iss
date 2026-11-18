@@ -136,6 +136,12 @@ begin
       exit;
     Sleep(500);
   end;
+
+  { Never replace the bundled runtime while the old service is still running.
+    ProgramData holds the durable queue and paired workstation credential; this
+    guard aborts before [Files] changes the installed application. }
+  if AgentServiceRunning() then
+    RaiseException('The OliTechs Print Agent did not stop within 20 seconds. No files were replaced. Wait for any active print to finish, then run the installer again. If it keeps happening, contact OliTechs support.');
 end;
 
 { The pairing dialog only makes sense when the agent actually installed. }
