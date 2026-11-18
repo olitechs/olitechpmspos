@@ -30,7 +30,7 @@ function Write-InstallLog([string]$Message) {
 Write-InstallLog "BEGIN service installation. Script=$($MyInvocation.MyCommand.Path); ProgramData=$env:ProgramData; User=$([Security.Principal.WindowsIdentity]::GetCurrent().Name)"
 try {
   if (-not $LogPath) {
-    $logDir = Join-Path $env:ProgramData 'OliTechs\\PrintAgent\\logs'
+    $logDir = Join-Path $env:ProgramData 'OliTechs/PrintAgent/logs'
     New-Item -ItemType Directory -Force -Path $logDir | Out-Null
     $InstallLogPath = Join-Path $logDir 'install-service.log'
   }
