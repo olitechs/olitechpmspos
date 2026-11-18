@@ -51,6 +51,18 @@ test('staff are offered pairing in a window, never a terminal', async () => {
   assert.ok(!/Write-(Host|Output|Verbose)[^\r\n]*pairingCode/i.test(pairing), 'the pairing code must never be written out');
 });
 
+test('service reinstall waits for Windows to release a deleted service registration', async () => {
+  const install = await read('./service/install-service.ps1');
+
+  assert.match(install, /Stop-Service -Name \$ServiceId -Force -ErrorAction Stop/);
+  assert.match(install, /\$removeDeadline = \(Get-Date\)\.AddSeconds\(30\)/);
+  assert.match(install, /sc\.exe query \$ServiceId/);
+  assert.match(install, /\$queryExitCode -ne 1060/);
+  assert.match(install, /marked for deletion/);
+  assert.match(install, /No new service was installed/);
+  assert.match(install, /WinSW exit code \$uninstallExitCode/);
+});
+
 test('the installer runs the service scripts from the staged agent folder and stops the service before copying', async () => {
   const iss = await read('./installer/OliTechsPrintAgent.iss');
 
