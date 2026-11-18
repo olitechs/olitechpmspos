@@ -5,25 +5,46 @@ param(
   [string]$SupabaseUrl = '',
   [string]$SupabaseAnonKey = '',
   [string]$AgentConfigPath = '',
+  [string]$LogPath = '',
   [switch]$SkipLegacyTaskCleanup
 )
 
 $ErrorActionPreference = 'Stop'
 
-# Capture installer failures separately from the running agent logs. The service
-# may fail before Node starts, so agent.log cannot explain registration errors.
-$InstallLogDir = Join-Path $env:ProgramData 'OliTechs\\PrintAgent\\logs'
-New-Item -ItemType Directory -Force -Path $InstallLogDir | Out-Null
-$InstallLogPath = Join-Path $InstallLogDir 'install-service.log'
-try { Start-Transcript -Path $InstallLogPath -Append -Force | Out-Null } catch {}
+# Keep a diagnostic trail even when ProgramData cannot be created. Inno Setup
+# passes its pre-created log path; the temp fallback covers early/manual failures.
+$InstallLogPath = $LogPath
+if (-not $InstallLogPath) {
+  $InstallLogPath = Join-Path $env:TEMP 'OliTechs-PrintAgent-install.log'
+}
+$script:TranscriptStarted = $false
+function Write-InstallLog([string]$Message) {
+  $line = "[$(Get-Date -Format o)] $Message"
+  try { Add-Content -LiteralPath $InstallLogPath -Value $line -Encoding UTF8 -ErrorAction Stop } catch {
+    $fallback = Join-Path $env:TEMP 'OliTechs-PrintAgent-install.log'
+    try { Add-Content -LiteralPath $fallback -Value $line -Encoding UTF8 -ErrorAction Stop } catch {}
+  }
+}
+Write-InstallLog "BEGIN service installation. Script=$($MyInvocation.MyCommand.Path); ProgramData=$env:ProgramData; User=$([Security.Principal.WindowsIdentity]::GetCurrent().Name)"
+try {
+  if (-not $LogPath) {
+    $logDir = Join-Path $env:ProgramData 'OliTechs\\PrintAgent\\logs'
+    New-Item -ItemType Directory -Force -Path $logDir | Out-Null
+    $InstallLogPath = Join-Path $logDir 'install-service.log'
+  }
+  $logParent = Split-Path -Parent $InstallLogPath
+  if ($logParent) { New-Item -ItemType Directory -Force -Path $logParent | Out-Null }
+  Start-Transcript -Path $InstallLogPath -Append -Force | Out-Null
+  $script:TranscriptStarted = $true
+} catch {
+  Write-InstallLog "WARNING: could not initialize ProgramData/transcript logging: $($_.Exception.Message)"
+}
 trap {
-  try {
-    "INSTALL ERROR: $($_.Exception.Message)" | Out-File -FilePath $InstallLogPath -Append -Encoding utf8
-    Stop-Transcript | Out-Null
-  } catch {}
+  Write-InstallLog "INSTALL ERROR: $($_.Exception.Message)"
+  if ($script:TranscriptStarted) { Write-InstallLog 'SUCCESS: Print Agent service installation and health verification completed.'
+if ($script:TranscriptStarted) { try { Stop-Transcript | Out-Null } catch {} } }
   throw
 }
-
 $ServiceId = 'OliTechsPrintAgent'
 $ServiceDisplayName = 'OliTechs Print Agent'
 $LegacyTaskName = 'OliTechs Print Agent'
@@ -77,6 +98,7 @@ if (-not $resolvedWinSW) {
 }
 
 New-Item -ItemType Directory -Force -Path $DataDir, $ServiceDir, $LogDir | Out-Null
+Write-InstallLog "Validated payload and created persistent directories. DataDir=$DataDir; ServiceDir=$ServiceDir"
 
 # Re-installing must be safe: stop and remove the previous service first.
 # Windows can keep a service registration in the "marked for deletion" state
@@ -165,8 +187,10 @@ if ($SupabaseUrl -and $SupabaseAnonKey) {
 }
 $xml = $xml.Replace('{{ENV_ENTRIES}}', $envEntries)
 Set-Content -Path $ConfigPath -Value $xml -Encoding UTF8
+Write-InstallLog "Generated WinSW service configuration at $ConfigPath"
 
 Copy-Item -Path $resolvedWinSW -Destination $WrapperPath -Force
+Write-InstallLog "Copied verified service wrapper to $WrapperPath"
 
 # WinSW can return a generic non-zero code when a stale service registration
 # still exists (for example, Windows has marked it for deletion). Capture its
@@ -176,6 +200,7 @@ $winswExitCode = $LASTEXITCODE
 if ($winswOutput) {
   $winswOutput | Tee-Object -FilePath $InstallLogPath -Append | Out-Null
 }
+Write-InstallLog "WinSW install exit code: $winswExitCode"
 if ($winswExitCode -ne 0) {
   $serviceCheck = & sc.exe query $ServiceId 2>&1
   if ($serviceCheck) { $serviceCheck | Out-File -FilePath $InstallLogPath -Append -Encoding utf8 }
@@ -204,8 +229,9 @@ do {
   $status = (Get-Service -Name $ServiceId).Status
 } while ($status -ne 'Running' -and (Get-Date) -lt $deadline)
 if ($status -ne 'Running') {
-  throw "The OliTechs Print Agent service did not start (status: $status). See $LogDir for details."
+  throw "The OliTechs Print Agent service did not start (status: $status). See $InstallLogPath for details."
 }
+Write-InstallLog 'Windows service reached Running state.'
 
 $healthy = $false
 for ($attempt = 0; $attempt -lt 20; $attempt++) {
@@ -232,7 +258,8 @@ if ($SupabaseUrl -and $SupabaseAnonKey) {
 if ($healthy) {
   Write-Host 'Health:   responding' -ForegroundColor Green
 } else {
-  Write-Host 'Health:   the service is running but /health did not answer yet. Check the logs above.' -ForegroundColor Yellow
+  Write-InstallLog 'ERROR: Windows service is running but /health did not respond within the verification window.'
+  throw "The Print Agent service started but its health endpoint did not respond. See $InstallLogPath."
 }
 Write-Host ''
 try { Stop-Transcript | Out-Null } catch {}
