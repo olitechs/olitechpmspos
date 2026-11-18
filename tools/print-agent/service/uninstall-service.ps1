@@ -60,7 +60,19 @@ if ($service) {
   }
   Write-UninstallLog 'Windows service removed and released.'
 } else {
-  Write-UninstallLog 'Service is not registered.'
+  Write-UninstallLog 'Service is not registered; checking whether SCM still holds a deletion lock.'
+}
+
+# Even when Get-Service returns no object, SCM may still report marked-for-delete.
+$releaseDeadline = (Get-Date).AddSeconds(30)
+do {
+  $releaseState = & sc.exe query $ServiceId 2>&1
+  $releaseCode = $LASTEXITCODE
+  if ($releaseCode -eq 1072) { Start-Sleep -Milliseconds 500 }
+} while ($releaseCode -eq 1072 -and (Get-Date) -lt $releaseDeadline)
+if ($releaseCode -ne 1060) {
+  $releaseState | Out-File -FilePath $InstallLogPath -Append -Encoding utf8
+  throw "Windows has not fully released the Print Agent service registration (sc.exe exit code $releaseCode). Restart Windows and retry. Persistent print data has been kept."
 }
 
 $legacyTask = Get-ScheduledTask -TaskName $LegacyTaskName -ErrorAction SilentlyContinue
