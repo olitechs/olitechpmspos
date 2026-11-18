@@ -116,8 +116,9 @@ Write-InstallLog "Validated payload and created persistent directories. DataDir=
 # Windows can keep a service registration in the "marked for deletion" state
 # briefly after WinSW uninstall. Installing again during that window commonly
 # returns WinSW exit code 1. Wait for the Service Control Manager to release it.
-# Also handle a service that a previous uninstaller has already removed from
-# Get-Service but which the Service Control Manager still marks for deletion.
+# Check the SCM before touching the current installation. Get-Service can return
+# no object while Windows still holds a service marked for deletion.
+$existing = Get-Service -Name $ServiceId -ErrorAction SilentlyContinue
 $registrationDeadline = (Get-Date).AddSeconds(30)
 do {
   $registrationState = & sc.exe query $ServiceId 2>&1
@@ -128,15 +129,13 @@ if ($registrationCode -eq 1072) {
   $registrationState | Out-File -FilePath $InstallLogPath -Append -Encoding utf8
   throw "Windows still marks $ServiceId for deletion. Restart Windows before installing again. No new service was registered."
 }
-if ($registrationCode -eq 0) {
+if ($registrationCode -eq 0 -and -not $existing) {
   throw "The $ServiceId service is registered but could not be opened through the Windows service API. Restart Windows and retry; no new service was registered."
 }
-if ($registrationCode -ne 1060) {
+if ($registrationCode -ne 0 -and $registrationCode -ne 1060) {
   $registrationState | Out-File -FilePath $InstallLogPath -Append -Encoding utf8
   throw "Could not inspect the existing $ServiceId service registration (sc.exe exit code $registrationCode). See $InstallLogPath."
 }
-
-$existing = Get-Service -Name $ServiceId -ErrorAction SilentlyContinue
 if ($existing) {
   if ($existing.Status -ne 'Stopped') {
     Stop-Service -Name $ServiceId -Force -ErrorAction Stop
