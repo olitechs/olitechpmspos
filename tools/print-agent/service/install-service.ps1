@@ -174,11 +174,11 @@ if ($existing) {
     Start-Sleep -Milliseconds 500
     $queryOutput = & sc.exe query $ServiceId 2>&1
     $queryExitCode = $LASTEXITCODE
-  } while ($queryExitCode -eq 0 -and (Get-Date) -lt $removeDeadline)
+  } while (($queryExitCode -eq 0 -or $queryExitCode -eq 1072) -and (Get-Date) -lt $removeDeadline)
 
-  if ($queryExitCode -eq 0) {
+  if ($queryExitCode -eq 0 -or $queryExitCode -eq 1072) {
     $queryOutput | Out-File -FilePath $InstallLogPath -Append -Encoding utf8
-    throw "Windows is still holding the old $ServiceId service registration. Restart Windows, then run the installer again. No new service was installed."
+    throw "Windows is still holding the old $ServiceId service registration or marks it for deletion. Restart Windows, then run the installer again. No new service was installed."
   }
   if ($queryExitCode -ne 1060) {
     $queryOutput | Out-File -FilePath $InstallLogPath -Append -Encoding utf8
