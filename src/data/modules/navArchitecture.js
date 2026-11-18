@@ -14,7 +14,7 @@ export const BACK_OFFICE_NAV = [
   { id:'store-admin', label:'Store administration', icon:Store, expanded:true, children:[['Manage stores','/backoffice/stores'],['POS Devices','/backoffice/pos-devices'],['Printers','/backoffice/printers']] },
   { id:'customers', label:'Customers', icon:Users, path:'/backoffice/customers' },
   { id:'integrations', label:'Integrations', icon:PlugZap, path:'/backoffice/integrations' },
-  { id:'settings', label:'Settings', icon:Settings, path:'/backoffice/settings/features', children:[['Features','/backoffice/settings/features'],['Billing & subscriptions','/backoffice/settings/billing'],['Payment types','/backoffice/settings/payment-types'],['Loyalty','/backoffice/settings/loyalty'],['Taxes','/backoffice/settings/taxes'],['Receipt','/backoffice/settings/receipt'],['Open tickets','/backoffice/settings/open-tickets'],['Kitchen printers','/backoffice/settings/kitchen-printers'],['Dining options','/backoffice/settings/dining-options']] },
+  { id:'settings', label:'Settings', icon:Settings, path:'/backoffice/settings/features', children:[['Features','/backoffice/settings/features'],['Billing & subscriptions','/backoffice/settings/billing'],['Payment types','/backoffice/settings/payment-types'],['Loyalty','/backoffice/settings/loyalty'],['Taxes','/backoffice/settings/taxes'],['Receipt','/backoffice/settings/receipt'],['Open tickets','/backoffice/settings/open-tickets'],['Dining options','/backoffice/settings/dining-options']] },
   { id:'help', label:'Help', icon:HelpCircle, path:'/backoffice/help', notification:true },
 ];
 export const STORES_NAV = [
