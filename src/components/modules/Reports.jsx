@@ -4,6 +4,9 @@ import { CalendarDays, RefreshCw, TrendingUp, Hotel, ShoppingCart, ShieldCheck, 
 import { useAuth } from '@/lib/AuthContext';
 import { reportingService } from '@/services/reportingService';
 import { buildManagementReportDefinition, buildSalesReportDefinition, buildSalesSummaryDefinition } from '@/services/reportDefinitions';
+import { packExportDataService } from '@/services/packExportDataService';
+import { downloadPackWorkbook, packExportBuilders, salesExportFilename } from '@/services/packExports';
+import PackExcelExportButton from '@/components/shared/PackExcelExportButton';
 import DocumentExportMenu from '@/components/shared/DocumentExportMenu';
 import SalesBreakdown from '@/components/modules/SalesBreakdown';
 import { NAVY, TEAL_DARK, BORDER, SAND, SURFACE, MUTED } from '@/data/themePalette';
@@ -66,6 +69,18 @@ export default function Reports() {
     ['overview','Overview',TrendingUp], ['sales','Sales',ShoppingCart], ['sales-analysis','Sales breakdown',BarChart3], ['hotel','Hotel',Hotel], ['inventory','Inventory',ShoppingCart], ['controls','Controls',ShieldCheck],
   ];
 
+  const exportSalesWorkbook = async () => {
+    const extract = await packExportDataService.loadSalesExport(propertyId, from, to);
+    return downloadPackWorkbook(packExportBuilders.sales, {
+      ...extract,
+      propertyName,
+      generatedAt: new Date(),
+      currency: user?.property?.currency || 'KES',
+      from,
+      to,
+    }, salesExportFilename({ propertyName, from, to }));
+  };
+
   return <div className="flex-1 overflow-y-auto p-4 sm:p-5 lg:p-6" style={{ background: SAND }}>
     <div className="mx-auto w-full max-w-[1600px]">
       <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -77,6 +92,7 @@ export default function Reports() {
           <DocumentExportMenu definition={managementDefinition} label="Management report" disabled={!managementDefinition || loading} />
           <DocumentExportMenu definition={salesSummaryDefinition} label="Sales summary" disabled={!salesSummaryDefinition || loading} />
           <DocumentExportMenu definition={salesReportDefinition} label="Sales report" disabled={!salesReportDefinition || loading} />
+          <PackExcelExportButton label="Sales Excel (formulas)" run={exportSalesWorkbook} disabled={!propertyId || loading} />
         </div>
       </div>
 

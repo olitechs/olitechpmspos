@@ -18,6 +18,7 @@ export default function DocumentExportMenu({
   disabled = false,
   className = '',
   onError,
+  excelBlobBuilder,
 }) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
@@ -49,7 +50,9 @@ export default function DocumentExportMenu({
       const report = typeof getDefinition === 'function' ? await getDefinition((status) => setProgress(String(status || 'Loading report data…'))) : definition;
       if (!report?.key) throw new Error('Report data is not ready. Refresh the report and try again.');
       setProgress(format === 'excel' ? 'Building Excel workbook…' : 'Building PDF…');
-      const blob = format === 'excel' ? await createExcelBlob(report) : await createPdfBlob(report);
+      const blob = format === 'excel'
+        ? (excelBlobBuilder ? await excelBlobBuilder(report) : await createExcelBlob(report))
+        : await createPdfBlob(report);
       const rowCount = (report.sections || [])
         .filter((section) => format === 'excel' || section.pdf !== false)
         .reduce((total, section) => total + (section.rows?.length || 0), 0);

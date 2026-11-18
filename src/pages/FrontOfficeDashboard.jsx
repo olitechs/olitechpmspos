@@ -1,13 +1,22 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, ArrowRight, BedDouble, CalendarPlus, ClipboardList, LogIn, LogOut, Sparkles, Wallet, Users } from 'lucide-react';
+import { AlertTriangle, ArrowRight, BedDouble, CalendarDays, CalendarPlus, ClipboardList, LogIn, LogOut, Sparkles, Wallet, Users } from 'lucide-react';
 import { PmsProvider, usePms } from '@/data/PmsStore';
+import { useAuth } from '@/lib/AuthContext';
+import { packExportDataService, todayKenya } from '@/services/packExportDataService';
+import { downloadPackWorkbook, frontOfficeExportFilename, packExportBuilders } from '@/services/packExports';
+import PackExcelExportButton from '@/components/shared/PackExcelExportButton';
 
 const keyOf = date => { const d=new Date(date); return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-'); };
 const todayKey = () => keyOf(new Date());
 
 function DashboardContent() {
   const { rooms=[], reservations=[], loading, error } = usePms();
+  const { user } = useAuth();
+  const propertyId = user?.property?.id;
+  const propertyName = user?.property?.business_name || user?.property?.name || 'OliTechs';
+  const currency = user?.property?.currency || 'KES';
+  const [reportDate, setReportDate] = useState(todayKenya());
   const today = todayKey();
   const stats = useMemo(() => {
     const active = reservations.filter(r => r.status !== 'cancelled');
@@ -30,10 +39,20 @@ function DashboardContent() {
     return {arrivals,departures,inHouse,unpaid,partial,expiring,occupied,available,dirty,out,next7,monthNights,monthOccupancy,rooms:rooms.length};
   },[rooms,reservations,today]);
   const occupancy = (n) => stats.rooms ? Math.round(n/stats.rooms*100) : 0;
+  const exportFrontOfficeWorkbook = async () => {
+    const extract = await packExportDataService.loadFrontOfficeExport(propertyId);
+    return downloadPackWorkbook(packExportBuilders.frontOffice, {
+      ...extract,
+      propertyName,
+      currency,
+      generatedAt: new Date(),
+      reportDate,
+    }, frontOfficeExportFilename({ propertyName, date: reportDate }));
+  };
   const Card = ({title,value,detail,icon:Icon,to,tone='teal'}) => <Link to={to} className="group min-w-0 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--focus)]"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="text-xs font-semibold text-[var(--text-muted)]">{title}</div><div className="mt-2 text-3xl font-bold tabular-nums text-[var(--text)]">{loading?'—':value}</div><div className="mt-1 text-xs text-[var(--text-muted)]">{detail}</div></div><span className={['rounded-lg p-2',tone==='orange'?'bg-[var(--warning-soft)] text-[var(--warning-text)]':tone==='green'?'bg-[var(--success-soft)] text-[var(--success-text)]':'bg-[var(--surface-2)] text-[var(--brand-primary)]'].join(' ')}><Icon size={19}/></span></div><div className="mt-3 flex items-center gap-1 text-xs font-semibold text-[var(--brand-primary)]">Open <ArrowRight size={13}/></div></Link>;
   return <div className="h-full overflow-y-auto bg-[var(--canvas)] p-4 sm:p-5 lg:p-6">
     <div className="mx-auto max-w-[1500px]">
-      <div className="mb-5 flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Front Office / PMS</p><h1 className="mt-1 text-2xl font-bold text-[var(--text)]">Room Dashboard</h1><p className="mt-1 text-sm text-[var(--text-muted)]">Today's operational overview · {new Date().toLocaleDateString('en-GB')}</p></div><div className="flex flex-wrap gap-2"><Link to="/frontoffice/check-in/walk-in" className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-[var(--brand-primary)] px-3 text-sm font-semibold text-[var(--white)]"><CalendarPlus size={16}/> New Reservation</Link><Link to="/frontoffice/room-planner" className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-semibold"><BedDouble size={16}/> Open Planner</Link></div></div>
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">Front Office / PMS</p><h1 className="mt-1 text-2xl font-bold text-[var(--text)]">Room Dashboard</h1><p className="mt-1 text-sm text-[var(--text-muted)]">Today's operational overview · {new Date().toLocaleDateString('en-GB')}</p></div><div className="flex flex-wrap gap-2"><label className="flex min-h-11 items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm"><CalendarDays size={16}/><span className="text-xs font-semibold text-[var(--text-muted)]">Report date</span><input aria-label="Front office report date" type="date" value={reportDate} onChange={e=>setReportDate(e.target.value)} className="bg-transparent text-sm outline-none"/></label><PackExcelExportButton label="Front Office Excel" run={exportFrontOfficeWorkbook} disabled={!propertyId}/><Link to="/frontoffice/check-in/walk-in" className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-[var(--brand-primary)] px-3 text-sm font-semibold text-[var(--white)]"><CalendarPlus size={16}/> New Reservation</Link><Link to="/frontoffice/room-planner" className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-semibold"><BedDouble size={16}/> Open Planner</Link></div></div>
       {error && <div role="alert" className="mb-4 rounded-lg border border-[var(--danger)] bg-[var(--danger-soft)] p-3 text-sm text-[var(--danger-text)]">{error}</div>}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Card title="Today's Arrivals" value={stats.arrivals.length} detail="Expected check-ins" icon={LogIn} to="/frontoffice/check-in/arrivals"/>
