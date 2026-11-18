@@ -153,17 +153,25 @@ export default function POSContainer({ initialTab = 'floor' } = {}) {
 			document.removeEventListener('visibilitychange', refresh);
 		};
 	}, [propertyId]);
-	const verifySwitch = async (pin) => { try { const result = await authService.verifyStaffPin({ propertyId, module: 'pos', pin }); if (!result?.ok) { setSwitchError('Wrong PIN'); return; } sessionStorage.setItem('olitech_active_staff_v2', JSON.stringify(result.staff)); setActiveStaffId(result.staff?.id ?? null); window.dispatchEvent(new CustomEvent('olitech:staff-changed', { detail: result.staff })); setSwitchStaff(null); setSwitchError(''); } catch (e) { setSwitchError(e.message); } };
+	const verifySwitch = async (pin) => { try { const result = await authService.verifyStaffPinForStaff({ propertyId, staffId: switchStaff?.id, module: 'pos', pin }); if (!result?.ok) { setSwitchError('Wrong PIN'); return; } sessionStorage.setItem('olitech_active_staff_v2', JSON.stringify(result.staff)); setActiveStaffId(result.staff?.id ?? null); window.dispatchEvent(new CustomEvent('olitech:staff-changed', { detail: result.staff })); setSwitchStaff(null); setSwitchError(''); } catch (e) { setSwitchError(e.message); } };
 	// Forced "Set a new POS PIN" flow (upgrade pack Task 3): owners/admins must
 	// replace the default (or missing) POS access PIN before entering POS.
 	// Staff entering with the default PIN still get in — the hard server block
 	// is a deliberate platform decision that has NOT been taken yet.
 	const [posPinSetup, setPosPinSetup] = useState(null);
 	const verifyPosAccess = async (pin) => {
+		if (posAccessBusy) return;
 		setPosAccessBusy(true);
 		setPosAccessError('');
+		let timeoutId;
 		try {
-			const result = await posAccessService.verifyPin({ propertyId, pin });
+			const timeout = new Promise((_, reject) => {
+				timeoutId = window.setTimeout(() => reject(new Error('POS PIN verification is taking too long. Check your connection and try again.')), 20000);
+			});
+			const result = await Promise.race([
+				posAccessService.verifyPin({ propertyId, pin }),
+				timeout,
+			]);
 			if (!result?.ok) {
 				setPosAccessError(result?.message || 'Incorrect POS PIN. Try again.');
 				return;
@@ -185,6 +193,7 @@ export default function POSContainer({ initialTab = 'floor' } = {}) {
 			}
 			setPosAccessError(message);
 		} finally {
+			window.clearTimeout(timeoutId);
 			setPosAccessBusy(false);
 		}
 	};
