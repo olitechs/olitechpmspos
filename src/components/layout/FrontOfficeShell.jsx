@@ -9,9 +9,8 @@ const ITEMS = [
   { id:'manuals', label:'Manuals', path:'/frontoffice/manuals', icon:BookOpen },
   { id:'assistance', label:'Assistance', path:'/frontoffice/assistance', icon:HelpCircle },
   { id:'dashboard', label:'Dashboard', path:'/frontoffice/dashboard', icon:LayoutDashboard, roles:['hotel_admin','super_admin','front_office_manager','receptionist','front_desk'] },
-  { id:'calendar', label:'Calendar', path:'/frontoffice/room-planner', icon:CalendarDays, roles:['hotel_admin','super_admin','front_office_manager','receptionist','front_desk','housekeeping_supervisor','housekeeping'] },
+  { id:'calendar', label:'Room Planner', path:'/frontoffice/room-planner', icon:CalendarDays, roles:['hotel_admin','super_admin','front_office_manager','receptionist','front_desk','housekeeping_supervisor','housekeeping'] },
   { id:'reservations', label:'Reservations', path:'/frontoffice/reservations', icon:ClipboardCheck, roles:['hotel_admin','super_admin','front_office_manager','receptionist','front_desk'] },
-  { id:'rooms', label:'Rooms / Apartments', path:'/frontoffice/rooms', icon:BedDouble, roles:['hotel_admin','super_admin','front_office_manager'] },
   { id:'channels', label:'Channels', path:'/frontoffice/channels', icon:Activity, roles:['hotel_admin','super_admin','front_office_manager'] },
   { id:'check-in', label:'Check-in', icon:LogOut, roles:['hotel_admin','super_admin','front_office_manager','receptionist','front_desk'], children:[['Arrivals','/frontoffice/check-in/arrivals'],['In-House','/frontoffice/check-in/in-house'],['Departures','/frontoffice/check-in/departures'],['Walk-in Check-in','/frontoffice/check-in/walk-in'],['Express Check-out','/frontoffice/check-in/express-checkout'],['Registration Cards','/frontoffice/check-in/registration-cards']] },
   { id:'statistics', label:'Statistics', icon:BarChart3, roles:['hotel_admin','super_admin','front_office_manager'], children:[['Occupancy','/frontoffice/statistics/occupancy'],['ADR and RevPAR','/frontoffice/statistics/adr-revpar'],['Revenue','/frontoffice/statistics/revenue'],['Sources / Channels','/frontoffice/statistics/channels'],['Guest Origin / Nationality','/frontoffice/statistics/guest-origin'],['Cancellations and No-shows','/frontoffice/statistics/cancellations'],['Forecast','/frontoffice/statistics/forecast']] },
@@ -112,7 +111,7 @@ export default function FrontOfficeShell() {
         <div className="min-w-0 flex-1"><div className="truncate text-sm font-semibold">{title}</div><div className="truncate text-[10px] text-soft-white">Front Office <span className="px-1">/</span> {title}</div></div>
         <div className="flex shrink-0 items-center gap-1.5">
           <span className="hidden max-w-[170px] truncate rounded-md border border-soft-white/30 px-2 py-2 text-xs sm:inline-flex" title={propertyName}>{propertyName}</span>
-          <button type="button" onClick={() => setNoticeOpen(v=>!v)} aria-label="Notifications" className="relative flex h-10 w-10 items-center justify-center rounded-md hover:bg-surface/10"><Bell size={18}/></button>
+          {!isPlanner && <button type="button" onClick={() => setNoticeOpen(v=>!v)} aria-label="Notifications" className="relative flex h-10 w-10 items-center justify-center rounded-md hover:bg-surface/10"><Bell size={18}/></button>}
           <button type="button" onClick={() => setHelpOpen(v=>!v)} aria-label="Help" className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--white)]"><HelpCircle size={18}/></button>
           <button type="button" onClick={() => setUserMenu(v=>!v)} className="flex min-h-10 max-w-[180px] items-center gap-2 rounded-md border border-soft-white/60 px-2 text-xs hover:bg-surface/10"><Users size={15}/><span className="hidden truncate sm:inline">{email}</span><ChevronDown size={13}/></button>
         </div>
