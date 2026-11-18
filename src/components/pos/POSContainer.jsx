@@ -19,6 +19,7 @@ import { posService } from '@/services/posService';
 import { getUnsentOrderLines } from '@/services/printTemplates';
 import { posAccessService } from '@/services/posAccessService';
 import POSAccessGate, { POS_ACCESS_KEY } from '@/components/pos/POSAccessGate';
+import PosPinSetupGate from '@/components/pos/PosPinSetupGate';
 import MenuManager from '@/components/pos/MenuManager';
 import POSSettings from '@/components/pos/settings/POSSettings';
 import ShiftManagementPage from '@/components/pos/ShiftManagementPage';
@@ -126,6 +127,11 @@ export default function POSContainer({ initialTab = 'floor' } = {}) {
 		return () => window.removeEventListener('beforeunload', clearWindowAccess);
 	}, [propertyId]);
 	const verifySwitch = async (pin) => { try { const result = await authService.verifyStaffPin({ propertyId, module: 'pos', pin }); if (!result?.ok) { setSwitchError('Wrong PIN'); return; } sessionStorage.setItem('olitech_active_staff_v2', JSON.stringify(result.staff)); setActiveStaffId(result.staff?.id ?? null); window.dispatchEvent(new CustomEvent('olitech:staff-changed', { detail: result.staff })); setSwitchStaff(null); setSwitchError(''); } catch (e) { setSwitchError(e.message); } };
+	// Forced "Set a new POS PIN" flow (upgrade pack Task 3): owners/admins must
+	// replace the default (or missing) POS access PIN before entering POS.
+	// Staff entering with the default PIN still get in — the hard server block
+	// is a deliberate platform decision that has NOT been taken yet.
+	const [posPinSetup, setPosPinSetup] = useState(null);
 	const verifyPosAccess = async (pin) => {
 		setPosAccessBusy(true);
 		setPosAccessError('');
@@ -135,13 +141,31 @@ export default function POSContainer({ initialTab = 'floor' } = {}) {
 				setPosAccessError(result?.message || 'Incorrect POS PIN. Try again.');
 				return;
 			}
+			if (result.must_change) {
+				if (canManagePosPin) {
+					setPosPinSetup('must_change');
+					return;
+				}
+				toast.warning('POS is still using the default access PIN. Ask a property administrator to change it.');
+			}
 			sessionStorage.setItem(`${POS_ACCESS_KEY}:${propertyId}`, '1');
 			setPosUnlocked(true);
 		} catch (error) {
-			setPosAccessError(error?.message || 'Could not verify the POS PIN. Check your connection.');
+			const message = error?.message || 'Could not verify the POS PIN. Check your connection.';
+			if (/not configured/i.test(message) && canManagePosPin) {
+				setPosPinSetup('not_configured');
+				return;
+			}
+			setPosAccessError(message);
 		} finally {
 			setPosAccessBusy(false);
 		}
+	};
+	const handlePosPinSetup = () => {
+		sessionStorage.setItem(`${POS_ACCESS_KEY}:${propertyId}`, '1');
+		setPosPinSetup(null);
+		setPosUnlocked(true);
+		toast.success('POS access PIN set. The default code is no longer active.');
 	};
 	const [activeTab, setActiveTab] = useState('floor');
 	const [activeTable, setActiveTable] = useState(null);
@@ -425,6 +449,9 @@ export default function POSContainer({ initialTab = 'floor' } = {}) {
 	if (shiftLoading) return <div className="flex h-full items-center justify-center bg-[var(--canvas)] text-sm text-[var(--text-muted)]">Loading POS shift…</div>;
 	if (!posUnlocked) return (
 		<POSAccessGate propertyName={propertyName} logoUrl={user?.property?.logo_url} error={posAccessError} busy={posAccessBusy} canManagePin={canManagePosPin} onAdminReset={() => navigate('/pos/access-pin')} onSubmit={verifyPosAccess} />
+	);
+	if (posPinSetup && canManagePosPin) return (
+		<PosPinSetupGate propertyId={propertyId} propertyName={propertyName} reason={posPinSetup} onComplete={handlePosPinSetup} />
 	);
 	return (
 		<div className="flex flex-col h-full overflow-hidden">
