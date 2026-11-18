@@ -1,4 +1,4 @@
-# Print agent deployment checklist — what is now on `main`
+# Print agent deployment checklist
 
 For the release that contains the Windows print service, durable queue, pairing,
 diagnostics, printer history and compatibility gate. Work top to bottom; do not
@@ -8,21 +8,92 @@ start at step 4.
 Inno Setup 6, Windows SDK `signtool`, a code-signing certificate, a verified
 `WinSW.exe`, and the Node win-x64 zip with its published SHA-256.
 
-## Current build status (2026-11-12)
+## Current release audit (2026-11-19)
 
-The `Print Agent Windows Release` workflow has built the installer successfully
-on `windows-latest`: tests, lint, typecheck, the Node.js checksum, the WinSW
-checksum, Inno Setup compilation and `SHA256SUMS.txt` all passed. That run was
-`allow_unsigned=true`, so it produced an internal test artifact and correctly
-skipped the Release step:
+The latest published GitHub Release is still
+`print-agent-unsigned-2.2.0`, published 2026-11-12. It contains
+`OliTechsPrintAgentSetup-2.2.0-UNSIGNED.exe` and is explicitly marked
+**UNSIGNED TEST BUILD — NOT FOR HOTEL INSTALLATION**. Its published SHA-256 is
+`31cb8e943730056099749217b272b6dee7c89b1dad64ab1a42f6f5cc6c2e5a26`.
+Do not distribute or install it on a hotel workstation.
 
-- `OliTechsPrintAgentSetup-2.2.0-UNSIGNED.exe` (28,308,483 bytes)
-- SHA-256 `7b08c56eac31eb24f37811a07c8a3feafb855f0e182f61008e85b7eac6d38ab7`
+The agent source has newer changes after that artifact:
+- 2026-11-16: one-click download and clearer installer diagnostics
+  (`8f1b9851`), plus Windows SDK signing-tool discovery fix (`7d82a48a`).
+- 2026-11-17: official Sentry Node SDK integration and packaged-service preload
+  (`73e7abf5`).
 
-This is **not** a customer build. A signed release needs the
-`WINDOWS_CERT_PFX_BASE64` and `WINDOWS_CERT_PASSWORD` repository secrets; until
-they exist the workflow refuses to publish. No Windows computer or physical
-printer has run this artifact yet.
+The current source still reports `AGENT_VERSION = 2.2.0`; therefore the
+published unsigned installer is not evidence that the 16–17 November source
+changes are packaged. The release workflow only runs on a `print-agent-v*` tag
+or manual dispatch. A customer release is published only when the installer is
+signed; the required repository secrets are
+`WINDOWS_CERT_PFX_BASE64` and `WINDOWS_CERT_PASSWORD`, and the
+`WINSW_SHA256` repository variable must also be set.
+
+**Release gate: BLOCKED.** No signed customer installer is currently published.
+Do not upgrade the reception/POS computer until a signed release has been
+published, its SHA-256 and Authenticode signer are verified, and the spare-PC
+acceptance checklist has passed.
+
+## Safe in-place upgrade procedure
+
+The installed service keeps its durable state outside the application folder:
+`%ProgramData%\\OliTechs\\PrintAgent`. In particular:
+- `queue\\journal.ndjson` and `queue\\snapshot.json` hold durable print jobs;
+- `agent-credential.json` holds this workstation's pairing credential;
+- `logs\\` and `diagnostics\\` hold support evidence.
+
+The installer uses a stable Inno Setup AppId and upgrades the application folder
+in place. It does not delete the ProgramData state folder. The service's queue
+writes accepted jobs to disk before printing; a job interrupted while marked
+`printing` is recovered as `uncertain`, not silently resent. This prevents an
+automatic duplicate, but requires a staff member to check the paper before
+choosing a deliberate reprint.
+
+1. Schedule the upgrade after trading hours. Stop new print submissions and
+   allow any currently printing receipt or ticket to finish.
+2. Before installing, inspect
+   `http://127.0.0.1:8631/queue` and save the result for the handover. Note any
+   `queued`, `printing`, `failed` or `uncertain` jobs. Do not clear or retry
+   them just to make the queue look empty.
+3. Stop the Windows service after active printing has finished:
+   `Stop-Service OliTechsPrintAgent`. Confirm it is stopped.
+4. Make a local, access-restricted backup of the complete
+   `%ProgramData%\\OliTechs\\PrintAgent` folder before continuing. It contains
+   a workstation credential; do not email it, upload it to a public location,
+   or share it with guests. Keep the backup on the same protected workstation
+   or an approved encrypted support location.
+5. Verify the release installer has a valid Authenticode signature from
+   **OliTechs** and its SHA-256 matches the release's `SHA256SUMS.txt`.
+   If the publisher is unknown, the signature is invalid, or the file is
+   marked `UNSIGNED`, stop.
+6. Run the signed installer over the existing installation as administrator.
+   Do not uninstall first, choose a data-removal option, delete ProgramData, or
+   generate a new pairing code unless health confirms the workstation is no
+   longer paired.
+7. Confirm the service is Running and
+   `http://127.0.0.1:8631/health` reports `ok: true`, the expected version and
+   `paired: true`. Then inspect `/queue` again. Jobs that were already queued
+   should still be present. Any `uncertain` job must be checked against the
+   physical printer before a deliberate reprint.
+8. Print one test receipt and one kitchen ticket. Confirm correct routing,
+   feed and cut. Only then resume normal printing.
+
+The installer now also aborts before replacing application files if the existing
+service remains running after its 20-second stop window. This avoids replacing
+the bundled runtime underneath a live service. If that guard aborts, do not
+force-delete the service or its data; resolve the service stop issue first.
+
+### Rollback
+
+Keep the previous signed installer and the protected ProgramData backup until
+the new version has passed the acceptance checks. If rollback is needed, stop
+the service, install the previous signed build over the top, and retain the
+same ProgramData state. Do not restore an older queue snapshot over newer jobs
+unless support has first reconciled the job states; doing so could lose or
+duplicate work.
+
 
 ---
 
@@ -167,3 +238,31 @@ An empty evidence log means unvalidated, not "probably fine".
 - Treat a green test suite as hardware proof: the code is tested, the printers
   and Windows service are not until this checklist has been walked on a real POS
   computer.
+
+
+## Installer lifecycle and failure diagnostics (2026-11-19)
+
+The installer must create its diagnostic destination before launching PowerShell. The primary log is:
+
+`%ProgramData%\OliTechs\PrintAgent\logs\install-service.log`
+
+If ProgramData logging cannot be initialized, the PowerShell installer falls back to:
+
+`%TEMP%\OliTechs-PrintAgent-install.log`
+
+The installer records initialization, payload handoff, PowerShell exit code, service-registration output, service start and health verification. A failure dialog must show the exact diagnostic path; it must not direct staff to a folder that may not exist.
+
+### Installation lifecycle gates
+
+1. **Preflight:** verify the staged service script, XML template, agent entry point, Sentry preload, bundled Node executable and WinSW executable before removing an existing service.
+2. **Persistent storage:** create and verify ProgramData service, log and queue directories. Never delete or overwrite the pairing credential, queue journal or snapshot during install/upgrade.
+3. **Existing service:** request stop and verify Stopped. Uninstall the old service wrapper and wait for Service Control Manager to report the service absent. Handle `ERROR_SERVICE_MARKED_FOR_DELETE` (1072) explicitly; do not attempt a second registration while Windows still holds it.
+4. **Registration:** write the WinSW XML, copy the wrapper, capture wrapper output and exit code, and verify service registration.
+5. **Legacy task:** stop/remove the old logon scheduled task before starting the Windows service, preventing two agents from competing for port 8631.
+6. **Start and health:** start the service, wait for Running, then require `http://127.0.0.1:8631/health` to return `ok=true`. A running service without a healthy endpoint is a failed installation.
+7. **Failure rollback:** if this attempt registered a service but later start/health checks fail, stop and unregister that service where possible. Retain ProgramData pairing, queue, logs and diagnostics. Record rollback failure in the install log.
+8. **Uninstall:** stop and verify the service, unregister it, wait until SCM confirms it is absent, and only then remove the wrapper/config. Preserve persistent state unless an administrator explicitly uses `-RemoveData`.
+
+### Current validation boundary
+
+The source-level lifecycle safeguards and contract assertions are not a substitute for running the signed installer on clean and upgrade Windows 10/11 x64 machines. Do not deploy to a reception workstation until the Windows release workflow is green, the Authenticode signature and SHA-256 are verified, and acceptance tests cover clean install, in-place upgrade, restart, pairing, queue recovery and physical receipt/kitchen printing.

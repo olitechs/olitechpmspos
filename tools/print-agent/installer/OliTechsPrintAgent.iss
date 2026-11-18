@@ -88,10 +88,24 @@ Type: filesandordirs; Name: "{app}"
 [Code]
 var
   ServiceInstallFailed: Boolean;
+  InstallDiagnosticPath: String;
+
+procedure WriteInstallerDiagnostic(Message: String);
+begin
+  if InstallDiagnosticPath <> '' then
+    SaveStringToFile(InstallDiagnosticPath, GetDateTimeString('yyyy-mm-dd hh:nn:ss', '-', ':') + ' ' + Message + #13#10, True);
+end;
 
 function InitializeSetup(): Boolean;
+var
+  LogDir: String;
 begin
   ServiceInstallFailed := False;
+  LogDir := ExpandConstant('{commonappdata}\OliTechs\PrintAgent\logs');
+  InstallDiagnosticPath := ExpandConstant('{tmp}\OliTechs-PrintAgent-install.log');
+  if ForceDirectories(LogDir) then
+    InstallDiagnosticPath := AddBackslash(LogDir) + 'install-service.log';
+  WriteInstallerDiagnostic('Installer initialized. Windows=' + GetWindowsVersionString());
   Result := True;
 end;
 
@@ -136,6 +150,12 @@ begin
       exit;
     Sleep(500);
   end;
+
+  { Never replace the bundled runtime while the old service is still running.
+    ProgramData holds the durable queue and paired workstation credential; this
+    guard aborts before [Files] changes the installed application. }
+  if AgentServiceRunning() then
+    RaiseException('The OliTechs Print Agent did not stop within 20 seconds. No files were replaced. Wait for any active print to finish, then run the installer again. If it keeps happening, contact OliTechs support.');
 end;
 
 { The pairing dialog only makes sense when the agent actually installed. }
@@ -149,28 +169,30 @@ var
   Code: Integer;
   Params: String;
 begin
+  WriteInstallerDiagnostic('Starting PowerShell service installation. AppDir=' + ExpandConstant('{app}'));
   Params := '-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "' +
     ExpandConstant('{app}\tools\print-agent\service\install-service.ps1') + '"' +
     ' -WinSWPath "' + ExpandConstant('{app}\service\WinSW.exe') + '"' +
-    ' -NodeExe "' + ExpandConstant('{app}\node\node.exe') + '"';
+    ' -NodeExe "' + ExpandConstant('{app}\node\node.exe') + '"' +
+    ' -LogPath "' + InstallDiagnosticPath + '"';
 
   if not Exec('powershell.exe', Params, ExpandConstant('{app}'), SW_HIDE, ewWaitUntilTerminated, Code) then
   begin
+    WriteInstallerDiagnostic('ERROR: Windows could not start powershell.exe.');
     ServiceInstallFailed := True;
     MsgBox('Windows could not start the OliTechs Print Agent service installer.' + #13#10#13#10 +
-      'Printing will not work until this is fixed. Restart the computer and run this installer again, ' +
-      'or send the log folder to support: ' + ExpandConstant('{commonappdata}\OliTechs\PrintAgent\logs'),
+      'Printing will not work until this is fixed. Diagnostic log: ' + InstallDiagnosticPath,
       mbError, MB_OK);
     exit;
   end;
 
+  WriteInstallerDiagnostic('PowerShell service installer exit code: ' + IntToStr(Code));
   if Code <> 0 then
   begin
     ServiceInstallFailed := True;
     MsgBox('The OliTechs Print Agent service could not be installed (exit code ' + IntToStr(Code) + ').' + #13#10#13#10 +
-      'Printing will not work until this is fixed. Restart Windows and run this installer again.' + #13#10#13#10 +
-      'If it still fails, send this diagnostic file to OliTechs support:' + #13#10 +
-      ExpandConstant('{commonappdata}\\OliTechs\\PrintAgent\\logs\\install-service.log'),
+      'Printing will not work until this is fixed. Please send this diagnostic file to OliTechs support:' + #13#10 +
+      InstallDiagnosticPath,
       mbError, MB_OK);
   end;
 end;

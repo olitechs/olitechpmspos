@@ -51,6 +51,47 @@ test('staff are offered pairing in a window, never a terminal', async () => {
   assert.ok(!/Write-(Host|Output|Verbose)[^\r\n]*pairingCode/i.test(pairing), 'the pairing code must never be written out');
 });
 
+test('service reinstall waits for Windows to release a deleted service registration', async () => {
+  const install = await read('./service/install-service.ps1');
+
+  assert.match(install, /Stop-Service -Name \$ServiceId -Force -ErrorAction Stop/);
+  assert.match(install, /\$removeDeadline = \(Get-Date\)\.AddSeconds\(30\)/);
+  assert.match(install, /sc\.exe query \$ServiceId/);
+  assert.match(install, /\$queryExitCode -ne 1060/);
+  assert.match(install, /marked for deletion/);
+  assert.match(install, /No new service was installed/);
+  assert.match(install, /WinSW exit code \$uninstallExitCode/);
+});
+
+test('service installation preflights stale SCM entries and uninstall waits before deleting wrapper files', async () => {
+  const install = await read('./service/install-service.ps1');
+  const uninstall = await read('./service/uninstall-service.ps1');
+
+  assert.match(install, /registrationCode -eq 1072/);
+  assert.match(install, /registrationCode -ne 1060/);
+  assert.match(install, /registrationDeadline/);
+  assert.match(install, /ServiceRegistrationAttempted/);
+  assert.match(uninstall, /Stop-Service -Name \$ServiceId -Force -ErrorAction Stop/);
+  assert.match(uninstall, /queryCode -eq 1072/);
+  assert.match(uninstall, /queryCode -ne 1060/);
+  assert.match(uninstall, /Persistent printer pairing, queue, logs and diagnostics were retained/);
+});
+
+test('installer diagnostics exist before PowerShell starts and survive early failures', async () => {
+  const iss = await read('./installer/OliTechsPrintAgent.iss');
+  const install = await read('./service/install-service.ps1');
+
+  assert.match(iss, /ForceDirectories\(LogDir\)/);
+  assert.match(iss, /SaveStringToFile\(InstallDiagnosticPath/);
+  assert.match(iss, /-LogPath "' \+ InstallDiagnosticPath/);
+  assert.match(iss, /Diagnostic log: /);
+  assert.match(install, /OliTechs-PrintAgent-install\.log/);
+  assert.match(install, /function Write-InstallLog/);
+  assert.match(install, /INSTALL ERROR:/);
+  assert.match(install, /Persistent pairing and queue data were retained/);
+  assert.match(install, /health endpoint did not respond/);
+});
+
 test('the installer runs the service scripts from the staged agent folder and stops the service before copying', async () => {
   const iss = await read('./installer/OliTechsPrintAgent.iss');
 
@@ -65,6 +106,8 @@ test('the installer runs the service scripts from the staged agent folder and st
   assert.match(iss, /CurStep = ssInstall[\s\S]{0,80}StopExistingAgentService\(\)/);
   assert.match(iss, /sc\.exe stop OliTechsPrintAgent/);
   assert.match(iss, /function AgentServiceRunning\(\): Boolean/);
+  assert.match(iss, /if AgentServiceRunning\(\) then[\s\S]*RaiseException\(/,
+    'the upgrade must abort before replacing files if the old service will not stop');
 });
 
 test('a failed service installation is reported to staff, and pairing is skipped', async () => {
