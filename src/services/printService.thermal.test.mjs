@@ -109,12 +109,16 @@ test('live shift preview is a separate pre-close thermal report with no closing 
   assert.doesNotMatch(preview, /CASH COUNTED|CASH VARIANCE|SHIFT CLOSING REPORT/);
 });
 
-test('successful shift closure automatically sends the final thermal report and allows retry', async () => {
+test('successful shift closure prompts for the final thermal report and allows retry', async () => {
   const modal = await read('../components/pos/CloseShiftModal.jsx');
-  assert.match(modal, /await sendClosedReport\(fresh\)/);
   assert.match(modal, /const sendClosedReport=async\(reportData\)/);
+  assert.match(modal, /setPrintStatus\('pending'\)/);
+  assert.match(modal, /> Print shift report</);
+  assert.match(modal, /Skip printing/);
   assert.match(modal, /setPrintStatus\('printed'\)/);
   assert.match(modal, /Retry print/);
   assert.match(modal, /Shift closed successfully/);
-  assert.doesNotMatch(modal, /Skip printing/);
+  // Closing must not spend paper before the cashier chooses to print.
+  const doClose = modal.slice(modal.indexOf('const doClose='), modal.indexOf('const submitPin='));
+  assert.doesNotMatch(doClose, /sendClosedReport\(fresh\)/);
 });

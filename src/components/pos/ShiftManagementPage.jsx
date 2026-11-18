@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { AlertCircle, BarChart3, CheckCircle2, Clock3, LockKeyhole, Printer, RefreshCw, Wallet } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { AlertCircle, AlertTriangle, BarChart3, CheckCircle2, Clock3, LockKeyhole, Printer, RefreshCw, Wallet } from 'lucide-react';
 import { shiftService } from '@/services/shiftService';
 import { getPrinters, getAssignments, printShiftPreview } from '@/services/printService';
 import { toast } from 'sonner';
@@ -15,9 +15,9 @@ const formatDateTime = (value) => {
     : date.toLocaleString('en-KE', { dateStyle: 'medium', timeStyle: 'short' });
 };
 
-export default function ShiftManagementPage({ propertyId, currentShift, loadError, onOpened, onCloseShift }) {
+export default function ShiftManagementPage({ propertyId, currentShift, loadError, onOpened, onCloseShift, onGoToFloor }) {
   const [openShiftModal, setOpenShiftModal] = useState(false);
-  const [summaryOpen, setSummaryOpen] = useState(false);
+  const [summaryOpen, setSummaryOpen] = useState(true);
   const [summary, setSummary] = useState(null);
   const [summaryTables, setSummaryTables] = useState([]);
   const [summaryLoading, setSummaryLoading] = useState(false);
@@ -41,6 +41,18 @@ export default function ShiftManagementPage({ propertyId, currentShift, loadErro
       setSummaryLoading(false);
     }
   };
+
+  // The active shift card shows the operator and a live summary without an
+  // extra click, so the cashier sees who opened the drawer and when.
+  useEffect(() => {
+    if (currentShift?.id) loadSummary();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentShift?.id]);
+
+  const hoursOpen = currentShift?.opened_at
+    ? (Date.now() - new Date(currentShift.opened_at).getTime()) / 3600000
+    : 0;
+  const openOver24Hours = Number.isFinite(hoursOpen) && hoursOpen > 24;
 
   const printLiveSummary = async () => {
     if (!summary || !currentShift?.id) return;
@@ -146,8 +158,19 @@ export default function ShiftManagementPage({ propertyId, currentShift, loadErro
                 {summaryTables.length > 0 && (
                   <div className="mt-4 rounded-xl border border-[var(--warning)] bg-[var(--warning-soft)] p-3">
                     <p className="text-sm font-bold text-[var(--warning-text)]">Tables still open</p>
-                    <p className="mt-1 text-sm text-[var(--warning-text)]">{summaryTables.map((table) => 'Table ' + (table.table_number || table.table_key || '—')).join(', ')}</p>
+                    <ul className="mt-1 space-y-1 text-sm text-[var(--warning-text)]">
+                      {summaryTables.map((table) => (
+                        <li key={table.id || table.table_key || table.table_number}>
+                          Table {table.table_number || table.table_key || '—'} · <span className="capitalize">{String(table.status || 'open').replaceAll('_', ' ')}</span>
+                        </li>
+                      ))}
+                    </ul>
                     <p className="mt-1 text-xs text-[var(--warning-text)]">These sessions must be settled or cleared before the shift can be closed.</p>
+                    {onGoToFloor && (
+                      <button type="button" onClick={onGoToFloor} className="mt-2 inline-flex min-h-11 items-center gap-2 rounded-lg border border-[var(--warning)] bg-[var(--surface)] px-3 text-xs font-bold text-[var(--warning-text)]">
+                        Go to floor plan
+                      </button>
+                    )}
                   </div>
                 )}
               </>
@@ -189,7 +212,20 @@ export default function ShiftManagementPage({ propertyId, currentShift, loadErro
               <div className="text-xs font-semibold text-[var(--text-muted)]">Business date</div>
               <p className="mt-2 text-sm font-bold text-[var(--text)]">{currentShift.date || '—'}</p>
             </div>
+            <div className="rounded-2xl border border-[var(--border)] p-4">
+              <div className="text-xs font-semibold text-[var(--text-muted)]">Opened by</div>
+              <p className="mt-2 text-sm font-bold text-[var(--text)]">{summary?.openedBy || '—'}</p>
+            </div>
           </div>
+          {openOver24Hours && (
+            <div role="alert" className="mx-5 mt-4 flex items-start gap-3 rounded-xl border border-[var(--warning)] bg-[var(--warning-soft)] p-3 text-sm text-[var(--warning-text)]">
+              <AlertTriangle size={18} className="mt-0.5 shrink-0" aria-hidden="true" />
+              <div>
+                <p className="font-bold">This shift has been open for more than 24 hours.</p>
+                <p className="mt-1 text-xs">Review the drawer, clear the floor and close the shift so the day&apos;s takings are reconciled.</p>
+              </div>
+            </div>
+          )}
           {currentShift.notes && <p className="border-t border-[var(--border)] px-5 py-3 text-sm text-[var(--text-muted)]">{currentShift.notes}</p>}
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] px-5 py-4">
             <p className="text-xs text-[var(--text-muted)]">This shift is shared by the property’s POS team. Waiter sales are recorded against this open shift.</p>

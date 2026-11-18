@@ -1,13 +1,17 @@
 import React, { useEffect, useState } from 'react';
+import { Printer } from 'lucide-react';
 import { pmsService } from '@/services/pmsService';
 import { shiftService } from '@/services/shiftService';
-import { printReceipt } from '@/services/printService';
+import { printReceipt, printShiftReport, printShiftPreview, getPrinters, getAssignments } from '@/services/printService';
+import { getPropertySettings } from '@/services/settingsService';
+import { useAuth } from '@/lib/AuthContext';
 import { toast } from 'sonner';
 import { formatAmount, formatKes } from '@/lib/posMoney';
 
 const dateTime = (value) => value ? new Date(value).toLocaleString('en-KE', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
 
 export default function ShiftReceiptHistory({ propertyId, currentShift }) {
+  const { user } = useAuth();
   const [closedShifts, setClosedShifts] = useState([]);
   const [shiftId, setShiftId] = useState(currentShift?.id || '');
   const [receipts, setReceipts] = useState([]);
@@ -19,6 +23,7 @@ export default function ShiftReceiptHistory({ propertyId, currentShift }) {
   const [refundReason, setRefundReason] = useState('');
   const [refundBusy, setRefundBusy] = useState(false);
   const [printingId, setPrintingId] = useState(null);
+  const [shiftReportPrinting, setShiftReportPrinting] = useState(false);
 
   useEffect(() => {
     if (!propertyId) return undefined;
@@ -78,6 +83,41 @@ export default function ShiftReceiptHistory({ propertyId, currentShift }) {
       toast.error(err.message || 'Receipt reprint failed.');
     } finally {
       setPrintingId(null);
+    }
+  };
+
+  // Reprint the whole shift report (not just one receipt): a closing report for
+  // a past shift, or a live summary for the shift that is still open.
+  const reprintShiftReport = async () => {
+    if (!propertyId || !shiftId) return;
+    setShiftReportPrinting(true);
+    try {
+      const [report, printers, assignments, settingsRow] = await Promise.all([
+        shiftService.getShiftReport(shiftId),
+        getPrinters(propertyId),
+        getAssignments(propertyId),
+        getPropertySettings(propertyId).catch(() => null),
+      ]);
+      const targets = (assignments || [])
+        .filter((assignment) => ['shift_reports', 'reports'].includes(assignment.assignment_type))
+        .map((assignment) => (printers || []).find((printer) => printer.id === assignment.printer_id))
+        .filter(Boolean);
+      if (!targets.length) {
+        toast.warning('No printer is assigned to Shift Closing Reports.');
+        return;
+      }
+      const propertyName = settingsRow?.property_name || user?.property?.business_name || user?.property?.name || 'OliTechs';
+      const data = { ...report, propertyId, propertyName, settings: settingsRow || report.settings || {}, forceReprint: true };
+      const result = currentShift?.id === shiftId
+        ? await printShiftPreview(data, targets)
+        : await printShiftReport(data, targets);
+      if (result.outcome === 'uncertain') toast.warning('The shift report may already have printed — check the paper before printing it again.');
+      else if (!result.ok) toast.error(result.friendlyError || 'The shift report could not be printed.');
+      else toast.success('Shift report sent to the assigned printer.');
+    } catch (err) {
+      toast.error(err.message || 'Shift report printing failed.');
+    } finally {
+      setShiftReportPrinting(false);
     }
   };
 
@@ -148,13 +188,18 @@ export default function ShiftReceiptHistory({ propertyId, currentShift }) {
           <h2 className="font-bold text-[var(--text)]">Shift receipts & transaction history</h2>
           <p className="mt-1 text-xs text-[var(--text-muted)]">Inspect sold items, reprint tab receipts and request refunds, including receipts from closed shifts.</p>
         </div>
-        <div className="min-w-[240px]">
-          <label htmlFor="shift-receipt-history" className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">Select shift</label>
-          <select id="shift-receipt-history" value={shiftId} onChange={(event) => { setShiftId(event.target.value); setSelected(null); }} className="min-h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text)]">
-            {currentShift?.id && <option value={currentShift.id}>ACTIVE · {currentShift.shift_no || currentShift.id.slice(0, 8)}</option>}
-            {closedShifts.map((shift) => <option key={shift.id} value={shift.id}>CLOSED · {shift.shift_no || shift.id.slice(0, 8)} · {shift.date || dateTime(shift.closed_at || shift.opened_at)}</option>)}
-            {!currentShift && !closedShifts.length && <option value="">No shifts available</option>}
-          </select>
+        <div className="flex min-w-[240px] flex-col gap-2 sm:flex-row sm:items-end">
+          <div className="min-w-0 flex-1">
+            <label htmlFor="shift-receipt-history" className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">Select shift</label>
+            <select id="shift-receipt-history" value={shiftId} onChange={(event) => { setShiftId(event.target.value); setSelected(null); }} className="min-h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text)]">
+              {currentShift?.id && <option value={currentShift.id}>ACTIVE · {currentShift.shift_no || currentShift.id.slice(0, 8)}</option>}
+              {closedShifts.map((shift) => <option key={shift.id} value={shift.id}>CLOSED · {shift.shift_no || shift.id.slice(0, 8)} · {shift.date || dateTime(shift.closed_at || shift.opened_at)}</option>)}
+              {!currentShift && !closedShifts.length && <option value="">No shifts available</option>}
+            </select>
+          </div>
+          <button type="button" onClick={reprintShiftReport} disabled={!shiftId || shiftReportPrinting} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-xs font-bold text-[var(--text)] disabled:opacity-50">
+            <Printer size={14} aria-hidden="true" /> {shiftReportPrinting ? 'Printing…' : 'Reprint shift report'}
+          </button>
         </div>
       </div>
 

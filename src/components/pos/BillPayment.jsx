@@ -33,7 +33,8 @@ export default function BillPayment({
   onMoveTable,
   orderNumber,
   waiter,
-  covers
+  covers,
+  onOpenShifts
 }) {
   const store = useStore();
   const { user } = useAuth();
@@ -575,6 +576,11 @@ export default function BillPayment({
             className="mb-4 rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] p-3 text-sm font-semibold text-[var(--danger-text)]"
           >
             {error}
+            {/no open pos shift/i.test(error) && onOpenShifts && (
+              <button type="button" onClick={onOpenShifts} className="ml-2 inline-flex min-h-11 items-center rounded-lg border border-[var(--danger)] bg-[var(--surface)] px-3 text-xs font-bold underline-offset-2 hover:underline">
+                Open the Shifts page
+              </button>
+            )}
           </div>
         )}
         {!propertyId && (

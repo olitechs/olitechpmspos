@@ -4,8 +4,8 @@ import { buildShiftSalesSummary } from './shiftReportCore.js';
 
 test('aggregates direct and split payments by their actual tender methods', () => {
   const receipts = [
-    { id: 'r1', payment_method: 'cash', total: 100, covers: 2, items: [{ name: 'Tea', qty: 2, price: 50, category: 'drinks' }] },
-    { id: 'r2', payment_method: 'split', total: 300, covers: 3, items: [{ name: 'Lunch', qty: 3, price: 100, category: 'food' }] },
+    { id: 'r1', payment_method: 'cash', total: 100, subtotal: 120, discount_amount: 40, vat: 20, covers: 2, items: [{ name: 'Tea', qty: 2, price: 50, category: 'drinks' }] },
+    { id: 'r2', payment_method: 'split', total: 300, subtotal: 300, discount_amount: 0, vat: 0, covers: 3, items: [{ name: 'Lunch', qty: 3, price: 100, category: 'food' }] },
   ];
   const allocations = [
     { receipt_id: 'r2', payment_method: 'cash', amount: 100 },
@@ -24,6 +24,10 @@ test('aggregates direct and split payments by their actual tender methods', () =
   assert.equal(report.payments.card.amount, 0);
   assert.equal(report.categories.drinks.qty, 2);
   assert.equal(report.categories.food.amount, 300);
+  // Closing-report sales block: before discount, discounts, VAT and total.
+  assert.equal(report.salesBeforeDiscount, 420);
+  assert.equal(report.discountsTotal, 40);
+  assert.equal(report.vatTotal, 20);
 });
 
 test('subtracts refunds by settlement method and reports voided receipt value separately', () => {

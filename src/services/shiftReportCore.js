@@ -70,6 +70,9 @@ export function buildShiftSalesSummary(receipts = [], allocations = [], refunds 
   const countedByMethod = new Map(PAYMENT_METHODS.map((method) => [method, new Set()]));
   const categories = { food: { qty: 0, amount: 0 }, drinks: { qty: 0, amount: 0 } };
   let grossSales = 0;
+  let salesBeforeDiscount = 0;
+  let discountsTotal = 0;
+  let vatTotal = 0;
   let refundsTotal = 0;
   let totalCovers = 0;
   let itemsSold = 0;
@@ -77,6 +80,12 @@ export function buildShiftSalesSummary(receipts = [], allocations = [], refunds 
   for (const receipt of receipts) {
     const receiptTotal = Number(receipt.total || 0);
     grossSales += receiptTotal;
+    // pos_receipts stores subtotal (before discount), the discount applied and
+    // the VAT component separately. The closing report shows all three so the
+    // shift total can be rebuilt from the receipt ledger.
+    salesBeforeDiscount += Number(receipt.subtotal || 0);
+    discountsTotal += Number(receipt.discount_amount || 0);
+    vatTotal += Number(receipt.vat || 0);
     totalCovers += Math.max(1, Number(receipt.covers || 1));
 
     const methodRows = String(receipt.payment_method || '').toLowerCase() === 'split'
@@ -122,6 +131,9 @@ export function buildShiftSalesSummary(receipts = [], allocations = [], refunds 
     refundsByMethod,
     categories,
     grossSales,
+    salesBeforeDiscount,
+    discountsTotal,
+    vatTotal,
     refundsTotal,
     voidedValue,
     totalSales: grossSales - refundsTotal,

@@ -126,6 +126,33 @@ export default function POSContainer({ initialTab = 'floor' } = {}) {
 		window.addEventListener('beforeunload', clearWindowAccess);
 		return () => window.removeEventListener('beforeunload', clearWindowAccess);
 	}, [propertyId]);
+	// Keep the open-shift state honest across terminals: another till can open
+	// or close the property shift, and this screen must follow it instead of
+	// showing a stale banner or letting sales continue against a closed shift.
+	useEffect(() => {
+		if (!propertyId) return undefined;
+		let active = true;
+		const refresh = () => {
+			if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+			shiftService.getCurrentShift(propertyId)
+				.then((shift) => {
+					if (!active) return;
+					setCurrentShift((previous) => (previous?.id === shift?.id ? previous : shift));
+					setShiftLoadError('');
+				})
+				.catch(() => {
+					// Keep the last known shift; the next tick retries rather than
+					// flashing a false "no open shift" warning.
+				});
+		};
+		const timer = window.setInterval(refresh, 60000);
+		document.addEventListener('visibilitychange', refresh);
+		return () => {
+			active = false;
+			window.clearInterval(timer);
+			document.removeEventListener('visibilitychange', refresh);
+		};
+	}, [propertyId]);
 	const verifySwitch = async (pin) => { try { const result = await authService.verifyStaffPin({ propertyId, module: 'pos', pin }); if (!result?.ok) { setSwitchError('Wrong PIN'); return; } sessionStorage.setItem('olitech_active_staff_v2', JSON.stringify(result.staff)); setActiveStaffId(result.staff?.id ?? null); window.dispatchEvent(new CustomEvent('olitech:staff-changed', { detail: result.staff })); setSwitchStaff(null); setSwitchError(''); } catch (e) { setSwitchError(e.message); } };
 	// Forced "Set a new POS PIN" flow (upgrade pack Task 3): owners/admins must
 	// replace the default (or missing) POS access PIN before entering POS.
@@ -458,7 +485,7 @@ export default function POSContainer({ initialTab = 'floor' } = {}) {
 			<AppHeader activeTab={activeTab} onTabChange={setActiveTab} activeTable={activeTable} shift={currentShift} hasOpenShift={Boolean(currentShift)} onOpenShifts={() => setActiveTab('shifts')} propertyName={propertyName} onCloseShift={currentShift && canCloseShift ? ()=>setCloseShiftOpen(true) : null} onManageMenu={canCloseShift ? ()=>setMenuManagerOpen(true) : null} onOpenSettings={()=>setSettingsOpen(true)} />
 
 			<div className="flex-1 min-h-0 overflow-y-auto">
-				{activeTab === 'shifts' && <ShiftManagementPage propertyId={propertyId} currentShift={currentShift} loadError={shiftLoadError} onOpened={(shift) => { setCurrentShift(shift); setActiveTab('floor'); }} onCloseShift={canCloseShift ? () => setCloseShiftOpen(true) : null} />}
+				{activeTab === 'shifts' && <ShiftManagementPage propertyId={propertyId} currentShift={currentShift} loadError={shiftLoadError} onOpened={(shift) => { setCurrentShift(shift); setActiveTab('floor'); }} onCloseShift={canCloseShift ? () => setCloseShiftOpen(true) : null} onGoToFloor={() => setActiveTab('floor')} />}
 				{activeTab === 'floor' && currentShift && (
 					<div className="flex h-full min-h-0 flex-col">
 						<div className="min-h-0 flex-1">
@@ -492,6 +519,7 @@ export default function POSContainer({ initialTab = 'floor' } = {}) {
 						orderNumber={orderNumbersRef.current[activeTable.id]}
 						waiter={store.getSession(activeTable.id)?.waiter || ''}
 						covers={store.getSession(activeTable.id)?.guests || 1}
+						onOpenShifts={() => setActiveTab('shifts')}
 					/>
 				)}
 			</div>
@@ -541,7 +569,7 @@ export default function POSContainer({ initialTab = 'floor' } = {}) {
 
 			{menuManagerOpen && <MenuManager open={menuManagerOpen} onClose={()=>setMenuManagerOpen(false)} />}
 			{settingsOpen && <POSSettings user={user} onClose={()=>setSettingsOpen(false)} />}
-			{closeShiftOpen && currentShift && <CloseShiftModal shift={currentShift} onClose={() => setCloseShiftOpen(false)} onClosed={() => { setCloseShiftOpen(false); setCurrentShift(null); setActiveTab('shifts'); }} />}
+			{closeShiftOpen && currentShift && <CloseShiftModal shift={currentShift} onClose={() => setCloseShiftOpen(false)} onGoToFloor={() => { setCloseShiftOpen(false); setActiveTab('floor'); }} onClosed={() => { setCloseShiftOpen(false); setCurrentShift(null); setActiveTab('shifts'); }} />}
 			<OpenTableDialog
 				open={!!pendingTable}
 				table={pendingTable}

@@ -1,8 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { CalendarDays, ChevronDown, ChevronUp, RefreshCw, Search, X } from 'lucide-react';
+import { CalendarDays, ChevronDown, ChevronUp, Printer, RefreshCw, Search, X } from 'lucide-react';
+import { toast } from 'sonner';
 import { useAuth } from '@/lib/AuthContext';
 import { getSessionStaff } from '@/services/authService';
 import { shiftService } from '@/services/shiftService';
+import { getPrinters, getAssignments, printShiftReport, printShiftPreview } from '@/services/printService';
+import { getPropertySettings } from '@/services/settingsService';
 import DocumentExportMenu from '@/components/shared/DocumentExportMenu';
 import { buildShiftReportDefinition } from '@/services/reportDefinitions';
 
@@ -36,6 +39,7 @@ export default function ShiftReport() {
   const [selectedReport, setSelectedReport] = useState(null);
   const [reportLoading, setReportLoading] = useState(false);
   const [reportError, setReportError] = useState('');
+  const [reprintBusy, setReprintBusy] = useState(false);
 
   const loadShifts = useCallback(async () => {
     if (!propertyId) {
@@ -100,6 +104,37 @@ export default function ShiftReport() {
   const reportDefinition = useMemo(() => selectedReport
     ? buildShiftReportDefinition(selectedReport, { propertyName, generatedBy })
     : null, [selectedReport, propertyName, generatedBy]);
+
+  const reprintThermal = async () => {
+    if (!selectedReport || !propertyId) return;
+    setReprintBusy(true);
+    try {
+      const [printers, assignments, settingsRow] = await Promise.all([
+        getPrinters(propertyId),
+        getAssignments(propertyId),
+        getPropertySettings(propertyId).catch(() => null),
+      ]);
+      const targets = (assignments || [])
+        .filter((assignment) => ['shift_reports', 'reports'].includes(assignment.assignment_type))
+        .map((assignment) => (printers || []).find((printer) => printer.id === assignment.printer_id))
+        .filter(Boolean);
+      if (!targets.length) {
+        toast.warning('No printer is assigned to Shift Closing Reports.');
+        return;
+      }
+      const data = { ...selectedReport, propertyId, propertyName, settings: settingsRow || selectedReport.settings || {}, forceReprint: true };
+      const result = String(selectedReport.shift?.status || '').toLowerCase() === 'open'
+        ? await printShiftPreview(data, targets)
+        : await printShiftReport(data, targets);
+      if (result.outcome === 'uncertain') toast.warning('The shift report may already have printed — check the paper before printing it again.');
+      else if (!result.ok) toast.error(result.friendlyError || 'The shift report could not be printed.');
+      else toast.success('Shift report sent to the assigned printer.');
+    } catch (error) {
+      toast.error(error.message || 'Shift report printing failed.');
+    } finally {
+      setReprintBusy(false);
+    }
+  };
 
   const clearFilters = () => {
     setFrom('');
@@ -186,7 +221,7 @@ export default function ShiftReport() {
                   {expanded && <tr className="border-t border-[var(--border)]"><td colSpan={7} className="bg-[var(--canvas)] p-4">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div><h3 className="font-bold">{shift.shift_no} · Financial report</h3><p className="mt-1 text-xs text-[var(--text-muted)]">Opened {dateTime(shift.opened_at)} · Closed {dateTime(shift.closed_at)}</p></div>
-                      <div className="flex items-center gap-2"><DocumentExportMenu definition={reportDefinition} label="Export shift report" disabled={!reportDefinition}/><button type="button" onClick={() => { setSelectedShift(null); setSelectedReport(null); }} aria-label="Close shift details" className="rounded-lg border border-[var(--border)] p-2 text-[var(--text-muted)]"><X size={15}/></button></div>
+                      <div className="flex flex-wrap items-center gap-2"><button type="button" onClick={reprintThermal} disabled={!selectedReport || reprintBusy} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 text-xs font-bold text-[var(--text)] disabled:opacity-50"><Printer size={14} aria-hidden="true"/>{reprintBusy?'Printing…':'Reprint shift report'}</button><DocumentExportMenu definition={reportDefinition} label="Export shift report" disabled={!reportDefinition}/><button type="button" onClick={() => { setSelectedShift(null); setSelectedReport(null); }} aria-label="Close shift details" className="rounded-lg border border-[var(--border)] p-2 text-[var(--text-muted)]"><X size={15}/></button></div>
                     </div>
                     {reportLoading && <div role="status" className="py-6 text-sm text-[var(--text-muted)]">Loading receipt and reconciliation details…</div>}
                     {reportError && <div role="alert" className="mt-3 rounded-lg bg-[var(--danger-soft)] p-3 text-sm text-[var(--danger-text)]">{reportError}<button type="button" onClick={() => openReport(shift)} className="ml-2 font-bold underline">Retry</button></div>}
