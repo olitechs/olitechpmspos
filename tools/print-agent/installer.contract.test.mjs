@@ -63,6 +63,21 @@ test('service reinstall waits for Windows to release a deleted service registrat
   assert.match(install, /WinSW exit code \$uninstallExitCode/);
 });
 
+test('installer diagnostics exist before PowerShell starts and survive early failures', async () => {
+  const iss = await read('./installer/OliTechsPrintAgent.iss');
+  const install = await read('./service/install-service.ps1');
+
+  assert.match(iss, /ForceDirectories\(LogDir\)/);
+  assert.match(iss, /SaveStringToFile\(InstallDiagnosticPath/);
+  assert.match(iss, /-LogPath "' \+ InstallDiagnosticPath/);
+  assert.match(iss, /Diagnostic log: /);
+  assert.match(install, /OliTechs-PrintAgent-install\.log/);
+  assert.match(install, /function Write-InstallLog/);
+  assert.match(install, /INSTALL ERROR:/);
+  assert.match(install, /Persistent pairing and queue data were retained/);
+  assert.match(install, /health endpoint did not respond/);
+});
+
 test('the installer runs the service scripts from the staged agent folder and stops the service before copying', async () => {
   const iss = await read('./installer/OliTechsPrintAgent.iss');
 
