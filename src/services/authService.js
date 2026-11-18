@@ -280,7 +280,7 @@ async function loadCurrentUserDetails() {
 	let entitlement = null;
 	if (propertyId) {
 		const { data: staffByUserId } = await supabase.from('staff_directory').select('id,full_name,email,phone,role,assigned_modules,is_active,property_id,avatar,last_login,user_id,role_id,department_id').eq('property_id', propertyId).eq('user_id', authUser.id).maybeSingle();
-		const { data: staffByEmail } = staffByUserId ? { data: null } : await supabase.from('staff').select('id,full_name,email,phone,role,assigned_modules,is_active,property_id,avatar,last_login,user_id,role_id,department_id').eq('property_id', propertyId).ilike('email', authUser.email || '').maybeSingle();
+		const { data: staffByEmail } = staffByUserId ? { data: null } : await supabase.from('staff_directory').select('id,full_name,email,phone,role,assigned_modules,is_active,property_id,avatar,last_login,user_id,role_id,department_id').eq('property_id', propertyId).ilike('email', authUser.email || '').maybeSingle();
 		staff = staffByUserId || staffByEmail || null;
 		const { data: subscriptionRow, error: subscriptionError } = await supabase.rpc('fn_get_subscription', { p_property_id: propertyId });
 		if (subscriptionError) console.error('[authService] subscription lookup failed:', subscriptionError.message);
