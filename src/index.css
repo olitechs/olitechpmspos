@@ -355,3 +355,32 @@
 
 .room-planner-close-button:hover { background: color-mix(in srgb, var(--white) 10%, transparent); }
 .room-planner-close-button:focus-visible { outline: 2px solid var(--white); outline-offset: 2px; }
+
+/* Unified application typography.
+   Keep the Inter family and the shared type scale consistent across every
+   workspace; cap legacy 800/900 utility weights so individual screens cannot
+   drift into overly heavy headings and KPI labels. */
+#root {
+  font-family: var(--font-body);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+#root :where(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+#root .font-black,
+#root .font-extrabold {
+  font-weight: 700;
+}
+
+#root .font-bold {
+  font-weight: 600;
+}
+
+#root :where(button, input, select, textarea) {
+  font-family: inherit;
+}
