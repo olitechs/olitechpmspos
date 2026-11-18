@@ -65,6 +65,8 @@ test('the installer runs the service scripts from the staged agent folder and st
   assert.match(iss, /CurStep = ssInstall[\s\S]{0,80}StopExistingAgentService\(\)/);
   assert.match(iss, /sc\.exe stop OliTechsPrintAgent/);
   assert.match(iss, /function AgentServiceRunning\(\): Boolean/);
+  assert.match(iss, /if AgentServiceRunning\(\) then[\\s\\S]*RaiseException\(/,
+    'the upgrade must abort before replacing files if the old service will not stop');
 });
 
 test('a failed service installation is reported to staff, and pairing is skipped', async () => {
