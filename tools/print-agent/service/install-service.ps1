@@ -18,6 +18,8 @@ if (-not $InstallLogPath) {
   $InstallLogPath = Join-Path $env:TEMP 'OliTechs-PrintAgent-install.log'
 }
 $script:TranscriptStarted = $false
+$script:ServiceRegistrationAttempted = $false
+$ServiceId = 'OliTechsPrintAgent'
 function Write-InstallLog([string]$Message) {
   $line = "[$(Get-Date -Format o)] $Message"
   try { Add-Content -LiteralPath $InstallLogPath -Value $line -Encoding UTF8 -ErrorAction Stop } catch {
@@ -41,10 +43,21 @@ try {
 }
 trap {
   Write-InstallLog "INSTALL ERROR: $($_.Exception.Message)"
+  if ($script:ServiceRegistrationAttempted) {
+    try {
+      $failedService = Get-Service -Name $ServiceId -ErrorAction SilentlyContinue
+      if ($failedService -and $failedService.Status -ne 'Stopped') {
+        Stop-Service -Name $ServiceId -Force -ErrorAction SilentlyContinue
+      }
+      if (Test-Path $WrapperPath) { & $WrapperPath uninstall 2>&1 | Out-File -FilePath $InstallLogPath -Append -Encoding utf8 }
+    } catch {
+      Write-InstallLog "WARNING: automatic service rollback failed: $($_.Exception.Message)"
+    }
+    Write-InstallLog 'Failed service registration was rolled back where possible. Persistent pairing and queue data were retained.'
+  }
   if ($script:TranscriptStarted) { try { Stop-Transcript | Out-Null } catch {} }
   throw
 }
-$ServiceId = 'OliTechsPrintAgent'
 $ServiceDisplayName = 'OliTechs Print Agent'
 $LegacyTaskName = 'OliTechs Print Agent'
 
@@ -194,6 +207,7 @@ Write-InstallLog "Copied verified service wrapper to $WrapperPath"
 # WinSW can return a generic non-zero code when a stale service registration
 # still exists (for example, Windows has marked it for deletion). Capture its
 # actual output so support can distinguish that from access/configuration errors.
+$script:ServiceRegistrationAttempted = $true
 $winswOutput = & $WrapperPath install 2>&1
 $winswExitCode = $LASTEXITCODE
 if ($winswOutput) {
