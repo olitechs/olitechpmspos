@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ShieldAlert, LockKeyhole } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { authService, normalizeStaffRole } from '@/services/authService';
@@ -44,6 +44,8 @@ export default function RouteGuard({ module, children }) {
   const [selected, setSelected] = useState(getActiveStaff());
   const [pinOpen, setPinOpen] = useState(false);
   const [error, setError] = useState('');
+  const [pinBusy, setPinBusy] = useState(false);
+  const verifyAttemptRef = useRef(0);
   const [, setRefresh] = useState(0);
   const propertyId = user?.property?.id;
 
@@ -101,6 +103,7 @@ export default function RouteGuard({ module, children }) {
       setSelected(null);
       setPinOpen(false);
       setError('');
+      setPinBusy(false);
       setRefresh((v) => v + 1);
       authService.clearActiveStaffSession().catch(() => {});
     };
@@ -118,18 +121,32 @@ export default function RouteGuard({ module, children }) {
 
   const choose = (person) => { setSelected(person); setError(''); setPinOpen(true); };
   const verify = async (pin) => {
+    if (!selected?.id || pinBusy) return;
+    const attempt = ++verifyAttemptRef.current;
     setError('');
+    setPinBusy(true);
+    let timeoutId;
     try {
-      const result = await authService.verifyStaffPin({ propertyId, module: moduleKey, pin });
+      const timeout = new Promise((_, reject) => {
+        timeoutId = window.setTimeout(() => reject(new Error('PIN verification is taking too long. Check your connection and try again.')), 20000);
+      });
+      const result = await Promise.race([
+        authService.verifyStaffPinForStaff({ propertyId, staffId: selected.id, module: moduleKey, pin }),
+        timeout,
+      ]);
+      if (attempt !== verifyAttemptRef.current) return;
       if (!result?.ok) {
         setError(result?.reason === 'locked'
           ? `Too many incorrect attempts. Try again in ${Math.max(1, Math.ceil((result.retry_after_seconds || 60) / 60))} minute(s).`
-          : 'Incorrect PIN. Please try again.');
+          : 'Incorrect PIN for the selected staff profile. Please try again.');
+        return;
+      }
+      // Defensively verify the server returned the profile selected on screen.
+      if (result.staff?.id !== selected.id) {
+        setError('The PIN response did not match the selected staff profile. Please try again.');
         return;
       }
       sessionStorage.setItem(ACTIVE_STAFF_KEY, JSON.stringify(result.staff));
-      // Server stores one active staff identity per signed-in account. Clear
-      // prior workspace grants so a staff switch cannot inherit another role.
       const all = {};
       all[moduleKey] = { staffId: result.staff.id, at: Date.now() };
       sessionStorage.setItem(ACCESS_KEY, JSON.stringify(all));
@@ -139,7 +156,10 @@ export default function RouteGuard({ module, children }) {
       setRefresh((v) => v + 1);
       window.dispatchEvent(new CustomEvent('olitech:staff-changed', { detail: result.staff }));
     } catch (err) {
-      setError(err?.message || 'Unable to verify PIN. Check your connection and try again.');
+      if (attempt === verifyAttemptRef.current) setError(err?.message || 'Unable to verify PIN. Check your connection and try again.');
+    } finally {
+      window.clearTimeout(timeoutId);
+      if (attempt === verifyAttemptRef.current) setPinBusy(false);
     }
   };
 
@@ -177,7 +197,7 @@ export default function RouteGuard({ module, children }) {
         </div>
         <p className="mt-6 text-center text-[10px] font-semibold uppercase tracking-[.16em] text-muted-foreground">Property-scoped access · PIN required</p>
       </section>
-      {pinOpen && selected && <PinPad fullscreen title="ENTER PIN TO LOG IN" staffName={selected.full_name} error={error} onSubmit={verify} onClose={() => { setPinOpen(false); setError(''); }} />}
+      {pinOpen && selected && <PinPad fullscreen title="ENTER PIN TO LOG IN" staffName={selected.full_name} error={error} busy={pinBusy} onSubmit={verify} onClose={() => { verifyAttemptRef.current += 1; setPinBusy(false); setPinOpen(false); setError(''); }} />}
     </main>
   );
 }
