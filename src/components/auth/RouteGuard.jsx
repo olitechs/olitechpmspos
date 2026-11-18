@@ -45,6 +45,7 @@ export default function RouteGuard({ module, children }) {
   const [pinOpen, setPinOpen] = useState(false);
   const [error, setError] = useState('');
   const [pinBusy, setPinBusy] = useState(false);
+  const pinBusyRef = useRef(false);
   const verifyAttemptRef = useRef(0);
   const [, setRefresh] = useState(0);
   const propertyId = user?.property?.id;
@@ -103,6 +104,7 @@ export default function RouteGuard({ module, children }) {
       setSelected(null);
       setPinOpen(false);
       setError('');
+      pinBusyRef.current = false;
       setPinBusy(false);
       setRefresh((v) => v + 1);
       authService.clearActiveStaffSession().catch(() => {});
@@ -121,7 +123,8 @@ export default function RouteGuard({ module, children }) {
 
   const choose = (person) => { setSelected(person); setError(''); setPinOpen(true); };
   const verify = async (pin) => {
-    if (!selected?.id || pinBusy) return;
+    if (!selected?.id || pinBusyRef.current) return;
+    pinBusyRef.current = true;
     const attempt = ++verifyAttemptRef.current;
     setError('');
     setPinBusy(true);
@@ -159,7 +162,7 @@ export default function RouteGuard({ module, children }) {
       if (attempt === verifyAttemptRef.current) setError(err?.message || 'Unable to verify PIN. Check your connection and try again.');
     } finally {
       window.clearTimeout(timeoutId);
-      if (attempt === verifyAttemptRef.current) setPinBusy(false);
+      if (attempt === verifyAttemptRef.current) { pinBusyRef.current = false; setPinBusy(false); }
     }
   };
 
@@ -197,7 +200,7 @@ export default function RouteGuard({ module, children }) {
         </div>
         <p className="mt-6 text-center text-[10px] font-semibold uppercase tracking-[.16em] text-muted-foreground">Property-scoped access · PIN required</p>
       </section>
-      {pinOpen && selected && <PinPad fullscreen title="ENTER PIN TO LOG IN" staffName={selected.full_name} error={error} busy={pinBusy} onSubmit={verify} onClose={() => { verifyAttemptRef.current += 1; setPinBusy(false); setPinOpen(false); setError(''); }} />}
+      {pinOpen && selected && <PinPad fullscreen title="ENTER PIN TO LOG IN" staffName={selected.full_name} error={error} busy={pinBusy} onSubmit={verify} onClose={() => { verifyAttemptRef.current += 1; pinBusyRef.current = false; setPinBusy(false); setPinOpen(false); setError(''); }} />}
     </main>
   );
 }
