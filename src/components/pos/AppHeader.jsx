@@ -85,16 +85,15 @@ export default function AppHeader({ activeTab, onTabChange, activeTable, onClose
       </div>
     </header>
     {!hasOpenShift && (
-      <button
-        type="button"
-        onClick={() => onOpenShifts?.()}
-        className="flex min-h-11 w-full items-center justify-center gap-2 border-b border-[var(--danger)] bg-[var(--danger-soft)] px-4 py-2 text-sm font-bold text-[var(--danger-text)] transition-colors hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--danger)]"
-        aria-label="No shift is open. Sales are blocked until you open one. Open shift management."
+      <div
+        role="status"
+        className="flex min-h-11 w-full items-center justify-center gap-2 border-b border-[var(--danger)] bg-[var(--danger-soft)] px-4 py-2 text-sm font-bold text-[var(--danger-text)]"
+        aria-label="No shift is open. Sales are blocked until a shift is opened."
       >
         <span aria-hidden="true">●</span>
         No shift is open. Sales are blocked until you open one.
         <span aria-hidden="true">→</span>
-      </button>
+      </div>
     )}
     </>
   );
