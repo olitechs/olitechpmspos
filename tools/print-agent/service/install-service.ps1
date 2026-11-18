@@ -41,8 +41,7 @@ try {
 }
 trap {
   Write-InstallLog "INSTALL ERROR: $($_.Exception.Message)"
-  if ($script:TranscriptStarted) { Write-InstallLog 'SUCCESS: Print Agent service installation and health verification completed.'
-if ($script:TranscriptStarted) { try { Stop-Transcript | Out-Null } catch {} } }
+  if ($script:TranscriptStarted) { try { Stop-Transcript | Out-Null } catch {} }
   throw
 }
 $ServiceId = 'OliTechsPrintAgent'
@@ -262,4 +261,5 @@ if ($healthy) {
   throw "The Print Agent service started but its health endpoint did not respond. See $InstallLogPath."
 }
 Write-Host ''
-try { Stop-Transcript | Out-Null } catch {}
+Write-InstallLog 'SUCCESS: Print Agent service installation and health verification completed.'
+if ($script:TranscriptStarted) { try { Stop-Transcript | Out-Null } catch {} }
