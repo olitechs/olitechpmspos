@@ -101,8 +101,8 @@ var
   LogDir: String;
 begin
   ServiceInstallFailed := False;
-  LogDir := ExpandConstant('{commonappdata}\\OliTechs\\PrintAgent\\logs');
-  InstallDiagnosticPath := ExpandConstant('{tmp}\\OliTechs-PrintAgent-install.log');
+  LogDir := ExpandConstant('{commonappdata}\OliTechs\PrintAgent\logs');
+  InstallDiagnosticPath := ExpandConstant('{tmp}\OliTechs-PrintAgent-install.log');
   if ForceDirectories(LogDir) then
     InstallDiagnosticPath := AddBackslash(LogDir) + 'install-service.log';
   WriteInstallerDiagnostic('Installer initialized. Windows=' + GetWindowsVersionString());
@@ -171,9 +171,9 @@ var
 begin
   WriteInstallerDiagnostic('Starting PowerShell service installation. AppDir=' + ExpandConstant('{app}'));
   Params := '-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "' +
-    ExpandConstant('{app}\\tools\\print-agent\\service\\install-service.ps1') + '"' +
-    ' -WinSWPath "' + ExpandConstant('{app}\\service\\WinSW.exe') + '"' +
-    ' -NodeExe "' + ExpandConstant('{app}\\node\\node.exe') + '"' +
+    ExpandConstant('{app}\tools\print-agent\service\install-service.ps1') + '"' +
+    ' -WinSWPath "' + ExpandConstant('{app}\service\WinSW.exe') + '"' +
+    ' -NodeExe "' + ExpandConstant('{app}\node\node.exe') + '"' +
     ' -LogPath "' + InstallDiagnosticPath + '"';
 
   if not Exec('powershell.exe', Params, ExpandConstant('{app}'), SW_HIDE, ewWaitUntilTerminated, Code) then
