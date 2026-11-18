@@ -1,4 +1,4 @@
-# Print agent deployment checklist — what is now on `main`
+# Print agent deployment checklist
 
 For the release that contains the Windows print service, durable queue, pairing,
 diagnostics, printer history and compatibility gate. Work top to bottom; do not
