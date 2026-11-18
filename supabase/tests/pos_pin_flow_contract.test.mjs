@@ -77,3 +77,11 @@ test('the server contract stays authoritative: verify returns must_change, reset
   assert.match(pinMigration, /Choose a PIN that is not a repeated or sequential number\./);
   assert.match(pinMigration, /Only the property owner or administrator can reset the POS PIN\./);
 });
+
+
+test('the property POS PIN gate recovers from a stalled verification request', () => {
+  const verifyBlock = container.slice(container.indexOf('const verifyPosAccess'), container.indexOf('const handlePosPinSetup'));
+  assert.match(verifyBlock, /Promise\.race\(/);
+  assert.match(verifyBlock, /POS PIN verification is taking too long/);
+  assert.match(verifyBlock, /finally\s*\{[\s\S]*?setPosAccessBusy\(false\)/);
+});
