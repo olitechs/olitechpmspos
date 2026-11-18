@@ -9,6 +9,9 @@ const colorAuditExemptions = new Set([
   'public/app-icon.svg',
   'public/favicon.svg',
   'public/manifest.json',
+  // HTML email shells need literal hex colors: email clients do not support
+  // CSS custom properties. Keep the palette matching the brand tokens.
+  'supabase/functions/employee-invite/index.ts',
 ]);
 const roots = ['src', 'public', 'tools/brand-assets', 'tools/print-agent', 'supabase/functions'];
 const files = [];
