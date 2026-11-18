@@ -79,17 +79,58 @@ if (-not $resolvedWinSW) {
 New-Item -ItemType Directory -Force -Path $DataDir, $ServiceDir, $LogDir | Out-Null
 
 # Re-installing must be safe: stop and remove the previous service first.
+# Windows can keep a service registration in the "marked for deletion" state
+# briefly after WinSW uninstall. Installing again during that window commonly
+# returns WinSW exit code 1. Wait for the Service Control Manager to release it.
 $existing = Get-Service -Name $ServiceId -ErrorAction SilentlyContinue
 if ($existing) {
   if ($existing.Status -ne 'Stopped') {
-    Stop-Service -Name $ServiceId -Force -ErrorAction SilentlyContinue
+    Stop-Service -Name $ServiceId -Force -ErrorAction Stop
+    $stopDeadline = (Get-Date).AddSeconds(30)
+    do {
+      Start-Sleep -Milliseconds 500
+      $existing = Get-Service -Name $ServiceId -ErrorAction SilentlyContinue
+    } while ($existing -and $existing.Status -ne 'Stopped' -and (Get-Date) -lt $stopDeadline)
+    if ($existing -and $existing.Status -ne 'Stopped') {
+      throw "The existing $ServiceId service did not stop. Status: $($existing.Status). No service files were replaced."
+    }
   }
+
   if (Test-Path $WrapperPath) {
-    & $WrapperPath uninstall 2>$null | Out-Null
+    $uninstallOutput = & $WrapperPath uninstall 2>&1
+    $uninstallExitCode = $LASTEXITCODE
+    if ($uninstallOutput) {
+      $uninstallOutput | Tee-Object -FilePath $InstallLogPath -Append | Out-Null
+    }
+    if ($uninstallExitCode -ne 0) {
+      throw "The existing Windows service could not be removed (WinSW exit code $uninstallExitCode). Restart Windows, then run the installer again. See $InstallLogPath."
+    }
   } else {
-    sc.exe delete $ServiceId 2>$null | Out-Null
+    $deleteOutput = & sc.exe delete $ServiceId 2>&1
+    $deleteExitCode = $LASTEXITCODE
+    if ($deleteOutput) {
+      $deleteOutput | Tee-Object -FilePath $InstallLogPath -Append | Out-Null
+    }
+    if ($deleteExitCode -ne 0) {
+      throw "The existing Windows service could not be removed (sc.exe exit code $deleteExitCode). See $InstallLogPath."
+    }
   }
-  Start-Sleep -Seconds 2
+
+  $removeDeadline = (Get-Date).AddSeconds(30)
+  do {
+    Start-Sleep -Milliseconds 500
+    $queryOutput = & sc.exe query $ServiceId 2>&1
+    $queryExitCode = $LASTEXITCODE
+  } while ($queryExitCode -eq 0 -and (Get-Date) -lt $removeDeadline)
+
+  if ($queryExitCode -eq 0) {
+    $queryOutput | Out-File -FilePath $InstallLogPath -Append -Encoding utf8
+    throw "Windows is still holding the old $ServiceId service registration. Restart Windows, then run the installer again. No new service was installed."
+  }
+  if ($queryExitCode -ne 1060) {
+    $queryOutput | Out-File -FilePath $InstallLogPath -Append -Encoding utf8
+    throw "Could not verify removal of the previous $ServiceId service (sc.exe exit code $queryExitCode). See $InstallLogPath."
+  }
 }
 
 $escape = [System.Security.SecurityElement]::Escape
