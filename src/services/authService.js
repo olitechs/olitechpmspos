@@ -463,6 +463,18 @@ export const authService = {
 		if (error) throw new Error(error.message); return data || { ok: false };
 	},
 
+	// A selected staff profile must be verified against that exact record.
+	// This prevents duplicate PINs from authenticating a different employee.
+	async verifyStaffPinForStaff({ propertyId, staffId, module, pin }) {
+		if (!staffId) throw new Error('Select a staff profile before entering the PIN.');
+		const pinHash = await hashPin(pin);
+		const { data, error } = await supabase.rpc('verify_staff_pin_for_staff', {
+			p_property_id: propertyId, p_module: module, p_pin_hash: pinHash, p_staff_id: staffId,
+		});
+		if (error) throw new Error(error.message);
+		return data || { ok: false };
+	},
+
 
 	async requestPasswordReset({ email }) {
 		// Use the canonical production app URL for every recovery email.
