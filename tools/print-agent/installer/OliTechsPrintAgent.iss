@@ -169,18 +169,19 @@ var
   Code: Integer;
   Params: String;
 begin
+  WriteInstallerDiagnostic('Starting PowerShell service installation. AppDir=' + ExpandConstant('{app}'));
   Params := '-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "' +
-    ExpandConstant('{app}\tools\print-agent\service\install-service.ps1') + '"' +
-    ' -WinSWPath "' + ExpandConstant('{app}\service\WinSW.exe') + '"' +
-    ' -NodeExe "' + ExpandConstant('{app}\node\node.exe') + '"';
+    ExpandConstant('{app}\\tools\\print-agent\\service\\install-service.ps1') + '"' +
+    ' -WinSWPath "' + ExpandConstant('{app}\\service\\WinSW.exe') + '"' +
+    ' -NodeExe "' + ExpandConstant('{app}\\node\\node.exe') + '"' +
+    ' -LogPath "' + InstallDiagnosticPath + '"';
 
   if not Exec('powershell.exe', Params, ExpandConstant('{app}'), SW_HIDE, ewWaitUntilTerminated, Code) then
   begin
     WriteInstallerDiagnostic('ERROR: Windows could not start powershell.exe.');
     ServiceInstallFailed := True;
     MsgBox('Windows could not start the OliTechs Print Agent service installer.' + #13#10#13#10 +
-      'Printing will not work until this is fixed. Restart the computer and run this installer again, ' +
-      'or send the log folder to support: ' + ExpandConstant('{commonappdata}\OliTechs\PrintAgent\logs'),
+      'Printing will not work until this is fixed. Diagnostic log: ' + InstallDiagnosticPath,
       mbError, MB_OK);
     exit;
   end;
@@ -190,9 +191,8 @@ begin
   begin
     ServiceInstallFailed := True;
     MsgBox('The OliTechs Print Agent service could not be installed (exit code ' + IntToStr(Code) + ').' + #13#10#13#10 +
-      'Printing will not work until this is fixed. Restart Windows and run this installer again.' + #13#10#13#10 +
-      'If it still fails, send this diagnostic file to OliTechs support:' + #13#10 +
-      ExpandConstant('{commonappdata}\\OliTechs\\PrintAgent\\logs\\install-service.log'),
+      'Printing will not work until this is fixed. Please send this diagnostic file to OliTechs support:' + #13#10 +
+      InstallDiagnosticPath,
       mbError, MB_OK);
   end;
 end;
