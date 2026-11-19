@@ -333,12 +333,13 @@ export function buildFinalReceiptText(settings = {}, data = {}, { printer = {}, 
   const employee = data.employeeName || data.employee_name || data.employee || data.staffName || data.staff_name || data.waiter || data.server || '—';
   const posName = data.posName || data.pos_name || data.terminalName || data.terminal_name || data.deviceName || data.device_name || data.pos || '—';
   const dining = data.diningOption || data.dining_option || data.orderType || data.order_type || '';
-  const receiptNo = data.receiptNumber || data.receipt_number || data.receiptId || 'RCT-' + (data.checkNo || data.orderNumber || '—');
+  const receiptNo = data.receiptNumber || data.receipt_number || 'Not assigned (legacy receipt)';
   const lines = [
     ...centeredBlock([
       settings.property_name || data.propertyName || 'VISIWA BEACH RESORT',
       settings.address_line1, settings.address_line2, settings.phone, settings.email,
       settings.website, settings.kra_pin ? 'KRA PIN: ' + settings.kra_pin : '',
+      settings.extra_header_line,
     ], width),
     divider(width),
     ...receiptCenterRows('RECEIPT', width).map(receiptDoubleHeight),
@@ -347,13 +348,16 @@ export function buildFinalReceiptText(settings = {}, data = {}, { printer = {}, 
     ...receiptLeftRows('POS', posName, width),
     divider(width),
   ];
+  if (String(data.receiptStatus || '').toLowerCase() === 'voided') {
+    lines.push(...receiptCenterRows('VOIDED RECEIPT', width).map(receiptDoubleHeight), divider(width));
+  }
   if (dining) {
     lines.push(...receiptCenterRows(dining, width).map(emphasize), divider(width));
   }
   for (const item of (Array.isArray(data.items) ? data.items : [])) {
     const qty = itemQuantity(item);
-    const unitPrice = Number(item?.price ?? item?.unitPrice ?? item?.unit_price ?? 0);
-    const lineTotal = roundReceiptMoney(qty * unitPrice);
+    const unitPrice = Number(item?.unit_price ?? item?.price ?? item?.unitPrice ?? 0);
+    const lineTotal = roundReceiptMoney(item?.total ?? item?.line_total ?? item?.amount ?? qty * unitPrice);
     const name = toReceiptAscii(itemName(item));
     const amount = money(lineTotal);
     const available = Math.max(8, width - amount.length - 1);
@@ -368,12 +372,21 @@ export function buildFinalReceiptText(settings = {}, data = {}, { printer = {}, 
   }
   lines.push(divider(width));
   lines.push(...receiptPairLine('Subtotal', money(data.subtotal ?? data.total), width));
-  if (Number(data.discount || 0) > 0) lines.push(...receiptPairLine('Discount', '-' + money(data.discount), width));
-  if (Number(data.serviceCharge || data.service_charge || 0) > 0) lines.push(...receiptPairLine('Service charge', money(data.serviceCharge ?? data.service_charge), width));
+  if (Number(data.discount || 0) > 0) lines.push(...receiptPairLine('Discount' + (data.discountName ? ' · ' + data.discountName : ''), '-' + money(data.discount), width));
+  if (Number(data.vat || 0) > 0) lines.push(...receiptPairLine('VAT / tax', money(data.vat), width));
+  if (Number(data.serviceCharge || data.service_charge || 0)) lines.push(...receiptPairLine('Service charge', money(data.serviceCharge ?? data.service_charge), width));
   lines.push('='.repeat(width));
   lines.push(receiptDoubleHeight(receiptPairLine('AMOUNT PAID', money(data.total), width)[0]));
   lines.push('='.repeat(width));
-  lines.push(...receiptLeftRows('Payment', data.paymentMethod || data.payment_method || '—', width));
+  if (Array.isArray(data.paymentAllocations) && data.paymentAllocations.length > 1) {
+    lines.push(...receiptLeftRows('Payment', 'Split tender', width));
+    for (const allocation of data.paymentAllocations) {
+      const method = allocation.method || allocation.payment_method || 'Unspecified';
+      lines.push(...receiptPairLine(String(method).toUpperCase(), money(allocation.amount), width));
+    }
+  } else {
+    lines.push(...receiptLeftRows('Payment', data.paymentMethod || data.payment_method || '—', width));
+  }
   lines.push(...receiptLeftRows('Receipt No', receiptNo, width));
   lines.push(...receiptLeftRows('Date', nairobiPrintedAt(data.createdAt || data.created_at || now), width));
   lines.push(...centeredBlock([settings.footer_line1, settings.footer_line2, copyLabel], width));
