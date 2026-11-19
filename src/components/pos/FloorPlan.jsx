@@ -71,7 +71,7 @@ function Tile({ table, session, shape, designMode, onSelect, onMove, now }) {
       <div className="flex h-full w-full min-w-0 flex-col items-center justify-center gap-1 px-2 text-center">
         <span className="line-clamp-2 w-full break-words text-[13px] font-extrabold leading-tight">{tableLabel(table)}</span>
         <span className="text-[10px] font-semibold">{table.seats} seats</span>
-        <span className="max-w-full rounded-full bg-black/10 px-2 py-1 text-[11px] font-bold leading-tight">{statusMeta.label}</span>
+        <span className="max-w-full rounded-full border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[11px] font-bold leading-tight text-[var(--text)]">{statusMeta.label}</span>
         {status === 'occupied' && orderCount > 0 && <span className="text-[10px] font-bold">{orderCount} items</span>}
         {waiterName && <span className="max-w-full truncate text-[10px] leading-tight" title={waiterName}>{waiterName}</span>}
         {status === 'occupied' && <span className="text-[10px] font-semibold leading-tight">{guests}p · {elapsedLabel(session?.openedAt, now)}</span>}
