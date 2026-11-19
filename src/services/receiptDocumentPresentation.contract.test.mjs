@@ -47,6 +47,7 @@ test('folio statement keeps POS receipts in a reference appendix, not duplicated
   assert.equal(receiptDetails.rows[0].receipt_number, 'RC-2026-0042');
   assert.match(receiptDetails.rows[0].tender, /cash: KES 500/);
   assert.match(receiptDetails.rows[0].tender, /room: KES 602/);
+  assert.match(receiptDetails.rows[0].tender, /folio charge-0/);
   assert.match(definition.notes.join(' '), /not added again to the ledger totals/i);
 });
 
@@ -64,6 +65,8 @@ test('final settlement invoice uses canonical receipt identity, line values and 
   assert.equal(receipts.rows[0].receipt_number, 'RC-2026-0042');
   assert.equal(receipts.rows[0].total, 1102);
   assert.match(receipts.rows[0].payment_method, /cash: 500/);
+  assert.match(receipts.rows[0].payment_method, /folio charge-0/);
+  assert.equal(receipts.rows[0].folio_charge, 'charge-001');
   assert.equal(items.rows[0].item, 'Grilled fish');
   assert.equal(items.rows[0].line_total, 1000);
 });
