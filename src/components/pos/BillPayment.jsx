@@ -381,6 +381,7 @@ export default function BillPayment({
       try {
         result = await printReceipt('RECEIPT', {
           propertyId,
+          receiptRecord: savedReceipt,
           orderNumber: stableOrderNumber,
           checkNo: stableOrderNumber,
           table: tableLabel(table),
