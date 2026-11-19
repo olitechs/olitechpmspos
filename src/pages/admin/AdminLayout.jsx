@@ -16,9 +16,6 @@ const PROPERTY_NAV = [
   { to: '/backoffice', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/admin/roles', label: 'Staff & Roles', icon: UsersRound },
   { to: '/admin/settings', label: 'Property Settings', icon: Settings },
-  { to: '/admin/settings/printers', label: 'Printer Settings', icon: Settings },
-  { to: '/admin/settings/receipt', label: 'Receipt Settings', icon: Settings },
-  { to: '/admin/settings/unsettled-receipt', label: 'Unsettled Receipt', icon: Settings },
 ];
 
 export default function AdminLayout() {

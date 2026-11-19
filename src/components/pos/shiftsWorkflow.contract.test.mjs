@@ -24,9 +24,12 @@ const printService = read('../../services/printService.js');
 const posService = read('../../services/posService.js');
 const backOffice = read('../../pages/ShiftReport.jsx');
 
-test('POS shows a live "no shift" banner that links to the Shifts page', () => {
+test('POS shows a live informational no-shift banner while the Shifts tab remains actionable', () => {
   assert.match(header, /No shift is open\. Sales are blocked until you open one\./);
-  assert.match(header, /onClick=\{\(\) => onOpenShifts\?\.\(\)\}/);
+  assert.match(header, /role="status"/);
+  assert.match(header, /aria-live="polite"/);
+  assert.doesNotMatch(header, /onClick=\{\(\) => onOpenShifts\?\.\(\)\}/);
+  assert.match(header, /if \(tab\.id === 'shifts'\) onOpenShifts\?\.\(\)/);
   // The banner state follows other terminals instead of freezing at mount.
   assert.match(container, /window\.setInterval\(refresh, 60000\)/);
   assert.match(container, /document\.addEventListener\('visibilitychange', refresh\)/);
