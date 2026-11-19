@@ -17,7 +17,10 @@ test('POS menu tiles use a six-column responsive grid with readable price chips'
   assert.ok(order.includes("repeat(auto-fit, minmax(max(112px, calc((100% - 50px) / 6)), 1fr))"));
   assert.ok(order.includes("maxWidth: '1190px'"));
   assert.ok(order.includes('h-[142px]'));
-  assert.ok(order.includes('h-[88px]'));
+  assert.ok(order.includes('h-[64px]'));
+  assert.ok(order.includes('min-h-[22px] w-full shrink-0'));
+  assert.ok(order.includes('top-[52px] z-10 rounded bg-[var(--danger)]/95'));
+  assert.ok(!order.includes('absolute inset-x-0 bottom-0 bg-[var(--danger)]/90'));
   assert.ok(order.includes('object-contain'));
   assert.ok(order.includes('const hasPhoto = Boolean(item.tile_image_url)'));
   assert.ok(order.includes("backgroundColor: item.tile_color || 'var(--primary)'"));
