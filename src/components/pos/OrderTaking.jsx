@@ -474,7 +474,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
                     </div>
                     <div className="my-2 w-full break-words text-center text-[11px] font-bold leading-tight sm:text-xs">{item.name}{item.sku && <span className="mt-1 block text-[9px] font-semibold tracking-wide opacity-80">SKU {item.sku}</span>}</div>
                     <div className="flex w-full items-end justify-between gap-2">
-                      <span className="shrink-0 rounded-lg bg-white px-2 py-1 text-sm font-extrabold tabular-nums text-slate-950 shadow-sm">{formatKes(item.price)}</span>
+                      <span className="shrink-0 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-sm font-extrabold tabular-nums text-[var(--text)] shadow-sm">{formatKes(item.price)}</span>
                       {stockStatus !== 'unknown' && (
                         <span className={`text-[10px] font-bold ${outOfStock ? 'text-[var(--danger-text)]' : lowStock ? 'text-[var(--warning-text)]' : 'text-[var(--text-muted)]'}`}>
                           {outOfStock ? 'OUT OF STOCK' : lowStock ? `LOW · ${item.stock} ${item.unit}` : `${item.stock} ${item.unit}`}
