@@ -1,3 +1,4 @@
+import { buildReceiptDocument } from '@/services/receiptDocumentCore';
 const toNumber = (value) => {
   const number = Number(value ?? 0);
   return Number.isFinite(number) ? number : 0;
@@ -397,8 +398,25 @@ export function buildStockControlDefinition({ products = [], movements = [], fro
   });
 }
 
-export function buildFolioStatementDefinition({ selected = {}, charges = [], payments = [], employees = [], from, to, propertyName, generatedBy, totals = {} }) {
+export function buildFolioStatementDefinition({ selected = {}, charges = [], payments = [], receipts = [], employees = [], from, to, propertyName, generatedBy, totals = {} }) {
   const employeeName = (id) => employees.find((employee) => employee.user_id === id || employee.id === id)?.full_name || (id ? String(id).slice(0, 8) : 'System');
+  const receiptRows = (receipts || []).map((receipt) => {
+    const document = buildReceiptDocument(receipt);
+    const tenders = document.paymentAllocations.map((allocation) => `${allocation.method}: KES ${toNumber(allocation.amount).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`).join(' · ');
+    return {
+      date: dateLabel(document.createdAt),
+      receipt_number: document.receiptNumber || 'Legacy / unnumbered',
+      order_number: cleanText(document.orderNumber, '—'),
+      items: document.items.map((item) => `${item.name} × ${item.quantity}`).join(', ') || 'No item lines',
+      tender: tenders || document.paymentMethod,
+      subtotal: `KES ${document.totals.subtotal.toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      discount: `KES ${document.totals.discountAmount.toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      vat: `KES ${document.totals.vat.toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      total: `KES ${document.totals.total.toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      status: document.status,
+      snapshot: document.snapshotStatus === 'captured' ? 'Captured at issue' : 'Legacy / not captured',
+    };
+  });
   const rows = [
     ...(charges || []).map((charge) => ({
       date: dateLabel(charge.created_at), type: charge.reversal_of_id ? 'Reversal' : 'Charge',
@@ -418,8 +436,11 @@ export function buildFolioStatementDefinition({ selected = {}, charges = [], pay
     subtitle: `Reservation ${String(selected.id || '').slice(0, 8)} · Room ${cleanText(selected.room_id, '—')}`,
     propertyName, period: { from: from || '', to: to || '' }, filters: { reservation: String(selected.id || '').slice(0, 8) }, generatedBy,
     summary: [metric('Total charges', totals.chargeTotal, 'currency'), metric('Net payments', totals.netPayments, 'currency'), metric('Outstanding balance', totals.balance, 'currency')],
-    sections: [{ name: 'folio-ledger', title: 'Ledger Activity', columns: [dateTimeColumn('date', 'Date / time', 22), textColumn('type', 'Type', 14), textColumn('description', 'Description', 30), textColumn('reference', 'Reference', 18), textColumn('source', 'Source', 16), sumColumn('quantity', 'Qty', 'quantity'), sumColumn('amount', 'Amount', 'currency', 18), textColumn('recorded_by', 'Recorded by', 22), textColumn('status', 'Status', 14)], rows }],
-    notes: ['This statement contains only the selected reservation’s charges, payments and refunds. Do not distribute outside the authorized guest-account workflow.'],
+    sections: [
+      { name: 'folio-ledger', title: 'Ledger Activity', columns: [dateTimeColumn('date', 'Date / time', 22), textColumn('type', 'Type', 14), textColumn('description', 'Description', 30), textColumn('reference', 'Reference', 18), textColumn('source', 'Source', 16), sumColumn('quantity', 'Qty', 'quantity'), sumColumn('amount', 'Amount', 'currency', 18), textColumn('recorded_by', 'Recorded by', 22), textColumn('status', 'Status', 14)], rows },
+      { name: 'pos-receipt-details', title: 'POS Receipt Details (reference only)', columns: [dateTimeColumn('date', 'Date / time', 22), textColumn('receipt_number', 'Receipt no.', 18), textColumn('order_number', 'Order no.', 18), textColumn('items', 'Items', 40), textColumn('tender', 'Tender allocations', 30), textColumn('subtotal', 'Subtotal', 18), textColumn('discount', 'Discount', 18), textColumn('vat', 'VAT / tax', 18), textColumn('total', 'Receipt total', 18), textColumn('status', 'Status', 14), textColumn('snapshot', 'Company snapshot', 22)], rows: receiptRows },
+    ],
+    notes: ['The ledger section contains the financial charges, payments and refunds. POS Receipt Details is a reference-only appendix and is not added again to the ledger totals. Do not distribute outside the authorized guest-account workflow.'],
   });
 }
 
@@ -433,38 +454,34 @@ export function buildFinalSettlementInvoiceDefinition({
   const departure = cleanText(selected.departure ?? selected.check_out ?? selected.checkOut);
   const roomLabel = cleanText(room.number ?? selected.room_number ?? header.roomNumber, cleanText(selected.room_id, '—'));
   const reservationRef = String(selected.id || '');
-  const receiptRows = (receipts || []).map((receipt) => ({
-    receipt_number: cleanText(receipt.receipt_number ?? receipt.order_number, String(receipt.id || '').slice(0, 8)),
+  const receiptDocuments = (receipts || []).map((receipt) => ({ receipt, document: buildReceiptDocument(receipt) }));
+  const receiptRows = receiptDocuments.map(({ receipt, document }) => ({
+    receipt_number: document.receiptNumber || 'Legacy / unnumbered',
     receipt_id: String(receipt.id || ''),
-    order_number: cleanText(receipt.order_number, '—'),
-    room: cleanText(receipt.room_number, roomLabel),
-    date: dateLabel(receipt.created_at),
-    table: cleanText(receipt.table_number, '—'),
-    payment_method: cleanText(receipt.payment_method, '—'),
-    subtotal: toNumber(receipt.subtotal),
-    discount: toNumber(receipt.discount_amount),
-    tax: toNumber(receipt.vat),
-    total: toNumber(receipt.total),
+    order_number: cleanText(document.orderNumber, '—'),
+    room: cleanText(document.roomNumber, roomLabel),
+    date: dateLabel(document.createdAt),
+    table: cleanText(document.tableNumber, '—'),
+    payment_method: document.paymentAllocations.length > 1
+      ? document.paymentAllocations.map((allocation) => `${allocation.method}: ${toNumber(allocation.amount).toFixed(2)}`).join(' · ')
+      : cleanText(document.paymentMethod, '—'),
+    subtotal: document.totals.subtotal,
+    discount: document.totals.discountAmount,
+    tax: document.totals.vat,
+    total: document.totals.total,
     folio_charge: cleanText(receipt.folio_charge_id, 'Not linked'),
+    receipt_status: document.status,
   }));
-  const itemRows = (receipts || []).flatMap((receipt) => (Array.isArray(receipt.items) ? receipt.items : []).map((item) => {
-    const quantity = toNumber(item.qty ?? item.quantity ?? item.count ?? 1);
-    const unitPrice = toNumber(item.unit_price ?? item.price ?? item.selling_price ?? 0);
-    const lineTotal = toNumber(item.total ?? item.line_total ?? item.amount ?? unitPrice * quantity);
-    const modifiers = Array.isArray(item.modifiers)
-      ? item.modifiers.map((modifier) => typeof modifier === 'string' ? modifier : cleanText(modifier.name ?? modifier.label ?? modifier.value)).filter(Boolean).join(', ')
-      : '';
-    return {
-      receipt_number: cleanText(receipt.receipt_number ?? receipt.order_number, String(receipt.id || '').slice(0, 8)),
-      order_number: cleanText(receipt.order_number, '—'),
-      date: dateLabel(receipt.created_at),
-      item: cleanText(item.name ?? item.item_name ?? item.product_name, 'Unnamed item'),
-      modifiers,
-      quantity,
-      unit_price: unitPrice,
-      line_total: lineTotal,
-    };
-  }));
+  const itemRows = receiptDocuments.flatMap(({ document }) => document.items.map((item) => ({
+    receipt_number: document.receiptNumber || 'Legacy / unnumbered',
+    order_number: cleanText(document.orderNumber, '—'),
+    date: dateLabel(document.createdAt),
+    item: item.name,
+    modifiers: item.modifiers.join(', '),
+    quantity: item.quantity,
+    unit_price: item.unitPrice,
+    line_total: item.lineTotal,
+  })));
   const ledgerRows = [
     ...(charges || []).map((charge) => ({
       date: dateLabel(charge.created_at),
