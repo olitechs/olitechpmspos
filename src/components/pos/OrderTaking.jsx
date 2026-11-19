@@ -457,7 +457,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
                     {inOrderQty > 0 && (
                       <span className="absolute right-1.5 top-1.5 z-10 flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--primary)] px-1 text-[10px] font-extrabold text-[var(--on-primary)] shadow">{inOrderQty}</span>
                     )}
-                    <span className="flex h-[88px] w-full shrink-0 items-center justify-center overflow-hidden rounded-lg">
+                    <span className="flex h-[64px] w-full shrink-0 items-center justify-center overflow-hidden rounded-lg">
                       {hasPhoto ? (
                         <img src={item.tile_image_url} alt="" loading="lazy" className="h-full w-full object-contain" />
                       ) : (
@@ -467,8 +467,8 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
                       )}
                     </span>
                     <span className="mt-1 line-clamp-2 min-h-[2rem] w-full min-w-0 text-[11px] font-medium leading-4 [overflow-wrap:anywhere]">{item.name}</span>
-                    <span className="mt-auto block w-full truncate rounded-md border border-[var(--border)] bg-[var(--surface)] px-1.5 py-0.5 text-center text-xs font-extrabold tabular-nums text-[var(--danger-text)] shadow-sm">{formatKes(item.price)}</span>
-                    {outOfStock && <span className="absolute inset-x-0 bottom-0 bg-[var(--danger)]/90 px-1 py-0.5 text-center text-[9px] font-bold text-[var(--danger-foreground)]">OUT OF STOCK</span>}
+                    <span className="mt-auto block min-h-[22px] w-full shrink-0 truncate rounded-md border border-[var(--border)] bg-[var(--surface)] px-1.5 py-0.5 text-center text-xs font-extrabold leading-4 tabular-nums text-[var(--danger-text)] shadow-sm">{formatKes(item.price)}</span>
+                    {outOfStock && <span className="absolute inset-x-2 top-[52px] z-10 rounded bg-[var(--danger)]/95 px-1 py-0.5 text-center text-[9px] font-bold text-[var(--danger-foreground)]">OUT OF STOCK</span>}
                   </button>
                 );
               })}
