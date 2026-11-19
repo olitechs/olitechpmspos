@@ -41,7 +41,7 @@ export default function ReceiptDetailModal({ receipt, onClose }) {
             <div>Table {document.tableNumber || '—'}{document.roomNumber ? ` · Room ${document.roomNumber} — ${document.guestName || ''}` : ''}</div>
             <div>Paid via: <b style={{ color: NAVY }}>{PAYMENT_LABEL[document.paymentMethod] || document.paymentMethod}</b></div>
             <div className="text-[10px]">{document.snapshotStatus === 'captured' ? 'Company details preserved from receipt issue time.' : 'Legacy receipt: original company header and footer were not captured.'}</div>
-            {document.status === 'voided' && <div className="font-bold text-red-700">VOIDED RECEIPT</div>}
+            {document.status === 'voided' && <div className="font-bold text-[var(--danger-text)]">VOIDED RECEIPT</div>}
           </div>
           <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${BORDER}` }}>
             {items.length ? items.map((item, index) => (
