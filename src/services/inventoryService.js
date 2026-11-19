@@ -81,6 +81,25 @@ export const inventoryService = {
     return data;
   },
 
+  async uploadPosMenuItemImage(propertyId, file) {
+    if (!propertyId || !file) throw new Error('Property and product photo are required.');
+    const allowed = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
+    const extension = allowed[String(file.type || '').toLowerCase()];
+    if (!extension) throw new Error('Product photos must be JPG, PNG or WebP images.');
+    if (file.size > 5 * 1024 * 1024) throw new Error('Product photos must be 5 MB or smaller.');
+    const unique = typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const path = `${propertyId}/products/${unique}.${extension}`;
+    const { error } = await supabase.storage.from('property-logos').upload(path, file, {
+      upsert: false, contentType: file.type, cacheControl: '3600',
+    });
+    if (error) throw new Error(error.message || 'Product photo upload failed.');
+    const { data } = supabase.storage.from('property-logos').getPublicUrl(path);
+    if (!data?.publicUrl) throw new Error('The uploaded photo URL could not be created.');
+    return data.publicUrl;
+  },
+
   async updatePosMenuItemVisuals({ propertyId, id, tile_color, tile_text_color, tile_image_url }) {
     return supabase.from('products').update({ tile_color: tile_color || null, tile_text_color: tile_text_color || null, tile_image_url: tile_image_url || null }).eq('property_id', propertyId).eq('id', id);
   },
