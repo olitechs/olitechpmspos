@@ -86,6 +86,7 @@ export function buildReceiptDocument(receipt = {}, { paymentAllocations = receip
     ?? receipt.document_snapshot
     ?? receipt.receipt_snapshot
     ?? null;
+  const companySnapshotCaptured = Boolean(receiptSnapshot?.company && typeof receiptSnapshot.company === 'object');
 
   return {
     id: receiptId,
@@ -107,7 +108,7 @@ export function buildReceiptDocument(receipt = {}, { paymentAllocations = receip
     folioChargeId: text(receipt.folio_charge_id) || null,
     status: text(firstPresent(receipt.receipt_status, receipt.status)) || 'unknown',
     receiptSnapshot,
-    snapshotStatus: receiptSnapshot ? 'captured' : 'not-captured-or-legacy',
+    snapshotStatus: companySnapshotCaptured ? 'captured' : 'not-captured-or-legacy',
     items,
     groups: [...grouped.entries()].map(([department, rows]) => ({
       department,
