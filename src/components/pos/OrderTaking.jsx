@@ -450,7 +450,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
             {!activeCategory && menuSearch.trim() && (
               <div className="mb-3 text-xs font-semibold text-[var(--text-muted)]">{visibleMenuItems.length} matching products across all categories</div>
             )}
-            <div id="pos-product-grid" className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,220px),220px))] content-start gap-3">
+            <div id="pos-product-grid" className="grid content-start gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 220px), 220px))" }}>
               {visibleMenuItems.map((item) => {
                 const inOrderQty = orderLines.reduce((qty, line) => qty + ((line.baseProductId || line.productId || line.id) === (item.productId || item.id) ? Number(line.qty || 0) : 0), 0);
                 const stockStatus = menuItems.length > 0 ? getPosStockStatus(item.stock, item.minimumStock) : 'unknown';
