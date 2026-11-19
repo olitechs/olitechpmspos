@@ -101,7 +101,11 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
     loadPosMenu();
     const refresh = () => loadPosMenu();
     window.addEventListener('olitech:menu-updated', refresh);
-    return () => window.removeEventListener('olitech:menu-updated', refresh);
+    const unsubscribe = inventoryService.subscribePosMenu(propertyId, refresh);
+    return () => {
+      window.removeEventListener('olitech:menu-updated', refresh);
+      unsubscribe();
+    };
   }, [propertyId]);
 
   const commitItem = (item, selected = []) => {

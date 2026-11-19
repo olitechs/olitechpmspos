@@ -101,7 +101,24 @@ export const inventoryService = {
   },
 
   async updatePosMenuItemVisuals({ propertyId, id, tile_color, tile_text_color, tile_image_url }) {
-    return supabase.from('products').update({ tile_color: tile_color || null, tile_text_color: tile_text_color || null, tile_image_url: tile_image_url || null }).eq('property_id', propertyId).eq('id', id);
+    const { data, error } = await supabase.rpc('fn_update_pos_menu_item_visuals', {
+      p_property_id: propertyId,
+      p_product_id: id,
+      p_tile_color: tile_color || null,
+      p_tile_text_color: tile_text_color || null,
+      p_tile_image_url: tile_image_url || null,
+    });
+    if (error) throw new Error(error.message);
+    return { data, error: null };
+  },
+
+  subscribePosMenu(propertyId, onChange) {
+    if (!propertyId || typeof onChange !== 'function') return () => {};
+    const channel = supabase.channel(`pos-menu-live:${propertyId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products', filter: `property_id=eq.${propertyId}` }, onChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pos_menu_categories', filter: `property_id=eq.${propertyId}` }, onChange)
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   },
 
   async upsertPosMenuItem(item) {

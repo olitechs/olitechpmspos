@@ -5,13 +5,14 @@ import {
   AlertTriangle, ArrowDownRight, ArrowRight, BarChart3, Barcode,
   Boxes, Building2, CalendarDays, CheckCircle2, CircleAlert,
   ClipboardCheck, PackageOpen, RefreshCw, Search, ShoppingCart,
-  Truck, XCircle, Eye,
+  Truck, XCircle, Eye, Palette,
 } from 'lucide-react';
 import {
   Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts';
 import { useAuth } from '@/lib/AuthContext';
 import StorekeeperAlertDetails from '@/components/store/StorekeeperAlertDetails';
+import MenuVisualEditor from '@/components/pos/MenuVisualEditor';
 import { getSessionStaff, normalizeStaffRole } from '@/services/authService';
 import { storekeeperDashboardService } from '@/services/storekeeperDashboardService';
 import {
@@ -147,6 +148,7 @@ export default function StorekeeperDashboard() {
   const [search, setSearch] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [selectedAlert, setSelectedAlert] = useState(null);
+  const [menuVisualsOpen, setMenuVisualsOpen] = useState(false);
   const range = useMemo(() => getPeriodRange(period, today, customFrom, customTo), [period, today, customFrom, customTo]);
   const weekFrom = useMemo(() => getPeriodRange('week', today).from, [today]);
   const monthFrom = `${today.slice(0, 7)}-01`;
@@ -203,7 +205,7 @@ export default function StorekeeperDashboard() {
   return <div className="min-h-full space-y-5 bg-[var(--canvas)] p-4 text-[var(--text)] md:p-6">
     <header className="flex flex-col justify-between gap-4 rounded-2xl bg-[var(--deep-lagoon)] p-5 text-[var(--white)] md:flex-row md:items-center md:p-6">
       <div><div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-[var(--soft-white)]"><Boxes size={15}/> OliTechs · Stores</div><h1 className="mt-2 text-2xl font-black md:text-3xl">Storekeeper Dashboard</h1><p className="mt-1 text-sm text-[var(--soft-white)]">Stock, purchasing, movements and daily operations for {activePropertyName}.</p></div>
-      <div className="flex flex-wrap items-center gap-2"><span className="inline-flex h-10 items-center gap-2 rounded-xl bg-[var(--white)] px-3 text-sm font-bold text-[var(--deep-lagoon)]"><CalendarDays size={16}/>{new Intl.DateTimeFormat('en-KE', { timeZone: 'Africa/Nairobi', dateStyle: 'medium' }).format(new Date(`${today}T00:00:00+03:00`))}</span><button type="button" onClick={() => query.refetch()} disabled={query.isFetching} className="inline-flex h-10 items-center gap-2 rounded-xl border border-soft-white/40 px-3 text-sm font-bold text-[var(--white)] hover:bg-soft-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--white)] disabled:opacity-60"><RefreshCw size={15} className={query.isFetching ? 'animate-spin' : ''}/> Refresh</button></div>
+      <div className="flex flex-wrap items-center gap-2"><span className="inline-flex h-10 items-center gap-2 rounded-xl bg-[var(--white)] px-3 text-sm font-bold text-[var(--deep-lagoon)]"><CalendarDays size={16}/>{new Intl.DateTimeFormat('en-KE', { timeZone: 'Africa/Nairobi', dateStyle: 'medium' }).format(new Date(`${today}T00:00:00+03:00`))}</span><button type="button" onClick={() => setMenuVisualsOpen(true)} className="inline-flex h-10 items-center gap-2 rounded-xl border border-soft-white/40 px-3 text-sm font-bold text-[var(--white)] hover:bg-soft-white/10"><Palette size={15}/> POS Menu Photos & Colours</button><button type="button" onClick={() => query.refetch()} disabled={query.isFetching} className="inline-flex h-10 items-center gap-2 rounded-xl border border-soft-white/40 px-3 text-sm font-bold text-[var(--white)] hover:bg-soft-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--white)] disabled:opacity-60"><RefreshCw size={15} className={query.isFetching ? 'animate-spin' : ''}/> Refresh</button></div>
     </header>
 
     <section aria-label="Dashboard filters" className="grid gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-sm md:grid-cols-2 xl:grid-cols-6">
@@ -273,6 +275,7 @@ export default function StorekeeperDashboard() {
 
       <footer className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--sidebar)] px-4 py-3 text-[11px] leading-5 text-[var(--text-muted)]"><span>Period: <strong className="text-[var(--text)]">{dateLabel(range.from)} – {dateLabel(range.to)}</strong> · Department: <strong className="text-[var(--text)]">{department}</strong> · Location: <strong className="text-[var(--text)]">{location}</strong></span><span>{data.movementTruncated ? `Movement history capped; complete window starts ${dateLabel(data.movementCoverageFrom)}.` : 'Values sourced from the active property; estimated cost fields are labelled.'}</span></footer>
     </>}
+    <MenuVisualEditor open={menuVisualsOpen} onClose={() => setMenuVisualsOpen(false)} propertyId={propertyId}/>
   </div>;
 }
 
