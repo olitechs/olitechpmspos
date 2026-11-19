@@ -64,7 +64,7 @@ export default function ReceiptDetailModal({ receipt, onClose }) {
           {document.paymentAllocations.length > 1 && <div className="rounded-lg border p-3 text-xs" style={{ borderColor: BORDER }}>
             <div className="mb-2 font-semibold" style={{ color: NAVY }}>Split tender allocations</div>
             {document.paymentAllocations.map((allocation, index) => <div key={allocation.id || index} className="flex justify-between gap-3 py-1" style={{ color: MUTED }}>
-              <span>{PAYMENT_LABEL[allocation.method] || allocation.method}{allocation.reservationId ? ` · Reservation ${allocation.reservationId.slice(0, 8)}` : ''}</span>
+              <span>{PAYMENT_LABEL[allocation.method] || allocation.method}{allocation.reservationId ? ` · Reservation ${allocation.reservationId.slice(0, 8)}` : ''}{allocation.folioChargeId ? ` · Folio ${allocation.folioChargeId.slice(0, 8)}` : ''}</span>
               <b style={{ color: NAVY }}>{fmtKes(allocation.amount)}</b>
             </div>)}
           </div>}
