@@ -18,6 +18,7 @@ export default function MenuManager({ open, onClose, embedded = false }) {
   const { user } = useAuth();
   const propertyId = user?.property?.id;
   const fileRef = useRef(null);
+  const imageFileRef = useRef(null);
   const [menu,setMenu]=useState([]);
   const [categories,setCategories]=useState([]);
   const [editing,setEditing]=useState(null);
@@ -26,6 +27,7 @@ export default function MenuManager({ open, onClose, embedded = false }) {
   const [categoryDrafts,setCategoryDrafts]=useState({});
   const [loading,setLoading]=useState(false);
   const [search,setSearch]=useState('');
+  const [imageUploading,setImageUploading]=useState(false);
 
   const reload=async()=>{
     if(!propertyId)return;
@@ -39,6 +41,17 @@ export default function MenuManager({ open, onClose, embedded = false }) {
   const filtered=useMemo(()=>menu.filter(p=>!search||p.name.toLowerCase().includes(search.toLowerCase())||String(p.sku||'').toLowerCase().includes(search.toLowerCase())),[menu,search]);
 
   if(!open)return null;
+
+  const uploadProductPhoto=async(file)=>{
+    if(!file||!editing)return;
+    setImageUploading(true);
+    try{
+      const url=await inventoryService.uploadPosMenuItemImage(propertyId,file);
+      setEditing(current=>current?{...current,tile_image_url:url}:current);
+      toast.success('Product photo uploaded. Save the product to apply it.');
+    }catch(error){toast.error(error.message||'Could not upload product photo.');}
+    finally{setImageUploading(false);if(imageFileRef.current)imageFileRef.current.value='';}
+  };
 
   const save=async()=>{
     if(!editing?.name?.trim())return;
@@ -136,7 +149,16 @@ export default function MenuManager({ open, onClose, embedded = false }) {
           {loading?<div className="p-12 text-center text-sm font-medium text-[var(--text-muted)]">Loading menu…</div>:<div className="mt-4 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]"><div className="overflow-auto"><table className="w-full min-w-[850px] text-sm"><thead className="bg-[var(--canvas)] text-[var(--text)]"><tr>{['SKU','Product','Category','Center','Price (KES)','Stock','Min',''].map(h=><th key={h} className="px-3 py-2 text-left text-[10px] ">{h}</th>)}</tr></thead><tbody>{filtered.map(p=><tr key={p.id} className="border-b border-[var(--border)] hover:bg-[var(--canvas)]"><td className="px-3 py-3 font-mono text-xs">{p.sku||'—'}</td><td className="px-3 py-3 font-medium">{p.name}</td><td className="px-3 py-3">{p.category}</td><td className="px-3 py-3">{p.production_center}</td><td className="px-3 py-3 font-medium tabular-nums">{formatAmount(p.selling_price)}</td><td className="px-3 py-3">{Number(p.current_stock||0)} {p.unit}</td><td className="px-3 py-3">{Number(p.min_stock||0)}</td><td className="px-3 py-3"><button onClick={()=>setEditing(p)} className="rounded-lg border p-2 hover:bg-[var(--primary-soft)]"><Edit3 size={14}/></button></td></tr>)}</tbody></table></div></div>}
         </main>
       </div>
-      {editing&&<div className={'fixed inset-0 flex items-center justify-center bg-[var(--overlay-scrim)] p-4 ' + (embedded ? 'z-[550]' : 'z-[450]')}><div className="w-full max-w-2xl rounded-3xl bg-[var(--surface)] p-5 shadow-2xl"><div className="flex items-center justify-between"><h3 className="text-lg font-medium">{editing.id?'Edit POS Product':'Add POS Product'}</h3><button onClick={()=>setEditing(null)}><X size={18}/></button></div><div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3">{[['name','Product Name'],['sku','SKU'],['selling_price','Selling Price (KES)'],['current_stock','Current Stock'],['min_stock','Minimum Stock'],['max_stock','Maximum Stock'],['pos_sort','Sort Order']].map(([k,l])=><label key={k} className="text-xs font-medium">{l}<input type={['selling_price','current_stock','min_stock','max_stock','pos_sort'].includes(k)?'number':'text'} value={editing[k]??''} onChange={e=>setEditing({...editing,[k]:e.target.value})} className="mt-1 w-full rounded-xl border border-[var(--border)] px-3 py-2.5"/></label>)}<label className="text-xs font-medium">Category<select value={editing.category||'General'} onChange={e=>setEditing({...editing,category:e.target.value})} className="mt-1 w-full rounded-xl border border-[var(--border)] px-3 py-2.5">{categories.map(c=><option key={c.id}>{c.name}</option>)}{!categories.length&&<option>General</option>}</select></label><label className="text-xs font-medium">Unit<select value={editing.unit||'pcs'} onChange={e=>setEditing({...editing,unit:e.target.value})} className="mt-1 w-full rounded-xl border border-[var(--border)] px-3 py-2.5">{UNIT_OPTIONS.map(x=><option key={x}>{x}</option>)}</select></label><label className="text-xs font-medium">Production Center<select value={editing.production_center||'Kitchen'} onChange={e=>setEditing({...editing,production_center:e.target.value})} className="mt-1 w-full rounded-xl border border-[var(--border)] px-3 py-2.5">{CENTER_OPTIONS.map(x=><option key={x}>{x}</option>)}</select></label><label className="text-xs font-medium">Tile colour<input type="color" value={editing.tile_color||getColorToken('--room-occupied')} onChange={e=>setEditing({...editing,tile_color:e.target.value})} className="mt-1 h-10 w-full"/></label><label className="text-xs font-medium">Text colour<input type="color" value={editing.tile_text_color||getColorToken('--white')} onChange={e=>setEditing({...editing,tile_text_color:e.target.value})} className="mt-1 h-10 w-full"/></label><label className="col-span-2 text-xs font-medium md:col-span-3">Tile image URL<input value={editing.tile_image_url||''} onChange={e=>setEditing({...editing,tile_image_url:e.target.value})} placeholder="https://…" className="mt-1 w-full rounded-xl border border-[var(--border)] px-3 py-2.5"/></label></div><div className="mt-5 flex justify-end gap-2"><button onClick={()=>setEditing(null)} className="rounded-xl border px-4 py-2.5 text-sm font-medium">Cancel</button><button onClick={save} className="rounded-xl bg-[var(--primary)] px-5 py-2.5 text-sm font-medium text-primary-foreground">Save Product</button></div></div></div>}
+      {editing&&<div className={'fixed inset-0 flex items-center justify-center bg-[var(--overlay-scrim)] p-4 ' + (embedded ? 'z-[550]' : 'z-[450]')}><div className="max-h-[90dvh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-[var(--surface)] p-5 shadow-2xl"><div className="flex items-center justify-between"><h3 className="text-lg font-medium">{editing.id?'Edit POS Product':'Add POS Product'}</h3><button onClick={()=>setEditing(null)}><X size={18}/></button></div><div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3">{[['name','Product Name'],['sku','SKU'],['selling_price','Selling Price (KES)'],['current_stock','Current Stock'],['min_stock','Minimum Stock'],['max_stock','Maximum Stock'],['pos_sort','Sort Order']].map(([k,l])=><label key={k} className="text-xs font-medium">{l}<input type={['selling_price','current_stock','min_stock','max_stock','pos_sort'].includes(k)?'number':'text'} value={editing[k]??''} onChange={e=>setEditing({...editing,[k]:e.target.value})} className="mt-1 w-full rounded-xl border border-[var(--border)] px-3 py-2.5"/></label>)}<label className="text-xs font-medium">Category<select value={editing.category||'General'} onChange={e=>setEditing({...editing,category:e.target.value})} className="mt-1 w-full rounded-xl border border-[var(--border)] px-3 py-2.5">{categories.map(c=><option key={c.id}>{c.name}</option>)}{!categories.length&&<option>General</option>}</select></label><label className="text-xs font-medium">Unit<select value={editing.unit||'pcs'} onChange={e=>setEditing({...editing,unit:e.target.value})} className="mt-1 w-full rounded-xl border border-[var(--border)] px-3 py-2.5">{UNIT_OPTIONS.map(x=><option key={x}>{x}</option>)}</select></label><label className="text-xs font-medium">Production Center<select value={editing.production_center||'Kitchen'} onChange={e=>setEditing({...editing,production_center:e.target.value})} className="mt-1 w-full rounded-xl border border-[var(--border)] px-3 py-2.5">{CENTER_OPTIONS.map(x=><option key={x}>{x}</option>)}</select></label><label className="text-xs font-medium">Tile colour<input type="color" value={editing.tile_color||getColorToken('--room-occupied')} onChange={e=>setEditing({...editing,tile_color:e.target.value})} className="mt-1 h-10 w-full"/></label><label className="text-xs font-medium">Text colour<input type="color" value={editing.tile_text_color||getColorToken('--white')} onChange={e=>setEditing({...editing,tile_text_color:e.target.value})} className="mt-1 h-10 w-full"/></label><div className="col-span-2 space-y-2 text-xs font-medium md:col-span-3">
+  <span>Product photo</span>
+  {editing.tile_image_url&&<img src={editing.tile_image_url} alt={`${editing.name||'Product'} menu preview`} loading="lazy" className="h-28 w-28 rounded-xl border border-[var(--border)] object-cover"/>}
+  <div className="flex flex-wrap items-center gap-2">
+    <input ref={imageFileRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={e=>uploadProductPhoto(e.target.files?.[0])} className="sr-only"/>
+    <button type="button" onClick={()=>imageFileRef.current?.click()} disabled={imageUploading} className="min-h-11 rounded-xl border border-[var(--border)] px-3 py-2 text-sm font-semibold disabled:opacity-50">{imageUploading?'Uploading photo…':'Choose photo'}</button>
+    <span className="text-[11px] font-normal text-[var(--text-muted)]">JPG, PNG or WebP · up to 5 MB</span>
+  </div>
+  <label className="block font-normal">Or paste an image URL<input value={editing.tile_image_url||''} onChange={e=>setEditing({...editing,tile_image_url:e.target.value})} placeholder="https://…" className="mt-1 w-full rounded-xl border border-[var(--border)] px-3 py-2.5"/></label>
+</div></div><div className="mt-5 flex justify-end gap-2"><button onClick={()=>setEditing(null)} className="rounded-xl border px-4 py-2.5 text-sm font-medium">Cancel</button><button onClick={save} disabled={imageUploading} className="rounded-xl bg-[var(--primary)] px-5 py-2.5 text-sm font-medium text-primary-foreground">Save Product</button></div></div></div>}
     </div>
   </div>;
 }
