@@ -286,6 +286,10 @@ export function buildUnsettledReceiptText(settings = {}, data = {}, { printer = 
     ...receiptLeftRows('Order', orderName, width),
     ...receiptLeftRows('Employee', employee, width),
     ...receiptLeftRows('POS', posName, width),
+    ...(data.table ? receiptLeftRows('Table', data.table, width) : []),
+    ...(data.covers !== null && data.covers !== undefined ? receiptLeftRows('Covers', data.covers, width) : []),
+    ...(data.guestName ? receiptLeftRows('Guest', data.guestName, width) : []),
+    ...(data.room ? receiptLeftRows('Room', data.room, width) : []),
     divider(width),
   ];
   if (dining) lines.push(...receiptCenterRows(dining, width).map(emphasize), divider(width));
