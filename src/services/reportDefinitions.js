@@ -402,7 +402,7 @@ export function buildFolioStatementDefinition({ selected = {}, charges = [], pay
   const employeeName = (id) => employees.find((employee) => employee.user_id === id || employee.id === id)?.full_name || (id ? String(id).slice(0, 8) : 'System');
   const receiptRows = (receipts || []).map((receipt) => {
     const document = buildReceiptDocument(receipt);
-    const tenders = document.paymentAllocations.map((allocation) => `${allocation.method}: KES ${toNumber(allocation.amount).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`).join(' · ');
+    const tenders = document.paymentAllocations.map((allocation) => `${allocation.method}: KES ${toNumber(allocation.amount).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${allocation.reservationId ? ` · reservation ${allocation.reservationId.slice(0, 8)}` : ''}${allocation.folioChargeId ? ` · folio ${allocation.folioChargeId.slice(0, 8)}` : ''}`).join(' · ');
     return {
       date: dateLabel(document.createdAt),
       receipt_number: document.receiptNumber || 'Legacy / unnumbered',
@@ -463,13 +463,13 @@ export function buildFinalSettlementInvoiceDefinition({
     date: dateLabel(document.createdAt),
     table: cleanText(document.tableNumber, '—'),
     payment_method: document.paymentAllocations.length > 1
-      ? document.paymentAllocations.map((allocation) => `${allocation.method}: ${toNumber(allocation.amount).toFixed(2)}`).join(' · ')
+      ? document.paymentAllocations.map((allocation) => `${allocation.method}: ${toNumber(allocation.amount).toFixed(2)}${allocation.reservationId ? ` · res ${allocation.reservationId.slice(0, 8)}` : ''}${allocation.folioChargeId ? ` · folio ${allocation.folioChargeId.slice(0, 8)}` : ''}`).join(' · ')
       : cleanText(document.paymentMethod, '—'),
     subtotal: document.totals.subtotal,
     discount: document.totals.discountAmount,
     tax: document.totals.vat,
     total: document.totals.total,
-    folio_charge: cleanText(receipt.folio_charge_id, 'Not linked'),
+    folio_charge: cleanText(receipt.folio_charge_id, document.paymentAllocations.map((allocation) => allocation.folioChargeId).filter(Boolean).join(', '), 'Not linked'),
     receipt_status: document.status,
   }));
   const itemRows = receiptDocuments.flatMap(({ document }) => document.items.map((item) => ({
