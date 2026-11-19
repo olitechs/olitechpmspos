@@ -5,6 +5,7 @@ import { buildOrderTicketText, buildUnsettledReceiptText, buildFinalReceiptText,
 import { getPrintColor } from '@/utils/printTheme';
 import { classifyAgentPrintOutcome, copiesToPrint, durableJobStatus, outcomeAffectsConnection, summarizePrintOutcomes } from '@/services/printOutcomeCore';
 import { planDepartmentTickets, printersForDepartment } from '@/services/printDepartmentRoutingCore';
+import { resolveReceiptDocumentPresentation } from '@/services/receiptDocumentCore';
 
 const normalizeNetworkEndpoint = (value, fallbackPort = 9100) => {
   let host = String(value || '').trim();
@@ -884,10 +885,25 @@ async function confirmedCopies({ propertyId, jobType, orderNumber = null, shiftI
   }
 }
 
-export async function printReceipt(type, data) {
+export async function printReceipt(type, inputData = {}) {
+  let data = inputData;
   const propertyId = data.propertyId;
-  let settings = data.settings || await (async () => { const { data: row, error } = await supabase.from('property_settings').select('*').eq('property_id', propertyId).maybeSingle(); if(error) throw error; return row; })();
+  const presentation = type === 'RECEIPT' && data.receiptRecord
+    ? resolveReceiptDocumentPresentation(data.receiptRecord)
+    : null;
+  const hasIssuedSnapshot = presentation?.document.snapshotStatus === 'captured';
+  let settings = data.settings || (hasIssuedSnapshot
+    ? presentation.settings
+    : await (async () => {
+      const { data: row, error } = await supabase.from('property_settings').select('*').eq('property_id', propertyId).maybeSingle();
+      if (error) throw error;
+      return row;
+    })());
   if (!settings) return { ok:false, friendlyError:'Receipt company details are not configured.' };
+  if (presentation) {
+    if (hasIssuedSnapshot) settings = { ...settings, ...presentation.settings };
+    data = { ...data, ...presentation.data };
+  }
   if (type === 'UNSETTLED') {
     const { data: vatSettings, error: vatError } = await supabase.from('property_unsettled_receipt_settings').select('*').eq('property_id', propertyId).maybeSingle();
     if (vatError) throw vatError;
@@ -997,7 +1013,7 @@ export async function printReceipt(type, data) {
         jobType: type,
         copyType: copy.toLowerCase().replaceAll(' ', '_'),
         assignmentType,
-        payload: { orderNumber: data.orderNumber || data.checkNo || null, total: data.total || 0, copy },
+        payload: { orderNumber: data.orderNumber || data.checkNo || null, receiptNumber: data.receiptNumber || null, total: data.total || 0, copy },
         title: (data.recoveryCopy ? 'Historical Receipt - ' : 'Final Receipt - ') + copy,
         thermalText,
         thermalBase64,
