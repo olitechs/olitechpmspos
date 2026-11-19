@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { buildFolioStatementDefinition, buildFinalSettlementInvoiceDefinition } from './reportDefinitions.js';
 
 const receipt = {
@@ -75,4 +76,27 @@ test('legacy receipt reports do not manufacture sequential receipt numbers', () 
   const receiptDetails = definition.sections.find((section) => section.name === 'pos-receipt-details');
   assert.equal(receiptDetails.rows[0].receipt_number, 'Legacy / unnumbered');
   assert.equal(receiptDetails.rows[0].snapshot, 'Legacy / not captured');
+});
+
+
+test('payment-time, history and modal reprints all pass the saved receipt record to the renderer', () => {
+  const billPayment = readFileSync(new URL('../components/pos/BillPayment.jsx', import.meta.url), 'utf8');
+  const shiftHistory = readFileSync(new URL('../components/pos/ShiftReceiptHistory.jsx', import.meta.url), 'utf8');
+  const receiptModal = readFileSync(new URL('../components/pms/ReceiptDetailModal.jsx', import.meta.url), 'utf8');
+  const printService = readFileSync(new URL('./printService.js', import.meta.url), 'utf8');
+  assert.match(billPayment, /const savedReceipt = await pmsService\.recordPosSale/);
+  assert.match(billPayment, /receiptRecord:\s*savedReceipt/);
+  assert.match(shiftHistory, /receiptRecord:\s*receipt/);
+  assert.match(receiptModal, /receiptRecord:\s*receipt/);
+  assert.match(printService, /resolveReceiptDocumentPresentation\(data\.receiptRecord\)/);
+});
+
+test('room folio includes receipts linked by split tender and renders receipt details only once', () => {
+  const pmsService = readFileSync(new URL('./pmsService.js', import.meta.url), 'utf8');
+  const folio = readFileSync(new URL('../components/modules/Folio.jsx', import.meta.url), 'utf8');
+  assert.match(pmsService, /from\('pos_receipt_payments'\)\.select\('receipt_id'\)\.eq\('reservation_id', reservationId\)/);
+  assert.match(pmsService, /pos_receipt_payments:\s*paymentsByReceipt\.get\(receipt\.id\)/);
+  assert.match(folio, /buildReceiptDocument\(receipt\)/);
+  assert.match(folio, /details shown once in POS receipts above/);
+  assert.doesNotMatch(folio, /Open POS receipt · Order/);
 });
