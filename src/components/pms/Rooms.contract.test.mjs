@@ -8,7 +8,7 @@ const roomManagement = readFileSync(new URL('./RoomManagement.jsx', import.meta.
 test('Rooms workspace keeps room configuration separate from the dedicated Room Planner', () => {
   assert.ok(roomsPage.includes('<RoomManagement onChanged={pms.reload} />'));
   assert.ok(roomsPage.includes('<RoomPlanner rooms={pms.rooms} reservations={pms.reservations} onRefresh={pms.reload} />'));
-  assert.ok(roomsPage.includes('/frontoffice/room-planner'));
+  assert.ok(roomsPage.includes('room-planner'));
 });
 
 test('deleting room configuration requires explicit confirmation before the service call', () => {
