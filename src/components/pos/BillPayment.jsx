@@ -328,7 +328,7 @@ export default function BillPayment({
       });
       const unlinkedStockItems = saleItems.filter(item => item.stock_tracking_status === 'unlinked');
       const unverifiedStockItems = saleItems.filter(item => item.stock_tracking_status === 'unverified');
-      await pmsService.recordPosSale({
+      const savedReceipt = await pmsService.recordPosSale({
         propertyId,
         tableNumber: tableLabel(table),
         orderNumber: stableOrderNumber,
