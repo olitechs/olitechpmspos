@@ -20,7 +20,15 @@ test('POS menu tiles use a six-column responsive grid with readable price chips'
   assert.ok(order.includes('h-[88px]'));
   assert.ok(order.includes('object-contain'));
   assert.ok(order.includes('const hasPhoto = Boolean(item.tile_image_url)'));
-  assert.ok(order.includes("backgroundColor: item.tile_color || 'var(--surface)'"));
+  assert.ok(order.includes("backgroundColor: item.tile_color || 'var(--primary)'"));
+  assert.ok(order.includes("color: 'var(--on-primary)'"));
+  assert.ok(order.includes("backgroundColor: menuCategoryStyles[cat]?.tile_color || 'var(--primary)'"));
+  assert.ok(order.includes('color: \'var(--on-primary)\''));
+  assert.ok(!order.includes('hover:-translate-y-0.5'));
+  assert.ok(!order.includes('active:scale-[.98]'));
+  assert.ok(!order.includes('hover:brightness-105'));
+  assert.ok(!order.includes('transition-all hover:-translate-y'));
+  assert.ok(!order.includes('categoryStyleFor(cat)'));
   assert.ok(order.includes('bg-[var(--surface)] px-1.5 py-0.5 text-center text-xs font-extrabold tabular-nums text-[var(--danger-text)]'));
   assert.ok(order.includes('line-clamp-2'));
   assert.ok(order.includes('onClick={() => addItem(item)}'));
