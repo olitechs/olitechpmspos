@@ -2,20 +2,30 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const source = readFileSync(new URL('./Rooms.jsx', import.meta.url), 'utf8');
+const roomsPage = readFileSync(new URL('./Rooms.jsx', import.meta.url), 'utf8');
+const roomManagement = readFileSync(new URL('./RoomManagement.jsx', import.meta.url), 'utf8');
 
-test('the room detail panel can actually be opened from the reservations table', () => {
-  const opened = source.indexOf('setOpenRoom(room)');
-  assert.ok(opened >= 0, 'the room cell must open RoomPanel');
-  assert.ok(source.includes('<td className="p-0"'), 'the room cell keeps its row height when the number becomes a button');
-  assert.ok(source.includes('openRoom && <RoomPanel room={openRoom} onClose={() => setOpenRoom(null)} />'));
+test('Rooms workspace keeps room configuration separate from the dedicated Room Planner', () => {
+  assert.ok(roomsPage.includes('<RoomManagement onChanged={pms.reload} />'));
+  assert.ok(roomsPage.includes('<RoomPlanner rooms={pms.rooms} reservations={pms.reservations} onRefresh={pms.reload} />'));
+  assert.ok(roomsPage.includes('room-planner'));
 });
 
-test('removing a reservation asks for confirmation first', () => {
-  const confirmIndex = source.indexOf('if (confirmRemove(rv))');
-  const removeIndex = source.indexOf('pms.removeReservation(rv.id)');
-  assert.ok(confirmIndex >= 0, 'the Remove button must be guarded by confirmRemove');
-  assert.ok(confirmIndex < removeIndex, 'confirmation must run before the removal');
-  assert.ok(source.includes('window.confirm('), 'use the app-wide confirm pattern');
-  assert.ok(source.includes('The reservation will be marked cancelled'));
+test('deleting room configuration requires explicit confirmation before the service call', () => {
+  const removals = [
+    ['removeRate', 'pmsService.deleteRatePlan(id)'],
+    ['removeType', 'pmsService.deleteRoomType(id)'],
+    ['removeRoom', 'pmsService.deleteRoom(id)'],
+  ];
+
+  for (const [handler, serviceCall] of removals) {
+    const start = roomManagement.indexOf(`const ${handler} = async`);
+    const end = roomManagement.indexOf('\n  const ', start + 1);
+    const body = roomManagement.slice(start, end < 0 ? roomManagement.length : end);
+    const confirmation = body.indexOf('if (!confirm(');
+    const deletion = body.indexOf(serviceCall);
+    assert.ok(start >= 0, `${handler} handler must exist`);
+    assert.ok(confirmation >= 0, `${handler} must ask for confirmation`);
+    assert.ok(deletion > confirmation, `${handler} must confirm before deleting`);
+  }
 });
