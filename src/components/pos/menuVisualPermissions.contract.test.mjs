@@ -8,6 +8,7 @@ const editor = read('./MenuVisualEditor.jsx');
 const manager = read('./MenuManager.jsx');
 const inventory = read('../../services/inventoryService.js');
 const order = read('./OrderTaking.jsx');
+const storekeeper = read('../../../pages/StorekeeperDashboard.jsx');
 
 test('cashier and storekeeper visual edits use a dedicated server permission', () => {
   assert.match(migration, /can_edit_pos_menu_visuals/);
@@ -29,4 +30,10 @@ test('POS menu visual writes use the restricted RPC and live subscriptions refre
   assert.match(inventory, /subscribePosMenu/);
   assert.match(order, /subscribePosMenu\(propertyId, refresh\)/);
   assert.match(migration, /alter publication supabase_realtime add table public\.products/);
+});
+
+test('Storekeeper dashboard exposes the visual editor without exposing price or stock edits', () => {
+  assert.match(storekeeper, /POS Menu Photos & Colours/);
+  assert.match(storekeeper, /MenuVisualEditor open=\{menuVisualsOpen\}/);
+  assert.match(editor, /Prices and stock are managed separately/);
 });
