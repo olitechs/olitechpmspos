@@ -12,7 +12,7 @@ const PAYMENT_LABEL = { cash: 'Cash', card: 'Card', mpesa: 'M-Pesa', room: 'Room
 
 export default function ReceiptDetailModal({ receipt, onClose }) {
   if (!receipt) return null;
-  const { document, data } = resolveReceiptDocumentPresentation(receipt);
+  const { document } = resolveReceiptDocumentPresentation(receipt);
   const items = document.items;
 
   const printReceipt = async () => {
