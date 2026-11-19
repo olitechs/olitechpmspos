@@ -124,7 +124,7 @@ export default function Folio({ initialReservationId = null, embedded = false })
   const grouped = categories.map((category) => ({ category, rows: charges.filter((c) => (c.category || (c.source === 'room' ? 'accommodation' : c.source === 'pos' ? 'restaurant' : 'other_services')) === category) })).filter((group) => group.rows.length);
   const propertyName = user?.property?.business_name || user?.property?.name || 'OliTechs';
   const generatedBy = user?.full_name || user?.staff?.full_name || user?.email || 'Authorized staff';
-  const statementDefinition = useMemo(() => selected ? buildFolioStatementDefinition({ selected, charges, payments, receipts: posReceipts, employees, propertyName, generatedBy, totals: { chargeTotal, netPayments, balance } }) : null, [selected, charges, payments, employees, propertyName, generatedBy, chargeTotal, netPayments, balance]);
+  const statementDefinition = useMemo(() => selected ? buildFolioStatementDefinition({ selected, charges, payments, receipts: posReceipts, employees, propertyName, generatedBy, totals: { chargeTotal, netPayments, balance } }) : null, [selected, charges, payments, posReceipts, employees, propertyName, generatedBy, chargeTotal, netPayments, balance]);
   const prepareFinalInvoice = (header) => {
     const definition = buildFinalSettlementInvoiceDefinition({ selected, room: folio?.room, charges, payments, receipts: posReceipts, employees, propertyName, generatedBy, totals: { chargeTotal, netPayments, balance }, header });
     setInvoiceHeader(header); setInvoiceDefinition(definition); setShowInvoiceEditor(false);
