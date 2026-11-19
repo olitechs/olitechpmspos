@@ -8,7 +8,7 @@ const editor = read('./MenuVisualEditor.jsx');
 const manager = read('./MenuManager.jsx');
 const inventory = read('../../services/inventoryService.js');
 const order = read('./OrderTaking.jsx');
-const storekeeper = read('../../../pages/StorekeeperDashboard.jsx');
+const storekeeper = read('../../pages/StorekeeperDashboard.jsx');
 
 test('cashier and storekeeper visual edits use a dedicated server permission', () => {
   assert.match(migration, /can_edit_pos_menu_visuals/);
