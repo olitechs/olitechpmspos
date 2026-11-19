@@ -888,13 +888,20 @@ async function confirmedCopies({ propertyId, jobType, orderNumber = null, shiftI
 export async function printReceipt(type, inputData = {}) {
   let data = inputData;
   const propertyId = data.propertyId;
-  let settings = data.settings || await (async () => { const { data: row, error } = await supabase.from('property_settings').select('*').eq('property_id', propertyId).maybeSingle(); if(error) throw error; return row; })();
+  const presentation = type === 'RECEIPT' && data.receiptRecord
+    ? resolveReceiptDocumentPresentation(data.receiptRecord)
+    : null;
+  const hasIssuedSnapshot = presentation?.document.snapshotStatus === 'captured';
+  let settings = data.settings || (hasIssuedSnapshot
+    ? presentation.settings
+    : await (async () => {
+      const { data: row, error } = await supabase.from('property_settings').select('*').eq('property_id', propertyId).maybeSingle();
+      if (error) throw error;
+      return row;
+    })());
   if (!settings) return { ok:false, friendlyError:'Receipt company details are not configured.' };
-  if (type === 'RECEIPT' && data.receiptRecord) {
-    const presentation = resolveReceiptDocumentPresentation(data.receiptRecord);
-    if (presentation.document.snapshotStatus === 'captured') {
-      settings = { ...settings, ...presentation.settings };
-    }
+  if (presentation) {
+    if (hasIssuedSnapshot) settings = { ...settings, ...presentation.settings };
     data = { ...data, ...presentation.data };
   }
   if (type === 'UNSETTLED') {
