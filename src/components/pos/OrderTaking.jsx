@@ -482,13 +482,12 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
                       )}
                     </span>
                     <span className="mt-1 line-clamp-2 min-h-[2rem] w-full min-w-0 text-[11px] font-medium leading-4 [overflow-wrap:anywhere]">{item.name}</span>
-                    <span className="mt-auto block w-full truncate text-xs font-bold tabular-nums text-[#dc5555]">{formatKes(item.price)}</span>
+                    <span className="mt-auto block w-full truncate text-xs font-bold tabular-nums text-[var(--danger-text)]">{formatKes(item.price)}</span>
                     {outOfStock && <span className="absolute inset-x-0 bottom-0 bg-[var(--danger)]/90 px-1 py-0.5 text-center text-[9px] font-bold text-white">OUT OF STOCK</span>}
                   </button>
                 );
               })}
             </div>
-          </section>
           </section>
         )}
       </main>
