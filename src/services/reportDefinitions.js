@@ -1,4 +1,4 @@
-import { buildReceiptDocument } from '@/services/receiptDocumentCore';
+import { buildReceiptDocument } from './receiptDocumentCore.js';
 const toNumber = (value) => {
   const number = Number(value ?? 0);
   return Number.isFinite(number) ? number : 0;
