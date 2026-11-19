@@ -4,7 +4,8 @@ import { toast } from 'sonner';
 import { inventoryService } from '@/services/inventoryService';
 
 function colorToHex(value) {
-  if (/^#[0-9a-f]{6}$/i.test(String(value || '').trim())) return String(value).trim();
+  const normalized = String(value || '').trim();
+  if (normalized.length === 7 && normalized.charAt(0) === String.fromCharCode(35) && /^[0-9a-f]{6}$/i.test(normalized.slice(1))) return normalized;
   const channels = String(value || '').match(/\\d+(?:\\.\\d+)?/g);
   if (!channels || channels.length < 3) return String.fromCharCode(35) + '000000';
   return String.fromCharCode(35) + channels.slice(0, 3).map((channel) => Math.max(0, Math.min(255, Math.round(Number(channel)))).toString(16).padStart(2, '0')).join('');
