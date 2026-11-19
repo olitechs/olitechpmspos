@@ -289,3 +289,50 @@ test('long item names and amount fields are wrapped, never sliced off', () => {
   assert.ok(output.includes('987,654,321.00'));
   assert.ok(output.split('\n').every(line => line.length <= 30));
 });
+
+
+test('final receipt prints stored line totals, VAT, split tenders and snapshot header without inventing a legacy number', () => {
+  const output = stripEscPos(buildFinalReceiptText({
+    property_name: 'Original Hotel',
+    extra_header_line: 'Original issue-time header',
+    footer_line1: 'Original issue-time footer',
+  }, {
+    orderNumber: 'ORD-LEGACY',
+    items: [{ qty: 2, name: 'Meal', price: 500, total: 975 }],
+    subtotal: 1000,
+    discount: 100,
+    discountName: 'Manager discount',
+    vat: 75,
+    total: 975,
+    paymentMethod: 'split',
+    paymentAllocations: [
+      { method: 'cash', amount: 475 },
+      { method: 'room', amount: 500 },
+    ],
+  }, { printer: { paper_width: '80mm' } }));
+
+  assert.match(output, /Original Hotel/);
+  assert.match(output, /Original issue-time header/);
+  assert.match(output, /Original issue-time footer/);
+  assert.match(output, /KES 975\.00/);
+  assert.match(output, /Discount · Manager discount/);
+  assert.match(output, /VAT \/ tax/);
+  assert.match(output, /Split tender/);
+  assert.match(output, /CASH/);
+  assert.match(output, /ROOM/);
+  assert.match(output, /Receipt No: Not assigned \(legacy receipt\)/);
+  assert.doesNotMatch(output, /RCT-ORD-LEGACY/);
+});
+
+test('final receipt explicitly labels a voided receipt without conflating a folio reversal', () => {
+  const output = stripEscPos(buildFinalReceiptText({}, {
+    orderNumber: 'ORD-VOID',
+    receiptNumber: 'RC-100',
+    receiptStatus: 'voided',
+    items: [],
+    subtotal: 0,
+    total: 0,
+  }));
+  assert.match(output, /VOIDED RECEIPT/);
+  assert.match(output, /Receipt No: RC-100/);
+});
