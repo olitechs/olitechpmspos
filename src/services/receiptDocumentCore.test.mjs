@@ -73,3 +73,45 @@ test('non-split receipt exposes its persisted tender without fabricating a split
   const document = buildReceiptDocument({ payment_method: 'card', total: 875 });
   assert.deepEqual(document.paymentAllocations.map((row) => [row.method, row.amount]), [['card', 875]]);
 });
+
+
+test('receipt presentation uses immutable company and receipt snapshots when available', async () => {
+  const { resolveReceiptDocumentPresentation } = await import('./receiptDocumentCore.js');
+  const presentation = resolveReceiptDocumentPresentation({
+    id: 'receipt-7',
+    property_id: 'property-1',
+    receipt_number: 'RC-0042',
+    order_number: 'ORD-7',
+    receipt_document_snapshot: {
+      company: { property_name: 'Original Hotel', footer_line1: 'Original footer' },
+      receipt: {
+        receipt_number: 'RC-0042',
+        order_number: 'ORD-7',
+        subtotal: 1000,
+        discount_amount: 50,
+        vat: 152,
+        total: 1102,
+        items: [{ name: 'Meal', qty: 2, price: 500 }],
+        payment_method: 'cash',
+      },
+      payment_allocations: [{ payment_method: 'cash', amount: 1102 }],
+    },
+  });
+  assert.equal(presentation.settings.property_name, 'Original Hotel');
+  assert.equal(presentation.settings.footer_line1, 'Original footer');
+  assert.equal(presentation.data.receiptNumber, 'RC-0042');
+  assert.equal(presentation.data.total, 1102);
+  assert.equal(presentation.document.snapshotStatus, 'captured');
+});
+
+test('legacy receipt presentation does not invent a receipt number or company snapshot', async () => {
+  const { resolveReceiptDocumentPresentation } = await import('./receiptDocumentCore.js');
+  const presentation = resolveReceiptDocumentPresentation({
+    id: 'legacy-id',
+    order_number: 'ORD-LEGACY',
+    total: 200,
+  });
+  assert.equal(presentation.data.receiptNumber, null);
+  assert.equal(presentation.document.snapshotStatus, 'not-captured-or-legacy');
+  assert.deepEqual(presentation.settings, {});
+});
