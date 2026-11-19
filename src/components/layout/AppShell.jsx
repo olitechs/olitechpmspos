@@ -127,7 +127,7 @@ export default function AppShell({ workspace = 'backoffice' }) {
         ].join(' ')}>
           <div className="flex h-14 shrink-0 items-center gap-2 border-b border-[var(--border)] px-3">
             <BrandLogo compact={collapsed} className={collapsed ? "h-9 w-9 shrink-0 object-contain" : "h-9 w-auto max-w-[142px] shrink-0 object-contain object-left"} />
-            <button type="button" onClick={() => setCollapsed(value => !value)} className="hidden rounded-md p-1.5 text-[var(--text-muted)] hover:bg-[var(--surface-2)] md:inline-flex" aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>{collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}</button>
+            <button type="button" onClick={() => setCollapsed(value => !value)} className="hidden min-h-10 min-w-10 items-center justify-center rounded-md text-[var(--text-muted)] hover:bg-[var(--surface-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus)] md:inline-flex" title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-expanded={!collapsed} aria-controls="app-shell-sidebar-navigation">{collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}</button>
             <button type="button" onClick={() => setMobileOpen(false)} className="ml-auto rounded-md p-1.5 text-[var(--text-muted)] md:hidden" aria-label="Close sidebar"><X size={17} /></button>
           </div>
           <div className="border-b border-[var(--border)] px-3 py-3">
@@ -138,7 +138,7 @@ export default function AppShell({ workspace = 'backoffice' }) {
             </div>
           </div>
           {workspace === 'backoffice' && !collapsed && <div className="px-3 pt-3"><label className="relative block"><Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Filter navigation" aria-label="Filter navigation" className="h-11 w-full rounded-md border border-[var(--border)] bg-[var(--surface)] pl-8 pr-2 text-xs text-[var(--text)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus)]" /></label></div>}
-          <nav className="min-h-0 flex-1 overflow-y-auto px-2 py-3" aria-label={`${workspace} navigation`}>
+          <nav id="app-shell-sidebar-navigation" className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-3" aria-label={`${workspace} navigation`}>
             {nav.map(item => {
               const Icon = item.icon || ROLE_ICON[item.id] || LayoutDashboard;
               const children = item.children || [];
