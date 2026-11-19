@@ -3,17 +3,17 @@ import { ImagePlus, Palette, RefreshCw, Save, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { inventoryService } from '@/services/inventoryService';
 
-function colorToHex(value) {
+function colorToHex(value, fallbackDigits = '000000') {
   const normalized = String(value || '').trim();
   if (normalized.length === 7 && normalized.charAt(0) === String.fromCharCode(35) && /^[0-9a-f]{6}$/i.test(normalized.slice(1))) return normalized;
-  const channels = String(value || '').match(/\d+(?:\.\d+)?/g);
-  if (!channels || channels.length < 3) return String.fromCharCode(35) + '000000';
+  const channels = normalized.match(/\d+(?:\.\d+)?/g);
+  if (!channels || channels.length < 3) return String.fromCharCode(35) + fallbackDigits;
   return String.fromCharCode(35) + channels.slice(0, 3).map((channel) => Math.max(0, Math.min(255, Math.round(Number(channel)))).toString(16).padStart(2, '0')).join('');
 }
 
-function getThemeColor(token, fallback) {
-  if (typeof window === 'undefined') return colorToHex(fallback);
-  return colorToHex(window.getComputedStyle(document.documentElement).getPropertyValue(token).trim() || fallback);
+function getThemeColor(token, fallbackDigits) {
+  if (typeof window === 'undefined') return String.fromCharCode(35) + fallbackDigits;
+  return colorToHex(window.getComputedStyle(document.documentElement).getPropertyValue(token).trim(), fallbackDigits);
 }
 
 export default function MenuVisualEditor({ open, onClose, embedded = false, propertyId }) {
@@ -30,8 +30,8 @@ export default function MenuVisualEditor({ open, onClose, embedded = false, prop
       const rows = await inventoryService.listPosMenu(propertyId);
       setItems(rows);
       setDrafts(Object.fromEntries(rows.map((item) => [item.id, {
-        tile_color: item.tile_color || getThemeColor('--primary', 'rgb(37, 99, 235)'),
-        tile_text_color: item.tile_text_color || getThemeColor('--on-primary', 'rgb(255, 255, 255)'),
+        tile_color: item.tile_color || getThemeColor('--primary', '2563eb'),
+        tile_text_color: item.tile_text_color || getThemeColor('--on-primary', 'ffffff'),
         tile_image_url: item.tile_image_url || '',
       }])));
     } catch (error) {
