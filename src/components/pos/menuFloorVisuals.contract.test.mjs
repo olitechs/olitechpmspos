@@ -15,7 +15,11 @@ test('round floor tables use a centered, bounded content layout', () => {
 
 test('POS menu prices remain readable over custom tile colours and photos', () => {
   assert.ok(order.includes('bg-[var(--surface)] px-2 py-1 text-sm font-extrabold tabular-nums text-[var(--text)]'));
-  assert.match(order, /repeat\(auto-fill,minmax\(116px,1fr\)\)/);
+  assert.ok(order.includes('repeat(auto-fill,minmax(min(100%,220px),220px))'));
+  assert.ok(order.includes('min-h-[188px]'));
+  assert.ok(!order.includes('aspect-square min-w-0 flex-col justify-between overflow-hidden rounded-xl border-2'));
+  assert.ok(order.includes('LOW STOCK ·'));
+  assert.ok(order.includes('line-clamp-3'));
 });
 
 test('product editor supports photo upload, preview and bounded scrolling', () => {
