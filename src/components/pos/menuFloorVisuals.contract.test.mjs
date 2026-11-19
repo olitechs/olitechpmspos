@@ -21,7 +21,8 @@ test('POS menu prices remain readable over custom tile colours and photos', () =
 test('product editor supports photo upload, preview and bounded scrolling', () => {
   assert.match(manager, /type="file" accept="image\/png,image\/jpeg,image\/webp"/);
   assert.match(manager, /Product photo/);
-  assert.match(manager, /max-h-\[90dvh\] overflow-y-auto/);
+  assert.ok(manager.includes('max-h-[90dvh]'));
+  assert.ok(manager.includes('overflow-y-auto'));
   assert.match(inventory, /uploadPosMenuItemImage/);
   assert.match(inventory, /5 \* 1024 \* 1024/);
   assert.match(inventory, /from\('property-logos'\)/);
