@@ -14,7 +14,7 @@ test('round floor tables use a centered, bounded content layout', () => {
 });
 
 test('POS menu prices remain readable over custom tile colours and photos', () => {
-  assert.match(order, /bg-[var(--surface)] px-2 py-1 text-sm font-extrabold tabular-nums text-[var(--text)]/);
+  assert.ok(order.includes('bg-[var(--surface)] px-2 py-1 text-sm font-extrabold tabular-nums text-[var(--text)]'));
   assert.match(order, /repeat\(auto-fill,minmax\(116px,1fr\)\)/);
 });
 
