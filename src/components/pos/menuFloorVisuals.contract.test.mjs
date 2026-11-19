@@ -13,14 +13,15 @@ test('round floor tables use a centered, bounded content layout', () => {
   assert.match(floor, /height:geometry\.height/);
 });
 
-test('POS menu tiles match the compact photo-first menu layout', () => {
-  assert.ok(order.includes('repeat(auto-fill,minmax(112px,1fr))'));
+test('POS menu tiles use a six-column responsive grid with readable price chips', () => {
+  assert.ok(order.includes("repeat(auto-fit, minmax(max(112px, calc((100% - 50px) / 6)), 1fr))"));
+  assert.ok(order.includes("maxWidth: '1190px'"));
   assert.ok(order.includes('h-[142px]'));
   assert.ok(order.includes('h-[88px]'));
   assert.ok(order.includes('object-contain'));
   assert.ok(order.includes('const hasPhoto = Boolean(item.tile_image_url)'));
   assert.ok(order.includes("backgroundColor: item.tile_color || 'var(--surface)'"));
-  assert.ok(order.includes('text-[var(--danger-text)]'));
+  assert.ok(order.includes('bg-[var(--surface)] px-1.5 py-0.5 text-center text-xs font-extrabold tabular-nums text-[var(--danger-text)]'));
   assert.ok(order.includes('line-clamp-2'));
   assert.ok(order.includes('onClick={() => addItem(item)}'));
 });

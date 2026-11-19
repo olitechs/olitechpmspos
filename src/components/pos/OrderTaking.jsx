@@ -450,7 +450,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
             {!activeCategory && menuSearch.trim() && (
               <div className="mb-3 text-xs font-semibold text-[var(--text-muted)]">{visibleMenuItems.length} matching products across all categories</div>
             )}
-            <div id="pos-product-grid" className="grid grid-cols-[repeat(auto-fill,minmax(112px,1fr))] content-start gap-2.5">
+            <div id="pos-product-grid" className="grid w-full content-start gap-2.5" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(max(112px, calc((100% - 50px) / 6)), 1fr))', maxWidth: '1190px', marginInline: 'auto' }}>
               {visibleMenuItems.map((item) => {
                 const inOrderQty = orderLines.reduce((qty, line) => qty + ((line.baseProductId || line.productId || line.id) === (item.productId || item.id) ? Number(line.qty || 0) : 0), 0);
                 const stockStatus = menuItems.length > 0 ? getPosStockStatus(item.stock, item.minimumStock) : 'unknown';
@@ -482,7 +482,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
                       )}
                     </span>
                     <span className="mt-1 line-clamp-2 min-h-[2rem] w-full min-w-0 text-[11px] font-medium leading-4 [overflow-wrap:anywhere]">{item.name}</span>
-                    <span className="mt-auto block w-full truncate text-xs font-bold tabular-nums text-[var(--danger-text)]">{formatKes(item.price)}</span>
+                    <span className="mt-auto block w-full truncate rounded-md border border-[var(--border)] bg-[var(--surface)] px-1.5 py-0.5 text-center text-xs font-extrabold tabular-nums text-[var(--danger-text)] shadow-sm">{formatKes(item.price)}</span>
                     {outOfStock && <span className="absolute inset-x-0 bottom-0 bg-[var(--danger)]/90 px-1 py-0.5 text-center text-[9px] font-bold text-[var(--danger-foreground)]">OUT OF STOCK</span>}
                   </button>
                 );
