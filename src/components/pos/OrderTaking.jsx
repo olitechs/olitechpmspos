@@ -352,21 +352,6 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
     counts[item.category] = (counts[item.category] || 0) + 1;
     return counts;
   }, {});
-  const categoryTileStyles = [
-    'border-[var(--primary)] bg-[var(--primary-soft)]',
-    'border-[var(--accent)] bg-[var(--warning-soft)]',
-    'border-[var(--info)] bg-[var(--info-soft)]',
-    'border-[var(--success)] bg-[var(--success-soft)]',
-    'border-[var(--border)] bg-[var(--sidebar)]',
-    'border-[var(--room-occupied)] bg-[var(--primary-soft)]'
-  ];
-
-  // Colour categories by name so tiles keep their colour when the category order changes.
-  const categoryStyleFor = (name) => {
-    let hash = 0;
-    for (let i = 0; i < name.length; i += 1) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
-    return categoryTileStyles[hash % categoryTileStyles.length];
-  };
 
   return (
     <div className="pos-shell flex h-full min-h-0 flex-col overflow-hidden bg-[var(--canvas)] lg:flex-row">
@@ -428,8 +413,8 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
                 key={cat}
                 type="button"
                 onClick={() => setActiveCategory(cat)}
-                style={{ backgroundColor: menuCategoryStyles[cat]?.tile_color || undefined, color: menuCategoryStyles[cat]?.tile_text_color || undefined, borderColor: menuCategoryStyles[cat]?.tile_color || undefined, ...(menuCategoryStyles[cat]?.tile_image_url ? { backgroundImage: `linear-gradient(var(--overlay-scrim),var(--overlay-scrim)),url("${menuCategoryStyles[cat].tile_image_url}")`, backgroundSize: "cover", backgroundPosition: "center" } : {}) }}
-                className={`group relative flex aspect-square min-w-0 flex-col justify-end overflow-hidden rounded-xl border-2 p-2 text-center shadow-sm transition-all hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 ${categoryStyleFor(cat)}`}
+                style={{ backgroundColor: menuCategoryStyles[cat]?.tile_color || 'var(--primary)', color: 'var(--on-primary)', borderColor: menuCategoryStyles[cat]?.tile_color || 'var(--primary)', ...(menuCategoryStyles[cat]?.tile_image_url ? { backgroundImage: `linear-gradient(var(--overlay-scrim),var(--overlay-scrim)),url("${menuCategoryStyles[cat].tile_image_url}")`, backgroundSize: "cover", backgroundPosition: "center" } : {}) }}
+                className="relative flex aspect-square min-w-0 flex-col justify-end overflow-hidden rounded-xl border-2 p-2 text-center shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
                 aria-label={`Open ${cat}, ${categoryCounts[cat] || 0} products`}
               >
                 <Folder size={16} className="absolute right-2 top-2" aria-hidden="true" />
@@ -458,7 +443,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
                 const hasPhoto = Boolean(item.tile_image_url);
                 const tileStyle = hasPhoto
                   ? { backgroundColor: 'var(--surface)', color: 'var(--text)', borderColor: 'var(--border)' }
-                  : { backgroundColor: item.tile_color || 'var(--surface)', color: item.tile_text_color || 'var(--text)', borderColor: item.tile_color || 'var(--border)' };
+                  : { backgroundColor: item.tile_color || 'var(--primary)', color: 'var(--on-primary)', borderColor: item.tile_color || 'var(--primary)' };
                 return (
                   <button
                     key={item.id}
@@ -467,7 +452,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
                     disabled={outOfStock || modifierLoading}
                     aria-label={`${item.name}, ${outOfStock ? 'out of stock' : stockStatus === 'low-stock' ? 'low stock' : formatKes(item.price)}`}
                     style={tileStyle}
-                    className={"relative flex h-[142px] min-w-0 flex-col items-stretch overflow-hidden rounded-xl border p-2 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 " + (outOfStock ? "cursor-not-allowed opacity-60" : inOrderQty > 0 ? "border-[var(--primary)] ring-1 ring-[var(--primary)]" : "hover:border-[var(--primary)]")}
+                    className={"relative flex h-[142px] min-w-0 flex-col items-stretch overflow-hidden rounded-xl border p-2 text-left shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 " + (outOfStock ? "cursor-not-allowed opacity-60" : inOrderQty > 0 ? "border-[var(--primary)] ring-1 ring-[var(--primary)]" : "")}
                   >
                     {inOrderQty > 0 && (
                       <span className="absolute right-1.5 top-1.5 z-10 flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--primary)] px-1 text-[10px] font-extrabold text-[var(--on-primary)] shadow">{inOrderQty}</span>
