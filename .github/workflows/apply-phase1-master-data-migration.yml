@@ -1,0 +1,123 @@
+name: Apply Phase 1 master data migration
+
+# One-off production change: applies exactly one migration file and verifies it.
+# Requires the typed confirmation APPLY. Uses the existing SUPABASE_DB_URL secret
+# and never prints it. The migration itself is wrapped in begin/commit, so the
+# whole file applies atomically or not at all.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type APPLY to run this against production"
+        required: true
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      FILE: supabase/migrations/20261118120000_phase1_master_data_and_receipt_integrity.sql
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require explicit confirmation
+        if: ${{ inputs.confirm != 'APPLY' }}
+        run: |
+          echo "::error::Confirmation input must be exactly APPLY."
+          exit 1
+
+      - name: Show the exact file being applied
+        run: |
+          set -euo pipefail
+          test -f "$FILE"
+          sha256sum "$FILE"
+          echo "--- statements ---"
+          grep -viE '^\s*(--|$)' "$FILE"
+
+      - name: Record state before the change (read only)
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_DB_URL:-}" ]; then
+            echo "::error::Repository secret SUPABASE_DB_URL is not configured."
+            exit 1
+          fi
+          psql --version
+          echo "existing phase 1 tables:"
+          psql "$SUPABASE_DB_URL" -At -v ON_ERROR_STOP=1 -c \
+            "select table_name from information_schema.tables where table_schema='public' and table_name in ('revenue_departments','board_supplements','permission_catalog','property_role_permissions','property_document_sequences') order by 1;"
+          echo "pos_receipts existing columns:"
+          psql "$SUPABASE_DB_URL" -At -v ON_ERROR_STOP=1 -c \
+            "select column_name from information_schema.columns where table_schema='public' and table_name='pos_receipts' order by ordinal_position;"
+          echo "pos_receipts row count before:"
+          psql "$SUPABASE_DB_URL" -At -v ON_ERROR_STOP=1 -c \
+            "select count(*) from public.pos_receipts;"
+          echo "properties:"
+          psql "$SUPABASE_DB_URL" -At -v ON_ERROR_STOP=1 -c \
+            "select id || ' | ' || name from public.properties order by created_at;"
+
+      - name: Apply migration in its own transaction
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f "$FILE"
+
+      - name: Verify tables, functions, numbering and seed
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          echo "new tables (expect 5):"
+          psql "$SUPABASE_DB_URL" -At -v ON_ERROR_STOP=1 -c \
+            "select table_name from information_schema.tables where table_schema='public' and table_name in ('revenue_departments','board_supplements','permission_catalog','property_role_permissions','property_document_sequences') order by 1;"
+
+          echo "new pos_receipts columns (expect 6):"
+          psql "$SUPABASE_DB_URL" -At -v ON_ERROR_STOP=1 -c \
+            "select column_name || ' ' || data_type || ' nullable=' || is_nullable from information_schema.columns where table_schema='public' and table_name='pos_receipts' and column_name in ('receipt_number','receipt_book','receipt_status','void_reason','voided_by','voided_at') order by column_name;"
+
+          echo "new functions (expect 3):"
+          psql "$SUPABASE_DB_URL" -At -v ON_ERROR_STOP=1 -c \
+            "select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname='public' and p.proname in ('fn_allocate_document_number','fn_void_pos_receipt','fn_has_permission') order by 1;"
+
+          echo "unique receipt index (expect 1):"
+          psql "$SUPABASE_DB_URL" -At -v ON_ERROR_STOP=1 -c \
+            "select indexname from pg_indexes where schemaname='public' and tablename='pos_receipts' and indexname='pos_receipts_property_book_number_uidx';"
+
+          echo "permission catalogue rows (expect 10):"
+          psql "$SUPABASE_DB_URL" -At -v ON_ERROR_STOP=1 -c \
+            "select count(*) from public.permission_catalog;"
+
+          echo "revenue departments per property:"
+          psql "$SUPABASE_DB_URL" -At -v ON_ERROR_STOP=1 -c \
+            "select p.name || ' -> ' || count(d.id) || ' departments' from public.properties p left join public.revenue_departments d on d.property_id = p.id group by p.name order by p.name;"
+
+          echo "document sequences:"
+          psql "$SUPABASE_DB_URL" -At -v ON_ERROR_STOP=1 -c \
+            "select p.name || ' | ' || s.book || ' | prefix=' || s.prefix || ' | next=' || s.next_number from public.property_document_sequences s join public.properties p on p.id = s.property_id order by p.name, s.book;"
+
+          echo "visiwa room types and rooms:"
+          psql "$SUPABASE_DB_URL" -At -v ON_ERROR_STOP=1 -c \
+            "select p.name || ' | room_types=' || (select count(*) from public.room_types t where t.property_id = p.id) || ' | rooms=' || (select count(*) from public.rooms r where r.property_id = p.id) from public.properties p where p.name ilike '%visiwa%';"
+
+          echo "visiwa room 13 and 17 typing:"
+          psql "$SUPABASE_DB_URL" -At -v ON_ERROR_STOP=1 -c \
+            "select r.number || ' -> ' || coalesce(r.room_type, '(untyped)') from public.rooms r join public.properties p on p.id = r.property_id where p.name ilike '%visiwa%' and r.number in ('13','17') order by r.number;"
+
+          echo "pos_receipts row count after (must equal before):"
+          psql "$SUPABASE_DB_URL" -At -v ON_ERROR_STOP=1 -c \
+            "select count(*) from public.pos_receipts;"
+
+          echo "existing receipts still unnumbered (history untouched):"
+          psql "$SUPABASE_DB_URL" -At -v ON_ERROR_STOP=1 -c \
+            "select count(*) from public.pos_receipts where receipt_number is null;"
+
+          echo "board supplements (expect 0 until go-live rates are entered):"
+          psql "$SUPABASE_DB_URL" -At -v ON_ERROR_STOP=1 -c \
+            "select count(*) from public.board_supplements;"
