@@ -32,7 +32,7 @@ test('POS menu tiles use a six-column responsive grid with readable price chips'
   assert.ok(!order.includes('hover:brightness-105'));
   assert.ok(!order.includes('transition-all hover:-translate-y'));
   assert.ok(!order.includes('categoryStyleFor(cat)'));
-  assert.ok(order.includes('bg-[var(--surface)] px-1.5 py-0.5 text-center text-xs font-extrabold tabular-nums text-[var(--danger-text)]'));
+  assert.ok(order.includes('bg-[var(--surface)] px-1.5 py-0.5 text-center text-xs font-extrabold leading-4 tabular-nums text-[var(--danger-text)]'));
   assert.ok(order.includes('line-clamp-2'));
   assert.ok(order.includes('onClick={() => addItem(item)}'));
 });
