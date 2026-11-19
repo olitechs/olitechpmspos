@@ -8,8 +8,8 @@ import { tableLabel } from '@/lib/posTables';
 
 const SHAPE_KEY = 'tableShapeMode';
 const SHAPES = {
-  square: { width: 124, height: 112, radius: 12 },
-  circle: { width: 124, height: 124, radius: '50%' },
+  square: { width: 136, height: 112, radius: 12 },
+  circle: { width: 136, height: 136, radius: '50%' },
 };
 
 function elapsedLabel(openedAt, now) {
@@ -63,22 +63,34 @@ function Tile({ table, session, shape, designMode, onSelect, onMove, now }) {
     title={designMode?`Drag ${tableLabel(table)}`:`Open ${tableLabel(table)} — ${statusMeta.label}`}
     aria-label={`${tableLabel(table)}, ${statusMeta.label}`}
     className="floor-table-tile absolute flex min-h-28 select-none flex-col items-stretch justify-start overflow-hidden rounded-xl p-2 transition-shadow"
-    style={{left:designMode?table.x:undefined,top:designMode?table.y:undefined,width:geometry.width,minHeight:geometry.height,borderRadius:geometry.radius,
+    style={{left:designMode?table.x:undefined,top:designMode?table.y:undefined,width:geometry.width,height:geometry.height,minHeight:geometry.height,borderRadius:geometry.radius,
       background:statusMeta.bg,color:statusMeta.fg,
       border:`2px solid ${statusMeta.border}`,boxShadow:table.selected?'0 0 0 3px var(--focus), var(--shadow)':'none',
       position:designMode?'absolute':'relative',cursor:designMode?'grab':'pointer',touchAction:'none'}}>
-    <div className="flex w-full min-w-0 items-start justify-between gap-2">
-      <span className="min-w-0 truncate text-[15px] font-bold leading-tight">{tableLabel(table)}</span>
-      <span className="shrink-0 text-[11px] font-semibold">{table.seats} seats</span>
-    </div>
-    <div className="mt-2 flex min-w-0 items-center justify-between gap-1">
-      <span className="truncate text-sm font-bold leading-tight">{statusMeta.label}</span>
-      {status === 'occupied' && orderCount > 0 && <span className="shrink-0 rounded-full bg-[var(--primary-soft)] px-2 py-1 text-[11px] font-bold text-[var(--primary)]">{orderCount} items</span>}
-    </div>
-    {waiterName && <div className="mt-1 max-w-full truncate text-[12px] leading-tight" title={waiterName}>{waiterName}</div>}
-    {status === 'occupied' && <div className="mt-1 text-[12px] font-medium leading-tight">{guests}p • {elapsedLabel(session?.openedAt, now)}</div>}
-    {status === 'bill' && <span className="mt-1 max-w-full truncate rounded bg-[var(--danger-soft)] px-1.5 py-1 text-[11px] font-bold uppercase leading-tight text-[var(--danger-text)]">Bill printed</span>}
-    {designMode&&<Move size={14} className="absolute bottom-1 right-1 opacity-80"/>}
+    {shape === 'circle' ? (
+      <div className="flex h-full w-full min-w-0 flex-col items-center justify-center gap-1 px-2 text-center">
+        <span className="line-clamp-2 w-full break-words text-[13px] font-extrabold leading-tight">{tableLabel(table)}</span>
+        <span className="text-[10px] font-semibold">{table.seats} seats</span>
+        <span className="max-w-full rounded-full bg-black/10 px-2 py-1 text-[11px] font-bold leading-tight">{statusMeta.label}</span>
+        {status === 'occupied' && orderCount > 0 && <span className="text-[10px] font-bold">{orderCount} items</span>}
+        {waiterName && <span className="max-w-full truncate text-[10px] leading-tight" title={waiterName}>{waiterName}</span>}
+        {status === 'occupied' && <span className="text-[10px] font-semibold leading-tight">{guests}p · {elapsedLabel(session?.openedAt, now)}</span>}
+      </div>
+    ) : (
+      <>
+        <div className="flex w-full min-w-0 items-start justify-between gap-2">
+          <span className="min-w-0 truncate text-[15px] font-bold leading-tight">{tableLabel(table)}</span>
+          <span className="shrink-0 text-[11px] font-semibold">{table.seats} seats</span>
+        </div>
+        <div className="mt-2 flex min-w-0 items-center justify-between gap-1">
+          <span className="truncate text-sm font-bold leading-tight">{statusMeta.label}</span>
+          {status === 'occupied' && orderCount > 0 && <span className="shrink-0 rounded-full bg-[var(--primary-soft)] px-2 py-1 text-[11px] font-bold text-[var(--primary)]">{orderCount} items</span>}
+        </div>
+        {waiterName && <div className="mt-1 max-w-full truncate text-[12px] leading-tight" title={waiterName}>{waiterName}</div>}
+        {status === 'occupied' && <div className="mt-1 text-[12px] font-medium leading-tight">{guests}p • {elapsedLabel(session?.openedAt, now)}</div>}
+        {status === 'bill' && <span className="mt-1 max-w-full truncate rounded bg-[var(--danger-soft)] px-1.5 py-1 text-[11px] font-bold uppercase leading-tight text-[var(--danger-text)]">Bill printed</span>}
+      </>
+    )}    {designMode&&<Move size={14} className="absolute bottom-1 right-1 opacity-80"/>}
   </button>;
 }
 export default function FloorPlan({ onTableSelect }) {
