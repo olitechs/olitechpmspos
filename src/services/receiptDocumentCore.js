@@ -148,7 +148,7 @@ export function resolveReceiptDocumentPresentation(receipt = {}) {
   const snapshotReceipt = snapshot?.receipt && typeof snapshot.receipt === 'object'
     ? snapshot.receipt
     : {};
-  const source = { ...receipt, ...snapshotReceipt, receipt_document_snapshot: snapshot };
+  const source = { ...snapshotReceipt, ...receipt, receipt_document_snapshot: snapshot };
   const document = buildReceiptDocument(source, {
     paymentAllocations: snapshot?.payment_allocations
       ?? receipt.pos_receipt_payments
