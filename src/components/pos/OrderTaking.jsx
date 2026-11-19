@@ -450,41 +450,45 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
             {!activeCategory && menuSearch.trim() && (
               <div className="mb-3 text-xs font-semibold text-[var(--text-muted)]">{visibleMenuItems.length} matching products across all categories</div>
             )}
-            <div id="pos-product-grid" className="grid content-start gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 220px), 220px))" }}>
+            <div id="pos-product-grid" className="grid grid-cols-[repeat(auto-fill,minmax(112px,1fr))] content-start gap-2.5">
               {visibleMenuItems.map((item) => {
                 const inOrderQty = orderLines.reduce((qty, line) => qty + ((line.baseProductId || line.productId || line.id) === (item.productId || item.id) ? Number(line.qty || 0) : 0), 0);
                 const stockStatus = menuItems.length > 0 ? getPosStockStatus(item.stock, item.minimumStock) : 'unknown';
                 const outOfStock = stockStatus === 'out-of-stock';
-                const lowStock = stockStatus === 'low-stock';
+                const hasPhoto = Boolean(item.tile_image_url);
+                const tileStyle = hasPhoto
+                  ? { backgroundColor: 'var(--surface)', color: 'var(--text)', borderColor: 'var(--border)' }
+                  : { backgroundColor: item.tile_color || 'var(--surface)', color: item.tile_text_color || 'var(--text)', borderColor: item.tile_color || 'var(--border)' };
                 return (
                   <button
                     key={item.id}
                     type="button"
                     onClick={() => addItem(item)}
                     disabled={outOfStock || modifierLoading}
-                    aria-label={`${item.name}, ${outOfStock ? 'out of stock' : lowStock ? 'low stock' : formatKes(item.price)}`}
-                    style={{ backgroundColor: item.tile_color || undefined, color: item.tile_text_color || undefined, borderColor: item.tile_color || undefined, ...(item.tile_image_url ? { backgroundImage: `linear-gradient(var(--overlay-scrim),var(--overlay-scrim)),url("${item.tile_image_url}")`, backgroundSize: "cover", backgroundPosition: "center" } : {}) }}
-                    className={"relative flex h-full min-h-[188px] min-w-0 flex-col justify-between overflow-hidden rounded-xl border-2 p-3 text-left transition-all active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 " + (outOfStock ? "cursor-not-allowed border-[var(--danger)] bg-[var(--danger-soft)] opacity-75" : inOrderQty > 0 ? "border-[var(--primary)] bg-[var(--primary-soft)] shadow-sm" : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--primary)] hover:bg-[var(--primary-soft)]")}
+                    aria-label={`${item.name}, ${outOfStock ? 'out of stock' : stockStatus === 'low-stock' ? 'low stock' : formatKes(item.price)}`}
+                    style={tileStyle}
+                    className={"relative flex h-[142px] min-w-0 flex-col items-stretch overflow-hidden rounded-xl border p-2 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 " + (outOfStock ? "cursor-not-allowed opacity-60" : inOrderQty > 0 ? "border-[var(--primary)] ring-1 ring-[var(--primary)]" : "hover:border-[var(--primary)]")}
                   >
-                    <div className="flex w-full items-start justify-between gap-2">
-                      <span className="text-[10px] font-bold uppercase tracking-wide text-[var(--text-muted)]">{item.category}</span>
-                      {inOrderQty > 0 && (
-                        <span className="flex h-7 min-w-7 items-center justify-center rounded-full bg-[var(--primary)] px-1.5 text-xs font-extrabold text-[var(--on-primary)]">{inOrderQty}</span>
-                      )}
-                    </div>
-                    <div className="my-3 w-full min-w-0 text-left text-sm font-bold leading-snug [overflow-wrap:anywhere] line-clamp-3">{item.name}{item.sku && <span className="mt-1 block text-[10px] font-semibold tracking-wide opacity-80">SKU {item.sku}</span>}</div>
-                    <div className="mt-auto flex w-full min-w-0 flex-col items-start gap-2">
-                      <span className="inline-flex max-w-full items-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1.5 text-sm font-extrabold tabular-nums text-[var(--text)] shadow-sm">{formatKes(item.price)}</span>
-                      {stockStatus !== 'unknown' && (
-                        <span className={"max-w-full rounded-md px-2 py-1 text-[10px] font-bold leading-tight " + (outOfStock ? "bg-[var(--danger-soft)] text-[var(--danger-text)]" : lowStock ? "bg-[var(--warning-soft)] text-[var(--warning-text)]" : "bg-[var(--sidebar)] text-[var(--text-muted)]")}>
-                          {outOfStock ? 'OUT OF STOCK' : lowStock ? `LOW STOCK · ${item.stock} ${item.unit}` : `${item.stock} ${item.unit}`}
+                    {inOrderQty > 0 && (
+                      <span className="absolute right-1.5 top-1.5 z-10 flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--primary)] px-1 text-[10px] font-extrabold text-[var(--on-primary)] shadow">{inOrderQty}</span>
+                    )}
+                    <span className="flex h-[88px] w-full shrink-0 items-center justify-center overflow-hidden rounded-lg">
+                      {hasPhoto ? (
+                        <img src={item.tile_image_url} alt="" loading="lazy" className="h-full w-full object-contain" />
+                      ) : (
+                        <span className="flex h-full w-full items-center justify-center rounded-lg text-xs font-bold opacity-20" aria-hidden="true">
+                          {item.name?.trim()?.charAt(0)?.toUpperCase() || '•'}
                         </span>
                       )}
-                    </div>
+                    </span>
+                    <span className="mt-1 line-clamp-2 min-h-[2rem] w-full min-w-0 text-[11px] font-medium leading-4 [overflow-wrap:anywhere]">{item.name}</span>
+                    <span className="mt-auto block w-full truncate text-xs font-bold tabular-nums text-[#dc5555]">{formatKes(item.price)}</span>
+                    {outOfStock && <span className="absolute inset-x-0 bottom-0 bg-[var(--danger)]/90 px-1 py-0.5 text-center text-[9px] font-bold text-white">OUT OF STOCK</span>}
                   </button>
                 );
               })}
             </div>
+          </section>
           </section>
         )}
       </main>
