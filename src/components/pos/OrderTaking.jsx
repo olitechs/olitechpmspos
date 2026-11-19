@@ -450,7 +450,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
             {!activeCategory && menuSearch.trim() && (
               <div className="mb-3 text-xs font-semibold text-[var(--text-muted)]">{visibleMenuItems.length} matching products across all categories</div>
             )}
-            <div id="pos-product-grid" className="grid grid-cols-[repeat(auto-fill,minmax(116px,1fr))] gap-2">
+            <div id="pos-product-grid" className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,220px),220px))] content-start gap-3">
               {visibleMenuItems.map((item) => {
                 const inOrderQty = orderLines.reduce((qty, line) => qty + ((line.baseProductId || line.productId || line.id) === (item.productId || item.id) ? Number(line.qty || 0) : 0), 0);
                 const stockStatus = menuItems.length > 0 ? getPosStockStatus(item.stock, item.minimumStock) : 'unknown';
@@ -464,7 +464,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
                     disabled={outOfStock || modifierLoading}
                     aria-label={`${item.name}, ${outOfStock ? 'out of stock' : lowStock ? 'low stock' : formatKes(item.price)}`}
                     style={{ backgroundColor: item.tile_color || undefined, color: item.tile_text_color || undefined, borderColor: item.tile_color || undefined, ...(item.tile_image_url ? { backgroundImage: `linear-gradient(var(--overlay-scrim),var(--overlay-scrim)),url("${item.tile_image_url}")`, backgroundSize: "cover", backgroundPosition: "center" } : {}) }}
-                    className={`relative flex aspect-square min-w-0 flex-col justify-between overflow-hidden rounded-xl border-2 p-2 text-left transition-all active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 ${outOfStock ? 'cursor-not-allowed border-[var(--danger)] bg-[var(--danger-soft)] opacity-75' : inOrderQty > 0 ? 'border-[var(--primary)] bg-[var(--primary-soft)] shadow-sm' : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--primary)] hover:bg-[var(--primary-soft)]'}`}
+                    className={"relative flex h-full min-h-[188px] min-w-0 flex-col justify-between overflow-hidden rounded-xl border-2 p-3 text-left transition-all active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 " + (outOfStock ? "cursor-not-allowed border-[var(--danger)] bg-[var(--danger-soft)] opacity-75" : inOrderQty > 0 ? "border-[var(--primary)] bg-[var(--primary-soft)] shadow-sm" : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--primary)] hover:bg-[var(--primary-soft)]")}
                   >
                     <div className="flex w-full items-start justify-between gap-2">
                       <span className="text-[10px] font-bold uppercase tracking-wide text-[var(--text-muted)]">{item.category}</span>
@@ -472,12 +472,12 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
                         <span className="flex h-7 min-w-7 items-center justify-center rounded-full bg-[var(--primary)] px-1.5 text-xs font-extrabold text-[var(--on-primary)]">{inOrderQty}</span>
                       )}
                     </div>
-                    <div className="my-2 w-full break-words text-center text-[11px] font-bold leading-tight sm:text-xs">{item.name}{item.sku && <span className="mt-1 block text-[9px] font-semibold tracking-wide opacity-80">SKU {item.sku}</span>}</div>
-                    <div className="flex w-full items-end justify-between gap-2">
-                      <span className="shrink-0 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-sm font-extrabold tabular-nums text-[var(--text)] shadow-sm">{formatKes(item.price)}</span>
+                    <div className="my-3 w-full min-w-0 text-left text-sm font-bold leading-snug [overflow-wrap:anywhere] line-clamp-3">{item.name}{item.sku && <span className="mt-1 block text-[10px] font-semibold tracking-wide opacity-80">SKU {item.sku}</span>}</div>
+                    <div className="mt-auto flex w-full min-w-0 flex-col items-start gap-2">
+                      <span className="inline-flex max-w-full items-center rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1.5 text-sm font-extrabold tabular-nums text-[var(--text)] shadow-sm">{formatKes(item.price)}</span>
                       {stockStatus !== 'unknown' && (
-                        <span className={`text-[10px] font-bold ${outOfStock ? 'text-[var(--danger-text)]' : lowStock ? 'text-[var(--warning-text)]' : 'text-[var(--text-muted)]'}`}>
-                          {outOfStock ? 'OUT OF STOCK' : lowStock ? `LOW · ${item.stock} ${item.unit}` : `${item.stock} ${item.unit}`}
+                        <span className={"max-w-full rounded-md px-2 py-1 text-[10px] font-bold leading-tight " + (outOfStock ? "bg-[var(--danger-soft)] text-[var(--danger-text)]" : lowStock ? "bg-[var(--warning-soft)] text-[var(--warning-text)]" : "bg-[var(--sidebar)] text-[var(--text-muted)]")}>
+                          {outOfStock ? 'OUT OF STOCK' : lowStock ? `LOW STOCK · ${item.stock} ${item.unit}` : `${item.stock} ${item.unit}`}
                         </span>
                       )}
                     </div>
