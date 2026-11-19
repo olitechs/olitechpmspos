@@ -13,11 +13,17 @@ test('round floor tables use a centered, bounded content layout', () => {
   assert.match(floor, /height:geometry\.height/);
 });
 
-test('POS menu prices remain readable over custom tile colours and photos', () => {
-  assert.ok(order.includes('bg-[var(--surface)] px-2 py-1 text-sm font-extrabold tabular-nums text-[var(--text)]'));
-  assert.match(order, /repeat\(auto-fill,minmax\(116px,1fr\)\)/);
+test('POS menu tiles match the compact photo-first menu layout', () => {
+  assert.ok(order.includes('repeat(auto-fill,minmax(112px,1fr))'));
+  assert.ok(order.includes('h-[142px]'));
+  assert.ok(order.includes('h-[88px]'));
+  assert.ok(order.includes('object-contain'));
+  assert.ok(order.includes('const hasPhoto = Boolean(item.tile_image_url)'));
+  assert.ok(order.includes("backgroundColor: item.tile_color || 'var(--surface)'"));
+  assert.ok(order.includes('text-[var(--danger-text)]'));
+  assert.ok(order.includes('line-clamp-2'));
+  assert.ok(order.includes('onClick={() => addItem(item)}'));
 });
-
 test('product editor supports photo upload, preview and bounded scrolling', () => {
   assert.match(manager, /type="file" accept="image\/png,image\/jpeg,image\/webp"/);
   assert.match(manager, /Product photo/);
