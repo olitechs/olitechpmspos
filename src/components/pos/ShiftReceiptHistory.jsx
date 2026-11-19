@@ -64,6 +64,7 @@ export default function ShiftReceiptHistory({ propertyId, currentShift }) {
     try {
       const result = await printReceipt('RECEIPT', {
         propertyId,
+        receiptRecord: receipt,
         orderNumber: receipt.order_number,
         checkNo: receipt.order_number,
         table: receipt.table_number ? 'Table ' + receipt.table_number : '—',
