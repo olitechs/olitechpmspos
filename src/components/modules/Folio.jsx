@@ -191,7 +191,7 @@ export default function Folio({ initialReservationId = null, embedded = false })
                           {!document.items.length ? <tr><td colSpan="4" className="py-4 text-center text-[var(--text-muted)]">No item lines were stored on this receipt.</td></tr> : null}
                         </tbody></table></div>
                         <div className="mt-3 flex flex-wrap justify-end gap-x-5 gap-y-1 border-t border-[var(--border)] pt-2 text-xs"><span>Subtotal <strong>{money(document.totals.subtotal)}</strong></span><span>Discount <strong>{money(document.totals.discountAmount)}</strong></span><span>VAT / tax <strong>{money(document.totals.vat)}</strong></span><span>Receipt total <strong>{money(document.totals.total)}</strong></span></div>
-                        {document.paymentAllocations.length>1&&<div className="mt-2 border-t border-[var(--border)] pt-2 text-[11px]"><strong>Split tender:</strong> {document.paymentAllocations.map((payment)=>payment.method+' '+money(payment.amount)).join(' · ')}</div>}
+                        {document.paymentAllocations.length>1&&<div className="mt-2 border-t border-[var(--border)] pt-2 text-[11px]"><strong>Split tender:</strong> {document.paymentAllocations.map((payment)=>payment.method+' '+money(payment.amount)+(payment.reservationId?' · res '+payment.reservationId.slice(0,8):'')+(payment.folioChargeId?' · folio '+payment.folioChargeId.slice(0,8):'')).join(' · ')}</div>}
                         <div className="mt-2 text-[10px] text-[var(--text-muted)]">Linked folio charge: {receipt.folio_charge_id || 'Not linked'} · Original POS source record.</div>
                       </div>
                     </details>;
