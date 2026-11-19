@@ -143,7 +143,7 @@ test('final settlement invoice includes editable header, stay identity, full fol
     ],
     payments: [{ id: 'payment-1', created_at: '2026-11-03T10:00:00Z', amount: 5000, method: 'mpesa', reference: 'QWERTY123', status: 'posted', created_by: 'staff-1' }, { id: 'payment-pending', created_at: '2026-11-03T11:00:00Z', amount: 999, method: 'cash', status: 'pending' }],
     receipts: [{
-      id: 'receipt-701', order_number: '701', created_at: '2026-11-02T13:00:00Z', table_number: 'Room 8',
+      id: 'receipt-701', receipt_number: '701', order_number: '701', created_at: '2026-11-02T13:00:00Z', table_number: 'Room 8',
       payment_method: 'room', subtotal: 1100, discount_amount: 0, vat: 150, total: 1250,
       folio_charge_id: 'charge-pos',
       items: [{ name: 'Seafood platter', qty: 1, unit_price: 1000, total: 1000, modifiers: [{ name: 'Extra sauce' }] }, { name: 'Fresh juice', qty: 1, price: 100, line_total: 100 }],

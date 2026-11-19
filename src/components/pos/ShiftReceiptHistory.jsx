@@ -64,6 +64,7 @@ export default function ShiftReceiptHistory({ propertyId, currentShift }) {
     try {
       const result = await printReceipt('RECEIPT', {
         propertyId,
+        receiptRecord: receipt,
         orderNumber: receipt.order_number,
         checkNo: receipt.order_number,
         table: receipt.table_number ? 'Table ' + receipt.table_number : '—',
@@ -78,7 +79,7 @@ export default function ShiftReceiptHistory({ propertyId, currentShift }) {
       });
       if (result.outcome === 'uncertain') throw new Error('The receipt may already have reprinted. Check the paper before printing it again.');
       if (!result.ok) throw new Error(result.friendlyError || 'Receipt printer did not complete the reprint.');
-      toast.success('Receipt ' + (receipt.order_number || '') + ' sent for reprinting.');
+      toast.success('Receipt ' + (receipt.receipt_number || receipt.order_number || '') + ' sent for reprinting.');
     } catch (err) {
       toast.error(err.message || 'Receipt reprint failed.');
     } finally {
