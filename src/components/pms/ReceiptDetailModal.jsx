@@ -16,6 +16,7 @@ export default function ReceiptDetailModal({ receipt, onClose }) {
 	const printReceipt = async () => {
 		const result = await printDirectReceipt('RECEIPT', {
 			propertyId: receipt.property_id || receipt.propertyId,
+			receiptRecord: receipt,
 			orderNumber: receipt.order_number,
 			checkNo: receipt.order_number,
 			table: receipt.table_number ? `Table ${receipt.table_number}` : '—',
