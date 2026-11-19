@@ -298,6 +298,10 @@ test('final receipt prints stored line totals, VAT, split tenders and snapshot h
     footer_line1: 'Original issue-time footer',
   }, {
     orderNumber: 'ORD-LEGACY',
+    table: 'Table 4',
+    covers: 2,
+    guestName: 'Guest Example',
+    room: '12',
     items: [{ qty: 2, name: 'Meal', price: 500, total: 975 }],
     subtotal: 1000,
     discount: 100,
@@ -314,8 +318,12 @@ test('final receipt prints stored line totals, VAT, split tenders and snapshot h
   assert.match(output, /Original Hotel/);
   assert.match(output, /Original issue-time header/);
   assert.match(output, /Original issue-time footer/);
+  assert.match(output, /Table: Table 4/);
+  assert.match(output, /Covers: 2/);
+  assert.match(output, /Guest: Guest Example/);
+  assert.match(output, /Room: 12/);
   assert.match(output, /KES 975\.00/);
-  assert.match(output, /Discount · Manager discount/);
+  assert.match(output, /Discount - Manager discount/);
   assert.match(output, /VAT \/ tax/);
   assert.match(output, /Split tender/);
   assert.match(output, /CASH/);
