@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { inventoryService } from '@/services/inventoryService';
 import { useAuth } from '@/lib/AuthContext';
 import { formatAmount } from '@/lib/posMoney';
+import MenuVisualEditor from '@/components/pos/MenuVisualEditor';
 
 const CENTER_OPTIONS = ['Kitchen','Bar'];
 const UNIT_OPTIONS = ['pcs','bottle','glass','plate','portion','kg','ltr'];
@@ -17,6 +18,9 @@ function getColorToken(token) {
 export default function MenuManager({ open, onClose, embedded = false }) {
   const { user } = useAuth();
   const propertyId = user?.property?.id;
+  const activeStaff = (() => { try { return JSON.parse(sessionStorage.getItem('olitech_active_staff_v2') || 'null'); } catch { return null; } })();
+  const menuRole = String(activeStaff?.role || user?.staff?.role || user?.propertyRole || user?.role || '').toLowerCase();
+  const visualOnly = ['cashier', 'store_manager', 'storekeeper'].includes(menuRole);
   const fileRef = useRef(null);
   const imageFileRef = useRef(null);
   const [menu,setMenu]=useState([]);
@@ -41,6 +45,7 @@ export default function MenuManager({ open, onClose, embedded = false }) {
   const filtered=useMemo(()=>menu.filter(p=>!search||p.name.toLowerCase().includes(search.toLowerCase())||String(p.sku||'').toLowerCase().includes(search.toLowerCase())),[menu,search]);
 
   if(!open)return null;
+  if(visualOnly)return <MenuVisualEditor open={open} onClose={onClose} embedded={embedded} propertyId={propertyId} />;
 
   const uploadProductPhoto=async(file)=>{
     if(!file||!editing)return;
