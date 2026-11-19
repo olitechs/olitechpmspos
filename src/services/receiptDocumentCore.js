@@ -42,7 +42,7 @@ function normalizeReceiptItem(item = {}, index = 0) {
  * numbers, or FOOD/DRINKS classifications. Those values must come from an
  * issuance-time snapshot or explicit item metadata.
  */
-export function buildReceiptDocument(receipt = {}, { paymentAllocations = [] } = {}) {
+export function buildReceiptDocument(receipt = {}, { paymentAllocations = receipt.pos_receipt_payments ?? receipt.payment_allocations ?? [] } = {}) {
   const rawItems = Array.isArray(receipt.items) ? receipt.items : [];
   const items = rawItems.map(normalizeReceiptItem);
   const grouped = new Map();
@@ -126,5 +126,66 @@ export function buildReceiptDocument(receipt = {}, { paymentAllocations = [] } =
     },
     // Receipt-level discounts and VAT are not silently spread across item lines.
     receiptAdjustmentsAllocatedToItems: false,
+  };
+}
+
+
+const COMPANY_SNAPSHOT_FIELDS = [
+  'property_name', 'logo_url', 'address_line1', 'address_line2', 'phone',
+  'email', 'website', 'kra_pin', 'extra_header_line', 'footer_line1', 'footer_line2',
+];
+
+/**
+ * Resolve the canonical receipt record for UI and print surfaces.
+ * Snapshot company settings win when present; legacy records deliberately
+ * fall back to current settings only for presentation, and remain labelled legacy.
+ */
+export function resolveReceiptDocumentPresentation(receipt = {}) {
+  const snapshot = receipt.receipt_document_snapshot
+    ?? receipt.document_snapshot
+    ?? receipt.receipt_snapshot
+    ?? null;
+  const snapshotReceipt = snapshot?.receipt && typeof snapshot.receipt === 'object'
+    ? snapshot.receipt
+    : {};
+  const source = { ...receipt, ...snapshotReceipt, receipt_document_snapshot: snapshot };
+  const document = buildReceiptDocument(source, {
+    paymentAllocations: snapshot?.payment_allocations
+      ?? receipt.pos_receipt_payments
+      ?? receipt.payment_allocations
+      ?? [],
+  });
+  const company = snapshot?.company && typeof snapshot.company === 'object'
+    ? snapshot.company
+    : null;
+  const settings = company
+    ? Object.fromEntries(COMPANY_SNAPSHOT_FIELDS.map((field) => [field, company[field] ?? '']))
+    : {};
+
+  return {
+    document,
+    settings,
+    data: {
+      receiptNumber: document.receiptNumber,
+      orderNumber: document.orderNumber,
+      checkNo: document.orderNumber,
+      table: document.tableNumber ? 'Table ' + document.tableNumber : '—',
+      waiter: document.waiter || 'Unassigned',
+      covers: document.covers,
+      diningOption: document.diningOption,
+      guestName: document.guestName,
+      room: document.roomNumber,
+      items: source.items || [],
+      subtotal: document.totals.subtotal,
+      discount: document.totals.discountAmount,
+      discountName: source.discount_name || '',
+      vat: document.totals.vat,
+      total: document.totals.total,
+      paymentMethod: document.paymentMethod,
+      paymentAllocations: document.paymentAllocations,
+      createdAt: document.createdAt,
+      receiptStatus: document.status,
+      snapshotStatus: document.snapshotStatus,
+    },
   };
 }
