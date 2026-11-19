@@ -608,9 +608,41 @@ export const pmsService = {
 		return data;
 	},
 	async listReceiptsForReservation(reservationId) {
-		const { data, error } = await supabase.from('pos_receipts').select('*').eq('reservation_id', reservationId).order('created_at', { ascending: false });
-		if (error) throw new Error(error.message);
-		return data || [];
+		if (!reservationId) return [];
+		const [directResult, allocationResult] = await Promise.all([
+			supabase.from('pos_receipts').select('*').eq('reservation_id', reservationId).order('created_at', { ascending: false }),
+			supabase.from('pos_receipt_payments').select('receipt_id').eq('reservation_id', reservationId),
+		]);
+		if (directResult.error) throw new Error(directResult.error.message);
+		if (allocationResult.error) throw new Error(allocationResult.error.message);
+		const directRows = directResult.data || [];
+		const linkedIds = [...new Set((allocationResult.data || []).map((row) => row.receipt_id).filter(Boolean))];
+		const directIds = new Set(directRows.map((row) => row.id));
+		const additionalIds = linkedIds.filter((id) => !directIds.has(id));
+		let allocationLinkedRows = [];
+		if (additionalIds.length) {
+			const { data, error } = await supabase.from('pos_receipts').select('*').in('id', additionalIds);
+			if (error) throw new Error(error.message);
+			allocationLinkedRows = data || [];
+		}
+		const receipts = [...directRows, ...allocationLinkedRows];
+		if (!receipts.length) return [];
+		const receiptIds = receipts.map((row) => row.id);
+		const { data: paymentRows, error: paymentError } = await supabase
+			.from('pos_receipt_payments')
+			.select('id,receipt_id,property_id,payment_method,amount,reservation_id,folio_charge_id,created_by,created_at')
+			.in('receipt_id', receiptIds)
+			.order('created_at', { ascending: true });
+		if (paymentError) throw new Error(paymentError.message);
+		const paymentsByReceipt = new Map();
+		for (const payment of paymentRows || []) {
+			const list = paymentsByReceipt.get(payment.receipt_id) || [];
+			list.push(payment);
+			paymentsByReceipt.set(payment.receipt_id, list);
+		}
+		return receipts
+			.map((receipt) => ({ ...receipt, pos_receipt_payments: paymentsByReceipt.get(receipt.id) || [] }))
+			.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
 	},
 	async listReceiptsForProperty(propertyId, { limit = 200 } = {}) {
 		const { data, error } = await supabase.from('pos_receipts').select('*').eq('property_id', propertyId).order('created_at', { ascending: false }).limit(limit);
