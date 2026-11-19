@@ -10,8 +10,8 @@ const migration = readFileSync(
 test('receipt document migration is additive and does not rewrite legacy receipts', () => {
   assert.match(migration, /add column if not exists receipt_document_snapshot jsonb/i);
   assert.match(migration, /Existing receipts are deliberately not backfilled/i);
-  assert.match(migration, /where id = v_receipt\\.id\\s+and receipt_document_snapshot is null/i);
-  assert.doesNotMatch(migration, /update\\s+public\\.pos_receipts\\s+set\\s+receipt_document_snapshot\\s*=\\s*jsonb_build_object\\([\\s\\S]*?where\\s+receipt_document_snapshot is null\\s*;/i);
+  assert.match(migration, /where id = v_receipt\.id\s+and receipt_document_snapshot is null/i);
+  assert.doesNotMatch(migration, /update\s+public\.pos_receipts\s+set\s+receipt_document_snapshot\s*=\s*jsonb_build_object\([\s\S]*?where\s+receipt_document_snapshot is null\s*;/i);
 });
 
 test('both active VAT wrapper overloads allocate a receipt number for newly issued receipts', () => {
