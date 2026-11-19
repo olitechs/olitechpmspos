@@ -450,7 +450,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
             {!activeCategory && menuSearch.trim() && (
               <div className="mb-3 text-xs font-semibold text-[var(--text-muted)]">{visibleMenuItems.length} matching products across all categories</div>
             )}
-            <div id="pos-product-grid" className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
+            <div id="pos-product-grid" className="grid grid-cols-[repeat(auto-fill,minmax(116px,1fr))] gap-2">
               {visibleMenuItems.map((item) => {
                 const inOrderQty = orderLines.reduce((qty, line) => qty + ((line.baseProductId || line.productId || line.id) === (item.productId || item.id) ? Number(line.qty || 0) : 0), 0);
                 const stockStatus = menuItems.length > 0 ? getPosStockStatus(item.stock, item.minimumStock) : 'unknown';
@@ -474,7 +474,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
                     </div>
                     <div className="my-2 w-full break-words text-center text-[11px] font-bold leading-tight sm:text-xs">{item.name}{item.sku && <span className="mt-1 block text-[9px] font-semibold tracking-wide opacity-80">SKU {item.sku}</span>}</div>
                     <div className="flex w-full items-end justify-between gap-2">
-                      <span className="text-sm font-extrabold text-[var(--primary)]">{formatKes(item.price)}</span>
+                      <span className="shrink-0 rounded-lg bg-white px-2 py-1 text-sm font-extrabold tabular-nums text-slate-950 shadow-sm">{formatKes(item.price)}</span>
                       {stockStatus !== 'unknown' && (
                         <span className={`text-[10px] font-bold ${outOfStock ? 'text-[var(--danger-text)]' : lowStock ? 'text-[var(--warning-text)]' : 'text-[var(--text-muted)]'}`}>
                           {outOfStock ? 'OUT OF STOCK' : lowStock ? `LOW · ${item.stock} ${item.unit}` : `${item.stock} ${item.unit}`}
