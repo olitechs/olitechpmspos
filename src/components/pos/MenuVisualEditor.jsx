@@ -3,6 +3,18 @@ import { ImagePlus, Palette, RefreshCw, Save, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { inventoryService } from '@/services/inventoryService';
 
+function colorToHex(value) {
+  if (/^#[0-9a-f]{6}$/i.test(String(value || '').trim())) return String(value).trim();
+  const channels = String(value || '').match(/\\d+(?:\\.\\d+)?/g);
+  if (!channels || channels.length < 3) return String.fromCharCode(35) + '000000';
+  return String.fromCharCode(35) + channels.slice(0, 3).map((channel) => Math.max(0, Math.min(255, Math.round(Number(channel)))).toString(16).padStart(2, '0')).join('');
+}
+
+function getThemeColor(token, fallback) {
+  if (typeof window === 'undefined') return colorToHex(fallback);
+  return colorToHex(window.getComputedStyle(document.documentElement).getPropertyValue(token).trim() || fallback);
+}
+
 export default function MenuVisualEditor({ open, onClose, embedded = false, propertyId }) {
   const [items, setItems] = useState([]);
   const [drafts, setDrafts] = useState({});
@@ -17,8 +29,8 @@ export default function MenuVisualEditor({ open, onClose, embedded = false, prop
       const rows = await inventoryService.listPosMenu(propertyId);
       setItems(rows);
       setDrafts(Object.fromEntries(rows.map((item) => [item.id, {
-        tile_color: item.tile_color || '#2563eb',
-        tile_text_color: item.tile_text_color || '#ffffff',
+        tile_color: item.tile_color || getThemeColor('--primary', 'rgb(37, 99, 235)'),
+        tile_text_color: item.tile_text_color || getThemeColor('--on-primary', 'rgb(255, 255, 255)'),
         tile_image_url: item.tile_image_url || '',
       }])));
     } catch (error) {
@@ -109,10 +121,10 @@ export default function MenuVisualEditor({ open, onClose, embedded = false, prop
                     </div>
                     <div className="mt-3 grid grid-cols-2 gap-3">
                       <label className="text-[11px] font-medium text-[var(--text-muted)]">Tile colour
-                        <input type="color" value={draft.tile_color || '#2563eb'} onChange={(event) => updateDraft(item.id,{tile_color:event.target.value})} className="mt-1 h-9 w-full cursor-pointer rounded border border-[var(--border)]"/>
+                        <input type="color" value={draft.tile_color || getThemeColor('--primary', 'rgb(37, 99, 235)')} onChange={(event) => updateDraft(item.id,{tile_color:event.target.value})} className="mt-1 h-9 w-full cursor-pointer rounded border border-[var(--border)]"/>
                       </label>
                       <label className="text-[11px] font-medium text-[var(--text-muted)]">Text colour
-                        <input type="color" value={draft.tile_text_color || '#ffffff'} onChange={(event) => updateDraft(item.id,{tile_text_color:event.target.value})} className="mt-1 h-9 w-full cursor-pointer rounded border border-[var(--border)]"/>
+                        <input type="color" value={draft.tile_text_color || getThemeColor('--on-primary', 'rgb(255, 255, 255)')} onChange={(event) => updateDraft(item.id,{tile_text_color:event.target.value})} className="mt-1 h-9 w-full cursor-pointer rounded border border-[var(--border)]"/>
                       </label>
                     </div>
                     <input ref={(node) => { fileRefs.current[item.id] = node; }} type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => uploadPhoto(item,event.target.files?.[0])} className="sr-only"/>
