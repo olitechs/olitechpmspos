@@ -441,8 +441,8 @@ ALTER TABLE public.inventory_wastage
   ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'posted',
   ADD COLUMN IF NOT EXISTS request_key text,
   ADD COLUMN IF NOT EXISTS request_fingerprint text,
-  ADD COLUMN IF NOT EXISTS approved_by uuid,
-  ADD COLUMN IF NOT EXISTS approved_at timestamptz,
+  ADD COLUMN IF NOT EXISTS decided_by uuid,
+  ADD COLUMN IF NOT EXISTS decided_at timestamptz,
   ADD COLUMN IF NOT EXISTS decision_reason text,
   ADD COLUMN IF NOT EXISTS stock_movement_id uuid;
 
@@ -606,7 +606,7 @@ BEGIN
      OR NOT public.fn_employee_has_permission(v_row.property_id,'stores.stock.wastage.approve') THEN
     RAISE EXCEPTION 'Wastage approval permission is required';
   END IF;
-  IF p_decision NOT IN ('approve','reject') THEN RAISE EXCEPTION 'Decision must be approve or reject'; END IF;
+  IF p_decision IS NULL OR p_decision NOT IN ('approve','reject') THEN RAISE EXCEPTION 'Decision must be approve or reject'; END IF;
   IF v_row.status IN ('approved','rejected') THEN
     IF (v_row.status='approved' AND p_decision='approve') OR (v_row.status='rejected' AND p_decision='reject') THEN
       RETURN v_row;
@@ -617,8 +617,8 @@ BEGIN
   IF v_row.created_by=auth.uid() THEN RAISE EXCEPTION 'The requester cannot approve or reject their own wastage request'; END IF;
   IF p_decision='reject' THEN
     IF NULLIF(BTRIM(p_decision_reason),'') IS NULL THEN RAISE EXCEPTION 'A rejection reason is required'; END IF;
-    UPDATE public.inventory_wastage SET status='rejected',approved_by=auth.uid(),
-      approved_at=now(),decision_reason=btrim(p_decision_reason)
+    UPDATE public.inventory_wastage SET status='rejected',decided_by=auth.uid(),
+      decided_at=now(),decision_reason=btrim(p_decision_reason)
     WHERE id=v_row.id RETURNING * INTO v_row;
     RETURN v_row;
   END IF;
@@ -626,8 +626,8 @@ BEGIN
     v_row.property_id,v_row.product_id,v_row.location_id,-v_row.quantity,
     v_row.reason,'wastage',v_row.id,'wastage'
   );
-  UPDATE public.inventory_wastage SET status='approved',approved_by=auth.uid(),
-    approved_at=now(),decision_reason=NULLIF(BTRIM(p_decision_reason),''),
+  UPDATE public.inventory_wastage SET status='approved',decided_by=auth.uid(),
+    decided_at=now(),decision_reason=NULLIF(BTRIM(p_decision_reason),''),
     stock_movement_id=(SELECT sm.id FROM public.stock_movements sm
       WHERE sm.property_id=v_row.property_id AND sm.source_type='wastage'
         AND sm.source_id=v_row.id AND sm.source_line_key='wastage'
@@ -636,6 +636,8 @@ BEGIN
   RETURN v_row;
 END
 $function$;
+
+REVOKE INSERT, UPDATE, DELETE ON TABLE public.inventory_wastage FROM anon,authenticated;
 
 REVOKE ALL ON FUNCTION public.fn_submit_inventory_wastage(uuid,uuid,numeric,text,text,uuid,date) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.fn_submit_inventory_wastage(uuid,uuid,numeric,text,text,uuid,date) TO authenticated;
