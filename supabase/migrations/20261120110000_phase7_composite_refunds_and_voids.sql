@@ -74,8 +74,8 @@ begin
     raise exception 'Refund lines must be a JSON array.' using errcode='22023';
   end if;
   if exists(
-    select 1 from jsonb_array_elements(p_items) x
-    group by (x->>'line_index') having count(*)>1
+    select 1 from jsonb_array_elements(p_items) as item(value)
+    group by (value->>'line_index') having count(*)>1
   ) then
     raise exception 'Submit each receipt line once per refund request.' using errcode='22023';
   end if;
