@@ -18,7 +18,7 @@
 - Uses normalized recipe base-unit quantities and the saved component unit-cost snapshots from Phase 3.
 - Creates the production record first inside the transaction, then posts each component deduction and output addition through the Phase 7.1 location-aware writer.
 - Links every stock movement to the production record with stable component/output line keys. Movement unit costs are updated to the saved recipe component cost and calculated output unit cost.
-- Records the recipe version and full component snapshot on the production row.
+- Records the recipe version and component quantities/units on the production row; stores cost snapshots separately in the private schema.
 - Uses a transaction advisory lock, unique request key and payload fingerprint so retries return the original production row and key reuse with different details is rejected.
 - Revokes direct authenticated INSERT/UPDATE/DELETE on `inventory_productions`.
 - Updates the Inventory Operations Production panel and service to use the new RPC, gate posting by `stores.production.post`, and retain the request key if the call fails.
