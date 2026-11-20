@@ -476,7 +476,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
                     className={"relative flex h-[142px] min-w-0 flex-col items-stretch overflow-hidden rounded-xl border p-2 text-left shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 " + (outOfStock ? "cursor-not-allowed opacity-60" : inOrderQty > 0 ? "border-[var(--primary)] ring-1 ring-[var(--primary)]" : "")}
                   >
                     {compositeStock && (componentOutOfStock || componentLowStock) && (
-                      <span className="absolute bottom-1.5 right-1.5 z-10 rounded-md bg-amber-100 px-1.5 py-1 text-[9px] font-bold text-amber-900" title={compositeStock.components.filter(component => component.stock_status !== 'available').map(component => component.component_name).join(', ')}>
+                      <span className="absolute bottom-1.5 right-1.5 z-10 rounded-md bg-[var(--warning-soft)] px-1.5 py-1 text-[9px] font-bold text-[var(--warning-text)]" title={compositeStock.components.filter(component => component.stock_status !== 'available').map(component => component.component_name).join(', ')}>
                         {componentOutOfStock ? 'COMPONENT OUT' : 'COMPONENT LOW'}
                       </span>
                     )}
