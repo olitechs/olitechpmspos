@@ -140,8 +140,8 @@ begin
     where p.id=v_component_id and p.property_id=p_property_id
     for share;
     if not found then raise exception 'Every component must belong to the same property.' using errcode='23503'; end if;
-    if not coalesce(v_component.track_stock,true) or v_component.inventory_tracking_mode='untracked' then
-      raise exception 'Component "%" must have stock tracking enabled.',v_component.name;
+    if not coalesce(v_component.track_stock,true) or v_component.inventory_tracking_mode in ('untracked','composite') then
+      raise exception 'Component "%" must be a directly tracked inventory product. Nested composite components are not supported yet.',v_component.name;
     end if;
     v_seen := array_append(v_seen,v_component_id);
     v_total_cost := v_total_cost + (coalesce(v_component.cost_price,0)*v_qty);
