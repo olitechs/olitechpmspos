@@ -152,6 +152,8 @@ BEGIN
     RAISE EXCEPTION 'Output must be a directly tracked product in the selected property';
   END IF;
 
+  PERFORM 1 FROM public.recipe_ingredients
+    WHERE recipe_id=v_recipe.id ORDER BY product_id,id FOR UPDATE;
   SELECT count(*) INTO v_ingredient_count
   FROM public.recipe_ingredients WHERE recipe_id=v_recipe.id;
   IF v_ingredient_count=0 THEN RAISE EXCEPTION 'A production recipe must contain at least one component'; END IF;
@@ -225,6 +227,9 @@ BEGIN
       'Production consumption: '||coalesce(NULLIF(BTRIM(p_reference),''),v_row.id::text),
       'production',v_row.id,'component:'||v_line.id::text
     );
+    UPDATE public.stock_movements SET unit_cost=coalesce((v_snapshot->(SELECT count(*)-1 FROM public.recipe_ingredients ri2 WHERE ri2.recipe_id=v_recipe.id AND (ri2.product_id<v_line.product_id OR (ri2.product_id=v_line.product_id AND ri2.id<=v_line.id)))->>'unit_cost_snapshot')::numeric,0)
+    WHERE property_id=p_property_id AND source_type='production' AND source_id=v_row.id
+      AND source_line_key='component:'||v_line.id::text;
   END LOOP;
 
   v_output_location:=stock_internal.fn_resolve_product_location(p_property_id,p_output_product_id,NULL);
@@ -233,6 +238,8 @@ BEGIN
     'Production output: '||coalesce(NULLIF(BTRIM(p_reference),''),v_row.id::text),
     'production',v_row.id,'output'
   );
+  UPDATE public.stock_movements SET unit_cost=round(v_component_total/p_quantity,6)
+    WHERE property_id=p_property_id AND source_type='production' AND source_id=v_row.id AND source_line_key='output';
 
   RETURN v_row;
 END
