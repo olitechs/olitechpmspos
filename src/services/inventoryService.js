@@ -272,9 +272,31 @@ export const inventoryService = {
     const { data, error } = await supabase.rpc('fn_approve_inventory_count', { p_count_id: countId });
     if (error) throw new Error(error.message); return data;
   },
+  async listWastageRequests(propertyId) {
+    const { data, error } = await supabase.from('inventory_wastage').select('*')
+      .eq('property_id', propertyId).eq('status', 'pending').order('created_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    return data || [];
+  },
   async postWastage(payload) {
-    const { data, error } = await supabase.rpc('fn_post_wastage', { p_property_id: payload.propertyId, p_product_id: payload.productId, p_quantity: Number(payload.quantity), p_reason: payload.reason, p_location_id: payload.locationId || null, p_expiry_date: payload.expiryDate || null });
-    if (error) throw new Error(error.message); return data;
+    const { data, error } = await supabase.rpc('fn_submit_inventory_wastage', {
+      p_property_id: payload.propertyId,
+      p_product_id: payload.productId,
+      p_quantity: Number(payload.quantity),
+      p_reason: payload.reason,
+      p_request_key: payload.requestKey,
+      p_location_id: payload.locationId || null,
+      p_expiry_date: payload.expiryDate || null,
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+  async decideWastage(wastageId, decision, reason = null) {
+    const { data, error } = await supabase.rpc('fn_decide_inventory_wastage', {
+      p_wastage_id: wastageId, p_decision: decision, p_decision_reason: reason,
+    });
+    if (error) throw new Error(error.message);
+    return data;
   },
   async postProduction(payload) {
     const { data, error } = await supabase.rpc('fn_post_production', { p_property_id: payload.propertyId, p_recipe_id: payload.recipeId, p_output_product_id: payload.outputProductId, p_quantity: Number(payload.quantity), p_reference: payload.reference || null });
