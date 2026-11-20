@@ -82,6 +82,7 @@ declare
   v_seen uuid[] := array[]::uuid[];
   v_component record;
   v_total_cost numeric := 0;
+  v_name_matches integer := 0;
 begin
   if p_property_id is null or p_product_id is null then
     raise exception 'Property and menu product are required.' using errcode='22023';
@@ -154,14 +155,23 @@ begin
   if not found then
     -- A legacy name-based recipe can be claimed only if it is unambiguous and
     -- currently has no product link. The unique product index prevents duplicates.
-    select * into v_recipe
-    from public.recipes
+    select count(*) into v_name_matches
+    from public.products
     where property_id=p_property_id
-      and menu_product_id is null
-      and lower(btrim(menu_item_name))=lower(btrim(v_product.name))
-    order by created_at,id
-    limit 1
-    for update;
+      and lower(btrim(name))=lower(btrim(v_product.name));
+    if v_name_matches > 1 then
+      raise exception 'Multiple products share this name. Rename the duplicate products or resolve the legacy recipe link before enabling composite mode.';
+    end if;
+    if v_name_matches = 1 then
+      select * into v_recipe
+      from public.recipes
+      where property_id=p_property_id
+        and menu_product_id is null
+        and lower(btrim(menu_item_name))=lower(btrim(v_product.name))
+      order by created_at,id
+      limit 1
+      for update;
+    end if;
   end if;
 
   if v_recipe.id is null then
