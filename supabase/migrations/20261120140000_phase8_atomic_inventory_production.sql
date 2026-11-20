@@ -66,9 +66,20 @@ ALTER TABLE public.inventory_productions
   ADD COLUMN IF NOT EXISTS request_key text,
   ADD COLUMN IF NOT EXISTS request_fingerprint text,
   ADD COLUMN IF NOT EXISTS recipe_version integer,
-  ADD COLUMN IF NOT EXISTS components_snapshot jsonb NOT NULL DEFAULT '[]'::jsonb,
-  ADD COLUMN IF NOT EXISTS component_cost_total numeric(20,6) NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS output_unit_cost numeric(20,6) NOT NULL DEFAULT 0;
+  ADD COLUMN IF NOT EXISTS components_snapshot jsonb NOT NULL DEFAULT '[]'::jsonb;
+
+-- Keep cost snapshots outside the exposed public schema. Production rows remain
+-- readable under the existing property SELECT policy without exposing component costs.
+CREATE TABLE IF NOT EXISTS stock_internal.production_cost_snapshots (
+  production_id uuid PRIMARY KEY REFERENCES public.inventory_productions(id) ON DELETE CASCADE,
+  property_id uuid NOT NULL REFERENCES public.properties(id) ON DELETE CASCADE,
+  component_cost_snapshot jsonb NOT NULL DEFAULT '[]'::jsonb,
+  component_cost_total numeric(20,6) NOT NULL DEFAULT 0,
+  output_unit_cost numeric(20,6) NOT NULL DEFAULT 0,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE stock_internal.production_cost_snapshots ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE stock_internal.production_cost_snapshots FROM PUBLIC,anon,authenticated,service_role;
 
 CREATE UNIQUE INDEX IF NOT EXISTS inventory_productions_property_request_key
   ON public.inventory_productions(property_id,request_key) WHERE request_key IS NOT NULL;
@@ -111,6 +122,7 @@ DECLARE
   v_line_cost numeric;
   v_component_total numeric:=0;
   v_snapshot jsonb:='[]'::jsonb;
+  v_cost_snapshot jsonb:='[]'::jsonb;
   v_fingerprint text;
   v_key text;
   v_output_location uuid;
@@ -204,18 +216,27 @@ BEGIN
     v_snapshot:=v_snapshot||jsonb_build_array(jsonb_build_object(
       'recipe_ingredient_id',v_line.id,'product_id',v_line.product_id,'product_name',v_line.product_name,
       'recipe_base_qty',v_line.qty,'required_base_qty',v_needed,'entered_qty',v_line.entered_qty,
-      'entered_unit',v_line.entered_unit,'base_unit',v_line.base_unit,
+      'entered_unit',v_line.entered_unit,'base_unit',v_line.base_unit
+    ));
+    v_cost_snapshot:=v_cost_snapshot||jsonb_build_array(jsonb_build_object(
+      'recipe_ingredient_id',v_line.id,'product_id',v_line.product_id,
       'unit_cost_snapshot',v_unit_cost,'line_cost_snapshot',v_line_cost
     ));
   END LOOP;
 
   INSERT INTO public.inventory_productions(
     property_id,recipe_id,output_product_id,quantity,reference,created_by,status,
-    request_key,request_fingerprint,recipe_version,components_snapshot,component_cost_total,output_unit_cost
+    request_key,request_fingerprint,recipe_version,components_snapshot
   ) VALUES (
     p_property_id,v_recipe.id,p_output_product_id,p_quantity,NULLIF(BTRIM(p_reference),''),auth.uid(),'posted',
-    v_key,v_fingerprint,v_recipe.recipe_version,v_snapshot,v_component_total,round(v_component_total/p_quantity,6)
+    v_key,v_fingerprint,v_recipe.recipe_version,v_snapshot
   ) RETURNING * INTO v_row;
+
+  INSERT INTO stock_internal.production_cost_snapshots(
+    production_id,property_id,component_cost_snapshot,component_cost_total,output_unit_cost
+  ) VALUES (
+    v_row.id,p_property_id,v_cost_snapshot,v_component_total,round(v_component_total/p_quantity,6)
+  );
 
   FOR v_line IN
     SELECT ri.id,ri.product_id,ri.qty,ri.unit_cost_snapshot,p.cost_price
