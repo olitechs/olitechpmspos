@@ -144,6 +144,9 @@ BEGIN
   SELECT * INTO v_recipe FROM public.recipes
     WHERE id=p_recipe_id AND property_id=p_property_id AND active=true FOR UPDATE;
   IF NOT FOUND OR v_recipe.yield_qty<=0 THEN RAISE EXCEPTION 'Active property recipe with a positive yield is required'; END IF;
+  IF v_recipe.menu_product_id IS NOT NULL AND v_recipe.menu_product_id<>p_output_product_id THEN
+    RAISE EXCEPTION 'A product-linked recipe must produce its linked product; use an unlinked recipe for a different output';
+  END IF;
 
   SELECT * INTO v_output FROM public.products
     WHERE id=p_output_product_id AND property_id=p_property_id;
