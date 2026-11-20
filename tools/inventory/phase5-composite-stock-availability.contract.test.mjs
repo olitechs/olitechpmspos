@@ -34,5 +34,7 @@ test('POS product tiles warn and prevent adding composites with unavailable comp
  assert.match(pos,/componentOutOfStock/);
  assert.match(pos,/COMPONENT OUT/);
  assert.match(pos,/COMPONENT LOW/);
- assert.match(pos,/disabled=\{outOfStock \|\| modifierLoading\}/);
+ assert.match(pos,/availabilityUnknown/);
+ assert.match(pos,/STOCK CHECK/);
+ assert.match(pos,/disabled=\{outOfStock \|\| tileAvailability\.availabilityUnknown \|\| modifierLoading\}/);
 });
