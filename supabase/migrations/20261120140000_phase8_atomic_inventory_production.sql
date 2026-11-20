@@ -254,6 +254,7 @@ REVOKE ALL ON FUNCTION public.fn_post_inventory_production(uuid,uuid,uuid,numeri
 GRANT EXECUTE ON FUNCTION public.fn_post_inventory_production(uuid,uuid,uuid,numeric,text,text) TO authenticated;
 
 REVOKE INSERT,UPDATE,DELETE ON TABLE public.inventory_productions FROM anon,authenticated;
+REVOKE INSERT,UPDATE,DELETE ON TABLE public.recipes,public.recipe_ingredients FROM anon,authenticated;
 
 NOTIFY pgrst,'reload schema';
 COMMIT;
