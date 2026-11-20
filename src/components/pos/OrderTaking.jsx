@@ -15,6 +15,7 @@ import { getPropertySettings } from '@/services/settingsService';
 import { inventoryService } from '@/services/inventoryService';
 import { posPhase3Service } from '@/services/posPhase3Service';
 import { filterPosMenuItems, getPosStockStatus } from '@/components/pos/stockStatus';
+import { subscribePosMenuChanges } from '@/lib/posMenuChannel';
 
 export default function OrderTaking({ table, orderLines, setOrderLines, onSendToKitchen, onBill, onMoveTable, orderNumber: orderNumberProp }) {
   const store = useStore();
@@ -51,19 +52,27 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
     try {
       const [rows, categoryRows] = await Promise.all([
         inventoryService.listPosMenu(propertyId),
-        inventoryService.listPosCategories(propertyId).catch((error) => {
+        inventoryService.listPosCategoriesAdmin(propertyId).catch((error) => {
           console.warn('[POS] category catalogue unavailable; deriving categories from products', error);
           return [];
         })
       ]);
-      if (rows.length) {
-        setMenuItems(rows.map((p) => ({ ...p, id: p.id, productId: p.id, name: p.name, price: Number(p.selling_price || 0), category: p.category || 'General', center: p.production_center || 'Kitchen', stock: Number(p.current_stock ?? 0), minimumStock: Number(p.min_stock ?? 0), unit: p.unit || 'pcs' })));
+      const activeCategories = categoryRows.filter((category) => category.active !== false);
+      const activeCategoryNames = [...new Set(activeCategories.map((category) => category.name).filter(Boolean))];
+      const disabledCategoryNames = new Set(categoryRows.filter((category) => category.active === false).map((category) => category.name).filter(Boolean));
+      // Hide products whose category was disabled in the manager, but keep
+      // products whose category has no catalogue row (legacy data) visible so
+      // the till never goes blank because the catalogue is incomplete.
+      const visibleRows = disabledCategoryNames.size
+        ? rows.filter((product) => !disabledCategoryNames.has(product.category || 'General'))
+        : rows;
+      if (visibleRows.length) {
+        setMenuItems(visibleRows.map((p) => ({ ...p, id: p.id, productId: p.id, name: p.name, price: Number(p.selling_price || 0), category: p.category || 'General', center: p.production_center || 'Kitchen', stock: Number(p.current_stock ?? 0), minimumStock: Number(p.min_stock ?? 0), unit: p.unit || 'pcs' })));
       } else {
         setMenuItems([]);
       }
-      const configuredCategories = [...new Set(categoryRows.map((category) => category.name).filter(Boolean))];
-      setMenuCategoryStyles(Object.fromEntries(categoryRows.map((category) => [category.name, category])));
-      setMenuCategories(configuredCategories.length ? configuredCategories : [...new Set(rows.map((p) => p.category || 'General'))]);
+      setMenuCategoryStyles(Object.fromEntries(activeCategories.map((category) => [category.name, category])));
+      setMenuCategories(activeCategoryNames.length ? activeCategoryNames : [...new Set(rows.map((p) => p.category || 'General'))]);
     } catch (error) {
       console.warn('[POS] menu catalogue unavailable', error);
       setMenuItems([]); setMenuCategories([]);
@@ -99,7 +108,12 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
     loadPosMenu();
     const refresh = () => loadPosMenu();
     window.addEventListener('olitech:menu-updated', refresh);
-    return () => window.removeEventListener('olitech:menu-updated', refresh);
+    // Other terminals announce menu edits on a property broadcast channel.
+    const unsubscribe = subscribePosMenuChanges(propertyId, refresh);
+    return () => {
+      window.removeEventListener('olitech:menu-updated', refresh);
+      unsubscribe();
+    };
   }, [propertyId]);
 
   const commitItem = (item, selected = []) => {
