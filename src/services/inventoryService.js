@@ -182,6 +182,30 @@ export const inventoryService = {
     return data;
   },
 
+  async getCompositeRecipe(propertyId, productId) {
+    const { data, error } = await supabase
+      .from('recipes')
+      .select('*, recipe_ingredients(*, product:products(id,name,unit,base_unit,cost_price))')
+      .eq('property_id', propertyId)
+      .eq('menu_product_id', productId)
+      .eq('active', true)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data || null;
+  },
+
+  async saveCompositeRecipe({ propertyId, productId, isComposite, components = [], notes = null }) {
+    const { data, error } = await supabase.rpc('fn_upsert_composite_product_recipe', {
+      p_property_id: propertyId,
+      p_product_id: productId,
+      p_is_composite: Boolean(isComposite),
+      p_components: components,
+      p_notes: notes || null,
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
   async listRecipes(propertyId) { const { data, error } = await supabase.from('recipes').select('*, recipe_ingredients(*, product:products(id,name,unit))').eq('property_id', propertyId).eq('active', true).order('menu_item_name'); if (error) throw new Error(error.message); return data || []; },
 
   async listInventoryReconciliation(propertyId) { const { data,error }=await supabase.rpc('fn_inventory_reconciliation',{p_property_id:propertyId}); if(error) throw new Error(error.message); return data||[]; },
