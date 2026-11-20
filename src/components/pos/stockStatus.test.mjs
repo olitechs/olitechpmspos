@@ -47,7 +47,7 @@ test('composite POS tile stock is derived from recipe components, not menu-produ
     { available_stock: 12, required_per_sale: 2, stock_status: 'available' },
     { available_stock: 4, required_per_sale: 1, stock_status: 'available' },
   ]), {
-    status: 'available', outOfStock: false, componentOutOfStock: false, componentLowStock: false,
+    status: 'available', outOfStock: false, availabilityUnknown: false, componentOutOfStock: false, componentLowStock: false,
   });
   assert.equal(getPosTileAvailability(composite, [
     { available_stock: 1, required_per_sale: 2, stock_status: 'low_stock' },
@@ -60,4 +60,11 @@ test('composite POS tile stock is derived from recipe components, not menu-produ
 test('direct-stock POS products retain their own stock blocking rules', () => {
   assert.equal(getPosTileAvailability({ inventory_tracking_mode: 'direct', stock: 0 }).outOfStock, true);
   assert.equal(getPosTileAvailability({ inventory_tracking_mode: 'direct', stock: 3 }).outOfStock, false);
+});
+
+test('composite POS tiles fail closed when component availability cannot be loaded', () => {
+  const result = getPosTileAvailability({ inventory_tracking_mode: 'composite', stock: 0 }, []);
+  assert.equal(result.status, 'unknown');
+  assert.equal(result.availabilityUnknown, true);
+  assert.equal(result.outOfStock, false);
 });
