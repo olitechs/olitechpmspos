@@ -54,6 +54,9 @@ test('component and output stock movements are location-aware and linked to the 
   assert.match(migration, /stock_internal\.production_cost_snapshots/);
   assert.match(migration, /ENABLE ROW LEVEL SECURITY/);
   assert.doesNotMatch(migration, /ADD COLUMN IF NOT EXISTS component_cost_total/);
+  assert.doesNotMatch(migration, /ADD COLUMN IF NOT EXISTS output_unit_cost/);
+  const publicSnapshot = migration.slice(migration.indexOf('v_snapshot:=v_snapshot'), migration.indexOf('v_cost_snapshot:=v_cost_snapshot'));
+  assert.doesNotMatch(publicSnapshot, /unit_cost_snapshot|line_cost_snapshot/);
   assert.match(locationMigration, /p_change <> ROUND\(p_change, 6\)/);
 });
 
