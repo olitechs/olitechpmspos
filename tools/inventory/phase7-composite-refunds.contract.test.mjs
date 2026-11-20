@@ -29,7 +29,7 @@ test('Partial refunds reject quantities above the unrefunded component balance',
 
 test('Refunds are idempotent and preserve an auditable reversal link',()=>{
  assert.match(migration,/idempotency_key=v_key/i);
- assert.match(migration,/reversal_of_id\)/i);
+ assert.match(migration,/reversal_of_id\s*\)/i);
  assert.match(migration,/source_type='pos_recipe_refund'/i);
  assert.match(migration,/type,qty,reason,user_id,source_type,source_id/i);
 });
