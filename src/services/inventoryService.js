@@ -299,8 +299,16 @@ export const inventoryService = {
     return data;
   },
   async postProduction(payload) {
-    const { data, error } = await supabase.rpc('fn_post_production', { p_property_id: payload.propertyId, p_recipe_id: payload.recipeId, p_output_product_id: payload.outputProductId, p_quantity: Number(payload.quantity), p_reference: payload.reference || null });
-    if (error) throw new Error(error.message); return data;
+    const { data, error } = await supabase.rpc('fn_post_inventory_production', {
+      p_property_id: payload.propertyId,
+      p_recipe_id: payload.recipeId,
+      p_output_product_id: payload.outputProductId,
+      p_quantity: Number(payload.quantity),
+      p_reference: payload.reference || null,
+      p_request_key: payload.requestKey,
+    });
+    if (error) throw new Error(error.message);
+    return data;
   },
 
   async listSuppliers(propertyId) {
