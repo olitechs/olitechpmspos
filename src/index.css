@@ -257,6 +257,33 @@
     --duration-fast: 120ms;
     --duration-base: 180ms;
     --duration-modal: 240ms;
+
+    /* Layering scale. Components must use these instead of ad-hoc z-[…] values. */
+    --z-base: 0;
+    --z-sticky: 50;
+    --z-dropdown: 40;
+    --z-nav: 60;
+    --z-overlay: 80;
+    --z-modal: 100;
+    --z-popover: 110;
+    --z-toast: 200;
+    --z-gate: 300;
+
+    /* Modal geometry: one place that decides how tall a dialog may be. */
+    --modal-gap: 1rem;
+    --modal-pad: clamp(1rem, 0.9rem + 0.4vw, 1.5rem);
+    --modal-radius: var(--radius);
+    --sheet-radius: 1.25rem;
+
+    /* Fluid type scale for dialogs and dense toolbars; body scale stays fixed. */
+    --text-fluid-sm: clamp(0.8125rem, 0.79rem + 0.1vw, 0.875rem);
+    --text-fluid-base: clamp(0.875rem, 0.85rem + 0.12vw, 0.9375rem);
+    --text-fluid-lg: clamp(1rem, 0.96rem + 0.2vw, 1.125rem);
+    --text-fluid-xl: clamp(1.125rem, 1.06rem + 0.31vw, 1.375rem);
+
+    /* Disabled controls stay readable instead of fading to invisibility. */
+    --disabled-opacity: 0.6;
+    --text-disabled: color-mix(in srgb, var(--text) 55%, var(--white));
   }
 
   *, *::before, *::after { box-sizing: border-box; }
@@ -320,6 +347,86 @@
   .pos-ticket { background: var(--surface); color: var(--text); border-color: var(--border); }
   .pos-ticket-muted { color: var(--text-muted); }
   .overlay-surface { box-shadow: var(--shadow-overlay); }
+
+  /* ---- Shared layout frames -------------------------------------------- */
+  /* Full-height application frame with a 100dvh fallback and no 100vh overshoot. */
+  .app-frame {
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  /* Auth/marketing frame: grow with content but never assume a tall viewport. */
+  .auth-frame {
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  /* Legacy dashboard sidebar: never taller than the visible viewport. */
+  .sidebar-frame {
+    height: calc(100vh - 16px);
+    height: calc(100dvh - 16px);
+  }
+
+  /* ---- Modal / dialog --------------------------------------------------- */
+  /* Panel owns the height budget; header and footer are pinned children. */
+  .modal-panel {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: var(--z-modal);
+    display: flex;
+    flex-direction: column;
+    width: calc(100% - var(--modal-gap) * 2);
+    max-height: calc(100vh - var(--modal-gap) * 2);
+    max-height: calc(100dvh - var(--modal-gap) * 2);
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: var(--modal-radius);
+    background: var(--surface);
+    box-shadow: var(--shadow-overlay);
+  }
+
+  .modal-body {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+
+  /* Scroll hint: shadows appear only while the region can still scroll. */
+  .modal-body.scroll-shadow-y {
+    background:
+      linear-gradient(var(--surface) 30%, transparent) top / 100% 1.25rem no-repeat local,
+      linear-gradient(transparent, var(--surface) 70%) bottom / 100% 1.25rem no-repeat local,
+      radial-gradient(farthest-side at 50% 0, color-mix(in srgb, var(--text) 16%, transparent), transparent) top / 100% 0.5rem no-repeat scroll,
+      radial-gradient(farthest-side at 50% 100%, color-mix(in srgb, var(--text) 16%, transparent), transparent) bottom / 100% 0.5rem no-repeat scroll;
+  }
+
+  .modal-header { flex: 0 0 auto; }
+  .modal-footer { flex: 0 0 auto; }
+
+  /* Form controls inside a dialog always meet the touch minimum. */
+  .modal-body :is(input, select, textarea) { min-height: 44px; }
+
+  /* Phones: full-width bottom sheet with safe-area padding. */
+  @media (max-width: 640px) {
+    .modal-panel {
+      left: 0;
+      right: 0;
+      top: auto;
+      bottom: 0;
+      transform: none;
+      width: 100%;
+      max-height: calc(100vh - env(safe-area-inset-top, 0px));
+      max-height: calc(100dvh - env(safe-area-inset-top, 0px));
+      border-radius: var(--sheet-radius) var(--sheet-radius) 0 0;
+      border-bottom: 0;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    .modal-footer > * { width: 100%; }
+  }
   .room-planner-toolbar { background: var(--surface); border-bottom: 1px solid var(--border); }
   .room-planner-toolbar-main { min-height: 44px; }
   .room-planner-tool-button { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; }

@@ -86,12 +86,12 @@ export default function AppShell({ workspace = 'backoffice' }) {
   const email = user?.email || getSessionStaff()?.email || '';
 
   return (
-    <div className="flex h-screen supports-[height:100dvh]:h-[100dvh] min-h-0 flex-col overflow-hidden bg-[var(--bg)] text-[var(--text)]">
+    <div className="app-frame flex min-h-0 flex-col overflow-hidden bg-[var(--bg)] text-[var(--text)]">
       <TopAppNav workspace={workspace} />
       <div className="flex min-h-0 flex-1">
-        {workspace !== 'pos' && mobileOpen && <button type="button" aria-label="Close navigation" onClick={() => setMobileOpen(false)} className="fixed inset-0 z-40 bg-[var(--overlay-scrim)] md:hidden" />}
+        {workspace !== 'pos' && mobileOpen && <button type="button" aria-label="Close navigation" onClick={() => setMobileOpen(false)} className="fixed inset-0 z-[var(--z-dropdown)] bg-[var(--overlay-scrim)] md:hidden" />}
         {workspace !== 'pos' && <aside className={[
-          'fixed inset-y-0 left-0 z-50 flex min-h-0 flex-col border-r border-[var(--border)] bg-[var(--surface)] transition-[width,transform] duration-150 md:static md:z-auto md:translate-x-0',
+          'fixed inset-y-0 left-0 z-[var(--z-sticky)] flex min-h-0 flex-col border-r border-[var(--border)] bg-[var(--surface)] transition-[width,transform] duration-150 md:static md:z-auto md:translate-x-0',
           collapsed ? 'w-16' : 'w-60',
           mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
         ].join(' ')}>
@@ -139,7 +139,7 @@ export default function AppShell({ workspace = 'backoffice' }) {
             <button type="button" onClick={() => setMobileOpen(true)} className="rounded-md p-2 text-[var(--text)]" aria-label="Open navigation"><Menu size={18} /></button>
             <span className="ml-2 text-sm font-semibold">{hotelName}</span>
           </div>}
-          <main className="min-h-0 min-w-0 flex-1 overflow-auto"><div className={workspace === 'pos' ? 'w-full min-h-full' : 'mx-auto w-full max-w-[1600px]'}><Outlet /></div></main>
+          <main className="min-h-0 min-w-0 flex-1 overflow-auto overscroll-contain"><div className={workspace === 'pos' ? 'w-full min-h-full' : 'mx-auto w-full max-w-[1600px]'}><Outlet /></div></main>
         </div>
       </div>
     </div>

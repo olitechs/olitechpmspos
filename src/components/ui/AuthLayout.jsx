@@ -4,15 +4,15 @@ import { ArrowUpRight, CheckCircle2, KeyRound, ShieldCheck, Sparkles } from "luc
 
 export default function AuthLayout({ title, subtitle, footer, children }) {
   return (
-    <main className="min-h-screen bg-[var(--canvas)] px-4 py-6 text-[var(--text)] sm:px-6 lg:px-10">
-      <div className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-[1320px] items-center justify-center">
-        <section className="relative w-full overflow-hidden rounded-[30px] border border-[var(--border)] bg-[var(--surface)] shadow-none lg:min-h-[760px]">
+    <main className="auth-frame bg-[var(--canvas)] px-4 py-6 text-[var(--text)] sm:px-6 lg:px-10">
+      <div className="mx-auto flex w-full max-w-[1320px] items-center justify-center">
+        <section className="relative w-full overflow-hidden rounded-[30px] border border-[var(--border)] bg-[var(--surface)] shadow-none">
           <div className="absolute inset-0 pointer-events-none">
             <div className="absolute -left-32 -top-32 h-72 w-72 rounded-full bg-brand-soft/40 " />
             <div className="absolute -bottom-40 left-[42%] h-96 w-96 rounded-full bg-[var(--primary-soft)] " />
           </div>
 
-          <div className="relative grid min-h-[760px] lg:grid-cols-[44%_56%]">
+          <div className="relative grid min-h-0 lg:grid-cols-[44%_56%]">
             <section className="flex flex-col px-7 py-8 sm:px-12 sm:py-10 lg:px-16 lg:py-12">
               <header className="flex items-center justify-between">
                 <BrandLogo className="h-11 w-auto max-w-[184px] object-contain object-left" />
