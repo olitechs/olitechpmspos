@@ -78,7 +78,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS inventory_productions_property_request_key
 CREATE OR REPLACE FUNCTION public.fn_post_production(
   p_property_id uuid,p_recipe_id uuid,p_output_product_id uuid,p_quantity numeric,p_reference text DEFAULT NULL::text
 ) RETURNS public.inventory_productions
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=public
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=''
 AS $function$
 BEGIN
   RAISE EXCEPTION 'Direct production posting is disabled. Use the authorized production workflow.';
@@ -96,7 +96,7 @@ CREATE OR REPLACE FUNCTION public.fn_post_inventory_production(
 ) RETURNS public.inventory_productions
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path=public
+SET search_path=''
 AS $function$
 DECLARE
   v_recipe public.recipes%ROWTYPE;
