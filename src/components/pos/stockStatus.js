@@ -36,13 +36,15 @@ export function getPosTileAvailability(item, componentRows = []) {
     return { status, outOfStock: status === 'out-of-stock', componentOutOfStock: false, componentLowStock: false };
   }
   const rows = Array.isArray(componentRows) ? componentRows : [];
+  const availabilityUnknown = rows.length === 0;
   const componentOutOfStock = rows.some((component) =>
     Number(component.available_stock ?? 0) < Number(component.required_per_sale ?? 0)
   );
   const componentLowStock = rows.some((component) => component.stock_status === 'low_stock');
   return {
-    status: componentOutOfStock ? 'out-of-stock' : componentLowStock ? 'low-stock' : rows.length ? 'available' : 'unknown',
+    status: availabilityUnknown ? 'unknown' : componentOutOfStock ? 'out-of-stock' : componentLowStock ? 'low-stock' : 'available',
     outOfStock: componentOutOfStock,
+    availabilityUnknown,
     componentOutOfStock,
     componentLowStock,
   };
