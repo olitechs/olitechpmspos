@@ -27,8 +27,8 @@ test('legacy membership-only production RPC and direct table writes are disabled
 test('production validates recipe and same-property tracked component/output products', () => {
   assert.match(migration, /v_ingredient_count=0/);
   assert.match(migration, /p\.property_id=p_property_id/);
-  assert.match(migration, /p\.inventory_tracking_mode,'direct'\)<> 'direct'/i);
-  assert.match(migration, /v_output\.inventory_tracking_mode,'direct'\)<> 'direct'/i);
+  assert.match(migration, /coalesce\(p\.inventory_tracking_mode,'direct'\)<>'direct'/i);
+  assert.match(migration, /coalesce\(v_output\.inventory_tracking_mode,'direct'\)<>'direct'/i);
   assert.match(migration, /v_recipe\.recipe_version/);
 });
 
