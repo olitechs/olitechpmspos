@@ -56,6 +56,7 @@ declare
   v_already_reversed numeric;
   v_restore numeric;
   v_remaining numeric;
+  v_movement_count integer;
   v_movement record;
   v_product public.products;
   v_reason text;
@@ -102,6 +103,7 @@ begin
     if v_original_qty<=0 then raise exception 'Original receipt line % has an invalid quantity.',v_line; end if;
     if v_refund_qty>v_original_qty then raise exception 'Refund quantity exceeds the original sold quantity on line %.',v_line; end if;
 
+    v_movement_count:=0;
     for v_movement in
       select sm.*
       from public.stock_movements sm
@@ -112,6 +114,7 @@ begin
       order by sm.id
       for update
     loop
+      v_movement_count:=v_movement_count+1;
       v_key:=trim(p_idempotency_key)||':'||v_movement.id::text;
       if exists(select 1 from public.stock_movements where property_id=p_property_id and idempotency_key=v_key) then
         continue;
@@ -158,6 +161,9 @@ begin
         'restored_qty',v_restore,'unit',v_movement.unit_code,'receipt_line_index',v_line
       ));
     end loop;
+    if v_movement_count=0 and not p_allow_remaining then
+      raise exception 'No composite component stock movements are linked to receipt line %.',v_line;
+    end if;
   end loop;
   if jsonb_array_length(v_result)>0 then
     insert into public.audit_logs(
