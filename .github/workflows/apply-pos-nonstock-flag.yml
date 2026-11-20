@@ -1,0 +1,50 @@
+name: Flag non-stock POS item
+
+# One-off production data change: marks the single product 0KONOMI SAUCE as
+# track_stock = false so it stops showing OUT OF STOCK on the order screen.
+# Requires the typed confirmation FLAG-NONSTOCK-0KONOMI. Runs in one
+# transaction and fails without changing anything if the target is not unique.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type FLAG-NONSTOCK-0KONOMI to run this against production"
+        required: true
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      FILE: tools/db/pos-flag-nonstock-okonomi-sauce.sql
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require explicit confirmation
+        if: ${{ inputs.confirm != 'FLAG-NONSTOCK-0KONOMI' }}
+        run: |
+          echo "::error::Confirmation input must be exactly FLAG-NONSTOCK-0KONOMI."
+          exit 1
+
+      - name: Show the exact file being applied
+        run: |
+          set -euo pipefail
+          test -f "$FILE"
+          sha256sum "$FILE"
+
+      - name: Apply the guarded one-row change
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_DB_URL:-}" ]; then
+            echo "::error::Repository secret SUPABASE_DB_URL is not configured."
+            exit 1
+          fi
+          psql --version
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 --single-transaction -f "$FILE"
