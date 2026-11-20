@@ -68,6 +68,7 @@ begin
   if not found then raise exception 'Every component must belong to this property.' using errcode='23503'; end if;
   if not coalesce(v_component.track_stock,true) or v_component.inventory_tracking_mode in ('untracked','composite') then raise exception 'Component "%" must be directly tracked; nested composites are not supported.',v_component.name; end if;
   v_entered_unit:=coalesce(nullif(v_line->>'unit',''),v_component.base_unit);
+  if exists(select 1 from public.inventory_units where code=v_entered_unit and allows_fraction=false) and v_entered_qty<>trunc(v_entered_qty) then raise exception 'Unit % does not allow fractional quantities.',v_entered_unit using errcode='22023'; end if;
   v_factor:=public.fn_inventory_unit_factor(p_property_id,v_entered_unit,v_component.base_unit);
   v_base_qty:=round(v_entered_qty*v_factor,6);
   if v_base_qty<=0 then raise exception 'Converted quantity is too small.' using errcode='22023'; end if;
