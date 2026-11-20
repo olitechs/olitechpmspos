@@ -24,7 +24,7 @@ export default function CompositeItemEditor({ propertyId, productId, onSaved }) 
           inventoryService.listProducts(propertyId)
         ]);
         if(!active)return;
-        setProducts((catalogue||[]).filter(p=>p.id!==productId&&p.track_stock!==false&&p.inventory_tracking_mode!=='untracked'));
+        setProducts((catalogue||[]).filter(p=>p.id!==productId&&p.track_stock!==false&&p.inventory_tracking_mode!=='untracked'&&p.inventory_tracking_mode!=='composite'));
         const current=(productRows||[]).find(p=>p.id===productId);
         setEnabled(current?.inventory_tracking_mode==='composite'||Boolean(recipe));
         setNotes(recipe?.notes||'');
