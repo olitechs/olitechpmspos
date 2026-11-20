@@ -70,7 +70,7 @@ begin
       v_needed:=round(v_ing.qty*(v_order_qty/greatest(coalesce(v_recipe.yield_qty,1),0.000001)),6);
       if v_needed<=0 then raise exception 'Composite recipe contains an invalid component quantity.'; end if;
 
-      v_key:=md5(p_property_id::text||':'||coalesce(p_reference,'POS sale')||':'||v_line::text||':'||v_recipe.id::text||':'||v_recipe.recipe_version::text||':'||v_component_index::text||':'||v_ing.product_id::text);
+      v_key:=md5(p_property_id::text||':'||coalesce(p_reference,'POS sale')||':'||v_line::text||':'||v_recipe.id::text||':'||v_recipe.recipe_version::text||':'||v_component_index::text||':'||v_ing.product_id::text||':'||txid_current()::text);
       if exists(select 1 from public.stock_movements sm where sm.property_id=p_property_id and sm.idempotency_key=v_key) then
         continue;
       end if;
@@ -169,6 +169,6 @@ begin
 end;
 $function$;
 revoke all on function public.fn_list_pos_menu(uuid) from public,anon;
-grant execute on function public.fn_list_pos_menu(uuid) to authenticated;
+grant execute on function public.fn_list_pos_menu(uuid) to authenticated,service_role;
 commit;
 notify pgrst,'reload schema';
