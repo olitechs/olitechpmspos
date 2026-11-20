@@ -28,6 +28,8 @@ test('composite RPC enforces property ownership, manager authority and valid com
   assert.match(migration,/Only an authorised manager can edit composite recipes/i);
   assert.match(migration,/v_component_id=any\(v_seen\)/i);
   assert.match(migration,/Every component must belong to the same property/i);
+  assert.match(migration,/Nested composite components are not supported yet/i);
+  assert.match(editor,/inventory_tracking_mode!=='composite'/i);
   assert.match(migration,/set inventory_tracking_mode='composite'/i);
   assert.doesNotMatch(migration,/track_stock=false/i);
   assert.match(migration,/revoke all on function public\.fn_upsert_composite_product_recipe/i);
