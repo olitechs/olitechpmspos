@@ -3,32 +3,26 @@
 -- and is rolled back, so no production row or sequence value is kept.
 --
 -- The trigger only allocates when a signed-in user is present (auth.uid()), so
--- the session impersonates an existing property member for the duration of the
--- transaction. A '(none)' result therefore means no member user could be found
--- for the probe, not that numbering is broken.
+-- the session impersonates the platform owner (or, failing that, any property
+-- member) for the duration of the transaction. A '(none)' result therefore
+-- means numbering could not be exercised in this database, not that the
+-- trigger is missing.
 \set ON_ERROR_STOP off
 
 begin;
 
-select set_config('request.jwt.claim.sub', coalesce((
-  select u.user_id::text
-    from public.property_users u
-    join public.property_document_sequences s on s.property_id = u.property_id and s.book = 'receipt'
-    join public.reservations r on r.property_id = u.property_id and r.status <> 'cancelled'
-   limit 1), ''), true) as probe_actor;
+select set_config('request.jwt.claim.sub', coalesce(
+  (select id::text from public.profiles where platform_role = 'platform_owner' limit 1),
+  (select user_id::text from public.property_users limit 1),
+  ''), true) as probe_actor;
 
-select 'PROBE sequence before: ' || p.name || ' next=' || s.next_number as probe
-  from public.property_document_sequences s
-  join public.properties p on p.id = s.property_id
- where s.book = 'receipt'
- order by p.name;
+select 'PROBE receipt books before: ' || count(*) as probe
+  from public.property_document_sequences where book = 'receipt';
 
 with target as (
   select r.property_id, r.id as reservation_id
     from public.reservations r
-    join public.property_document_sequences s on s.property_id = r.property_id and s.book = 'receipt'
    where r.status <> 'cancelled'
-     and exists (select 1 from public.property_users u where u.property_id = r.property_id)
    order by r.created_at
    limit 1
 )
