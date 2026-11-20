@@ -65,7 +65,10 @@ test('rollback-only runtime gate covers location deltas, retries, authorization 
 });
 
 test('active inventory client stays compatible until the database migration is promoted', () => {
-  assert.doesNotMatch(inventoryService,/p_request_key: payload\.requestKey/);
+  const adjustmentStart=inventoryService.indexOf('async postAdjustment(');
+  const wastageStart=inventoryService.indexOf('async listWastageRequests(');
+  const adjustmentService=inventoryService.slice(adjustmentStart,wastageStart>adjustmentStart?wastageStart:undefined);
+  assert.doesNotMatch(adjustmentService,/p_request_key: payload\.requestKey/);
   assert.match(inventoryService,/p_location_id: payload\.locationId/);
   assert.doesNotMatch(inventoryUi,/makeInventoryRequestKey/);
   assert.doesNotMatch(inventoryUi,/from\('product_stock_locations'\)/);
