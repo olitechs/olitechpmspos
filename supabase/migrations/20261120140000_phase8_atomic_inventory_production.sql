@@ -239,23 +239,18 @@ BEGIN
   );
 
   FOR v_line IN
-    SELECT ri.id,ri.product_id,ri.qty,ri.unit_cost_snapshot,p.cost_price
+    SELECT ri.id,ri.product_id,ri.qty
     FROM public.recipe_ingredients ri
-    JOIN public.products p ON p.id=ri.product_id AND p.property_id=p_property_id
     WHERE ri.recipe_id=v_recipe.id
     ORDER BY ri.product_id,ri.id
   LOOP
     v_needed:=round(v_line.qty*(p_quantity/v_recipe.yield_qty),6);
-    v_unit_cost:=coalesce(v_line.unit_cost_snapshot,v_line.cost_price,0);
     v_component_location:=stock_internal.fn_resolve_product_location(p_property_id,v_line.product_id,NULL);
     PERFORM stock_internal.fn_post_stock_movement_at_location(
       p_property_id,v_line.product_id,v_component_location,-v_needed,
       'Production consumption: '||coalesce(NULLIF(BTRIM(p_reference),''),v_row.id::text),
       'production',v_row.id,'component:'||v_line.id::text
     );
-    UPDATE public.stock_movements SET unit_cost=v_unit_cost
-    WHERE property_id=p_property_id AND source_type='production' AND source_id=v_row.id
-      AND source_line_key='component:'||v_line.id::text;
   END LOOP;
 
   v_output_location:=stock_internal.fn_resolve_product_location(p_property_id,p_output_product_id,NULL);
@@ -264,9 +259,6 @@ BEGIN
     'Production output: '||coalesce(NULLIF(BTRIM(p_reference),''),v_row.id::text),
     'production',v_row.id,'output'
   );
-  UPDATE public.stock_movements SET unit_cost=round(v_component_total/p_quantity,6)
-    WHERE property_id=p_property_id AND source_type='production' AND source_id=v_row.id AND source_line_key='output';
-
   RETURN v_row;
 END
 $function$;
