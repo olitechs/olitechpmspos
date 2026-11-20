@@ -20,6 +20,7 @@ test('legacy membership-only production RPC and direct table writes are disabled
   assert.match(migration, /Direct production posting is disabled/);
   assert.match(migration, /REVOKE ALL ON FUNCTION public\.fn_post_production/);
   assert.match(migration, /REVOKE INSERT,UPDATE,DELETE ON TABLE public\.inventory_productions/);
+  assert.match(migration, /REVOKE INSERT,UPDATE,DELETE ON TABLE public\.recipes,public\.recipe_ingredients/);
   assert.doesNotMatch(service, /rpc\('fn_post_production'/);
   assert.match(service, /rpc\('fn_post_inventory_production'/);
 });
