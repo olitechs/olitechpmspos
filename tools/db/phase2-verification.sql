@@ -6,6 +6,7 @@ do $$
 declare
   v_count integer;
   v_text text;
+  v_oid oid;
 begin
   select count(*) into v_count
     from information_schema.columns
@@ -48,7 +49,11 @@ begin
     raise exception 'The defaults trigger does not allocate ticket numbers';
   end if;
 
-  if position('voided_at' in pg_get_functiondef('public.fn_reverse_folio_charge(uuid,uuid,text)'::regproc)) = 0 then
+  v_oid := to_regprocedure('public.fn_reverse_folio_charge(uuid,uuid,text)');
+  if v_oid is null then
+    raise exception 'fn_reverse_folio_charge(uuid,uuid,text) is missing';
+  end if;
+  if position('voided_at' in pg_get_functiondef(v_oid)) = 0 then
     raise exception 'fn_reverse_folio_charge does not write the void audit flags';
   end if;
 
