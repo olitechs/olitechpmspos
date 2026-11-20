@@ -51,7 +51,7 @@ test('component and output stock movements are location-aware and linked to the 
   assert.match(migration, /components_snapshot/);
   assert.match(migration, /component_cost_total/);
   assert.match(migration, /output_unit_cost/);
-  assert.match(migration, /stock_internal\\.production_cost_snapshots/);
+  assert.match(migration, /stock_internal\.production_cost_snapshots/);
   assert.match(migration, /ENABLE ROW LEVEL SECURITY/);
   assert.doesNotMatch(migration, /ADD COLUMN IF NOT EXISTS component_cost_total/);
   assert.match(locationMigration, /p_change <> ROUND\(p_change, 6\)/);
