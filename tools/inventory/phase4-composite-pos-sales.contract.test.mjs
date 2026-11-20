@@ -23,7 +23,7 @@ test('Composite component stock deduction is serialized, idempotent and ledger-b
 });
 test('POS menu hides inventory-only raw ingredients and consumables but preserves enabled sellable products',()=>{
  assert.match(migration,/p\.pos_enabled is true and p\.pos_active is true/i);
- assert.match(migration,/stock_item_type[\\s\\S]*raw_ingredient[\\s\\S]*consumable/i);
+ assert.match(migration,/stock_item_type[\s\S]*raw_ingredient[\s\S]*consumable/i);
 });
 test('Category editor can route Kitchen or Bar and persists the category route',()=>{
  assert.match(menu,/Send category orders to/);
