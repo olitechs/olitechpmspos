@@ -116,6 +116,7 @@ begin
       ));
     end loop;
   end loop;
+  perform set_config('olitechs.pos_composite_movement_ids',coalesce((select jsonb_agg(value->>'stock_movement_id')::text from jsonb_array_elements(v_consumed)),'[]'),true);
   return v_consumed;
 end;
 $function$;
