@@ -30,6 +30,7 @@ test('production validates recipe and same-property tracked component/output pro
   assert.match(migration, /coalesce\(p\.inventory_tracking_mode,'direct'\)<>'direct'/i);
   assert.match(migration, /coalesce\(v_output\.inventory_tracking_mode,'direct'\)<>'direct'/i);
   assert.match(migration, /v_recipe\.recipe_version/);
+  assert.match(migration, /v_recipe\.menu_product_id<>p_output_product_id/);
 });
 
 test('production request keys are fingerprinted and serialized for safe retries', () => {
