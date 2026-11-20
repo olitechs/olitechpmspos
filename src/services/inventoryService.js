@@ -182,6 +182,20 @@ export const inventoryService = {
     return data;
   },
 
+  async listInventoryUnits() {
+    const { data, error } = await supabase.from('inventory_units').select('code,label,dimension,allows_fraction').order('dimension').order('label');
+    if (error) throw new Error(error.message);
+    return data || [];
+  },
+
+  async listInventoryUnitConversions(propertyId) {
+    let query = supabase.from('inventory_unit_conversions').select('property_id,from_unit,to_unit,factor');
+    if (propertyId) query = query.or(`property_id.is.null,property_id.eq.${propertyId}`);
+    const { data, error } = await query;
+    if (error) throw new Error(error.message);
+    return data || [];
+  },
+
   async getCompositeRecipe(propertyId, productId) {
     const { data, error } = await supabase
       .from('recipes')
