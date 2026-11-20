@@ -58,6 +58,20 @@ export const inventoryService = {
     return (data || []).map((product) => canSeeCost ? product : { ...product, cost_price: null });
   },
 
+  async listCompositeStockAvailability(propertyId) {
+    const { data, error } = await supabase.rpc('fn_list_composite_stock_availability', { p_property_id: propertyId });
+    if (error) throw new Error(error.message);
+    return data || [];
+  },
+
+  async listCompositeComponentHistory(propertyId, menuProductId, limit = 50) {
+    const { data, error } = await supabase.rpc('fn_list_composite_component_history', {
+      p_property_id: propertyId, p_menu_product_id: menuProductId, p_limit: limit,
+    });
+    if (error) throw new Error(error.message);
+    return data || [];
+  },
+
   async listPosCategories(propertyId) {
     const { data, error } = await supabase.from('pos_menu_categories').select('*').eq('property_id', propertyId).eq('active', true).order('sort_order').order('name');
     if (error) throw new Error(error.message);
