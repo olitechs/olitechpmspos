@@ -17,7 +17,7 @@
 - Locks the output product before the linked recipe (matching the recipe-editor lock order), locks recipe ingredient rows, then locks component products in deterministic product-ID order. A property-scoped advisory lock serializes manual production batches while each request key remains independently idempotent.
 - Uses normalized recipe base-unit quantities and the saved component unit-cost snapshots from Phase 3.
 - Creates the production record first inside the transaction, then posts each component deduction and output addition through the Phase 7.1 location-aware writer.
-- Links every stock movement to the production record with stable component/output line keys. Movement unit costs are updated to the saved recipe component cost and calculated output unit cost.
+- Links every stock movement to the production record with stable component/output line keys. Movement rows retain the existing location writer's standard product cost value; exact recipe component and output batch costs stay in the private cost snapshot table because stock-movement SELECT is currently property-member scoped.
 - Records the recipe version and component quantities/units on the production row; stores cost snapshots separately in the private schema.
 - Uses a transaction advisory lock, unique request key and payload fingerprint so retries return the original production row and key reuse with different details is rejected.
 - Revokes direct authenticated INSERT/UPDATE/DELETE on `inventory_productions`.
