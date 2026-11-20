@@ -281,8 +281,8 @@ DECLARE
   v_new_stock numeric;
   v_idempotency_key text;
 BEGIN
-  IF p_change IS NULL OR p_change = 0 OR p_change <> ROUND(p_change, 2) THEN
-    RAISE EXCEPTION 'Stock change must be non-zero and use the supported 2-decimal precision';
+  IF p_change IS NULL OR p_change = 0 OR p_change <> ROUND(p_change, 6) THEN
+    RAISE EXCEPTION 'Stock change must be non-zero and use the supported 6-decimal precision';
   END IF;
 
   IF p_location_id IS NULL
