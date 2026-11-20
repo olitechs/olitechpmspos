@@ -84,7 +84,7 @@ export default function FrontOfficeShell() {
     <div className="shrink-0 border-t border-[var(--border)] p-2"><button type="button" onClick={logout} className={['flex min-h-11 w-full items-center gap-3 rounded-lg px-2 text-xs text-[var(--text-muted)] hover:bg-[var(--primary-soft)]',collapsed?'justify-center':''].join(' ')}><LogOut size={16}/>{!collapsed && 'Sign out'}</button></div>
   </aside>;
 
-  return <div className="app-frame flex min-h-0 w-full max-w-full overflow-hidden bg-[var(--canvas)] text-[var(--text)]">
+  return <div className="app-frame flex h-[100dvh] min-h-0 w-full max-w-full overflow-hidden bg-[var(--canvas)] text-[var(--text)]">
     <div className="hidden shrink-0 min-[1100px]:block">{sidebar}</div>
     {drawer && <div className="fixed inset-0 z-[var(--z-overlay)] min-[1100px]:hidden"><button aria-label="Close navigation" onClick={() => setDrawer(false)} className="absolute inset-0 bg-[var(--overlay-scrim)]"/><div className="relative h-full w-[min(86vw,300px)]">{sidebar}</div></div>}
     <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
