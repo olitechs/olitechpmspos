@@ -45,6 +45,8 @@ export const PERMISSION_CODES = [
   { code: 'stores.stock.issue', workspace: 'store', label: 'Issue stock', sensitive: true },
   { code: 'stores.stock.transfer', workspace: 'store', label: 'Transfer stock', sensitive: false },
   { code: 'stores.stock.adjust', workspace: 'store', label: 'Make stock adjustments', sensitive: true },
+  { code: 'stores.stock.wastage.submit', workspace: 'store', label: 'Submit stock wastage requests', sensitive: true },
+  { code: 'stores.stock.wastage.approve', workspace: 'store', label: 'Approve or reject stock wastage requests', sensitive: true },
   { code: 'stores.suppliers.manage', workspace: 'store', label: 'Manage suppliers and purchasing', sensitive: true },
   // Back Office
   { code: 'back_office.access', workspace: 'backoffice', label: 'Use the Back Office workspace', sensitive: false },
