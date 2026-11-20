@@ -73,6 +73,12 @@ begin
   if p_items is null or jsonb_typeof(p_items)<>'array' then
     raise exception 'Refund lines must be a JSON array.' using errcode='22023';
   end if;
+  if exists(
+    select 1 from jsonb_array_elements(p_items) x
+    group by (x->>'line_index') having count(*)>1
+  ) then
+    raise exception 'Submit each receipt line once per refund request.' using errcode='22023';
+  end if;
 
   select * into v_receipt from public.pos_receipts
   where id=p_receipt_id and property_id=p_property_id for update;
@@ -153,6 +159,17 @@ begin
       ));
     end loop;
   end loop;
+  if jsonb_array_length(v_result)>0 then
+    insert into public.audit_logs(
+      actor_id,property_id,action,old_value,new_value,entity_type,entity_id,related_reservation_id
+    ) values(
+      auth.uid(),p_property_id,
+      case when p_allow_remaining then 'pos_composite_stock_void_reversal' else 'pos_composite_stock_refunded' end,
+      jsonb_build_object('receipt_id',v_receipt.id,'receipt_number',v_receipt.receipt_number),
+      jsonb_build_object('reason',v_reason,'idempotency_key',p_idempotency_key,'restored_components',v_result),
+      'pos_receipt',v_receipt.id,v_receipt.reservation_id
+    );
+  end if;
   return v_result;
 end;
 $function$;
