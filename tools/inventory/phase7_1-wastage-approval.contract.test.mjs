@@ -30,7 +30,7 @@ test('approved wastage uses one location-aware stock movement linked to its requ
   assert.match(migration, /'wastage',v_row\.id,'wastage'/);
   assert.match(migration, /stock_movement_id=/);
   assert.match(migration, /location_posting_context/);
-  assert.match(migration, /p_change <> ROUND\\(p_change, 6\\)/);
+  assert.match(migration, /p_change <> ROUND\(p_change, 6\)/);
   assert.match(migration, /products_sync_default_location/);
 });
 
