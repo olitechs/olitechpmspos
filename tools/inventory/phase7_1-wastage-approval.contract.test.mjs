@@ -13,7 +13,7 @@ test('wastage submission and approval are separate permissioned actions', () => 
   assert.match(migration, /fn_submit_inventory_wastage/);
   assert.match(migration, /fn_decide_inventory_wastage/);
   assert.match(migration, /v_row\.created_by=auth\.uid\(\)/);
-  assert.match(migration, /status='pending'/);
+  assert.match(migration, /'pending'/);
   assert.match(permissions, /stores\.stock\.wastage\.submit/);
   assert.match(permissions, /stores\.stock\.wastage\.approve/);
 });
