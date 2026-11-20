@@ -106,6 +106,11 @@ begin
       order by sm.id
       for update
     loop
+      v_key:=trim(p_idempotency_key)||':'||v_movement.id::text;
+      if exists(select 1 from public.stock_movements where property_id=p_property_id and idempotency_key=v_key) then
+        continue;
+      end if;
+
       v_component_per_unit:=coalesce(v_movement.base_qty,v_movement.qty)/v_original_qty;
       if v_component_per_unit<=0 then raise exception 'Original component movement has an invalid quantity.'; end if;
 
@@ -124,11 +129,6 @@ begin
         raise exception 'Refund exceeds the remaining unrefunded component quantity on receipt line %.',v_line;
       end if;
       if v_restore<=0 then continue; end if;
-
-      v_key:=trim(p_idempotency_key)||':'||v_movement.id::text;
-      if exists(select 1 from public.stock_movements where property_id=p_property_id and idempotency_key=v_key) then
-        continue;
-      end if;
 
       select * into v_product from public.products
       where id=v_movement.product_id and property_id=p_property_id for update;
