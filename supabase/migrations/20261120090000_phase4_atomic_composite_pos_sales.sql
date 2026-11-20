@@ -122,12 +122,14 @@ $function$;
 revoke all on function public.fn_consume_recipe_stock(uuid,jsonb,text) from public,anon;
 grant execute on function public.fn_consume_recipe_stock(uuid,jsonb,text) to authenticated;
 
--- Keep the existing menu RPC signature so all POS clients continue to call it.
--- Raw ingredients and consumables are inventory-only; legacy NULL item types and
--- retail/finished goods remain visible when the existing POS flags allow them.
-create or replace function public.fn_list_pos_menu(p_property_id uuid)
+-- Keep the existing input signature so POS clients continue to call the same RPC.
+-- The output now includes tracking mode so the POS can distinguish a composite's
+-- recipe-backed availability from direct stock on the sellable menu product.
+-- Drop/recreate is required because PostgreSQL cannot replace a table return type.
+drop function if exists public.fn_list_pos_menu(uuid);
+create function public.fn_list_pos_menu(p_property_id uuid)
 returns table(
- id uuid,sku text,name text,category text,unit text,current_stock numeric,min_stock numeric,
+ id uuid,sku text,name text,category text,unit text,inventory_tracking_mode text,current_stock numeric,min_stock numeric,
  selling_price numeric,production_center text,pos_sort integer,tile_color text,tile_text_color text,tile_image_url text
 )
 language plpgsql
@@ -157,7 +159,7 @@ begin
 
   return query
   select p.id,p.sku,p.name,coalesce(nullif(p.pos_category,''),p.category),
-    p.unit,p.current_stock,p.min_stock,p.selling_price,
+    p.unit,coalesce(p.inventory_tracking_mode,'direct'),p.current_stock,p.min_stock,p.selling_price,
     coalesce(nullif(c.production_center,''),p.production_center,'Kitchen'),
     p.pos_sort,p.tile_color,p.tile_text_color,p.tile_image_url
   from public.products p
