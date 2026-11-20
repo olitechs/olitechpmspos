@@ -5,6 +5,7 @@ import { inventoryService } from '@/services/inventoryService';
 import { useAuth } from '@/lib/AuthContext';
 import { formatAmount } from '@/lib/posMoney';
 import MenuVisualEditor from '@/components/pos/MenuVisualEditor';
+import CompositeItemEditor from '@/components/pos/CompositeItemEditor';
 
 const CENTER_OPTIONS = ['Kitchen','Bar'];
 const UNIT_OPTIONS = ['pcs','bottle','glass','plate','portion','kg','ltr'];
@@ -163,7 +164,7 @@ export default function MenuManager({ open, onClose, embedded = false }) {
     <span className="text-[11px] font-normal text-[var(--text-muted)]">JPG, PNG or WebP · up to 5 MB</span>
   </div>
   <label className="block font-normal">Or paste an image URL<input value={editing.tile_image_url||''} onChange={e=>setEditing({...editing,tile_image_url:e.target.value})} placeholder="https://…" className="mt-1 w-full rounded-xl border border-[var(--border)] px-3 py-2.5"/></label>
-</div></div><div className="mt-5 flex justify-end gap-2"><button onClick={()=>setEditing(null)} className="rounded-xl border px-4 py-2.5 text-sm font-medium">Cancel</button><button onClick={save} disabled={imageUploading} className="rounded-xl bg-[var(--primary)] px-5 py-2.5 text-sm font-medium text-primary-foreground">Save Product</button></div></div></div>}
+</div></div><CompositeItemEditor propertyId={propertyId} productId={editing.id} onSaved={()=>{reload();window.dispatchEvent(new Event('olitech:menu-updated'));}}/><div className="mt-5 flex justify-end gap-2"><button onClick={()=>setEditing(null)} className="rounded-xl border px-4 py-2.5 text-sm font-medium">Cancel</button><button onClick={save} disabled={imageUploading} className="rounded-xl bg-[var(--primary)] px-5 py-2.5 text-sm font-medium text-primary-foreground">Save Product</button></div></div></div>}
     </div>
   </div>;
 }
