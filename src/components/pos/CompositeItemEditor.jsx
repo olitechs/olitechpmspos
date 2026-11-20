@@ -18,14 +18,13 @@ export default function CompositeItemEditor({ propertyId, productId, onSaved }) 
       if(!propertyId||!productId)return;
       setLoading(true);
       try{
-        const [catalogue,recipe,productRows]=await Promise.all([
+        const [catalogue,recipe]=await Promise.all([
           inventoryService.listProducts(propertyId),
-          inventoryService.getCompositeRecipe(propertyId,productId),
-          inventoryService.listProducts(propertyId)
+          inventoryService.getCompositeRecipe(propertyId,productId)
         ]);
         if(!active)return;
         setProducts((catalogue||[]).filter(p=>p.id!==productId&&p.track_stock!==false&&p.inventory_tracking_mode!=='untracked'&&p.inventory_tracking_mode!=='composite'));
-        const current=(productRows||[]).find(p=>p.id===productId);
+        const current=(catalogue||[]).find(p=>p.id===productId);
         setEnabled(current?.inventory_tracking_mode==='composite'||Boolean(recipe));
         setNotes(recipe?.notes||'');
         setComponents((recipe?.recipe_ingredients||[]).map(line=>({product_id:line.product_id,qty:String(line.qty)})));
