@@ -64,10 +64,38 @@ export const inventoryService = {
     return data || [];
   },
 
+  /**
+   * Management view: includes disabled categories so they can be re-enabled
+   * instead of disappearing from the editor forever.
+   */
+  async listPosCategoriesAdmin(propertyId) {
+    const { data, error } = await supabase.from('pos_menu_categories').select('*').eq('property_id', propertyId).order('sort_order').order('name');
+    if (error) throw new Error(error.message);
+    return data || [];
+  },
+
   async listPosMenu(propertyId) {
     const { data, error } = await supabase.rpc('fn_list_pos_menu', { p_property_id: propertyId });
     if (error) throw new Error(error.message);
     return data || [];
+  },
+
+  /**
+   * Management view of the POS catalogue. Unlike fn_list_pos_menu this returns
+   * disabled rows, max_stock and the tile visuals, so editing a product cannot
+   * silently reset values that the cashier RPC does not expose.
+   */
+  async listPosMenuAdmin(propertyId) {
+    const { data, error } = await supabase
+      .from('products')
+      .select('id,sku,name,category,pos_category,pos_enabled,pos_active,unit,current_stock,min_stock,max_stock,selling_price,production_center,pos_sort,tile_color,tile_text_color,tile_image_url')
+      .eq('property_id', propertyId)
+      .or('pos_enabled.eq.true,pos_category.not.is.null')
+      .order('pos_category', { ascending: true, nullsFirst: false })
+      .order('pos_sort', { ascending: true })
+      .order('name', { ascending: true });
+    if (error) throw new Error(error.message);
+    return (data || []).map((product) => ({ ...product, category: product.pos_category || product.category || 'General' }));
   },
 
   async upsertPosCategory({ propertyId, name, productionCenter = 'Kitchen', sortOrder = 0, tile_color = null, tile_text_color = null, tile_image_url = null }) {
@@ -81,8 +109,101 @@ export const inventoryService = {
     return data;
   },
 
-  async updatePosMenuItemVisuals({ propertyId, id, tile_color, tile_text_color, tile_image_url }) {
-    return supabase.from('products').update({ tile_color: tile_color || null, tile_text_color: tile_text_color || null, tile_image_url: tile_image_url || null }).eq('property_id', propertyId).eq('id', id);
+  /**
+   * Category rename / metadata update by primary key. Name is unique per
+   * property, so renaming never creates a duplicate row.
+   */
+  async updatePosCategory({ propertyId, id, name, productionCenter, active, tile_color, tile_text_color, tile_image_url }) {
+    const patch = {};
+    let previousName = null;
+    if (name !== undefined) {
+      const clean = String(name || '').trim();
+      if (!clean) throw new Error('Category name is required.');
+      const { data: existing, error: readError } = await supabase
+        .from('pos_menu_categories')
+        .select('name')
+        .eq('property_id', propertyId)
+        .eq('id', id)
+        .single();
+      if (readError) throw new Error(readError.message);
+      previousName = existing?.name || null;
+      if (previousName && previousName !== clean) {
+        const { data: clash, error: clashError } = await supabase
+          .from('pos_menu_categories')
+          .select('id')
+          .eq('property_id', propertyId)
+          .eq('name', clean)
+          .maybeSingle();
+        if (clashError) throw new Error(clashError.message);
+        if (clash?.id) throw new Error('A category with that name already exists.');
+      }
+      patch.name = clean;
+    }
+    if (productionCenter !== undefined) patch.production_center = productionCenter || 'Kitchen';
+    if (active !== undefined) patch.active = Boolean(active);
+    if (tile_color !== undefined) patch.tile_color = tile_color || null;
+    if (tile_text_color !== undefined) patch.tile_text_color = tile_text_color || null;
+    if (tile_image_url !== undefined) patch.tile_image_url = tile_image_url || null;
+    if (!Object.keys(patch).length) return null;
+    const { data, error } = await supabase.from('pos_menu_categories').update(patch).eq('property_id', propertyId).eq('id', id).select('*').single();
+    if (error) throw new Error(error.message);
+    // Keep products attached to the renamed category so they stay visible on
+    // the POS instead of orphaning into an "unknown category" bucket.
+    if (previousName && patch.name && previousName !== patch.name) {
+      const { error: cascadeError } = await supabase
+        .from('products')
+        .update({ pos_category: patch.name })
+        .eq('property_id', propertyId)
+        .eq('pos_category', previousName);
+      if (cascadeError) throw new Error(`Category renamed, but products could not be moved: ${cascadeError.message}`);
+    }
+    return data;
+  },
+
+  async setPosCategoryActive({ propertyId, id, active }) {
+    return this.updatePosCategory({ propertyId, id, active });
+  },
+
+  /**
+   * Persist category display order. Only sort_order is written, so concurrent
+   * appearance edits cannot be overwritten by a reorder.
+   */
+  async reorderPosCategories(propertyId, ordered = []) {
+    const results = await Promise.all(
+      ordered.map(({ id, sortOrder }) => supabase.from('pos_menu_categories').update({ sort_order: Number(sortOrder) || 0 }).eq('property_id', propertyId).eq('id', id)),
+    );
+    const failed = results.find((result) => result.error);
+    if (failed) throw new Error(failed.error.message);
+    return ordered.length;
+  },
+
+  /**
+   * Only the three visual columns are patched, and only when the caller passed
+   * them. Editing a name must never blank a product photo or tile colour.
+   */
+  async updatePosMenuItemVisuals({ propertyId, id, ...visuals }) {
+    const patch = {};
+    for (const key of ['tile_color', 'tile_text_color', 'tile_image_url']) {
+      if (key in visuals) patch[key] = visuals[key] || null;
+    }
+    if (!Object.keys(patch).length) return { error: null };
+    return supabase.from('products').update(patch).eq('property_id', propertyId).eq('id', id);
+  },
+
+  async setPosMenuItemPosActive({ propertyId, id, active }) {
+    const { error } = await supabase.from('products').update({ pos_active: Boolean(active), pos_enabled: true }).eq('property_id', propertyId).eq('id', id);
+    if (error) throw new Error(error.message);
+    return true;
+  },
+
+  /** Persist product display order inside a category. */
+  async reorderPosMenuItems(propertyId, ordered = []) {
+    const results = await Promise.all(
+      ordered.map(({ id, sortOrder }) => supabase.from('products').update({ pos_sort: Number(sortOrder) || 0 }).eq('property_id', propertyId).eq('id', id)),
+    );
+    const failed = results.find((result) => result.error);
+    if (failed) throw new Error(failed.error.message);
+    return ordered.length;
   },
 
   async upsertPosMenuItem(item) {
