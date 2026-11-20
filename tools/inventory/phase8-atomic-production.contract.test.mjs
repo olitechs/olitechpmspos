@@ -38,6 +38,8 @@ test('production request keys are fingerprinted and serialized for safe retries'
   assert.match(migration, /p_request_key text/);
   assert.match(migration, /request_fingerprint/);
   assert.match(migration, /pg_advisory_xact_lock/);
+  assert.match(migration, /production-batches/);
+  assert.match(migration, /Lock the output product first/);
   assert.match(migration, /This request key was already used with different production details/);
   assert.match(migration, /inventory_productions_property_request_key/);
 });
