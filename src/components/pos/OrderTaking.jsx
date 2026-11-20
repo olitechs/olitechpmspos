@@ -65,7 +65,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
       ]);
       setCompositeAvailability(availabilityRows || []);
       if (rows.length) {
-        setMenuItems(rows.map((p) => ({ ...p, id: p.id, productId: p.id, name: p.name, price: Number(p.selling_price || 0), category: p.category || 'General', center: p.production_center || 'Kitchen', stock: Number(p.current_stock ?? 0), minimumStock: Number(p.min_stock ?? 0), unit: p.unit || 'pcs' })));
+        setMenuItems(rows.map((p) => ({ ...p, id: p.id, productId: p.id, name: p.name, inventory_tracking_mode: p.inventory_tracking_mode || 'direct', price: Number(p.selling_price || 0), category: p.category || 'General', center: p.production_center || 'Kitchen', stock: Number(p.current_stock ?? 0), minimumStock: Number(p.min_stock ?? 0), unit: p.unit || 'pcs' })));
       } else {
         setMenuItems([]);
       }
@@ -470,11 +470,14 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
                     key={item.id}
                     type="button"
                     onClick={() => addItem(item)}
-                    disabled={outOfStock || modifierLoading}
-                    aria-label={`${item.name}, ${outOfStock ? 'out of stock' : stockStatus === 'low-stock' ? 'low stock' : formatKes(item.price)}`}
+                    disabled={outOfStock || tileAvailability.availabilityUnknown || modifierLoading}
+                    aria-label={`${item.name}, ${outOfStock ? 'out of stock' : tileAvailability.availabilityUnknown ? 'component stock check unavailable' : stockStatus === 'low-stock' ? 'low stock' : formatKes(item.price)}`}
                     style={tileStyle}
                     className={"relative flex h-[142px] min-w-0 flex-col items-stretch overflow-hidden rounded-xl border p-2 text-left shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 " + (outOfStock ? "cursor-not-allowed opacity-60" : inOrderQty > 0 ? "border-[var(--primary)] ring-1 ring-[var(--primary)]" : "")}
                   >
+                    {tileAvailability.availabilityUnknown && (
+                      <span className="absolute bottom-1.5 right-1.5 z-10 rounded-md bg-[var(--warning-soft)] px-1.5 py-1 text-[9px] font-bold text-[var(--warning-text)]" title="Component stock could not be verified. Retry the menu refresh before selling this item.">STOCK CHECK</span>
+                    )}
                     {compositeStock && (componentOutOfStock || componentLowStock) && (
                       <span className="absolute bottom-1.5 right-1.5 z-10 rounded-md bg-[var(--warning-soft)] px-1.5 py-1 text-[9px] font-bold text-[var(--warning-text)]" title={compositeStock.components.filter(component => component.stock_status !== 'available').map(component => component.component_name).join(', ')}>
                         {componentOutOfStock ? 'COMPONENT OUT' : 'COMPONENT LOW'}
