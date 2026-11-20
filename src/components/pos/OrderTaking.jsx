@@ -15,7 +15,7 @@ import { getPrinters, getAssignments, printVoidTicket } from '@/services/printSe
 import { getPropertySettings } from '@/services/settingsService';
 import { inventoryService } from '@/services/inventoryService';
 import { posPhase3Service } from '@/services/posPhase3Service';
-import { filterPosMenuItems, getPosStockStatus } from '@/components/pos/stockStatus';
+import { filterPosMenuItems, getPosTileAvailability } from '@/components/pos/stockStatus';
 
 export default function OrderTaking({ table, orderLines, setOrderLines, onSendToKitchen, onBill, onMoveTable, orderNumber: orderNumberProp }) {
   const store = useStore();
@@ -455,11 +455,12 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
             <div id="pos-product-grid" className="grid w-full content-start gap-2.5" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(max(112px, calc((100% - 50px) / 6)), 1fr))', maxWidth: '1190px', marginInline: 'auto' }}>
               {visibleMenuItems.map((item) => {
                 const inOrderQty = orderLines.reduce((qty, line) => qty + ((line.baseProductId || line.productId || line.id) === (item.productId || item.id) ? Number(line.qty || 0) : 0), 0);
-                const stockStatus = menuItems.length > 0 ? getPosStockStatus(item.stock, item.minimumStock) : 'unknown';
                 const compositeStock = compositeAvailabilityByMenu[item.productId || item.id];
-                const componentOutOfStock = Boolean(compositeStock?.components.some(component => Number(component.available_stock || 0) < Number(component.required_per_sale || 0)));
-                const componentLowStock = Boolean(compositeStock?.components.some(component => component.stock_status === 'low_stock'));
-                const outOfStock = stockStatus === 'out-of-stock' || componentOutOfStock;
+                const tileAvailability = getPosTileAvailability(item, compositeStock?.components || []);
+                const stockStatus = menuItems.length > 0 ? tileAvailability.status : 'unknown';
+                const componentOutOfStock = tileAvailability.componentOutOfStock;
+                const componentLowStock = tileAvailability.componentLowStock;
+                const outOfStock = tileAvailability.outOfStock;
                 const hasPhoto = Boolean(item.tile_image_url);
                 const tileStyle = hasPhoto
                   ? { backgroundColor: 'var(--surface)', color: 'var(--text)', borderColor: 'var(--border)' }
