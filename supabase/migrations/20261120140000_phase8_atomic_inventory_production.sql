@@ -129,6 +129,7 @@ BEGIN
     RAISE EXCEPTION 'Production quantity must be positive and use up to 6 decimal places';
   END IF;
 
+  PERFORM pg_advisory_xact_lock(hashtextextended(p_property_id::text||':production-batches',0));
   PERFORM pg_advisory_xact_lock(hashtextextended(p_property_id::text||':production:'||v_key,0));
   v_fingerprint:=md5(jsonb_build_object('recipe_id',p_recipe_id,'output_product_id',p_output_product_id,
     'quantity',p_quantity,'reference',NULLIF(BTRIM(p_reference),''))::text);
@@ -141,18 +142,20 @@ BEGIN
     RETURN v_row;
   END IF;
 
+  -- Lock the output product first to match the product -> recipe lock order used by
+  -- the composite recipe editor and avoid a recipe-edit/production lock inversion.
+  SELECT * INTO v_output FROM public.products
+    WHERE id=p_output_product_id AND property_id=p_property_id FOR UPDATE;
+  IF NOT FOUND OR NOT coalesce(v_output.track_stock,true)
+     OR coalesce(v_output.inventory_tracking_mode,'direct')<>'direct' THEN
+    RAISE EXCEPTION 'Output must be a directly tracked product in the selected property';
+  END IF;
+
   SELECT * INTO v_recipe FROM public.recipes
     WHERE id=p_recipe_id AND property_id=p_property_id AND active=true FOR UPDATE;
   IF NOT FOUND OR v_recipe.yield_qty<=0 THEN RAISE EXCEPTION 'Active property recipe with a positive yield is required'; END IF;
   IF v_recipe.menu_product_id IS NOT NULL AND v_recipe.menu_product_id<>p_output_product_id THEN
     RAISE EXCEPTION 'A product-linked recipe must produce its linked product; use an unlinked recipe for a different output';
-  END IF;
-
-  SELECT * INTO v_output FROM public.products
-    WHERE id=p_output_product_id AND property_id=p_property_id;
-  IF NOT FOUND OR NOT coalesce(v_output.track_stock,true)
-     OR coalesce(v_output.inventory_tracking_mode,'direct')<>'direct' THEN
-    RAISE EXCEPTION 'Output must be a directly tracked product in the selected property';
   END IF;
 
   PERFORM 1 FROM public.recipe_ingredients
@@ -175,11 +178,8 @@ BEGIN
     RAISE EXCEPTION 'The output product cannot also be a component of the same production batch';
   END IF;
 
-  SELECT array_agg(DISTINCT product_id ORDER BY product_id) INTO v_product_ids
-  FROM (
-    SELECT ri.product_id FROM public.recipe_ingredients ri WHERE ri.recipe_id=v_recipe.id
-    UNION SELECT p_output_product_id
-  ) product_ids;
+  SELECT array_agg(DISTINCT ri.product_id ORDER BY ri.product_id) INTO v_product_ids
+  FROM public.recipe_ingredients ri WHERE ri.recipe_id=v_recipe.id;
   PERFORM 1 FROM public.products p
     WHERE p.property_id=p_property_id AND p.id=ANY(v_product_ids)
     ORDER BY p.id FOR UPDATE;
