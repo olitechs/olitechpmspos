@@ -37,3 +37,13 @@
 - Phase 2–5 architecture contract tests, full architecture suite, lint, typecheck and production build.
 - Disposable database tests for stock crossing min threshold, stock recovery, zero stock, multiple components limiting sellable quantity, property isolation, history pagination/limit and sale rollback.
 - Verify cashier POS warning behaviour with real authorized accounts before production release.
+
+
+## POS visibility follow-up (Phase 6)
+
+- The POS menu RPC now returns `inventory_tracking_mode` alongside the existing sellable product fields. Its input signature remains unchanged; the migration drops and recreates the function because PostgreSQL does not allow `CREATE OR REPLACE FUNCTION` to change a table-returning function's output shape.
+- The POS menu loader carries that mode onto each tile. Composite items use component availability rather than the menu product's own stock balance.
+- Composite tiles show component-low/component-out warnings. If component availability cannot be loaded or no component rows exist, the tile is marked `STOCK CHECK` and disabled; the cashier must refresh/reconnect before selling rather than silently bypassing the recipe stock check.
+- Direct-stock sellable products retain their existing stock rules. Raw ingredients and consumables remain excluded from the POS menu while the existing POS-enabled/active flags continue to control sellable catalogue visibility.
+- Category Kitchen/Bar routing continues to use `pos_menu_categories.production_center` and the existing printer assignments; no duplicate printer configuration was introduced.
+- Validation limitation: contract tests are source-level checks, not proof of live transaction behavior. The feature migrations remain unapplied to production pending complete CI and migration review.
