@@ -106,7 +106,7 @@ select 'new functions: ' || string_agg(p.proname, ', ' order by p.proname) as ve
    and p.proname in ('fn_current_business_date','fn_folio_charge_control_defaults','fn_folio_charge_receipt_link','fn_post_room_charge','fn_settle_folio','fn_post_accommodation_charges','fn_check_out_room_with_override');
 
 select 'trigger: ' || t.tgname || ' -> ' || p.proname as verification
-  from pg_trigger t join pg_proc p on p.oid = t.tgfunc
+  from pg_trigger t join pg_proc p on p.oid = t.tgfoid
  where t.tgrelid = 'public.folio_charges'::regclass and t.tgname = 'folio_charges_control_defaults';
 
 select 'view: ' || relname || ' | security_invoker=' || coalesce(array_to_string(reloptions, ','), '(unset)') as verification
