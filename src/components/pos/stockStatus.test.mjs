@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { filterPosMenuItems, getPosStockStatus } from './stockStatus.js';
+import { filterPosMenuItems, getPosStockStatus, getPosTileAvailability } from './stockStatus.js';
 
 test('POS stock card status reflects available, low and out-of-stock quantities', () => {
   assert.equal(getPosStockStatus(8, 3), 'available');
@@ -38,4 +38,26 @@ test('POS menu search matches normalized accents, SKU and category tokens', () =
   assert.deepEqual(filterPosMenuItems(items, 'creme brulee'), [items[0]]);
   assert.deepEqual(filterPosMenuItems(items, 'b-014'), [items[1]]);
   assert.deepEqual(filterPosMenuItems(items, 'desserts tea'), [items[2]]);
+});
+
+
+test('composite POS tile stock is derived from recipe components, not menu-product stock', () => {
+  const composite = { inventory_tracking_mode: 'composite', stock: 0, minimumStock: 5 };
+  assert.deepEqual(getPosTileAvailability(composite, [
+    { available_stock: 12, required_per_sale: 2, stock_status: 'available' },
+    { available_stock: 4, required_per_sale: 1, stock_status: 'available' },
+  ]), {
+    status: 'available', outOfStock: false, componentOutOfStock: false, componentLowStock: false,
+  });
+  assert.equal(getPosTileAvailability(composite, [
+    { available_stock: 1, required_per_sale: 2, stock_status: 'low_stock' },
+  ]).outOfStock, true);
+  assert.equal(getPosTileAvailability(composite, [
+    { available_stock: 4, required_per_sale: 1, stock_status: 'low_stock' },
+  ]).status, 'low-stock');
+});
+
+test('direct-stock POS products retain their own stock blocking rules', () => {
+  assert.equal(getPosTileAvailability({ inventory_tracking_mode: 'direct', stock: 0 }).outOfStock, true);
+  assert.equal(getPosTileAvailability({ inventory_tracking_mode: 'direct', stock: 3 }).outOfStock, false);
 });
