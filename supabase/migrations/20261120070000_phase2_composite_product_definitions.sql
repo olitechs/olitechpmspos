@@ -196,7 +196,6 @@ begin
 
   update public.products
   set inventory_tracking_mode='composite',
-      track_stock=false,
       updated_at=now()
   where id=p_product_id and property_id=p_property_id;
 
