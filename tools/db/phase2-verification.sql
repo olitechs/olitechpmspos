@@ -132,6 +132,6 @@ select 'row counts after: folio_charges=' || (select count(*) from public.folio_
 select 'open balances: ' || count(*) || ' reservations with a balance, total ' || coalesce(sum(balance), 0) as verification
   from public.folio_open_balances where balance <> 0;
 
-select 'top open balance: ' || guest_name || ' | room ' || coalesce(room_number, '-')
+select 'top open balance: ' || guest_name || ' | room ' || coalesce(room_number::text, '-')
     || ' | charges ' || charges_total || ' | payments ' || payments_total || ' | balance ' || balance as verification
   from public.folio_open_balances where balance <> 0 order by balance desc limit 5;
