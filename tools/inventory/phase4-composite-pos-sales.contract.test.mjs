@@ -32,6 +32,10 @@ test('Category editor can route Kitchen or Bar and persists the category route',
  assert.match(service,/production_center: productionCenter/);
 });
 test('POS receives category production center for existing kitchen/bar printer routing',()=>{
+ assert.match(migration,/drop function if exists public\.fn_list_pos_menu\(uuid\)/i);
+ assert.match(migration,/inventory_tracking_mode text/i);
+ assert.match(migration,/coalesce\(p\.inventory_tracking_mode,'direct'\)/i);
  assert.match(migration,/coalesce\(nullif\(c\.production_center,''\),p\.production_center,'Kitchen'\)/i);
+ assert.match(pos,/inventory_tracking_mode: p\.inventory_tracking_mode \|\| 'direct'/i);
  assert.match(pos,/getPrinters\(propertyId\), getAssignments\(propertyId\)/);
 });
