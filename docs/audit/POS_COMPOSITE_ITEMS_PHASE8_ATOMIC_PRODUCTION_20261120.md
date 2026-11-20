@@ -14,7 +14,7 @@
 - Added `fn_post_inventory_production`, which checks property membership, Stores entitlement and the dedicated production permission.
 - Requires an active same-property recipe, positive yield, at least one valid component, same-property directly tracked component products and a directly tracked output product.
 - Requires a product-linked recipe to produce its linked product. Composite POS menu recipes cannot be used to create direct stock output; use an unlinked production recipe or a direct-product-linked recipe.
-- Locks the recipe and recipe ingredient rows, then locks all involved product rows in deterministic product-ID order.
+- Locks the output product before the linked recipe (matching the recipe-editor lock order), locks recipe ingredient rows, then locks component products in deterministic product-ID order. A property-scoped advisory lock serializes manual production batches while each request key remains independently idempotent.
 - Uses normalized recipe base-unit quantities and the saved component unit-cost snapshots from Phase 3.
 - Creates the production record first inside the transaction, then posts each component deduction and output addition through the Phase 7.1 location-aware writer.
 - Links every stock movement to the production record with stable component/output line keys. Movement unit costs are updated to the saved recipe component cost and calculated output unit cost.
