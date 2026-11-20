@@ -21,3 +21,29 @@ export function filterPosMenuItems(items, query) {
     return tokens.every((token) => searchable.includes(token));
   });
 }
+
+
+/**
+ * Composite menu products are stocked through their recipe components, not
+ * through the sellable menu-product row. Keep direct-stock checks for normal
+ * products, and derive composite availability only from component rows.
+ */
+export function getPosTileAvailability(item, componentRows = []) {
+  const isComposite = item?.inventory_tracking_mode === 'composite'
+    || item?.tracking_mode === 'composite';
+  if (!isComposite) {
+    const status = getPosStockStatus(item?.stock, item?.minimumStock);
+    return { status, outOfStock: status === 'out-of-stock', componentOutOfStock: false, componentLowStock: false };
+  }
+  const rows = Array.isArray(componentRows) ? componentRows : [];
+  const componentOutOfStock = rows.some((component) =>
+    Number(component.available_stock ?? 0) < Number(component.required_per_sale ?? 0)
+  );
+  const componentLowStock = rows.some((component) => component.stock_status === 'low_stock');
+  return {
+    status: componentOutOfStock ? 'out-of-stock' : componentLowStock ? 'low-stock' : rows.length ? 'available' : 'unknown',
+    outOfStock: componentOutOfStock,
+    componentOutOfStock,
+    componentLowStock,
+  };
+}
