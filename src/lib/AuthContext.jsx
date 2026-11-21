@@ -27,6 +27,7 @@ export function AuthProvider({ children }) {
   const [authError, setAuthError] = useState(null);
   const userRef = useRef(null);
   const authCheckSequenceRef = useRef(0);
+  const userRefreshSequenceRef = useRef(0);
 
   const applyUser = useCallback((next) => {
     userRef.current = next;
@@ -35,6 +36,7 @@ export function AuthProvider({ children }) {
 
   const checkUserAuth = useCallback(async () => {
     const requestId = ++authCheckSequenceRef.current;
+    userRefreshSequenceRef.current += 1;
     const hadUser = !!userRef.current;
     if (!hadUser) setIsLoadingAuth(true);
     try {
@@ -74,10 +76,11 @@ export function AuthProvider({ children }) {
   // realtime listeners above already cover platform-side changes; this covers
   // pure time-based expiry. The database check remains authoritative.
   const refreshUser = useCallback(async () => {
-    const requestId = ++authCheckSequenceRef.current;
+    const requestId = ++userRefreshSequenceRef.current;
+    const authRequestId = authCheckSequenceRef.current;
     try {
       const current = await authService.getCurrentUser();
-      if (requestId === authCheckSequenceRef.current && current) applyUser(current);
+      if (requestId === userRefreshSequenceRef.current && authRequestId === authCheckSequenceRef.current && current) applyUser(current);
     } catch {
       // Keep the current session on transient failures; the next tick retries.
     }
@@ -143,6 +146,7 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (email, password, options = {}) => {
     const loggedInUser = await authService.login({ email, password });
     authCheckSequenceRef.current += 1;
+    userRefreshSequenceRef.current += 1;
     applyUser(loggedInUser);
     setAuthError(null);
     setAuthChecked(true);
@@ -161,6 +165,7 @@ export function AuthProvider({ children }) {
       return result;
     }
     authCheckSequenceRef.current += 1;
+    userRefreshSequenceRef.current += 1;
     applyUser(result);
     setAuthError(null);
     setAuthChecked(true);
@@ -170,6 +175,7 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(async () => {
     authCheckSequenceRef.current += 1;
+    userRefreshSequenceRef.current += 1;
     await authService.logout();
     applyUser(null);
     try {
