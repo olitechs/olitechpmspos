@@ -94,9 +94,12 @@ function CategoryRow({ category, draft, count, onDraft, onSave, onMove, onToggle
           className="min-h-10 min-w-0 flex-1 rounded-md border border-[var(--border)] bg-[var(--surface)] px-2.5 text-sm font-medium text-[var(--text)]"
         />
         <span className="text-[11px] text-[var(--muted)]">{count} products</span>
-        <select value={draft.production_center} onChange={(event) => onDraft({ production_center: event.target.value })} aria-label={`Production centre for ${category.name}`} className="min-h-10 rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 text-xs text-[var(--text)]">
-          {CENTER_OPTIONS.map((center) => <option key={center}>{center}</option>)}
-        </select>
+        <label className="flex min-h-10 items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+          Send category orders to
+          <select value={draft.production_center} onChange={(event) => onDraft({ production_center: event.target.value })} aria-label={`Send ${category.name} orders to`} className="min-h-10 rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 text-xs font-normal normal-case text-[var(--text)]">
+            {CENTER_OPTIONS.map((center) => <option key={center}>{center}</option>)}
+          </select>
+        </label>
         <button type="button" onClick={() => onMove(category, -1)} disabled={busy || !canMoveUp} aria-label={`Move ${category.name} up`} className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-2)] disabled:opacity-40"><ChevronUp size={15} /></button>
         <button type="button" onClick={() => onMove(category, 1)} disabled={busy || !canMoveDown} aria-label={`Move ${category.name} down`} className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-2)] disabled:opacity-40"><ChevronDown size={15} /></button>
         <button type="button" onClick={() => onToggle(category)} disabled={busy} aria-pressed={active} className="inline-flex h-9 items-center gap-1 rounded-md border border-[var(--border)] px-2 text-xs font-medium text-[var(--text)] hover:bg-[var(--surface-2)]">{active ? <Eye size={14} /> : <EyeOff size={14} />}{active ? 'Visible' : 'Hidden'}</button>
