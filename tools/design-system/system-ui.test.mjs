@@ -255,9 +255,13 @@ test('timecards, stock movements and store operations use semantic theme colours
 });
 
 test('Room Planner toolbar exposes the approved controls and responsive dimensions', () => {
-  for (const label of ['Add Closures', 'New reservation', 'Today', 'Start date', 'End date', 'Select month']) {
-    assert.ok(roomPlanner.includes(label), 'missing toolbar control: ' + label);
+  for (const label of ['Add closure', 'New reservation', 'Today', 'Start date', 'End date', 'Select month']) {
+    assert.ok(roomPlanner.includes(label), 'missing planner control: ' + label);
   }
+  // Closure creation is intentionally grouped in the compact More actions menu.
+  assert.match(roomPlanner, /aria-label="More actions"/);
+  assert.match(roomPlanner, /role="menu"/);
+  assert.match(roomPlanner, /role="menuitem"[^>]*>[\s\S]*?Add closure/);
   // Redesign: fluid toolbar (no hard-coded pixel widths), 38px desktop / 44px touch controls.
   assert.doesNotMatch(roomPlanner, /style=\{\{width:(141|131|267|130)\}\}/);
   assert.match(roomPlanner, /height:38px/);
@@ -268,6 +272,6 @@ test('Room Planner toolbar exposes the approved controls and responsive dimensio
   assert.match(roomPlanner, /applyViewLength\(days\)/);
   assert.match(plannerModel, /subDays\(today, 2\)/);
   assert.match(plannerModel, /addDays\(today, 12\)/);
-  assert.match(roomPlanner, /onClick=\{addClosure\}/);
+  assert.match(roomPlanner, /onClick=\{\(\)=>\{setMoreOpen\(false\);addClosure\(\);\}\}/);
   assert.match(roomPlanner, /onClick=\{\(\) => openCreate/);
 });
