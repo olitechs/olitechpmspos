@@ -666,6 +666,30 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
       .room-planner .room-planner-date-input{height:32px;min-height:32px}
     }
     @media (min-width:1280px){.room-planner .room-planner-toolbar-main{flex-wrap:nowrap}}
+
+    /* Reference-inspired hotel timeline: flatter surfaces, quiet grid, clear date rail. */
+    .room-planner .room-planner-toolbar{padding:6px 8px!important;gap:5px!important;background:#f8fafc!important}
+    .room-planner .room-planner-toolbar-button{height:34px;min-height:34px;border-radius:4px;font-size:13px;padding:0 10px}
+    .room-planner .room-planner-date-input{height:34px;min-height:34px;border-radius:4px}
+    .room-planner .room-planner-navgroup{border-radius:4px}
+    .room-planner .room-planner-segmented{border-radius:4px}
+    .room-planner .room-planner-segment{border-radius:3px}
+    .room-planner .room-planner-search,.room-planner .room-planner-filter{border-radius:4px}
+    .room-planner .room-planner-scroll{padding-left:8px!important;padding-right:8px!important;padding-bottom:5px!important}
+    .room-planner .room-planner-grid-frame{border-radius:0!important;box-shadow:none!important;border-color:#d6dadd!important}
+    .room-planner .room-planner-grid-frame .room-planner-room-cell{box-shadow:none;background:#f3f4f6!important;color:#475569!important}
+    .room-planner .room-planner-grid-frame .room-planner-date-cell{background:#fff!important;color:#52606d!important}
+    .room-planner .room-planner-grid-frame .room-planner-date-cell.room-planner-weekend{background:#d9edf7!important}
+    .room-planner .room-planner-grid-frame .room-planner-date-cell.room-planner-today{background:#e8f3f8!important;color:#164e63!important}
+    .room-planner .room-planner-grid-frame .room-planner-day-cell.room-planner-weekend{background:#d9edf7!important}
+    .room-planner .room-planner-grid-frame .room-planner-day-cell.room-planner-today-cell{background:#eef7fa!important}
+    .room-planner .room-planner-grid-frame .room-planner-day-cell{border-color:#dfe3e6!important}
+    .room-planner .room-planner-grid-frame .reservation-bar{border-radius:0!important;clip-path:polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%)!important;box-shadow:none!important;font-style:italic;font-weight:600}
+    .room-planner .room-planner-bottombar{padding:6px 8px!important;background:#f8fafc!important;border-top:1px solid #d6dadd!important}
+    .room-planner .room-planner-legend-key{font-size:12px;font-weight:500}
+    @media (min-width:901px){.room-planner .room-planner-toolbar-main{gap:6px 8px}.room-planner .room-planner-toolbar-group{gap:5px}}
+    @media (max-width:900px){.room-planner .room-planner-scroll{padding-left:4px!important;padding-right:4px!important}}
+
 `}
 </style>
     <div className="room-planner-toolbar shrink-0">
