@@ -7,7 +7,7 @@ export default function AdminRoute() {
   const { user, isLoadingAuth, authChecked } = useAuth();
   const location = useLocation();
 
-  if (isLoadingAuth || !authChecked) {
+  if ((isLoadingAuth && !user) || !authChecked) {
     return <div className="fixed inset-0 flex items-center justify-center"><div className="w-8 h-8 border-4 border-[var(--border)] border-t-[var(--primary)] rounded-full animate-spin" /></div>;
   }
 
