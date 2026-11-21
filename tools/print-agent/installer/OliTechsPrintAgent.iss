@@ -156,7 +156,7 @@ begin
     'Printing will not work until this is fixed.' + #13#10 +
     'Please restart Windows and run this installer again. If the problem continues, ' +
     'contact OliTechs support and provide this log file:' + #13#10 +
-    ExpandConstant('{commonappdata}\\OliTechs\\PrintAgent\\logs\\install-service.log') + #13#10#13#10 +
+    ExpandConstant('{commonappdata}\OliTechs\PrintAgent\logs\install-service.log') + #13#10#13#10 +
     'Support: ' + ExpandConstant('{#AppUrl}'),
     mbError, MB_OK, IDOK);
 end;
