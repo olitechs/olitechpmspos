@@ -15,7 +15,7 @@ import { getPrinters, getAssignments, printVoidTicket } from '@/services/printSe
 import { getPropertySettings } from '@/services/settingsService';
 import { inventoryService } from '@/services/inventoryService';
 import { posPhase3Service } from '@/services/posPhase3Service';
-import { filterPosMenuItems, getPosStockStatus } from '@/components/pos/stockStatus';
+import { filterPosMenuItems, getPosTileAvailability } from '@/components/pos/stockStatus';
 
 export default function OrderTaking({ table, orderLines, setOrderLines, onSendToKitchen, onBill, onMoveTable, orderNumber: orderNumberProp }) {
   const store = useStore();
@@ -36,6 +36,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
   const [menuItems, setMenuItems] = useState([]);
   const [menuCategories, setMenuCategories] = useState([]);
   const [menuCategoryStyles, setMenuCategoryStyles] = useState({});
+  const [compositeAvailability, setCompositeAvailability] = useState([]);
   const [menuLoading, setMenuLoading] = useState(true);
   const [menuError, setMenuError] = useState('');
   const [menuSearch, setMenuSearch] = useState('');
@@ -51,13 +52,18 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
     setMenuLoading(true);
     setMenuError('');
     try {
-      const [rows, categoryRows] = await Promise.all([
+      const [rows, categoryRows, availabilityRows] = await Promise.all([
         inventoryService.listPosMenu(propertyId),
         inventoryService.listPosCategoriesAdmin(propertyId).catch((error) => {
           console.warn('[POS] category catalogue unavailable; deriving categories from products', error);
           return [];
+        }),
+        inventoryService.listCompositeStockAvailability(propertyId).catch((error) => {
+          console.warn('[POS] composite availability unavailable', error);
+          return [];
         })
       ]);
+      setCompositeAvailability(availabilityRows || []);
       const activeCategories = categoryRows.filter((category) => category.active !== false);
       const activeCategoryNames = [...new Set(activeCategories.map((category) => category.name).filter(Boolean))];
       const disabledCategoryNames = new Set(categoryRows.filter((category) => category.active === false).map((category) => category.name).filter(Boolean));
@@ -68,7 +74,7 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
         ? rows.filter((product) => !disabledCategoryNames.has(product.category || 'General'))
         : rows;
       if (visibleRows.length) {
-        setMenuItems(visibleRows.map((p) => ({ ...p, id: p.id, productId: p.id, name: p.name, price: Number(p.selling_price || 0), category: p.category || 'General', center: p.production_center || 'Kitchen', stock: Number(p.current_stock ?? 0), minimumStock: Number(p.min_stock ?? 0), unit: p.unit || 'pcs' })));
+        setMenuItems(visibleRows.map((p) => ({ ...p, id: p.id, productId: p.id, name: p.name, inventory_tracking_mode: p.inventory_tracking_mode || 'direct', price: Number(p.selling_price || 0), category: p.category || 'General', center: p.production_center || 'Kitchen', stock: Number(p.current_stock ?? 0), minimumStock: Number(p.min_stock ?? 0), unit: p.unit || 'pcs' })));
       } else {
         setMenuItems([]);
       }
@@ -358,6 +364,13 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
       if (assignedOrderDepartments.length) return !assignedOrderDepartments.includes(key);
       return !assignedOrderCenters.includes(/bar|drink/i.test(key) ? 'bar' : 'kitchen');
     });
+  const compositeAvailabilityByMenu = compositeAvailability.reduce((map, row) => {
+    const key = row.menu_product_id;
+    if (!map[key]) map[key] = { maxSellableQty: Number(row.max_sellable_qty ?? Infinity), components: [] };
+    map[key].maxSellableQty = Math.min(map[key].maxSellableQty, Number(row.max_sellable_qty ?? Infinity));
+    map[key].components.push(row);
+    return map;
+  }, {});
   const categoryMenuItems = activeCategory ? menuItems.filter((item) => item.category === activeCategory) : menuItems;
   const visibleMenuItems = filterPosMenuItems(categoryMenuItems, menuSearch);
   const categoryCounts = menuItems.reduce((counts, item) => {
@@ -450,8 +463,12 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
             <div id="pos-product-grid" className="grid w-full content-start gap-2.5" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(max(112px, calc((100% - 50px) / 6)), 1fr))', maxWidth: '1190px', marginInline: 'auto' }}>
               {visibleMenuItems.map((item) => {
                 const inOrderQty = orderLines.reduce((qty, line) => qty + ((line.baseProductId || line.productId || line.id) === (item.productId || item.id) ? Number(line.qty || 0) : 0), 0);
-                const stockStatus = menuItems.length > 0 ? getPosStockStatus(item.stock, item.minimumStock) : 'unknown';
-                const outOfStock = stockStatus === 'out-of-stock';
+                const compositeStock = compositeAvailabilityByMenu[item.productId || item.id];
+                const tileAvailability = getPosTileAvailability(item, compositeStock?.components || []);
+                const stockStatus = menuItems.length > 0 ? tileAvailability.status : 'unknown';
+                const componentOutOfStock = tileAvailability.componentOutOfStock;
+                const componentLowStock = tileAvailability.componentLowStock;
+                const outOfStock = tileAvailability.outOfStock;
                 const hasPhoto = Boolean(item.tile_image_url);
                 const tileStyle = hasPhoto
                   ? { backgroundColor: 'var(--surface)', color: 'var(--text)', borderColor: 'var(--border)' }
@@ -461,11 +478,19 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
                     key={item.id}
                     type="button"
                     onClick={() => addItem(item)}
-                    disabled={outOfStock || modifierLoading}
-                    aria-label={`${item.name}, ${outOfStock ? 'out of stock' : stockStatus === 'low-stock' ? 'low stock' : formatKes(item.price)}`}
+                    disabled={outOfStock || tileAvailability.availabilityUnknown || modifierLoading}
+                    aria-label={`${item.name}, ${outOfStock ? 'out of stock' : tileAvailability.availabilityUnknown ? 'component stock check unavailable' : stockStatus === 'low-stock' ? 'low stock' : formatKes(item.price)}`}
                     style={tileStyle}
                     className={"relative flex h-[142px] min-w-0 flex-col items-stretch overflow-hidden rounded-xl border p-2 text-left shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 " + (outOfStock ? "cursor-not-allowed opacity-60" : inOrderQty > 0 ? "border-[var(--primary)] ring-1 ring-[var(--primary)]" : "")}
                   >
+                    {tileAvailability.availabilityUnknown && (
+                      <span className="absolute bottom-1.5 right-1.5 z-10 rounded-md bg-[var(--warning-soft)] px-1.5 py-1 text-[9px] font-bold text-[var(--warning-text)]" title="Component stock could not be verified. Retry the menu refresh before selling this item.">STOCK CHECK</span>
+                    )}
+                    {compositeStock && (componentOutOfStock || componentLowStock) && (
+                      <span className="absolute bottom-1.5 right-1.5 z-10 rounded-md bg-[var(--warning-soft)] px-1.5 py-1 text-[9px] font-bold text-[var(--warning-text)]" title={compositeStock.components.filter(component => component.stock_status !== 'available').map(component => component.component_name).join(', ')}>
+                        {componentOutOfStock ? 'COMPONENT OUT' : 'COMPONENT LOW'}
+                      </span>
+                    )}
                     {inOrderQty > 0 && (
                       <span className="absolute right-1.5 top-1.5 z-10 flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--primary)] px-1 text-[10px] font-extrabold text-[var(--on-primary)] shadow">{inOrderQty}</span>
                     )}

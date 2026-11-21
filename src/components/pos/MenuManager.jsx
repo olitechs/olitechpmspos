@@ -23,6 +23,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { formatAmount } from '@/lib/posMoney';
 import { SegmentedControl, StatusBadge } from '@/components/ui/system';
 import MenuVisualEditor from '@/components/pos/MenuVisualEditor';
+import CompositeItemEditor from '@/components/pos/CompositeItemEditor';
 import {
   buildOrderPayload,
   canEditPriceAndStock,
@@ -93,9 +94,12 @@ function CategoryRow({ category, draft, count, onDraft, onSave, onMove, onToggle
           className="min-h-10 min-w-0 flex-1 rounded-md border border-[var(--border)] bg-[var(--surface)] px-2.5 text-sm font-medium text-[var(--text)]"
         />
         <span className="text-[11px] text-[var(--muted)]">{count} products</span>
-        <select value={draft.production_center} onChange={(event) => onDraft({ production_center: event.target.value })} aria-label={`Production centre for ${category.name}`} className="min-h-10 rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 text-xs text-[var(--text)]">
-          {CENTER_OPTIONS.map((center) => <option key={center}>{center}</option>)}
-        </select>
+        <label className="flex min-h-10 items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+          Send category orders to
+          <select value={draft.production_center} onChange={(event) => onDraft({ production_center: event.target.value })} aria-label={`Send ${category.name} orders to`} className="min-h-10 rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 text-xs font-normal normal-case text-[var(--text)]">
+            {CENTER_OPTIONS.map((center) => <option key={center}>{center}</option>)}
+          </select>
+        </label>
         <button type="button" onClick={() => onMove(category, -1)} disabled={busy || !canMoveUp} aria-label={`Move ${category.name} up`} className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-2)] disabled:opacity-40"><ChevronUp size={15} /></button>
         <button type="button" onClick={() => onMove(category, 1)} disabled={busy || !canMoveDown} aria-label={`Move ${category.name} down`} className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-2)] disabled:opacity-40"><ChevronDown size={15} /></button>
         <button type="button" onClick={() => onToggle(category)} disabled={busy} aria-pressed={active} className="inline-flex h-9 items-center gap-1 rounded-md border border-[var(--border)] px-2 text-xs font-medium text-[var(--text)] hover:bg-[var(--surface-2)]">{active ? <Eye size={14} /> : <EyeOff size={14} />}{active ? 'Visible' : 'Hidden'}</button>
@@ -132,6 +136,7 @@ export default function MenuManager({ open, onClose, embedded = false }) {
   const [categoryDrafts, setCategoryDrafts] = useState({});
   const [newCategory, setNewCategory] = useState(() => ({ name: '', production_center: 'Kitchen', tile_color: '', tile_text_color: '', tile_image_url: '' }));
   const [editing, setEditing] = useState(null);
+  const [editingSection, setEditingSection] = useState('details');
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [loading, setLoading] = useState(false);
@@ -215,6 +220,7 @@ export default function MenuManager({ open, onClose, embedded = false }) {
     const first = categories.find((category) => category.active !== false) || categories[0];
     const categoryName = categoryFilter !== 'all' ? categoryFilter : (first?.name || 'General');
     const siblings = menu.filter((product) => (product.category || 'General') === categoryName);
+    setEditingSection('details');
     setEditing(emptyMenuDraft(categoryName, first?.production_center || 'Kitchen', nextSortOrder(siblings.map((product) => product.pos_sort))));
   };
 
@@ -270,14 +276,23 @@ export default function MenuManager({ open, onClose, embedded = false }) {
       });
       const savedId = editing.id || saved?.id;
       if (savedId) {
-        const { error: visualError } = await inventoryService.updatePosMenuItemVisuals({
-          propertyId,
-          id: savedId,
-          tile_color: editing.tile_color,
-          tile_text_color: editing.tile_text_color,
-          tile_image_url: editing.tile_image_url,
-        });
-        if (visualError) throw new Error(visualError.message);
+        try {
+          const { error: visualError } = await inventoryService.updatePosMenuItemVisuals({
+            propertyId,
+            id: savedId,
+            tile_color: editing.tile_color,
+            tile_text_color: editing.tile_text_color,
+            tile_image_url: editing.tile_image_url,
+          });
+          if (visualError) throw new Error(visualError.message);
+        } catch (visualCause) {
+          // The catalogue RPC has already committed. Keep the saved ID in the
+          // draft so retrying appearance cannot accidentally create a duplicate.
+          setEditing((current) => (current ? { ...current, id: savedId } : current));
+          notifyMenuUpdated();
+          await reload();
+          throw new Error(`Product details were saved, but tile appearance was not: ${visualCause?.message || 'unknown error'}. Retry Save product to finish the appearance update.`);
+        }
       }
       setEditing(null);
       notifyMenuUpdated();
@@ -527,7 +542,7 @@ export default function MenuManager({ open, onClose, embedded = false }) {
                             canMoveDown={index < group.items.length - 1}
                             onMove={moveProduct}
                             onToggle={toggleProduct}
-                            onEdit={(row) => { setEditing(menuRowToDraft(row)); }}
+                            onEdit={(row) => { setEditingSection('details'); setEditing(menuRowToDraft(row)); }}
                           />
                         ))}
                       </ul>
@@ -600,9 +615,22 @@ export default function MenuManager({ open, onClose, embedded = false }) {
               <button type="button" onClick={() => setEditing(null)} className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--surface-2)]" aria-label="Close product editor"><X size={18} /></button>
             </header>
             <div className="modal-body scroll-shadow-y overflow-y-auto px-[var(--modal-pad)] py-4">
-              {canEditCatalogue ? (
+              <div className="mb-4 flex flex-wrap gap-2 border-b border-[var(--border)] pb-3" role="tablist" aria-label="Product editor sections">
+                {[
+                  { value: 'details', label: 'Details' },
+                  ...(canEditCatalogue ? [{ value: 'inventory', label: 'Pricing & inventory' }] : []),
+                  { value: 'appearance', label: 'POS appearance' },
+                ].map((section) => (
+                  <button key={section.value} type="button" role="tab" aria-selected={editingSection === section.value}
+                    onClick={() => setEditingSection(section.value)}
+                    className={`min-h-10 rounded-lg px-3 text-xs font-semibold transition-colors ${editingSection === section.value ? 'bg-[var(--primary)] text-[var(--on-primary)]' : 'border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-2)]'}`}>
+                    {section.label}
+                  </button>
+                ))}
+              </div>
+              {editingSection === 'details' && (canEditCatalogue ? (
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="text-xs font-medium text-[var(--text)]">Product name
+<label className="text-xs font-medium text-[var(--text)]">Product name
                     <input value={editing.name || ''} onChange={(event) => setEditing({ ...editing, name: event.target.value })} className="mt-1 min-h-11 w-full rounded-lg border border-[var(--border)] px-3 text-sm" autoComplete="off" />
                   </label>
                   <label className="text-xs font-medium text-[var(--text)]">SKU
@@ -627,7 +655,18 @@ export default function MenuManager({ open, onClose, embedded = false }) {
                   <label className="text-xs font-medium text-[var(--text)]">Sort order
                     <input type="number" min="0" value={editing.pos_sort ?? 0} onChange={(event) => setEditing({ ...editing, pos_sort: event.target.value })} className="mt-1 min-h-11 w-full rounded-lg border border-[var(--border)] px-3 text-sm" />
                   </label>
-                  <label className="text-xs font-medium text-[var(--text)]">Selling price (KES)
+                </div>
+              ) : (
+                <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2.5">
+                  <p className="text-sm font-semibold text-[var(--text)]">{editing.name || 'Product'}</p>
+                  <p className="mt-0.5 text-xs text-[var(--text-muted)]">{editing.category || 'General'} · {formatAmount(toNumber(editing.selling_price))} · {toNumber(editing.current_stock)} {editing.unit || 'pcs'} in stock</p>
+                  <p className="mt-1 text-[11px] text-[var(--text-muted)]">Prices and stock are managed in Store or by a manager. This editor only changes the POS tile.</p>
+                </div>
+              ))}
+              {editingSection === 'inventory' && canEditCatalogue && (
+                <div className="space-y-4">
+                  <div className="grid gap-3 sm:grid-cols-2">
+<label className="text-xs font-medium text-[var(--text)]">Selling price (KES)
                     <input type="number" min="0" step="0.01" value={editing.selling_price ?? 0} onChange={(event) => setEditing({ ...editing, selling_price: event.target.value })} className="mt-1 min-h-11 w-full rounded-lg border border-[var(--border)] px-3 text-sm" />
                   </label>
                   <label className="text-xs font-medium text-[var(--text)]">Current stock
@@ -639,15 +678,11 @@ export default function MenuManager({ open, onClose, embedded = false }) {
                   <label className="text-xs font-medium text-[var(--text)]">Maximum stock
                     <input type="number" min="0" value={editing.max_stock ?? 0} onChange={(event) => setEditing({ ...editing, max_stock: event.target.value })} className="mt-1 min-h-11 w-full rounded-lg border border-[var(--border)] px-3 text-sm" />
                   </label>
-                </div>
-              ) : (
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2.5">
-                  <p className="text-sm font-semibold text-[var(--text)]">{editing.name || 'Product'}</p>
-                  <p className="mt-0.5 text-xs text-[var(--text-muted)]">{editing.category || 'General'} · {formatAmount(toNumber(editing.selling_price))} · {toNumber(editing.current_stock)} {editing.unit || 'pcs'} in stock</p>
-                  <p className="mt-1 text-[11px] text-[var(--text-muted)]">Prices and stock are managed in Store or by a manager. This editor only changes the POS tile.</p>
+                  </div>
+                  <CompositeItemEditor propertyId={propertyId} productId={editing.id} onSaved={() => { void reload(); notifyMenuUpdated(); }} />
                 </div>
               )}
-
+              {editingSection === 'appearance' && (
               <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3">
                 <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]"><ImageIcon size={14} /> Tile appearance</div>
                 <div className="mt-3 grid gap-3 sm:grid-cols-[repeat(2,minmax(0,1fr))_minmax(0,2fr)]">
@@ -677,6 +712,8 @@ export default function MenuManager({ open, onClose, embedded = false }) {
                   Show on the POS
                 </label>
               </div>
+              )}
+
             </div>
             <footer className="modal-footer flex flex-col-reverse gap-2 border-t border-[var(--border)] px-[var(--modal-pad)] py-3 sm:flex-row sm:justify-end">
               <button type="button" onClick={() => setEditing(null)} disabled={saving} className="min-h-11 rounded-lg border border-[var(--border)] px-4 text-sm font-medium text-[var(--text)] hover:bg-[var(--surface-2)] disabled:opacity-60">Cancel</button>

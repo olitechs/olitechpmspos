@@ -70,6 +70,20 @@ export const inventoryService = {
     return data || [];
   },
 
+  async listCompositeStockAvailability(propertyId) {
+    const { data, error } = await supabase.rpc('fn_list_composite_stock_availability', { p_property_id: propertyId });
+    if (error) throw new Error(error.message);
+    return data || [];
+  },
+
+  async listCompositeComponentHistory(propertyId, menuProductId, limit = 50) {
+    const { data, error } = await supabase.rpc('fn_list_composite_component_history', {
+      p_property_id: propertyId, p_menu_product_id: menuProductId, p_limit: limit,
+    });
+    if (error) throw new Error(error.message);
+    return data || [];
+  },
+
   /**
    * Management view of the category catalogue. Includes disabled categories so
    * a manager can re-enable them, and keeps the cashier view unchanged.
@@ -300,6 +314,44 @@ export const inventoryService = {
     return data;
   },
 
+  async listInventoryUnits() {
+    const { data, error } = await supabase.from('inventory_units').select('code,label,dimension,allows_fraction').order('dimension').order('label');
+    if (error) throw new Error(error.message);
+    return data || [];
+  },
+
+  async listInventoryUnitConversions(propertyId) {
+    let query = supabase.from('inventory_unit_conversions').select('property_id,from_unit,to_unit,factor');
+    if (propertyId) query = query.or(`property_id.is.null,property_id.eq.${propertyId}`);
+    const { data, error } = await query;
+    if (error) throw new Error(error.message);
+    return data || [];
+  },
+
+  async getCompositeRecipe(propertyId, productId) {
+    const { data, error } = await supabase
+      .from('recipes')
+      .select('*, recipe_ingredients(*, product:products(id,name,unit,base_unit,cost_price))')
+      .eq('property_id', propertyId)
+      .eq('menu_product_id', productId)
+      .eq('active', true)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data || null;
+  },
+
+  async saveCompositeRecipe({ propertyId, productId, isComposite, components = [], notes = null }) {
+    const { data, error } = await supabase.rpc('fn_upsert_composite_product_recipe', {
+      p_property_id: propertyId,
+      p_product_id: productId,
+      p_is_composite: Boolean(isComposite),
+      p_components: components,
+      p_notes: notes || null,
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
   async listRecipes(propertyId) { const { data, error } = await supabase.from('recipes').select('*, recipe_ingredients(*, product:products(id,name,unit))').eq('property_id', propertyId).eq('active', true).order('menu_item_name'); if (error) throw new Error(error.message); return data || []; },
 
   async listInventoryReconciliation(propertyId) { const { data,error }=await supabase.rpc('fn_inventory_reconciliation',{p_property_id:propertyId}); if(error) throw new Error(error.message); return data||[]; },
@@ -338,13 +390,43 @@ export const inventoryService = {
     const { data, error } = await supabase.rpc('fn_approve_inventory_count', { p_count_id: countId });
     if (error) throw new Error(error.message); return data;
   },
+  async listWastageRequests(propertyId) {
+    const { data, error } = await supabase.from('inventory_wastage').select('*')
+      .eq('property_id', propertyId).eq('status', 'pending').order('created_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    return data || [];
+  },
   async postWastage(payload) {
-    const { data, error } = await supabase.rpc('fn_post_wastage', { p_property_id: payload.propertyId, p_product_id: payload.productId, p_quantity: Number(payload.quantity), p_reason: payload.reason, p_location_id: payload.locationId || null, p_expiry_date: payload.expiryDate || null });
-    if (error) throw new Error(error.message); return data;
+    const { data, error } = await supabase.rpc('fn_submit_inventory_wastage', {
+      p_property_id: payload.propertyId,
+      p_product_id: payload.productId,
+      p_quantity: Number(payload.quantity),
+      p_reason: payload.reason,
+      p_request_key: payload.requestKey,
+      p_location_id: payload.locationId || null,
+      p_expiry_date: payload.expiryDate || null,
+    });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+  async decideWastage(wastageId, decision, reason = null) {
+    const { data, error } = await supabase.rpc('fn_decide_inventory_wastage', {
+      p_wastage_id: wastageId, p_decision: decision, p_decision_reason: reason,
+    });
+    if (error) throw new Error(error.message);
+    return data;
   },
   async postProduction(payload) {
-    const { data, error } = await supabase.rpc('fn_post_production', { p_property_id: payload.propertyId, p_recipe_id: payload.recipeId, p_output_product_id: payload.outputProductId, p_quantity: Number(payload.quantity), p_reference: payload.reference || null });
-    if (error) throw new Error(error.message); return data;
+    const { data, error } = await supabase.rpc('fn_post_inventory_production', {
+      p_property_id: payload.propertyId,
+      p_recipe_id: payload.recipeId,
+      p_output_product_id: payload.outputProductId,
+      p_quantity: Number(payload.quantity),
+      p_reference: payload.reference || null,
+      p_request_key: payload.requestKey,
+    });
+    if (error) throw new Error(error.message);
+    return data;
   },
 
   async listSuppliers(propertyId) {
