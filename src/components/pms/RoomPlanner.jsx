@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   CalendarDays, ChevronLeft, ChevronRight, Link2, Plus, RefreshCw, X, Save, Trash2, Ban,
-  FileDown, AlertTriangle, Settings2, Search, Users, CreditCard, StickyNote, Clock, LogIn, LogOut, Pencil, SlidersHorizontal, ChevronDown,
+  FileDown, AlertTriangle, Settings2, Search, Users, CreditCard, StickyNote, Clock, LogIn, LogOut, Pencil, SlidersHorizontal, ChevronDown, MoreHorizontal,
 } from 'lucide-react';
 import {
   format, addDays, differenceInCalendarDays, eachDayOfInterval, endOfMonth, startOfMonth, subDays,
@@ -112,6 +112,9 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   }, []);
   const [reservationListMode, setReservationListMode] = useState(false);
   const [collapsedRoomTypes, setCollapsedRoomTypes] = useState([]);
+  // Compact calendar: flat room list by default (like a timeline), grouping is opt-in from Settings.
+  const [showGroups, setShowGroups] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [viewLength, setViewLength] = useState('15');
   const [density, setDensity] = useState('compact');
   const [dateFormat, setDateFormat] = useState('dd/MM/yyyy');
@@ -169,7 +172,9 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   }, [filteredRooms, roomTypeMap]);
 
   const ROOM_ROW_HEIGHT = density === 'large' ? 80 : density === 'comfortable' ? 48 : 30;
-  const orderedRows = useMemo(() => groupedRooms.flatMap(([typeName, group]) => [{ kind: 'group', typeName, count: group.length }, ...(collapsedRoomTypes.includes(typeName) ? [] : group.map(room => ({ kind: 'room', room, typeName })))]), [groupedRooms, collapsedRoomTypes]);
+  const orderedRows = useMemo(() => showGroups
+    ? groupedRooms.flatMap(([typeName, group]) => [{ kind: 'group', typeName, count: group.length }, ...(collapsedRoomTypes.includes(typeName) ? [] : group.map(room => ({ kind: 'room', room, typeName })))])
+    : groupedRooms.flatMap(([typeName, group]) => group.map(room => ({ kind: 'room', room, typeName }))), [groupedRooms, collapsedRoomTypes, showGroups]);
   const VIRTUAL_OVERSCAN = 6;
   const virtualStart = Math.max(0, Math.floor(Math.max(0, plannerScrollTop - 78) / ROOM_ROW_HEIGHT) - VIRTUAL_OVERSCAN);
   const virtualEnd = Math.min(orderedRows.length, Math.ceil((plannerViewportHeight + Math.max(0, plannerScrollTop - 78)) / ROOM_ROW_HEIGHT) + VIRTUAL_OVERSCAN);
@@ -528,6 +533,18 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   const generatedBy = user?.full_name || user?.name || user?.email || 'Authorized staff';
   const roomPlannerDefinition = useMemo(() => buildRoomPlannerDefinition({ rooms: plannerRooms, reservations: normalizedReservations, columns, propertyName, generatedBy }), [plannerRooms, normalizedReservations, columns, propertyName, generatedBy]);
 
+  const paymentLabels = { not_paid: 'No Amount Paid', partially_paid: 'Partially Paid', fully_paid: 'Total Paid' };
+  const sourceLabels = { direct: 'Direct', booking_com: 'Booking.com', unknown: 'Other / Unknown' };
+  const activeFilters = [
+    paymentFilter !== 'all' && { key: 'pay', label: paymentLabels[paymentFilter] || paymentFilter, clear: () => setPaymentFilter('all') },
+    sourceFilter !== 'all' && { key: 'src', label: sourceLabels[sourceFilter] || sourceFilter, clear: () => setSourceFilter('all') },
+    roomTypeFilter !== 'all' && { key: 'type', label: roomTypeFilter, clear: () => setRoomTypeFilter('all') },
+    floorFilter !== 'all' && { key: 'floor', label: floorFilter === 'Unassigned' ? floorFilter : `Floor ${floorFilter}`, clear: () => setFloorFilter('all') },
+    tagFilter !== 'all' && { key: 'tag', label: tagFilter, clear: () => setTagFilter('all') },
+  ].filter(Boolean);
+  const clearAll = () => { setSearchQuery(''); setPaymentFilter('all'); setSourceFilter('all'); setRoomTypeFilter('all'); setFloorFilter('all'); setTagFilter('all'); };
+  const plannerRangeLabel = columns.length ? `${format(columns[0], 'd MMM')} – ${format(columns[columns.length - 1], 'd MMM yyyy')}` : '';
+
   return <div className="room-planner flex flex-col h-full min-h-0" style={{ background: SAND }}>
     <style>{`.room-planner-scroll { overscroll-behavior: contain; scrollbar-gutter: stable; } .room-planner-scroll:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; } .room-planner-room-cell { position: sticky; left: 0; isolation: isolate; background-clip: padding-box; } .room-planner-toolbar-top,.room-planner-toolbar-date-row{flex-wrap:wrap;min-width:0} .room-planner-toolbar-date-row>*{width:auto!important;flex:1 1 150px;min-width:0} .room-planner-month-select{flex:1 1 180px} .room-planner-toolbar{max-width:100%;min-width:0} .room-planner-toolbar-button{white-space:normal;text-align:center} .room-planner-scroll{max-width:100%;}
     /* Do not put overflow:hidden between the timeline scrollport and sticky cells: it clips the pinned room rail. */
@@ -624,84 +641,98 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     .room-planner .room-planner-detail-primary:hover{background:var(--primary-hover);border-color:var(--primary-hover)}
     @media (max-width:600px){.room-planner .room-planner-detail{left:8px;right:8px;top:8px;bottom:8px;width:auto}}
     @media (prefers-reduced-motion:reduce){.room-planner .room-planner-modal,.room-planner .room-planner-modal-backdrop,.room-planner .room-planner-detail{animation:none}}
+
+    /* Compact single-row toolbar + quiet bottom legend (reference-style calendar). Tokens only. */
+    .room-planner .room-planner-toolbar{gap:6px}
+    .room-planner .room-planner-toolbar-main{flex-wrap:wrap}
+    .room-planner .room-planner-navgroup{display:inline-flex;align-items:center;border:1px solid var(--btn-neutral-bd);border-radius:8px;background:var(--surface);overflow:hidden}
+    .room-planner .room-planner-navgroup .room-planner-toolbar-button{border:0;border-radius:0;background:transparent}
+    .room-planner .room-planner-navgroup .room-planner-toolbar-button:hover{background:var(--cal-group)}
+    .room-planner .room-planner-range-label{min-width:150px;padding:0 8px;text-align:center;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--text)}
+    .room-planner .room-planner-more-menu{position:absolute;right:0;top:calc(100% + 4px);z-index:90;min-width:240px;padding:4px;border:1px solid var(--border);border-radius:10px;background:var(--surface);box-shadow:var(--shadow-overlay)}
+    .room-planner .room-planner-more-item{display:flex;width:100%;align-items:center;gap:8px;padding:9px 10px;border-radius:7px;font-size:13px;font-weight:600;color:var(--text);text-align:left}
+    .room-planner .room-planner-more-item:hover{background:var(--cal-group)}
+    .room-planner .room-planner-more-item:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
+    .room-planner .room-planner-bottombar{display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px;padding:6px 16px;border-top:1px solid var(--border);background:var(--cal-page)}
+    .room-planner .room-planner-bottombar .room-planner-filter-count{margin-left:auto}
+    .room-planner .room-planner-filter-row{padding-top:2px}
+    @media (pointer:fine) and (min-width:901px){
+      .room-planner .room-planner-toolbar{padding:6px 12px 6px}
+      .room-planner .room-planner-toolbar-button{height:32px;min-height:32px;padding:0 10px}
+      .room-planner .room-planner-square{width:32px;padding:0}
+      .room-planner .room-planner-navgroup .room-planner-toolbar-button{height:30px;min-height:30px}
+      .room-planner .room-planner-segment{height:26px;padding:0 10px}
+      .room-planner .room-planner-search{height:32px;flex:1 1 200px;min-width:160px;max-width:260px}
+      .room-planner .room-planner-date-input{height:32px;min-height:32px}
+    }
+    @media (min-width:1280px){.room-planner .room-planner-toolbar-main{flex-wrap:nowrap}}
 `}
 </style>
     <div className="room-planner-toolbar shrink-0">
       <div className="room-planner-toolbar-main">
         <div className="room-planner-toolbar-group">
           <button onClick={goToday} className="room-planner-toolbar-button room-planner-today">Today</button>
-          <div role="group" aria-label="Shift visible dates" className="room-planner-pair">
+          <div role="group" aria-label="Shift visible dates" className="room-planner-navgroup">
             <button type="button" aria-label={`Previous ${viewLength} days`} title={`Previous ${viewLength} days`} onClick={()=>shiftVisibleRange(-(Number(viewLength)||15))} className="room-planner-toolbar-button room-planner-neutral room-planner-square"><ChevronLeft size={16}/></button>
+            <span className="room-planner-range-label" aria-live="polite">{plannerRangeLabel}</span>
             <button type="button" aria-label={`Next ${viewLength} days`} title={`Next ${viewLength} days`} onClick={()=>shiftVisibleRange(Number(viewLength)||15)} className="room-planner-toolbar-button room-planner-neutral room-planner-square"><ChevronRight size={16}/></button>
           </div>
-          <label className="room-planner-date-input">
-            <CalendarDays size={16} aria-hidden="true"/>
-            <input lang="en-GB" type="date" aria-label="Start date" value={fromInput} onChange={e=>updateRangeDate('from',e.target.value)}/>
-          </label>
-          <span aria-hidden="true" className="room-planner-range-arrow">→</span>
-          <label className="room-planner-date-input">
-            <CalendarDays size={16} aria-hidden="true"/>
-            <input lang="en-GB" type="date" aria-label="End date" value={toInput} onChange={e=>updateRangeDate('to',e.target.value)}/>
-          </label>
-          <select aria-label="Select month" value={format(month,'yyyy-MM')} onChange={e=>{const [year,mo]=e.target.value.split('-').map(Number);setRange(null);setFromInput('');setToInput('');setRangeError('');setFocusToday(false);setViewMode('month');setMonth(new Date(year,mo-1,1));}} className="room-planner-toolbar-button room-planner-neutral room-planner-month-select">
-            {Array.from({length:25},(_,i)=>{const d=new Date(todayDate.getFullYear(),todayDate.getMonth()-12+i,1);return <option key={format(d,'yyyy-MM')} value={format(d,'yyyy-MM')}>{format(d,'MMMM yyyy')}</option>})}
-          </select>
           <div role="group" aria-label="View length" className="room-planner-segmented">
             {['7','15','30'].map(days=><button key={days} type="button" aria-pressed={viewLength===days} onClick={()=>applyViewLength(days)} className="room-planner-segment">{days}d</button>)}
           </div>
-        </div>
-        <div className="room-planner-toolbar-group room-planner-toolbar-end">
           <div role="group" aria-label="Planner view" className="room-planner-segmented">
             <button type="button" aria-pressed={!mobileListMode&&!reservationListMode} onClick={()=>{setMobileListMode(false);setReservationListMode(false);}} className="room-planner-segment">Planner</button>
             <button type="button" aria-pressed={reservationListMode} onClick={()=>{setMobileListMode(false);setReservationListMode(true);}} className="room-planner-segment">List</button>
             <button type="button" aria-pressed={mobileListMode} onClick={()=>{setReservationListMode(false);setMobileListMode(true);}} className="room-planner-segment">Day list</button>
           </div>
-          <button title="Export calendar" aria-label="Export calendar" onClick={()=>setExportPreview(true)} className="room-planner-toolbar-button room-planner-neutral room-planner-square"><FileDown size={17}/></button>
-          <button title="Planner settings and date range" aria-label="Planner settings and date range" aria-expanded={plannerToolsOpen} onClick={()=>setPlannerToolsOpen(v=>!v)} className="room-planner-toolbar-button room-planner-neutral room-planner-square"><Settings2 size={17}/></button>
-          <button onClick={addClosure} className="room-planner-toolbar-button room-planner-neutral"><Ban size={16}/><span>Add Closures</span></button>
+        </div>
+        <div className="room-planner-toolbar-group room-planner-toolbar-end">
+          <label className="room-planner-search"><Search size={15}/><input aria-label="Search guest, reservation number or room" placeholder="Search guest or room" value={searchQuery} onChange={e=>setSearchQuery(e.target.value)}/></label>
+          <button type="button" aria-expanded={filtersOpen} onClick={()=>setFiltersOpen(v=>!v)} className="room-planner-toolbar-button room-planner-neutral"><SlidersHorizontal size={15}/><span>Filters</span>{activeFilters.length>0&&<span className="room-planner-filter-badge">{activeFilters.length}</span>}</button>
+          <div className="relative">
+            <button type="button" title="More actions" aria-label="More actions" aria-haspopup="menu" aria-expanded={moreOpen} onClick={()=>setMoreOpen(v=>!v)} className="room-planner-toolbar-button room-planner-neutral room-planner-square"><MoreHorizontal size={17}/></button>
+            {moreOpen && <>
+              <button type="button" aria-label="Close menu" tabIndex={-1} className="fixed inset-0 z-[89] cursor-default" onClick={()=>setMoreOpen(false)}/>
+              <div role="menu" className="room-planner-more-menu">
+                <button role="menuitem" type="button" className="room-planner-more-item" onClick={()=>{setMoreOpen(false);setExportPreview(true);}}><FileDown size={15}/>Export calendar</button>
+                <button role="menuitem" type="button" className="room-planner-more-item" onClick={()=>{setMoreOpen(false);addClosure();}}><Ban size={15}/>Add closure</button>
+                <button role="menuitem" type="button" className="room-planner-more-item" aria-expanded={plannerToolsOpen} onClick={()=>{setMoreOpen(false);setPlannerToolsOpen(v=>!v);}}><Settings2 size={15}/>Planner settings and date range</button>
+                {onRefresh && <button role="menuitem" type="button" className="room-planner-more-item" onClick={()=>{setMoreOpen(false);onRefresh();}}><RefreshCw size={15}/>Refresh reservations</button>}
+              </div>
+            </>}
+          </div>
           <button onClick={() => openCreate(plannerRooms[0], range ? parseDate(range.from) : todayDate)} className="room-planner-toolbar-button room-planner-primary"><Plus size={16}/><span>New reservation</span></button>
         </div>
       </div>
-      {(() => {
-        const paymentLabels={not_paid:'No Amount Paid',partially_paid:'Partially Paid',fully_paid:'Total Paid'};
-        const sourceLabels={direct:'Direct',booking_com:'Booking.com',unknown:'Other / Unknown'};
-        const activeFilters=[
-          paymentFilter!=='all'&&{key:'pay',label:paymentLabels[paymentFilter]||paymentFilter,clear:()=>setPaymentFilter('all')},
-          sourceFilter!=='all'&&{key:'src',label:sourceLabels[sourceFilter]||sourceFilter,clear:()=>setSourceFilter('all')},
-          roomTypeFilter!=='all'&&{key:'type',label:roomTypeFilter,clear:()=>setRoomTypeFilter('all')},
-          floorFilter!=='all'&&{key:'floor',label:floorFilter==='Unassigned'?floorFilter:`Floor ${floorFilter}`,clear:()=>setFloorFilter('all')},
-          tagFilter!=='all'&&{key:'tag',label:tagFilter,clear:()=>setTagFilter('all')},
-        ].filter(Boolean);
-        const clearAll=()=>{setSearchQuery('');setPaymentFilter('all');setSourceFilter('all');setRoomTypeFilter('all');setFloorFilter('all');setTagFilter('all');};
-        return <>
-          <div className="room-planner-filter-row">
-            <label className="room-planner-search"><Search size={15}/><input aria-label="Search guest, reservation number or room" placeholder="Search guest, reservation no. or room" value={searchQuery} onChange={e=>setSearchQuery(e.target.value)}/></label>
-            <button type="button" aria-expanded={filtersOpen} onClick={()=>setFiltersOpen(v=>!v)} className="room-planner-toolbar-button room-planner-neutral"><SlidersHorizontal size={15}/><span>Filters</span>{activeFilters.length>0&&<span className="room-planner-filter-badge">{activeFilters.length}</span>}</button>
-            {activeFilters.map(chip=><span key={chip.key} className="room-planner-chip">{chip.label}<button type="button" aria-label={`Remove filter ${chip.label}`} onClick={chip.clear}><X size={12}/></button></span>)}
-            {(activeFilters.length>0||searchQuery)&&<button type="button" onClick={clearAll} className="room-planner-clear">Clear filters</button>}
-            <div className="room-planner-legend" aria-label="Payment status legend">
-              <span className="room-planner-legend-key"><i style={{background:'var(--pay-none)'}}/>No amount paid</span>
-              <span className="room-planner-legend-key"><i style={{background:'var(--pay-part)'}}/>Partially paid</span>
-              <span className="room-planner-legend-key"><i style={{background:'var(--pay-paid)'}}/>Total paid</span>
-              <span className="room-planner-legend-key"><i style={{background:'var(--pay-opt)',border:'1px dashed var(--pay-opt-bd)'}}/>Optioned</span>
-            </div>
-            <span className="room-planner-filter-count">{filteredRooms.length} {filteredRooms.length===1?'room':'rooms'} · {filteredReservations.length} {filteredReservations.length===1?'reservation':'reservations'}</span>
-          </div>
-          {filtersOpen&&<div className="room-planner-filter-panel">
-            <select aria-label="Filter by payment status" value={paymentFilter} onChange={e=>setPaymentFilter(e.target.value)} className="room-planner-filter"><option value="all">All payment statuses</option><option value="not_paid">No Amount Paid</option><option value="partially_paid">Partially Paid</option><option value="fully_paid">Total Paid</option></select>
-            <select aria-label="Filter by booking source" value={sourceFilter} onChange={e=>setSourceFilter(e.target.value)} className="room-planner-filter"><option value="all">All sources</option><option value="direct">Direct</option><option value="booking_com">Booking.com</option><option value="unknown">Other / Unknown</option></select>
-            <select aria-label="Filter by room type" value={roomTypeFilter} onChange={e=>setRoomTypeFilter(e.target.value)} className="room-planner-filter"><option value="all">All room types</option>{[...new Set(plannerRooms.map(room=>roomTypeMap.get(room.room_type_id)||room.roomTypeName||room.room_type||'Unassigned'))].sort().map(type=><option key={type} value={type}>{type}</option>)}</select>
-            <select aria-label="Filter by floor" value={floorFilter} onChange={e=>setFloorFilter(e.target.value)} className="room-planner-filter"><option value="all">All floors</option>{[...new Set(plannerRooms.map(room=>String(room.floor ?? 'Unassigned')))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})).map(floor=><option key={floor} value={floor}>{floor === 'Unassigned' ? floor : `Floor ${floor}`}</option>)}</select>
-            <select aria-label="Filter by tag" value={tagFilter} onChange={e=>setTagFilter(e.target.value)} className="room-planner-filter"><option value="all">All tags</option>{[...new Set(normalizedReservations.flatMap(rv => Array.isArray(rv.tags) ? rv.tags.map(tag => typeof tag === 'string' ? tag : tag?.name).filter(Boolean) : rv.tag ? [String(rv.tag)] : []))].sort().map(tag=><option key={tag} value={tag}>{tag}</option>)}</select>
-          </div>}
-        </>;
-      })()}
+      {(activeFilters.length>0||searchQuery) && <div className="room-planner-filter-row">
+        {activeFilters.map(chip=><span key={chip.key} className="room-planner-chip">{chip.label}<button type="button" aria-label={`Remove filter ${chip.label}`} onClick={chip.clear}><X size={12}/></button></span>)}
+        <button type="button" onClick={clearAll} className="room-planner-clear">Clear filters</button>
+      </div>}
+      {filtersOpen&&<div className="room-planner-filter-panel">
+        <select aria-label="Filter by payment status" value={paymentFilter} onChange={e=>setPaymentFilter(e.target.value)} className="room-planner-filter"><option value="all">All payment statuses</option><option value="not_paid">No Amount Paid</option><option value="partially_paid">Partially Paid</option><option value="fully_paid">Total Paid</option></select>
+        <select aria-label="Filter by booking source" value={sourceFilter} onChange={e=>setSourceFilter(e.target.value)} className="room-planner-filter"><option value="all">All sources</option><option value="direct">Direct</option><option value="booking_com">Booking.com</option><option value="unknown">Other / Unknown</option></select>
+        <select aria-label="Filter by room type" value={roomTypeFilter} onChange={e=>setRoomTypeFilter(e.target.value)} className="room-planner-filter"><option value="all">All room types</option>{[...new Set(plannerRooms.map(room=>roomTypeMap.get(room.room_type_id)||room.roomTypeName||room.room_type||'Unassigned'))].sort().map(type=><option key={type} value={type}>{type}</option>)}</select>
+        <select aria-label="Filter by floor" value={floorFilter} onChange={e=>setFloorFilter(e.target.value)} className="room-planner-filter"><option value="all">All floors</option>{[...new Set(plannerRooms.map(room=>String(room.floor ?? 'Unassigned')))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})).map(floor=><option key={floor} value={floor}>{floor === 'Unassigned' ? floor : `Floor ${floor}`}</option>)}</select>
+        <select aria-label="Filter by tag" value={tagFilter} onChange={e=>setTagFilter(e.target.value)} className="room-planner-filter"><option value="all">All tags</option>{[...new Set(normalizedReservations.flatMap(rv => Array.isArray(rv.tags) ? rv.tags.map(tag => typeof tag === 'string' ? tag : tag?.name).filter(Boolean) : rv.tag ? [String(rv.tag)] : []))].sort().map(tag=><option key={tag} value={tag}>{tag}</option>)}</select>
+      </div>}
       {plannerToolsOpen && <div className="room-planner-settings-panel">
         <span>{plannerRooms.length} rooms · {normalizedReservations.length} active stays</span>
-        {onRefresh && <button onClick={onRefresh} className="room-planner-toolbar-button room-planner-neutral"><RefreshCw size={15}/>Refresh reservations</button>}
+        <label className="room-planner-date-input">
+          <CalendarDays size={16} aria-hidden="true"/>
+          <input lang="en-GB" type="date" aria-label="Start date" value={fromInput} onChange={e=>updateRangeDate('from',e.target.value)}/>
+        </label>
+        <span aria-hidden="true" className="room-planner-range-arrow">→</span>
+        <label className="room-planner-date-input">
+          <CalendarDays size={16} aria-hidden="true"/>
+          <input lang="en-GB" type="date" aria-label="End date" value={toInput} onChange={e=>updateRangeDate('to',e.target.value)}/>
+        </label>
+        <select aria-label="Select month" value={format(month,'yyyy-MM')} onChange={e=>{const [year,mo]=e.target.value.split('-').map(Number);setRange(null);setFromInput('');setToInput('');setRangeError('');setFocusToday(false);setViewMode('month');setMonth(new Date(year,mo-1,1));}} className="room-planner-toolbar-button room-planner-neutral room-planner-month-select">
+          {Array.from({length:25},(_,i)=>{const d=new Date(todayDate.getFullYear(),todayDate.getMonth()-12+i,1);return <option key={format(d,'yyyy-MM')} value={format(d,'yyyy-MM')}>{format(d,'MMMM yyyy')}</option>})}
+        </select>
+        <button type="button" aria-pressed={showGroups} onClick={()=>setShowGroups(v=>!v)} className="room-planner-toolbar-button room-planner-neutral">Group by room type: {showGroups?'On':'Off'}</button>
         <button onClick={undoPlannerMove} disabled={!undoStack.length} className="room-planner-toolbar-button room-planner-neutral disabled:opacity-40" title="Undo last planner move (Ctrl+Z)">Undo</button>
         <button onClick={redoPlannerMove} disabled={!redoStack.length} className="room-planner-toolbar-button room-planner-neutral disabled:opacity-40" title="Redo planner move (Ctrl+Shift+Z)">Redo</button>
-        <div className="flex flex-wrap items-center gap-2"><span className="text-xs font-semibold" style={{color:'var(--muted)'}}>Room groups</span>{groupedRooms.map(([typeName,group])=>{const collapsed=collapsedRoomTypes.includes(typeName);return <button key={typeName} type="button" onClick={()=>setCollapsedRoomTypes(current=>collapsed?current.filter(item=>item!==typeName):[...current,typeName])} className="room-planner-toolbar-button room-planner-neutral">{collapsed?'Show':'Hide'} {typeName} ({group.length})</button>})}</div>
+        {showGroups&&<div className="flex flex-wrap items-center gap-2"><span className="text-xs font-semibold" style={{color:'var(--muted)'}}>Room groups</span>{groupedRooms.map(([typeName,group])=>{const collapsed=collapsedRoomTypes.includes(typeName);return <button key={typeName} type="button" onClick={()=>setCollapsedRoomTypes(current=>collapsed?current.filter(item=>item!==typeName):[...current,typeName])} className="room-planner-toolbar-button room-planner-neutral">{collapsed?'Show':'Hide'} {typeName} ({group.length})</button>})}</div>}
         <label className="flex items-center gap-2 text-xs" style={{color:'var(--muted)'}}>Density <select aria-label="Room row density" value={density} onChange={e=>setDensity(e.target.value)} className="room-planner-filter"><option value="compact">Compact</option><option value="comfortable">Comfortable</option><option value="large">Large</option></select></label>
         <label className="flex items-center gap-2 text-xs" style={{color:'var(--muted)'}}>Date format <select aria-label="Date format" value={dateFormat} onChange={e=>setDateFormat(e.target.value)} className="room-planner-filter"><option value="dd/MM/yyyy">DD/MM/YYYY</option><option value="MM/dd/yyyy">MM/DD/YYYY</option></select></label>
         <span className="text-xs" style={{color:'var(--muted)'}}>Shortcuts: T today · Esc close · ←/→ scroll · Ctrl/Cmd+Z undo</span>
@@ -744,7 +775,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
         {bottomSpacerHeight > 0 && <div aria-hidden="true" style={{height:bottomSpacerHeight,gridColumn:'1 / -1'}}/>}
 
         <div className="grid sticky bottom-0 z-30" style={{gridTemplateColumns:`${ROOM_COL_WIDTH}px repeat(${columns.length}, ${dayWidth}px)`,background:'var(--bg)',borderTop:'2px solid var(--border)'}}>
-          {['arrivals','inHouse','checkOuts'].map((kind,idx)=><React.Fragment key={kind}><div className="room-planner-room-cell sticky left-0 z-40 px-3 py-2 text-xs font-medium" style={{background:'var(--cal-group)',color:'var(--text)',fontWeight:600,borderBottom:idx===2?'none':`1px solid var(--border)`}}>{kind==='arrivals'?'Arrivals':kind==='inHouse'?'In-House':'Departures'}</div>{columns.map(d=>{const s=calculateDailyStats(normalizedReservations,d);const value=s[kind];return <div key={`${kind}-${dateKey(d)}`} className="text-center py-2 text-xs tabular-nums" style={{color:value?'var(--text)':'var(--text-muted)',fontWeight:value?700:400,opacity:value?1:.55,background:'var(--surface)',borderRight:`1px solid var(--border)`,borderBottom:idx===2?'none':`1px solid var(--border)`}}>{value}</div>})}</React.Fragment>)}
+          {['arrivals','inHouse','checkOuts'].map((kind,idx)=><React.Fragment key={kind}><div className="room-planner-room-cell sticky left-0 z-40 px-3 text-xs font-medium leading-6" style={{background:'var(--cal-group)',color:'var(--text)',fontWeight:600,borderBottom:idx===2?'none':`1px solid var(--border)`}}>{kind==='arrivals'?'Arrivals':kind==='inHouse'?'In-House':'Departures'}</div>{columns.map(d=>{const s=calculateDailyStats(normalizedReservations,d);const value=s[kind];return <div key={`${kind}-${dateKey(d)}`} className="text-center text-xs leading-6 tabular-nums" style={{color:value?'var(--text)':'var(--text-muted)',fontWeight:value?700:400,opacity:value?1:.55,background:'var(--surface)',borderRight:`1px solid var(--border)`,borderBottom:idx===2?'none':`1px solid var(--border)`}}>{value}</div>})}</React.Fragment>)}
         </div>
       </div>}
       {reservationListMode && <div className="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--surface)]"><table className="w-full min-w-[760px] text-left text-xs"><thead className="sticky top-0 bg-[var(--deep-lagoon)] text-[var(--white)]"><tr><th className="p-3">Guest</th><th className="p-3">Room</th><th className="p-3">Arrival</th><th className="p-3">Departure</th><th className="p-3">Guests</th><th className="p-3">Source</th><th className="p-3">Payment</th></tr></thead><tbody>{filteredReservations.map(rv=>{const room=plannerRooms.find(item=>item.id===rv.roomId);const pay=getPaymentStyle(getPaymentStatusFromAmounts(rv.amountPaid,rv.totalAmount));return <tr key={rv.id} className="cursor-pointer border-t border-[var(--border)] hover:bg-[var(--surface-2)]" onClick={()=>setSelectedReservation(rv)}><td className="p-3 font-semibold">{rv.guestName||'Guest'}</td><td className="p-3">{room?.number||'—'}</td><td className="p-3">{format(parseDate(rv.checkIn),dateFormat)}</td><td className="p-3">{format(parseDate(rv.checkOut),dateFormat)}</td><td className="p-3">{formatGuests(rv)}</td><td className="p-3">{channelLabel[rv.channel]||rv.channel||'—'}</td><td className="p-3"><span className="rounded px-2 py-1 font-semibold" style={{background:pay.background,color:pay.color}}>{pay.label}</span></td></tr>})}{filteredReservations.length===0&&<tr><td colSpan={7} className="p-6 text-center text-[var(--text-muted)]">No reservations match the current filters.</td></tr>}</tbody></table></div>}
@@ -768,6 +799,13 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
           </section>;
         })}
       </div>}
+    </div>
+    <div className="room-planner-bottombar shrink-0" role="group" aria-label="Payment status legend">
+      <span className="room-planner-legend-key"><i style={{background:'var(--pay-none)'}}/>No amount paid</span>
+      <span className="room-planner-legend-key"><i style={{background:'var(--pay-part)'}}/>Partially paid</span>
+      <span className="room-planner-legend-key"><i style={{background:'var(--pay-paid)'}}/>Total paid</span>
+      <span className="room-planner-legend-key"><i style={{background:'var(--pay-opt)',border:'1px dashed var(--pay-opt-bd)'}}/>Optioned</span>
+      <span className="room-planner-filter-count">{filteredRooms.length} {filteredRooms.length===1?'room':'rooms'} · {filteredReservations.length} {filteredReservations.length===1?'reservation':'reservations'}</span>
     </div>
 
     {closureModal && <Modal title="Add room closure" onClose={() => setClosureModal(false)}><div className="p-5 space-y-4">
