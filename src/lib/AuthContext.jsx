@@ -1,10 +1,21 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { authService } from '@/services/authService';
 import { supabase } from '@/lib/supabaseClient';
 import { setReturnTo, getReturnTo, clearReturnTo } from '@/lib/authReturnTo';
 
 const AuthContext = createContext(null);
+
+// Preserve the previous user reference when a silent entitlement refresh returns equivalent data.
+function sameUser(a, b) {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  try { return JSON.stringify(a) === JSON.stringify(b); } catch { return false; }
+}
+
+async function hasLiveSession() {
+  try { const { data } = await supabase.auth.getSession(); return !!data?.session; } catch { return false; }
+}
 
 export function AuthProvider({ children }) {
   const navigate = useNavigate();
@@ -14,26 +25,43 @@ export function AuthProvider({ children }) {
   const [authChecked, setAuthChecked] = useState(false);
   const [user, setUser] = useState(null);
   const [authError, setAuthError] = useState(null);
+  const userRef = useRef(null);
+  const authCheckSequenceRef = useRef(0);
+
+  const applyUser = useCallback((next) => {
+    userRef.current = next;
+    setUser((previous) => (sameUser(previous, next) ? previous : next));
+  }, []);
 
   const checkUserAuth = useCallback(async () => {
-    setIsLoadingAuth(true);
+    const requestId = ++authCheckSequenceRef.current;
+    const hadUser = !!userRef.current;
+    if (!hadUser) setIsLoadingAuth(true);
     try {
       const current = await authService.getCurrentUser();
+      if (requestId !== authCheckSequenceRef.current) return;
       if (current) {
-        setUser(current);
+        applyUser(current);
         setAuthError(null);
+      } else if (hadUser && await hasLiveSession()) {
+        // A transient profile/network failure must not unmount a live workspace.
       } else {
-        setUser(null);
+        if (requestId !== authCheckSequenceRef.current) return;
+        applyUser(null);
         setAuthError({ type: 'auth_required' });
       }
     } catch (err) {
-      setUser(null);
-      setAuthError({ type: 'auth_required', message: err?.message });
+      if (requestId === authCheckSequenceRef.current && !hadUser) {
+        applyUser(null);
+        setAuthError({ type: 'auth_required', message: err?.message });
+      }
     } finally {
-      setIsLoadingAuth(false);
-      setAuthChecked(true);
+      if (requestId === authCheckSequenceRef.current) {
+        setIsLoadingAuth(false);
+        setAuthChecked(true);
+      }
     }
-  }, []);
+  }, [applyUser]);
 
   useEffect(() => {
     checkUserAuth();
@@ -48,11 +76,11 @@ export function AuthProvider({ children }) {
   const refreshUser = useCallback(async () => {
     try {
       const current = await authService.getCurrentUser();
-      if (current) setUser(current);
+      if (current) applyUser(current);
     } catch {
       // Keep the current session on transient failures; the next tick retries.
     }
-  }, []);
+  }, [applyUser]);
 
   useEffect(() => {
     if (!user || user.isPlatformOwner) return undefined;
@@ -75,11 +103,20 @@ export function AuthProvider({ children }) {
   // This covers token refresh, sign-out in another tab, and sign-in/session
   // restoration events instead of relying on the initial page load only.
   useEffect(() => {
-    const { data: subscription } = supabase.auth.onAuthStateChange((event) => {
+    let disposed = false;
+    let timer = null;
+    const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'INITIAL_SESSION') return;
-      checkUserAuth();
+      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')
+        && userRef.current && session?.user?.id === userRef.current.id) return;
+      if (timer !== null) clearTimeout(timer);
+      timer = setTimeout(() => { if (!disposed) checkUserAuth(); }, 0);
     });
-    return () => subscription?.subscription?.unsubscribe();
+    return () => {
+      disposed = true;
+      if (timer !== null) clearTimeout(timer);
+      subscription?.subscription?.unsubscribe();
+    };
   }, [checkUserAuth]);
 
   // Platform Admin changes (package/status/subscription/member assignment) are
@@ -104,7 +141,8 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(async (email, password, options = {}) => {
     const loggedInUser = await authService.login({ email, password });
-    setUser(loggedInUser);
+    authCheckSequenceRef.current += 1;
+    applyUser(loggedInUser);
     setAuthError(null);
     setAuthChecked(true);
     const dest = options.redirectTo || (loggedInUser?.isPlatformOwner ? '/admin' : getReturnTo('/'));
@@ -113,7 +151,7 @@ export function AuthProvider({ children }) {
     // otherwise a property account can be redirected away before the denial is shown.
     if (options.navigate !== false) navigate(dest, { replace: true });
     return loggedInUser;
-  }, [navigate]);
+  }, [navigate, applyUser]);
 
   const register = useCallback(async ({ name, email, password, businessName }) => {
     const result = await authService.register({ name, email, password, businessName });
@@ -121,25 +159,27 @@ export function AuthProvider({ children }) {
       setAuthChecked(true);
       return result;
     }
-    setUser(result);
+    authCheckSequenceRef.current += 1;
+    applyUser(result);
     setAuthError(null);
     setAuthChecked(true);
     navigate('/', { replace: true });
     return result;
-  }, [navigate]);
+  }, [navigate, applyUser]);
 
   const logout = useCallback(async () => {
+    authCheckSequenceRef.current += 1;
     await authService.logout();
-    setUser(null);
+    applyUser(null);
     try {
       sessionStorage.removeItem('olitech_module_access_v2');
       sessionStorage.removeItem('olitech_active_staff_v2');
     } catch {}
     setAuthError({ type: 'auth_required' });
     navigate('/login', { replace: true });
-  }, [navigate]);
+  }, [navigate, applyUser]);
 
-  const value = {
+  const value = useMemo(() => ({
     user,
     isAuthenticated: !!user,
     isLoadingAuth,
@@ -151,7 +191,7 @@ export function AuthProvider({ children }) {
     login,
     register,
     logout,
-  };
+  }), [user, isLoadingPublicSettings, isLoadingAuth, authChecked, authError, checkUserAuth, navigateToLogin, login, register, logout]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
