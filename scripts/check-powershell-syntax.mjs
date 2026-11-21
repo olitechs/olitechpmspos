@@ -30,7 +30,7 @@ const result = spawnSync(shell, ['-NoProfile', '-NonInteractive', '-ExecutionPol
   windowsHide: true,
 });
 if (result.error) {
-  console.error(\`Could not launch \${shell}: \${result.error.message}\`);
+  console.error(`Could not launch ${shell}: ${result.error.message}`);
   process.exit(1);
 }
 process.exit(result.status ?? 1);
