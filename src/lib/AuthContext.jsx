@@ -74,9 +74,10 @@ export function AuthProvider({ children }) {
   // realtime listeners above already cover platform-side changes; this covers
   // pure time-based expiry. The database check remains authoritative.
   const refreshUser = useCallback(async () => {
+    const requestId = ++authCheckSequenceRef.current;
     try {
       const current = await authService.getCurrentUser();
-      if (current) applyUser(current);
+      if (requestId === authCheckSequenceRef.current && current) applyUser(current);
     } catch {
       // Keep the current session on transient failures; the next tick retries.
     }
