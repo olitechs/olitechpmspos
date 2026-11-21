@@ -12,15 +12,47 @@ $ErrorActionPreference = 'Stop'
 
 # Capture installer failures separately from the running agent logs. The service
 # may fail before Node starts, so agent.log cannot explain registration errors.
-$InstallLogDir = Join-Path $env:ProgramData 'OliTechs\\PrintAgent\\logs'
+if (-not $env:ProgramData) { throw 'The Windows ProgramData directory is not available.' }
+$InstallLogDir = Join-Path $env:ProgramData 'OliTechs\PrintAgent\logs'
 New-Item -ItemType Directory -Force -Path $InstallLogDir | Out-Null
 $InstallLogPath = Join-Path $InstallLogDir 'install-service.log'
-try { Start-Transcript -Path $InstallLogPath -Append -Force | Out-Null } catch {}
+$script:InstallTranscriptStarted = $false
+try {
+  Start-Transcript -Path $InstallLogPath -Append -Force | Out-Null
+  $script:InstallTranscriptStarted = $true
+} catch {
+  # Transcript logging is best-effort; explicit failure records are still written below.
+}
+
+function Write-InstallFailure {
+  param([string]$Message)
+  try { $Message | Out-File -FilePath $InstallLogPath -Append -Encoding utf8 } catch {}
+}
+
+function Invoke-CheckedNativeCommand {
+  param(
+    [Parameter(Mandatory = $true)][string]$FilePath,
+    [Parameter(Mandatory = $true)][string[]]$Arguments,
+    [Parameter(Mandatory = $true)][string]$FailureMessage
+  )
+
+  $output = @(& $FilePath @Arguments 2>&1)
+  $exitCode = $LASTEXITCODE
+  if ($output.Count -gt 0) {
+    $output | Out-File -FilePath $InstallLogPath -Append -Encoding utf8
+  }
+  if ($exitCode -ne 0) {
+    throw ("{0} (exit code {1}). See {2}." -f $FailureMessage, $exitCode, $InstallLogPath)
+  }
+  return $output
+}
+
 trap {
-  try {
-    "INSTALL ERROR: $($_.Exception.Message)" | Out-File -FilePath $InstallLogPath -Append -Encoding utf8
-    Stop-Transcript | Out-Null
-  } catch {}
+  Write-InstallFailure ("INSTALL ERROR: {0}" -f $_.Exception.Message)
+  if ($script:InstallTranscriptStarted) {
+    try { Stop-Transcript | Out-Null } catch {}
+    $script:InstallTranscriptStarted = $false
+  }
   throw
 }
 
@@ -82,14 +114,38 @@ New-Item -ItemType Directory -Force -Path $DataDir, $ServiceDir, $LogDir | Out-N
 $existing = Get-Service -Name $ServiceId -ErrorAction SilentlyContinue
 if ($existing) {
   if ($existing.Status -ne 'Stopped') {
-    Stop-Service -Name $ServiceId -Force -ErrorAction SilentlyContinue
+    Stop-Service -Name $ServiceId -Force -ErrorAction Stop
+    $stopDeadline = (Get-Date).AddSeconds(30)
+    do {
+      Start-Sleep -Milliseconds 500
+      $existing = Get-Service -Name $ServiceId -ErrorAction SilentlyContinue
+    } while ($existing -and $existing.Status -ne 'Stopped' -and (Get-Date) -lt $stopDeadline)
+    if ($existing -and $existing.Status -ne 'Stopped') {
+      throw "The existing $ServiceId service did not stop. Close the Print Agent and retry."
+    }
   }
+
   if (Test-Path $WrapperPath) {
-    & $WrapperPath uninstall 2>$null | Out-Null
+    $uninstallOutput = @(& $WrapperPath uninstall 2>&1)
+    $uninstallExitCode = $LASTEXITCODE
+    if ($uninstallOutput.Count -gt 0) {
+      $uninstallOutput | Out-File -FilePath $InstallLogPath -Append -Encoding utf8
+    }
+    if ($uninstallExitCode -ne 0) {
+      throw "Removing the previous Windows service failed (WinSW exit code $uninstallExitCode). See $InstallLogPath."
+    }
   } else {
-    sc.exe delete $ServiceId 2>$null | Out-Null
+    Invoke-CheckedNativeCommand -FilePath 'sc.exe' -Arguments @('delete', $ServiceId) -FailureMessage 'Removing the previous Windows service failed' | Out-Null
   }
-  Start-Sleep -Seconds 2
+
+  $removeDeadline = (Get-Date).AddSeconds(30)
+  do {
+    Start-Sleep -Milliseconds 500
+    $existing = Get-Service -Name $ServiceId -ErrorAction SilentlyContinue
+  } while ($existing -and (Get-Date) -lt $removeDeadline)
+  if ($existing) {
+    throw "Windows has not released the previous $ServiceId service registration. Restart Windows and retry."
+  }
 }
 
 $escape = [System.Security.SecurityElement]::Escape
@@ -130,20 +186,27 @@ Copy-Item -Path $resolvedWinSW -Destination $WrapperPath -Force
 # WinSW can return a generic non-zero code when a stale service registration
 # still exists (for example, Windows has marked it for deletion). Capture its
 # actual output so support can distinguish that from access/configuration errors.
-$winswOutput = & $WrapperPath install 2>&1
+$winswOutput = @(& $WrapperPath install 2>&1)
 $winswExitCode = $LASTEXITCODE
-if ($winswOutput) {
-  $winswOutput | Tee-Object -FilePath $InstallLogPath -Append | Out-Null
+if ($winswOutput.Count -gt 0) {
+  $winswOutput | Out-File -FilePath $InstallLogPath -Append -Encoding utf8
 }
 if ($winswExitCode -ne 0) {
-  $serviceCheck = & sc.exe query $ServiceId 2>&1
-  if ($serviceCheck) { $serviceCheck | Out-File -FilePath $InstallLogPath -Append -Encoding utf8 }
+  try {
+    $serviceCheck = @(& sc.exe query $ServiceId 2>&1)
+    if ($serviceCheck.Count -gt 0) { $serviceCheck | Out-File -FilePath $InstallLogPath -Append -Encoding utf8 }
+  } catch {}
   throw "Installing the Windows service failed (WinSW exit code $winswExitCode). See $InstallLogPath for the detailed installer log."
 }
 
 # Service Control Manager recovery: restart after a crash with increasing delay.
-sc.exe failure $ServiceId reset= 86400 actions= restart/5000/restart/15000/restart/60000 | Out-Null
-sc.exe description $ServiceId "OliTechs local print agent: LAN ESC/POS and Windows spooler printing for Olitech PMS/POS." | Out-Null
+$scFailureOutput = @(sc.exe failure $ServiceId reset= 86400 actions= restart/5000/restart/15000/restart/60000 2>&1)
+$scFailureExitCode = $LASTEXITCODE
+if ($scFailureOutput.Count -gt 0) { $scFailureOutput | Out-File -FilePath $InstallLogPath -Append -Encoding utf8 }
+if ($scFailureExitCode -ne 0) {
+  throw "Configuring Windows service recovery failed (sc.exe exit code $scFailureExitCode). See $InstallLogPath."
+}
+Invoke-CheckedNativeCommand -FilePath 'sc.exe' -Arguments @('description', $ServiceId, 'OliTechs local print agent: LAN ESC/POS and Windows spooler printing for Olitech PMS/POS.') -FailureMessage 'Setting the Windows service description failed' | Out-Null
 
 if (-not $SkipLegacyTaskCleanup) {
   $legacyTask = Get-ScheduledTask -TaskName $LegacyTaskName -ErrorAction SilentlyContinue
@@ -156,7 +219,11 @@ if (-not $SkipLegacyTaskCleanup) {
   }
 }
 
-Start-Service -Name $ServiceId
+try {
+  Start-Service -Name $ServiceId -ErrorAction Stop
+} catch {
+  throw ("Could not start the OliTechs Print Agent service: {0}. See {1}." -f $_.Exception.Message, $InstallLogPath)
+}
 $deadline = (Get-Date).AddSeconds(30)
 do {
   Start-Sleep -Milliseconds 500
@@ -195,3 +262,7 @@ if ($healthy) {
 }
 Write-Host ''
 try { Stop-Transcript | Out-Null } catch {}
+if ($script:InstallTranscriptStarted) {
+  try { Stop-Transcript | Out-Null } catch {}
+  $script:InstallTranscriptStarted = $false
+}

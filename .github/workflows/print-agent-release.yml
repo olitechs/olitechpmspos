@@ -46,6 +46,10 @@ jobs:
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
+      - name: Require PowerShell syntax and encoding validation
+        shell: pwsh
+        run: ./scripts/check-powershell-syntax.ps1
+
       - name: Print agent checks
         run: |
           node --check tools/print-agent/server.mjs
@@ -135,6 +139,16 @@ jobs:
           & powershell.exe @buildArgs
           if ($LASTEXITCODE -ne 0) { throw "Installer build failed (exit code $LASTEXITCODE)." }
 
+      - name: Windows installer install/uninstall smoke tests
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem dist/installer -Filter 'OliTechsPrintAgentSetup-*.exe' -File |
+            Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if (-not $installer) { throw 'The installer smoke test could not find the compiled setup executable.' }
+          ./tools/print-agent/installer/windows-smoke-test.ps1 `
+            -InstallerPath $installer.FullName `
+            -InnoSetupPath 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
+
       - name: Write SHA-256 checksums
         id: sums
         shell: pwsh
@@ -156,7 +170,7 @@ jobs:
           if-no-files-found: error
 
       - name: Publish GitHub Release
-        if: ${{ steps.sums.outputs.signed != '' && (github.event_name == 'push' || (inputs.publish_release == true && inputs.version != '')) }}
+        if: ${{ success() && steps.sums.outputs.signed != '' && (github.event_name == 'push' || (inputs.publish_release == true && inputs.version != '')) }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('print-agent-v{0}', inputs.version) }}

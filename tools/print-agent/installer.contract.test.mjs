@@ -159,3 +159,25 @@ test('pairing configuration is injected as environment entries, never credential
   assert.ok(!/service_role_key/i.test(install), 'the workstation installer must not accept a service-role key');
   assert.match(install, /Pairing:  available/, 'the installer must tell staff how to pair');
 });
+
+
+test('the Windows release is gated on silent install, health, uninstall, and failure smoke tests', async () => {
+  const workflow = await read('../../.github/workflows/print-agent-release.yml');
+  const smoke = await read('./installer/windows-smoke-test.ps1');
+  const smokeStep = workflow.indexOf('Windows installer install/uninstall smoke tests');
+  const artifactStep = workflow.indexOf('actions/upload-artifact');
+  const publishStep = workflow.indexOf('Publish GitHub Release');
+
+  assert.ok(smokeStep >= 0, 'the release workflow must invoke the Windows smoke tests');
+  assert.ok(artifactStep > smokeStep, 'artifact upload must follow successful smoke tests');
+  assert.ok(publishStep > smokeStep, 'release publishing must follow successful smoke tests');
+  assert.match(workflow, /success\(\) && steps\.sums\.outputs\.signed/);
+  assert.match(smoke, /\/VERYSILENT \/SUPPRESSMSGBOXES/);
+  assert.match(smoke, /ExpectedState 'Running'/);
+  assert.match(smoke, /127\.0\.0\.1:8631\/health/);
+  assert.match(smoke, /successful-uninstall\.log/);
+  assert.match(smoke, /ExpectedState 'Absent'/);
+  assert.match(smoke, /DForceServiceInstallFailure/);
+  assert.match(smoke, /failureOutputRoot = Join-Path \$logRoot 'failure-build'/);
+  assert.match(smoke, /failureCode -ne 0/);
+});

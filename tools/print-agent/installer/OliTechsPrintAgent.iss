@@ -31,6 +31,10 @@ AppVersion={#AppVersion}
 AppVerName={#AppName} {#AppVersion}
 AppPublisher={#AppPublisher}
 AppPublisherURL={#AppUrl}
+AppSupportURL={#AppUrl}
+AppUpdatesURL={#AppUrl}
+AppContact=OliTechs Support
+AppComments=OliTechs Print Agent for local printer connectivity.
 DefaultDirName={autopf}\OliTechs\Print Agent
 DefaultGroupName=OliTechs Print Agent
 DisableProgramGroupPage=yes
@@ -144,6 +148,19 @@ begin
   Result := not ServiceInstallFailed;
 end;
 
+procedure ShowServiceInstallFailure(const Details: String);
+begin
+  SuppressibleMsgBox(
+    'The OliTechs Print Agent service could not be installed.' + #13#10#13#10 +
+    Details + #13#10#13#10 +
+    'Printing will not work until this is fixed.' + #13#10 +
+    'Please restart Windows and run this installer again. If the problem continues, ' +
+    'contact OliTechs support and provide this log file:' + #13#10 +
+    ExpandConstant('{commonappdata}\\OliTechs\\PrintAgent\\logs\\install-service.log') + #13#10#13#10 +
+    'Support: ' + ExpandConstant('{#AppUrl}'),
+    mbError, MB_OK, IDOK);
+end;
+
 procedure RunServiceInstaller();
 var
   Code: Integer;
@@ -154,24 +171,24 @@ begin
     ' -WinSWPath "' + ExpandConstant('{app}\service\WinSW.exe') + '"' +
     ' -NodeExe "' + ExpandConstant('{app}\node\node.exe') + '"';
 
+#ifdef ForceServiceInstallFailure
+  { CI-only fixture: compile with /DForceServiceInstallFailure to exercise the
+    silent-install failure path without altering the packaged service script. }
+  Code := 73;
+#else
+  Code := -1;
   if not Exec('powershell.exe', Params, ExpandConstant('{app}'), SW_HIDE, ewWaitUntilTerminated, Code) then
   begin
     ServiceInstallFailed := True;
-    MsgBox('Windows could not start the OliTechs Print Agent service installer.' + #13#10#13#10 +
-      'Printing will not work until this is fixed. Restart the computer and run this installer again, ' +
-      'or send the log folder to support: ' + ExpandConstant('{commonappdata}\OliTechs\PrintAgent\logs'),
-      mbError, MB_OK);
+    ShowServiceInstallFailure('Windows could not launch the service installer.');
     exit;
   end;
+#endif
 
   if Code <> 0 then
   begin
     ServiceInstallFailed := True;
-    MsgBox('The OliTechs Print Agent service could not be installed (exit code ' + IntToStr(Code) + ').' + #13#10#13#10 +
-      'Printing will not work until this is fixed. Restart Windows and run this installer again.' + #13#10#13#10 +
-      'If it still fails, send this diagnostic file to OliTechs support:' + #13#10 +
-      ExpandConstant('{commonappdata}\\OliTechs\\PrintAgent\\logs\\install-service.log'),
-      mbError, MB_OK);
+    ShowServiceInstallFailure('The service installer returned exit code ' + IntToStr(Code) + '.');
   end;
 end;
 
@@ -180,5 +197,10 @@ begin
   if CurStep = ssInstall then
     StopExistingAgentService()
   else if CurStep = ssPostInstall then
+  begin
     RunServiceInstaller();
+    { Do not report success or return exit code 0 when a silent install failed. }
+    if ServiceInstallFailed then
+      RaiseException('OliTechs Print Agent service installation failed. See the install-service.log file in ProgramData.');
+  end;
 end;
