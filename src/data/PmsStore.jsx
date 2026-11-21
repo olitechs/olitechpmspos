@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { pmsService } from '@/services/pmsService';
 import { supabase } from '@/lib/supabaseClient';
@@ -139,16 +139,31 @@ export function PmsProvider({ children }) {
 		reload();
 	}, [reload]);
 
+	// A single booking mutation may emit several row events. Coalesce the burst
+	// into one reload instead of repeating all five collection queries.
+	const reloadTimerRef = useRef(null);
+	const scheduleReload = useCallback(() => {
+		if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current);
+		reloadTimerRef.current = setTimeout(() => {
+			reloadTimerRef.current = null;
+			reload();
+		}, 400);
+	}, [reload]);
+
 	useEffect(() => {
 		if (!propertyId) return undefined;
 		const channel = supabase
 			.channel('pms-property-' + propertyId)
-			.on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: 'property_id=eq.' + propertyId }, () => reload())
-			.on('postgres_changes', { event: '*', schema: 'public', table: 'reservations', filter: 'property_id=eq.' + propertyId }, () => reload())
-			.on('postgres_changes', { event: '*', schema: 'public', table: 'guests', filter: 'property_id=eq.' + propertyId }, () => reload())
+			.on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: 'property_id=eq.' + propertyId }, scheduleReload)
+			.on('postgres_changes', { event: '*', schema: 'public', table: 'reservations', filter: 'property_id=eq.' + propertyId }, scheduleReload)
+			.on('postgres_changes', { event: '*', schema: 'public', table: 'guests', filter: 'property_id=eq.' + propertyId }, scheduleReload)
 			.subscribe();
-		return () => { supabase.removeChannel(channel); };
-	}, [propertyId, reload]);
+		return () => {
+			if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current);
+			reloadTimerRef.current = null;
+			supabase.removeChannel(channel);
+		};
+	}, [propertyId, scheduleReload]);
 
 	const roomsById = useMemo(() => new Map(rawRooms.map((r) => [r.id, r])), [rawRooms]);
 	const rooms = useMemo(() => {
