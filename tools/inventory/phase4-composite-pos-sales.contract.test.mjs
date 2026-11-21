@@ -28,7 +28,9 @@ test('POS menu hides inventory-only raw ingredients and consumables but preserve
 test('Category editor can route Kitchen or Bar and persists the category route',()=>{
  assert.match(menu,/Send category orders to/);
  assert.match(menu,/CENTER_OPTIONS\.map/);
- assert.match(menu,/productionCenter:draft\.production_center/);
+ assert.match(menu,/production_center: draft\.production_center/);
+ assert.match(menu,/updatePosCategory\([\s\S]*production_center: draft\.production_center/);
+ assert.match(service,/patch\.production_center = productionCenter/);
  assert.match(service,/production_center: productionCenter/);
 });
 test('POS receives category production center for existing kitchen/bar printer routing',()=>{
