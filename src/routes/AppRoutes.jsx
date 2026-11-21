@@ -130,8 +130,8 @@ function AuthLoading(){
   </main>;
 }
 function appRole(user){const s=getSessionStaff();const raw=s?.role||user?.staff?.role||user?.propertyRole||user?.role;return normalizeAppRole(normalizeStaffRole(raw));}
-function PublicRoute(){const {user,isLoadingAuth,isLoadingPublicSettings}=useAuth();if(isLoadingAuth||isLoadingPublicSettings)return <AuthLoading/>;if(user){if(user?.isPlatformOwner)return <Navigate to="/admin" replace/>;const allowed=MAIN_NAV.find(item=>canUseApp(user,item.id));return allowed?<Navigate to={allowed.path} replace/>:<PendingApproval/>;}return <Outlet/>;}
-function ProtectedRoute({app,children}){const {user,isLoadingAuth,isLoadingPublicSettings}=useAuth();if(isLoadingAuth||isLoadingPublicSettings)return <AuthLoading/>;if(!user)return <Navigate to="/signin" replace/>;if(user?.isPlatformOwner)return <Navigate to="/admin" replace/>;
+function PublicRoute(){const {user,isLoadingAuth,isLoadingPublicSettings}=useAuth();if((isLoadingAuth&&!user)||isLoadingPublicSettings)return <AuthLoading/>;if(user){if(user?.isPlatformOwner)return <Navigate to="/admin" replace/>;const allowed=MAIN_NAV.find(item=>canUseApp(user,item.id));return allowed?<Navigate to={allowed.path} replace/>:<PendingApproval/>;}return <Outlet/>;}
+function ProtectedRoute({app,children}){const {user,isLoadingAuth,isLoadingPublicSettings}=useAuth();if((isLoadingAuth&&!user)||isLoadingPublicSettings)return <AuthLoading/>;if(!user)return <Navigate to="/signin" replace/>;if(user?.isPlatformOwner)return <Navigate to="/admin" replace/>;
 // Phase 4: a blocked subscription entitlement replaces every operational
 // workspace across all four workspaces (backoffice/frontoffice/pos/stores)
 // with the suspension screen. Only the renewal/billing/support paths remain

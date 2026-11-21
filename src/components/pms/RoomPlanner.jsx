@@ -31,6 +31,20 @@ import { SelectField, InputField, Field, Modal } from './planner/plannerControls
 const DAY_WIDTH = 56;
 const ROOM_COL_WIDTH = 208;
 
+// Keep the option clock local to reservation details; do not re-render every
+// room row and reservation bar once per second.
+function OptionCountdown({ expiresAt }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  const remaining = new Date(expiresAt).getTime() - now;
+  return remaining > 0
+    ? `Expires in ${Math.floor(remaining / 3600000)}h ${Math.floor((remaining % 3600000) / 60000)}m`
+    : 'Expiry is being processed';
+}
+
 
 export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }) {
   const plannerRooms = rooms;
@@ -52,7 +66,6 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
     document.addEventListener('visibilitychange', onVisibility);
     return () => { clearInterval(timer); document.removeEventListener('visibilitychange', onVisibility); };
   }, []);
-  useEffect(() => { const timer = setInterval(() => setClockNow(Date.now()), 1000); return () => clearInterval(timer); }, []);
   useEffect(() => {
     if (!propertyId) return undefined;
     const timer = setInterval(async () => {
@@ -63,7 +76,6 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
   }, [propertyId, onRefresh]);
     const initialRange = useMemo(() => getRollingPlannerRange(todayDate), [todayDate]);
   const [month, setMonth] = useState(startOfMonth(todayDate));
-  const [clockNow, setClockNow] = useState(Date.now());
   const [viewMode, setViewMode] = useState('rolling');
   const [windowStart, setWindowStart] = useState(subDays(todayDate, 2));
   const [range, setRange] = useState(initialRange);
@@ -853,7 +865,7 @@ export default function RoomPlanner({ rooms = [], reservations = [], onRefresh }
           <div className="room-planner-tile"><div className="room-planner-tile-label">Guests</div><b><Users size={13} className="inline mr-1"/>{formatGuests(selectedReservation)}</b></div>
         </div>
         <div className="space-y-2 text-sm"><div className="flex justify-between gap-3"><span style={{color:'var(--muted)'}}>Source</span><b>{channelLabel[selectedReservation.channel] || selectedReservation.channel || '—'}</b></div><div className="flex justify-between gap-3"><span style={{color:'var(--muted)'}}>Total</span><b>KES {Number(selectedReservation.totalAmount||0).toLocaleString('en-KE')}</b></div><div className="flex justify-between gap-3"><span style={{color:'var(--muted)'}}>Paid</span><b>KES {Number(selectedReservation.amountPaid||0).toLocaleString('en-KE')}</b></div><div className="flex justify-between gap-3"><span style={{color:'var(--muted)'}}>Balance</span><b>KES {Math.max(0,Number(selectedReservation.totalAmount||0)-Number(selectedReservation.amountPaid||0)).toLocaleString('en-KE')}</b></div><div className="flex justify-between gap-3"><span style={{color:'var(--muted)'}}>Payment</span><b>{getPaymentStyle(getPaymentStatusFromAmounts(selectedReservation.amountPaid,selectedReservation.totalAmount)).label}</b></div></div>
-        {selectedReservation.optionExpiresAt && <div className="rounded-lg p-3 text-sm" style={{background:'var(--pay-opt)',border:'1px dashed var(--pay-opt-bd)',color:'var(--pay-opt-fg)'}}><div className="font-semibold">Optioned reservation</div><div className="mt-1">{Math.max(0,new Date(selectedReservation.optionExpiresAt).getTime()-clockNow)>0 ? `Expires in ${Math.floor((new Date(selectedReservation.optionExpiresAt).getTime()-clockNow)/3600000)}h ${Math.floor(((new Date(selectedReservation.optionExpiresAt).getTime()-clockNow)%3600000)/60000)}m` : 'Expiry is being processed'}</div><div className="mt-1 text-xs">Deadline: {new Date(selectedReservation.optionExpiresAt).toLocaleString()}</div></div>}
+        {selectedReservation.optionExpiresAt && <div className="rounded-lg p-3 text-sm" style={{background:'var(--pay-opt)',border:'1px dashed var(--pay-opt-bd)',color:'var(--pay-opt-fg)'}}><div className="font-semibold">Optioned reservation</div><div className="mt-1"><OptionCountdown expiresAt={selectedReservation.optionExpiresAt}/></div><div className="mt-1 text-xs">Deadline: {new Date(selectedReservation.optionExpiresAt).toLocaleString()}</div></div>}
         <div className="rounded-lg p-3" style={{background:'var(--surface-2)'}}><div className="flex items-center gap-2 text-xs font-semibold mb-1"><StickyNote size={14}/>Notes</div><p className="text-sm whitespace-pre-wrap" style={{color:'var(--muted)'}}>{selectedReservation.notes || selectedReservation.specialRequests || 'No notes recorded.'}</p></div>
         <div className="grid grid-cols-2 gap-2">
           {selectedReservation.bookingStatus==='booked' && !selectedReservation.optionExpiresAt && <button className="room-planner-detail-action" onClick={async()=>{try{await pmsService.setReservationOption(selectedReservation.id,true);toast.success('Reservation optioned for 24 hours');setSelectedReservation(null);onRefresh?.()}catch(error){toast.error(error.message)}}}><Clock size={14}/>Set 24-hour option</button>}

@@ -162,10 +162,10 @@ export default function Dashboard({ onNavigateToPOS, onNavigateToRooms, onNaviga
   const [summaryUnavailable, setSummaryUnavailable] = useState(false);
   const summaryFailureRef = React.useRef(false);
 
-  const load = useCallback(async ({ force = false } = {}) => {
+  const load = useCallback(async ({ force = false, background = false } = {}) => {
     if (!propertyId) return;
     if (force) summaryFailureRef.current = false;
-    setReportLoading(true);
+    if (!background) setReportLoading(true);
     const summaryTask = summaryFailureRef.current
       ? Promise.reject(new Error('Daily POS summary is unavailable until manually refreshed.'))
       : (async () => {
@@ -196,7 +196,10 @@ export default function Dashboard({ onNavigateToPOS, onNavigateToRooms, onNaviga
       return undefined;
     }
     load();
-    const timer = window.setInterval(load, 30000);
+    const timer = window.setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      load({ background: true });
+    }, 30000);
     return () => window.clearInterval(timer);
   }, [propertyId, load]);
 
