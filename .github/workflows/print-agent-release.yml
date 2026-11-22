@@ -61,6 +61,143 @@ jobs:
           npm run typecheck
           npm run test:architecture
 
+      - name: Resolve installer version
+        id: version
+        shell: pwsh
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          $version = $env:INPUT_VERSION.Trim()
+          if (-not $version) {
+            $version = (node --input-type=module -e "import { AGENT_VERSION } from './tools/print-agent/config.mjs'; process.stdout.write(AGENT_VERSION)").Trim()
+          }
+          if ($version -notmatch '^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?
+      - name: Download and verify Node.js runtime
+        id: node
+        shell: pwsh
+        run: |
+          $version = '22.14.0'
+          $zip = "node-v$version-win-x64.zip"
+          $dir = Join-Path $env:RUNNER_TEMP 'print-agent'
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          Invoke-WebRequest "https://nodejs.org/dist/v$version/SHASUMS256.txt" -OutFile (Join-Path $dir 'SHASUMS256.txt') -UseBasicParsing
+          Invoke-WebRequest "https://nodejs.org/dist/v$version/$zip" -OutFile (Join-Path $dir $zip) -UseBasicParsing
+          $expected = (Select-String -Path (Join-Path $dir 'SHASUMS256.txt') -Pattern "  $([regex]::Escape($zip))$" | Select-Object -First 1).Line.Split(' ')[0]
+          $actual = (Get-FileHash (Join-Path $dir $zip) -Algorithm SHA256).Hash.ToLowerInvariant()
+          if (-not $expected -or $actual -ne $expected.ToLowerInvariant()) { throw "Node.js checksum mismatch: expected $expected, got $actual." }
+          "zip=$(Join-Path $dir $zip)" >> $env:GITHUB_OUTPUT
+          "sha256=$actual" >> $env:GITHUB_OUTPUT
+
+      - name: Download and verify WinSW
+        id: winsw
+        shell: pwsh
+        env:
+          WINSW_SHA256: ${{ vars.WINSW_SHA256 }}
+        run: |
+          if (-not $env:WINSW_SHA256) { throw 'Repository variable WINSW_SHA256 is not set. A release never ships an unverified service wrapper.' }
+          $dir = Join-Path $env:RUNNER_TEMP 'print-agent'
+          $exe = Join-Path $dir 'WinSW.exe'
+          Invoke-WebRequest 'https://github.com/winsw/winsw/releases/download/v2.12.0/WinSW-x64.exe' -OutFile $exe -UseBasicParsing
+          $actual = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne $env:WINSW_SHA256.ToLowerInvariant()) { throw "WinSW checksum mismatch: expected $($env:WINSW_SHA256), got $actual." }
+          "path=$exe" >> $env:GITHUB_OUTPUT
+          "sha256=$actual" >> $env:GITHUB_OUTPUT
+
+      - name: Import signing certificate
+        id: signing
+        shell: pwsh
+        env:
+          PFX_BASE64: ${{ secrets.WINDOWS_CERT_PFX_BASE64 }}
+          PFX_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+        run: |
+          if (-not $env:PFX_BASE64 -or -not $env:PFX_PASSWORD) { Write-Host 'No signing certificate configured.'; exit 0 }
+          $pfx = Join-Path $env:RUNNER_TEMP 'signing.pfx'
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:PFX_BASE64))
+          $cert = Import-PfxCertificate -FilePath $pfx -CertStoreLocation Cert:\CurrentUser\My -Password (ConvertTo-SecureString $env:PFX_PASSWORD -AsPlainText -Force)
+          Remove-Item $pfx -Force
+
+          # Hosted runners are ephemeral and do not know this private publisher.
+          # Trust only the public certificate from the supplied PFX for this job,
+          # so Authenticode verification can validate the complete chain.
+          $publicCert = Join-Path $env:RUNNER_TEMP 'olitechs-code-signing.cer'
+          Export-Certificate -Cert $cert -FilePath $publicCert | Out-Null
+          Import-Certificate -FilePath $publicCert -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
+          Import-Certificate -FilePath $publicCert -CertStoreLocation Cert:\LocalMachine\TrustedPublisher | Out-Null
+          Remove-Item $publicCert -Force
+
+          $trusted = Get-ChildItem Cert:\LocalMachine\Root | Where-Object Thumbprint -eq $cert.Thumbprint
+          if (-not $trusted) { throw 'The OliTechs signing certificate was not installed in the runner Root store.' }
+          "thumbprint=$($cert.Thumbprint)" >> $env:GITHUB_OUTPUT
+
+      - name: Refuse to build an unsigned release
+        if: ${{ steps.signing.outputs.thumbprint == '' && inputs.allow_unsigned != true }}
+        shell: pwsh
+        run: throw 'No signing certificate secret is configured. Add WINDOWS_CERT_PFX_BASE64 and WINDOWS_CERT_PASSWORD, or dispatch with allow_unsigned=true for an internal test build.'
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $buildArgs = @('-NoProfile','-ExecutionPolicy','Bypass','-File','tools/print-agent/installer/build-installer.ps1',
+            '-NodeZipPath','${{ steps.node.outputs.zip }}','-NodeSha256','${{ steps.node.outputs.sha256 }}',
+            '-WinSWPath','${{ steps.winsw.outputs.path }}','-WinSWSha256','${{ steps.winsw.outputs.sha256 }}',
+            '-InnoSetupPath','C:\Program Files (x86)\Inno Setup 6\ISCC.exe')
+          $buildArgs += @('-Version','${{ steps.version.outputs.value }}')
+          if ('${{ steps.signing.outputs.thumbprint }}') { $buildArgs += @('-CertificateThumbprint','${{ steps.signing.outputs.thumbprint }}') }
+          elseif ('${{ inputs.allow_unsigned }}' -eq 'true') { $buildArgs += '-AllowUnsigned' }
+          & powershell.exe @buildArgs
+          if ($LASTEXITCODE -ne 0) { throw "Installer build failed (exit code $LASTEXITCODE)." }
+
+      - name: Windows installer install/uninstall smoke tests
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem dist/installer -Filter 'OliTechsPrintAgentSetup-*.exe' -File |
+            Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if (-not $installer) { throw 'The installer smoke test could not find the compiled setup executable.' }
+          ./tools/print-agent/installer/windows-smoke-test.ps1 `
+            -InstallerPath $installer.FullName `
+            -InnoSetupPath 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
+
+      - name: Write SHA-256 checksums
+        id: sums
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem dist/installer -Filter 'OliTechsPrintAgentSetup-*.exe' -File
+          if (-not $files) { throw 'No installer was produced.' }
+          $lines = foreach ($file in $files) { "$((Get-FileHash $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant())  $($file.Name)" }
+          $lines | Set-Content dist/installer/SHA256SUMS.txt -Encoding ascii
+          $lines
+          $signed = $files | Where-Object { $_.Name -notlike '*-UNSIGNED.exe' } | Select-Object -First 1
+          if ($signed) { "signed=$($signed.FullName)" >> $env:GITHUB_OUTPUT }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OliTechsPrintAgent-installer
+          path: |
+            dist/installer/OliTechsPrintAgentSetup-*.exe
+            dist/installer/SHA256SUMS.txt
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        if: ${{ success() && steps.sums.outputs.signed != '' && (github.event_name == 'push' || inputs.publish_release == true) }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('print-agent-v{0}', steps.version.outputs.value) }}
+          name: OliTechs Print Agent ${{ steps.version.outputs.value }}
+          body: |
+            Signed Windows installer for the OliTechs Print Agent.
+
+            Hotel staff: download the setup file, approve the administrator prompt,
+            then enter the pairing code from OliTechs Settings, Printers.
+
+            Confirm the SHA-256 in SHA256SUMS.txt and check the Digital Signatures
+            tab before running it.
+          files: |
+            dist/installer/OliTechsPrintAgentSetup-*.exe
+            dist/installer/SHA256SUMS.txt
+          fail_on_unmatched_files: true
+) { throw "Invalid print-agent version: $version" }
+          "value=$version" >> $env:GITHUB_OUTPUT
+
       - name: Install Inno Setup
         run: choco install innosetup --no-progress -y
 
