@@ -44,9 +44,11 @@ test('platform owners retain full permissions and catalogue access is permission
   assert.ok(ownerMigration.includes("fn_subscription_module_allowed(p_property_id,'backoffice')"));
 });
 
-test('employee workspace access fails closed without an active staff identity and permission summary', () => {
+test('employee workspace access requires active staff and uses explicit workspace assignments when permission grants are empty', () => {
   assert.ok(authService.includes('export function canUseApp(user, app)'));
-  assert.ok(authService.includes('if (!user.staff || user.staff.is_active === false || !user.permissions) return false;'));
+  assert.ok(authService.includes('if (!user.staff || user.staff.is_active === false) return false;'));
+  assert.ok(authService.includes('assignedWorkspaceModules(user).includes(workspace)'));
+  assert.ok(authService.includes('return !!normalizedWorkspace && assigned.includes(normalizedWorkspace);'));
   assert.ok(authService.includes('codes.includes(accessCode)'));
   assert.ok(authService.includes('export function hasPermissionCode(user, code)'));
   assert.ok(authService.includes('export function canAccessPath(user, pathname)'));
