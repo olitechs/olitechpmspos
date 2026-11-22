@@ -11,7 +11,6 @@ import { workstationPresence } from '@/services/printerAgentCredentialsCore';
 import { exportPrintDiagnostics } from '@/services/printerDiagnostics';
 import { getPrinterPrintSettings, savePrinterPrintSettings } from '@/services/printerPrintSettings';
 
-const PRINT_AGENT_RELEASE_URL = 'https://github.com/olitechs/olitechpmspos/releases/tag/print-agent-unsigned-2.2.0';
 
 const normalizeNetworkEndpoint = (value, fallbackPort = 9100) => {
   let host = String(value || '').trim();
@@ -720,7 +719,7 @@ function PrintHealthStrip({health,loading,notice,pairing,diagnostics,onRefresh,o
         </div>}
       </div>
       <div className="flex flex-wrap gap-2">
-        <a href={PRINT_AGENT_RELEASE_URL} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-xl bg-primary px-3 py-2 text-xs font-black text-primary-foreground hover:bg-[var(--primary-hover)]"><FileDown size={14}/>Download Print Agent</a>
+        <span className="inline-flex items-center gap-2 rounded-xl border border-border bg-secondary px-3 py-2 text-xs font-bold text-muted-foreground" title="A signed customer installer will appear here after release validation.">Signed installer not yet available</span>
         <button onClick={onRefresh} disabled={loading} className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-bold text-foreground hover:bg-secondary disabled:opacity-50"><RefreshCw size={14}/>{loading?'Checking…':'Check agent'}</button>
         <button onClick={onDiagnostics} disabled={diagnostics?.loading || !health?.reachable} className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-bold text-foreground hover:bg-secondary disabled:opacity-50"><FileDown size={14}/>{diagnostics?.loading?'Preparing…':'Save diagnostics file'}</button>
       </div>
