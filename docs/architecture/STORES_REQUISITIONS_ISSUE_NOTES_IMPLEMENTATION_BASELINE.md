@@ -48,9 +48,11 @@ A read-only catalog and migration-ledger preflight was run against the linked pr
 | Migration version `20261120130000` recorded | Missing |
 | `fn_submit_inventory_wastage` | Missing |
 | `fn_decide_inventory_wastage` | Missing |
-| Legacy `fn_post_wastage` | Present |
+| Legacy `fn_post_wastage` | Present and still executable by `authenticated` |
 | `inventory_wastage.status` and approval/idempotency columns | Missing |
 | `stock_internal.location_posting_context` | Missing |
+| Wastage direct table DML | Still granted to `authenticated` |
+| Wastage submit/approve permission codes | Missing |
 | `products_sync_default_location` trigger | Enabled |
 
 The read-only repeatable check is committed at `supabase/tests/phase7_1_wastage_production_parity_preflight.sql`. It returns a pass/fail row for each migration, RPC, column, grant, permission-seed and trigger expectation. Its source contract is included in `npm run test:architecture`.
