@@ -1,7 +1,7 @@
 # Stores requisitions and issue notes — implementation baseline
 
-**Status:** Phase 1 approved baseline; implementation gated on stock-integrity regression tests  
-**Branch:** `feat/stores-requisitions-issue-notes-phase1`  
+**Status:** Phase 1 approved baseline; Phase 1A implementation remains gated on stock-integrity regression tests and production/source parity.  
+**Merged to:** `main` via PR #209  
 **Production changes:** None
 
 ## Adopted defaults
@@ -24,6 +24,29 @@ The live schema already contains `products`, `stock_movements`, `inventory_locat
 The current `products_sync_default_location` trigger updates the product's default location whenever `products.current_stock` changes. Existing adjustment, wastage and count-approval RPCs also mutate an explicitly selected location before calling `fn_apply_stock_movement`. The trigger can therefore apply the same aggregate delta to the default location as well. Aggregate totals can appear correct while location distribution is wrong.
 
 The current `fn_apply_stock_movement` does not accept a location, idempotency key or source-line identity. Existing transfer completion directly mutates location balances and inserts movement rows without the full provenance fields. This must be addressed before new issue-note or dispatch/receipt workflows can safely post stock.
+
+## Phase 1A candidate revalidation — 22 November 2026
+
+The existing draft `docs/audit/drafts/LOCATION_AWARE_ADJUSTMENT_WASTAGE_COUNT_CANDIDATE_20261115.sql` must **not** be promoted unchanged.
+
+1. **It conflicts with the newer wastage approval design.** The candidate recreates `fn_post_wastage` and grants authenticated execution. The repository's later `20261120130000_phase7_1_wastage_approval_workflow.sql` instead deprecates that endpoint and uses `fn_submit_inventory_wastage` plus `fn_decide_inventory_wastage`, with a separate approval permission and self-decision prevention. The current `inventoryService.js` calls the submit/decide workflow. Replaying the older candidate would reopen a direct-posting path around that approval control.
+2. **Its adjustment retry contract is incomplete for the current client.** The candidate accepts an optional request key and generates a fresh `legacy:<uuid>` key when omitted. The current adjustment client sends no request key. Retrying the same old client request would therefore create another adjustment rather than return the first result. The client and RPC need a stable request key before relying on retry idempotency.
+3. **It is not a complete stock-writer cutover.** The candidate explicitly leaves POS, GRN, production, transfers, recipe consumption, product import/upsert and generic stock usage on their existing paths. It cannot by itself establish one authoritative stock writer or justify removing the default-location trigger.
+4. **Its tests are not runtime proof.** `tools/inventory/phase3-location-aware-posting.contract.test.mjs` is a source-contract test. `supabase/tests/phase3_location_aware_posting_runtime_regression.sql` is a rollback-only psql script requiring a production-equivalent fixture. No such valid fixture is currently approved, and the runtime script has not been run.
+5. **The candidate intentionally fails closed on unreconciled products.** Its projection helper compares the movement ledger with `products.current_stock` and the location projection. This is preferable to silently repairing the known pre-existing ledger mismatch, but that product will remain blocked until a physical stocktake and approved reconciliation.
+
+### Production/repository parity check
+
+The production migration ledger read on 22 November 2026 did not list `20261120130000_phase7_1_wastage_approval_workflow` or `20261120140000_phase8_atomic_inventory_production`. A read-only production function probe also found the exact current submit/decide wastage RPC signatures absent, while the legacy `fn_post_wastage` signature still exists. Therefore the newer repository wastage workflow is **not confirmed deployed to production**. Do not assume the main-branch UI/API and production database are in parity; reconcile and test this separately before claiming the new approval workflow is live.
+
+### Revised Phase 1A order
+
+- Preserve the wastage submit/approve/reject contract; migrate the approved decision path to the location-aware writer rather than restoring the old direct-post RPC.
+- Add stable request keys to the adjustment client before enabling the new adjustment RPC contract. Preserve a deliberate compatibility path for old clients during rollout.
+- Refactor count creation/approval with stable request identity and snapshot semantics, then validate intervening movements and concurrent approval.
+- Inventory every remaining stock writer (POS direct product and recipe consumption, GRN, production, transfers, minibar/usage, product import/upsert, adjustments, wastage and counts). Migrate each to the agreed posting owner or a tested paired-transfer owner before changing the trigger.
+- Keep the existing default-location trigger enabled until the full writer inventory is migrated and regression-tested.
+- Reconcile repository migrations against the live production catalog and migration ledger; do not infer deployment from a file existing on `main`.
 
 ## Implementation sequence
 
