@@ -2,6 +2,7 @@
 // Supabase Auth remains the identity provider; this function only generates
 // Supabase Auth action links and delivers transactional email from the server.
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { buildInviteCorsHeaders, isAllowedInviteOrigin } from './cors.mjs';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
@@ -9,17 +10,8 @@ const APP_URL = (Deno.env.get('INVITE_APP_URL') || 'https://app.olitechs.co.ke')
 const ALLOWED_ORIGIN = (Deno.env.get('INVITE_ALLOWED_ORIGIN') || 'https://olitechpmspos.vercel.app').replace(/\/+$/, '');
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') || '';
 const EMAIL_FROM = Deno.env.get('EMAIL_FROM') || '';
-const APP_ORIGIN = new URL(APP_URL).origin;
-const ALLOWED_ORIGINS = new Set([APP_ORIGIN, new URL(ALLOWED_ORIGIN).origin]);
-
 function corsHeaders(req: Request) {
-  const origin = req.headers.get('Origin') || '';
-  return {
-    'Access-Control-Allow-Origin': ALLOWED_ORIGINS.has(origin) ? origin : APP_ORIGIN,
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    Vary: 'Origin',
-  };
+  return buildInviteCorsHeaders(req, { appUrl: APP_URL, allowedOrigins: ALLOWED_ORIGINS });
 }
 function json(data: unknown, req: Request, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -136,7 +128,16 @@ async function processOutbox(propertyId: string, limit = 20) {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders(req) });
+  if (req.method === 'OPTIONS') {
+    const origin = req.headers.get('Origin') || '';
+    console.info('employee-invite CORS preflight', JSON.stringify({
+      origin: origin || '(none)',
+      allowed: isAllowedInviteOrigin(origin, { appUrl: APP_URL, allowedOrigins: ALLOWED_ORIGINS }),
+      requestedMethod: req.headers.get('Access-Control-Request-Method') || '',
+      requestedHeaders: req.headers.get('Access-Control-Request-Headers') || '',
+    }));
+    return new Response('ok', { headers: corsHeaders(req) });
+  }
   if (req.method !== 'POST') return json({ error: 'Method not allowed.' }, req, 405);
   if (!RESEND_API_KEY || !EMAIL_FROM) return json({ error: 'Resend is not configured. Check RESEND_API_KEY and EMAIL_FROM.' }, req, 503);
 
