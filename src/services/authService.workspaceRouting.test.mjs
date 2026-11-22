@@ -16,7 +16,7 @@ test('an active employee assignment is sufficient to enter its assigned workspac
 test('workspace assignment grants only the workspace landing access, not granular permissions', () => {
   assert.ok(auth.includes('const baseWorkspace = Object.entries(WORKSPACE_ACCESS_CODES)'));
   assert.ok(auth.includes('return !!normalizedWorkspace && assigned.includes(normalizedWorkspace);'));
-  assert.ok(auth.includes('It does not grant inventory, reports, settings, or other granular capabilities.'));
+  assert.ok(auth.includes('Workspace assignment grants only the workspace landing page.'));
   assert.ok(auth.includes('return rule ? hasPermissionCode(user, rule[1]) : false;'));
 });
 
