@@ -65,7 +65,7 @@ jobs:
         id: version
         shell: pwsh
         env:
-          INPUT_VERSION: \${{ inputs.version }}
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
           $version = $env:INPUT_VERSION.Trim()
           if (-not $version) {
