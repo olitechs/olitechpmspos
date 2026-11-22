@@ -200,4 +200,4 @@ $function$;
 
 -- Start with broad legacy table grants so the migration's revocation is actually tested.
 GRANT USAGE ON SCHEMA public TO authenticated, anon, service_role;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.inventory_wastage TO authenticated, anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated, anon;
