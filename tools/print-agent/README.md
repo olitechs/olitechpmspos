@@ -98,7 +98,7 @@ A paired workstation prints jobs queued in the cloud with its **own** credential
 
 The browser is only a courier for the short code: the long-lived secret never reaches the browser, a log line or the network from this machine. The database stores `md5(secret)`, so a database copy cannot be replayed. Unpairing through `fn_revoke_print_agent_credential` invalidates the credential and turns any job that workstation was holding into `uncertain` rather than losing it.
 
-No terminal is needed on the workstation, and no service-role key is collected by the installer. `POST /pair` (local only, five requests a minute) accepts `{"code":"ABCD2345"}`; `GET /health` reports `paired` and the agent name without the secret.
+No terminal is needed on the workstation, and no service-role key is collected by the installer. `POST /pair` (local only, five requests a minute) accepts the 16-character code, e.g. `{"code":"ABCD2345EFGHJKLM"}`; `GET /health` reports `paired` and the agent name without the secret.
 
 The local API is also rate limited per client and route class (prints 60/min, queue 30/min, discovery 6/min, pairing 5/min) so a stuck retry loop cannot empty a roll of paper.
 

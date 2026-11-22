@@ -24,7 +24,7 @@ declare
   v_alphabet constant text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   v_id uuid;
   v_expires timestamptz := now() + interval '10 minutes';
-  v_random bytea := gen_random_bytes(16);
+  v_random bytea := extensions.gen_random_bytes(16);
   v_index integer;
 begin
   if p_property_id is null then
