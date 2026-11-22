@@ -170,7 +170,7 @@ BEGIN
     RAISE EXCEPTION 'EXPECTED-CROSS-TENANT-DENIAL';
   EXCEPTION WHEN OTHERS THEN
     IF SQLERRM = 'EXPECTED-CROSS-TENANT-DENIAL'
-       OR POSITION('tracked product not found in the selected property' IN SQLERRM) = 0 THEN
+       OR POSITION('product not found in the selected property' IN SQLERRM) = 0 THEN
       RAISE;
     END IF;
   END;
