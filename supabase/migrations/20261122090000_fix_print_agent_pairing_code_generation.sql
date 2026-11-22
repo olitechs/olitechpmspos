@@ -1,10 +1,10 @@
 -- Repair pairing-code generation without changing the RPC signature or grants.
 --
--- PostgreSQL translate() maps only the 16 hexadecimal source characters in
--- the original implementation. The original "32-symbol alphabet" therefore
--- produced only 16 possible symbols per character. Generate each character
--- directly from one random byte instead; 256 is divisible by 32, so modulo
--- mapping introduces no distribution bias.
+-- The deployed implementation keeps a 16-character pairing code, but its
+-- translate() call maps only 16 hexadecimal source characters to 16 symbols.
+-- Preserve the 16-character UX while selecting from all 32 symbols: 16 x 5
+-- bits gives 80 bits of entropy. Since 256 is divisible by 32, modulo mapping
+-- one random byte per character introduces no distribution bias.
 
 begin;
 
@@ -24,6 +24,7 @@ declare
   v_alphabet constant text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   v_id uuid;
   v_expires timestamptz := now() + interval '10 minutes';
+  v_random bytea := gen_random_bytes(16);
   v_index integer;
 begin
   if p_property_id is null then
@@ -40,9 +41,9 @@ begin
     raise exception 'Workstation name is too long.' using errcode = '22023';
   end if;
 
-  -- Eight characters, each selected uniformly from the full 32-symbol alphabet.
-  for v_index in 0..7 loop
-    v_code := v_code || substr(v_alphabet, (get_byte(gen_random_bytes(1), 0) % 32) + 1, 1);
+  -- Sixteen characters, each selected uniformly from the full 32-symbol alphabet.
+  for v_index in 0..15 loop
+    v_code := v_code || substr(v_alphabet, (get_byte(v_random, v_index) % 32) + 1, 1);
   end loop;
 
   insert into public.print_agent_credentials(property_id, name, pairing_code_hash, pairing_expires_at, created_by)

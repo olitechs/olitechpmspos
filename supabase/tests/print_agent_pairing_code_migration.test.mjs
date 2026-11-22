@@ -15,7 +15,9 @@ test('pairing-code repair preserves the RPC signature and generates from all 32 
   const rpcSignature = migration.slice(rpcStart, rpcEnd);
   assert.ok(rpcSignature.indexOf('p_property_id uuid') < rpcSignature.indexOf('p_name text'), 'RPC argument order remains (uuid, text)');
   assert.ok(migration.includes("v_alphabet constant text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';"));
-  assert.ok(migration.includes('get_byte(gen_random_bytes(1), 0) % 32'));
+  assert.ok(migration.includes('v_random bytea := gen_random_bytes(16);'));
+  assert.ok(migration.includes('for v_index in 0..15 loop'));
+  assert.ok(migration.includes('get_byte(v_random, v_index) % 32'));
   assert.ok(migration.includes('returns table(credential_id uuid, code text, expires_at timestamptz)'));
   assert.ok(migration.includes("notify pgrst, 'reload schema';"));
   assert.ok(!migration.includes('v_code := translate('));
