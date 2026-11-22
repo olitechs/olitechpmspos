@@ -10,6 +10,7 @@ INSERT INTO auth.users(id, email) VALUES
 
 INSERT INTO public.test_permission_grants(user_id, permission_code) VALUES
   ('10000000-0000-0000-0000-000000000001', 'stores.stock.wastage.submit'),
+  ('10000000-0000-0000-0000-000000000001', 'stores.stock.wastage.approve'),
   ('10000000-0000-0000-0000-000000000002', 'stores.stock.wastage.approve');
 
 INSERT INTO public.property_settings(property_id, negative_stock_policy)
