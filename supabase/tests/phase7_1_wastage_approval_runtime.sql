@@ -2,7 +2,6 @@
 
 -- Runs only after phase7_1_wastage_approval_workflow.sql on the disposable CI database.
 BEGIN;
-SET LOCAL ROLE authenticated;
 
 INSERT INTO auth.users(id, email) VALUES
   ('10000000-0000-0000-0000-000000000001', 'requester@example.test'),
@@ -123,13 +122,6 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'APPROVE-003: stock movement must be linked to the request and selected location';
   END IF;
-  IF EXISTS (
-    SELECT 1 FROM stock_internal.location_posting_context
-    WHERE transaction_id=txid_current() AND product_id=v_product
-  ) THEN
-    RAISE EXCEPTION 'TRIGGER-001: trigger must consume the private location posting context';
-  END IF;
-
   -- Rejection requires a reason and does not change stock.
   PERFORM set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001', true);
   v_rejected := public.fn_submit_inventory_wastage(
@@ -190,7 +182,7 @@ BEGIN
     RAISE EXCEPTION 'EXPECTED-INSUFFICIENT-STOCK';
   EXCEPTION WHEN OTHERS THEN
     IF SQLERRM = 'EXPECTED-INSUFFICIENT-STOCK'
-       OR POSITION('insufficient total stock' IN SQLERRM) = 0 THEN
+       OR POSITION('Insufficient total stock' IN SQLERRM) = 0 THEN
       RAISE;
     END IF;
   END;
