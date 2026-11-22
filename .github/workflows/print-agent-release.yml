@@ -183,11 +183,11 @@ jobs:
           if-no-files-found: error
 
       - name: Publish GitHub Release
-        if: ${{ success() && steps.sums.outputs.signed != '' && (github.event_name == 'push' || (inputs.publish_release == true && inputs.version != '')) }}
+        if: ${{ success() && steps.sums.outputs.signed != '' && (github.event_name == 'push' || inputs.publish_release == true) }}
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('print-agent-v{0}', inputs.version) }}
-          name: OliTechs Print Agent ${{ inputs.version || github.ref_name }}
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('print-agent-v{0}', steps.version.outputs.value) }}
+          name: OliTechs Print Agent ${{ steps.version.outputs.value }}
           body: |
             Signed Windows installer for the OliTechs Print Agent.
 
