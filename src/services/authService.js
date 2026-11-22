@@ -248,7 +248,7 @@ async function loadCurrentUserDetails() {
 	// needs "their" property today.
 	const { data: memberships, error: membershipError } = await supabase
 		.from('property_users')
-		.select('role, property:properties(*)')
+		.select('role, property_id, property:properties(*)')
 		.eq('user_id', authUser.id)
 		.limit(10);
 
@@ -270,10 +270,29 @@ async function loadCurrentUserDetails() {
 		.eq('user_id', authUser.id)
 		.eq('is_active', true);
 	const staffPropertyIds = new Set((staffAssignments || []).map((row) => row.property_id));
-	const membership = membershipRows.find((row) => row?.property?.id && staffPropertyIds.has(row.property.id))
-		|| membershipRows.find((row) => row?.property?.id)
+	const membershipPropertyId = (row) => row?.property?.id || row?.property_id || null;
+	const membership = membershipRows.find((row) => membershipPropertyId(row) && staffPropertyIds.has(membershipPropertyId(row)))
+		|| membershipRows.find((row) => membershipPropertyId(row))
 		|| null;
-	const propertyId = membership?.property?.id;
+	const propertyId = membershipPropertyId(membership);
+	// PostgREST can return the membership row while its embedded relationship
+	// is unavailable (for example during schema-cache/RLS transitions). Keep
+	// the membership's foreign key and resolve the property directly as a safe
+	// fallback instead of incorrectly treating an existing account as a new
+	// property application.
+	let property = Array.isArray(membership?.property) ? (membership.property[0] || null) : (membership?.property || null);
+	if (propertyId && !property) {
+		const { data: propertyById, error: propertyLookupError } = await supabase
+			.from('properties')
+			.select('*')
+			.eq('id', propertyId)
+			.maybeSingle();
+		if (propertyLookupError) {
+			console.error('[authService] direct property lookup failed:', propertyLookupError.message);
+		} else {
+			property = propertyById || null;
+		}
+	}
 	let staff = null;
 	let subscription = null;
 	let permissions = null;
@@ -310,7 +329,7 @@ async function loadCurrentUserDetails() {
 
 	return toAppUser({
 		profile,
-		property: membership?.property || null,
+		property,
 		propertyRole: membership?.role || null,
 		staff,
 		subscription,
