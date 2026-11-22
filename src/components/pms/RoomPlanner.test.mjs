@@ -196,3 +196,26 @@ test('planner room-status colours follow the dashboard housekeeping semantics', 
   assert.ok(source.includes('const roomStatus=ROOM_STATUS[room.status]||UNKNOWN_ROOM_STATUS;'));
   assert.ok(source.includes('aria-label={`Room status: ${roomStatus.label}`}'));
 });
+
+
+test('reference-style room planner keeps the toolbar compact and the room rail fixed', () => {
+  assert.ok(source.includes('/* Reference-inspired hotel timeline: flatter surfaces, quiet grid, clear date rail. */'));
+  assert.ok(source.includes('.room-planner .room-planner-toolbar{padding:6px 8px!important;gap:5px!important'));
+  assert.ok(source.includes('.room-planner .room-planner-grid-frame{border-radius:0!important;box-shadow:none!important'));
+  assert.ok(source.includes('className="room-planner-room-cell sticky left-0 z-50'));
+  assert.ok(source.includes('className="room-planner-scroll flex-1 min-h-0 overflow-auto'));
+});
+
+test('reference-style timeline distinguishes weekends and today without heavy grid decoration', () => {
+  assert.ok(source.includes('.room-planner-grid-frame .room-planner-date-cell.room-planner-weekend{background:var(--cal-weekend)!important}'));
+  assert.ok(source.includes('.room-planner-grid-frame .room-planner-day-cell.room-planner-weekend{background:var(--cal-weekend)!important}'));
+  assert.ok(source.includes('.room-planner-grid-frame .room-planner-day-cell.room-planner-today-cell{background:var(--cal-today)!important}'));
+  assert.ok(source.includes('.room-planner-grid-frame .room-planner-day-cell{border-color:var(--border)!important}'));
+});
+
+test('reference-style toolbar retains accessible touch targets and a compact desktop layout', () => {
+  assert.ok(source.includes('@media (min-width:1280px){.room-planner .room-planner-toolbar-main{flex-wrap:nowrap}}'));
+  assert.ok(source.includes('@media (pointer:coarse),(max-width:900px){.room-planner .room-planner-toolbar-button,.room-planner .room-planner-date-input,.room-planner .room-planner-search,.room-planner .room-planner-filter-panel .room-planner-filter{height:44px;min-height:44px}'));
+  assert.ok(source.includes('aria-label="Room availability timeline.'));
+  assert.ok(source.includes('aria-label="Payment status legend"'));
+});
