@@ -19,6 +19,7 @@ export default function InvitationsPanel({ propertyId, reloadKey }) {
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [busy, setBusy] = useState(false);
+  const [shareLinks, setShareLinks] = useState({});
 
   const load = async () => {
     if (!propertyId) return;
@@ -62,8 +63,10 @@ export default function InvitationsPanel({ propertyId, reloadKey }) {
       setFormOpen(false);
       if (token) {
         try {
-          await employeeService.sendInvitationEmail(result.invitation.id, token);
-          toast.success(`Invitation email sent to ${result.invitation.email}.`);
+          const delivery = await employeeService.sendInvitationEmail(result.invitation.id, token);
+          if (delivery?.invitation_link) setShareLinks((current) => ({ ...current, [result.invitation.id]: delivery.invitation_link }));
+          if (delivery?.delivery_status === 'sent') toast.success(`Invitation email sent to ${result.invitation.email}.`);
+          else toast.error('Email delivery failed. You can copy or share the secure invitation link below.');
         } catch (emailError) {
           toast.error(emailError?.message || 'Invitation created, but email delivery failed. Use Resend to try again.');
         }
@@ -82,8 +85,10 @@ export default function InvitationsPanel({ propertyId, reloadKey }) {
       const result = await employeeService.resendInvitation(row.id);
       if (result?.token) {
         try {
-          await employeeService.sendInvitationEmail(row.id, result.token);
-          toast.success(`Invitation email re-sent to ${result.email}.`);
+          const delivery = await employeeService.sendInvitationEmail(row.id, result.token);
+          if (delivery?.invitation_link) setShareLinks((current) => ({ ...current, [row.id]: delivery.invitation_link }));
+          if (delivery?.delivery_status === 'sent') toast.success(`Invitation email re-sent to ${result.email}.`);
+          else toast.error('Email delivery failed. You can copy or share the secure invitation link below.');
         } catch (emailError) {
           toast.error(emailError?.message || 'The invitation link was rotated, but email delivery failed. Please retry.');
         }
@@ -196,6 +201,33 @@ export default function InvitationsPanel({ propertyId, reloadKey }) {
                     <span className={`rounded-md px-2 py-0.5 text-xs font-bold ${delivery.status === 'sent' ? 'bg-[var(--success-soft)] text-[var(--success-text)]' : delivery.status === 'failed' ? 'bg-[var(--danger-soft)] text-[var(--danger-text)]' : 'bg-[var(--primary-soft)] text-[var(--primary)]'}`}>{delivery.status}</span>
                     {delivery.status === 'failed' && <div title={delivery.last_error || ''} className="mt-1 max-w-[220px] truncate text-[10px] text-[var(--danger-text)]">{delivery.last_error || 'Delivery failed'} · {delivery.attempts} attempt(s)</div>}
                   </> : <span className="text-xs text-[var(--text-muted)]">Not sent</span>}
+                  {shareLinks[row.id] && (
+                    <div className="mt-2 max-w-[280px] rounded-lg border border-[var(--border)] bg-[var(--canvas)] p-2 text-left">
+                      <div className="mb-1 text-[11px] font-bold text-[var(--text)]">Secure invitation link</div>
+                      <input aria-label={`Secure invitation link for ${row.email}`} readOnly value={shareLinks[row.id]} className="w-full truncate rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[10px] text-[var(--text-muted)]" />
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        <button type="button" onClick={async () => {
+                          try {
+                            await navigator.clipboard.writeText(shareLinks[row.id]);
+                            toast.success('Invitation link copied.');
+                          } catch {
+                            toast.error('Could not copy the link. Select and copy it manually.');
+                          }
+                        }} className="rounded-md border border-[var(--border)] px-2 py-1 text-[11px] font-semibold text-[var(--text)]">Copy link</button>
+                        <button type="button" onClick={async () => {
+                          try {
+                            if (navigator.share) await navigator.share({ title: 'OliTechs employee invitation', text: 'Accept your secure OliTechs employee invitation.', url: shareLinks[row.id] });
+                            else {
+                              await navigator.clipboard.writeText(shareLinks[row.id]);
+                              toast.success('Sharing is unavailable here. Invitation link copied.');
+                            }
+                          } catch (error) {
+                            if (error?.name !== 'AbortError') toast.error('Could not share the invitation link.');
+                          }
+                        }} className="rounded-md border border-[var(--border)] px-2 py-1 text-[11px] font-semibold text-[var(--text)]">Share…</button>
+                      </div>
+                    </div>
+                  )}
                 </td>
                 <td className="p-3 text-xs text-[var(--text-muted)]">{row.expires_at ? new Date(row.expires_at).toLocaleDateString() : '—'}</td>
                 <td className="p-3 text-right">
