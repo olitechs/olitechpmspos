@@ -1,7 +1,7 @@
 # Stores requisitions and issue notes — implementation baseline
 
-**Status:** Phase 1 approved baseline; Phase 1A implementation remains gated on stock-integrity regression tests and production/source parity.  
-**Merged to:** `main` via PR #209  
+**Status:** Phase 1 approved baseline; Phase 7.1 wastage migration passed isolated PostgreSQL runtime tests; full production-equivalent parity and remaining stock-writer migration are still gated.  
+**Merged to:** `main` via PRs #209 and #210  
 **Production changes:** None
 
 ## Adopted defaults
@@ -32,8 +32,16 @@ The existing draft `docs/audit/drafts/LOCATION_AWARE_ADJUSTMENT_WASTAGE_COUNT_CA
 1. **It conflicts with the newer wastage approval design.** The candidate recreates `fn_post_wastage` and grants authenticated execution. The repository's later `20261120130000_phase7_1_wastage_approval_workflow.sql` instead deprecates that endpoint and uses `fn_submit_inventory_wastage` plus `fn_decide_inventory_wastage`, with a separate approval permission and self-decision prevention. The current `inventoryService.js` calls the submit/decide workflow. Replaying the older candidate would reopen a direct-posting path around that approval control.
 2. **Its adjustment retry contract is incomplete for the current client.** The candidate accepts an optional request key and generates a fresh `legacy:<uuid>` key when omitted. The current adjustment client sends no request key. Retrying the same old client request would therefore create another adjustment rather than return the first result. The client and RPC need a stable request key before relying on retry idempotency.
 3. **It is not a complete stock-writer cutover.** The candidate explicitly leaves POS, GRN, production, transfers, recipe consumption, product import/upsert and generic stock usage on their existing paths. It cannot by itself establish one authoritative stock writer or justify removing the default-location trigger.
-4. **Its tests are not runtime proof.** `tools/inventory/phase3-location-aware-posting.contract.test.mjs` is a source-contract test. `supabase/tests/phase3_location_aware_posting_runtime_regression.sql` is a rollback-only psql script requiring a production-equivalent fixture. No such valid fixture is currently approved, and the runtime script has not been run.
+4. **Its original tests are not runtime proof.** `tools/inventory/phase3-location-aware-posting.contract.test.mjs` is a source-contract test. `supabase/tests/phase3_location_aware_posting_runtime_regression.sql` is a rollback-only psql script requiring a production-equivalent fixture. A separate Phase 7.1 PostgreSQL 15 CI fixture now applies the real wastage migration and exercises its core transaction/permission/stock invariants; it does not yet validate the wider adjustment/count/POS/GRN/transfer writer set or the full production RLS and authorization catalog.
 5. **The candidate intentionally fails closed on unreconciled products.** Its projection helper compares the movement ledger with `products.current_stock` and the location projection. This is preferable to silently repairing the known pre-existing ledger mismatch, but that product will remain blocked until a physical stocktake and approved reconciliation.
+
+### Phase 7.1 isolated runtime gate — 22 November 2026
+
+PR [#210](https://github.com/olitechs/olitechpmspos/pull/210) is merged to `main`. Its GitHub Actions PostgreSQL 15 job successfully applied the actual `20261120130000_phase7_1_wastage_approval_workflow.sql` migration to a disposable fixture and passed the runtime assertions for request idempotency, no deduction on submission, self-approval denial, separate approver authorization, selected non-default location posting, aggregate/ledger/location reconciliation, rejection without deduction, permission denial, cross-property rejection, insufficient-stock rollback, and legacy direct-post revocation.
+
+The fixture uses stubbed property-membership, package-entitlement and employee-permission helpers. It is a meaningful PostgreSQL execution test, but it is **not** a complete production clone and does not validate every real RLS policy, staff-role lookup, or interaction with all live stock writers. It therefore does not authorize production application of the migration by itself.
+
+A read-only comparison of the live `fn_employee_permission_codes` definition with the migration's replacement found the same role-resolution structure; the migration adds the two new wastage permissions to the legacy `store_manager` fallback. No production function was changed by this comparison.
 
 ### Production/repository parity check
 
