@@ -46,7 +46,7 @@ foreach ($file in $files) {
 $cmdPath = Join-Path $rootPath 'install-print-agent.cmd'
 if (Test-Path -LiteralPath $cmdPath -PathType Leaf) {
     $cmdText = [System.IO.File]::ReadAllText($cmdPath)
-    $matches = [regex]::Matches($cmdText, '(?i)(?:[A-Z0-9_.%\\-]+\\)*[A-Z0-9_.%\\-]+\.ps1')
+    $matches = [regex]::Matches($cmdText, '(?i)(?:%~dp0)?(?:[A-Z0-9_.-]+\\)*[A-Z0-9_.-]+\.ps1')
     foreach ($match in $matches) {
         $target = $match.Value
         $target = $target.Replace('%~dp0', '')
