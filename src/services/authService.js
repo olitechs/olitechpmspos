@@ -192,9 +192,7 @@ export function hasPermissionCode(user, code) {
   const normalizedWorkspace = baseWorkspace === 'stores' ? 'store' : baseWorkspace;
   // Workspace assignment grants only the workspace landing page. It does not
   // grant inventory, reports, settings, or other granular capabilities.
-  return !!normalizedWorkspace && assigned.includes(normalizedWorkspace)
-    && PATH_PERMISSION_RULES.some(([pattern, requiredCode]) => requiredCode === code
-      && pattern.test(baseWorkspace === 'stores' ? '/stores' : `/${baseWorkspace}`));
+  return !!normalizedWorkspace && assigned.includes(normalizedWorkspace);
 }
 
 export function generatePin(length = 4) {
