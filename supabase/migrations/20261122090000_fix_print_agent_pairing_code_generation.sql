@@ -8,6 +8,10 @@
 
 begin;
 
+-- Remove the obsolete reversed-argument overload if an older deployment has it.
+-- The application uses the canonical (uuid, text) signature with named arguments.
+drop function if exists public.fn_create_print_agent_pairing(text, uuid);
+
 create or replace function public.fn_create_print_agent_pairing(
   p_property_id uuid,
   p_name text
