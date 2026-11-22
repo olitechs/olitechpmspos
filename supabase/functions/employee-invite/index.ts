@@ -7,7 +7,7 @@ import { buildInviteCorsHeaders, isAllowedInviteOrigin } from './cors.mjs';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
 const APP_URL = (Deno.env.get('INVITE_APP_URL') || 'https://app.olitechs.co.ke').replace(/\/+$/, '');
-const ALLOWED_ORIGIN = (Deno.env.get('INVITE_ALLOWED_ORIGIN') || 'https://olitechpmspos.vercel.app').replace(/\/+$/, '');
+const ALLOWED_ORIGINS = Deno.env.get('INVITE_ALLOWED_ORIGINS') || Deno.env.get('INVITE_ALLOWED_ORIGIN') || 'https://olitechpmspos.vercel.app';
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') || '';
 const EMAIL_FROM = Deno.env.get('EMAIL_FROM') || '';
 function corsHeaders(req: Request) {
