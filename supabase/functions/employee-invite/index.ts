@@ -139,8 +139,6 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: corsHeaders(req) });
   }
   if (req.method !== 'POST') return json({ error: 'Method not allowed.' }, req, 405);
-  if (!RESEND_API_KEY || !EMAIL_FROM) return json({ error: 'Resend is not configured. Check RESEND_API_KEY and EMAIL_FROM.' }, req, 503);
-
   const authHeader = req.headers.get('Authorization') || '';
   if (rateLimited(authHeader.slice(0, 64) || 'anonymous')) return json({ error: 'Too many requests. Try again shortly.' }, req, 429);
   const caller = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
