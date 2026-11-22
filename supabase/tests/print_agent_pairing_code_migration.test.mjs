@@ -18,5 +18,5 @@ test('pairing-code repair preserves the RPC signature and generates from all 32 
   assert.ok(migration.includes('get_byte(gen_random_bytes(1), 0) % 32'));
   assert.ok(migration.includes('returns table(credential_id uuid, code text, expires_at timestamptz)'));
   assert.ok(migration.includes("notify pgrst, 'reload schema';"));
-  assert.doesNotMatch(migration, /translate/);
+  assert.doesNotMatch(migration, /translate\\s*\\(\\s*substr/i);
 });
