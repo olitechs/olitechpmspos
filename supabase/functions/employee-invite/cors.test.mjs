@@ -24,6 +24,13 @@ test('allows the canonical OliTechs Vercel app and deployment-specific hosts', (
   }
 });
 
+test('allows both canonical production domains regardless of www redirect preference', () => {
+  for (const origin of ['https://olitechs.co.ke', 'https://www.olitechs.co.ke', 'https://app.olitechs.co.ke']) {
+    assert.equal(isAllowedInviteOrigin(origin, { appUrl }), true, origin);
+    assert.equal(buildInviteCorsHeaders(new Request('https://edge.test', { headers: { Origin: origin } }), { appUrl })['Access-Control-Allow-Origin'], origin);
+  }
+});
+
 test('supports explicitly configured additional origins', () => {
   const origin = 'https://admin.olitechs.co.ke';
   assert.equal(isAllowedInviteOrigin(origin, { appUrl, allowedOrigins: origin }), true);
