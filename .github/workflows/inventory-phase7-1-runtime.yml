@@ -1,0 +1,65 @@
+name: Phase 7.1 wastage PostgreSQL runtime
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/20261120130000_phase7_1_wastage_approval_workflow.sql'
+      - 'supabase/tests/fixtures/phase7_1_wastage_base.sql'
+      - 'supabase/tests/phase7_1_wastage_approval_runtime.sql'
+      - '.github/workflows/inventory-phase7-1-runtime.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/20261120130000_phase7_1_wastage_approval_workflow.sql'
+      - 'supabase/tests/fixtures/phase7_1_wastage_base.sql'
+      - 'supabase/tests/phase7_1_wastage_approval_runtime.sql'
+      - '.github/workflows/inventory-phase7-1-runtime.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  wastage-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: oli_inventory_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d oli_inventory_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+
+      - name: Build disposable production-shape fixture
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d oli_inventory_test -v ON_ERROR_STOP=1 -f supabase/tests/fixtures/phase7_1_wastage_base.sql
+
+      - name: Apply Phase 7.1 migration to disposable database
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d oli_inventory_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261120130000_phase7_1_wastage_approval_workflow.sql
+
+      - name: Run permission, idempotency, trigger and stock-ledger runtime assertions
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d oli_inventory_test -v ON_ERROR_STOP=1 -f supabase/tests/phase7_1_wastage_approval_runtime.sql
