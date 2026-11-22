@@ -39,6 +39,26 @@ The existing draft `docs/audit/drafts/LOCATION_AWARE_ADJUSTMENT_WASTAGE_COUNT_CA
 
 The production migration ledger read on 22 November 2026 did not list `20261120130000_phase7_1_wastage_approval_workflow` or `20261120140000_phase8_atomic_inventory_production`. A read-only production function probe also found the exact current submit/decide wastage RPC signatures absent, while the legacy `fn_post_wastage` signature still exists. Therefore the newer repository wastage workflow is **not confirmed deployed to production**. Do not assume the main-branch UI/API and production database are in parity; reconcile and test this separately before claiming the new approval workflow is live.
 
+### Live production preflight — 22 November 2026
+
+A read-only catalog and migration-ledger preflight was run against the linked production project. Results:
+
+| Check | Live result |
+|---|---|
+| Migration version `20261120130000` recorded | Missing |
+| `fn_submit_inventory_wastage` | Missing |
+| `fn_decide_inventory_wastage` | Missing |
+| Legacy `fn_post_wastage` | Present |
+| `inventory_wastage.status` and approval/idempotency columns | Missing |
+| `stock_internal.location_posting_context` | Missing |
+| `products_sync_default_location` trigger | Enabled |
+
+The read-only repeatable check is committed at `supabase/tests/phase7_1_wastage_production_parity_preflight.sql`. It returns a pass/fail row for each migration, RPC, column, grant, permission-seed and trigger expectation. Its source contract is included in `npm run test:architecture`.
+
+**Current impact:** the main-branch inventory client uses the new wastage submission/decision RPCs, while the live database still exposes the legacy direct-post RPC. Wastage request/approval actions are therefore not confirmed operational in production and may return a missing-function error. Do not work around this by restoring direct stock posting from the client.
+
+No production DDL or stock mutation was performed during this check.
+
 ### Revised Phase 1A order
 
 - Preserve the wastage submit/approve/reject contract; migrate the approved decision path to the location-aware writer rather than restoring the old direct-post RPC.
