@@ -40,6 +40,8 @@ INSERT INTO public.stock_movements(
   '30000000-0000-0000-0000-000000000002', 'pcs', 10, 2.50
 );
 
+SET LOCAL ROLE authenticated;
+
 DO $test$
 DECLARE
   v_property uuid := '20000000-0000-0000-0000-000000000001';
