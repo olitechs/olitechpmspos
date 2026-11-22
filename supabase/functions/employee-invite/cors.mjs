@@ -1,4 +1,4 @@
-const VERCEL_APP_HOST = /^olitechpmspos(?:-[a-z0-9-]+)?\\.vercel\\.app$/i;
+const VERCEL_APP_HOST = /^olitechpmspos(?:-[a-z0-9-]+)?\.vercel\.app$/i;
 
 function normalizeOrigin(value) {
   try {
@@ -12,7 +12,7 @@ function normalizeOrigin(value) {
 
 function configuredOrigins(value) {
   return String(value || '')
-    .split(/[;,\\n]/)
+    .split(/[;,\n]/)
     .map(normalizeOrigin)
     .filter(Boolean);
 }
