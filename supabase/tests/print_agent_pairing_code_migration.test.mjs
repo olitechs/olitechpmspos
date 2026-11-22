@@ -8,11 +8,15 @@ const migration = await readFile(
 );
 
 test('pairing-code repair preserves the RPC signature and generates from all 32 symbols', () => {
-  assert.match(migration, /drop function if exists public\.fn_create_print_agent_pairing\(text, uuid\)/i);
-  assert.match(migration, /fn_create_print_agent_pairing\s*\(\s*p_property_id uuid,\s*p_name text\)/);
-  assert.match(migration, /v_alphabet constant text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'/);
-  assert.match(migration, /get_byte\(gen_random_bytes\(1\), 0\) % 32/);
-  assert.match(migration, /returns table\(credential_id uuid, code text, expires_at timestamptz\)/);
-  assert.match(migration, /notify pgrst, 'reload schema'/);
-  assert.doesNotMatch(migration, /translate\s*\(/i);
+  assert.ok(migration.includes('drop function if exists public.fn_create_print_agent_pairing(text, uuid);'));
+  const rpcStart = migration.indexOf('create or replace function public.fn_create_print_agent_pairing(');
+  const rpcEnd = migration.indexOf(') returns table', rpcStart);
+  assert.ok(rpcStart >= 0 && rpcEnd > rpcStart, 'canonical pairing RPC definition exists');
+  const rpcSignature = migration.slice(rpcStart, rpcEnd);
+  assert.ok(rpcSignature.indexOf('p_property_id uuid') < rpcSignature.indexOf('p_name text'), 'RPC argument order remains (uuid, text)');
+  assert.ok(migration.includes("v_alphabet constant text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';"));
+  assert.ok(migration.includes('get_byte(gen_random_bytes(1), 0) % 32'));
+  assert.ok(migration.includes('returns table(credential_id uuid, code text, expires_at timestamptz)'));
+  assert.ok(migration.includes("notify pgrst, 'reload schema';"));
+  assert.doesNotMatch(migration, /translate/);
 });
