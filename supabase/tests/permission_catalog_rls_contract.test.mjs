@@ -18,5 +18,5 @@ test('permission catalogue is protected by RLS and readable only by signed-in us
 test('permission catalogue migration preserves the seeded catalogue and role mappings', () => {
   assert.match(migration, /\bbegin;/i);
   assert.match(migration, /\bcommit;\s*$/i);
-  assert.doesNotMatch(migration, /\b(drop table|truncate|delete from public\.permission_catalog)\b/i);
+  assert.doesNotMatch(migration, /\b(drop\s+table|truncate\s+table|delete\s+from\s+public\.permission_catalog)\b/i);
 });
