@@ -95,6 +95,24 @@ export function isRenewalPath(pathname) {
     || /^\/backoffice\/help(?:\/|$)/.test(path);
 }
 
+function assignedWorkspaceModules(user) {
+  const staff = user?.staff;
+  if (!staff || staff.is_active === false) return [];
+  const assigned = Array.isArray(staff.assigned_modules)
+    ? staff.assigned_modules.map((module) => module === 'stores' ? 'store' : module)
+    : [];
+  // An explicit assignment takes precedence. For legacy staff records without
+  // assigned_modules, retain the role-to-workspace mapping.
+  return assigned.length ? assigned : getDefaultModulesForRole(staff.role || user?.propertyRole);
+}
+
+const WORKSPACE_ACCESS_CODES = {
+  pos: 'pos.access',
+  frontoffice: 'front_office.access',
+  stores: 'stores.access',
+  backoffice: 'back_office.access',
+};
+
 export function canUseApp(user, app) {
   if (!user || !app) return false;
   if (user.isPlatformOwner) return true;
@@ -102,13 +120,17 @@ export function canUseApp(user, app) {
   const pkg = String(user?.property?.package || 'none').toLowerCase();
   if (pkg === 'none' || !getPackageModules(pkg).includes(app)) return false;
   if (['owner', 'admin'].includes(String(user?.propertyRole || '').toLowerCase())) return true;
-  if (!user.staff || user.staff.is_active === false || !user.permissions) return false;
+  if (!user.staff || user.staff.is_active === false) return false;
   const workspace = APP_WORKSPACE[app];
-  const codes = Array.isArray(user.permissions.codes) ? user.permissions.codes : [];
-  const workspaces = Array.isArray(user.permissions.workspaces) ? user.permissions.workspaces : [];
-  const accessCode = ({ pos: 'pos.access', frontoffice: 'front_office.access', stores: 'stores.access', backoffice: 'back_office.access' })[app];
-  if (!workspace || !codes.includes(accessCode) || !workspaces.includes(workspace)) return false;
-  return true;
+  const accessCode = WORKSPACE_ACCESS_CODES[app];
+  if (!workspace || !accessCode) return false;
+  const codes = Array.isArray(user.permissions?.codes) ? user.permissions.codes : [];
+  const workspaces = Array.isArray(user.permissions?.workspaces) ? user.permissions.workspaces : [];
+  // The staff record's explicit workspace assignment is the minimum grant
+  // needed to enter that workspace. Granular page/action permissions remain
+  // governed by the server permission summary and are not inferred here.
+  if (assignedWorkspaceModules(user).includes(workspace)) return true;
+  return codes.includes(accessCode) && workspaces.includes(workspace);
 }
 
 // Individual page access is separate from workspace access. Unknown routes
@@ -162,9 +184,17 @@ export function canAccessPath(user, pathname) {
 export function hasPermissionCode(user, code) {
   if (!user) return false;
   if (user.isPlatformOwner || ['owner', 'admin'].includes(String(user?.propertyRole || '').toLowerCase())) return true;
-  if (!user.staff || !user.permissions) return false;
-  const codes = Array.isArray(user.permissions.codes) ? user.permissions.codes : [];
-  return codes.includes(code);
+  if (!user.staff || user.staff.is_active === false) return false;
+  const codes = Array.isArray(user.permissions?.codes) ? user.permissions.codes : [];
+  if (codes.includes(code)) return true;
+  const assigned = assignedWorkspaceModules(user);
+  const baseWorkspace = Object.entries(WORKSPACE_ACCESS_CODES).find(([, accessCode]) => accessCode === code)?.[0];
+  const normalizedWorkspace = baseWorkspace === 'stores' ? 'store' : baseWorkspace;
+  // Workspace assignment grants only the workspace landing page. It does not
+  // grant inventory, reports, settings, or other granular capabilities.
+  return !!normalizedWorkspace && assigned.includes(normalizedWorkspace)
+    && PATH_PERMISSION_RULES.some(([pattern, requiredCode]) => requiredCode === code
+      && pattern.test(baseWorkspace === 'stores' ? '/stores' : `/${baseWorkspace}`));
 }
 
 export function generatePin(length = 4) {
