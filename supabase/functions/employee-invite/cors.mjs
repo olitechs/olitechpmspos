@@ -22,7 +22,12 @@ export function isAllowedInviteOrigin(origin, { appUrl, allowedOrigins = '' } = 
   if (!normalized || normalized !== origin) return false;
 
   const appOrigin = normalizeOrigin(appUrl) || 'https://app.olitechs.co.ke';
-  if (normalized === appOrigin || configuredOrigins(allowedOrigins).includes(normalized)) return true;
+  const productionOrigins = new Set([
+    'https://olitechs.co.ke',
+    'https://www.olitechs.co.ke',
+    'https://app.olitechs.co.ke',
+  ]);
+  if (normalized === appOrigin || productionOrigins.has(normalized) || configuredOrigins(allowedOrigins).includes(normalized)) return true;
 
   try {
     const url = new URL(normalized);
