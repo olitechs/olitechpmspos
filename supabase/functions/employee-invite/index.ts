@@ -6,7 +6,7 @@ import { buildInviteCorsHeaders, isAllowedInviteOrigin } from './cors.mjs';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
-const APP_URL = (Deno.env.get('INVITE_APP_URL') || 'https://app.olitechs.co.ke').replace(/\/+$/, '');
+const APP_URL = (Deno.env.get('INVITE_APP_URL') || 'https://www.olitechs.co.ke').replace(/\/+$/, '');
 const ALLOWED_ORIGINS = Deno.env.get('INVITE_ALLOWED_ORIGINS') || Deno.env.get('INVITE_ALLOWED_ORIGIN') || 'https://olitechpmspos.vercel.app';
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') || '';
 const EMAIL_FROM = Deno.env.get('EMAIL_FROM') || '';
@@ -255,8 +255,21 @@ Deno.serve(async (req) => {
       property_id: invitation.property_id,
       new_value: { invitation_id: invitation.id, email: invitation.email, provider_message_id: providerId || null, error: deliveryError },
     });
-    if (deliveryStatus !== 'sent') return json({ error: 'Invitation was created, but Resend could not deliver the email. Use Resend on the invitation to rotate the secure link and try again.', delivery_status: 'failed' }, req, 502);
-    return json({ ok: true, email: invitation.email, delivery_status: 'sent', admin_notifications: notifications }, req);
+    if (deliveryStatus !== 'sent') return json({
+      ok: true,
+      email: invitation.email,
+      delivery_status: 'failed',
+      delivery_error: deliveryError,
+      invitation_link: actionLink,
+      admin_notifications: notifications,
+    }, req);
+    return json({
+      ok: true,
+      email: invitation.email,
+      delivery_status: 'sent',
+      invitation_link: actionLink,
+      admin_notifications: notifications,
+    }, req);
   }
 
   if (action === 'accepted') {
