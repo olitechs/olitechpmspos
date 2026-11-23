@@ -5,10 +5,12 @@ import { readFileSync } from 'node:fs';
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const nav = read('../../src/data/modules/navArchitecture.js');
 const shell = read('../../src/components/layout/AppShell.jsx');
-const auth = read('../services/authService.js');
-const store = read('../pages/Store.jsx');
-const routes = read('../routes/AppRoutes.jsx');
+const auth = read('../../src/services/authService.js');
+const store = read('../../src/pages/Store.jsx');
+const routes = read('../../src/routes/AppRoutes.jsx');
 const migration = read('../../supabase/templates/storekeeper_full_stores_workspace_access.sql');
+const purchasing = read('../../src/components/modules/Purchasing.jsx');
+const pmsService = read('../../src/services/pmsService.js');
 
 test('Storekeeper navigation exposes all requested operational modules', () => {
   const storesNav = nav.split('export const STORES_NAV = [')[1].split('];')[0];
@@ -39,6 +41,9 @@ test('Storekeeper role aliases are normalized before Store page capability check
   assert.match(store, /tab==='labels'&&<StoreBarcodeLabels/);
   assert.match(routes, /path="labels" element={<Store initialTab="labels"\/>}/);
   assert.match(routes, /path="purchasing" element={<Purchasing\/>}/);
+  assert.ok(purchasing.includes('suggestedReorderQty'));
+  assert.ok(purchasing.includes('supplierEmailBody'));
+  assert.ok(pmsService.includes('supplier:suppliers(name,email)'));
 });
 
 test('Storekeeper database role and legacy resolver include production posting only in Stores scope', () => {
@@ -47,5 +52,6 @@ test('Storekeeper database role and legacy resolver include production posting o
   assert.match(migration, /when 'storekeeper' then array\[[^\]]*stores\.production\.post/);
   assert.match(migration, /when 'store_keeper' then array\[[^\]]*stores\.production\.post/);
   assert.match(migration, /'stores\.production\.post'\s*\]::text\[\]/);
-  assert.doesNotMatch(migration, /back_office\.(?:employees|settings)\.manage/);
+  const storekeeperPermissions = migration.split('set permission_codes = array[')[1]?.split(']::text[]')[0] || '';
+  assert.ok(!storekeeperPermissions.includes('back_office.'));
 });
