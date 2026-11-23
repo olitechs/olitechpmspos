@@ -442,8 +442,8 @@ create policy product_variants_delete on public.product_variants
 do $migration$
 declare
   v_definition text;
-  v_original text := "or v_role in ('hotel_admin','super_admin','fb_manager','store_manager','inventory_manager')";
-  v_replacement text := "or public.fn_employee_has_permission(p_property_id,'stores.stock.adjust') " || "or v_role in ('hotel_admin','super_admin','fb_manager','store_manager','inventory_manager')";
+  v_original text := 'or v_role in (''hotel_admin'',''super_admin'',''fb_manager'',''store_manager'',''inventory_manager'')';
+  v_replacement text := 'or public.fn_employee_has_permission(p_property_id,''stores.stock.adjust'') or v_role in (''hotel_admin'',''super_admin'',''fb_manager'',''store_manager'',''inventory_manager'')';
 begin
   select pg_get_functiondef('public.fn_upsert_composite_product_recipe(uuid,uuid,boolean,jsonb,text)'::regprocedure)
     into v_definition;
