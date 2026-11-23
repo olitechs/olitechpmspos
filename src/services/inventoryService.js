@@ -406,8 +406,13 @@ export const inventoryService = {
   async listWastageRequests(propertyId) {
     const { data, error } = await supabase.from('inventory_wastage').select('*')
       .eq('property_id', propertyId).eq('status', 'pending').order('created_at', { ascending: false });
+    // The approval workflow is intentionally migration-gated. Older live schemas
+    // store posted wastage only and have no status/request columns or approval RPCs.
+    if (error?.code === '42703' && /status/i.test(error.message || '')) {
+      return { available: false, requests: [] };
+    }
     if (error) throw new Error(error.message);
-    return data || [];
+    return { available: true, requests: data || [] };
   },
   async postWastage(payload) {
     const { data, error } = await supabase.rpc('fn_submit_inventory_wastage', {
