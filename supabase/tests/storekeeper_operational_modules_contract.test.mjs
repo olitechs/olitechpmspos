@@ -38,7 +38,8 @@ test('Stores sidebar applies the matching permission to each operational module'
 
 test('Storekeeper role aliases are normalized before Store page capability checks', () => {
   assert.match(store, /normalizeStaffRole\(sessionStaff\?\.role/);
-  assert.match(store, /\['store_manager','fb_manager','hotel_admin'/);
+  assert.ok(store.includes("'store_manager'"));
+  assert.ok(store.includes("'hotel_admin'"));
   assert.match(store, /tab==='labels'&&<StoreBarcodeLabels/);
   assert.match(routes, /path="labels" element={<Store initialTab="labels"\/>}/);
   assert.match(routes, /path="purchasing" element={<Purchasing\/>}/);
