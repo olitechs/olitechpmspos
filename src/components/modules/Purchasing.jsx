@@ -58,7 +58,7 @@ export default function Purchasing() {
     }catch(e){setError(e.message||'Could not create purchase order.');}
   };
 
-  const receive=async(id)=>{
+  const supplierEmailBody=(order)=>{\n    const items=Array.isArray(order.lines)?order.lines.map((line)=>'- '+(line.product_name||line.name||line.product_id)+': '+(line.qty??line.quantity??0)+' x '+Number(line.unit_cost??line.cost_price??0).toFixed(2)).join('\\n'):'Please confirm the items and quantities on this purchase order.';\n    return 'Hello '+(order.supplier?.name||'Supplier')+',\\n\\nPlease process purchase order '+(order.invoice_no||order.id)+'.\\n\\nItems:\\n'+items+'\\n\\nTotal: '+Number(order.total||0).toFixed(2)+'\\n\\nKindly confirm availability and expected delivery.\\n\\nRegards';\n  };\n  const receive=async(id)=>{
     if(!window.confirm('Receive this purchase order and add its quantities to stock?')) return;
     try{await pmsService.receivePurchaseOrder({purchaseOrderId:id});setError('');load();}
     catch(e){setError(e.message||'Could not receive purchase order.');}
@@ -97,7 +97,7 @@ export default function Purchasing() {
         <div className="px-4 py-3 flex items-center justify-between" style={{borderBottom:`1px solid ${BORDER}`}}><div><h2 className="text-sm font-black uppercase tracking-widest">Purchase Orders</h2><p className="text-xs mt-1" style={{color:MUTED}}>Ordered items remain out of stock until receiving.</p></div><Truck size={18}/></div>
         {loading?<div className="p-6 text-center text-sm" style={{color:MUTED}}>Loading…</div>:orders.length===0?<div className="p-6 text-center text-sm" style={{color:MUTED}}>No purchase orders yet.</div>:orders.map(o=><div key={o.id} className="p-4 flex items-center gap-3" style={{borderBottom:`1px solid ${BORDER}`}}>
           <div className="flex-1 min-w-0"><div className="text-sm font-bold">{o.supplier?.name||'Supplier'} · {o.invoice_no||'No reference'}</div><div className="text-xs mt-1" style={{color:MUTED}}>{o.purchase_date} · {o.status} · {Number(o.total||0).toFixed(2)}</div></div>
-          {(o.supplier?.email||o.supplier?.contact_email)&&<a href={`mailto:${encodeURIComponent(o.supplier.email||o.supplier.contact_email)}?subject=Purchase%20Order%20${encodeURIComponent(o.invoice_no||o.id)}&body=Please%20find%20our%20purchase%20order%20reference%20${encodeURIComponent(o.invoice_no||o.id)}%20for%20${encodeURIComponent(Number(o.total||0).toFixed(2))}.`} className="rounded-lg border px-3 py-2 text-xs font-bold" style={{borderColor:BORDER}}>Email supplier</a>}
+          {(o.supplier?.email||o.supplier?.contact_email)&&<a href={`mailto:${encodeURIComponent(o.supplier.email||o.supplier.contact_email)}?subject=Purchase%20Order%20${encodeURIComponent(o.invoice_no||o.id)}&body=${encodeURIComponent(supplierEmailBody(o))}`} className="rounded-lg border px-3 py-2 text-xs font-bold" style={{borderColor:BORDER}}>Email supplier</a>}
           {o.status!=='received'&&o.status!=='cancelled'?<button onClick={()=>receive(o.id)} className="px-3 py-2 rounded-lg text-xs font-black flex items-center gap-1" style={{background:YELLOW,color:TEXT}}><CheckCircle2 size={14}/> Receive</button>:<span className="text-xs font-bold" style={{color:MUTED}}>{o.status}</span>}
         </div>)}
       </section>
