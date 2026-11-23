@@ -203,6 +203,26 @@ export default function POSContainer({ initialTab = 'floor' } = {}) {
 		setPosUnlocked(true);
 		toast.success('POS access PIN set. The default code is no longer active.');
 	};
+	const handlePosSignOut = () => {
+		const confirmed = window.confirm('Sign out of the POS? The current shift will remain open, and all orders and payment records will be preserved.');
+		if (!confirmed) return;
+		try {
+			sessionStorage.removeItem('olitech_active_staff_v2');
+			sessionStorage.removeItem(`${POS_ACCESS_KEY}:${propertyId}`);
+		} catch (error) {
+			console.error('[POS] could not clear the local sign-in session', error);
+			toast.error('Could not sign out. Please try again.');
+			return;
+		}
+		setActiveStaffId(null);
+		setSwitchStaff(null);
+		setSwitchError('');
+		setActiveTable(null);
+		setActiveTab('shifts');
+		setPosAccessError('');
+		setPosUnlocked(false);
+		toast.success('You have signed out of the POS.');
+	};
 	const [activeTab, setActiveTab] = useState('floor');
 	const [activeTable, setActiveTable] = useState(null);
 	const [pendingTable, setPendingTable] = useState(null); // table awaiting "open" dialog
@@ -491,7 +511,7 @@ export default function POSContainer({ initialTab = 'floor' } = {}) {
 	);
 	return (
 		<div className="flex flex-col h-full overflow-hidden">
-			<AppHeader activeTab={activeTab} onTabChange={setActiveTab} activeTable={activeTable} shift={currentShift} hasOpenShift={Boolean(currentShift)} onOpenShifts={() => setActiveTab('shifts')} propertyName={propertyName} onCloseShift={currentShift && canCloseShift ? ()=>setCloseShiftOpen(true) : null} onManageMenu={canCloseShift ? ()=>setMenuManagerOpen(true) : null} onOpenSettings={()=>setSettingsOpen(true)} />
+			<AppHeader activeTab={activeTab} onTabChange={setActiveTab} activeTable={activeTable} shift={currentShift} hasOpenShift={Boolean(currentShift)} onOpenShifts={() => setActiveTab('shifts')} propertyName={propertyName} onCloseShift={currentShift && canCloseShift ? ()=>setCloseShiftOpen(true) : null} onManageMenu={canCloseShift ? ()=>setMenuManagerOpen(true) : null} onOpenSettings={()=>setSettingsOpen(true)} onSignOut={handlePosSignOut} />
 
 			<div className="flex-1 min-h-0 overflow-y-auto">
 				{activeTab === 'shifts' && <ShiftManagementPage propertyId={propertyId} currentShift={currentShift} loadError={shiftLoadError} onOpened={(shift) => { setCurrentShift(shift); setActiveTab('floor'); }} onCloseShift={canCloseShift ? () => setCloseShiftOpen(true) : null} onGoToFloor={() => setActiveTab('floor')} />}
