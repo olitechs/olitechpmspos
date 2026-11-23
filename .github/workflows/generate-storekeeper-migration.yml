@@ -5,7 +5,6 @@ on:
     branches:
       - fix/storekeeper-full-stores-workspace
     paths:
-      - .github/workflows/generate-storekeeper-migration.yml
       - supabase/templates/storekeeper_full_stores_workspace_access.sql
 
 permissions:
@@ -30,7 +29,7 @@ jobs:
         shell: bash
         run: |
           supabase migration new storekeeper_full_stores_workspace_access
-          migration_file="$(find supabase/migrations -maxdepth 1 -type f -name '*_storekeeper_full_stores_workspace_access.sql' -print -quit)"
+          migration_file="$(find supabase/migrations -maxdepth 1 -type f -name '*_storekeeper_full_stores_workspace_access.sql' -printf '%T@ %p\n' | sort -nr | head -n1 | cut -d' ' -f2-)"
           test -n "$migration_file"
           cp supabase/templates/storekeeper_full_stores_workspace_access.sql "$migration_file"
           echo "Generated migration: $migration_file"
