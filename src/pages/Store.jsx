@@ -19,6 +19,7 @@ import { Modal } from '@/components/store/SupplierList';
 import { getSessionStaff, normalizeStaffRole } from '@/services/authService';
 import StoreBarcodeLabels from '@/components/store/StoreBarcodeLabels';
 import CompositeItemEditor from '@/components/pos/CompositeItemEditor';
+import ProductVariantsEditor from '@/components/store/ProductVariantsEditor';
 import { useSearchParams } from 'react-router-dom';
 import { resolvePermissions } from '@/lib/permissions';
 
@@ -140,7 +141,7 @@ function ProductModal({value,suppliers,propertyId,fnbOnly=false,onClose,onSave})
       <section className="rounded-xl border-2 border-border p-4">
         <h3 className="mb-3 font-black">Inventory</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {[[ 'current_stock','In stock' ],['min_stock','Low stock alert'],['max_stock','Optimal / maximum stock'],['expiry_date','Expiry date']].map(([k,label])=><label key={k} className="text-xs font-black">{label}<input type={k==='expiry_date'?'date':'number'} min="0" value={f[k]??''} onChange={e=>set(k,e.target.value)} className="mt-1 w-full border-2 border-border rounded-lg px-3 py-2.5"/></label>)}
+          {[[ 'current_stock','In stock' ],['min_stock','Low stock alert'],['max_stock','Optimal / maximum stock'],['expiry_date','Expiry date']].map(([k,label])=><label key={k} className="text-xs font-black">{label}<input type={k==='expiry_date'?'date':'number'} min="0" value={f[k]??''} disabled={k==='current_stock'&&Boolean(value.id)} onChange={e=>set(k,e.target.value)} className="mt-1 w-full border-2 border-border rounded-lg px-3 py-2.5 disabled:opacity-60"/></label>)}
         </div>
         <div className="mt-4 flex flex-wrap gap-4">
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.track_stock!==false} onChange={e=>{set('track_stock',e.target.checked);if(!e.target.checked)set('inventory_tracking_mode','untracked');else if(f.inventory_tracking_mode==='untracked')set('inventory_tracking_mode','direct')}}/> Track stock</label>
@@ -154,6 +155,10 @@ function ProductModal({value,suppliers,propertyId,fnbOnly=false,onClose,onSave})
         <p className="mb-3 text-xs text-muted-foreground">Create a sellable item from component products. Set up and save each component as an item first, then add it to this recipe.</p>
         {value.id?<CompositeItemEditor propertyId={propertyId} productId={value.id} onSaved={()=>{toast.success('Composite recipe saved.');}}/>:<p className="rounded-lg bg-muted p-3 text-xs">Save this item first. Reopen it to add its components and quantities.</p>}
         {isComposite&&<p className="mt-2 text-xs text-muted-foreground">This item's stock is derived from its component recipe.</p>}
+      </section>
+      <section className="rounded-xl border-2 border-border p-4">
+        <h3 className="mb-3 font-black">Variants</h3>
+        {value.id?<ProductVariantsEditor propertyId={propertyId} productId={value.id}/>:<p className="text-xs text-muted-foreground">Save the item first to add size, colour or pack variants.</p>}
       </section>
       <section className="rounded-xl border-2 border-border p-4">
         <h3 className="mb-3 font-black">POS presentation</h3>
