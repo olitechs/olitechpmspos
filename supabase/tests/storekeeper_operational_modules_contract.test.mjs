@@ -76,7 +76,10 @@ test('Storekeeper can access the complete item editor from the Stores product li
   assert.match(storePage, /Stock Adjustments to change on-hand quantity/);
   assert.match(variantEditor, /price_delta/);
   assert.match(variantEditor, /barcode/);
-  assert.match(variantEditor, /track_stock/);
+  assert.match(variantEditor, /const edit=row=>/);
+  assert.match(variantEditor, /product_variants'\)\.update\(payload\)/);
+  assert.match(variantEditor, /Variant-level stock deduction is not connected to POS sales yet/);
+  assert.match(variantEditor, /track_stock:false/);
 });
 
 test('Storekeeper item writes and composite recipes retain tenant and permission boundaries', () => {
