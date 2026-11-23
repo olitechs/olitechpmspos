@@ -109,7 +109,7 @@ CREATE OR REPLACE FUNCTION public.property_role(p_property_id uuid)
 RETURNS text LANGUAGE sql STABLE AS $function$ SELECT 'staff'::text $function$;
 
 CREATE OR REPLACE FUNCTION public.current_staff_id(p_property_id uuid)
-RETURNS uuid LANGUAGE sql STABLE AS $function$ SELECT NULL::uuid $function$;
+RETURNS uuid LANGUAGE sql STABLE AS $function$ SELECT NULLIF(current_setting('request.jwt.claim.staff_id', true), '')::uuid $function$;
 
 CREATE OR REPLACE FUNCTION public.fn_subscription_module_allowed(p_property_id uuid, p_module text)
 RETURNS boolean LANGUAGE sql STABLE AS $function$ SELECT true $function$;
