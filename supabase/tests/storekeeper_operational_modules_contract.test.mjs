@@ -17,6 +17,7 @@ const storePage = read('../../src/pages/Store.jsx');
 const variantEditor = read('../../src/components/store/ProductVariantsEditor.jsx');
 const appStore = read('../../src/data/AppStore.jsx');
 const dashboard = read('../../src/pages/StorekeeperDashboard.jsx');
+const inventoryReports = read('../../src/components/modules/InventoryReports.jsx');
 const valuationMigration = read('../../supabase/templates/pos_floor_wastage_valuation_fixes.sql');
 const permissionCatalog = read('../../src/lib/permissions.js');
 
@@ -116,4 +117,6 @@ test('inventory valuation requires the explicit cost permission for Storekeeper'
   assert.match(shell, /valuation: 'stores\.inventory\.valuation\.view'/);
   assert.match(inventoryOperations, /permissions\.codes\.has\('stores\.inventory\.valuation\.view'\)/);
   assert.match(dashboard, /resolvePermissions\(user\)\.codes\.has\('stores\.inventory\.valuation\.view'\)/);
+  assert.match(inventoryReports, /canViewValuation\?inventoryService\.getInventoryValuation/);
+  assert.match(inventoryReports, /Inventory costs and valuation are restricted/);
 });
