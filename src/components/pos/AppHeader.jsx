@@ -16,7 +16,7 @@ const ACTION_BASE = 'inline-flex min-h-11 shrink-0 items-center justify-center g
 const ACTION_NEUTRAL = `${ACTION_BASE} border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--sidebar)]`;
 const ACTION_PRIMARY = `${ACTION_BASE} border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)] hover:bg-[var(--sidebar)]`;
 
-export default function AppHeader({ activeTab, onTabChange, activeTable, onCloseShift, shift, hasOpenShift = false, onOpenShifts, onManageMenu, onOpenSettings, propertyName }) {
+export default function AppHeader({ activeTab, onTabChange, activeTable, onCloseShift, shift, hasOpenShift = false, onOpenShifts, onManageMenu, onOpenSettings, onSignOut, propertyName }) {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     // Keep the header clock live: re-render on a short interval so the POS never shows a frozen time.
@@ -76,6 +76,11 @@ export default function AppHeader({ activeTab, onTabChange, activeTable, onClose
         {shift?.status === 'open' && onCloseShift && (
           <button type="button" onClick={onCloseShift} className={ACTION_PRIMARY} aria-label="Close the current POS shift">
             <LogOut size={16} aria-hidden="true" /> <span className="hidden sm:inline">Close Shift</span>
+          </button>
+        )}
+        {onSignOut && (
+          <button type="button" onClick={onSignOut} className={ACTION_NEUTRAL} aria-label="Sign out of POS">
+            <LogOut size={16} aria-hidden="true" /> <span>Sign Out</span>
           </button>
         )}
         <div className="hidden text-right md:block">
