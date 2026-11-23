@@ -92,9 +92,9 @@ test('Storekeeper receives all seven Stores permissions and remains workspace-sc
   }
   assert.ok(storekeeperFix.includes('c.workspace = any(v_assigned)'));
   assert.ok(storekeeperFix.includes('g.expires_at > now()'));
-  const builtInStorekeeperPermissions = storekeeperFix.match(/set permission_codes = array\\[([\\s\\S]*?)\\]::text\\[\\]/)?.[1] || '';
+  const builtInStorekeeperPermissions = storekeeperFix.split('set permission_codes = array[')[1]?.split(']::text[]')[0] || '';
   assert.ok(!builtInStorekeeperPermissions.includes('back_office.'));
-  const seededStorekeeperRole = storekeeperFix.match(/\\(p_property_id,'Storekeeper',[\\s\\S]*?\\)/)?.[0] || '';
+  const seededStorekeeperRole = storekeeperFix.split(\"(p_property_id,'Storekeeper',\")[1]?.split('),')[0] || '';
   assert.ok(seededStorekeeperRole.includes('stores.suppliers.manage'));
   assert.ok(!seededStorekeeperRole.includes('back_office.'));
 });
