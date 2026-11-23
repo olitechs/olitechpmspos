@@ -38,6 +38,9 @@ export default function Purchasing() {
   },[propertyId]);
   useEffect(()=>{load();},[load]);
 
+  const selectedProduct=products.find((product)=>product.id===productId);
+  const suggestedReorderQty=(product)=>Math.max(1,Number(product?.min_stock||product?.reorder_level||0)-Number(product?.current_stock||0));
+  const autoFillReorder=()=>{if(!selectedProduct)return;setQty(String(suggestedReorderQty(selectedProduct)));setUnitCost(String(selectedProduct.cost_price||0));};
   const addLine=()=>{
     if(!productId || Number(qty)<=0 || Number(unitCost)<0) return setError('Select a product and enter valid quantity/cost.');
     const product=products.find(p=>p.id===productId);
@@ -55,6 +58,7 @@ export default function Purchasing() {
     }catch(e){setError(e.message||'Could not create purchase order.');}
   };
 
+  const supplierEmailBody=(order)=>{const nl=String.fromCharCode(10);const items=Array.isArray(order.lines)?order.lines.map((line)=>'- '+(line.product_name||line.name||line.product_id)+': '+(line.qty??line.quantity??0)+' x '+Number(line.unit_cost??line.cost_price??0).toFixed(2)).join(nl):'Please confirm the items and quantities on this purchase order.';return 'Hello '+(order.supplier?.name||'Supplier')+','+nl+nl+'Please process purchase order '+(order.invoice_no||order.id)+'.'+nl+nl+'Items:'+nl+items+nl+nl+'Total: '+Number(order.total||0).toFixed(2)+nl+nl+'Kindly confirm availability and expected delivery.'+nl+nl+'Regards';};
   const receive=async(id)=>{
     if(!window.confirm('Receive this purchase order and add its quantities to stock?')) return;
     try{await pmsService.receivePurchaseOrder({purchaseOrderId:id});setError('');load();}
@@ -72,15 +76,16 @@ export default function Purchasing() {
         <label className="block text-xs font-bold mb-1">Invoice / Reference</label>
         <input value={invoiceNo} onChange={e=>setInvoiceNo(e.target.value)} className="w-full p-2.5 rounded-lg mb-3 text-sm" style={{background:SURFACE2,border:`1px solid ${BORDER}`}} placeholder="Optional"/>
         <div className="grid grid-cols-2 gap-2">
-          <select value={productId} onChange={e=>{setProductId(e.target.value);const p=products.find(x=>x.id===e.target.value);if(p)setUnitCost(String(p.cost_price||0));}} className="p-2.5 rounded-lg text-sm" style={{background:SURFACE2,border:`1px solid ${BORDER}`}}>
+          <select value={productId} onChange={e=>{setProductId(e.target.value);const p=products.find(x=>x.id===e.target.value);if(p){setUnitCost(String(p.cost_price||0));setQty(String(suggestedReorderQty(p)));}}} className="p-2.5 rounded-lg text-sm" style={{background:SURFACE2,border:`1px solid ${BORDER}`}}>
             <option value="">Product</option>{products.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
           <input type="number" min="0.01" step="0.01" value={qty} onChange={e=>setQty(e.target.value)} className="p-2.5 rounded-lg text-sm" style={{background:SURFACE2,border:`1px solid ${BORDER}`}} placeholder="Qty"/>
         </div>
         <div className="flex gap-2 mt-2">
           <input type="number" min="0" step="0.01" value={unitCost} onChange={e=>setUnitCost(e.target.value)} className="flex-1 p-2.5 rounded-lg text-sm" style={{background:SURFACE2,border:`1px solid ${BORDER}`}} placeholder="Unit cost"/>
-          <button onClick={addLine} className="px-3 rounded-lg font-black" style={{background:YELLOW,color:TEXT}}><Plus size={16}/></button>
+          <button type="button" onClick={autoFillReorder} disabled={!selectedProduct} className="px-3 rounded-lg text-xs font-bold disabled:opacity-40" style={{background:SURFACE2,border:`1px solid ${BORDER}`,color:TEXT}}>Auto-fill</button><button onClick={addLine} className="px-3 rounded-lg font-black" style={{background:YELLOW,color:TEXT}}><Plus size={16}/></button>
         </div>
+        <p className="mt-2 text-[11px]" style={{color:MUTED}}>Selecting a product suggests the quantity needed to reach its minimum stock level and fills its saved cost. Adjust before adding the line.</p>
         <div className="mt-4 space-y-2">
           {lines.map((l,i)=><div key={i} className="flex items-center justify-between text-xs p-2 rounded-lg" style={{background:SURFACE2}}><span>{l.product_name} × {l.qty}</span><span>{(l.qty*l.unit_cost).toFixed(2)}</span></div>)}
           {!lines.length&&<div className="text-xs" style={{color:MUTED}}>No lines added.</div>}
@@ -93,6 +98,7 @@ export default function Purchasing() {
         <div className="px-4 py-3 flex items-center justify-between" style={{borderBottom:`1px solid ${BORDER}`}}><div><h2 className="text-sm font-black uppercase tracking-widest">Purchase Orders</h2><p className="text-xs mt-1" style={{color:MUTED}}>Ordered items remain out of stock until receiving.</p></div><Truck size={18}/></div>
         {loading?<div className="p-6 text-center text-sm" style={{color:MUTED}}>Loading…</div>:orders.length===0?<div className="p-6 text-center text-sm" style={{color:MUTED}}>No purchase orders yet.</div>:orders.map(o=><div key={o.id} className="p-4 flex items-center gap-3" style={{borderBottom:`1px solid ${BORDER}`}}>
           <div className="flex-1 min-w-0"><div className="text-sm font-bold">{o.supplier?.name||'Supplier'} · {o.invoice_no||'No reference'}</div><div className="text-xs mt-1" style={{color:MUTED}}>{o.purchase_date} · {o.status} · {Number(o.total||0).toFixed(2)}</div></div>
+          {(o.supplier?.email||o.supplier?.contact_email)&&<a href={`mailto:${encodeURIComponent(o.supplier.email||o.supplier.contact_email)}?subject=Purchase%20Order%20${encodeURIComponent(o.invoice_no||o.id)}&body=${encodeURIComponent(supplierEmailBody(o))}`} className="rounded-lg border px-3 py-2 text-xs font-bold" style={{borderColor:BORDER}}>Email supplier</a>}
           {o.status!=='received'&&o.status!=='cancelled'?<button onClick={()=>receive(o.id)} className="px-3 py-2 rounded-lg text-xs font-black flex items-center gap-1" style={{background:YELLOW,color:TEXT}}><CheckCircle2 size={14}/> Receive</button>:<span className="text-xs font-bold" style={{color:MUTED}}>{o.status}</span>}
         </div>)}
       </section>

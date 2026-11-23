@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import {
-  BedDouble, Building2, CalendarDays, ChevronDown, ChevronLeft, ChevronRight,
+  Barcode, BedDouble, Building2, CalendarDays, ChevronDown, ChevronLeft, ChevronRight,
   ClipboardCheck, ClipboardList, Grid3X3, HelpCircle, LayoutDashboard, LogOut,
   Menu, Package, Printer, Receipt, Search, Settings, ShoppingBag, ShoppingCart,
   Sparkles, Store, Users, X, BarChart3, PlugZap, Boxes,
@@ -17,7 +17,7 @@ const FRONT_ICONS = {
   dashboard: LayoutDashboard, 'room-planner': BedDouble, rooms: BedDouble,
   reservations: CalendarDays, folio: Receipt, housekeeping: Sparkles, 'night-audit': ClipboardList,
 };
-const STORE_ICONS = { store: Store, dashboard: LayoutDashboard, inventory: Boxes, purchasing: ShoppingCart, transfers: ArrowRightLeft, counts: ClipboardCheck, reports: BarChart3, settings: Settings, devices: MonitorCog, printers: Printer, kds: LayoutGrid };
+const STORE_ICONS = { store: Store, dashboard: LayoutDashboard, inventory: Boxes, purchasing: ShoppingCart, transfers: ArrowRightLeft, adjustments: ClipboardCheck, counts: ClipboardCheck, production: ChefHat, history: Receipt, valuation: Banknote, labels: Barcode, reports: BarChart3, settings: Settings, devices: MonitorCog, printers: Printer, kds: LayoutGrid };
 const BACK_ICONS = {
   reports: BarChart3, items: ShoppingBag, inventory: ShoppingCart, employees: Users,
   'store-admin': Store,
@@ -97,7 +97,10 @@ export default function AppShell({ workspace = 'backoffice' }) {
         ? hasPermissionCode(user, ({
             dashboard: 'stores.access', inventory: 'stores.inventory.view',
             purchasing: 'stores.suppliers.manage', transfers: 'stores.stock.transfer',
-            counts: 'stores.stock.adjust', reports: 'stores.inventory.view', kds: 'stores.access',
+            adjustments: 'stores.stock.adjust', counts: 'stores.stock.adjust',
+            production: 'stores.production.post', history: 'stores.inventory.view',
+            valuation: 'stores.inventory.view', labels: 'stores.inventory.view',
+            reports: 'stores.inventory.view', kds: 'stores.access',
           })[id] || 'stores.access')
         : (!roles || roles.includes(role))).map(([label, path, id]) => ({
         id, label, path, icon: STORE_ICONS[id], active: pathname === path || pathname.startsWith(path + '/'),

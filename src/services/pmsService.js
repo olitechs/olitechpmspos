@@ -56,7 +56,7 @@ export const pmsService = {
 		return data || [];
 	},
 	async listPurchaseOrders(propertyId) {
-		const { data, error } = await supabase.from('purchase_orders').select('*, supplier:suppliers(name)').eq('property_id', propertyId).order('purchase_date', { ascending: false });
+		const { data, error } = await supabase.from('purchase_orders').select('*, supplier:suppliers(name,email)').eq('property_id', propertyId).order('purchase_date', { ascending: false });
 		if (error) throw new Error(error.message);
 		return data || [];
 	},
