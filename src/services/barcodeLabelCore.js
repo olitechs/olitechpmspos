@@ -56,11 +56,11 @@ export function buildBarcodeLabelDocument(items, propertyName = 'OliTechs Stores
   return `<!doctype html><html><head><meta charset="utf-8"><title>Inventory barcode labels</title><style>
     @page{size:50mm 30mm;margin:2mm}*{box-sizing:border-box}body{margin:0;font:10px Arial,sans-serif;color:CanvasText}
     .sheet{display:grid;grid-template-columns:50mm;gap:0;align-items:start}
-    .label{width:46mm;height:26mm;padding:1.5mm;border:0.2mm solid #ddd;display:flex;flex-direction:column;align-items:center;justify-content:space-between;overflow:hidden;break-inside:avoid;break-after:page}
+    .label{width:46mm;height:26mm;padding:1.5mm;border:0.2mm solid color-mix(in srgb, CanvasText 15%, Canvas);display:flex;flex-direction:column;align-items:center;justify-content:space-between;overflow:hidden;break-inside:avoid;break-after:page}
     .label strong{font-size:9px;line-height:1.15;text-align:center;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .barcode{width:100%;height:13mm}.barcode svg{display:block;width:100%;height:100%}
     .label small{font:8px monospace;letter-spacing:.5px}
-    @media screen{body{padding:12px;background:#eee}.sheet{margin:auto}.label{background:Canvas}}
+    @media screen{body{padding:12px;background:Canvas}.sheet{margin:auto}.label{background:Canvas}}
     @media print{body{padding:0}.sheet{gap:0}.label{border:0}.label:last-child{break-after:auto}}
   </style></head><body><main class="sheet">${labels.join('')}</main><script>window.addEventListener('load',()=>{window.focus();window.print()});</script></body></html>`;
 }
