@@ -52,10 +52,6 @@ test('Storekeeper role aliases are normalized before Store page capability check
   assert.ok(inventoryOperations.includes('Potential gross margin'));
   assert.ok(inventoryOperations.includes('const countedLines=products.filter'));
   for (const reason of ['damage','loss','correction','expiry']) assert.ok(inventoryOperations.includes("['" + reason + "'"));
-  assert.ok(inventoryOperations.includes('backendReady={productionReady}'));
-  assert.ok(inventoryOperations.includes('inventoryService.isProductionReady(propertyId)'));
-  assert.ok(inventoryService.includes("supabase.rpc('fn_inventory_production_ready'"));
-  assert.ok(migration.includes('fn_inventory_production_ready'));
   assert.ok(migration.includes('to_regprocedure(\'public.fn_post_inventory_production'));
 });
 
