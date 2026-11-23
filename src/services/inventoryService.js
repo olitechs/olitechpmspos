@@ -14,6 +14,7 @@ function cleanProduct(row, propertyId, supplierId = null) {
     property_id: propertyId,
     sku: String(row.sku || '').trim() || null,
     name: String(row.name || '').trim(),
+    description: row.description == null ? null : String(row.description),
     category: String(row.category || 'General').trim() || 'General',
     unit: String(row.unit || 'pcs').trim() || 'pcs',
     current_stock: Number(row.current_stock ?? row.quantity ?? 0) || 0,
@@ -24,6 +25,18 @@ function cleanProduct(row, propertyId, supplierId = null) {
     supplier_id: supplierId || row.supplier_id || null,
     location: String(row.location || 'Main Store').trim() || 'Main Store',
     expiry_date: row.expiry_date || null,
+    pos_enabled: Boolean(row.pos_enabled),
+    pos_category: row.pos_category || null,
+    production_center: row.production_center || 'Kitchen',
+    pos_sort: Number(row.pos_sort || 0),
+    pos_active: row.pos_active !== false,
+    tile_color: row.tile_color || null,
+    tile_text_color: row.tile_text_color || null,
+    tile_image_url: row.tile_image_url || null,
+    track_stock: row.track_stock !== false,
+    stock_item_type: row.stock_item_type || 'standard',
+    base_unit: row.base_unit || row.unit || 'pcs',
+    inventory_tracking_mode: row.inventory_tracking_mode || (row.track_stock === false ? 'untracked' : 'direct'),
   };
 }
 
