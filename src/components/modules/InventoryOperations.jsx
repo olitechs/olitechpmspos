@@ -11,11 +11,11 @@ const input='border rounded-lg px-3 py-2 text-sm w-full';
 
 export default function InventoryOperations({initialTab='locations'}){
  const {user}=useAuth(), propertyId=user?.property?.id; const permissions=resolvePermissions(user); const [tab,setTab]=useState(initialTab);
- const visibleTabs=tabs.filter(([id])=>id==='locations'||id==='history'||id==='valuation'?permissions.codes.has('stores.inventory.view'):id==='adjustments'||id==='counts'?permissions.codes.has('stores.stock.adjust'):id==='production'?permissions.codes.has('stores.production.post'):id==='wastage'?(permissions.codes.has('stores.stock.wastage.submit')||permissions.codes.has('stores.stock.wastage.approve')):false);
+ const visibleTabs=tabs.filter(([id])=>id==='locations'||id==='history'?permissions.codes.has('stores.inventory.view'):id==='valuation'?permissions.codes.has('stores.inventory.valuation.view'):id==='adjustments'||id==='counts'?permissions.codes.has('stores.stock.adjust'):id==='production'?permissions.codes.has('stores.production.post'):id==='wastage'?(permissions.codes.has('stores.stock.wastage.submit')||permissions.codes.has('stores.stock.wastage.approve')):false);
  const visibleTabIds=visibleTabs.map(([id])=>id).join('|');
  useEffect(()=>{const ids=visibleTabIds.split('|').filter(Boolean);if(ids.includes(initialTab))setTab(initialTab);else if(ids.length)setTab(ids[0])},[initialTab,visibleTabIds]);
  const [locations,setLocations]=useState([]),[products,setProducts]=useState([]),[recipes,setRecipes]=useState([]),[history,setHistory]=useState([]),[expiry,setExpiry]=useState([]),[valuation,setValuation]=useState([]),[summary,setSummary]=useState(null),[counts,setCounts]=useState([]),[productionReady,setProductionReady]=useState(false),[loading,setLoading]=useState(true);
- const load=async()=>{if(!propertyId)return;setLoading(true);try{const [l,p,r,h,e,v,s,c]=await Promise.all([pmsService.listInventoryLocations(propertyId),inventoryService.listProducts(propertyId),inventoryService.listRecipes(propertyId),inventoryService.listInventoryHistory(propertyId),inventoryService.listExpiryWatch(propertyId),inventoryService.getInventoryValuation(propertyId),inventoryService.getInventoryValuationSummary(propertyId),inventoryService.listInventoryCounts(propertyId)]);setLocations(l);setProducts(p);setRecipes(r);setHistory(h);setExpiry(e);setValuation(v);setSummary(Array.isArray(s)?s[0]||null:s);setCounts(c)}catch(e){toast.error(e.message)}finally{setLoading(false)}};useEffect(()=>{load()},[propertyId]);
+ const load=async()=>{if(!propertyId)return;setLoading(true);try{const [l,p,r,h,e,v,s,c]=await Promise.all([pmsService.listInventoryLocations(propertyId),inventoryService.listProducts(propertyId),inventoryService.listRecipes(propertyId),inventoryService.listInventoryHistory(propertyId),inventoryService.listExpiryWatch(propertyId),(permissions.codes.has('stores.inventory.valuation.view')?inventoryService.getInventoryValuation(propertyId):Promise.resolve([])),(permissions.codes.has('stores.inventory.valuation.view')?inventoryService.getInventoryValuationSummary(propertyId):Promise.resolve(null)),inventoryService.listInventoryCounts(propertyId)]);setLocations(l);setProducts(p);setRecipes(r);setHistory(h);setExpiry(e);setValuation(v);setSummary(Array.isArray(s)?s[0]||null:s);setCounts(c)}catch(e){toast.error(e.message)}finally{setLoading(false)}};useEffect(()=>{load()},[propertyId]);
  return <div className="flex-1 overflow-y-auto p-4 lg:p-6"><div className="flex items-center gap-2 mb-4"><Boxes/><div><h1 className="text-xl font-black">Inventory Operations</h1><p className="text-xs text-muted-foreground">Manage stock locations, physical counts and inventory activity.</p></div></div><div className="flex gap-1 overflow-x-auto border rounded-xl p-1 mb-4">{visibleTabs.map(([id,label,I])=><button key={id} onClick={()=>setTab(id)} className="px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap flex items-center gap-1" style={{background:tab===id?'var(--primary-soft)':'transparent',color:tab===id?'var(--primary)':'var(--text)'}}><I size={14}/>{label}</button>)}</div>{loading?<div className="p-10 text-center text-muted-foreground">Loading inventory controls…</div>:<>{tab==='locations'&&<Locations locations={locations}/>} {tab==='adjustments'&&<Adjustments propertyId={propertyId} locations={locations} products={products} onSaved={load}/>} {tab==='counts'&&<Counts propertyId={propertyId} locations={locations} products={products} counts={counts} onSaved={load}/>} {tab==='production'&&<Production propertyId={propertyId} products={products} recipes={recipes} canPost={permissions.codes.has('stores.production.post')} backendReady={productionReady} onSaved={load}/>} {tab==='wastage'&&<Wastage propertyId={propertyId} locations={locations} products={products} expiry={expiry} canSubmit={permissions.codes.has('stores.stock.wastage.submit')} canApprove={permissions.codes.has('stores.stock.wastage.approve')} currentUserId={user?.id} onSaved={load}/>} {tab==='history'&&<HistoryTable rows={history}/>} {tab==='valuation'&&<Valuation rows={valuation} summary={summary} products={products}/>}</>}</div>
 }
 function Locations({locations}){return <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">{locations.map(l=><div key={l.id} className="bg-surface border rounded-xl p-4"><div className="font-black">{l.name}</div><div className="text-xs text-muted-foreground mt-1">Inventory location ready for transfers and physical counts.</div></div>)}</div>}
@@ -48,8 +48,9 @@ function Production({propertyId,products,recipes,canPost,backendReady,onSaved}){
 function Wastage({propertyId,locations,products,expiry,canSubmit,canApprove,currentUserId,onSaved}){
  const [f,setF]=useState({productId:'',locationId:'',quantity:'',reason:'',expiryDate:''});
  const [requests,setRequests]=useState([]),[busy,setBusy]=useState(false),[loadingRequests,setLoadingRequests]=useState(true);
+ const [workflowAvailable,setWorkflowAvailable]=useState(null);
  const [requestKey,setRequestKey]=useState(()=>globalThis.crypto?.randomUUID?.()||`wastage-${Date.now()}-${Math.random().toString(36).slice(2)}`);
- const refresh=async()=>{setLoadingRequests(true);try{setRequests(await inventoryService.listWastageRequests(propertyId));}catch(e){toast.error(e.message)}finally{setLoadingRequests(false)}};
+ const refresh=async()=>{setLoadingRequests(true);try{const result=await inventoryService.listWastageRequests(propertyId);setWorkflowAvailable(result.available);setRequests(result.requests);}catch(e){setWorkflowAvailable('error');toast.error(e.message)}finally{setLoadingRequests(false)}};
  useEffect(()=>{if(propertyId)refresh()},[propertyId]);
  const save=async()=>{
   if(busy)return;
@@ -76,7 +77,7 @@ function Wastage({propertyId,locations,products,expiry,canSubmit,canApprove,curr
  };
  const productName=(id)=>products.find(p=>p.id===id)?.name||'Inventory item';
  return <div className="space-y-4">
-  <Panel title="Submit Wastage / Expired Stock">
+  {workflowAvailable==='error'?<div className="bg-surface border rounded-xl p-4 text-sm">Wastage requests could not be checked. Refresh the workspace before submitting or approving wastage.</div>:workflowAvailable===false?<div className="bg-surface border rounded-xl p-4 text-sm"><div className="font-bold text-[var(--warning-text)]">Wastage approval is not deployed on this database yet.</div><p className="mt-1 text-muted-foreground">The live inventory_wastage table does not contain request status fields. Submitting or approving requests is disabled until the approval migration passes its database regression tests. Existing stock and wastage records have not been changed.</p></div>:workflowAvailable===null?<div className="bg-surface border rounded-xl p-4 text-sm text-muted-foreground">Checking wastage approval availability…</div>:<Panel title="Submit Wastage / Expired Stock">
    <Select label="Product" value={f.productId} set={v=>setF({...f,productId:v})} options={products.filter(p=>p.track_stock!==false).map(x=>[x.id,x.name])}/>
    <Select label="Location" value={f.locationId} set={v=>setF({...f,locationId:v})} options={locations.map(x=>[x.id,x.name])}/>
    <label className="text-xs font-bold">Quantity<input type="number" min="0.01" step="0.01" value={f.quantity} onChange={e=>setF({...f,quantity:e.target.value})} className={input}/></label>
@@ -84,10 +85,10 @@ function Wastage({propertyId,locations,products,expiry,canSubmit,canApprove,curr
    <label className="text-xs font-bold">Expiry date (optional)<input type="date" value={f.expiryDate} onChange={e=>setF({...f,expiryDate:e.target.value})} className={input}/></label>
    <div className="md:col-span-2 flex items-center justify-between gap-3">
     <p className="text-xs text-muted-foreground">Requests remain pending until a different authorized manager approves them. Stock is not deducted at submission.</p>
-    <button disabled={!canSubmit||busy||!f.productId||!f.locationId||!f.quantity||!f.reason.trim()} onClick={save} className="px-4 py-2 rounded-lg bg-[var(--primary)] text-primary-foreground font-bold disabled:opacity-50">{busy?'Submitting…':'Submit for Approval'}</button>
+    <button disabled={workflowAvailable!==true||!canSubmit||busy||!f.productId||!f.locationId||!f.quantity||!f.reason.trim()} onClick={save} className="px-4 py-2 rounded-lg bg-[var(--primary)] text-primary-foreground font-bold disabled:opacity-50">{busy?'Submitting…':'Submit for Approval'}</button>
    </div>
-  </Panel>
-  <div className="bg-surface border rounded-xl p-4">
+  </Panel>}
+  {workflowAvailable===true&&<div className="bg-surface border rounded-xl p-4">
    <div className="flex items-center justify-between mb-3"><h2 className="font-black">Pending Wastage Requests</h2><span className="text-xs text-muted-foreground">{requests.length} pending</span></div>
    {loadingRequests?<p className="text-sm text-muted-foreground">Loading requests…</p>:requests.length===0?<p className="text-sm text-muted-foreground">No pending wastage requests.</p>:<div className="space-y-2">
     {requests.map(row=><div key={row.id} className="border rounded-lg p-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
@@ -95,7 +96,7 @@ function Wastage({propertyId,locations,products,expiry,canSubmit,canApprove,curr
      {canApprove&&row.created_by!==currentUserId?<div className="flex gap-2"><button disabled={busy} onClick={()=>decide(row,'approve')} className="px-3 py-2 rounded-lg bg-[var(--success)] text-foreground text-xs font-bold disabled:opacity-50">Approve & Deduct</button><button disabled={busy} onClick={()=>decide(row,'reject')} className="px-3 py-2 rounded-lg border text-xs font-bold disabled:opacity-50">Reject</button></div>:<span className="text-xs text-muted-foreground">{row.created_by===currentUserId?'Awaiting approval by another manager':'Manager approval required'}</span>}
     </div>)}
    </div>}
-  </div>
+  </div>}
   <div className="bg-surface border rounded-xl p-4"><h2 className="font-black mb-3">Expiry Watch</h2>{expiry.map(x=><div key={x.product_id} className="py-2 border-b flex justify-between text-sm"><span>{x.name}</span><span className={x.expiry_status==='expired'?'text-[var(--danger-text)] font-bold':'text-[var(--warning-text)] font-bold'}>{x.expiry_status} · {x.expiry_date}</span></div>)}</div>
  </div>
 }

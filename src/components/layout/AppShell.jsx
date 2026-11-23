@@ -99,7 +99,7 @@ export default function AppShell({ workspace = 'backoffice' }) {
             purchasing: 'stores.suppliers.manage', transfers: 'stores.stock.transfer',
             adjustments: 'stores.stock.adjust', counts: 'stores.stock.adjust',
             production: 'stores.production.post', history: 'stores.inventory.view',
-            valuation: 'stores.inventory.view', labels: 'stores.inventory.view',
+            valuation: 'stores.inventory.valuation.view', labels: 'stores.inventory.view',
             reports: 'stores.inventory.view', kds: 'stores.access',
           })[id] || 'stores.access')
         : (!roles || roles.includes(role))).map(([label, path, id]) => ({

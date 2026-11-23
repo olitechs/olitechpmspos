@@ -15,6 +15,11 @@ const inventoryOperations = read('../../src/components/modules/InventoryOperatio
 const inventoryService = read('../../src/services/inventoryService.js');
 const storePage = read('../../src/pages/Store.jsx');
 const variantEditor = read('../../src/components/store/ProductVariantsEditor.jsx');
+const appStore = read('../../src/data/AppStore.jsx');
+const dashboard = read('../../src/pages/StorekeeperDashboard.jsx');
+const inventoryReports = read('../../src/components/modules/InventoryReports.jsx');
+const valuationMigration = read('../../supabase/templates/pos_floor_wastage_valuation_fixes.sql');
+const permissionCatalog = read('../../src/lib/permissions.js');
 
 test('Storekeeper navigation exposes all requested operational modules', () => {
   const storesNav = nav.split('export const STORES_NAV = [')[1].split('];')[0];
@@ -31,7 +36,7 @@ test('Stores sidebar applies the matching permission to each operational module'
     ['purchasing','stores.suppliers.manage'],['transfers','stores.stock.transfer'],
     ['adjustments','stores.stock.adjust'],['counts','stores.stock.adjust'],
     ['production','stores.production.post'],['history','stores.inventory.view'],
-    ['valuation','stores.inventory.view'],['labels','stores.inventory.view'],
+    ['valuation','stores.inventory.valuation.view'],['labels','stores.inventory.view'],
   ]) {
     assert.ok(shell.includes(`${id}: '${code}'`), `${id} must be permission-gated by ${code}`);
   }
@@ -87,4 +92,31 @@ test('Storekeeper item writes and composite recipes retain tenant and permission
   assert.match(migration, /Composite recipe authorization guard changed/);
   assert.match(inventoryService, /description: row\.description/);
   assert.match(inventoryService, /inventory_tracking_mode: row\.inventory_tracking_mode/);
+});
+
+
+test('POS floor layout hydration never creates or updates a row without an explicit edit', () => {
+  assert.match(appStore, /const \[floorDirty, setFloorDirty\] = useState\(false\)/);
+  assert.match(appStore, /zonesFor !== propertyId \|\| floorLoading \|\| !floorDirty/);
+  assert.match(appStore, /Only an explicit floor-plan edit should write through the RLS policy/);
+  assert.match(appStore, /setFloorDirty\(true\); setZones\(/);
+  assert.match(appStore, /setFloorDirty\(false\)/);
+});
+
+test('legacy wastage schemas do not query a missing status column as a fatal page error', () => {
+  assert.match(inventoryService, /error\?\.code === '42703' && \/status\/i\.test/);
+  assert.match(inventoryOperations, /Wastage approval is not deployed on this database yet/);
+  assert.match(inventoryOperations, /workflowAvailable!==true/);
+});
+
+test('inventory valuation requires the explicit cost permission for Storekeeper', () => {
+  assert.match(permissionCatalog, /stores\.inventory\.valuation\.view/);
+  assert.match(valuationMigration, /stores\.inventory\.valuation\.view/);
+  assert.match(valuationMigration, /create policy products_valuation_select/);
+  assert.match(valuationMigration, /fn_employee_has_permission\(p_property_id,'stores\.inventory\.valuation\.view'\)/);
+  assert.match(shell, /valuation: 'stores\.inventory\.valuation\.view'/);
+  assert.match(inventoryOperations, /permissions\.codes\.has\('stores\.inventory\.valuation\.view'\)/);
+  assert.match(dashboard, /resolvePermissions\(user\)\.codes\.has\('stores\.inventory\.valuation\.view'\)/);
+  assert.match(inventoryReports, /canViewValuation\?inventoryService\.getInventoryValuation/);
+  assert.match(inventoryReports, /Inventory costs and valuation are restricted/);
 });
