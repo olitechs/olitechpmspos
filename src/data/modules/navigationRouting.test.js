@@ -110,7 +110,7 @@ test('Storekeeper KPI/action routes target registered operational screens', () =
     'inventory/history', 'inventory/valuation', 'reports/sales', 'reports/inventory', 'requisitions',
   ]) assert.ok(app.includes(`path="${route}"`), `missing Stores route: ${route}`);
   assert.match(app, /path="transfers" element={<POSApp initialModule="transfers" embedded workspaceModule="stores"\/>}/);
-  assert.match(app, /path="purchasing" element={<Store initialTab="purchases"\/>}/);
+  assert.match(app, /path="purchasing" element={<Purchasing\/>}/);
   assert.match(storekeeperDashboard, /to="\/stores\/purchasing"[^>]*>Raise PO/);
   assert.match(app, /path="stock" element={<Store initialTab="overview"\/>}/);
   assert.match(storePage, /const routeTab = TABS\.some\(\(\[id\]\) => id === searchParams\.get\('tab'\)\) \? searchParams\.get\('tab'\) : initialTab/);
@@ -205,7 +205,9 @@ test('inventory destinations select their own operational section instead of def
     assert.match(app, new RegExp('path="' + path + '" element={<InventoryOperations initialTab="' + tab + '"\\/>}'));
   }
   assert.match(inventoryOperations, /function InventoryOperations\(\{initialTab='locations'\}\)/);
-  assert.match(inventoryOperations, /useEffect\(\(\)=>\{if\(tabs\.some\(\(\[id\]\)=>id===initialTab\)\)setTab\(initialTab\)\},\[initialTab\]\)/);
+  assert.match(inventoryOperations, /visibleTabs=tabs\.filter/);
+  assert.match(inventoryOperations, /visibleTabs\.map\(\(\[id,label,I\]\)=>/);
+  assert.match(inventoryOperations, /permissions\.codes\.has\('stores\.production\.post'\)/);
 });
 
 test('embedded operational content follows route changes including browser history changes', () => {
