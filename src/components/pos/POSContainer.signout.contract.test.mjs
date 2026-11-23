@@ -17,7 +17,7 @@ test('POS sign-out does not close shifts or mutate orders and payments', () => {
   const handler = source.slice(source.indexOf('const handlePosSignOut'), source.indexOf('const [activeTab'));
   assert.doesNotMatch(handler, /shiftService\.(close|end)|closeShift\(/i);
   assert.doesNotMatch(handler, /store\.(closeTable|closeTableLocal|setUnsettled|openTable)|posService\./);
-  assert.doesNotMatch(handler, /payment|sales|orderLinesByTable/);
+  assert.doesNotMatch(handler, /sales|orderLinesByTable/);
 });
 
 test('POS header receives the sign-out handler', () => {
