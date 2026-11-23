@@ -1,6 +1,12 @@
 name: Generate Storekeeper migration with Supabase CLI
 
 on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - main
+    paths:
+      - supabase/templates/storekeeper_full_stores_workspace_access.sql
   push:
     branches:
       - fix/storekeeper-full-stores-workspace
