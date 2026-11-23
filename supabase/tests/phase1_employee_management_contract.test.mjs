@@ -61,3 +61,48 @@ test('permission editor exposes granular permissions and each shell filters navi
   assert.ok(topNav.includes('MAIN_NAV.filter((a) => canUseApp(user, a.id))'));
   assert.ok(routes.includes('canAccessPath(user,window.location.pathname)'));
 });
+
+const storekeeperFix = read('../templates/storekeeper_full_stores_workspace_access.sql');
+
+test('Storekeeper PIN-session resolution retains the verified current staff identity path', () => {
+  assert.ok(storekeeperFix.includes('s.id = coalesce(p_staff_id, public.current_staff_id(p_property_id))'));
+  assert.ok(storekeeperFix.includes('public.current_staff_id(p_property_id)'));
+  assert.ok(storekeeperFix.includes('s.is_active = true'));
+  assert.ok(storekeeperFix.includes('s.property_id = p_property_id'));
+});
+
+test('Storekeeper normal authenticated login resolves staff by auth user id without a PIN session', () => {
+  assert.ok(storekeeperFix.includes('p_staff_id is null'));
+  assert.ok(storekeeperFix.includes('public.current_staff_id(p_property_id) is null'));
+  assert.ok(storekeeperFix.includes('s.user_id = auth.uid()'));
+  assert.ok(storekeeperFix.includes('if auth.uid() is null or not (public.is_platform_owner() or public.is_member_of_property(p_property_id))'));
+});
+
+test('Storekeeper receives all seven Stores permissions and remains workspace-scoped', () => {
+  for (const code of [
+    'stores.access',
+    'stores.inventory.view',
+    'stores.stock.receive',
+    'stores.stock.issue',
+    'stores.stock.transfer',
+    'stores.stock.adjust',
+    'stores.suppliers.manage',
+  ]) {
+    assert.ok(storekeeperFix.includes(code), `missing Storekeeper permission: ${code}`);
+  }
+  assert.ok(storekeeperFix.includes('c.workspace = any(v_assigned)'));
+  assert.ok(storekeeperFix.includes('g.expires_at > now()'));
+  const builtInStorekeeperPermissions = storekeeperFix.split('set permission_codes = array[')[1]?.split(']::text[]')[0] || '';
+  assert.ok(!builtInStorekeeperPermissions.includes('back_office.'));
+  const seededStorekeeperRole = storekeeperFix.split("(p_property_id,'Storekeeper',")[1]?.split('),')[0] || '';
+  assert.ok(seededStorekeeperRole.includes('stores.suppliers.manage'));
+  assert.ok(!seededStorekeeperRole.includes('back_office.'));
+});
+
+test('Stores sidebar maps every Storekeeper module to its granular permission', () => {
+  assert.ok(appShell.includes("inventory: 'stores.inventory.view'"));
+  assert.ok(appShell.includes("purchasing: 'stores.suppliers.manage'"));
+  assert.ok(appShell.includes("transfers: 'stores.stock.transfer'"));
+  assert.ok(appShell.includes("counts: 'stores.stock.adjust'"));
+  assert.ok(appShell.includes("reports: 'stores.inventory.view'"));
+});

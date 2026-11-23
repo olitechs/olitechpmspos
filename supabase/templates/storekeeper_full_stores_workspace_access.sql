@@ -1,5 +1,5 @@
--- Expand only the built-in Storekeeper role to the full Stores operational permission bundle.
--- No Back Office or employee-administration permissions are granted.
+-- Storekeeper receives the complete operational Stores permission bundle.
+-- This update is scoped to the built-in Storekeeper role only.
 update public.employee_roles
 set permission_codes = array[
   'stores.access',
@@ -14,8 +14,9 @@ set permission_codes = array[
 where is_system = true
   and lower(btrim(name)) = 'storekeeper';
 
--- Preserve the live resolver's authentication, staff identity, assigned-workspace,
--- and temporary module-grant checks. Only add legacy Storekeeper role aliases.
+-- Preserve tenant membership, platform-owner, active-staff, assigned-workspace,
+-- and time-limited grant checks. Resolve authenticated staff by user_id only
+-- when neither an explicit staff id nor a verified PIN session is available.
 create or replace function public.fn_employee_permission_codes(
   p_property_id uuid,
   p_staff_id uuid default null
@@ -43,13 +44,15 @@ begin
 
   select s.* into v_staff
   from public.staff s
-  where s.id = coalesce(p_staff_id, public.current_staff_id(p_property_id))
-    and s.property_id = p_property_id
+  where s.property_id = p_property_id
     and s.is_active = true
     and (
-      s.user_id = auth.uid()
-      or lower(coalesce(s.email,'')) = lower(coalesce((select email from auth.users where id = auth.uid()),''))
-      or s.id = public.current_staff_id(p_property_id)
+      s.id = coalesce(p_staff_id, public.current_staff_id(p_property_id))
+      or (
+        p_staff_id is null
+        and public.current_staff_id(p_property_id) is null
+        and s.user_id = auth.uid()
+      )
     )
   limit 1;
 
@@ -107,7 +110,7 @@ begin
 end;
 $function$;
 
--- Ensure newly seeded properties receive the same Storekeeper permission bundle.
+-- Keep future property provisioning consistent with existing seeded roles.
 create or replace function public.fn_seed_employee_roles(p_property_id uuid)
 returns void
 language plpgsql
