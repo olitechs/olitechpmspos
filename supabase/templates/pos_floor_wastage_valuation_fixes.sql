@@ -126,3 +126,5 @@ grant execute on function public.fn_inventory_valuation_summary(uuid) to authent
 
 notify pgrst,'reload schema';
 commit;
+
+-- Generated through the Supabase CLI migration workflow.
