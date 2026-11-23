@@ -128,3 +128,5 @@ notify pgrst,'reload schema';
 commit;
 
 -- Generated through the Supabase CLI migration workflow.
+
+-- Regenerate after workflow expression correction.
