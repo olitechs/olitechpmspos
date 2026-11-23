@@ -20,6 +20,7 @@ import { getSessionStaff, normalizeStaffRole } from '@/services/authService';
 import StoreBarcodeLabels from '@/components/store/StoreBarcodeLabels';
 import CompositeItemEditor from '@/components/pos/CompositeItemEditor';
 import { useSearchParams } from 'react-router-dom';
+import { resolvePermissions } from '@/lib/permissions';
 
 const TABS = [
   ['overview','Stock Overview'], ['products','Products'], ['suppliers','Suppliers'], ['purchases','Purchases / GRN'], ['usage','Stock Usage'], ['alerts','Alerts'], ['labels','Label Printing'],
@@ -33,11 +34,12 @@ export default function Store({ initialTab = 'overview' }) {
   const propertyId = user?.property?.id;
   const sessionStaff = getSessionStaff();
   const role = normalizeStaffRole(sessionStaff?.role || user?.staff?.role || user?.propertyRole || user?.role);
-  const allowed = ROLES.includes(role) || user?.isPlatformOwner;
+  const permissions = resolvePermissions(user);
+  const allowed = permissions.codes.has('stores.access') || ROLES.includes(role) || user?.isPlatformOwner;
   const isFnbManager = role === 'fb_manager';
-  const showCost = ['storekeeper','store_keeper','store_manager','fb_manager','hotel_admin','super_admin','owner','admin','administrator','manager'].includes(role) || user?.isPlatformOwner;
+  const showCost = permissions.codes.has('stores.stock.adjust') || ['storekeeper','store_keeper','store_manager','fb_manager','hotel_admin','super_admin','owner','admin','administrator','manager'].includes(role) || user?.isPlatformOwner;
   const readOnly = role === 'front_office_manager';
-  const canWrite = !readOnly && ['storekeeper','store_keeper','store_manager','fb_manager','hotel_admin','super_admin','owner','admin','administrator','manager'].includes(role);
+  const canWrite = !readOnly && (permissions.codes.has('stores.stock.adjust') || ['storekeeper','store_keeper','store_manager','fb_manager','hotel_admin','super_admin','owner','admin','administrator','manager'].includes(role) || user?.isPlatformOwner);
   const [tab,setTab]=useState(routeTab);
   useEffect(()=>{ if(routeTab) setTab(routeTab); },[routeTab]);
   const [products,setProducts]=useState([]), [suppliers,setSuppliers]=useState([]), [movements,setMovements]=useState([]), [alerts,setAlerts]=useState([]), [purchases,setPurchases]=useState([]);
