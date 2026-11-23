@@ -323,24 +323,4 @@ begin
  return po;
 end $function$;
 
-create or replace function public.fn_post_production(
- p_property_id uuid,p_recipe_id uuid,p_output_product_id uuid,p_quantity numeric,p_reference text default null::text
-) returns inventory_productions
-language plpgsql security definer set search_path to 'public'
-as $function$
-declare v inventory_productions; ing record; need numeric; yield numeric;
-begin
- if not (public.is_platform_owner() or public.is_member_of_property(p_property_id)) then raise exception 'Not authorized'; end if;
- if not public.fn_employee_has_permission(p_property_id,'stores.production.post') then raise exception 'Missing employee permission: stores.production.post' using errcode='42501'; end if;
- if p_quantity<=0 then raise exception 'Production quantity must be greater than zero'; end if;
- select yield_qty into yield from recipes where id=p_recipe_id and property_id=p_property_id and active;
- if yield is null then raise exception 'Recipe not found or inactive'; end if;
- if not exists(select 1 from products where id=p_output_product_id and property_id=p_property_id) then raise exception 'Invalid output product'; end if;
- for ing in select product_id,qty from recipe_ingredients where recipe_id=p_recipe_id loop
-  need:=ing.qty*(p_quantity/greatest(yield,0.001));
-  perform fn_apply_stock_movement(ing.product_id,-need,'Production consumption','production',null);
- end loop;
- perform fn_apply_stock_movement(p_output_product_id,p_quantity,'Production output','production',null);
- insert into inventory_productions(property_id,recipe_id,output_product_id,quantity,reference,created_by) values(p_property_id,p_recipe_id,p_output_product_id,p_quantity,nullif(trim(p_reference),''),auth.uid()) returning * into v;
- return v;
-end $function$;
+
