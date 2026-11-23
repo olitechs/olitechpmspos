@@ -48,8 +48,9 @@ function Production({propertyId,products,recipes,canPost,backendReady,onSaved}){
 function Wastage({propertyId,locations,products,expiry,canSubmit,canApprove,currentUserId,onSaved}){
  const [f,setF]=useState({productId:'',locationId:'',quantity:'',reason:'',expiryDate:''});
  const [requests,setRequests]=useState([]),[busy,setBusy]=useState(false),[loadingRequests,setLoadingRequests]=useState(true);
+ const [workflowAvailable,setWorkflowAvailable]=useState(null);
  const [requestKey,setRequestKey]=useState(()=>globalThis.crypto?.randomUUID?.()||`wastage-${Date.now()}-${Math.random().toString(36).slice(2)}`);
- const refresh=async()=>{setLoadingRequests(true);try{setRequests(await inventoryService.listWastageRequests(propertyId));}catch(e){toast.error(e.message)}finally{setLoadingRequests(false)}};
+ const refresh=async()=>{setLoadingRequests(true);try{const result=await inventoryService.listWastageRequests(propertyId);setWorkflowAvailable(result.available);setRequests(result.requests);}catch(e){toast.error(e.message)}finally{setLoadingRequests(false)}};
  useEffect(()=>{if(propertyId)refresh()},[propertyId]);
  const save=async()=>{
   if(busy)return;
@@ -76,7 +77,7 @@ function Wastage({propertyId,locations,products,expiry,canSubmit,canApprove,curr
  };
  const productName=(id)=>products.find(p=>p.id===id)?.name||'Inventory item';
  return <div className="space-y-4">
-  <Panel title="Submit Wastage / Expired Stock">
+  {workflowAvailable===false?<div className="bg-surface border border-amber-500/40 rounded-xl p-4 text-sm"><div className="font-bold">Wastage approval is not deployed on this database yet.</div><p className="mt-1 text-muted-foreground">The live inventory_wastage table does not contain request status fields. Submitting or approving requests is disabled until the approval migration passes its database regression tests. Existing stock and wastage records have not been changed.</p></div>:workflowAvailable===null?<div className="bg-surface border rounded-xl p-4 text-sm text-muted-foreground">Checking wastage approval availability…</div>:<Panel title="Submit Wastage / Expired Stock">
    <Select label="Product" value={f.productId} set={v=>setF({...f,productId:v})} options={products.filter(p=>p.track_stock!==false).map(x=>[x.id,x.name])}/>
    <Select label="Location" value={f.locationId} set={v=>setF({...f,locationId:v})} options={locations.map(x=>[x.id,x.name])}/>
    <label className="text-xs font-bold">Quantity<input type="number" min="0.01" step="0.01" value={f.quantity} onChange={e=>setF({...f,quantity:e.target.value})} className={input}/></label>
@@ -84,9 +85,9 @@ function Wastage({propertyId,locations,products,expiry,canSubmit,canApprove,curr
    <label className="text-xs font-bold">Expiry date (optional)<input type="date" value={f.expiryDate} onChange={e=>setF({...f,expiryDate:e.target.value})} className={input}/></label>
    <div className="md:col-span-2 flex items-center justify-between gap-3">
     <p className="text-xs text-muted-foreground">Requests remain pending until a different authorized manager approves them. Stock is not deducted at submission.</p>
-    <button disabled={!canSubmit||busy||!f.productId||!f.locationId||!f.quantity||!f.reason.trim()} onClick={save} className="px-4 py-2 rounded-lg bg-[var(--primary)] text-primary-foreground font-bold disabled:opacity-50">{busy?'Submitting…':'Submit for Approval'}</button>
+    <button disabled={workflowAvailable!==true||!canSubmit||busy||!f.productId||!f.locationId||!f.quantity||!f.reason.trim()} onClick={save} className="px-4 py-2 rounded-lg bg-[var(--primary)] text-primary-foreground font-bold disabled:opacity-50">{busy?'Submitting…':'Submit for Approval'}</button>
    </div>
-  </Panel>
+  </Panel>}
   <div className="bg-surface border rounded-xl p-4">
    <div className="flex items-center justify-between mb-3"><h2 className="font-black">Pending Wastage Requests</h2><span className="text-xs text-muted-foreground">{requests.length} pending</span></div>
    {loadingRequests?<p className="text-sm text-muted-foreground">Loading requests…</p>:requests.length===0?<p className="text-sm text-muted-foreground">No pending wastage requests.</p>:<div className="space-y-2">
