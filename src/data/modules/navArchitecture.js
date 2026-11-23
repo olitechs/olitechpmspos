@@ -20,9 +20,14 @@ export const BACK_OFFICE_NAV = [
 export const STORES_NAV = [
   ['Dashboard','/stores','dashboard',['admin','owner','store_manager']],
   ['Inventory','/stores/stock','inventory',['admin','owner','store_manager']],
-  ['Purchasing','/stores/purchasing','purchasing',['admin','owner','store_manager']],
-  ['Transfers','/stores/transfers','transfers',['admin','owner','store_manager']],
-  ['Counts','/stores/inventory/counts','counts',['admin','owner','store_manager']],
+  ['Purchase Orders','/stores/purchasing','purchasing',['admin','owner','store_manager']],
+  ['Transfer Orders','/stores/transfers','transfers',['admin','owner','store_manager']],
+  ['Stock Adjustments','/stores/inventory/stock-adjustments','adjustments',['admin','owner','store_manager']],
+  ['Inventory Counts','/stores/inventory/counts','counts',['admin','owner','store_manager']],
+  ['Production','/stores/inventory/productions','production',['admin','owner','store_manager']],
+  ['Inventory History','/stores/inventory/history','history',['admin','owner','store_manager']],
+  ['Inventory Valuation','/stores/inventory/valuation','valuation',['admin','owner','store_manager']],
+  ['Label Printing','/stores/labels','labels',['admin','owner','store_manager']],
   ['Reports','/stores/reports/inventory','reports',['admin','owner','store_manager']],
   ['KDS Screens','/stores/kds','kds',['admin','owner','store_manager']],
 ];
