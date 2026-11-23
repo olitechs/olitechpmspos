@@ -16,11 +16,12 @@ import { packExportDataService, todayKenya } from '@/services/packExportDataServ
 import { adjustmentFormFilename, downloadPackWorkbook, stockExportFilename } from '@/services/packExports';
 import { buildAdjustmentFormWorkbook, buildStockWorkbook } from '@/services/packExports/stockWorkbook.js';
 import { Modal } from '@/components/store/SupplierList';
-import { getSessionStaff } from '@/services/authService';
+import { getSessionStaff, normalizeStaffRole } from '@/services/authService';
+import StoreBarcodeLabels from '@/components/store/StoreBarcodeLabels';
 import { useSearchParams } from 'react-router-dom';
 
 const TABS = [
-  ['overview','Stock Overview'], ['products','Products'], ['suppliers','Suppliers'], ['purchases','Purchases / GRN'], ['usage','Stock Usage'], ['alerts','Alerts'],
+  ['overview','Stock Overview'], ['products','Products'], ['suppliers','Suppliers'], ['purchases','Purchases / GRN'], ['usage','Stock Usage'], ['alerts','Alerts'], ['labels','Label Printing'],
 ];
 const ROLES = ['store_manager','fb_manager','general_manager','admin','owner','administrator','manager','front_office_manager','hotel_admin','super_admin'];
 const normalizeRole = (r) => String(r || '').toLowerCase().replace(/\s+/g,'_');
@@ -31,7 +32,7 @@ export default function Store({ initialTab = 'overview' }) {
   const { user } = useAuth();
   const propertyId = user?.property?.id;
   const sessionStaff = getSessionStaff();
-  const role = normalizeRole(sessionStaff?.role || user?.staff?.role || user?.propertyRole || user?.role);
+  const role = normalizeStaffRole(sessionStaff?.role || user?.staff?.role || user?.propertyRole || user?.role);
   const allowed = ROLES.includes(role) || user?.isPlatformOwner;
   const isFnbManager = role === 'fb_manager';
   const showCost = ['store_manager','fb_manager','hotel_admin','super_admin','owner','admin','administrator','manager'].includes(role) || user?.isPlatformOwner;
@@ -103,6 +104,7 @@ export default function Store({ initialTab = 'overview' }) {
       {tab==='suppliers'&&<SupplierList suppliers={suppliers} onAdd={canWrite ? addSupplier : undefined}/>} 
       {tab==='purchases'&&canWrite&&<PurchasePanel propertyId={propertyId} products={filteredProducts} suppliers={suppliers} onSaved={load}/>} 
       {tab==='usage'&&canWrite&&<div className="space-y-4"><UsageForm products={filteredProducts} onSubmit={recordUsage}/><StockMovements movements={movements.filter(m=>String(m.reason||'').toLowerCase().includes('usage'))}/></div>}
+      {tab==='labels'&&<StoreBarcodeLabels products={filteredProducts}/>}
       {tab==='alerts'&&<div className="space-y-4"><StockAlerts alerts={alerts}/><ReportBar from={reportFrom} setFrom={setReportFrom} to={reportTo} setTo={setReportTo} category={reportCategory} setCategory={setReportCategory} location={reportLocation} setLocation={setReportLocation} getDefinition={getStockReportDefinition} onExportWorkbook={exportStockWorkbook} onExportAdjustmentForm={exportAdjustmentForm} disabled={!propertyId}/></div>}
     </>}
     {productModal!==null&&<ProductModal value={productModal} suppliers={suppliers} fnbOnly={isFnbManager} onClose={()=>setProductModal(null)} onSave={productModal.id?editProduct:addProduct}/>} 
