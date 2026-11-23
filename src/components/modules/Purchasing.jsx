@@ -58,7 +58,8 @@ export default function Purchasing() {
     }catch(e){setError(e.message||'Could not create purchase order.');}
   };
 
-  const supplierEmailBody=(order)=>{\n    const items=Array.isArray(order.lines)?order.lines.map((line)=>'- '+(line.product_name||line.name||line.product_id)+': '+(line.qty??line.quantity??0)+' x '+Number(line.unit_cost??line.cost_price??0).toFixed(2)).join('\\n'):'Please confirm the items and quantities on this purchase order.';\n    return 'Hello '+(order.supplier?.name||'Supplier')+',\\n\\nPlease process purchase order '+(order.invoice_no||order.id)+'.\\n\\nItems:\\n'+items+'\\n\\nTotal: '+Number(order.total||0).toFixed(2)+'\\n\\nKindly confirm availability and expected delivery.\\n\\nRegards';\n  };\n  const receive=async(id)=>{
+  const supplierEmailBody=(order)=>{const nl=String.fromCharCode(10);const items=Array.isArray(order.lines)?order.lines.map((line)=>'- '+(line.product_name||line.name||line.product_id)+': '+(line.qty??line.quantity??0)+' x '+Number(line.unit_cost??line.cost_price??0).toFixed(2)).join(nl):'Please confirm the items and quantities on this purchase order.';return 'Hello '+(order.supplier?.name||'Supplier')+','+nl+nl+'Please process purchase order '+(order.invoice_no||order.id)+'.'+nl+nl+'Items:'+nl+items+nl+nl+'Total: '+Number(order.total||0).toFixed(2)+nl+nl+'Kindly confirm availability and expected delivery.'+nl+nl+'Regards';};
+  const receive=async(id)=>{
     if(!window.confirm('Receive this purchase order and add its quantities to stock?')) return;
     try{await pmsService.receivePurchaseOrder({purchaseOrderId:id});setError('');load();}
     catch(e){setError(e.message||'Could not receive purchase order.');}
