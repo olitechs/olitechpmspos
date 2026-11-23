@@ -22,5 +22,8 @@ begin
   if v_def not ilike '%pos.close_shift%' then
     raise exception 'Cashier close-shift permission mapping is missing';
   end if;
+  if v_def not ilike '%lower(coalesce(v_staff.role%' or v_def not ilike '%not in (''super_admin'', ''hotel_admin'')%' then
+    raise exception 'Verified system administrator role must override stale employee_roles.role_id mappings';
+  end if;
 end
 $$;
