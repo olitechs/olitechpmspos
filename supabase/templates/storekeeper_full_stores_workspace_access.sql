@@ -346,6 +346,8 @@ $function$;
 revoke all on function public.fn_inventory_production_ready(uuid) from public, anon;
 grant execute on function public.fn_inventory_production_ready(uuid) to authenticated;
 
+begin;
+
 -- Storekeeper item-master access: keep product writes inside the same property
 -- boundary and require the explicit stock-adjust permission.
 alter table public.products add column if not exists description text;
@@ -453,3 +455,55 @@ begin
 end
 $migration$;
 
+
+-- Preserve the new item-master fields through the existing audited bulk upsert.
+-- This is still the existing property-guarded RPC and stock movements remain
+-- posted by fn_apply_stock_movement rather than direct quantity writes.
+do $bulk$
+declare
+  v_definition text;
+begin
+  select pg_get_functiondef('public.fn_bulk_upsert_store_products(uuid,jsonb)'::regprocedure)
+    into v_definition;
+
+  if position('v_supplier uuid; v_location_id uuid;' in v_definition)=0
+     or position('v_center := coalesce(nullif(trim(r->>''production_center''), ''''), ''Kitchen'');' in v_definition)=0
+     or position('property_id, sku, name, category, unit, current_stock, min_stock, max_stock,' in v_definition)=0
+     or position('p_property_id, v_sku, v_name, v_category, v_unit, 0, v_min, v_max,' in v_definition)=0
+     or position('set sku = coalesce(v_sku, sku), name = v_name, category = v_category, unit = v_unit,' in v_definition)=0 then
+    raise exception 'Store product upsert definition changed; review item-master migration before applying.';
+  end if;
+
+  v_definition := replace(v_definition,
+    $old$v_supplier uuid; v_location_id uuid;$old$,
+    $new$v_supplier uuid; v_location_id uuid; v_description text; v_base_unit text; v_tracking_mode text; v_track_stock boolean;$new$);
+
+  v_definition := replace(v_definition,
+    $old$v_center := coalesce(nullif(trim(r->>'production_center'), ''), 'Kitchen');$old$,
+    $new$v_center := coalesce(nullif(trim(r->>'production_center'), ''), 'Kitchen');
+      v_description := nullif(trim(coalesce(r->>'description','')), '');
+      v_track_stock := lower(trim(coalesce(r->>'track_stock','true'))) not in ('false','0','no','n');
+      v_base_unit := coalesce(nullif(trim(r->>'base_unit'),''),v_unit);
+      v_tracking_mode := case when not v_track_stock then 'untracked'
+        else coalesce(nullif(trim(r->>'inventory_tracking_mode'),''),'direct') end;$new$);
+
+  v_definition := replace(v_definition,
+    $old$property_id, sku, name, category, unit, current_stock, min_stock, max_stock,$old$,
+    $new$property_id, sku, name, description, category, unit, base_unit, track_stock, inventory_tracking_mode, current_stock, min_stock, max_stock,$new$);
+
+  v_definition := replace(v_definition,
+    $old$p_property_id, v_sku, v_name, v_category, v_unit, 0, v_min, v_max,$old$,
+    $new$p_property_id, v_sku, v_name, v_description, v_category, v_unit, v_base_unit, v_track_stock, v_tracking_mode, 0, v_min, v_max,$new$);
+
+  v_definition := replace(v_definition,
+    $old$set sku = coalesce(v_sku, sku), name = v_name, category = v_category, unit = v_unit,$old$,
+    $new$set sku = coalesce(v_sku, sku), name = v_name, description = v_description, category = v_category,
+            unit = v_unit, base_unit = v_base_unit, track_stock = v_track_stock,
+            inventory_tracking_mode = v_tracking_mode,$new$);
+
+  execute v_definition;
+end
+$bulk$;
+
+
+commit;
