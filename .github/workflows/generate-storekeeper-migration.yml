@@ -27,12 +27,30 @@ jobs:
           ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
           fetch-depth: 0
 
+      - name: Check whether this PR needs a generated migration
+        id: migration
+        shell: bash
+        run: |
+          git fetch origin main
+          changed_files="$(git diff --name-only origin/main...HEAD)"
+          template_changed=false
+          migration_present=false
+          if printf '%s\n' "$changed_files" | grep -Fxq "supabase/templates/storekeeper_full_stores_workspace_access.sql"; then template_changed=true; fi
+          if printf '%s\n' "$changed_files" | grep -Eq '^supabase/migrations/.*_storekeeper_full_stores_workspace_access\.sql$'; then migration_present=true; fi
+          if [ "$template_changed" = "true" ] && [ "$migration_present" = "false" ]; then
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Install Supabase CLI
+        if: steps.migration.outputs.needed == 'true'
         uses: supabase/setup-cli@v1
         with:
           version: 3.0.0
 
       - name: Generate timestamped migration using Supabase CLI
+        if: steps.migration.outputs.needed == 'true'
         shell: bash
         run: |
           supabase migration new storekeeper_full_stores_workspace_access
@@ -42,6 +60,7 @@ jobs:
           echo "Generated migration: $migration_file"
 
       - name: Commit generated migration
+        if: steps.migration.outputs.needed == 'true'
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
