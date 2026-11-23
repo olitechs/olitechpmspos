@@ -403,6 +403,8 @@ create index if not exists product_variants_product_idx
   on public.product_variants(property_id,product_id,sort_order);
 
 alter table public.product_variants enable row level security;
+grant select, insert, update, delete on table public.product_variants to authenticated;
+
 drop policy if exists product_variants_select on public.product_variants;
 create policy product_variants_select on public.product_variants
   for select to authenticated
