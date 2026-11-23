@@ -15,6 +15,7 @@ import StorekeeperAlertDetails from '@/components/store/StorekeeperAlertDetails'
 import MenuVisualEditor from '@/components/pos/MenuVisualEditor';
 import { getSessionStaff, normalizeStaffRole } from '@/services/authService';
 import { storekeeperDashboardService } from '@/services/storekeeperDashboardService';
+import { resolvePermissions } from '@/lib/permissions';
 import {
   departmentComparison, filterProducts, formatBusinessDate, getPeriodRange,
   getStockLocations, makeSalesConsumptionSeries,
@@ -136,7 +137,7 @@ export default function StorekeeperDashboard() {
   const { user } = useAuth();
   const staffRole = getSessionStaff()?.role || user?.staff?.role || user?.propertyRole || user?.role;
   const role = normalizeStaffRole(staffRole);
-  const canSeeCosts = ['store_manager', 'hotel_admin', 'super_admin'].includes(role) || user?.isPlatformOwner;
+  const canSeeCosts = ['store_manager', 'hotel_admin', 'super_admin'].includes(role) || user?.isPlatformOwner || resolvePermissions(user).codes.has('stores.inventory.valuation.view');
   const propertyId = user?.property?.id;
   const propertyName = user?.property?.business_name || user?.property?.name || 'Current property';
   const today = useMemo(() => formatBusinessDate(), []);
