@@ -11,6 +11,8 @@ const routes = read('../../src/routes/AppRoutes.jsx');
 const migration = read('../../supabase/templates/storekeeper_full_stores_workspace_access.sql');
 const purchasing = read('../../src/components/modules/Purchasing.jsx');
 const pmsService = read('../../src/services/pmsService.js');
+const purchasing = read('../../src/components/modules/Purchasing.jsx');
+const pmsService = read('../../src/services/pmsService.js');
 
 test('Storekeeper navigation exposes all requested operational modules', () => {
   const storesNav = nav.split('export const STORES_NAV = [')[1].split('];')[0];
@@ -41,6 +43,9 @@ test('Storekeeper role aliases are normalized before Store page capability check
   assert.match(store, /tab==='labels'&&<StoreBarcodeLabels/);
   assert.match(routes, /path="labels" element={<Store initialTab="labels"\/>}/);
   assert.match(routes, /path="purchasing" element={<Purchasing\/>}/);
+  assert.ok(purchasing.includes('suggestedReorderQty'));
+  assert.ok(purchasing.includes('supplierEmailBody'));
+  assert.ok(pmsService.includes('supplier:suppliers(name,email)'));
   assert.ok(purchasing.includes('suggestedReorderQty'));
   assert.ok(purchasing.includes('supplierEmailBody'));
   assert.ok(pmsService.includes('supplier:suppliers(name,email)'));
