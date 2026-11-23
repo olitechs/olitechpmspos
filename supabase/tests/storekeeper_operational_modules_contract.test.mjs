@@ -47,6 +47,8 @@ test('Storekeeper role aliases are normalized before Store page capability check
   assert.ok(purchasing.includes('supplierEmailBody'));
   assert.ok(pmsService.includes('supplier:suppliers(name,email)'));
   assert.ok(inventoryOperations.includes('Potential gross margin'));
+  assert.ok(inventoryOperations.includes('const countedLines=products.filter'));
+  for (const reason of ['damage','loss','correction','expiry']) assert.ok(inventoryOperations.includes("['" + reason + "'"));
   assert.ok(inventoryOperations.includes('backendReady={false}'));
 });
 
