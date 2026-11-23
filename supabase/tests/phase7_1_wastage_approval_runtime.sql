@@ -6,7 +6,15 @@ BEGIN;
 INSERT INTO auth.users(id, email) VALUES
   ('10000000-0000-0000-0000-000000000001', 'requester@example.test'),
   ('10000000-0000-0000-0000-000000000002', 'approver@example.test'),
-  ('10000000-0000-0000-0000-000000000003', 'unauthorized@example.test');
+  ('10000000-0000-0000-0000-000000000003', 'unauthorized@example.test'),
+  ('10000000-0000-0000-0000-000000000004', 'storekeeper@example.test');
+
+INSERT INTO public.staff(id, property_id, user_id, role_id, role, assigned_modules)
+VALUES ('60000000-0000-0000-0000-000000000001',
+        '20000000-0000-0000-0000-000000000001',
+        '10000000-0000-0000-0000-000000000004',
+        '50000000-0000-0000-0000-000000000001',
+        'storekeeper', ARRAY['store']);
 
 INSERT INTO public.test_permission_grants(user_id, permission_code) VALUES
   ('10000000-0000-0000-0000-000000000001', 'stores.stock.wastage.submit'),
@@ -55,7 +63,22 @@ DECLARE
   v_before_movements integer;
   v_after_movements integer;
   v_before_stock numeric;
+  v_storekeeper_codes text[];
 BEGIN
+  -- Storekeeper receives the full Stores role, including valuation and request submission,
+  -- but does not receive the manager-only approval permission.
+  PERFORM set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000004', true);
+  v_storekeeper_codes := public.fn_employee_permission_codes(v_property, NULL);
+  IF NOT (ARRAY[
+      'stores.access','stores.inventory.view','stores.stock.receive',
+      'stores.stock.issue','stores.stock.transfer','stores.stock.adjust',
+      'stores.suppliers.manage','stores.production.post',
+      'stores.inventory.valuation.view','stores.stock.wastage.submit'
+    ]::text[] <@ v_storekeeper_codes)
+    OR 'stores.stock.wastage.approve' = ANY(v_storekeeper_codes) THEN
+    RAISE EXCEPTION 'STOREKEEPER-001: expected full Stores permissions plus wastage submission, without approval';
+  END IF;
+
   -- A requester may submit, but stock must remain unchanged until approval.
   PERFORM set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001', true);
   v_request := public.fn_submit_inventory_wastage(
