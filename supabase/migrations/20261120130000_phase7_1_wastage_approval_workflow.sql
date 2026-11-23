@@ -494,11 +494,20 @@ begin
     return array(select code from public.employee_permission_codes order by sort_order);
   end if;
   select s.* into v_staff from public.staff s
-  where s.id=coalesce(p_staff_id,public.current_staff_id(p_property_id))
-    and s.property_id=p_property_id and s.is_active=true
-    and (s.user_id=auth.uid()
-      or lower(coalesce(s.email,''))=lower(coalesce((select email from auth.users where id=auth.uid()),''))
-      or s.id=public.current_staff_id(p_property_id))
+  where s.property_id=p_property_id
+    and s.is_active=true
+    and (
+      s.id=coalesce(p_staff_id,public.current_staff_id(p_property_id))
+      or (
+        p_staff_id is null
+        and public.current_staff_id(p_property_id) is null
+        and (
+          s.user_id=auth.uid()
+          or lower(coalesce(s.email,''))=lower(coalesce((select email from auth.users where id=auth.uid()),''))
+        )
+      )
+    )
+  order by (s.id=public.current_staff_id(p_property_id)) desc, s.id
   limit 1;
   if v_staff.id is null then return '{}'::text[]; end if;
   v_assigned:=coalesce(v_staff.assigned_modules,'{}'::text[]);
