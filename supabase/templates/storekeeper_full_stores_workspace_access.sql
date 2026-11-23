@@ -1,3 +1,8 @@
+-- Register the Storekeeper production action in the server permission catalog.
+insert into public.employee_permission_codes(code,workspace,label,sensitive,sort_order)
+values ('stores.production.post','store','Post inventory production and assembly batches',true,38)
+on conflict (code) do nothing;
+
 -- Storekeeper receives the complete operational Stores permission bundle.
 -- This update is scoped to the built-in Storekeeper role only.
 update public.employee_roles
@@ -8,7 +13,8 @@ set permission_codes = array[
   'stores.stock.issue',
   'stores.stock.transfer',
   'stores.stock.adjust',
-  'stores.suppliers.manage'
+  'stores.suppliers.manage',
+  'stores.production.post'
 ]::text[],
     updated_at = now()
 where is_system = true
@@ -81,8 +87,8 @@ begin
       when 'waiter' then array['pos.access','pos.open_shift','pos.process_sale']
       when 'cashier' then array['pos.access','pos.open_shift','pos.close_shift','pos.process_sale','pos.apply_discount']
       when 'store_manager' then array['stores.access','stores.inventory.view','stores.stock.receive','stores.stock.issue','stores.stock.transfer','stores.stock.adjust','stores.suppliers.manage']
-      when 'storekeeper' then array['stores.access','stores.inventory.view','stores.stock.receive','stores.stock.issue','stores.stock.transfer','stores.stock.adjust','stores.suppliers.manage']
-      when 'store_keeper' then array['stores.access','stores.inventory.view','stores.stock.receive','stores.stock.issue','stores.stock.transfer','stores.stock.adjust','stores.suppliers.manage']
+      when 'storekeeper' then array['stores.access','stores.inventory.view','stores.stock.receive','stores.stock.issue','stores.stock.transfer','stores.stock.adjust','stores.suppliers.manage','stores.production.post']
+      when 'store_keeper' then array['stores.access','stores.inventory.view','stores.stock.receive','stores.stock.issue','stores.stock.transfer','stores.stock.adjust','stores.suppliers.manage','stores.production.post']
       when 'fb_manager' then array['pos.access','pos.open_shift','pos.process_sale','pos.apply_discount','stores.access','stores.inventory.view']
       when 'housekeeping_supervisor' then array['front_office.access']
       else '{}'::text[]
@@ -126,7 +132,7 @@ begin
   values
     (p_property_id,'Cashier','pos','{pos.access,pos.open_shift,pos.close_shift,pos.process_sale,pos.apply_discount}','POS cashier workspace',true),
     (p_property_id,'Waiter','pos','{pos.access,pos.open_shift,pos.process_sale}','Restaurant waiter workspace',true),
-    (p_property_id,'Storekeeper','store','{stores.access,stores.inventory.view,stores.stock.receive,stores.stock.issue,stores.stock.transfer,stores.stock.adjust,stores.suppliers.manage}','Stores workspace',true),
+    (p_property_id,'Storekeeper','store','{stores.access,stores.inventory.view,stores.stock.receive,stores.stock.issue,stores.stock.transfer,stores.stock.adjust,stores.suppliers.manage,stores.production.post}','Stores workspace',true),
     (p_property_id,'Receptionist','frontoffice','{front_office.access,front_office.reservations.view,front_office.reservations.create,front_office.checkin,front_office.folio.view,front_office.folio.payment}','Front Office workspace',true),
     (p_property_id,'Accountant','backoffice','{back_office.access,back_office.reports.view,back_office.billing.manage}','Financial reports and accounting',true),
     (p_property_id,'Property Manager','backoffice','{back_office.access,back_office.reports.view,back_office.employees.manage,back_office.settings.manage,pos.access,front_office.access,stores.access}','Assigned management modules',true)
