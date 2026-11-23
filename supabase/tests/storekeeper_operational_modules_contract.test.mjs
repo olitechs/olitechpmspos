@@ -11,8 +11,7 @@ const routes = read('../../src/routes/AppRoutes.jsx');
 const migration = read('../../supabase/templates/storekeeper_full_stores_workspace_access.sql');
 const purchasing = read('../../src/components/modules/Purchasing.jsx');
 const pmsService = read('../../src/services/pmsService.js');
-const purchasing = read('../../src/components/modules/Purchasing.jsx');
-const pmsService = read('../../src/services/pmsService.js');
+const inventoryOperations = read('../../src/components/modules/InventoryOperations.jsx');
 
 test('Storekeeper navigation exposes all requested operational modules', () => {
   const storesNav = nav.split('export const STORES_NAV = [')[1].split('];')[0];
@@ -46,9 +45,8 @@ test('Storekeeper role aliases are normalized before Store page capability check
   assert.ok(purchasing.includes('suggestedReorderQty'));
   assert.ok(purchasing.includes('supplierEmailBody'));
   assert.ok(pmsService.includes('supplier:suppliers(name,email)'));
-  assert.ok(purchasing.includes('suggestedReorderQty'));
-  assert.ok(purchasing.includes('supplierEmailBody'));
-  assert.ok(pmsService.includes('supplier:suppliers(name,email)'));
+  assert.ok(inventoryOperations.includes('Potential gross margin'));
+  assert.ok(inventoryOperations.includes('backendReady={false}'));
 });
 
 test('Storekeeper database role and legacy resolver include production posting only in Stores scope', () => {
