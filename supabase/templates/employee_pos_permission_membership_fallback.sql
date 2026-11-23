@@ -121,3 +121,5 @@ end;
 $function$;
 
 notify pgrst, 'reload schema';
+
+-- Migration generated from this canonical template by the repository workflow.
