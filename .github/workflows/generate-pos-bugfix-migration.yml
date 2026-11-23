@@ -22,7 +22,7 @@ jobs:
       - name: Checkout branch
         uses: actions/checkout@v4
         with:
-          ref: \${{ github.event.pull_request.head.ref || github.ref_name }}
+          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
           fetch-depth: 0
       - name: Check whether a generated migration is needed
         id: migration
@@ -61,5 +61,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add supabase/migrations/*_pos_floor_wastage_valuation_fixes.sql
           git commit -m "Add POS floor wastage valuation bugfix migration"
-          target_branch="\${{ github.event.pull_request.head.ref || github.ref_name }}"
+          target_branch="${{ github.event.pull_request.head.ref || github.ref_name }}"
           git push origin HEAD:"$target_branch"
