@@ -41,6 +41,7 @@ export const PERMISSION_CODES = [
   // Stores
   { code: 'stores.access', workspace: 'store', label: 'Use the Stores workspace', sensitive: false },
   { code: 'stores.inventory.view', workspace: 'store', label: 'View inventory levels', sensitive: false },
+  { code: 'stores.inventory.valuation.view', workspace: 'store', label: 'View inventory costs and valuation', sensitive: true },
   { code: 'stores.stock.receive', workspace: 'store', label: 'Receive stock (GRN)', sensitive: true },
   { code: 'stores.stock.issue', workspace: 'store', label: 'Issue stock', sensitive: true },
   { code: 'stores.stock.transfer', workspace: 'store', label: 'Transfer stock', sensitive: false },
