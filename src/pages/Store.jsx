@@ -24,7 +24,6 @@ const TABS = [
   ['overview','Stock Overview'], ['products','Products'], ['suppliers','Suppliers'], ['purchases','Purchases / GRN'], ['usage','Stock Usage'], ['alerts','Alerts'], ['labels','Label Printing'],
 ];
 const ROLES = ['store_manager','fb_manager','general_manager','admin','owner','administrator','manager','front_office_manager','hotel_admin','super_admin'];
-const normalizeRole = (r) => String(r || '').toLowerCase().replace(/\s+/g,'_');
 
 export default function Store({ initialTab = 'overview' }) {
   const [searchParams] = useSearchParams();
