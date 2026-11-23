@@ -12,6 +12,7 @@ const migration = read('../../supabase/templates/storekeeper_full_stores_workspa
 const purchasing = read('../../src/components/modules/Purchasing.jsx');
 const pmsService = read('../../src/services/pmsService.js');
 const inventoryOperations = read('../../src/components/modules/InventoryOperations.jsx');
+const inventoryService = read('../../src/services/inventoryService.js');
 
 test('Storekeeper navigation exposes all requested operational modules', () => {
   const storesNav = nav.split('export const STORES_NAV = [')[1].split('];')[0];
@@ -49,7 +50,11 @@ test('Storekeeper role aliases are normalized before Store page capability check
   assert.ok(inventoryOperations.includes('Potential gross margin'));
   assert.ok(inventoryOperations.includes('const countedLines=products.filter'));
   for (const reason of ['damage','loss','correction','expiry']) assert.ok(inventoryOperations.includes("['" + reason + "'"));
-  assert.ok(inventoryOperations.includes('backendReady={false}'));
+  assert.ok(inventoryOperations.includes('backendReady={productionReady}'));
+  assert.ok(inventoryOperations.includes('inventoryService.isProductionReady(propertyId)'));
+  assert.ok(inventoryService.includes("supabase.rpc('fn_inventory_production_ready'"));
+  assert.ok(migration.includes('fn_inventory_production_ready'));
+  assert.ok(migration.includes('to_regprocedure(\'public.fn_post_inventory_production'));
 });
 
 test('Storekeeper database role and legacy resolver include production posting only in Stores scope', () => {
