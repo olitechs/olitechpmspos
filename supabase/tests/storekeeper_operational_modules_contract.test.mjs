@@ -15,8 +15,8 @@ test('Storekeeper navigation exposes all requested operational modules', () => {
   for (const id of ['dashboard','inventory','purchasing','transfers','adjustments','counts','production','history','valuation','labels','reports']) {
     assert.ok(storesNav.includes(`'${id}'`), `missing Stores navigation entry: ${id}`);
   }
-  for (const path of ['/stores/purchasing','/stores/transfers','/stores/inventory/stock-adjustments','/stores/inventory/counts','/stores/inventory/productions','/stores/inventory/history','/stores/inventory/valuation','/stores/labels']) {
-    assert.ok(routes.includes(path), `missing operational route: ${path}`);
+  for (const path of ['purchasing','transfers','inventory/stock-adjustments','inventory/counts','inventory/productions','inventory/history','inventory/valuation','labels']) {
+    assert.ok(routes.includes(`path="${path}"`), `missing operational route: ${path}`);
   }
 });
 
@@ -38,6 +38,7 @@ test('Storekeeper role aliases are normalized before Store page capability check
   assert.match(store, /\['store_manager','fb_manager','hotel_admin'/);
   assert.match(store, /tab==='labels'&&<StoreBarcodeLabels/);
   assert.match(routes, /path="labels" element={<Store initialTab="labels"\/>}/);
+  assert.match(routes, /path="purchasing" element={<Purchasing\/>}/);
 });
 
 test('Storekeeper database role and legacy resolver include production posting only in Stores scope', () => {
