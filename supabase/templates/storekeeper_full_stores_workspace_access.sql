@@ -133,3 +133,5 @@ begin
   on conflict (property_id, name) do nothing;
 end;
 $function$;
+
+-- Supabase CLI migration generation source; keep this template aligned with the migration.
