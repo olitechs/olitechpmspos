@@ -462,6 +462,22 @@ INSERT INTO public.employee_permission_codes(code,workspace,label,sensitive,sort
  ('stores.stock.wastage.approve','store','Approve or reject stock wastage requests',true,37)
 ON CONFLICT(code) DO NOTHING;
 
+-- Storekeepers may submit requests but cannot approve their own or other requests.
+-- Keep the existing full Stores permissions, including valuation and production.
+UPDATE public.employee_roles
+SET permission_codes = ARRAY(
+  SELECT DISTINCT code
+  FROM unnest(
+    COALESCE(permission_codes, '{}'::text[])
+    || ARRAY['stores.stock.wastage.submit']::text[]
+  ) AS permission(code)
+  ORDER BY code
+)
+WHERE is_system = true
+  AND lower(btrim(name)) = 'storekeeper';
+
+
+
 -- Keep legacy built-in store managers compatible; custom roles can grant either permission independently.
 CREATE OR REPLACE FUNCTION public.fn_employee_permission_codes(p_property_id uuid, p_staff_id uuid DEFAULT NULL::uuid)
 RETURNS text[] LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=public
@@ -501,6 +517,8 @@ begin
       when 'waiter' then array['pos.access','pos.open_shift','pos.process_sale']
       when 'cashier' then array['pos.access','pos.open_shift','pos.close_shift','pos.process_sale','pos.apply_discount']
       when 'store_manager' then array['stores.access','stores.inventory.view','stores.stock.receive','stores.stock.issue','stores.stock.transfer','stores.stock.adjust','stores.suppliers.manage','stores.stock.wastage.submit','stores.stock.wastage.approve']
+      when 'storekeeper' then array['stores.access','stores.inventory.view','stores.stock.receive','stores.stock.issue','stores.stock.transfer','stores.stock.adjust','stores.suppliers.manage','stores.production.post','stores.inventory.valuation.view','stores.stock.wastage.submit']
+      when 'store_keeper' then array['stores.access','stores.inventory.view','stores.stock.receive','stores.stock.issue','stores.stock.transfer','stores.stock.adjust','stores.suppliers.manage','stores.production.post','stores.inventory.valuation.view','stores.stock.wastage.submit']
       when 'fb_manager' then array['pos.access','pos.open_shift','pos.process_sale','pos.apply_discount','stores.access','stores.inventory.view']
       when 'housekeeping_supervisor' then array['front_office.access']
       else '{}'::text[] end;
