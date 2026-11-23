@@ -13,6 +13,8 @@ const purchasing = read('../../src/components/modules/Purchasing.jsx');
 const pmsService = read('../../src/services/pmsService.js');
 const inventoryOperations = read('../../src/components/modules/InventoryOperations.jsx');
 const inventoryService = read('../../src/services/inventoryService.js');
+const storePage = read('../../src/pages/Store.jsx');
+const variantEditor = read('../../src/components/store/ProductVariantsEditor.jsx');
 
 test('Storekeeper navigation exposes all requested operational modules', () => {
   const storesNav = nav.split('export const STORES_NAV = [')[1].split('];')[0];
@@ -65,4 +67,27 @@ test('Storekeeper database role and legacy resolver include production posting o
   assert.match(migration, /'stores\.production\.post'\s*\]::text\[\]/);
   const storekeeperPermissions = migration.split('set permission_codes = array[')[1]?.split(']::text[]')[0] || '';
   assert.ok(!storekeeperPermissions.includes('back_office.'));
+});
+
+test('Storekeeper can access the complete item editor from the Stores product list', () => {
+  assert.match(storePage, /permissions\.codes\.has\('stores\.access'\)/);
+  assert.match(storePage, /permissions\.codes\.has\('stores\.stock\.adjust'\)/);
+  assert.match(storePage, /<CompositeItemEditor propertyId=\{propertyId\} productId=\{value\.id\}/);
+  assert.match(storePage, /<ProductVariantsEditor propertyId=\{propertyId\} productId=\{value\.id\}/);
+  assert.match(storePage, /The item is available for sale/);
+  assert.match(storePage, /Track stock/);
+  assert.match(storePage, /Selling price \(KES\)/);
+  assert.match(storePage, /Stock Adjustments to change on-hand quantity/);
+  assert.match(variantEditor, /price_delta/);
+  assert.match(variantEditor, /barcode/);
+  assert.match(variantEditor, /track_stock/);
+});
+
+test('Storekeeper item writes and composite recipes retain tenant and permission boundaries', () => {
+  assert.match(migration, /can_store_write\(property_id, 'adjust'\)/);
+  assert.match(migration, /fn_employee_has_permission\(property_id,'stores\.stock\.adjust'\)/);
+  assert.match(migration, /foreign key\(product_id,property_id\) references public\.products\(id,property_id\)/);
+  assert.match(migration, /Composite recipe authorization guard changed/);
+  assert.match(inventoryService, /description: row\.description/);
+  assert.match(inventoryService, /inventory_tracking_mode: row\.inventory_tracking_mode/);
 });
