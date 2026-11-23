@@ -88,7 +88,7 @@ function Wastage({propertyId,locations,products,expiry,canSubmit,canApprove,curr
     <button disabled={workflowAvailable!==true||!canSubmit||busy||!f.productId||!f.locationId||!f.quantity||!f.reason.trim()} onClick={save} className="px-4 py-2 rounded-lg bg-[var(--primary)] text-primary-foreground font-bold disabled:opacity-50">{busy?'Submitting…':'Submit for Approval'}</button>
    </div>
   </Panel>}
-  <div className="bg-surface border rounded-xl p-4">
+  {workflowAvailable===true&&<div className="bg-surface border rounded-xl p-4">
    <div className="flex items-center justify-between mb-3"><h2 className="font-black">Pending Wastage Requests</h2><span className="text-xs text-muted-foreground">{requests.length} pending</span></div>
    {loadingRequests?<p className="text-sm text-muted-foreground">Loading requests…</p>:requests.length===0?<p className="text-sm text-muted-foreground">No pending wastage requests.</p>:<div className="space-y-2">
     {requests.map(row=><div key={row.id} className="border rounded-lg p-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
@@ -96,7 +96,7 @@ function Wastage({propertyId,locations,products,expiry,canSubmit,canApprove,curr
      {canApprove&&row.created_by!==currentUserId?<div className="flex gap-2"><button disabled={busy} onClick={()=>decide(row,'approve')} className="px-3 py-2 rounded-lg bg-[var(--success)] text-foreground text-xs font-bold disabled:opacity-50">Approve & Deduct</button><button disabled={busy} onClick={()=>decide(row,'reject')} className="px-3 py-2 rounded-lg border text-xs font-bold disabled:opacity-50">Reject</button></div>:<span className="text-xs text-muted-foreground">{row.created_by===currentUserId?'Awaiting approval by another manager':'Manager approval required'}</span>}
     </div>)}
    </div>}
-  </div>
+  </div>}
   <div className="bg-surface border rounded-xl p-4"><h2 className="font-black mb-3">Expiry Watch</h2>{expiry.map(x=><div key={x.product_id} className="py-2 border-b flex justify-between text-sm"><span>{x.name}</span><span className={x.expiry_status==='expired'?'text-[var(--danger-text)] font-bold':'text-[var(--warning-text)] font-bold'}>{x.expiry_status} · {x.expiry_date}</span></div>)}</div>
  </div>
 }
