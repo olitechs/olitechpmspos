@@ -79,6 +79,15 @@ BEGIN
     RAISE EXCEPTION 'STOREKEEPER-001: expected full Stores permissions plus wastage submission, without approval';
   END IF;
 
+  -- The same employee must resolve correctly when a verified PIN staff session is active.
+  PERFORM set_config('request.jwt.claim.staff_id', '60000000-0000-0000-0000-000000000001', true);
+  v_storekeeper_codes := public.fn_employee_permission_codes(v_property, NULL);
+  IF NOT ('stores.stock.wastage.submit' = ANY(v_storekeeper_codes)
+          AND 'stores.inventory.valuation.view' = ANY(v_storekeeper_codes)) THEN
+    RAISE EXCEPTION 'STOREKEEPER-002: active PIN session lost the assigned Stores permissions';
+  END IF;
+  PERFORM set_config('request.jwt.claim.staff_id', '', true);
+
   -- A requester may submit, but stock must remain unchanged until approval.
   PERFORM set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001', true);
   v_request := public.fn_submit_inventory_wastage(
