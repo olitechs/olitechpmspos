@@ -324,3 +324,25 @@ begin
 end $function$;
 
 
+
+
+-- Expose readiness without exposing internal schema details. Posting becomes
+-- available only after both location-aware stock writing and the atomic Phase 8
+-- production RPC are deployed, and the current employee has the production grant.
+create or replace function public.fn_inventory_production_ready(p_property_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $function$
+  select auth.uid() is not null
+    and (public.is_platform_owner() or public.is_member_of_property(p_property_id))
+    and public.fn_employee_has_permission(p_property_id,'stores.production.post')
+    and to_regprocedure('public.fn_post_inventory_production(uuid,uuid,uuid,numeric,text,text)') is not null
+    and to_regclass('stock_internal.production_cost_snapshots') is not null
+    and to_regprocedure('stock_internal.fn_post_stock_movement_at_location(uuid,uuid,uuid,numeric,text,text,uuid,text)') is not null;
+$function$;
+revoke all on function public.fn_inventory_production_ready(uuid) from public, anon;
+grant execute on function public.fn_inventory_production_ready(uuid) to authenticated;
+
