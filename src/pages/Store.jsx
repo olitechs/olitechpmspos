@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Boxes, ClipboardList, FileSpreadsheet, Package, Plus, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/AuthContext';
-import { inventoryService, STORE_CATEGORIES, STORE_LOCATIONS, STORE_UNITS } from '@/services/inventoryService';
+import { inventoryService, STORE_CATEGORIES, STORE_LOCATIONS } from '@/services/inventoryService';
 import ProductTable from '@/components/store/ProductTable';
 import StockAlerts from '@/components/store/StockAlerts';
 import SupplierList from '@/components/store/SupplierList';
