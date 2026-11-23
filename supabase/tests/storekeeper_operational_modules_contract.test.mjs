@@ -84,11 +84,10 @@ test('Storekeeper can access the complete item editor from the Stores product li
 });
 
 test('Storekeeper item writes and composite recipes retain tenant and permission boundaries', () => {
-  assert.ok(itemMigration, 'Supabase CLI should generate the item master migration');
-  assert.match(itemMigration, /can_store_write\(property_id, 'adjust'\)/);
-  assert.match(itemMigration, /fn_employee_has_permission\(property_id,'stores\.stock\.adjust'\)/);
-  assert.match(itemMigration, /foreign key\(product_id,property_id\) references public\.products\(id,property_id\)/);
-  assert.match(itemMigration, /Composite recipe authorization guard changed/);
+  assert.match(migration, /can_store_write\(property_id, 'adjust'\)/);
+  assert.match(migration, /fn_employee_has_permission\(property_id,'stores\.stock\.adjust'\)/);
+  assert.match(migration, /foreign key\(product_id,property_id\) references public\.products\(id,property_id\)/);
+  assert.match(migration, /Composite recipe authorization guard changed/);
   assert.match(inventoryService, /description: row\.description/);
   assert.match(inventoryService, /inventory_tracking_mode: row\.inventory_tracking_mode/);
 });
