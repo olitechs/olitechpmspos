@@ -16,3 +16,9 @@ test('POS header clock stays live instead of freezing at the moment of mount', (
   assert.match(source, /setInterval\(\(\) => setNow\(new Date\(\)\), 15000\)/);
   assert.match(source, /clearInterval\(timer\)/);
 });
+
+test('POS header exposes a visible, accessible sign-out action', () => {
+  assert.match(source, /onSignOut/);
+  assert.match(source, /aria-label="Sign out of POS"/);
+  assert.match(source, /<span>Sign Out<\/span>/);
+});
