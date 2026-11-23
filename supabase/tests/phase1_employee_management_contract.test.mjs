@@ -92,8 +92,11 @@ test('Storekeeper receives all seven Stores permissions and remains workspace-sc
   }
   assert.ok(storekeeperFix.includes('c.workspace = any(v_assigned)'));
   assert.ok(storekeeperFix.includes('g.expires_at > now()'));
-  assert.ok(!storekeeperFix.includes('back_office.employees.manage'));
-  assert.ok(!storekeeperFix.includes('back_office.settings.manage'));
+  const builtInStorekeeperPermissions = storekeeperFix.match(/set permission_codes = array\\[([\\s\\S]*?)\\]::text\\[\\]/)?.[1] || '';
+  assert.ok(!builtInStorekeeperPermissions.includes('back_office.'));
+  const seededStorekeeperRole = storekeeperFix.match(/\\(p_property_id,'Storekeeper',[\\s\\S]*?\\)/)?.[0] || '';
+  assert.ok(seededStorekeeperRole.includes('stores.suppliers.manage'));
+  assert.ok(!seededStorekeeperRole.includes('back_office.'));
 });
 
 test('Stores sidebar maps every Storekeeper module to its granular permission', () => {
