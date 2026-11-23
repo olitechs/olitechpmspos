@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import {
-  BedDouble, Building2, CalendarDays, ChevronDown, ChevronLeft, ChevronRight,
+  Barcode, BedDouble, Building2, CalendarDays, ChevronDown, ChevronLeft, ChevronRight,
   ClipboardCheck, ClipboardList, Grid3X3, HelpCircle, LayoutDashboard, LogOut,
   Menu, Package, Printer, Receipt, Search, Settings, ShoppingBag, ShoppingCart,
   Sparkles, Store, Users, X, BarChart3, PlugZap, Boxes,
