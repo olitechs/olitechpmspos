@@ -706,11 +706,15 @@ export const pmsService = {
 	},
 
 	async getOpenCashierShift(propertyId) {
+		if (!propertyId) return null;
+		// A POS shift belongs to the property, not exclusively to the employee
+		// who opened it. Match shiftService.getCurrentShift so every authorised
+		// cashier can settle tables against the active property shift (including
+		// sessions opened by a manager or another cashier).
 		const { data, error } = await supabase
 			.from('cashier_shifts')
 			.select('*')
 			.eq('property_id', propertyId)
-			.eq('opened_by', (await supabase.auth.getUser()).data.user?.id)
 			.eq('status', 'open')
 			.order('opened_at', { ascending: false })
 			.limit(1)
