@@ -143,6 +143,7 @@ function ProductModal({value,suppliers,propertyId,fnbOnly=false,onClose,onSave})
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {[[ 'current_stock','In stock' ],['min_stock','Low stock alert'],['max_stock','Optimal / maximum stock'],['expiry_date','Expiry date']].map(([k,label])=><label key={k} className="text-xs font-black">{label}<input type={k==='expiry_date'?'date':'number'} min="0" value={f[k]??''} disabled={k==='current_stock'&&Boolean(value.id)} onChange={e=>set(k,e.target.value)} className="mt-1 w-full border-2 border-border rounded-lg px-3 py-2.5 disabled:opacity-60"/></label>)}
         </div>
+        {value.id&&<p className="mt-2 text-xs text-muted-foreground">For an existing item, use Stock Adjustments to change on-hand quantity so every change is recorded in inventory history.</p>}
         <div className="mt-4 flex flex-wrap gap-4">
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.track_stock!==false} onChange={e=>{set('track_stock',e.target.checked);if(!e.target.checked)set('inventory_tracking_mode','untracked');else if(f.inventory_tracking_mode==='untracked')set('inventory_tracking_mode','direct')}}/> Track stock</label>
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.pos_enabled===true||String(f.pos_enabled).toLowerCase()==='true'} onChange={e=>set('pos_enabled',e.target.checked)}/> The item is available for sale</label>
