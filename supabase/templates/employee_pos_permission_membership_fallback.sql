@@ -74,14 +74,19 @@ begin
 
   v_assigned := coalesce(v_staff.assigned_modules, '{}'::text[]);
 
-  if v_staff.role_id is not null then
+  -- The verified PIN session may resolve to a manager/super-admin staff row.
+  -- System administrator legacy roles must take precedence over a stale or
+  -- incorrectly linked employee_roles.role_id (for example, super_admin +
+  -- Receptionist role_id), otherwise the role_id can erase all POS permissions.
+  if v_staff.role_id is not null
+     and lower(coalesce(v_staff.role, '')) not in ('super_admin', 'hotel_admin') then
     select coalesce(r.permission_codes, '{}'::text[]) into v_role_codes
     from public.employee_roles r
     where r.id = v_staff.role_id
       and r.property_id = p_property_id;
     if not found then v_role_codes := '{}'::text[]; end if;
   else
-    v_role_codes := case v_staff.role
+    v_role_codes := case lower(coalesce(v_staff.role, ''))
       when 'super_admin' then array(select code from public.employee_permission_codes)
       when 'hotel_admin' then array(select code from public.employee_permission_codes)
       when 'front_office_manager' then array['front_office.access','front_office.reservations.view','front_office.reservations.create','front_office.checkin','front_office.checkout','front_office.folio.view','front_office.folio.post_charge','front_office.folio.payment']
