@@ -69,6 +69,38 @@ The read-only repeatable check is committed at `supabase/tests/phase7_1_wastage_
 
 No production DDL or stock mutation was performed during this check.
 
+### Expanded live stock-writer census — 22 November 2026
+
+A second read-only production pass inspected the live function bodies, trigger definitions, table columns and aggregate projections. It did not execute DDL/DML or change stock.
+
+**Balance reconciliation (separate invariants):**
+
+| Check | Live result |
+|---|---:|
+| Products inspected | 942 |
+| Product rows with aggregate different from sum of location rows | 2 |
+| Product rows with aggregate different from movement-ledger signed total | 1 |
+| Total absolute aggregate/ledger difference | 10.00 units |
+| Location projection rows | 944 |
+| Movement rows | 49 |
+| Movement rows without `location_id` | 49 |
+| Movement rows without `idempotency_key` | 49 |
+| Outbound movement rows without `source_id` | 10 |
+
+The two aggregate/location exceptions are not assumed to be the same as the separate aggregate/ledger exception. These are different reconciliation checks and must remain separately tracked. Product names and identifiers are intentionally omitted from this repository document; the live data requires a controlled physical verification and approved reconciliation.
+
+**Confirmed posting paths requiring migration or an explicit compatibility decision:**
+
+- `fn_apply_stock_movement` locks the product, updates `products.current_stock` and inserts `stock_movements`, but does not post to a specified location or populate location/idempotency/source-line metadata. Its product update fires `products_sync_default_location`.
+- `fn_post_stock_adjustment`, `fn_post_wastage` and `fn_approve_inventory_count` write selected location balances and then invoke the aggregate writer. These paths retain the double-application/misallocation risk.
+- `fn_complete_stock_transfer` directly decrements/increments location projections and inserts paired movement rows. It does not update the aggregate (which is correct for a pure internal transfer), but the movements lack location and source-line/idempotency provenance.
+- `fn_bulk_upsert_store_products` and `fn_upsert_pos_menu_item` can change aggregate stock during product upsert; these are stock writers too, not merely catalogue edits.
+- `fn_receive_purchase_order`, `fn_create_and_receive_purchase`, `fn_post_production`, `fn_record_stock_usage`, `fn_post_minibar_consumption`, POS sale/recipe paths and related reversal paths also participate in stock changes and need to be included in the call-path inventory before trigger retirement.
+
+**Precision note:** `products.current_stock` and `product_stock_locations.qty` are currently `numeric(14,2)`, while `stock_movements.base_qty` is `numeric(20,6)`. The target writer must define base-unit rounding and conversion semantics explicitly; adding six-decimal ledger values alone does not make the location projection six-decimal accurate.
+
+**Implementation consequence:** do not deploy a location-aware adjustment/count patch in isolation, and do not remove the default-location trigger yet. The writer cutover must include product upserts and all purchase/POS/production/usage/transfer paths, plus tests for both reconciliation invariants. The live production data remains unchanged.
+
 ### Revised Phase 1A order
 
 - Preserve the wastage submit/approve/reject contract; migrate the approved decision path to the location-aware writer rather than restoring the old direct-post RPC.
