@@ -33,6 +33,7 @@ export function StoreProvider({ children }) {
   const [zonesFor, setZonesFor] = useState(null);
   const [floorLoading, setFloorLoading] = useState(true);
   const [floorError, setFloorError] = useState('');
+  const [floorDirty, setFloorDirty] = useState(false);
   // Shared active table sessions are consumed by the effects and callbacks below.
   const [sessions, setSessions] = useState({});
   const [sessionsLoading, setSessionsLoading] = useState(true);
@@ -42,7 +43,7 @@ export function StoreProvider({ children }) {
   useEffect(() => {
     let active = true;
     if (!propertyId) { setZones([]); setZonesFor(null); setFloorLoading(false); setFloorError(''); return undefined; }
-    setFloorLoading(true); setFloorError(''); setZonesFor(null);
+    setFloorLoading(true); setFloorError(''); setFloorDirty(false); setZonesFor(null);
     (async () => {
       try {
         const remote = await posService.getFloorLayout(propertyId);
@@ -61,9 +62,9 @@ export function StoreProvider({ children }) {
         if (remoteZones.length) {
           setZones(remoteZones);
         } else if (legacy.length) {
-          const saved = await posService.saveFloorLayout({ propertyId, zones: legacy });
-          if (!active) return;
-          setZones(Array.isArray(saved?.zones) && saved.zones.length ? saved.zones : legacy);
+          // Keep the local backup available without silently creating a shared row.
+          // Only an explicit floor-plan edit should write through the RLS policy.
+          setZones(legacy);
         } else {
           setZones(remoteZones);
         }
@@ -80,18 +81,18 @@ export function StoreProvider({ children }) {
   }, [propertyId]);
 
   useEffect(() => {
-    if (!propertyId || zonesFor !== propertyId || floorLoading) return undefined;
+    if (!propertyId || zonesFor !== propertyId || floorLoading || !floorDirty) return undefined;
     if (floorSaveTimer.current) clearTimeout(floorSaveTimer.current);
     floorSaveTimer.current = setTimeout(() => {
       const snapshot = zones;
       try { localStorage.setItem(zonesKey, JSON.stringify(snapshot)); } catch { /* best-effort backup */ }
       floorWriteQueue.current = floorWriteQueue.current.catch(() => null)
         .then(() => posService.saveFloorLayout({ propertyId, zones: snapshot }))
-        .then(() => setFloorError(''))
+        .then(() => { setFloorError(''); setFloorDirty(false); })
         .catch((error) => { console.error('[POS] shared floor configuration could not be saved', error); setFloorError(error?.message || 'Floor configuration could not be saved.'); });
     }, 400);
     return () => { if (floorSaveTimer.current) clearTimeout(floorSaveTimer.current); };
-  }, [zones, zonesKey, zonesFor, propertyId, floorLoading]);
+  }, [zones, zonesKey, zonesFor, propertyId, floorLoading, floorDirty]);
   useEffect(() => {
     let active = true;
     if (!propertyId) { setSessions({}); setSessionsLoading(false); return undefined; }
@@ -395,16 +396,16 @@ export function StoreProvider({ children }) {
   // Stable keys are preserved because live sessions and KOTs reference them.
   const addZone = useCallback((name) => {
     const clean = String(name || '').trim(); if (!clean) return false;
-    setZones((prev) => [...prev, { id: newId('z'), name: clean, tables: [] }]); return true;
+    setFloorDirty(true); setZones((prev) => [...prev, { id: newId('z'), name: clean, tables: [] }]); return true;
   }, []);
   const renameZone = useCallback((zoneId, name) => {
     const clean = String(name || '').trim(); if (!clean) return false;
-    setZones((prev) => prev.map((z) => z.id === zoneId ? { ...z, name: clean } : z)); return true;
+    setFloorDirty(true); setZones((prev) => prev.map((z) => z.id === zoneId ? { ...z, name: clean } : z)); return true;
   }, []);
   const removeZone = useCallback((zoneId) => {
     const zone = zones.find((z) => z.id === zoneId);
     if (!zone || zone.tables.some((t) => sessions[t.id] && sessions[t.id].status !== 'closed')) return false;
-    setZones((prev) => prev.filter((z) => z.id !== zoneId)); return true;
+    setFloorDirty(true); setZones((prev) => prev.filter((z) => z.id !== zoneId)); return true;
   }, [zones, sessions]);
   const addTable = useCallback((zoneId, options = {}) => {
     const zone = zones.find((z) => z.id === zoneId); if (!zone) return false;
@@ -414,11 +415,11 @@ export function StoreProvider({ children }) {
     if (!number || zone.tables.some((t) => String(t.number) === number)) return false;
     const col = zone.tables.length % 5, row = Math.floor(zone.tables.length / 5);
     const table = { id: newId(zoneId), number, seats, x: TABLE_CARD.pad + col * TABLE_CARD.stepX, y: TABLE_CARD.pad + row * TABLE_CARD.stepY, w: TABLE_CARD.w, h: TABLE_CARD.h };
-    setZones((prev) => prev.map((z) => z.id === zoneId ? { ...z, tables: [...z.tables, table] } : z)); return table.id;
+    setFloorDirty(true); setZones((prev) => prev.map((z) => z.id === zoneId ? { ...z, tables: [...z.tables, table] } : z)); return table.id;
   }, [zones]);
   const removeTable = useCallback((zoneId, tableId) => {
     if (sessions[tableId] && sessions[tableId].status !== 'closed') return false;
-    setZones((prev) => prev.map((z) => z.id === zoneId ? { ...z, tables: z.tables.filter((t) => t.id !== tableId) } : z)); return true;
+    setFloorDirty(true); setZones((prev) => prev.map((z) => z.id === zoneId ? { ...z, tables: z.tables.filter((t) => t.id !== tableId) } : z)); return true;
   }, [sessions]);
   const updateTable = useCallback((zoneId, tableId, patch) => {
     const zone = zones.find((z) => z.id === zoneId), current = zone?.tables.find((t) => t.id === tableId);
@@ -427,10 +428,10 @@ export function StoreProvider({ children }) {
     const seats = patch.seats === undefined ? current.seats : Math.max(1, Math.min(50, Number(patch.seats) || 1));
     if (sessions[tableId] && sessions[tableId].status !== 'closed' && String(number) !== String(current.number)) return false;
     if (!String(number).trim() || zone.tables.some((t) => t.id !== tableId && String(t.number) === String(number))) return false;
-    setZones((prev) => prev.map((z) => z.id === zoneId ? { ...z, tables: z.tables.map((t) => t.id === tableId ? { ...t, ...patch, number, seats } : t) } : z)); return true;
+    setFloorDirty(true); setZones((prev) => prev.map((z) => z.id === zoneId ? { ...z, tables: z.tables.map((t) => t.id === tableId ? { ...t, ...patch, number, seats } : t) } : z)); return true;
   }, [zones, sessions]);
   const moveTable = useCallback((zoneId, tableId, x, y) => {
-    setZones((prev) => prev.map((z) => z.id === zoneId ? { ...z, tables: z.tables.map((t) => t.id === tableId ? { ...t, x: Math.round(x), y: Math.round(y) } : t) } : z));
+    setFloorDirty(true); setZones((prev) => prev.map((z) => z.id === zoneId ? { ...z, tables: z.tables.map((t) => t.id === tableId ? { ...t, x: Math.round(x), y: Math.round(y) } : t) } : z));
   }, []);
   // Staff ops (Staff admin) — read-only here. Staff records, roles and PINs are
   // owned by Supabase (`public.staff`) and managed on the Users & Roles screen.
