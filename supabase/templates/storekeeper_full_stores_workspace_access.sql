@@ -98,3 +98,24 @@ begin
   return coalesce(v_codes, '{}');
 end;
 $$;
+
+-- Ensure newly seeded properties receive the same Storekeeper bundle.
+create or replace function public.fn_seed_employee_roles(p_property_id uuid)
+returns void
+language plpgsql security definer set search_path = public
+as $$
+begin
+  if not (public.is_platform_owner() or public.is_member_of_property(p_property_id)) then
+    raise exception 'Not allowed.' using errcode = '42501';
+  end if;
+  insert into public.employee_roles(property_id, name, workspace, permission_codes, description, is_system)
+  values
+    (p_property_id,'Cashier','pos','{pos.access,pos.open_shift,pos.close_shift,pos.process_sale,pos.apply_discount}','POS cashier workspace',true),
+    (p_property_id,'Waiter','pos','{pos.access,pos.open_shift,pos.process_sale}','Restaurant waiter workspace',true),
+    (p_property_id,'Storekeeper','store','{stores.access,stores.inventory.view,stores.stock.receive,stores.stock.issue,stores.stock.transfer,stores.stock.adjust,stores.suppliers.manage}','Stores workspace',true),
+    (p_property_id,'Receptionist','frontoffice','{front_office.access,front_office.reservations.view,front_office.reservations.create,front_office.checkin,front_office.folio.view,front_office.folio.payment}','Front Office workspace',true),
+    (p_property_id,'Accountant','backoffice','{back_office.access,back_office.reports.view,back_office.billing.manage}','Financial reports and accounting',true),
+    (p_property_id,'Property Manager','backoffice','{back_office.access,back_office.reports.view,back_office.employees.manage,back_office.settings.manage,pos.access,front_office.access,stores.access}','Assigned management modules',true)
+  on conflict (property_id, name) do nothing;
+end;
+$$;
