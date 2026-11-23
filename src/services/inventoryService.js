@@ -416,6 +416,12 @@ export const inventoryService = {
     if (error) throw new Error(error.message);
     return data;
   },
+  async isProductionReady(propertyId) {
+    const { data, error } = await supabase.rpc('fn_inventory_production_ready', { p_property_id: propertyId });
+    if (error) throw new Error(error.message);
+    return data === true;
+  },
+
   async postProduction(payload) {
     const { data, error } = await supabase.rpc('fn_post_inventory_production', {
       p_property_id: payload.propertyId,
