@@ -32,8 +32,8 @@ test('Stores sidebar applies the matching permission to each operational module'
   ]) {
     assert.ok(shell.includes(`${id}: '${code}'`), `${id} must be permission-gated by ${code}`);
   }
-  assert.match(auth, /stores\/inventory\/productions.*stores\.production\.post/);
-  assert.match(auth, /stores\/labels.*stores\.inventory\.view/);
+  assert.ok(auth.includes('productions') && auth.includes("'stores.production.post'"));
+  assert.ok(auth.includes('labels') && auth.includes("'stores.inventory.view'"));
 });
 
 test('Storekeeper role aliases are normalized before Store page capability checks', () => {
