@@ -58,6 +58,8 @@ CREATE TABLE public.staff (
 CREATE TABLE public.employee_roles (
   id uuid PRIMARY KEY,
   property_id uuid NOT NULL,
+  name text NOT NULL,
+  is_system boolean NOT NULL DEFAULT false,
   permission_codes text[] NOT NULL DEFAULT '{}'::text[]
 );
 
@@ -67,6 +69,28 @@ CREATE TABLE public.module_access_grants (
   permission_code text NOT NULL,
   revoked_at timestamptz,
   expires_at timestamptz NOT NULL
+);
+
+INSERT INTO public.employee_permission_codes(code, workspace, label, sensitive, sort_order) VALUES
+  ('stores.access','store','Stores workspace',false,1),
+  ('stores.inventory.view','store','Inventory',false,2),
+  ('stores.stock.receive','store','Receive',false,3),
+  ('stores.stock.issue','store','Issue',false,4),
+  ('stores.stock.transfer','store','Transfer',false,5),
+  ('stores.stock.adjust','store','Adjust',true,6),
+  ('stores.suppliers.manage','store','Suppliers',true,7),
+  ('stores.production.post','store','Production',true,8),
+  ('stores.inventory.valuation.view','store','Valuation',true,9);
+
+INSERT INTO public.employee_roles(id, property_id, name, is_system, permission_codes)
+VALUES (
+  '50000000-0000-0000-0000-000000000001',
+  '20000000-0000-0000-0000-000000000001',
+  'Storekeeper',
+  true,
+  ARRAY['stores.access','stores.inventory.view','stores.stock.receive','stores.stock.issue',
+        'stores.stock.transfer','stores.stock.adjust','stores.suppliers.manage',
+        'stores.production.post','stores.inventory.valuation.view']::text[]
 );
 
 CREATE TABLE public.test_permission_grants (
