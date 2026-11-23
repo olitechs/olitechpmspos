@@ -83,6 +83,7 @@ test('Storekeeper item writes and composite recipes retain tenant and permission
   assert.match(migration, /can_store_write\(property_id, 'adjust'\)/);
   assert.match(migration, /fn_employee_has_permission\(property_id,'stores\.stock\.adjust'\)/);
   assert.match(migration, /foreign key\(product_id,property_id\) references public\.products\(id,property_id\)/);
+  assert.match(migration, /grant select, insert, update, delete on table public\.product_variants to authenticated/i);
   assert.match(migration, /Composite recipe authorization guard changed/);
   assert.match(inventoryService, /description: row\.description/);
   assert.match(inventoryService, /inventory_tracking_mode: row\.inventory_tracking_mode/);
