@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
-const nav = read('../src/data/modules/navArchitecture.js');
-const shell = read('../src/components/layout/AppShell.jsx');
+const nav = read('../../src/data/modules/navArchitecture.js');
+const shell = read('../../src/components/layout/AppShell.jsx');
 const auth = read('../services/authService.js');
 const store = read('../pages/Store.jsx');
 const routes = read('../routes/AppRoutes.jsx');
