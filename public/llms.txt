@@ -1,0 +1,52 @@
+# OliTechs
+
+> OliTechs builds hospitality operations software for hotels, resorts, lodges, restaurants and bars. Its core product, OliTechs PMS + POS, brings property management and point of sale workflows into one connected workspace.
+
+Canonical website: https://www.olitechs.co.ke/
+Application sign-in: https://app.olitechs.co.ke/
+Contact: info@olitechs.co.ke
+Phone / WhatsApp: +254 745 043 121
+
+## What OliTechs offers
+
+OliTechs PMS + POS is a hospitality operations platform covering:
+- Property and room management
+- Reservations and front-office operations
+- Guest folios, billing and room charges
+- Restaurant and bar point of sale
+- Kitchen Display System (KDS)
+- Inventory, stores and purchasing workflows
+- Housekeeping and operational workflows
+- Reporting and business insights
+- Staff roles, permissions and workspace administration
+
+## Intended customers
+
+The platform is designed for hotels, boutique accommodation, resorts, lodges, restaurants and bars, including hospitality businesses that need front desk, restaurant, inventory and administration teams to work from coordinated operational information.
+
+## Plans shown on the website
+
+- Free Trial: 7-day access.
+- Professional: KES 7,500 per month.
+- Enterprise: KES 15,000 per month.
+
+Plan features and prices may change. Refer to the official website or contact OliTechs for current details.
+
+## Public pages
+
+- Homepage: https://www.olitechs.co.ke/
+- Terms of Service: https://www.olitechs.co.ke/terms
+- Privacy Notice: https://www.olitechs.co.ke/privacy
+
+## Contact and product enquiries
+
+Website: https://www.olitechs.co.ke/
+Email: info@olitechs.co.ke
+Phone: +254 745 043 121
+WhatsApp: https://wa.me/254745043121
+
+## Crawler guidance
+
+Public marketing pages may be indexed and summarized by search engines and AI answer engines. Authenticated application workspaces, staff areas, property records and administrative routes are not public documentation and should not be treated as publicly accessible content.
+
+For the authoritative product description, current plans and contact details, use the official OliTechs website.
