@@ -1,0 +1,42 @@
+# OliTechs public website crawler policy
+# Canonical public website: https://www.olitechs.co.ke
+
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /backoffice
+Disallow: /frontoffice
+Disallow: /pos
+Disallow: /stores
+Disallow: /signin
+Disallow: /signup
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /accept-invite
+Disallow: /api/
+
+# Search and AI retrieval crawlers may access public marketing content.
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+Sitemap: https://www.olitechs.co.ke/sitemap.xml
