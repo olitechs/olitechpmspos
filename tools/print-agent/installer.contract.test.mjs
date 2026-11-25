@@ -186,6 +186,28 @@ test('the installer payload mirrors the repository layout the agent imports from
   assert.match(build, /agent-config\.json/);
 });
 
+test('runtime dependencies are staged outside the app to avoid a recursive self-install', async () => {
+  const build = await read('./installer/build-installer.ps1');
+
+  assert.match(build, /\$depsDir = Join-Path \$DistRoot 'agent-runtime'/);
+  assert.match(build, /Push-Location \$depsDir/);
+  assert.match(build, /Pop-Location/);
+  assert.match(build, /Copy-Item -Path \(Join-Path \$AgentDir 'package\.json'\)/);
+  assert.match(build, /Remove-Item -Path \$selfLink -Recurse -Force/);
+  assert.match(build, /Copy-Item -Path \$stagedModules -Destination \$agentModules -Recurse -Force/);
+  assert.doesNotMatch(build, /npm\.Source install[^\n]*--prefix \$agentDest/, 'npm must not run inside the staged app');
+});
+
+test('the release workflow injects public Supabase config and never a service-role key', async () => {
+  const workflow = await read('../../.github/workflows/print-agent-release.yml');
+
+  assert.match(workflow, /SUPABASE_URL: \$\{\{ vars\.VITE_SUPABASE_URL \}\}/);
+  assert.match(workflow, /SUPABASE_ANON_KEY: \$\{\{ vars\.VITE_SUPABASE_ANON_KEY \}\}/);
+  assert.match(workflow, /'-SupabaseUrl',\$env:SUPABASE_URL/);
+  assert.match(workflow, /'-SupabaseAnonKey',\$env:SUPABASE_ANON_KEY/);
+  assert.ok(!/SUPABASE_SERVICE_ROLE|service_role/i.test(workflow), 'only public configuration may be bundled');
+});
+
 test('pairing configuration is injected as environment entries, never credentials', async () => {
   const template = await read('./service/OliTechsPrintAgent.xml.template');
   const install = await read('./service/install-service.ps1');

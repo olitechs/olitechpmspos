@@ -435,3 +435,39 @@ Status: implemented locally, not pushed, tagged or executed on a hosted runner.
 The hosted-runner install/upgrade/uninstall assertions cannot be executed until
 this work is pushed and a workflow is run. No `2.2.1` tag or release has been
 created, and `print-agent-unsigned-2.2.0` has not been touched.
+
+## 14. First 2.2.1 release run and the payload fix
+
+After approval, the branch and annotated tag `print-agent-v2.2.1` were pushed.
+Run `45647055737` passed tests, lint, typecheck, PowerShell checks, downloads,
+checksums and certificate import, then failed in **Build installer**:
+
+```
+Error in ... OliTechsPrintAgent.iss: The system cannot find the path specified.
+Compile aborted.
+```
+
+The compiler log showed Inno Setup recursing through
+`payload\tools\print-agent\node_modules\olitechs-pms-pos\dist\installer\node-extract\...`.
+`build-installer.ps1` ran `npm install --prefix $agentDest`; from the repository
+root this let npm treat the enclosing PMS project as a package and stage a
+recursive copy of the repository in the agent payload. The resulting paths were
+too long for Windows/Inno Setup.
+
+The same run also reported `no Supabase URL/anon key found`, so pairing would
+have been unavailable in the released installer.
+
+Fix:
+
+- Runtime dependencies are now installed in an isolated
+  `dist/installer/agent-runtime` directory with its own `package.json`, using
+  `Push-Location`/`Pop-Location`. Only the resulting `node_modules` is copied
+  into the agent payload. Any `olitechs-pms-pos` self-install is removed before
+  staging.
+- The release workflow passes the public `VITE_SUPABASE_URL` and
+  `VITE_SUPABASE_ANON_KEY` repository variables to `build-installer.ps1`. No
+  service-role key is used or staged.
+- Contract tests assert both properties so the failure cannot return silently.
+
+The tag will be moved to the fix commit and the workflow re-run. No GitHub
+Release was created by the failed run.

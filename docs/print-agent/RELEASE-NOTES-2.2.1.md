@@ -41,6 +41,11 @@ succeeding.
   unless deletion is explicitly requested.
 - **CI is green again.** The lifecycle test now passes a proper `file://` URL
   to `node --import`, so the Windows runner reaches the installer build again.
+- **The installer payload is staged safely.** Runtime dependencies are installed
+  in an isolated build folder, so npm cannot recursively bundle the PMS project
+  into `node_modules` and create paths that break Inno Setup. The release
+  workflow injects the public Supabase URL and publishable key so pairing works
+  out of the box; no service-role key is ever bundled.
 
 ## Before you install
 

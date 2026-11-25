@@ -128,6 +128,9 @@ jobs:
 
       - name: Build installer
         shell: pwsh
+        env:
+          SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
         run: |
           $buildArgs = @('-NoProfile','-ExecutionPolicy','Bypass','-File','tools/print-agent/installer/build-installer.ps1',
             '-NodeZipPath','${{ steps.node.outputs.zip }}','-NodeSha256','${{ steps.node.outputs.sha256 }}',
@@ -136,6 +139,8 @@ jobs:
           if ('${{ inputs.version }}') { $buildArgs += @('-Version','${{ inputs.version }}') }
           if ('${{ steps.signing.outputs.thumbprint }}') { $buildArgs += @('-CertificateThumbprint','${{ steps.signing.outputs.thumbprint }}') }
           elseif ('${{ inputs.allow_unsigned }}' -eq 'true') { $buildArgs += '-AllowUnsigned' }
+          if ($env:SUPABASE_URL) { $buildArgs += @('-SupabaseUrl',$env:SUPABASE_URL) }
+          if ($env:SUPABASE_ANON_KEY) { $buildArgs += @('-SupabaseAnonKey',$env:SUPABASE_ANON_KEY) }
           & powershell.exe @buildArgs
           if ($LASTEXITCODE -ne 0) { throw "Installer build failed (exit code $LASTEXITCODE)." }
 
