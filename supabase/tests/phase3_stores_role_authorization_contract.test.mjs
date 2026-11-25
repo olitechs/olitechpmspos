@@ -142,9 +142,10 @@ test('role editor shows package hints and requires explicit built-in edit confir
   assert.match(employeeService, /refreshRoleSplitReview\(propertyId\)/);
 });
 
-test('wastage runtime test expects the Phase 3 permission split', () => {
+test('Phase 7 wastage runtime test stays scoped to its own fixture', () => {
   assert.match(wastageRuntime, /stores\.stock\.wastage\.submit/);
-  assert.match(wastageRuntime, /stores\.requisition\.issue/);
-  assert.match(wastageRuntime, /expected operational Stores permissions plus wastage submission, without valuation or approval/);
-  assert.match(wastageRuntime, /NOT \('stores\.inventory\.valuation\.view' = ANY\(v_storekeeper_codes\)\)/);
+  assert.match(wastageRuntime, /stores\.inventory\.valuation\.view/);
+  assert.match(wastageRuntime, /expected full Stores permissions plus wastage submission, without approval/);
+  assert.match(wastageRuntime, /'stores\.stock\.wastage\.approve' = ANY\(v_storekeeper_codes\)/);
+  assert.doesNotMatch(wastageRuntime, /Phase 3 permission split/);
 });
