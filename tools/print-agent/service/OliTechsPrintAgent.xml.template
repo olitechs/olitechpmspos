@@ -1,7 +1,7 @@
 <!--
   Template for the OliTechs Print Agent Windows service (WinSW).
 
-  install-service.ps1 replaces the {{PLACEHOLDER}} values and writes
+  install-service.ps1 replaces the placeholder values and writes
   OliTechsPrintAgent.xml next to OliTechsPrintAgent.exe in
   %ProgramData%\OliTechs\PrintAgent\service.
 

@@ -170,7 +170,7 @@ begin
     MsgBox('The OliTechs Print Agent service could not be installed (exit code ' + IntToStr(Code) + ').' + #13#10#13#10 +
       'Printing will not work until this is fixed. Restart Windows and run this installer again.' + #13#10#13#10 +
       'If it still fails, send this diagnostic file to OliTechs support:' + #13#10 +
-      ExpandConstant('{commonappdata}\\OliTechs\\PrintAgent\\logs\\install-service.log'),
+      ExpandConstant('{commonappdata}\OliTechs\PrintAgent\logs\install-service.log'),
       mbError, MB_OK);
   end;
 end;

@@ -7,6 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const entry = fileURLToPath(new URL('./print-agent-v2.js', import.meta.url));
+const instrument = new URL('./instrument.mjs', import.meta.url).href;
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function waitFor(check, { timeoutMs = 15000, intervalMs = 100 } = {}) {
@@ -36,7 +37,7 @@ function agentEnv(dataDir) {
 }
 
 function startAgent(dataDir) {
-  const child = spawn(process.execPath, ['--import', fileURLToPath(new URL('./instrument.mjs', import.meta.url)), entry], {
+  const child = spawn(process.execPath, ['--import', instrument, entry], {
     env: agentEnv(dataDir),
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -152,7 +153,7 @@ test('an occupied port produces a clear error instead of a silent half-start', a
   assert.ok(lock, `first agent should start. stderr: ${first.stderrText}`);
 
   const otherDir = fs.mkdtempSync(path.join(os.tmpdir(), 'olitechs-agent-'));
-  const conflicting = spawn(process.execPath, ['--import', fileURLToPath(new URL('./instrument.mjs', import.meta.url)), entry], {
+  const conflicting = spawn(process.execPath, ['--import', instrument, entry], {
     env: { ...agentEnv(otherDir), PRINT_AGENT_PORT: String(lock.port) },
     stdio: ['ignore', 'pipe', 'pipe'],
   });

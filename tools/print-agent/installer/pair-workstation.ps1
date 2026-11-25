@@ -9,7 +9,7 @@ param(
 # Pairs this computer with OliTechs without a terminal.
 #
 # The installer runs this hidden after the service starts, so staff see a normal
-# window: type the code from Settings → Printers, press OK, done. The code is
+# window: type the code from Settings > Printers, press OK, done. The code is
 # single use and expires in ten minutes; the long-lived workstation credential is
 # created and stored by the agent, never handled here.
 
@@ -106,7 +106,7 @@ if (-not $ready) {
 
 $pairingCode = if ($Code) { $Code } else { Read-PairingCode }
 if ([string]::IsNullOrWhiteSpace($pairingCode)) {
-  Show-Info 'Pairing was skipped. You can pair later from "Pair this computer" in the Start menu, or from Settings → Printers in OliTechs.'
+  Show-Info 'Pairing was skipped. You can pair later from "Pair this computer" in the Start menu, or from Settings > Printers in OliTechs.'
   exit 2
 }
 

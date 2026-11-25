@@ -14,8 +14,14 @@ test('service definition starts with Windows and restarts after a failure', asyn
   assert.match(xml, /<stoptimeout>20 sec<\/stoptimeout>/);
   assert.match(xml, /<log mode="roll-by-size">/);
   assert.match(xml, /<env name="PRINT_AGENT_MODE" value="service"\/>/);
-  for (const placeholder of ['{{NODE_EXE}}', '{{AGENT_SCRIPT}}', '{{INSTRUMENT_SCRIPT}}', '{{WORKING_DIR}}', '{{DATA_DIR}}', '{{LOG_DIR}}']) {
+  const placeholders = ['{{NODE_EXE}}', '{{AGENT_SCRIPT}}', '{{INSTRUMENT_SCRIPT}}', '{{WORKING_DIR}}', '{{DATA_DIR}}', '{{LOG_DIR}}', '{{ENV_ENTRIES}}'];
+  for (const placeholder of placeholders) {
     assert.ok(xml.includes(placeholder), `template must keep the ${placeholder} placeholder`);
+  }
+  // install-service.ps1 refuses to install if any {{TOKEN}} survives rendering,
+  // so every token in the template must be one it knows how to replace.
+  for (const token of new Set([...xml.matchAll(/\{\{[A-Z_]+\}\}/g)].map((match) => match[0]))) {
+    assert.ok(placeholders.includes(token), `template token ${token} is not rendered by install-service.ps1`);
   }
   assert.ok(!/<password|<username/i.test(xml), 'the service definition must not contain credentials');
 });
@@ -23,15 +29,117 @@ test('service definition starts with Windows and restarts after a failure', asyn
 test('install script renders the template, sets SCM recovery and removes the legacy task', async () => {
   const script = await read('./service/install-service.ps1');
   assert.match(script, /OliTechsPrintAgent\.xml\.template/);
-  for (const placeholder of ['{{NODE_EXE}}', '{{AGENT_SCRIPT}}', '{{INSTRUMENT_SCRIPT}}', '{{WORKING_DIR}}', '{{DATA_DIR}}', '{{LOG_DIR}}']) {
+  for (const placeholder of ['{{NODE_EXE}}', '{{AGENT_SCRIPT}}', '{{INSTRUMENT_SCRIPT}}', '{{WORKING_DIR}}', '{{DATA_DIR}}', '{{LOG_DIR}}', '{{ENV_ENTRIES}}']) {
     assert.ok(script.includes(placeholder), `install script must render ${placeholder}`);
   }
-  assert.match(script, /sc\.exe failure \$ServiceId reset= 86400 actions= restart\/5000\/restart\/15000\/restart\/60000/);
+  assert.match(script, /\$scExe = Join-Path \$systemRoot 'System32\\sc\.exe'/);
+  assert.match(script, /'failure', \$ServiceId, 'reset=', '86400', 'actions=', 'restart\/5000\/restart\/15000\/restart\/60000'/);
   assert.match(script, /Start-Service -Name \$ServiceId/);
   assert.match(script, /Unregister-ScheduledTask -TaskName \$LegacyTaskName/);
-  assert.match(script, /Invoke-RestMethod -Uri 'http:\/\/127\.0\.0\.1:8631\/health'/);
-  assert.ok(!/Invoke-WebRequest[\s\S]*DownloadString/.test(script), 'the installer must not download and run code');
+  assert.match(script, /\$HealthUrl = "http:\/\/127\.0\.0\.1:\$ServicePort\/health"/);
+  assert.match(script, /Invoke-RestMethod -Uri \$HealthUrl/);
+  assert.ok(!/(Invoke-WebRequest|Start-BitsTransfer|DownloadFile|DownloadString)/i.test(script), 'the installer must not download and run code');
 });
+
+test('the installer never lets native stderr become a PowerShell terminating error', async () => {
+  const script = await read('./service/install-service.ps1');
+  assert.ok(!/2>&1/.test(script), 'native stderr must not be merged into the success stream');
+  assert.ok(!/2>\$null/.test(script), 'use the native helper instead of redirecting stderr to $null');
+  assert.ok(!/Start-Transcript/.test(script), 'a transcript hides native-command failures');
+  assert.match(script, /function Invoke-NativeCommand/);
+  assert.match(script, /RedirectStandardOutput/);
+  assert.match(script, /RedirectStandardError/);
+  assert.match(script, /Wait\s+=\s+\$true/);
+  assert.match(script, /PassThru\s+=\s+\$true/);
+  assert.match(script, /ExitCode\s+=\s+\$exitCode/);
+});
+
+test('each install stage has a stable exit code and writes install-result.json', async () => {
+  const script = await read('./service/install-service.ps1');
+  const expectedCodes = {
+    10: 'template',
+    11: 'node',
+    12: 'winsw',
+    13: 'elevation',
+    14: 'port',
+    15: 'stale-service',
+    16: 'winsw-install',
+    17: 'start',
+    18: 'health',
+    19: 'node-module',
+    20: 'windows-version',
+    21: 'disk',
+    22: 'programdata',
+    23: 'dotnet',
+    24: 'legacy-task',
+    25: 'unexpected',
+  };
+  for (const [code, stage] of Object.entries(expectedCodes)) {
+    assert.match(script, new RegExp(`-Code ${code}\\b`), `missing exit code ${code}`);
+    assert.match(script, new RegExp(`'${stage}'`), `missing stage ${stage}`);
+  }
+  assert.match(script, /install-result\.json/);
+  assert.match(script, /function Write-InstallResult/);
+  for (const field of ['stage', 'code', 'message', 'time', 'agentVersion', 'nodeVersion', 'powershellVersion', 'osVersion', 'logPath']) {
+    assert.match(script, new RegExp(`\\b${field}\\s+=`), `result file must include ${field}`);
+  }
+  assert.match(script, /ConvertTo-Json -Depth 6/);
+});
+
+test('preflight checks the machine before the service is registered', async () => {
+  const script = await read('./service/install-service.ps1');
+  assert.match(script, /function Test-Preflight/);
+  assert.match(script, /IsInRole\(\[Security\.Principal\.WindowsBuiltInRole\]::Administrator\)/);
+  assert.match(script, /OSVersion\.Version/);
+  assert.match(script, /MinimumDotNetRelease = 394254/);
+  assert.match(script, /function Get-FreeBytes/);
+  assert.match(script, /MinimumFreeBytes = 200MB/);
+  assert.match(script, /function Test-PortAvailable/);
+  assert.match(script, /Get-NetTCPConnection -LocalPort \$Port/);
+  assert.match(script, /Test-OliTechsAgentCommandLine/);
+  assert.match(script, /function Test-NodeRuntime/);
+  assert.match(script, /MinimumNodeMajor = 20/);
+  assert.match(script, /MinimumNodeMinor = 6/);
+  assert.match(script, /function Test-AgentModules/);
+  assert.match(script, /import\('@sentry\/node'\)/);
+  assert.match(script, /--check/);
+});
+
+test('health is a real gate, but an unpaired workstation is still healthy', async () => {
+  const script = await read('./service/install-service.ps1');
+  assert.match(script, /function Wait-AgentHealth/);
+  assert.match(script, /\$health\.ok -eq \$true/);
+  assert.match(script, /\$health\.paired/);
+  assert.match(script, /-Stage 'health' -Code 18/);
+  assert.ok(!/paired.*(Fail-Install|Code 18)/i.test(script), 'an unpaired agent is not a health failure');
+  assert.match(script, /-Stage 'start' -Code 17/);
+});
+
+test('a failed registration is cleaned up and reruns are idempotent', async () => {
+  const script = await read('./service/install-service.ps1');
+  assert.match(script, /function Remove-ServiceBestEffort/);
+  assert.match(script, /function Remove-ExistingService/);
+  assert.match(script, /Stop-Service -Name \$ServiceId -Force/);
+  assert.match(script, /'delete', \$ServiceId/);
+  assert.match(script, /function Stop-OliTechsAgentProcesses/);
+  assert.match(script, /Get-CimInstance -ClassName Win32_Process/);
+  assert.match(script, /Removing the partially installed service/);
+  assert.match(script, /Unregister-ScheduledTask -TaskName \$LegacyTaskName/);
+  assert.match(script, /marked for deletion/);
+});
+
+test('start and health failures collect agent, SCM and event-log diagnostics', async () => {
+  const script = await read('./service/install-service.ps1');
+  assert.match(script, /function Write-ServiceDiagnostics/);
+  assert.match(script, /agent\.log/);
+  assert.match(script, /-Tail 50/);
+  assert.match(script, /'query', \$ServiceId/);
+  assert.match(script, /'qc', \$ServiceId/);
+  assert.match(script, /Get-WinEvent/);
+  assert.match(script, /Service Control Manager/);
+  assert.match(script, /LogName = 'Application'/);
+});
+
 
 test('uninstall keeps printer data unless deletion is explicitly requested', async () => {
   const script = await read('./service/uninstall-service.ps1');
