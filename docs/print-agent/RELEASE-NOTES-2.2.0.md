@@ -1,10 +1,9 @@
 # OliTechs Print Agent 2.2.0 — release notes
 
-> **Release status: awaiting a signed build.** The 2.2.0 installer is produced and
-> signed by the `Print Agent Windows Release` workflow. Until that workflow has
-> run with the OliTechs signing certificate and published a Release, do not
-distribute an unsigned build. OliTechs support supplies the signed installer
-> when your site is ready to upgrade.
+> **Release status: SUPERSEDED by 2.2.1.** The published 2.2.0 artifact was an
+> unsigned internal test build and its service step failed under Windows
+> PowerShell 5.1. It is kept for evidence only and must not be installed.
+> Use the signed [2.2.1 release notes](./RELEASE-NOTES-2.2.1.md) instead.
 
 **For:** hotel managers, front-office and F&B staff, and OliTechs support
 **What it is:** the small program installed on each Windows POS computer that
@@ -53,8 +52,8 @@ developer.
   the pairing code expires after 10 minutes.
 - **Run the new installer over the old one.** It replaces the previous agent on
   that computer; you do not need to uninstall first. If Windows shows a warning
-  that the publisher is unverified, stop and call OliTechs — a genuine 2.2.0
-  installer is signed.
+  that the publisher is unverified, stop and call OliTechs — the published
+  2.2.0 artifact was unsigned and is not a customer build.
 - **Only Windows 10 or 11 computers are supported.** No Node.js needs to be
   installed; the installer includes everything it needs.
 

@@ -8,21 +8,17 @@ start at step 4.
 Inno Setup 6, Windows SDK `signtool`, a code-signing certificate, a verified
 `WinSW.exe`, and the Node win-x64 zip with its published SHA-256.
 
-## Current build status (2026-11-12)
+## Current build status (2026-11-25)
 
-The `Print Agent Windows Release` workflow has built the installer successfully
-on `windows-latest`: tests, lint, typecheck, the Node.js checksum, the WinSW
-checksum, Inno Setup compilation and `SHA256SUMS.txt` all passed. That run was
-`allow_unsigned=true`, so it produced an internal test artifact and correctly
-skipped the Release step:
+`2.2.0` was an unsigned internal test build and is superseded by `2.2.1`.
+`2.2.1` is built from the tag `print-agent-v2.2.1` by the
+`Print Agent Windows Release` workflow. The workflow runs tests, lint,
+typecheck, the Node.js and WinSW checksum checks, PowerShell 5.1 syntax and
+encoding checks, an elevated silent install/upgrade/uninstall smoke test, and
+publishes only a signed artifact with `SHA256SUMS.txt`.
 
-- `OliTechsPrintAgentSetup-2.2.0-UNSIGNED.exe` (28,308,483 bytes)
-- SHA-256 `7b08c56eac31eb24f37811a07c8a3feafb855f0e182f61008e85b7eac6d38ab7`
-
-This is **not** a customer build. A signed release needs the
-`WINDOWS_CERT_PFX_BASE64` and `WINDOWS_CERT_PASSWORD` repository secrets; until
-they exist the workflow refuses to publish. No Windows computer or physical
-printer has run this artifact yet.
+Use the signed installer from the `2.2.1` GitHub Release. Do not give a hotel
+an `-UNSIGNED.exe` build.
 
 ---
 
@@ -85,7 +81,7 @@ Manual fallback on a Windows build machine, from `tools\print-agent\installer`:
 
 ```powershell
 .\build-installer.ps1 `
-  -Version 2.2.0 `
+  -Version 2.2.1 `
   -WinSWPath C:\build\WinSW.exe `
   -WinSWSha256 <sha256-of-WinSW-x64.exe> `
   -NodeZipPath C:\build\node-v22.14.0-win-x64.zip `
@@ -94,9 +90,9 @@ Manual fallback on a Windows build machine, from `tools\print-agent\installer`:
 ```
 
 Or pass `-PfxPath` / `-PfxPassword` instead of the thumbprint. Output:
-`dist\installer\OliTechsPrintAgentSetup-2.2.0.exe`.
+`dist\installer\OliTechsPrintAgentSetup-2.2.1.exe`.
 
-- The version must match `AGENT_VERSION` in `tools/print-agent/config.mjs` (2.2.0).
+- The version must match `AGENT_VERSION` in `tools/print-agent/config.mjs` (2.2.1).
 - Record the installer's SHA-256 in the release notes, and confirm
   `Get-AuthenticodeSignature` reports a valid signature and timestamp.
 - The script refuses to build an unsigned release. An `-AllowUnsigned` build is

@@ -16,7 +16,7 @@ function workspace() {
 
 function configFor({ logDir, dataDir }) {
   return {
-    version: '2.2.0',
+    version: '2.2.1',
     mode: 'service',
     host: '127.0.0.1',
     port: 8631,
@@ -54,7 +54,7 @@ test('a support bundle shows the agent, queue and pairing without any secret', (
 
   assert.equal(bundle.format, 1);
   assert.equal(bundle.generatedAt, '2026-11-11T12:34:56.789Z');
-  assert.equal(bundle.agent.version, '2.2.0');
+  assert.equal(bundle.agent.version, '2.2.1');
   assert.equal(bundle.agent.mode, 'service');
   assert.equal(bundle.paired.paired, true);
   assert.equal(bundle.paired.agentName, 'Reception PC');

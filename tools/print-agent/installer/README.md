@@ -43,7 +43,7 @@ cd tools\print-agent\installer
 
 # Signed release (certificate installed in the machine/user store):
 .\build-installer.ps1 `
-  -Version 2.2.0 `
+  -Version 2.2.1 `
   -WinSWPath C:\build\WinSW.exe `
   -WinSWSha256 <sha256-of-WinSW-x64.exe> `
   -NodeZipPath C:\build\node-v22.14.0-win-x64.zip `
@@ -112,10 +112,10 @@ installer. A manual dispatch with `allow_unsigned=true` produces an internal
 ## Verify a build by hand
 
 ```powershell
-Get-AuthenticodeSignature .\OliTechsPrintAgentSetup-2.2.0.exe |
+Get-AuthenticodeSignature .\OliTechsPrintAgentSetup-2.2.1.exe |
   Format-List Status, StatusMessage, @{n='Signer';e={$_.SignerCertificate.Subject}}
 
-(Get-FileHash .\OliTechsPrintAgentSetup-2.2.0.exe -Algorithm SHA256).Hash
+(Get-FileHash .\OliTechsPrintAgentSetup-2.2.1.exe -Algorithm SHA256).Hash
 ```
 
 Status must be `Valid` and the signer must be OliTechs. Then run Part 13 of

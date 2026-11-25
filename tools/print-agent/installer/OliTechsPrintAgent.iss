@@ -7,7 +7,7 @@
 ; release.
 ;
 ; Compile from tools\print-agent\installer:
-;   ISCC.exe /DAppVersion=2.2.0 /DSourceRoot=..\..\..\dist\installer\payload OliTechsPrintAgent.iss
+;   ISCC.exe /DAppVersion=2.2.1 /DSourceRoot=..\..\..\dist\installer\payload OliTechsPrintAgent.iss
 ;
 ; Silent installs are a first-class path. A failed service install must make the
 ; setup process exit non-zero so deployment scripts and CI can detect it. Keep

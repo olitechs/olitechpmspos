@@ -33,7 +33,7 @@ const record = (overrides = {}) => ({
   workstation: 'POS-01',
   transport: 'network_ip',
   paperWidth: '80mm',
-  agentVersion: '2.2.0',
+  agentVersion: '2.2.1',
   windowsVersion: 'Windows 11 24H2',
   recordedAt: '2026-11-11T09:30:00.000Z',
   checks: allPass(),
