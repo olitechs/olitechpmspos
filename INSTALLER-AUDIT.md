@@ -585,5 +585,37 @@ Fix:
 - Add a contract assertion that every XML comment body has no `--` and does not
   end with `-`, and that the import flag remains in element text.
 
+The tag was moved to this fix commit and the workflow re-run. The smoke test
+then hung and the run was cancelled; no GitHub Release was created.
+
+## 19. Sixth 2.2.1 release run and the silent pairing deadlock
+
+Run `45653748891` built, signed and checksummed the installer, then the smoke
+test stopped producing output after:
+
+```
+[smoke] Running OliTechsPrintAgentSetup-2.2.1.exe
+```
+
+The runner log showed no further smoke output for over 26 minutes. The run was
+cancelled at 31 minutes. Earlier runs had failed inside `install-service.ps1`,
+so the successful path reached the optional `[Run]` pairing entry for the first
+time. That entry used `postinstall runhidden waituntilterminated` and called
+`pair-workstation.ps1`, which opens a modal WinForms window. In `/VERYSILENT`
+there is nobody to answer it, so Inno Setup waited forever.
+
+Fix:
+
+- Add `ShouldOfferPairing()`, which requires `not WizardSilent` as well as a
+  successful service install, and use it as the `[Run]` `Check`. Interactive
+  staff still see the pairing window; silent installs skip it and can pair later
+  from the Start menu or Settings.
+- Replace `Start-Process -Wait` in the smoke test with a bounded
+  `WaitForExit(180000)`, stopping any stuck pairing PowerShell and printing the
+  same setup/service diagnostics on timeout. The old unbounded wait caused the
+  31-minute hang.
+- Add contract assertions for the silent-install guard and for the smoke-test
+  timeout, and document the behavior in the installer README and release notes.
+
 The tag will be moved to this fix commit and the workflow re-run. No GitHub
-Release was created by the failed run.
+Release was created by the cancelled run.

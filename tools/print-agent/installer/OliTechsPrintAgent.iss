@@ -75,11 +75,12 @@ Name: "{group}\Print agent logs"; Filename: "{commonappdata}\OliTechs\PrintAgent
 Name: "{group}\Uninstall OliTechs Print Agent"; Filename: "{uninstallexe}"
 
 ; The service is registered in [Code] (RunServiceInstaller) so a failure can be
-; shown to staff instead of being swallowed by a hidden window. Only the pairing
-; dialog lives here, and it is skipped when the service did not install.
+; shown to staff instead of being swallowed by a hidden window. The pairing dialog
+; is interactive only: an unattended install must never wait for a code that
+; nobody is there to type.
 [Run]
 ; Optional but recommended: pair immediately with the code from Settings → Printers.
-Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ""{app}\pair-workstation.ps1"""; Description: "Pair this computer with OliTechs now (recommended)"; StatusMsg: "Opening the pairing step…"; Flags: postinstall runhidden waituntilterminated runasoriginaluser; Check: ServiceInstalledOk
+Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ""{app}\pair-workstation.ps1"""; Description: "Pair this computer with OliTechs now (recommended)"; StatusMsg: "Opening the pairing step…"; Flags: postinstall runhidden waituntilterminated runasoriginaluser; Check: ShouldOfferPairing
 
 [UninstallRun]
 ; Scripts live with the agent that ships them, not beside WinSW.exe.
@@ -160,6 +161,13 @@ end;
 function ServiceInstalledOk(): Boolean;
 begin
   Result := not ServiceInstallFailed;
+end;
+
+{ A silent install has nobody to answer the pairing window. The Start-menu entry
+  remains available so staff can pair later. }
+function ShouldOfferPairing(): Boolean;
+begin
+  Result := (not WizardSilent) and ServiceInstalledOk;
 end;
 
 procedure RunServiceInstaller();

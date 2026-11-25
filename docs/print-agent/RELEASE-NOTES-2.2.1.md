@@ -59,6 +59,11 @@ succeeding.
   the literal `--import` flag; XML comments cannot contain `--`, so WinSW
   rejected the config before registering the service. The comment no longer
   uses that token, and a contract check rejects invalid comment bodies.
+- **Unattended installs do not wait for pairing.** The optional pairing window
+  only appears in interactive installs. Silent installs finish on their own and
+  staff can pair later from the Start menu or from Settings → Printers. The
+  smoke test also has a hard per-install timeout so a hung installer fails with
+  diagnostics instead of blocking a release.
 
 ## Before you install
 

@@ -13,10 +13,11 @@ PowerShell commands.
    from crashes). Re-running the installer upgrades in place.
 3. Injects the public Supabase URL and anon key as service environment variables,
    so pairing works without anybody editing a file.
-4. Starts the service, waits for `http://127.0.0.1:8631/health`, then offers the
-   pairing dialog: type the code from **Settings → Printers → Pair this
-   computer**, press Pair. It can be skipped and repeated later from the Start
-   menu.
+4. Starts the service and waits for `http://127.0.0.1:8631/health`. Interactive
+   installs then offer the pairing dialog: type the code from **Settings →
+   Printers → Pair this computer**, press Pair. Silent installs skip the dialog
+   so unattended deployment never waits for a code nobody is there to type;
+   pair later from the Start menu or from Settings.
 5. Adds Start-menu entries for printer status, pairing, logs and uninstall.
 
 Uninstalling removes the service. Printer configuration, logs, the local print

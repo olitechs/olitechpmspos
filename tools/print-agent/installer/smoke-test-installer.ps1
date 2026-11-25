@@ -15,6 +15,7 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $ServiceId = 'OliTechsPrintAgent'
+$SetupTimeoutSeconds = 180
 $DataDir = Join-Path $env:ProgramData 'OliTechs\PrintAgent'
 $ResultPath = Join-Path $DataDir 'logs\install-result.json'
 $RunDir = Join-Path $env:TEMP ('olitechs-print-agent-smoke-{0}' -f [guid]::NewGuid().ToString('N'))
@@ -72,6 +73,19 @@ function Write-Diagnostics {
   }
 }
 
+function Stop-StuckPairing {
+  # Defensive cleanup for a hung silent install. The installer now skips this
+  # dialog, but a stale build must not leave a hidden window on the runner.
+  try {
+    $pairings = Get-CimInstance -ClassName Win32_Process -Filter "Name = 'powershell.exe'" -ErrorAction SilentlyContinue |
+      Where-Object { $_.CommandLine -match 'pair-workstation\.ps1' }
+    foreach ($pairing in $pairings) {
+      Stop-Process -Id $pairing.ProcessId -Force -ErrorAction SilentlyContinue
+    }
+  } catch {
+  }
+}
+
 function Invoke-Setup {
   param(
     [Parameter(Mandatory = $true)][string]$Executable,
@@ -80,10 +94,18 @@ function Invoke-Setup {
   $log = Join-Path $RunDir $LogName
   $arguments = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', ('/LOG="{0}"' -f $log))
   Write-Step ("Running {0}" -f (Split-Path -Leaf $Executable))
-  $process = Start-Process -FilePath $Executable -ArgumentList $arguments -PassThru -Wait -ErrorAction Stop
+  $name = Split-Path -Leaf $Executable
+  $process = Start-Process -FilePath $Executable -ArgumentList $arguments -PassThru -ErrorAction Stop
+  if (-not $process.WaitForExit($SetupTimeoutSeconds * 1000)) {
+    Stop-StuckPairing
+    Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+    Write-Diagnostics -SetupLog $log -ExitCode (-1)
+    Fail-Test ("{0} did not exit within {1} seconds. Setup log: {2}" -f $name, $SetupTimeoutSeconds, $log)
+  }
+  $process.Refresh()
   if ($process.ExitCode -ne 0) {
     Write-Diagnostics -SetupLog $log -ExitCode $process.ExitCode
-    Fail-Test ("{0} exited with code {1}. Setup log: {2}" -f (Split-Path -Leaf $Executable), $process.ExitCode, $log)
+    Fail-Test ("{0} exited with code {1}. Setup log: {2}" -f $name, $process.ExitCode, $log)
   }
   return $log
 }

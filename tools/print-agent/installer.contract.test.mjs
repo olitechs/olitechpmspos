@@ -75,8 +75,19 @@ test('a failed service installation is reported to staff, and pairing is skipped
   assert.match(iss, /ServiceInstallFailed := True/);
   assert.match(iss, /mbError, MB_OK/);
   assert.match(iss, /Printing will not work until this is fixed/);
-  assert.match(iss, /Check: ServiceInstalledOk/);
+  assert.match(iss, /Check: ShouldOfferPairing/);
   assert.match(iss, /function ServiceInstalledOk\(\): Boolean/);
+  assert.match(iss, /function ShouldOfferPairing\(\): Boolean/);
+  assert.match(iss, /Result := \(not WizardSilent\) and ServiceInstalledOk/);
+});
+
+test('silent installs never wait for the interactive pairing window', async () => {
+  const iss = await read('./installer/OliTechsPrintAgent.iss');
+
+  const pairingLine = iss.split(/\r?\n/).find((line) => line.startsWith('Filename: "powershell.exe"') && line.includes('pair-workstation.ps1'));
+  assert.ok(pairingLine, 'the optional pairing entry must exist');
+  assert.match(pairingLine, /Check: ShouldOfferPairing/);
+  assert.match(iss, /silent install has nobody to answer the pairing window/i);
 });
 
 test('a failed silent install returns the service exit code instead of success', async () => {
@@ -106,6 +117,11 @@ test('the runner smoke test covers install, health, upgrade and uninstall withou
   assert.match(smoke, /Install result: /);
   assert.match(smoke, /Service log tail/);
   assert.match(smoke, /Write-Diagnostics -SetupLog \$log -ExitCode \$process\.ExitCode/);
+  assert.match(smoke, /\$SetupTimeoutSeconds = 180/);
+  assert.match(smoke, /function Stop-StuckPairing/);
+  assert.match(smoke, /WaitForExit\(\$SetupTimeoutSeconds \* 1000\)/);
+  assert.match(smoke, /did not exit within/);
+  assert.doesNotMatch(smoke, /Start-Process[^\r\n]*-Wait/, 'Start-Process -Wait can hang the runner forever');
   assert.match(smoke, /\$result\.stage -eq 'complete'/);
   assert.match(smoke, /\$result\.code -eq 0/);
   assert.match(smoke, /Upgrade passed/);
