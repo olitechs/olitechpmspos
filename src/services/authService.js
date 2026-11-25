@@ -16,17 +16,17 @@ import { canAccessApp, normalizeAppRole, getPackageModules } from '@/data/module
 
 export const STAFF_ROLES = [
   'super_admin','hotel_admin','front_office_manager','receptionist','front_desk',
-  'pos_staff','waiter','cashier','store_manager','fb_manager','housekeeping_supervisor',
+  'pos_staff','waiter','cashier','store_manager','storekeeper','fb_manager','housekeeping_supervisor',
 ];
 export const MODULE_NAMES = ['backoffice','frontoffice','pos','store'];
 export const ROLE_LABELS = {
   super_admin: 'Super Admin / Owner', hotel_admin: 'Hotel Admin', front_office_manager: 'Front Office Manager',
   receptionist: 'Receptionist', front_desk: 'Front Desk', pos_staff: 'POS Staff', waiter: 'Waiter', cashier: 'Cashier',
-  store_manager: 'Store Manager', fb_manager: 'F&B Manager', housekeeping_supervisor: 'Housekeeping Supervisor',
+  store_manager: 'Store Manager', storekeeper: 'Storekeeper', fb_manager: 'F&B Manager', housekeeping_supervisor: 'Housekeeping Supervisor',
 };
 export function normalizeStaffRole(role) {
   const value = String(role || '').toLowerCase().trim().replace(/\s+/g, '_');
-	const aliases = { owner:'hotel_admin', administrator:'hotel_admin', general_manager:'hotel_admin', manager:'front_office_manager', storekeeper:'store_manager', store_keeper:'store_manager', housekeeping:'housekeeping_supervisor' };
+	const aliases = { owner:'hotel_admin', administrator:'hotel_admin', general_manager:'hotel_admin', manager:'front_office_manager', storekeeper:'storekeeper', store_keeper:'storekeeper', housekeeping:'housekeeping_supervisor' };
   return aliases[value] || value;
 }
 export function getDefaultModulesForRole(role) {
@@ -35,7 +35,7 @@ export function getDefaultModulesForRole(role) {
     case 'front_office_manager': return ['frontoffice'];
     case 'receptionist': case 'front_desk': return ['frontoffice','pos'];
     case 'pos_staff': case 'waiter': case 'cashier': return ['pos'];
-    case 'store_manager': return ['store'];
+    case 'store_manager': case 'storekeeper': return ['store'];
     case 'fb_manager': return ['pos','store'];
     case 'housekeeping_supervisor': return ['frontoffice'];
     default: return [];
@@ -172,7 +172,6 @@ const PATH_PERMISSION_RULES = [
   [/^\/stores\/inventory\/productions(?:\/|$)/, 'stores.production.post'],
   [/^\/stores\/inventory(?:\/|$)/, 'stores.inventory.view'],
   [/^\/stores\/labels(?:\/|$)/, 'stores.inventory.view'],
-  [/^\/stores\/requisitions(?:\/|$)/, 'stores.suppliers.manage'],
   [/^\/pos(?:\/|$)/, 'pos.access'],
   [/^\/backoffice\/billing(?:\/|$)/, 'back_office.billing.manage'],
   [/^\/frontoffice\/reservations(?:\/|$)/, 'front_office.reservations.view'],

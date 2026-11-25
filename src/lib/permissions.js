@@ -11,6 +11,7 @@ export const WORKSPACES = ['pos', 'frontoffice', 'stores', 'backoffice'];
 export const WORKSPACE_LABELS = {
   pos: 'POS & F&B',
   frontoffice: 'Front Office',
+  store: 'Stores',
   stores: 'Stores',
   backoffice: 'Back Office',
 };

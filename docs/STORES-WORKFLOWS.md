@@ -72,7 +72,7 @@ Eight new permission codes are inserted into `employee_permission_codes` and res
 
 Every Stores RPC checks `fn_subscription_module_allowed(property_id, 'store')` and the relevant permission. Property isolation is enforced via RLS plus explicit `property_id` predicates. Path rules in `authService.js` gate routes client-side as a convenience; the RPCs are the authority. The Standard package cannot reach STORES routes or APIs.
 
-Role templates are seeded/backfilled for existing system roles. The `Storekeeper` template explicitly cannot approve, view costs or manage cost centres. `storekeeper` / `store_keeper` still alias to `store_manager` (see §14).
+Role templates are seeded/backfilled for existing system roles. Since Phase 3, `storekeeper` / `store_keeper` resolve to a distinct canonical `storekeeper` role rather than aliasing to `store_manager`. The `Storekeeper` template cannot approve, view costs, manage cost centres or view valuation (see §15).
 
 ## 5. Requisition lifecycle (no stock movement)
 
@@ -169,7 +169,7 @@ The contract tests are source-contract tests: they assert table structure, posti
 - **Wastage** (D8): `fn_post_wastage` remains post-only with no approval workflow. Out of Phase 1 scope.
 - **Transfers** (D13): Phase 2 adds `draft/pending/dispatched/received/partially_received/cancelled` additively and keeps `completed` valid. The issue-note `in_transit` status is reserved, not used yet.
 - **Discrepancy resolution** is manual; Phase 1 records the shortage but does not auto-adjust stock.
-- **Roles** (Phase 3): `storekeeper` / `store_keeper` still alias to `store_manager` and can approve until the split. The seeded `Storekeeper` template cannot.
+- **Roles** (Phase 3): `storekeeper` / `store_keeper` are now canonical and no longer inherit Store Manager approvals. Existing staff are not reassigned automatically; see §15.
 - **Notifications** are in-app only; there is no push/email subsystem.
 - Cost fields are unprotected at the database-column level but are unreachable through table grants and all RPC payloads without `stores.costs.view`.
 - Existing uncommitted print-agent/installer changes were left untouched. Nothing has been pushed.
@@ -228,3 +228,43 @@ The Storekeeper dashboard now filters canonical `pending`/`in_transit`/`dispatch
 ## P2.5 Verification
 
 Source-contract tests cover schema columns, line identity, posting paths, permissions/SoD, idempotency, legacy compatibility, RPC wrappers, routes, navigation and report definitions. Build, lint, typecheck, route/navigation and report suites must pass before hand-off. No live Postgres migration has been applied; staging verification is still required.
+
+---
+
+# Phase 3 Addendum — Role and authorization cleanup
+
+## P3.1 Canonical role split
+
+`storekeeper` and `store_keeper` normalize to canonical `storekeeper` in both client authorization (`src/services/authService.js`) and app navigation (`src/data/modules/navArchitecture.js`). `store_manager` remains valid and compatible. No employee row is silently reassigned by the migration.
+
+Approved matrix:
+
+| Role | Stores access |
+| --- | --- |
+| Storekeeper | `stores.access`, `stores.inventory.view`, `stores.stock.receive`, `stores.stock.issue`, `stores.stock.transfer`, `stores.stock.adjust`, `stores.suppliers.manage`, `stores.production.post`, `stores.requisition.view`, `stores.requisition.issue`, `stores.requisition.receive`, `stores.stock.wastage.submit` |
+| Store Manager | All Storekeeper codes plus `stores.requisition.create`, `stores.requisition.approve`, `stores.issue.void`, `stores.costs.view`, `stores.costcentre.manage`, `stores.inventory.valuation.view`, `stores.stock.wastage.approve` |
+| Department Requester | `stores.access`, `stores.requisition.create`, `stores.requisition.view`, `stores.requisition.receive` |
+| Accountant | `back_office.access`, `back_office.reports.view`, `back_office.billing.manage`, `stores.access`, `stores.inventory.view`, `stores.costs.view`, `stores.inventory.valuation.view` |
+| Auditor | `back_office.access`, `back_office.reports.view`, `stores.access`, `stores.inventory.view`, `stores.costs.view`, `stores.inventory.valuation.view` |
+
+`stores.stock.wastage.submit` is preserved because it is an existing operational grant from the wastage workflow. It is not an approval control. Manager-only approval, costs, cost-centre management and valuation are excluded from Storekeeper.
+
+## P3.2 Dry-run review
+
+`public.fn_refresh_stores_role_split_review(p_property_id uuid)` refreshes `public.stores_role_split_review` for active Storekeeper/Store Manager staff. It records current role, `role_id`, assigned modules, effective permission codes, proposed canonical role and a required-action note. The function is admin/platform-owner only and performs **no** `UPDATE` or `DELETE` on `public.staff`.
+
+Administrators review the rows first. Any reassignment requires an explicit admin action through the existing employee role update flow.
+
+## P3.3 Templates and admin surface
+
+Forward-only migration `20261125111000_phase3_stores_role_templates.sql` reconciles built-in templates from one function, `fn_phase3_stores_role_codes(text)`, and seeds Accountant/Auditor templates. Built-in templates can be edited in `Roles & templates`, but deletion remains blocked. Editing a built-in template requires an explicit impact confirmation and writes `employee_system_role_updated` with old/new permission codes and affected staff count.
+
+The legacy `/backoffice/employees/access-rights` surface is preserved as a `Staff & access rights` tab inside `EmployeeConsole`. Staff creation, module assignment, PIN management and access history behavior are unchanged.
+
+## P3.4 Package hints
+
+The role editor displays UI-only hints when a workspace is disabled by the property package (`PACKAGE_MODULES` mapped through `WORKSPACE_TO_APP`). Hints never grant or withhold permissions; RLS and server RPCs remain the authority.
+
+## P3.5 Verification status
+
+Phase 3 source-contract tests cover the migration, template mirror, dry-run review, role matrix, built-in edit audit, package hints, navigation split and unified route. Live Postgres verification remains pending. No Phase 3 push, merge, tag or release is authorized without separate approval.
