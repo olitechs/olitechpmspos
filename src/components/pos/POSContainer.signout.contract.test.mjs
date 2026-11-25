@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 
 const source = readFileSync(new URL('./POSContainer.jsx', import.meta.url), 'utf8');
 
-test('POS sign-out confirms before clearing the employee and window PIN sessions', () => {
+test('POS sign-out confirms a full account logout before clearing local POS sessions', () => {
   const handler = source.slice(source.indexOf('const handlePosSignOut'), source.indexOf('const [activeTab'));
   assert.match(handler, /window\.confirm\(/);
   assert.match(handler, /if \(!confirmed\) return/);
