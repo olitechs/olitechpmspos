@@ -9,7 +9,7 @@ export const MAIN_NAV = [
 export const BACK_OFFICE_NAV = [
   { id:'reports', label:'Reports', icon:BarChart3, children:[['Sales report','/backoffice/reports/sales'],['Inventory report','/backoffice/reports/inventory'],['POS shift history','/backoffice/reports/shifts']] },
   { id:'items', label:'Items', icon:ShoppingBag, expanded:true, children:[['Item list','/backoffice/items/list'],['Categories','/backoffice/items/categories'],['Modifiers','/backoffice/items/modifiers'],['Discounts','/backoffice/items/discounts']] },
-  { id:'inventory', label:'Inventory management', icon:ShoppingCart, expanded:true, children:[['Purchase orders','/backoffice/inventory/purchase-orders'],['Transfer orders','/backoffice/inventory/transfer-orders'],['Stock adjustments','/backoffice/inventory/stock-adjustments'],['Inventory counts','/backoffice/inventory/counts'],['Productions','/backoffice/inventory/productions'],['Suppliers','/backoffice/inventory/suppliers'],['Inventory history','/backoffice/inventory/history'],['Inventory valuation','/backoffice/inventory/valuation']] },
+  { id:'inventory', label:'Inventory management', icon:ShoppingCart, expanded:true, children:[['Purchase orders','/backoffice/inventory/purchase-orders'],['Transfer orders','/backoffice/inventory/transfer-orders'],['Stock adjustments','/backoffice/inventory/stock-adjustments'],['Inventory counts','/backoffice/inventory/counts'],['Productions','/backoffice/inventory/productions'],['Suppliers','/backoffice/inventory/suppliers'],['Cost centres','/backoffice/inventory/cost-centres'],['Inventory history','/backoffice/inventory/history'],['Inventory valuation','/backoffice/inventory/valuation']] },
   { id:'employees', label:'Employees', icon:Users, expanded:true, children:[['Employee list','/backoffice/employees/list'],['Manage employees','/backoffice/employees/manage'],['Departments','/backoffice/employees/departments'],['Roles & permissions','/backoffice/employees/roles'],['Invitations','/backoffice/employees/invitations'],['PIN & security','/backoffice/employees/security'],['Access history','/backoffice/employees/access-history'],['Employee licences','/backoffice/employees/licences'],['Access rights','/backoffice/employees/access-rights'],['Timecards','/backoffice/employees/timecards'],['Total hours worked','/backoffice/employees/hours']] },
   { id:'store-admin', label:'Store administration', icon:Store, expanded:true, children:[['Manage stores','/backoffice/stores'],['POS Devices','/backoffice/pos-devices'],['Printers','/backoffice/printers']] },
   { id:'customers', label:'Customers', icon:Users, path:'/backoffice/customers' },
@@ -19,6 +19,9 @@ export const BACK_OFFICE_NAV = [
 ];
 export const STORES_NAV = [
   ['Dashboard','/stores','dashboard',['admin','owner','store_manager']],
+  ['Requisitions','/stores/requisitions','requisitions',['admin','owner','store_manager','storekeeper']],
+  ['Issue notes','/stores/issue-notes','issue-notes',['admin','owner','store_manager','storekeeper']],
+  ['Request stock','/stores/request-stock','request-stock',['admin','owner','store_manager','storekeeper','front_desk','pos_staff','housekeeping']],
   ['Inventory','/stores/stock','inventory',['admin','owner','store_manager']],
   ['Purchase Orders','/stores/purchasing','purchasing',['admin','owner','store_manager']],
   ['Transfer Orders','/stores/transfers','transfers',['admin','owner','store_manager']],
@@ -29,6 +32,7 @@ export const STORES_NAV = [
   ['Inventory Valuation','/stores/inventory/valuation','valuation',['admin','owner','store_manager']],
   ['Label Printing','/stores/labels','labels',['admin','owner','store_manager']],
   ['Reports','/stores/reports/inventory','reports',['admin','owner','store_manager']],
+  ['Requisition reports','/stores/reports/requisitions','requisition-reports',['admin','owner','store_manager']],
   ['KDS Screens','/stores/kds','kds',['admin','owner','store_manager']],
 ];
 export const FRONT_OFFICE_NAV = [['Dashboard','/frontoffice','dashboard',['admin','owner','front_office_manager','front_desk','housekeeping']],['Room Planner','/frontoffice/room-planner','room-planner',['admin','owner','front_office_manager','front_desk','housekeeping']],['Reservations','/frontoffice/reservations','reservations',['admin','owner','front_office_manager','front_desk']],['Folio','/frontoffice/folio','folio',['admin','owner','front_office_manager','front_desk']],['Housekeeping','/frontoffice/housekeeping','housekeeping',['admin','owner','front_office_manager','front_desk','housekeeping']],['Night Audit','/frontoffice/night-audit','night-audit',['admin','owner','front_office_manager']]];

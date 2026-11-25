@@ -773,3 +773,109 @@ export function buildManagementReportDefinition({ report = {}, sales = {}, from,
     notes: ['Values are limited to the live management and sales-detail RPC results for the active property. This report does not expand beyond the source queries.'],
   });
 }
+
+// ---------------------------------------------------------------------------
+// Stores requisition and issue registers (Phase 1)
+// ---------------------------------------------------------------------------
+
+const statusLabel = (value) => cleanText(value, 'unknown').replaceAll('_', ' ');
+
+export function buildStoresRequisitionRegisterDefinition({ rows = [], from = '', to = '', propertyName, generatedBy }) {
+  const data = (rows || []).map((row) => ({
+    req_no: cleanText(row.req_no),
+    status: statusLabel(row.status),
+    cost_centre: cleanText(row.cost_centre_name, 'Unassigned'),
+    requested_by: cleanText(row.requested_by_name, 'Unknown'),
+    priority: statusLabel(row.priority),
+    needed_by: row.needed_by || '',
+    lines: toNumber(row.line_count),
+    requested_qty: toNumber(row.total_requested),
+    approved_qty: toNumber(row.total_approved),
+    issued_qty: toNumber(row.total_issued),
+    created_at: row.created_at || '',
+  }));
+
+  return createReportDefinition({
+    key: 'stores-requisition-register',
+    title: 'Stores Requisition Register',
+    subtitle: 'Department stock requests, approvals and issued quantities',
+    propertyName,
+    period: { from, to },
+    filters: { period: from || to ? `${from || 'start'} to ${to || 'end'}` : 'All time' },
+    generatedBy,
+    summary: [
+      metric('Requisitions', data.length),
+      metric('Requested quantity', data.reduce((sum, row) => sum + row.requested_qty, 0)),
+      metric('Issued quantity', data.reduce((sum, row) => sum + row.issued_qty, 0)),
+    ],
+    sections: [{
+      name: 'requisitions',
+      title: 'Requisitions',
+      columns: [
+        textColumn('req_no', 'Requisition', 16),
+        textColumn('status', 'Status', 18),
+        textColumn('cost_centre', 'Cost centre', 24),
+        textColumn('requested_by', 'Requested by', 22),
+        textColumn('priority', 'Priority', 12),
+        dateColumn('needed_by', 'Needed by'),
+        numberColumn('lines', 'Lines', 'number', 10),
+        numberColumn('requested_qty', 'Requested', 'quantity'),
+        numberColumn('approved_qty', 'Approved', 'quantity'),
+        numberColumn('issued_qty', 'Issued', 'quantity'),
+        dateTimeColumn('created_at', 'Created'),
+      ],
+      rows: data,
+    }],
+    notes: ['Quantities are shown in each line unit as entered; approved and issued totals are not converted to a common base unit.'],
+  });
+}
+
+export function buildStoresIssueRegisterDefinition({ rows = [], from = '', to = '', propertyName, generatedBy }) {
+  const data = (rows || []).map((row) => ({
+    issue_no: cleanText(row.issue_no),
+    requisition_no: cleanText(row.requisition_no, 'Direct issue'),
+    status: statusLabel(row.status),
+    cost_centre: cleanText(row.cost_centre_name, 'Unassigned'),
+    from_location: cleanText(row.from_location_name, '—'),
+    to_location: cleanText(row.to_location_name, 'Consumed'),
+    issued_by: cleanText(row.issued_by_name, 'Unknown'),
+    issued_at: row.issued_at || '',
+    received_at: row.received_at || '',
+    discrepancy: row.has_discrepancy ? 'Yes' : 'No',
+    lines: toNumber(row.line_count),
+  }));
+
+  return createReportDefinition({
+    key: 'stores-issue-register',
+    title: 'Stores Issue Register',
+    subtitle: 'Posted issue notes, their destinations and receipt status',
+    propertyName,
+    period: { from, to },
+    filters: { period: from || to ? `${from || 'start'} to ${to || 'end'}` : 'All time' },
+    generatedBy,
+    summary: [
+      metric('Issue notes', data.length),
+      metric('With discrepancy', data.filter((row) => row.discrepancy === 'Yes').length),
+      metric('Lines issued', data.reduce((sum, row) => sum + row.lines, 0)),
+    ],
+    sections: [{
+      name: 'issue-notes',
+      title: 'Issue notes',
+      columns: [
+        textColumn('issue_no', 'Issue note', 16),
+        textColumn('requisition_no', 'Requisition', 16),
+        textColumn('status', 'Status', 16),
+        textColumn('cost_centre', 'Cost centre', 22),
+        textColumn('from_location', 'From', 20),
+        textColumn('to_location', 'To', 20),
+        textColumn('issued_by', 'Issued by', 22),
+        dateTimeColumn('issued_at', 'Issued'),
+        dateTimeColumn('received_at', 'Received'),
+        textColumn('discrepancy', 'Discrepancy', 12),
+        numberColumn('lines', 'Lines', 'number', 10),
+      ],
+      rows: data,
+    }],
+    notes: ['Cost values are deliberately excluded from this register. Costed issue details require the stores.costs.view permission.'],
+  });
+}

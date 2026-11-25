@@ -5,7 +5,7 @@ import {
   ClipboardCheck, ClipboardList, Grid3X3, HelpCircle, LayoutDashboard, LogOut,
   Menu, Package, Printer, Receipt, Search, Settings, ShoppingBag, ShoppingCart,
   Sparkles, Store, Users, X, BarChart3, PlugZap, Boxes,
-  ChefHat, ArrowRightLeft, Banknote, Percent, ShieldCheck, MonitorCog, LayoutGrid,
+  ChefHat, ArrowRightLeft, Banknote, Percent, ShieldCheck, MonitorCog, LayoutGrid, PackagePlus,
 } from 'lucide-react';
 import { BACK_OFFICE_NAV, FRONT_OFFICE_NAV, STORES_NAV, normalizeAppPath, normalizeAppRole } from '@/data/modules/navArchitecture';
 import { useAuth } from '@/lib/AuthContext';
@@ -17,7 +17,7 @@ const FRONT_ICONS = {
   dashboard: LayoutDashboard, 'room-planner': BedDouble, rooms: BedDouble,
   reservations: CalendarDays, folio: Receipt, housekeeping: Sparkles, 'night-audit': ClipboardList,
 };
-const STORE_ICONS = { store: Store, dashboard: LayoutDashboard, inventory: Boxes, purchasing: ShoppingCart, transfers: ArrowRightLeft, adjustments: ClipboardCheck, counts: ClipboardCheck, production: ChefHat, history: Receipt, valuation: Banknote, labels: Barcode, reports: BarChart3, settings: Settings, devices: MonitorCog, printers: Printer, kds: LayoutGrid };
+const STORE_ICONS = { store: Store, dashboard: LayoutDashboard, requisitions: ClipboardList, 'issue-notes': Receipt, 'request-stock': PackagePlus, 'requisition-reports': BarChart3, inventory: Boxes, purchasing: ShoppingCart, transfers: ArrowRightLeft, adjustments: ClipboardCheck, counts: ClipboardCheck, production: ChefHat, history: Receipt, valuation: Banknote, labels: Barcode, reports: BarChart3, settings: Settings, devices: MonitorCog, printers: Printer, kds: LayoutGrid };
 const BACK_ICONS = {
   reports: BarChart3, items: ShoppingBag, inventory: ShoppingCart, employees: Users,
   'store-admin': Store,
@@ -96,6 +96,8 @@ export default function AppShell({ workspace = 'backoffice' }) {
       return STORES_NAV.filter(([, , id, roles]) => user?.staff
         ? hasPermissionCode(user, ({
             dashboard: 'stores.access', inventory: 'stores.inventory.view',
+            requisitions: 'stores.requisition.view', 'issue-notes': 'stores.requisition.receive',
+            'request-stock': 'stores.requisition.create', 'requisition-reports': 'stores.requisition.view',
             purchasing: 'stores.suppliers.manage', transfers: 'stores.stock.transfer',
             adjustments: 'stores.stock.adjust', counts: 'stores.stock.adjust',
             production: 'stores.production.post', history: 'stores.inventory.view',

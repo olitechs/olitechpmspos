@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   Activity,
   AlertTriangle,
@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { usePms } from '@/data/PmsStore';
 import { useAuth } from '@/lib/AuthContext';
+import { hasPermissionCode } from '@/services/authService';
 import { pmsService } from '@/services/pmsService';
 
 /* ------------------------------------------------------------------ */
@@ -264,6 +265,14 @@ export default function Dashboard({ onNavigateToPOS, onNavigateToRooms, onNaviga
             >
               <RefreshCw size={14} aria-hidden="true" className={reportLoading ? 'animate-spin' : ''} /> Refresh
             </button>
+            {hasPermissionCode(user, 'stores.requisition.create') ? (
+              <Link
+                to="/stores/request-stock"
+                className="global-secondary-button inline-flex min-h-10 items-center gap-2 rounded-lg px-3 text-sm font-medium"
+              >
+                Request stock
+              </Link>
+            ) : null}
             <button
               type="button"
               onClick={goPOS}

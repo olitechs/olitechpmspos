@@ -129,7 +129,9 @@ test('Storekeeper dashboard exposes required filters, operational sections and h
   assert.match(alertDetails, /DialogTitle/);
   assert.match(alertDetails, /Saved stock location/);
   assert.match(alertDetails, /canSeeCosts/);
-  assert.match(storekeeperDashboard, /No requisition entity\/workflow/);
+  assert.match(storekeeperDashboard, /recentRequisitions/);
+  assert.match(storekeeperDashboard, /Pending requisitions/);
+  assert.match(storekeeperDashboard, /storesService\.dashboard/);
   assert.match(storekeeperDashboard, /to="\/stores\/stock\?tab=products/);
   assert.doesNotMatch(storekeeperDashboard, /\/stores\/manage\?tab=products/);
   assert.match(storekeeperService, /\.eq\('property_id', propertyId\)/);

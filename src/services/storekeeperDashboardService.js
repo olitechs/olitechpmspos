@@ -68,7 +68,7 @@ export const storekeeperDashboardService = {
         if (error) throw new Error(error.message);
         return data || [];
       }, []),
-      readSection(errors, 'transfers', () => pagePropertyRows('stock_transfers', '*', propertyId, shiftBack(today, 89), today, { limit: 1000 }), { rows: [], truncated: false }),
+      readSection(errors, 'transfers', () => pagePropertyRows('stock_transfers', '*, from_location:inventory_locations!stock_transfers_from_location_id_fkey(name), to_location:inventory_locations!stock_transfers_to_location_id_fkey(name)', propertyId, shiftBack(today, 89), today, { limit: 1000 }), { rows: [], truncated: false }),
       readSection(errors, 'salesToday', () => reportingService.getManagementReport(propertyId, today, today), null),
       readSection(errors, 'salesWeek', () => reportingService.getManagementReport(propertyId, weekFrom, today), null),
       readSection(errors, 'salesMonth', () => reportingService.getManagementReport(propertyId, monthFrom, today), null),
@@ -94,7 +94,11 @@ export const storekeeperDashboardService = {
       wastageTruncated: wastage.truncated,
       wastageToday: wastageToday.rows,
       counts,
-      transfers: transfers.rows,
+      transfers: transfers.rows.map((row) => ({
+        ...row,
+        from_location_name: row.from_location?.name || null,
+        to_location_name: row.to_location?.name || null,
+      })),
       salesToday,
       salesWeek,
       salesMonth,
