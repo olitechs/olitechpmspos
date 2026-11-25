@@ -244,7 +244,21 @@ create trigger support_ticket_messages_record_event
   after insert on public.support_ticket_messages
   for each row execute function public.record_support_ticket_event();
 
+create or replace function public.support_tickets_touch_updated_at()
+returns trigger
+language plpgsql
+set search_path = public
+as $function$
+begin
+  new.updated_at := now();
+  return new;
+end;
+$function$;
+
+revoke all on function public.support_tickets_touch_updated_at() from public, anon, authenticated;
+revoke all on function public.record_support_ticket_event() from public, anon, authenticated;
+
 drop trigger if exists support_tickets_set_updated_at on public.support_tickets;
 create trigger support_tickets_set_updated_at
   before update on public.support_tickets
-  for each row execute function public.set_updated_at();
+  for each row execute function public.support_tickets_touch_updated_at();
