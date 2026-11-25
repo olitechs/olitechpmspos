@@ -66,7 +66,7 @@ function buildKitchenTicketText(center, lines, { orderNumber, table, propertyNam
 export default function POSContainer({ initialTab = 'floor' } = {}) {
 	const store = useStore();
 	const navigate = useNavigate();
-	const { user } = useAuth();
+	const { user, logout } = useAuth();
 	const propertyId = user?.property?.id;
 	const sessionStaff = (() => { try { return JSON.parse(sessionStorage.getItem('olitech_active_staff_v2') || 'null'); } catch { return null; } })();
 	const posRole = String(sessionStaff?.role || user?.staff?.role || user?.propertyRole || '').toLowerCase().replace(/\s+/g,'_');
@@ -203,25 +203,23 @@ export default function POSContainer({ initialTab = 'floor' } = {}) {
 		setPosUnlocked(true);
 		toast.success('POS access PIN set. The default code is no longer active.');
 	};
-	const handlePosSignOut = () => {
-		const confirmed = window.confirm('Sign out of the POS? The current shift will remain open, and all orders and payment records will be preserved.');
+	const handlePosSignOut = async () => {
+		const confirmed = window.confirm('Sign out of OliTechs completely? You will be logged out of POS, Back Office, Front Office and Storekeeper. The current shift will remain open, and all orders and payment records will be preserved.');
 		if (!confirmed) return;
 		try {
 			sessionStorage.removeItem('olitech_active_staff_v2');
 			sessionStorage.removeItem(`${POS_ACCESS_KEY}:${propertyId}`);
+			setActiveStaffId(null);
+			setSwitchStaff(null);
+			setSwitchError('');
+			setActiveTable(null);
+			setPosAccessError('');
+			setPosUnlocked(false);
+			await logout();
 		} catch (error) {
-			console.error('[POS] could not clear the local sign-in session', error);
-			toast.error('Could not sign out. Please try again.');
-			return;
+			console.error('[POS] full account sign-out failed', error);
+			toast.error('Could not sign out completely. Please try again.');
 		}
-		setActiveStaffId(null);
-		setSwitchStaff(null);
-		setSwitchError('');
-		setActiveTable(null);
-		setActiveTab('shifts');
-		setPosAccessError('');
-		setPosUnlocked(false);
-		toast.success('You have signed out of the POS.');
 	};
 	const [activeTab, setActiveTab] = useState('floor');
 	const [activeTable, setActiveTable] = useState(null);
