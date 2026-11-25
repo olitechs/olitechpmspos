@@ -28,7 +28,7 @@ export default function HelpCentre() {
     return matchesCategory && text.includes(query.trim().toLowerCase());
   }), [category, query]);
 
-  return <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
+  return <div className="h-full min-h-0 w-full overflow-y-auto overscroll-contain px-4 py-6 sm:px-6">
     <div className="mb-7 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 sm:p-8">
       <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--brand-soft)] text-[var(--brand-primary)]"><LifeBuoy size={23}/></div>
       <p className="mb-2 text-xs font-semibold uppercase tracking-[.16em] text-[var(--brand-primary)]">OliTechs support</p>
