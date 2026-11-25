@@ -65,26 +65,27 @@ DECLARE
   v_before_stock numeric;
   v_storekeeper_codes text[];
 BEGIN
-  -- Storekeeper receives the full Stores role, including valuation and request submission,
-  -- but does not receive the manager-only approval permission.
+  -- Phase 3 keeps the approved operational Stores bundle and wastage submission,
+  -- but removes manager-only valuation and approval controls.
   PERFORM set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000004', true);
   v_storekeeper_codes := public.fn_employee_permission_codes(v_property, NULL);
   IF NOT (ARRAY[
       'stores.access','stores.inventory.view','stores.stock.receive',
       'stores.stock.issue','stores.stock.transfer','stores.stock.adjust',
-      'stores.suppliers.manage','stores.production.post',
-      'stores.inventory.valuation.view','stores.stock.wastage.submit'
+      'stores.suppliers.manage','stores.production.post','stores.stock.wastage.submit',
+      'stores.requisition.view','stores.requisition.issue','stores.requisition.receive'
     ]::text[] <@ v_storekeeper_codes)
+    OR 'stores.inventory.valuation.view' = ANY(v_storekeeper_codes)
     OR 'stores.stock.wastage.approve' = ANY(v_storekeeper_codes) THEN
-    RAISE EXCEPTION 'STOREKEEPER-001: expected full Stores permissions plus wastage submission, without approval';
+    RAISE EXCEPTION 'STOREKEEPER-001: expected operational Stores permissions plus wastage submission, without valuation or approval';
   END IF;
 
   -- The same employee must resolve correctly when a verified PIN staff session is active.
   PERFORM set_config('request.jwt.claim.staff_id', '60000000-0000-0000-0000-000000000001', true);
   v_storekeeper_codes := public.fn_employee_permission_codes(v_property, NULL);
   IF NOT ('stores.stock.wastage.submit' = ANY(v_storekeeper_codes)
-          AND 'stores.inventory.valuation.view' = ANY(v_storekeeper_codes)) THEN
-    RAISE EXCEPTION 'STOREKEEPER-002: active PIN session lost the assigned Stores permissions';
+          AND NOT ('stores.inventory.valuation.view' = ANY(v_storekeeper_codes))) THEN
+    RAISE EXCEPTION 'STOREKEEPER-002: active PIN session lost wastage submission or gained valuation';
   END IF;
   PERFORM set_config('request.jwt.claim.staff_id', '', true);
 

@@ -23,7 +23,7 @@ export default function Sidebar({activeModule,onModuleChange,staffRole}){
  const hotelName=user?.property?.name||user?.property?.business_name||"OliTechs Hotel";
  const staff=getSessionStaff();const displayName=user?.name||staff?.full_name||"Staff";
  const initials=displayName.split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join("").toUpperCase()||"OT";
- const roleLabel={hotel_admin:"General Manager",super_admin:"Super Admin",front_office_manager:"Front Office Manager",receptionist:"Receptionist",front_desk:"Front Desk",pos_staff:"POS Staff",waiter:"Waiter",cashier:"Cashier",store_manager:"Store Manager",fb_manager:"F&B Manager",housekeeping_supervisor:"Housekeeping Supervisor"}[role]||"Staff";
+ const roleLabel={hotel_admin:"General Manager",super_admin:"Super Admin",front_office_manager:"Front Office Manager",receptionist:"Receptionist",front_desk:"Front Desk",pos_staff:"POS Staff",waiter:"Waiter",cashier:"Cashier",store_manager:"Store Manager",storekeeper:"Storekeeper",fb_manager:"F&B Manager",housekeeping_supervisor:"Housekeeping Supervisor"}[role]||"Staff";
  const go=item=>{onModuleChange?.(item.id==="dining-tables"?"pos":item.id);navigate(item.path);setMobileOpen(false)};
  const active=item=>item.id==="roles"?location.pathname.startsWith("/backoffice/employees/")||location.pathname==="/admin/roles"||activeModule==="roles":item.id==="settings"?location.pathname.startsWith("/backoffice/settings/")||location.pathname.startsWith("/settings/")||activeModule==="settings":item.active?.includes(activeModule);
 

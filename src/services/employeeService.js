@@ -59,11 +59,15 @@ export const employeeService = {
       p_permission_codes: permissionCodes, p_description: description,
     });
   },
-  updateRole(roleId, name, workspace, permissionCodes, description = null) {
+  updateRole(roleId, name, workspace, permissionCodes, description = null, confirmSystemEdit = false) {
     return callRpc('fn_update_employee_role', {
       p_role_id: roleId, p_name: name, p_workspace: workspace,
       p_permission_codes: permissionCodes, p_description: description,
+      p_confirm_system_edit: confirmSystemEdit,
     });
+  },
+  refreshRoleSplitReview(propertyId) {
+    return callRpc('fn_refresh_stores_role_split_review', { p_property_id: propertyId });
   },
   deleteRole(roleId) {
     return callRpc('fn_delete_employee_role', { p_role_id: roleId });

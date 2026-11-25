@@ -9,8 +9,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Building2, RefreshCw, ShieldAlert, Users } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
-import { hasPermissionCode } from '@/services/authService';
+import { getSessionStaff, hasPermissionCode, normalizeStaffRole } from '@/services/authService';
 import { employeeService } from '@/services/employeeService';
+import Roles from '@/pages/admin/Roles';
 import DepartmentsPanel from '@/components/employees/DepartmentsPanel';
 import RolesPermissionsPanel from '@/components/employees/RolesPermissionsPanel';
 import InvitationsPanel from '@/components/employees/InvitationsPanel';
@@ -22,7 +23,8 @@ import EmployeesPanel from '@/components/employees/EmployeesPanel';
 const TABS = [
   { id: 'employees', label: 'Employees', path: '/backoffice/employees/manage', permission: 'back_office.employees.manage' },
   { id: 'departments', label: 'Departments', path: '/backoffice/employees/departments', permission: 'back_office.employees.manage' },
-  { id: 'permissions', label: 'Roles & permissions', path: '/backoffice/employees/roles', permission: 'back_office.employees.manage' },
+  { id: 'permissions', label: 'Roles & templates', path: '/backoffice/employees/roles', permission: 'back_office.employees.manage' },
+  { id: 'access', label: 'Staff & access rights', path: '/backoffice/employees/access-rights', permission: 'back_office.employees.manage' },
   { id: 'invitations', label: 'Invitations', path: '/backoffice/employees/invitations', permission: 'back_office.employees.manage' },
   { id: 'security', label: 'PIN & security', path: '/backoffice/employees/security', permission: 'back_office.employees.manage' },
   { id: 'history', label: 'Access history', path: '/backoffice/employees/access-history', permission: 'back_office.employees.manage' },
@@ -32,7 +34,8 @@ const TABS = [
 const INTRO = {
   employees: ['Employee management', 'Register employees, assign departments and permission bundles, and manage account status. Every change is licence-aware and audited.'],
   departments: ['Departments', 'Group employees by department. Each department defaults to one workspace, which drives which screens its employees can reach.'],
-  permissions: ['Roles & permissions', 'Create custom permission bundles from the server-side catalog. The browser never defines permission codes — they are validated against the catalog in Postgres.'],
+  permissions: ['Roles & templates', 'Edit built-in and custom permission bundles from the server-side catalog. The browser never defines permission codes — they are validated against the catalog in Postgres.'],
+  access: ['Staff & access rights', 'Manage staff roles, assigned workspaces and secure module PINs. This legacy surface is now part of the unified employee console.'],
   invitations: ['Invitations', 'Invite employees by email. They create their own password through a one-time link; the invitation token is bcrypt-hashed at rest and shown to you only once.'],
   security: ['PIN & security', 'Manager authorization PINs are hashed server-side (bcrypt) and used by the full-screen manager approval. Existing staff PINs keep their current behavior.'],
   history: ['Access history', 'Every permission check, manager approval, rejection and licence event for this property.'],
@@ -44,7 +47,11 @@ export default function EmployeeConsole({ tab = 'employees' }) {
   const propertyId = user?.property?.id;
   const activeTab = TABS.some((t) => t.id === tab) ? tab : 'employees';
   const permission = TABS.find((t) => t.id === activeTab)?.permission;
-  const allowed = hasPermissionCode(user, permission);
+  const legacyStaffRole = normalizeStaffRole(getSessionStaff()?.role || user?.staff?.role || user?.propertyRole || user?.role);
+  const canManageAccess = !!user?.isPlatformOwner
+    || ['super_admin', 'hotel_admin'].includes(legacyStaffRole)
+    || ['owner', 'admin'].includes(String(user?.propertyRole || '').toLowerCase());
+  const allowed = activeTab === 'access' ? canManageAccess : hasPermissionCode(user, permission);
   const [title, description] = INTRO[activeTab];
   const [licenceState, setLicenceState] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -83,7 +90,7 @@ export default function EmployeeConsole({ tab = 'employees' }) {
           <ShieldAlert size={32} className="mx-auto text-[var(--danger)]" aria-hidden="true" />
           <h1 className="mt-3 text-xl font-black text-[var(--text)]">Access denied</h1>
           <p className="mt-2 text-sm text-[var(--text-muted)]">
-            Your account does not hold the “{TABS.find((t) => t.id === activeTab)?.label}” permission. Ask an administrator, or request a manager authorization with the <b>back_office.employees.manage</b> permission.
+            Your account does not hold the “{TABS.find((t) => t.id === activeTab)?.label}” access. Ask an administrator, or request a manager authorization with the <b>back_office.employees.manage</b> permission.
           </p>
         </div>
       </div>
@@ -110,6 +117,7 @@ export default function EmployeeConsole({ tab = 'employees' }) {
           {activeTab === 'employees' && <EmployeesPanel propertyId={propertyId} reloadKey={reloadKey} licenceState={licenceState} onLicenceRefused={reload} />}
           {activeTab === 'departments' && <DepartmentsPanel propertyId={propertyId} reloadKey={reloadKey} />}
           {activeTab === 'permissions' && <RolesPermissionsPanel propertyId={propertyId} reloadKey={reloadKey} />}
+          {activeTab === 'access' && <Roles />}
           {activeTab === 'invitations' && <InvitationsPanel propertyId={propertyId} reloadKey={reloadKey} />}
           {activeTab === 'security' && <ManagerCredentialsPanel propertyId={propertyId} reloadKey={reloadKey} />}
           {activeTab === 'history' && <AccessHistoryPanel propertyId={propertyId} reloadKey={reloadKey} />}

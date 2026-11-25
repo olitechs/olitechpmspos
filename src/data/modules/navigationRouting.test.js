@@ -56,10 +56,16 @@ test('public legal footer destinations use registered legal pages', () => {
   assert.ok(app.includes('<Route path="/privacy" element={<PrivacyPage/>}/>'));
 });
 
-test('store keeper role aliases resolve through app navigation and staff authorization', () => {
-  assert.match(navArchitecture, /store_keeper:'store_manager'/);
-  assert.match(authService, /store_keeper:'store_manager'/);
-  assert.match(authService, /storekeeper:'store_manager'/);
+test('store keeper aliases resolve to a distinct canonical role', () => {
+  assert.match(navArchitecture, /store_keeper:'storekeeper'/);
+  assert.match(navArchitecture, /storekeeper:'storekeeper'/);
+  assert.match(authService, /storekeeper:'storekeeper'/);
+  assert.match(authService, /store_keeper:'storekeeper'/);
+  assert.doesNotMatch(authService, /storekeeper:'store_manager'/);
+});
+
+test('employee access rights route renders the unified employee console', () => {
+  assert.match(app, /path="employees\/access-rights" element={<EmployeeConsole tab="access"\/>}/);
 });
 
 test('navigation-related source files contain no unresolved merge separators', () => {

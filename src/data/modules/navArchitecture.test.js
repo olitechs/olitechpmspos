@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   MAIN_NAV,
   FRONT_OFFICE_NAV,
+  STORES_NAV,
   normalizeAppRole,
   canAccessApp,
   getDefaultApp,
@@ -24,8 +25,9 @@ test('legacy staff roles normalize to the canonical application roles', () => {
   assert.equal(normalizeAppRole('housekeeping_supervisor'), 'housekeeping');
   assert.equal(normalizeAppRole('cashier'), 'pos_staff');
   assert.equal(normalizeAppRole('waiter'), 'pos_staff');
-  assert.equal(normalizeAppRole('store_keeper'), 'store_manager');
-  assert.equal(normalizeAppRole('storekeeper'), 'store_manager');
+  assert.equal(normalizeAppRole('store_keeper'), 'storekeeper');
+  assert.equal(normalizeAppRole('storekeeper'), 'storekeeper');
+  assert.equal(normalizeAppRole('store_manager'), 'store_manager');
   assert.equal(normalizeAppRole('  FRONT_DESK  '), 'front_desk');
 });
 
@@ -39,8 +41,19 @@ test('workspace access is constrained by role', () => {
   assert.equal(canAccessApp('waiter', 'backoffice'), false);
   assert.equal(canAccessApp('store_manager', 'stores'), true);
   assert.equal(canAccessApp('store_keeper', 'stores'), true);
+  assert.equal(canAccessApp('storekeeper', 'stores'), true);
   assert.equal(getDefaultApp('store_keeper', 'professional'), 'stores');
+  assert.equal(getDefaultApp('storekeeper', 'professional'), 'stores');
   assert.equal(canAccessApp('admin', 'missing-workspace'), false);
+});
+
+test('Stores navigation gives Storekeeper operational screens but not valuation', () => {
+  const rolesFor = (path) => STORES_NAV.find(([, navPath]) => navPath === path)?.[3] || [];
+  for (const path of ['/stores', '/stores/requisitions', '/stores/issue-notes', '/stores/stock', '/stores/transfers']) {
+    assert.ok(rolesFor(path).includes('storekeeper'), `${path} must be available to Storekeeper`);
+  }
+  assert.ok(!rolesFor('/stores/inventory/valuation').includes('storekeeper'));
+  assert.ok(rolesFor('/stores/inventory/valuation').includes('store_manager'));
 });
 
 test('package tier gates workspace access', () => {
