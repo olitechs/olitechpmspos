@@ -33,6 +33,7 @@ export const STORES_NAV = [
   ['Label Printing','/stores/labels','labels',['admin','owner','store_manager']],
   ['Reports','/stores/reports/inventory','reports',['admin','owner','store_manager']],
   ['Requisition reports','/stores/reports/requisitions','requisition-reports',['admin','owner','store_manager']],
+  ['Transfer reports','/stores/reports/transfers','transfer-reports',['admin','owner','store_manager']],
   ['KDS Screens','/stores/kds','kds',['admin','owner','store_manager']],
 ];
 export const FRONT_OFFICE_NAV = [['Dashboard','/frontoffice','dashboard',['admin','owner','front_office_manager','front_desk','housekeeping']],['Room Planner','/frontoffice/room-planner','room-planner',['admin','owner','front_office_manager','front_desk','housekeeping']],['Reservations','/frontoffice/reservations','reservations',['admin','owner','front_office_manager','front_desk']],['Folio','/frontoffice/folio','folio',['admin','owner','front_office_manager','front_desk']],['Housekeeping','/frontoffice/housekeeping','housekeeping',['admin','owner','front_office_manager','front_desk','housekeeping']],['Night Audit','/frontoffice/night-audit','night-audit',['admin','owner','front_office_manager']]];

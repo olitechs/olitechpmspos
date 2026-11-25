@@ -173,3 +173,58 @@ The contract tests are source-contract tests: they assert table structure, posti
 - **Notifications** are in-app only; there is no push/email subsystem.
 - Cost fields are unprotected at the database-column level but are unreachable through table grants and all RPC payloads without `stores.costs.view`.
 - Existing uncommitted print-agent/installer changes were left untouched. Nothing has been pushed.
+
+---
+
+# Phase 2 Addendum — In-Transit Stock Transfers
+
+Status: implemented on `phase2/stores-transfers`, pending verification/deployment. Phase 1 remains the approved baseline.
+
+## P2.1 Decisions D14–D21
+
+| ID | Decision |
+| --- | --- |
+| D14 | A dedicated per-property `In Transit` inventory location holds stock between dispatch and receipt. |
+| D15 | `stock_transfer_lines` gives each line a stable UUID and line number; the legacy `lines` JSONB is kept populated for compatibility. |
+| D16 | Canonical statuses are `pending`, `in_transit`, `completed`, `discrepancy`, `cancelled`; `dispatched`/`received` are accepted aliases and `completed` stays valid. |
+| D17 | Creating or cancelling a transfer never changes stock. Dispatch and receipt are the only stock postings. |
+| D18 | A short receipt leaves the undelivered quantity in transit and records a discrepancy; no silent adjustment is posted. |
+| D19 | When `segregation_of_duties` is enabled, the dispatcher and receiver staff IDs must differ. Platform owners remain exempt through the existing guard pattern. |
+| D20 | Overdue is derived from `expected_at` and `transfer_overdue_hours`; an idempotent marker records the notification once. |
+| D21 | Legacy `fn_create_stock_transfer` and `fn_complete_stock_transfer` signatures delegate to the guarded, ledger-backed lifecycle. |
+
+## P2.2 New migrations
+
+Apply after all Phase 1 migrations:
+
+1. `20261124100000_phase2_stores_transfers_schema.sql` — transfer columns, stable line table, RLS, audit/notification vocabulary, transit helper and `TRF` backfill.
+2. `20261124101000_phase2_stores_transfer_functions.sql` — guarded list/detail/product/lifecycle RPCs, widened read-only settings and location picker.
+3. `20261124102000_phase2_stores_transfer_legacy_compat.sql` — legacy transfer RPC compatibility.
+
+Document numbers remain atomic, gap-free and per-property: `TRF-000001`, allocated through `stock_internal.fn_stores_allocate_number`.
+
+## P2.3 Lifecycle
+
+1. **Create** — `fn_stores_create_transfer` requires `stores.stock.transfer`, validates both locations and lines, allocates `TRF-######`, stores stable line identities and audits the creation. No stock is touched.
+2. **Dispatch** — `fn_stores_dispatch_transfer` requires `stores.stock.transfer`, locks the document, posts source → `In Transit` through `stock_internal.fn_stores_post_move`, sets `expected_at`, and audits/notifies. This is the first physical stock movement.
+3. **Receive** — `fn_stores_receive_transfer` requires `stores.stock.receive`, enforces staff-ID segregation, posts accepted quantities from `In Transit` → destination through the same ledger service, records per-line discrepancies, and sets `completed` or `discrepancy`.
+4. **Cancel** — `fn_stores_cancel_transfer` is only valid for pending documents and never posts stock.
+5. **Overdue** — `fn_stores_mark_transfers_overdue` flags expired in-transit documents once and notifies receivers.
+
+Every ledger row carries source type `stock_transfer`, source document id, stable `dispatch:<line-id>` / `receive:<line-id>` idempotency keys, quantity, unit cost and actor. Replays are rejected by document status and idempotency uniqueness.
+
+## P2.4 Screens, reports and dashboard
+
+| Route | Screen | Gate |
+| --- | --- | --- |
+| `/stores/transfers` | Shared transfer workspace: create, filter, detail, dispatch, receive, cancel, printable note | `stores.stock.transfer` |
+| `/backoffice/inventory/transfer-orders` | Same shared workspace in Back Office | `stores.stock.transfer` |
+| `/stores/reports/transfers` | Transfer register with dispatch/receipt, overdue and discrepancy columns | `stores.stock.transfer` |
+
+`src/components/modules/Transfers.jsx` calls only `storesService` RPCs; the browser never writes transfer, stock or ledger rows directly. The transfer note uses `DocumentExportMenu` and `buildStoresTransferNoteDefinition`; the register uses `buildStoresTransferRegisterDefinition`. Both registers exclude costs.
+
+The Storekeeper dashboard now filters canonical `pending`/`in_transit`/`dispatched` transfer states, shows `TRF` document numbers, overdue and discrepancy badges, and displays ledger location snapshots. Navigation has one entry per transfer screen, and `AppShell` maps transfer nav ids to `stores.stock.transfer`.
+
+## P2.5 Verification
+
+Source-contract tests cover schema columns, line identity, posting paths, permissions/SoD, idempotency, legacy compatibility, RPC wrappers, routes, navigation and report definitions. Build, lint, typecheck, route/navigation and report suites must pass before hand-off. No live Postgres migration has been applied; staging verification is still required.

@@ -109,7 +109,7 @@ test('Storekeeper KPI/action routes target registered operational screens', () =
     'stock', 'stock-alerts', 'purchasing', 'transfers', 'inventory/counts',
     'inventory/history', 'inventory/valuation', 'reports/sales', 'reports/inventory', 'requisitions',
   ]) assert.ok(app.includes(`path="${route}"`), `missing Stores route: ${route}`);
-  assert.match(app, /path="transfers" element={<POSApp initialModule="transfers" embedded workspaceModule="stores"\/>}/);
+  assert.match(app, /path="transfers" element={<Transfers workspace="stores"\/>}/);
   assert.match(app, /path="purchasing" element={<Purchasing\/>}/);
   assert.match(storekeeperDashboard, /to="\/stores\/purchasing"[^>]*>Raise PO/);
   assert.match(app, /path="stock" element={<Store initialTab="overview"\/>}/);

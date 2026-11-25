@@ -49,7 +49,7 @@ export const storekeeperDashboardService = {
     const movementFrom = from < shiftBack(today, 29) ? from : shiftBack(today, 29);
     const cappedMovementFrom = movementFrom < shiftBack(today, 89) ? shiftBack(today, 89) : movementFrom;
     const costField = includeCosts ? ',cost_price' : '';
-    const movementColumns = `id,property_id,product_id,type,qty,reason,user_id,source_type,source_id,created_at,product:products(id,name,sku,category,unit,location${costField}),user_profile:profiles(full_name,email)`;
+    const movementColumns = `id,property_id,product_id,type,qty,reason,user_id,source_type,source_id,source_line_key,location_id,location_name_snapshot,idempotency_key,created_at,product:products(id,name,sku,category,unit,location${costField}),user_profile:profiles(full_name,email)`;
     const wastageColumns = `id,property_id,product_id,quantity,reason,created_at,product:products(id,name,sku,category,unit,location${costField})`;
     const countColumns = includeCosts
       ? '*, inventory_count_lines(*, product:products(id,name,cost_price))'
