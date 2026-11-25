@@ -612,7 +612,7 @@ function Install-ServiceRegistration {
   $escape = [System.Security.SecurityElement]::Escape
   $xml = Get-Content -Raw -LiteralPath $TemplatePath
   $xml = $xml.Replace('{{NODE_EXE}}', $escape.Invoke($script:NodeExePath))
-  $xml = $xml.Replace('{{AGENT_SCRIPT}}', $escape.Invoke((ConvertTo-FileUrl -Path $AgentScript)))
+  $xml = $xml.Replace('{{AGENT_SCRIPT}}', $escape.Invoke($AgentScript))
   $xml = $xml.Replace('{{INSTRUMENT_SCRIPT}}', $escape.Invoke((ConvertTo-FileUrl -Path $InstrumentScript)))
   $xml = $xml.Replace('{{WORKING_DIR}}', $escape.Invoke($RepoRoot))
   $xml = $xml.Replace('{{DATA_DIR}}', $escape.Invoke($DataDir))

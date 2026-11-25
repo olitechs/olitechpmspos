@@ -518,15 +518,45 @@ Windows paths in the service XML. The local lifecycle tests already use a
 `file://` URL for `--import`, so the installed service was the remaining path
 that did not.
 
-Fix:
+First fix attempt:
 
-- `install-service.ps1` now has `ConvertTo-FileUrl`, built on
+- `install-service.ps1` gained `ConvertTo-FileUrl`, built on
   `[System.IO.Path]::GetFullPath` and `System.Uri.AbsoluteUri`.
-- The `{{INSTRUMENT_SCRIPT}}` and `{{AGENT_SCRIPT}}` tokens are rendered as
-  file URLs before XML escaping; the executable and working directory remain
-  ordinary Windows paths.
-- The shipped XML template documents why both arguments are URLs.
-- A contract assertion checks that both tokens use the converter.
+- Initially both `{{INSTRUMENT_SCRIPT}}` and `{{AGENT_SCRIPT}}` were rendered
+  as file URLs.
+
+Run `45651489127` still failed with code `17`, but the error changed to
+`ERR_MODULE_NOT_FOUND`: Node resolved the main entry as
+`C:\Program Files\OliTechs\Print Agent\file:\C:\...`. The `--import` hook is
+accepted as a URL; the main module argument is not. See section 17 for the
+final fix.
+
+The tag was moved and the workflow re-run. No GitHub Release was created by
+either failed run.
+
+## 17. Fourth 2.2.1 release run and the main-entry path
+
+Run `45651489127` proved the `--import` URL change worked: the
+`ERR_UNSUPPORTED_ESM_URL_SCHEME` failure was gone. The remaining smoke-test
+failure was:
+
+```
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module
+'C:\Program Files\OliTechs\Print Agent\file:\C:\Program%20Files\...
+\tools\print-agent\print-agent-v2.js'
+```
+
+Node treats the main module argument as a path, so a `file://` string was
+joined onto the working directory. The local lifecycle tests already model the
+correct split: a file URL for `--import`, a plain path for the entry point.
+
+Final fix:
+
+- Keep `ConvertTo-FileUrl` only for `{{INSTRUMENT_SCRIPT}}`.
+- Render `{{AGENT_SCRIPT}}` as the ordinary Windows path again.
+- Document the distinction in the shipped XML template.
+- Assert in the contract test that the entry point is not passed through the
+  URL converter.
 
 The tag will be moved to this fix commit and the workflow re-run. No GitHub
 Release was created by the failed run.

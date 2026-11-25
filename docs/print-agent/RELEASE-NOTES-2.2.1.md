@@ -52,9 +52,9 @@ succeeding.
   are filled, and failed smoke tests print the setup, result and service logs
   directly into the workflow.
 - **The Windows service starts under Node 22.** The generated WinSW config now
-  renders `--import` and the agent entry point as `file://` URLs, which is what
-  Node's ESM loader requires for absolute Windows paths. Raw `C:\...` paths
-  made the service exit 1067 immediately.
+  renders the `--import` preload as a `file://` URL, which is what Node's ESM
+  loader requires for absolute Windows paths. The main entry point stays a
+  normal Windows path because Node resolves that argument as a file path.
 
 ## Before you install
 

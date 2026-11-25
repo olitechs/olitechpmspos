@@ -86,17 +86,21 @@ test('each install stage has a stable exit code and writes install-result.json',
   assert.match(script, /ConvertTo-Json -Depth 6/);
 });
 
-test('the service renders ESM script paths as file URLs', async () => {
+test('the service renders the import hook as a URL and keeps the entry path', async () => {
   const script = await read('./service/install-service.ps1');
   for (const source of [
     'function ConvertTo-FileUrl',
     '[System.IO.Path]::GetFullPath($Path)',
     'New-Object System.Uri -ArgumentList $fullPath',
-    "'{{AGENT_SCRIPT}}', $escape.Invoke((ConvertTo-FileUrl -Path $AgentScript))",
+    "'{{AGENT_SCRIPT}}', $escape.Invoke($AgentScript)",
     "'{{INSTRUMENT_SCRIPT}}', $escape.Invoke((ConvertTo-FileUrl -Path $InstrumentScript))",
   ]) {
     assert.ok(script.includes(source), `install script must include ${source}`);
   }
+  assert.ok(
+    !script.includes("'{{AGENT_SCRIPT}}', $escape.Invoke((ConvertTo-FileUrl -Path $AgentScript))"),
+    'the main entry point must remain a Windows path',
+  );
 });
 
 test('the unresolved placeholder guard runs after ENV_ENTRIES is rendered', async () => {
