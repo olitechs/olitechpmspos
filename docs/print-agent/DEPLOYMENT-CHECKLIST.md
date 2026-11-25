@@ -11,11 +11,19 @@ Inno Setup 6, Windows SDK `signtool`, a code-signing certificate, a verified
 ## Current build status (2026-11-25)
 
 `2.2.0` was an unsigned internal test build and is superseded by `2.2.1`.
-`2.2.1` is built from the tag `print-agent-v2.2.1` by the
-`Print Agent Windows Release` workflow. The workflow runs tests, lint,
-typecheck, the Node.js and WinSW checksum checks, PowerShell 5.1 syntax and
-encoding checks, an elevated silent install/upgrade/uninstall smoke test, and
-publishes only a signed artifact with `SHA256SUMS.txt`.
+`2.2.1` was built from tag `print-agent-v2.2.1` by workflow run `45660692715`
+and published at <https://github.com/olitechs/olitechpmspos/releases/tag/print-agent-v2.2.1>
+on `2026-11-25T17:09:12Z`. The workflow ran tests, lint, typecheck, the Node.js
+and WinSW checksum checks, PowerShell 5.1 syntax and encoding checks, and an
+elevated silent install/upgrade/uninstall smoke test before publishing.
+
+The published `OliTechsPrintAgentSetup-2.2.1.exe` is signed by `CN=OliTechs`
+(thumbprint `621FFC6E70BD6E64F57B35BCE2D256FCD72FFB58`) with an RFC 3161
+timestamp. CI reported `Signed and verified`; its SHA-256 is
+`b30c71134a6e396cefcf448105fc8c26a9fce38d1b5da51ab7fc007e8de8ad89`, matching
+the published `SHA256SUMS.txt`. A machine without the issuing root in its trust
+store reports `UnknownError`/untrusted root; provision the OliTechs root before
+judging the Digital Signatures tab invalid.
 
 Use the signed installer from the `2.2.1` GitHub Release. Do not give a hotel
 an `-UNSIGNED.exe` build.

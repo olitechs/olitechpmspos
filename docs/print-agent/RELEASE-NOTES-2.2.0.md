@@ -3,7 +3,9 @@
 > **Release status: SUPERSEDED by 2.2.1.** The published 2.2.0 artifact was an
 > unsigned internal test build and its service step failed under Windows
 > PowerShell 5.1. It is kept for evidence only and must not be installed.
-> Use the signed [2.2.1 release notes](./RELEASE-NOTES-2.2.1.md) instead.
+> Use the signed [2.2.1 GitHub Release](https://github.com/olitechs/olitechpmspos/releases/tag/print-agent-v2.2.1)
+> or the [2.2.1 release notes](./RELEASE-NOTES-2.2.1.md) instead. The superseded
+> GitHub release body carries the same warning.
 
 **For:** hotel managers, front-office and F&B staff, and OliTechs support
 **What it is:** the small program installed on each Windows POS computer that

@@ -617,5 +617,52 @@ Fix:
 - Add contract assertions for the silent-install guard and for the smoke-test
   timeout, and document the behavior in the installer README and release notes.
 
-The tag will be moved to this fix commit and the workflow re-run. No GitHub
-Release was created by the cancelled run.
+The tag was moved to the fix commit `ebd9bdd7` and the workflow re-run. No
+GitHub Release was created by the cancelled run.
+
+## 20. Signed 2.2.1 release published
+
+Run `45660692715` passed every gate and published the signed release. The tag
+`print-agent-v2.2.1` points to commit `ebd9bdd7` (annotated tag object
+`c3b3742e`). The GitHub Release is public, not a draft and not a prerelease:
+
+<https://github.com/olitechs/olitechpmspos/releases/tag/print-agent-v2.2.1>
+
+Published assets:
+
+- `OliTechsPrintAgentSetup-2.2.1.exe` — 31,205,656 bytes.
+- `SHA256SUMS.txt` — 101 bytes.
+
+The installer SHA-256 reported by the workflow, the checksum file and a local
+download all agree:
+
+```
+b30c71134a6e396cefcf448105fc8c26a9fce38d1b5da51ab7fc007e8de8ad89  OliTechsPrintAgentSetup-2.2.1.exe
+```
+
+Signing:
+
+- Signer: `CN=OliTechs`, thumbprint
+  `621FFC6E70BD6E64F57B35BCE2D256FCD72FFB58`.
+- Signature algorithm: SHA-256 with an RFC 3161 timestamp from DigiCert.
+- The release workflow imported the public certificate from the signing PFX
+  into its ephemeral trust store and reported `Signed and verified`.
+- On an unprovisioned developer machine `Get-AuthenticodeSignature` reports
+  `UnknownError` with an untrusted-root message; the signature and timestamp
+  are present, but that machine does not trust the issuing root.
+
+Smoke gate results:
+
+```
+[smoke] /health ok=true (paired: no)
+[smoke] install-result: stage=complete code=0 service=Running
+[smoke] Install passed.
+[smoke] /health ok=true (paired: no)
+[smoke] install-result: stage=complete code=0 service=Running
+[smoke] Upgrade passed.
+[smoke] Uninstall passed.
+[smoke] PASS: silent install, upgrade and uninstall all behaved as expected.
+```
+
+The `print-agent-unsigned-2.2.0` prerelease is retained as evidence and its body
+now points to this signed release. No service-role key was used or published.

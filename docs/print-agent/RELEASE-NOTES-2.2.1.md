@@ -1,6 +1,8 @@
 # OliTechs Print Agent 2.2.1 — release notes
 
-**Release status:** signed release, built from tag `print-agent-v2.2.1`.
+**Release status:** signed public release, published `2026-11-25T17:09:12Z` from
+tag `print-agent-v2.2.1` by workflow run `45660692715`.
+**Download:** [OliTechs Print Agent 2.2.1](https://github.com/olitechs/olitechpmspos/releases/tag/print-agent-v2.2.1).
 **Supersedes:** `2.2.0` (`print-agent-unsigned-2.2.0`), an unsigned internal test
 build that failed during service installation. Do not deploy `2.2.0` to a hotel.
 
@@ -64,6 +66,28 @@ succeeding.
   staff can pair later from the Start menu or from Settings → Printers. The
   smoke test also has a hard per-install timeout so a hung installer fails with
   diagnostics instead of blocking a release.
+
+## Release verification
+
+The published release contains `OliTechsPrintAgentSetup-2.2.1.exe` and
+`SHA256SUMS.txt`. The downloaded installer matches the published checksum:
+
+```
+b30c71134a6e396cefcf448105fc8c26a9fce38d1b5da51ab7fc007e8de8ad89  OliTechsPrintAgentSetup-2.2.1.exe
+```
+
+The signer is `CN=OliTechs`, certificate thumbprint
+`621FFC6E70BD6E64F57B35BCE2D256FCD72FFB58`, signed with SHA-256 and an RFC 3161
+timestamp from DigiCert. The release workflow imported the public certificate
+from the signing PFX into its ephemeral trust store and reported
+`Signed and verified`. On a machine that does not trust the issuing root,
+`Get-AuthenticodeSignature` reports `UnknownError` with an untrusted-root
+message even though the signature and timestamp are present; have OliTechs IT
+provision the trust root before judging the Digital Signatures tab invalid.
+
+The release workflow passed the elevated smoke gate with unpaired `/health`
+`ok=true`, `install-result.json` at `stage=complete code=0 service=Running` for
+both install and upgrade, and a clean silent uninstall.
 
 ## Before you install
 
