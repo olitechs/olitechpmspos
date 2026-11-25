@@ -4,6 +4,8 @@ import { Building2, Clock, CheckCircle2, ShieldAlert, Users, ArrowRight, Refresh
 import { platformService } from '@/services/platformService';
 import { supabase } from '@/lib/supabaseClient';
 import { PACKAGE_LABELS } from '@/lib/entitlements';
+import { useAuth } from '@/lib/AuthContext';
+import SupportAdminInbox from '@/components/support/SupportAdminInbox';
 
 function StatCard({ icon: Icon, label, value, hint }) {
   return (
@@ -32,6 +34,7 @@ function QuickAction({ to, icon: Icon, title, description }) {
 }
 
 export default function AdminDashboard() {
+  const { user } = useAuth();
   const [stats, setStats] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -190,6 +193,8 @@ export default function AdminDashboard() {
           )}
         </div>
       </section>
+
+      {user?.isPlatformOwner && <SupportAdminInbox />}
 
       <section>
         <div className="flex items-center justify-between mb-3">
