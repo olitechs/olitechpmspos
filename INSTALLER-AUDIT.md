@@ -409,3 +409,29 @@ service/health assertions are deferred to Phase 4. No temporary audit branch or
 workflow push will be created.
 
 No product code changes have been made. Stopping here for approval.
+
+## 13. Phase 4 implementation (quiet exit and smoke test)
+
+Status: implemented locally, not pushed, tagged or executed on a hosted runner.
+
+- `OliTechsPrintAgent.iss` now implements `GetCustomSetupExitCode`. When the
+  service step fails, a `/VERYSILENT /SUPPRESSMSGBOXES` setup exits with the
+  `install-service.ps1` stage code instead of 0. A child that cannot be launched
+  returns 26. Staff still get a `SuppressibleMsgBox` in an interactive install,
+  so unattended runs are never blocked.
+- `smoke-test-installer.ps1` runs an elevated Windows runner through silent
+  install, service/`install-result.json`/`/health` checks, a second silent
+  install as an upgrade, and a silent uninstall. `/health` is asserted to be
+  `ok: true` but pairing is deliberately not required.
+- The release workflow runs that smoke test before uploading the artifact or
+  publishing a release.
+- `uninstall-service.ps1` captures native stdout/stderr through `Start-Process`
+  instead of `2>$null`, waits for the service to disappear, and fails visibly if
+  it cannot be removed. Printer data and logs are still kept by default.
+- `installer.contract.test.mjs` and `service.package.test.mjs` cover these
+  behaviours; `installer.contract.test.mjs` is now part of
+  `npm run test:print-agent`.
+
+The hosted-runner install/upgrade/uninstall assertions cannot be executed until
+this work is pushed and a workflow is run. No `2.2.1` tag or release has been
+created, and `print-agent-unsigned-2.2.0` has not been touched.

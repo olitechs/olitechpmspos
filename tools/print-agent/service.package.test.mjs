@@ -141,6 +141,15 @@ test('start and health failures collect agent, SCM and event-log diagnostics', a
 });
 
 
+test('uninstall does not let native stderr become a terminating error', async () => {
+  const script = await read('./service/uninstall-service.ps1');
+  assert.match(script, /function Invoke-NativeSilently/);
+  assert.match(script, /RedirectStandardOutput/);
+  assert.match(script, /RedirectStandardError/);
+  assert.ok(!/2>\$null/.test(script), 'native stderr must be captured, not redirected with 2>$null');
+  assert.match(script, /service was not removed/);
+});
+
 test('uninstall keeps printer data unless deletion is explicitly requested', async () => {
   const script = await read('./service/uninstall-service.ps1');
   assert.match(script, /\[switch\]\$RemoveData/);

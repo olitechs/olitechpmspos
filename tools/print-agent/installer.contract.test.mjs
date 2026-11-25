@@ -79,6 +79,48 @@ test('a failed service installation is reported to staff, and pairing is skipped
   assert.match(iss, /function ServiceInstalledOk\(\): Boolean/);
 });
 
+test('a failed silent install returns the service exit code instead of success', async () => {
+  const iss = await read('./installer/OliTechsPrintAgent.iss');
+
+  assert.match(iss, /function GetCustomSetupExitCode\(\): Integer/);
+  assert.match(iss, /if ServiceInstallFailed then[\s\S]{0,80}Result := ServiceInstallExitCode/);
+  assert.match(iss, /ServiceInstallExitCode := Code/);
+  assert.match(iss, /ServiceInstallExitCode := 26/, 'a PowerShell launch failure needs its own stable code');
+  assert.match(iss, /ServiceInstallExitCode := 0/);
+  assert.match(iss, /SuppressibleMsgBox\(/);
+  assert.doesNotMatch(iss, /(?<!Suppressible)MsgBox\(/, 'an unsuppressible dialog can block /SUPPRESSMSGBOXES installs');
+  assert.match(iss, /Log\('OliTechs Print Agent: install-service\.ps1 failed with exit code '/);
+});
+
+test('the runner smoke test covers install, health, upgrade and uninstall without requiring pairing', async () => {
+  const smoke = await read('./installer/smoke-test-installer.ps1');
+
+  assert.match(smoke, /\/VERYSILENT/);
+  assert.match(smoke, /\/SUPPRESSMSGBOXES/);
+  assert.match(smoke, /Wait-ServiceRunning/);
+  assert.match(smoke, /\$health\.ok -eq \$true/);
+  assert.ok(!/paired\.(paired|ok).*Fail-Test/i.test(smoke), 'an unpaired workstation is healthy');
+  assert.match(smoke, /install-result/);
+  assert.match(smoke, /\$result\.stage -eq 'complete'/);
+  assert.match(smoke, /\$result\.code -eq 0/);
+  assert.match(smoke, /Upgrade passed/);
+  assert.match(smoke, /Find-Uninstaller/);
+  assert.match(smoke, /Uninstall passed/);
+  assert.match(smoke, /Printer data was deleted without -RemoveData/);
+  assert.doesNotMatch(smoke, /[^\x00-\x7F]/, 'the smoke script must stay ASCII for Windows PowerShell 5.1');
+});
+
+test('the release workflow runs the installer smoke test before publishing', async () => {
+  const workflow = await read('../../.github/workflows/print-agent-release.yml');
+
+  assert.match(workflow, /Smoke test silent install, upgrade and uninstall/);
+  assert.match(workflow, /smoke-test-installer\.ps1/);
+  const smokeStep = workflow.indexOf('Smoke test silent install, upgrade and uninstall');
+  const uploadStep = workflow.indexOf('- uses: actions/upload-artifact@v4');
+  const publishStep = workflow.indexOf('name: Publish GitHub Release');
+  assert.ok(smokeStep > 0 && smokeStep < uploadStep && uploadStep < publishStep, 'smoke test must gate artifact and release');
+});
+
 test('no installer file mentions a service-role key', async () => {
   for (const file of ['./installer/OliTechsPrintAgent.iss', './installer/pair-workstation.ps1', './installer/build-installer.ps1']) {
     const source = await read(file);

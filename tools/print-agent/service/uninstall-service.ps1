@@ -10,6 +10,34 @@ $LegacyTaskName = 'OliTechs Print Agent'
 $DataDir = Join-Path $env:ProgramData 'OliTechs\PrintAgent'
 $ServiceDir = Join-Path $DataDir 'service'
 $WrapperPath = Join-Path $ServiceDir "$ServiceId.exe"
+$systemRoot = if ($env:SystemRoot) { $env:SystemRoot } else { $env:windir }
+$scExe = Join-Path $systemRoot 'System32\sc.exe'
+
+# Native stderr must not become a terminating error under Windows PowerShell 5.1.
+function Invoke-NativeSilently {
+  param(
+    [Parameter(Mandatory = $true)][string]$FilePath,
+    [string[]]$Arguments = @()
+  )
+  $token = '{0}-{1}' -f $PID, [guid]::NewGuid().ToString('N')
+  $stdout = Join-Path $env:TEMP "olitechs-uninstall-$token.out"
+  $stderr = Join-Path $env:TEMP "olitechs-uninstall-$token.err"
+  $exitCode = -1
+  try {
+    $process = Start-Process -FilePath $FilePath -ArgumentList $Arguments -Wait -PassThru -NoNewWindow -RedirectStandardOutput $stdout -RedirectStandardError $stderr -ErrorAction Stop
+    $exitCode = $process.ExitCode
+  } catch {
+    Write-Host "Could not run $(Split-Path -Leaf $FilePath): $($_.Exception.Message)" -ForegroundColor Red
+  }
+  foreach ($path in @($stdout, $stderr)) {
+    if (Test-Path -LiteralPath $path) {
+      $text = Get-Content -LiteralPath $path -Raw -ErrorAction SilentlyContinue
+      if ($text -and $text.Trim()) { Write-Host $text.Trim() }
+      Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
+    }
+  }
+  return $exitCode
+}
 
 $service = Get-Service -Name $ServiceId -ErrorAction SilentlyContinue
 if ($service) {
@@ -17,11 +45,18 @@ if ($service) {
     Stop-Service -Name $ServiceId -Force -ErrorAction SilentlyContinue
   }
   if (Test-Path $WrapperPath) {
-    & $WrapperPath uninstall 2>$null | Out-Null
+    [void](Invoke-NativeSilently -FilePath $WrapperPath -Arguments @('uninstall'))
   } else {
-    sc.exe delete $ServiceId 2>$null | Out-Null
+    [void](Invoke-NativeSilently -FilePath $scExe -Arguments @('delete', $ServiceId))
   }
-  Start-Sleep -Seconds 2
+  for ($i = 0; $i -lt 20; $i++) {
+    if (-not (Get-Service -Name $ServiceId -ErrorAction SilentlyContinue)) { break }
+    Start-Sleep -Seconds 1
+  }
+  $remaining = Get-Service -Name $ServiceId -ErrorAction SilentlyContinue
+  if ($remaining) {
+    throw "The OliTechs Print Agent service was not removed (status: $($remaining.Status)). Restart Windows and uninstall again."
+  }
   Write-Host 'OliTechs Print Agent service removed.' -ForegroundColor Green
 } else {
   Write-Host 'The OliTechs Print Agent service is not installed.'

@@ -151,6 +151,14 @@ jobs:
           $signed = $files | Where-Object { $_.Name -notlike '*-UNSIGNED.exe' } | Select-Object -First 1
           if ($signed) { "signed=$($signed.FullName)" >> $env:GITHUB_OUTPUT }
 
+      - name: Smoke test silent install, upgrade and uninstall
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem dist/installer -Filter 'OliTechsPrintAgentSetup-*.exe' -File | Select-Object -First 1
+          if (-not $installer) { throw 'No installer was produced for the smoke test.' }
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/print-agent/installer/smoke-test-installer.ps1 -InstallerPath $installer.FullName
+          if ($LASTEXITCODE -ne 0) { throw "Print agent installer smoke test failed (exit code $LASTEXITCODE)." }
+
       - uses: actions/upload-artifact@v4
         with:
           name: OliTechsPrintAgent-installer
