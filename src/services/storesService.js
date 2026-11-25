@@ -164,6 +164,67 @@ export const storesService = {
     });
   },
 
+  // Phase 2: in-transit stock transfers. Every method is a guarded RPC; the
+  // browser never writes transfer rows, stock or ledger entries directly.
+  listTransfers(propertyId, { status = null, search = null, overdueOnly = false, limit = 50, offset = 0 } = {}) {
+    return rpc('fn_stores_list_transfers', {
+      p_property_id: propertyId,
+      p_status: status,
+      p_search: search,
+      p_overdue_only: overdueOnly,
+      p_limit: limit,
+      p_offset: offset,
+    });
+  },
+
+  transferDetail(propertyId, transferId) {
+    return rpc('fn_stores_transfer_detail', {
+      p_property_id: propertyId,
+      p_transfer_id: transferId,
+    });
+  },
+
+  transferProducts(propertyId, locationId = null) {
+    return rpc('fn_stores_transfer_products', {
+      p_property_id: propertyId,
+      p_location_id: locationId,
+    });
+  },
+
+  createTransfer(propertyId, payload) {
+    return rpc('fn_stores_create_transfer', {
+      p_property_id: propertyId,
+      p_payload: payload,
+    });
+  },
+
+  dispatchTransfer(propertyId, transferId) {
+    return rpc('fn_stores_dispatch_transfer', {
+      p_property_id: propertyId,
+      p_transfer_id: transferId,
+    });
+  },
+
+  receiveTransfer(propertyId, transferId, payload = {}) {
+    return rpc('fn_stores_receive_transfer', {
+      p_property_id: propertyId,
+      p_transfer_id: transferId,
+      p_payload: payload,
+    });
+  },
+
+  cancelTransfer(propertyId, transferId, reason) {
+    return rpc('fn_stores_cancel_transfer', {
+      p_property_id: propertyId,
+      p_transfer_id: transferId,
+      p_reason: reason,
+    });
+  },
+
+  markTransfersOverdue(propertyId) {
+    return rpc('fn_stores_mark_transfers_overdue', { p_property_id: propertyId });
+  },
+
   dashboard(propertyId) {
     return rpc('fn_stores_dashboard', { p_property_id: propertyId });
   },

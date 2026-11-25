@@ -17,7 +17,7 @@ const FRONT_ICONS = {
   dashboard: LayoutDashboard, 'room-planner': BedDouble, rooms: BedDouble,
   reservations: CalendarDays, folio: Receipt, housekeeping: Sparkles, 'night-audit': ClipboardList,
 };
-const STORE_ICONS = { store: Store, dashboard: LayoutDashboard, requisitions: ClipboardList, 'issue-notes': Receipt, 'request-stock': PackagePlus, 'requisition-reports': BarChart3, inventory: Boxes, purchasing: ShoppingCart, transfers: ArrowRightLeft, adjustments: ClipboardCheck, counts: ClipboardCheck, production: ChefHat, history: Receipt, valuation: Banknote, labels: Barcode, reports: BarChart3, settings: Settings, devices: MonitorCog, printers: Printer, kds: LayoutGrid };
+const STORE_ICONS = { store: Store, dashboard: LayoutDashboard, requisitions: ClipboardList, 'issue-notes': Receipt, 'request-stock': PackagePlus, 'requisition-reports': BarChart3, 'transfer-reports': BarChart3, inventory: Boxes, purchasing: ShoppingCart, transfers: ArrowRightLeft, adjustments: ClipboardCheck, counts: ClipboardCheck, production: ChefHat, history: Receipt, valuation: Banknote, labels: Barcode, reports: BarChart3, settings: Settings, devices: MonitorCog, printers: Printer, kds: LayoutGrid };
 const BACK_ICONS = {
   reports: BarChart3, items: ShoppingBag, inventory: ShoppingCart, employees: Users,
   'store-admin': Store,
@@ -98,6 +98,7 @@ export default function AppShell({ workspace = 'backoffice' }) {
             dashboard: 'stores.access', inventory: 'stores.inventory.view',
             requisitions: 'stores.requisition.view', 'issue-notes': 'stores.requisition.receive',
             'request-stock': 'stores.requisition.create', 'requisition-reports': 'stores.requisition.view',
+            'transfer-reports': 'stores.stock.transfer',
             purchasing: 'stores.suppliers.manage', transfers: 'stores.stock.transfer',
             adjustments: 'stores.stock.adjust', counts: 'stores.stock.adjust',
             production: 'stores.production.post', history: 'stores.inventory.view',

@@ -95,6 +95,9 @@ export const pmsService = {
 		const { data, error } = await supabase.rpc('fn_ensure_inventory_locations', { p_property_id: propertyId });
 		if (error) throw new Error(error.message); return data || [];
 	},
+	// Phase 2: legacy transfer callers remain compatible, but new Stores screens
+	// must use storesService so they receive document numbers, dispatch/receive
+	// confirmation and the full ledger-backed audit trail.
 	async listStockTransfers(propertyId) {
 		const { data, error } = await supabase.from('stock_transfers').select('*, from_location:inventory_locations!stock_transfers_from_location_id_fkey(name), to_location:inventory_locations!stock_transfers_to_location_id_fkey(name)').eq('property_id', propertyId).order('created_at', { ascending: false });
 		if (error) throw new Error(error.message); return data || [];

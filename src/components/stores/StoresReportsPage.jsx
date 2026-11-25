@@ -7,11 +7,17 @@ import ReportDataTable from '@/components/shared/ReportDataTable';
 import {
   buildStoresRequisitionRegisterDefinition,
   buildStoresIssueRegisterDefinition,
+  buildStoresTransferRegisterDefinition,
   formatReportValue,
 } from '@/services/reportDefinitions';
 
 const FIELD = 'min-h-11 w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text)] focus:border-[var(--primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]';
 const PANEL = 'rounded-xl border border-[var(--border)] bg-[var(--surface)]';
+const TABS = [
+  ['requisitions', 'Requisitions'],
+  ['issues', 'Issue notes'],
+  ['transfers', 'Transfers'],
+];
 
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -59,16 +65,20 @@ function downloadCsv(definition) {
   URL.revokeObjectURL(url);
 }
 
-export default function StoresReportsPage() {
+export default function StoresReportsPage({ initialTab = 'requisitions' }) {
   const { user } = useAuth();
   const propertyId = user?.property?.id;
 
-  const [tab, setTab] = useState('requisitions');
+  const [tab, setTab] = useState(TABS.some(([value]) => value === initialTab) ? initialTab : 'requisitions');
   const [from, setFrom] = useState(monthStart());
   const [to, setTo] = useState(today());
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    setTab(TABS.some(([value]) => value === initialTab) ? initialTab : 'requisitions');
+  }, [initialTab]);
 
   const load = useCallback(async () => {
     if (!propertyId) return;
@@ -77,7 +87,9 @@ export default function StoresReportsPage() {
     try {
       const data = tab === 'requisitions'
         ? await storesService.listRequisitions(propertyId, { limit: 500 })
-        : await storesService.listIssueNotes(propertyId, { limit: 500 });
+        : tab === 'transfers'
+          ? await storesService.listTransfers(propertyId, { limit: 500 })
+          : await storesService.listIssueNotes(propertyId, { limit: 500 });
       setRows(Array.isArray(data?.rows) ? data.rows : []);
     } catch (err) {
       setError(err?.message || 'Unable to load this report.');
@@ -90,25 +102,22 @@ export default function StoresReportsPage() {
   useEffect(() => { load(); }, [load]);
 
   const filtered = useMemo(() => rows.filter((row) => {
-    const stamp = tab === 'requisitions' ? row.created_at : row.issued_at;
+    const stamp = tab === 'requisitions' ? row.created_at : tab === 'transfers' ? row.created_at : row.issued_at;
     return inRange(stamp, from, to);
   }), [rows, tab, from, to]);
 
-  const definition = useMemo(() => (tab === 'requisitions'
-    ? buildStoresRequisitionRegisterDefinition({
+  const definition = useMemo(() => {
+    const context = {
       rows: filtered,
       from,
       to,
       propertyName: user?.property?.name || 'Property',
       generatedBy: user?.name || user?.email || 'Authorized user',
-    })
-    : buildStoresIssueRegisterDefinition({
-      rows: filtered,
-      from,
-      to,
-      propertyName: user?.property?.name || 'Property',
-      generatedBy: user?.name || user?.email || 'Authorized user',
-    })), [tab, filtered, from, to, user]);
+    };
+    if (tab === 'requisitions') return buildStoresRequisitionRegisterDefinition(context);
+    if (tab === 'transfers') return buildStoresTransferRegisterDefinition(context);
+    return buildStoresIssueRegisterDefinition(context);
+  }, [tab, filtered, from, to, user]);
 
   const exportCsv = () => {
     if (!definition.sections[0]?.rows?.length) {
@@ -126,7 +135,7 @@ export default function StoresReportsPage() {
           <div>
             <h1 className="text-2xl font-normal text-[var(--text)]">Stores reports</h1>
             <p className="mt-1 text-sm text-[var(--text-muted)]">
-              Requisition and issue registers for the selected period. Costs are excluded from these registers.
+              Requisition, issue and transfer registers for the selected period. Costs are excluded from these registers.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -158,7 +167,7 @@ export default function StoresReportsPage() {
         <div className={`${PANEL} p-3 sm:p-4`}>
           <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_160px_160px]">
             <div className="flex rounded-md border border-[var(--border)] p-1" role="tablist" aria-label="Stores report">
-              {[['requisitions', 'Requisitions'], ['issues', 'Issue notes']].map(([value, label]) => (
+              {TABS.map(([value, label]) => (
                 <button
                   key={value}
                   type="button"

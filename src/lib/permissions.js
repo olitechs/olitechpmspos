@@ -50,6 +50,15 @@ export const PERMISSION_CODES = [
   { code: 'stores.stock.wastage.approve', workspace: 'store', label: 'Approve or reject stock wastage requests', sensitive: true },
   { code: 'stores.production.post', workspace: 'store', label: 'Post inventory production and assembly batches', sensitive: true },
   { code: 'stores.suppliers.manage', workspace: 'store', label: 'Manage suppliers and purchasing', sensitive: true },
+  // Phase 1 Stores catalog mirror. Server permissions remain authoritative.
+  { code: 'stores.requisition.create', workspace: 'store', label: 'Create stock requisitions', sensitive: false },
+  { code: 'stores.requisition.view', workspace: 'store', label: 'View stock requisitions and issue notes', sensitive: false },
+  { code: 'stores.requisition.approve', workspace: 'store', label: 'Approve stock requisitions', sensitive: true },
+  { code: 'stores.requisition.issue', workspace: 'store', label: 'Issue stock against requisitions', sensitive: true },
+  { code: 'stores.requisition.receive', workspace: 'store', label: 'Confirm receipt of issued stock', sensitive: false },
+  { code: 'stores.issue.void', workspace: 'store', label: 'Void posted issue notes', sensitive: true },
+  { code: 'stores.costs.view', workspace: 'store', label: 'View issue-note costs', sensitive: true },
+  { code: 'stores.costcentre.manage', workspace: 'store', label: 'Manage cost centres and Stores settings', sensitive: true },
   // Back Office
   { code: 'back_office.access', workspace: 'backoffice', label: 'Use the Back Office workspace', sensitive: false },
   { code: 'back_office.reports.view', workspace: 'backoffice', label: 'View financial and operational reports', sensitive: false },

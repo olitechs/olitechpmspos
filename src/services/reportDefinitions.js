@@ -879,3 +879,132 @@ export function buildStoresIssueRegisterDefinition({ rows = [], from = '', to = 
     notes: ['Cost values are deliberately excluded from this register. Costed issue details require the stores.costs.view permission.'],
   });
 }
+
+// ---------------------------------------------------------------------------
+// Stores transfer register and printable transfer note (Phase 2)
+// ---------------------------------------------------------------------------
+
+export function buildStoresTransferRegisterDefinition({ rows = [], from = '', to = '', propertyName, generatedBy }) {
+  const data = (rows || []).map((row) => ({
+    transfer_no: cleanText(row.document_no, 'Unnumbered'),
+    status: statusLabel(row.status),
+    from_location: cleanText(row.from_location_name, 'Source'),
+    to_location: cleanText(row.to_location_name, 'Destination'),
+    lines: toNumber(row.line_count),
+    created_at: row.created_at || '',
+    dispatched_at: row.dispatched_at || '',
+    expected_at: row.expected_at || '',
+    received_at: row.received_at || '',
+    overdue: row.is_overdue ? 'Yes' : 'No',
+    discrepancy: Array.isArray(row.discrepancies) && row.discrepancies.length > 0 ? 'Yes' : 'No',
+    reference: cleanText(row.reference, '—'),
+  }));
+
+  return createReportDefinition({
+    key: 'stores-transfer-register',
+    title: 'Stores Transfer Register',
+    subtitle: 'Dispatch, receipt, overdue status and discrepancies for stock transfers',
+    propertyName,
+    period: { from, to },
+    filters: { period: from || to ? `${from || 'start'} to ${to || 'end'}` : 'All time' },
+    generatedBy,
+    summary: [
+      metric('Transfers', data.length),
+      metric('In transit', data.filter((row) => ['In transit', 'Dispatched'].includes(row.status)).length),
+      metric('Overdue', data.filter((row) => row.overdue === 'Yes').length),
+      metric('With discrepancy', data.filter((row) => row.discrepancy === 'Yes').length),
+    ],
+    sections: [{
+      name: 'stock-transfers',
+      title: 'Stock transfers',
+      columns: [
+        textColumn('transfer_no', 'Transfer', 16),
+        textColumn('status', 'Status', 16),
+        textColumn('from_location', 'From', 22),
+        textColumn('to_location', 'To', 22),
+        numberColumn('lines', 'Lines', 'number', 10),
+        dateTimeColumn('created_at', 'Created'),
+        dateTimeColumn('dispatched_at', 'Dispatched'),
+        dateTimeColumn('expected_at', 'Expected'),
+        dateTimeColumn('received_at', 'Received'),
+        textColumn('overdue', 'Overdue', 12),
+        textColumn('discrepancy', 'Discrepancy', 14),
+        textColumn('reference', 'Reference', 20),
+      ],
+      rows: data,
+    }],
+    notes: [
+      'Quantities and costs are deliberately excluded from this register. Open a transfer note for line-level detail.',
+      'An empty received timestamp means the transfer has not been confirmed.',
+    ],
+  });
+}
+
+export function buildStoresTransferNoteDefinition({
+  transfer = {},
+  lines = [],
+  propertyName,
+  generatedBy,
+}) {
+  const detail = (Array.isArray(lines) ? lines : []).map((line) => ({
+    product_id: cleanText(line.product_id),
+    line_no: toNumber(line.line_no),
+    qty: toNumber(line.qty),
+    dispatched_qty: toNumber(line.dispatched_qty),
+    received_qty: toNumber(line.received_qty),
+    product: cleanText(line.product_name || line.name, line.product_id || 'Stock item'),
+  }));
+
+  return createReportDefinition({
+    key: 'stores-transfer-note',
+    title: 'Stock Transfer Note',
+    subtitle: `${cleanText(transfer.document_no, 'Unnumbered transfer')} · ${statusLabel(transfer.status)}`,
+    propertyName,
+    period: { from: '', to: '' },
+    generatedBy,
+    summary: [
+      metric('Lines', detail.length),
+      metric('Expected quantity', detail.reduce((sum, row) => sum + row.qty, 0)),
+      metric('Dispatched quantity', detail.reduce((sum, row) => sum + row.dispatched_qty, 0)),
+      metric('Received quantity', detail.reduce((sum, row) => sum + row.received_qty, 0)),
+    ],
+    sections: [
+      {
+        name: 'transfer-details',
+        title: 'Transfer details',
+        columns: [
+          textColumn('field', 'Field', 28),
+          textColumn('value', 'Value', 58),
+        ],
+        rows: [
+          { field: 'Transfer number', value: cleanText(transfer.document_no, '—') },
+          { field: 'Status', value: statusLabel(transfer.status) },
+          { field: 'From', value: cleanText(transfer.from_location_name, '—') },
+          { field: 'To', value: cleanText(transfer.to_location_name, '—') },
+          { field: 'Reference', value: cleanText(transfer.reference, '—') },
+          { field: 'Created', value: cleanText(transfer.created_at, '—') },
+          { field: 'Dispatched', value: cleanText(transfer.dispatched_at, '—') },
+          { field: 'Expected', value: cleanText(transfer.expected_at, '—') },
+          { field: 'Received', value: cleanText(transfer.received_at, '—') },
+          { field: 'Notes', value: cleanText(transfer.notes, '—') },
+        ],
+      },
+      {
+        name: 'transfer-lines',
+        title: 'Transfer lines',
+        columns: [
+          numberColumn('line_no', 'Line', 'number', 10),
+          textColumn('product', 'Product', 36),
+          numberColumn('qty', 'Expected', 'quantity', 14),
+          numberColumn('dispatched_qty', 'Dispatched', 'quantity', 14),
+          numberColumn('received_qty', 'Received', 'quantity', 14),
+        ],
+        rows: detail,
+      },
+    ],
+    notes: [
+      'No cost values are printed. This note records quantities and confirmation status only.',
+      'A discrepancy is recorded when received quantity differs from dispatched quantity.',
+    ],
+  });
+}
