@@ -51,6 +51,10 @@ succeeding.
   was rejected as an unknown placeholder. The guard now runs after all tokens
   are filled, and failed smoke tests print the setup, result and service logs
   directly into the workflow.
+- **The Windows service starts under Node 22.** The generated WinSW config now
+  renders `--import` and the agent entry point as `file://` URLs, which is what
+  Node's ESM loader requires for absolute Windows paths. Raw `C:\...` paths
+  made the service exit 1067 immediately.
 
 ## Before you install
 

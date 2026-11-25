@@ -86,6 +86,19 @@ test('each install stage has a stable exit code and writes install-result.json',
   assert.match(script, /ConvertTo-Json -Depth 6/);
 });
 
+test('the service renders ESM script paths as file URLs', async () => {
+  const script = await read('./service/install-service.ps1');
+  for (const source of [
+    'function ConvertTo-FileUrl',
+    '[System.IO.Path]::GetFullPath($Path)',
+    'New-Object System.Uri -ArgumentList $fullPath',
+    "'{{AGENT_SCRIPT}}', $escape.Invoke((ConvertTo-FileUrl -Path $AgentScript))",
+    "'{{INSTRUMENT_SCRIPT}}', $escape.Invoke((ConvertTo-FileUrl -Path $InstrumentScript))",
+  ]) {
+    assert.ok(script.includes(source), `install script must include ${source}`);
+  }
+});
+
 test('the unresolved placeholder guard runs after ENV_ENTRIES is rendered', async () => {
   const script = await read('./service/install-service.ps1');
   const renderAt = script.indexOf("$xml = $xml.Replace('{{ENV_ENTRIES}}', $envEntries)");

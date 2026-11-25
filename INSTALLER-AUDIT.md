@@ -496,3 +496,37 @@ Fix:
 
 The tag will be moved to this fix commit and the workflow re-run. No GitHub
 Release was created by the failed run.
+
+## 16. Third 2.2.1 release run and the Windows ESM path bug
+
+Run `45650382331` passed every gate through build, signing and checksums, then
+failed in the smoke test with setup exit code `17`. The diagnostics added in
+section 15 were visible in the workflow log:
+
+```
+install-result.json: stage=start, code=17, status=Stopped
+OliTechsPrintAgent.err.log:
+  Error [ERR_UNSUPPORTED_ESM_URL_SCHEME]: Only URLs with a scheme in:
+  file, data, and node are supported by the default ESM loader.
+  On Windows, absolute paths must be valid file:// URLs. Received protocol 'c:'
+OliTechsPrintAgent.wrapper.log:
+  Starting C:\...\node.exe --import "C:\...\instrument.mjs" "C:\...\print-agent-v2.js"
+```
+
+WinSW registered and started correctly, but Node 22 refused the raw absolute
+Windows paths in the service XML. The local lifecycle tests already use a
+`file://` URL for `--import`, so the installed service was the remaining path
+that did not.
+
+Fix:
+
+- `install-service.ps1` now has `ConvertTo-FileUrl`, built on
+  `[System.IO.Path]::GetFullPath` and `System.Uri.AbsoluteUri`.
+- The `{{INSTRUMENT_SCRIPT}}` and `{{AGENT_SCRIPT}}` tokens are rendered as
+  file URLs before XML escaping; the executable and working directory remain
+  ordinary Windows paths.
+- The shipped XML template documents why both arguments are URLs.
+- A contract assertion checks that both tokens use the converter.
+
+The tag will be moved to this fix commit and the workflow re-run. No GitHub
+Release was created by the failed run.

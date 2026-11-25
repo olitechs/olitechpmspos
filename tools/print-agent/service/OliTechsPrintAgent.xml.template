@@ -14,6 +14,8 @@
   <description>Prints Olitech PMS/POS receipts and kitchen tickets to LAN ESC/POS and Windows-installed printers.</description>
 
   <executable>{{NODE_EXE}}</executable>
+  <!-- Node's ESM loader needs file:// URLs for absolute paths on Windows, so
+       install-service.ps1 renders both script arguments as URLs. -->
   <arguments>--import "{{INSTRUMENT_SCRIPT}}" "{{AGENT_SCRIPT}}"</arguments>
   <workingdirectory>{{WORKING_DIR}}</workingdirectory>
 
