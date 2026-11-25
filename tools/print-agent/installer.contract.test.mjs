@@ -101,6 +101,11 @@ test('the runner smoke test covers install, health, upgrade and uninstall withou
   assert.match(smoke, /\$health\.ok -eq \$true/);
   assert.ok(!/paired\.(paired|ok).*Fail-Test/i.test(smoke), 'an unpaired workstation is healthy');
   assert.match(smoke, /install-result/);
+  assert.match(smoke, /function Write-Diagnostics/);
+  assert.match(smoke, /Setup log tail/);
+  assert.match(smoke, /Install result: /);
+  assert.match(smoke, /Service log tail/);
+  assert.match(smoke, /Write-Diagnostics -SetupLog \$log -ExitCode \$process\.ExitCode/);
   assert.match(smoke, /\$result\.stage -eq 'complete'/);
   assert.match(smoke, /\$result\.code -eq 0/);
   assert.match(smoke, /Upgrade passed/);

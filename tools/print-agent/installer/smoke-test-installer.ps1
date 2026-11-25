@@ -38,6 +38,40 @@ function Assert-True {
   if (-not $Condition) { Fail-Test $Message }
 }
 
+function Write-Diagnostics {
+  param(
+    [Parameter(Mandatory = $true)][string]$SetupLog,
+    [Parameter(Mandatory = $true)][int]$ExitCode
+  )
+  Write-Step ("Silent setup exited with code {0}" -f $ExitCode)
+  if (Test-Path -LiteralPath $SetupLog) {
+    Write-Step ("Setup log tail: {0}" -f $SetupLog)
+    Get-Content -LiteralPath $SetupLog -Tail 100 | ForEach-Object { Write-Host ("  {0}" -f $_) }
+  } else {
+    Write-Step ("Setup log was not created: {0}" -f $SetupLog)
+  }
+
+  $resultPaths = @(
+    (Join-Path $env:ProgramData 'OliTechs\PrintAgent\logs\install-result.json'),
+    (Join-Path $env:TEMP 'OliTechsPrintAgent-logs\install-result.json')
+  )
+  foreach ($resultFile in $resultPaths) {
+    if (-not (Test-Path -LiteralPath $resultFile)) { continue }
+    Write-Step ("Install result: {0}" -f $resultFile)
+    Get-Content -LiteralPath $resultFile | ForEach-Object { Write-Host ("  {0}" -f $_) }
+  }
+
+  $serviceLogs = @(
+    (Join-Path $env:ProgramData 'OliTechs\PrintAgent\logs\install-service.log'),
+    (Join-Path $env:TEMP 'OliTechsPrintAgent-logs\install-service.log')
+  )
+  foreach ($serviceLog in $serviceLogs) {
+    if (-not (Test-Path -LiteralPath $serviceLog)) { continue }
+    Write-Step ("Service log tail: {0}" -f $serviceLog)
+    Get-Content -LiteralPath $serviceLog -Tail 150 | ForEach-Object { Write-Host ("  {0}" -f $_) }
+  }
+}
+
 function Invoke-Setup {
   param(
     [Parameter(Mandatory = $true)][string]$Executable,
@@ -48,6 +82,7 @@ function Invoke-Setup {
   Write-Step ("Running {0}" -f (Split-Path -Leaf $Executable))
   $process = Start-Process -FilePath $Executable -ArgumentList $arguments -PassThru -Wait -ErrorAction Stop
   if ($process.ExitCode -ne 0) {
+    Write-Diagnostics -SetupLog $log -ExitCode $process.ExitCode
     Fail-Test ("{0} exited with code {1}. Setup log: {2}" -f (Split-Path -Leaf $Executable), $process.ExitCode, $log)
   }
   return $log

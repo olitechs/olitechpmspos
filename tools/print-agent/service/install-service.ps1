@@ -609,9 +609,6 @@ function Install-ServiceRegistration {
   $xml = $xml.Replace('{{WORKING_DIR}}', $escape.Invoke($RepoRoot))
   $xml = $xml.Replace('{{DATA_DIR}}', $escape.Invoke($DataDir))
   $xml = $xml.Replace('{{LOG_DIR}}', $escape.Invoke($LogDir))
-  if ($xml -match '\{\{[A-Z_]+\}\}') {
-    Fail-Install -Stage 'template' -Code 10 -Message 'The service template contains a placeholder that this installer does not know how to fill. Reinstall the print agent package.'
-  }
 
   # Pairing needs the public Supabase URL and anon key. Neither is a secret in
   # the credential sense (the anon key ships in the web app), and the workstation
@@ -636,6 +633,13 @@ function Install-ServiceRegistration {
     $envEntries = "  <env name=`"SUPABASE_URL`" value=`"$escapedUrl`"/>`r`n  <env name=`"VITE_SUPABASE_ANON_KEY`" value=`"$escapedKey`"/>"
   }
   $xml = $xml.Replace('{{ENV_ENTRIES}}', $envEntries)
+
+  # Check after every supported token has been rendered. An earlier guard saw
+  # the ENV_ENTRIES token in the source template and made every silent install
+  # exit 10 before the service could be registered.
+  if ($xml -match '\{\{[A-Z_]+\}\}') {
+    Fail-Install -Stage 'template' -Code 10 -Message 'The service template contains a placeholder that this installer does not know how to fill. Reinstall the print agent package.'
+  }
 
   try {
     Set-Content -LiteralPath $ConfigPath -Value $xml -Encoding UTF8 -ErrorAction Stop

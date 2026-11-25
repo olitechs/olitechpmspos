@@ -86,6 +86,15 @@ test('each install stage has a stable exit code and writes install-result.json',
   assert.match(script, /ConvertTo-Json -Depth 6/);
 });
 
+test('the unresolved placeholder guard runs after ENV_ENTRIES is rendered', async () => {
+  const script = await read('./service/install-service.ps1');
+  const renderAt = script.indexOf("$xml = $xml.Replace('{{ENV_ENTRIES}}', $envEntries)");
+  const guardAt = script.indexOf("if ($xml -match '\\{\\{[A-Z_]+\\}\\}')");
+  assert.ok(renderAt > -1, 'ENV_ENTRIES must be rendered');
+  assert.ok(guardAt > -1, 'an unresolved placeholder guard must exist');
+  assert.ok(guardAt > renderAt, 'the guard must run after ENV_ENTRIES is rendered');
+});
+
 test('preflight checks the machine before the service is registered', async () => {
   const script = await read('./service/install-service.ps1');
   assert.match(script, /function Test-Preflight/);

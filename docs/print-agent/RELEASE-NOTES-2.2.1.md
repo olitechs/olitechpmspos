@@ -46,6 +46,11 @@ succeeding.
   into `node_modules` and create paths that break Inno Setup. The release
   workflow injects the public Supabase URL and publishable key so pairing works
   out of the box; no service-role key is ever bundled.
+- **Silent installs no longer fail with exit code 10.** The service template's
+  `{{ENV_ENTRIES}}` token was checked before it was rendered, so every install
+  was rejected as an unknown placeholder. The guard now runs after all tokens
+  are filled, and failed smoke tests print the setup, result and service logs
+  directly into the workflow.
 
 ## Before you install
 

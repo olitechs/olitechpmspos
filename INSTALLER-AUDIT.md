@@ -471,3 +471,28 @@ Fix:
 
 The tag will be moved to the fix commit and the workflow re-run. No GitHub
 Release was created by the failed run.
+
+## 15. Second 2.2.1 release run and the stage-10 service template bug
+
+Run `45648642410` built, signed and checksummed the installer successfully,
+then failed in the smoke test with setup exit code `10`.
+
+Exit code `10` is the custom service-install code. The payload contained the
+template, entry point, instrumentation file and `sc.exe`, so the remaining
+stage-10 path was the unresolved-placeholder guard. `install-service.ps1`
+checked for `{{TOKEN}}` remnants before it rendered `{{ENV_ENTRIES}}`, which is
+a valid token in the shipped template. Every install therefore failed with
+"The service template contains a placeholder...".
+
+Fix:
+
+- Move the unresolved-placeholder guard after `{{ENV_ENTRIES}}` has been
+  replaced, while keeping the same stage/code contract.
+- Make the smoke test print the tail of the setup log, both possible
+  `install-result.json` locations and both possible `install-service.log`
+  locations before failing, so the next CI failure is diagnosable from the
+  workflow log.
+- Add contract assertions for both so they cannot regress silently.
+
+The tag will be moved to this fix commit and the workflow re-run. No GitHub
+Release was created by the failed run.
