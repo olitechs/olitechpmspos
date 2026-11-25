@@ -55,6 +55,10 @@ succeeding.
   renders the `--import` preload as a `file://` URL, which is what Node's ESM
   loader requires for absolute Windows paths. The main entry point stays a
   normal Windows path because Node resolves that argument as a file path.
+- **The generated service XML is valid.** An explanatory comment had contained
+  the literal `--import` flag; XML comments cannot contain `--`, so WinSW
+  rejected the config before registering the service. The comment no longer
+  uses that token, and a contract check rejects invalid comment bodies.
 
 ## Before you install
 

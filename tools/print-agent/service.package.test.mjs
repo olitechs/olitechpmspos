@@ -26,6 +26,18 @@ test('service definition starts with Windows and restarts after a failure', asyn
   assert.ok(!/<password|<username/i.test(xml), 'the service definition must not contain credentials');
 });
 
+test('service template XML comments stay well-formed', async () => {
+  const xml = await read('./service/OliTechsPrintAgent.xml.template');
+  const comments = xml.match(/<!--[\s\S]*?-->/g) || [];
+  assert.ok(comments.length > 0, 'the service template should contain explanatory comments');
+  for (const comment of comments) {
+    const body = comment.slice(4, -3);
+    assert.ok(!body.includes('--'), `XML comment body must not contain a double hyphen: ${body}`);
+    assert.ok(!body.trimEnd().endsWith('-'), `XML comment body must not end with a hyphen: ${body}`);
+  }
+  assert.match(xml, /<arguments>--import/, 'the import flag belongs in element text, not in a comment');
+});
+
 test('install script renders the template, sets SCM recovery and removes the legacy task', async () => {
   const script = await read('./service/install-service.ps1');
   assert.match(script, /OliTechsPrintAgent\.xml\.template/);

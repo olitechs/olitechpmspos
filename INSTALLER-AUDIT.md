@@ -558,5 +558,32 @@ Final fix:
 - Assert in the contract test that the entry point is not passed through the
   URL converter.
 
+The tag was moved to this fix commit and the workflow re-run. No GitHub Release
+was created by the failed run.
+
+## 18. Fifth 2.2.1 release run and the invalid XML comment
+
+Run `45652521085` reached the smoke test and failed with setup exit code `16`.
+The new diagnostics printed the WinSW error directly:
+
+```
+[WinSW install] The configuration file cound not be loaded. An XML comment
+cannot contain '--', and '-' cannot be the last character. Line 17, position 15.
+FAILED [16] winsw-install: The Windows service could not be registered
+(WinSW exit code -1).
+```
+
+The comment added to `OliTechsPrintAgent.xml.template` in section 16 used the
+literal `--import` flag. XML forbids `--` inside a comment, so WinSW could not
+parse the generated config. This was a documentation-only regression introduced
+while fixing the ESM path bug, not a Node or service issue.
+
+Fix:
+
+- Reword the comment without the double-hyphen token. The `--import` flag stays
+  in the `<arguments>` element text where it is valid.
+- Add a contract assertion that every XML comment body has no `--` and does not
+  end with `-`, and that the import flag remains in element text.
+
 The tag will be moved to this fix commit and the workflow re-run. No GitHub
 Release was created by the failed run.
