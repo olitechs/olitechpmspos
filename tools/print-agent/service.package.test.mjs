@@ -50,6 +50,9 @@ test('the support script keeps previously allowed origins when adding one', asyn
   assert.match(script, /existingValue -split ','/);
   assert.match(script, /\$origins -notcontains \$value/);
   assert.match(script, /\$origins -join ','/);
+  assert.match(script, /\[System\.Net\.WebUtility\]::HtmlDecode/);
+  // SecurityElement has no Unescape() in Windows PowerShell 5.1.
+  assert.doesNotMatch(script, /SecurityElement\]::Unescape/);
   assert.doesNotMatch(script, /Service config now allows: https:\/\/olitechpmspos\.vercel\.app, \$Origin/);
 });
 

@@ -36,7 +36,9 @@ $current = Get-Content -Raw -Path $ConfigPath
 $existingValue = ''
 $existingEntry = [regex]::Match($current, '(?m)^[ \t]*<env name="PRINT_AGENT_ALLOWED_ORIGINS" value="([^"]*)"/>')
 if ($existingEntry.Success) {
-  $existingValue = [System.Security.SecurityElement]::Unescape($existingEntry.Groups[1].Value)
+  # SecurityElement has Escape() but no Unescape() in Windows PowerShell 5.1.
+  # WebUtility.HtmlDecode covers the XML entities Escape() can write here.
+  $existingValue = [System.Net.WebUtility]::HtmlDecode($existingEntry.Groups[1].Value)
 }
 $origins = @()
 foreach ($item in (($existingValue -split ',') + @($Origin))) {
