@@ -199,7 +199,32 @@ if ($SupabaseUrl -and $SupabaseAnonKey) {
   $envLines.Add("  <env name=`"SUPABASE_URL`" value=`"$escapedUrl`"/>")
   $envLines.Add("  <env name=`"VITE_SUPABASE_ANON_KEY`" value=`"$escapedKey`"/>")
 }
-$allowedOrigins = @('https://olitechpmspos.vercel.app', $AppOrigin) | Select-Object -Unique
+$allowedOrigins = @('https://olitechpmspos.vercel.app')
+# Staff may open the app with or without "www". Both are exact origins of the
+# same site, so allow both variants instead of failing print requests with a
+# CORS error that looks like a dead agent.
+foreach ($candidate in @($AppOrigin)) {
+  if (-not $candidate) { continue }
+  $allowedOrigins += $candidate
+  try {
+    $uri = [Uri]$candidate
+    if ($uri.Scheme -in @('http', 'https')) {
+      $builder = New-Object System.UriBuilder($candidate)
+      if ($builder.Host.StartsWith('www.', [System.StringComparison]::OrdinalIgnoreCase)) {
+        $builder.Host = $builder.Host.Substring(4)
+      } else {
+        $builder.Host = 'www.' + $builder.Host
+      }
+      $builder.Path = ''
+      $builder.Query = ''
+      $builder.Fragment = ''
+      $allowedOrigins += $builder.Uri.AbsoluteUri.TrimEnd('/')
+    }
+  } catch {
+    # An invalid configured origin is ignored by the agent itself.
+  }
+}
+$allowedOrigins = $allowedOrigins | Where-Object { $_ } | Select-Object -Unique
 $escapedOrigins = $escape.Invoke(($allowedOrigins -join ','))
 $envLines.Add("  <env name=`"PRINT_AGENT_ALLOWED_ORIGINS`" value=`"$escapedOrigins`"/>")
 $envEntries = $envLines -join "`r`n"

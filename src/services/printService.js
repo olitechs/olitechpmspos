@@ -6,6 +6,8 @@ import { getPrintColor } from '@/utils/printTheme';
 import { classifyAgentPrintOutcome, copiesToPrint, durableJobStatus, outcomeAffectsConnection, summarizePrintOutcomes } from '@/services/printOutcomeCore';
 import { planDepartmentTickets, printersForDepartment } from '@/services/printDepartmentRoutingCore';
 import { resolveReceiptDocumentPresentation } from '@/services/receiptDocumentCore';
+import { agentBaseCandidates, AGENT_ORIGIN_BLOCKED_CODE, AGENT_UNAVAILABLE_CODE, describeAgentFailure, probeAgentReachable } from '@/services/printAgentRoutingCore';
+import { pickRetryPrinter } from '@/services/printRetryCore';
 
 const normalizeNetworkEndpoint = (value, fallbackPort = 9100) => {
   let host = String(value || '').trim();
@@ -49,24 +51,11 @@ export async function getAssignments(propertyId) {
 
 async function resolveRetryPrinter(job, propertyId) {
   if (!propertyId) return null;
-  const printers = await getPrinters(propertyId);
-  const assignments = await getAssignments(propertyId);
-  const original = job?.printer_id ? printers.find((printer) => printer.id === job.printer_id) : null;
-  const fallbackIds = assignments
-    .filter((assignment) => assignment.assignment_type === job?.assignment_type)
-    .map((assignment) => assignment.printer_id);
-  const assignedPrinters = fallbackIds
-    .map((id) => printers.find((printer) => printer.id === id))
-    .filter(Boolean);
-  // Prefer the original target when it has a verified live connection. If it
-  // is offline, fail over to another assigned printer that has been verified
-  // connected; only retry the original as a last resort when no fallback is
-  // known to be online.
-  if (original && original.is_online !== false && original.last_status === 'connected') return original;
-  const fallback = assignedPrinters.find((printer) =>
-    printer.id !== original?.id && printer.is_online === true && printer.last_status === 'connected'
-  );
-  return fallback || original || assignedPrinters.find((printer) => printer.is_online !== false) || null;
+  const [printers, assignments] = await Promise.all([getPrinters(propertyId), getAssignments(propertyId)]);
+  // Recorded offline state is a hint, not a refusal: a retry is how the app
+  // learns that the agent came back. The pure picker also tolerates legacy
+  // assignment_type spellings and jobs whose printer row is no longer present.
+  return pickRetryPrinter({ job, printers, assignments });
 }
 
 // PostgreSQL text/JSONB cannot store NUL or unpaired UTF-16 surrogates.
@@ -152,7 +141,6 @@ async function updatePrinterTransportStatus(printer, propertyId, status, errorMe
 }
 
 async function localAgentRequest(printer, propertyId, path, text = '', escposBase64 = null, options = {}) {
-  const base = normalizeAgentUrl(printer.agent_url || printer.agentUrl);
   const endpoint = normalizeNetworkEndpoint(printer.ip_address || printer.host, printer.port || 9100);
   // The agent uses this key to recognise the same print job arriving twice: a
   // retried request, a double submit or a resend after a timeout. A deliberate
@@ -169,51 +157,74 @@ async function localAgentRequest(printer, propertyId, path, text = '', escposBas
     ...(idempotencyKey ? { idempotencyKey } : {}),
   };
 
+  // Try the saved agent URL, then the standard loopback addresses. A stale
+  // https://.../print-agent value must not make a healthy local agent look dead.
+  const bases = agentBaseCandidates(printer.agent_url || printer.agentUrl);
   const paths = [path, '/api' + path, '/print-agent' + path];
   let last = null;
 
-  for (const candidate of paths) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 6000);
-    try {
-      const response = await fetch(base + candidate, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(idempotencyKey ? { 'X-Idempotency-Key': idempotencyKey } : {}),
-        },
-        body: JSON.stringify(payload),
-        signal: controller.signal,
-      });
-      const data = await response.json().catch(() => ({}));
-      if (response.ok && data?.ok) return { ok: true, data };
+  for (const base of bases) {
+    for (const candidate of paths) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 6000);
+      try {
+        const response = await fetch(base + candidate, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(idempotencyKey ? { 'X-Idempotency-Key': idempotencyKey } : {}),
+          },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        });
+        const data = await response.json().catch(() => ({}));
+        if (response.ok && data?.ok) return { ok: true, data };
 
-      last = {
-        ok: false,
-        code: data?.code || `HTTP_${response.status}`,
-        message: data?.message || 'The local print agent could not print to the configured printer.',
-      };
+        last = {
+          ok: false,
+          code: data?.code || `HTTP_${response.status}`,
+          status: response.status,
+          message: data?.message || 'The local print agent could not print to the configured printer.',
+        };
 
-      if (![404, 405].includes(response.status) && data?.code !== 'NOT_FOUND') break;
-    } catch (error) {
-      last = {
-        ok: false,
-        code: error?.name === 'AbortError' ? 'LOCAL_AGENT_TIMEOUT' : 'LOCAL_AGENT_UNAVAILABLE',
-        message: error?.name === 'AbortError'
-          ? 'The local print agent timed out while connecting to the printer.'
-          : 'The local print agent could not be reached. Start the OliTechs Print Agent on this workstation.',
-      };
-      break;
-    } finally {
-      clearTimeout(timer);
+        if (![404, 405].includes(response.status) && data?.code !== 'NOT_FOUND') break;
+      } catch (error) {
+        last = {
+          ok: false,
+          code: error?.name === 'AbortError' ? 'LOCAL_AGENT_TIMEOUT' : AGENT_UNAVAILABLE_CODE,
+          message: error?.name === 'AbortError'
+            ? 'The local print agent timed out while connecting to the printer.'
+            : 'The local print agent could not be reached.',
+        };
+        break;
+      } finally {
+        clearTimeout(timer);
+      }
     }
+    // A readable agent error (for example PRINTER_NOT_FOUND) is authoritative;
+    // sending the same bytes to another address cannot improve it.
+    if (last && ![AGENT_UNAVAILABLE_CODE, 'LOCAL_AGENT_TIMEOUT', 'NOT_FOUND'].includes(last.code)) break;
   }
 
-  return last || {
-    ok: false,
-    code: 'LOCAL_AGENT_UNAVAILABLE',
-    message: 'The local print agent could not be reached. Start the OliTechs Print Agent on this workstation.',
-  };
+  const origin = globalThis?.location?.origin || '';
+  if (last?.code === 'ORIGIN_NOT_ALLOWED' || last?.status === 403) {
+    return describeAgentFailure({ origin, originReachable: true });
+  }
+  if (!last || [AGENT_UNAVAILABLE_CODE, 'LOCAL_AGENT_TIMEOUT'].includes(last.code)) {
+    // A genuine timeout still means "the agent accepted the job but the
+    // printer did not answer"; do not relabel it as an origin problem.
+    if (last?.code === 'LOCAL_AGENT_TIMEOUT') return last;
+    // A CORS rejection is indistinguishable from a dead agent in a normal
+    // fetch. A no-cors GET /health is readable even when /print is blocked, so
+    // staff are told whether to start the agent or allow the website's origin.
+    let originReachable = false;
+    for (const base of bases) {
+      if (await probeAgentReachable(base)) { originReachable = true; break; }
+    }
+    if (originReachable) return describeAgentFailure({ origin, originReachable: true });
+    return last || describeAgentFailure({ origin, originReachable: false });
+  }
+  return last;
 }
 
 async function directAgentPrint(printer, propertyId, text, path, escposBase64 = null, options = {}) {
@@ -223,9 +234,11 @@ async function directAgentPrint(printer, propertyId, text, path, escposBase64 = 
     const code = result.code || 'LOCAL_AGENT_ERROR';
     const friendly = `[${code}] ${result.message}`;
     // A printer that may already have printed (uncertain), or one the agent is
-    // still working on (pending), is not offline. Only a real transport failure
-    // is allowed to change the printer's recorded connection state.
-    if (outcomeAffectsConnection(outcome)) await updatePrinterTransportStatus(printer, propertyId, 'offline', friendly);
+    // still working on (pending), is not offline. An origin/configuration block
+    // is a browser-to-agent problem, not a printer problem either.
+    if (outcomeAffectsConnection(outcome) && code !== AGENT_ORIGIN_BLOCKED_CODE) {
+      await updatePrinterTransportStatus(printer, propertyId, 'offline', friendly);
+    }
     return { ok:false, status: outcome, friendlyError:friendly, code, transport:'local_agent', outcome };
   }
   await updatePrinterTransportStatus(printer, propertyId, 'connected', null);
@@ -1136,7 +1149,7 @@ export async function retryFnbPrintJob(jobId,propertyId) {
   const {data:job,error}=await supabase.from('fnb_print_jobs').select('*').eq('id',jobId).eq('property_id',propertyId).single();
   if(error) throw error;
   const printer = await resolveRetryPrinter(job, propertyId);
-  if(!printer) throw new Error(`No available printer is assigned to ${job.assignment_type || 'this print job'}.`);
+  if(!printer) throw new Error(`No printer is available to retry ${job.assignment_type || 'this print job'}. Assign a printer under Settings → Printers, then retry.`);
   // Reuse the ESC/POS bytes that were stored with the job. Re-rendering from
   // HTML loses the logo raster and the single-buffer dithering used by the
   // unsettled bill, so a retry would print a visibly different receipt.

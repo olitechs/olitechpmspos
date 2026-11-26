@@ -52,6 +52,7 @@ test('Windows resolves its writable state under ProgramData', () => {
 test('allowed origins include the production app plus valid extras only', () => {
   const config = loadConfig(env({ PRINT_AGENT_ALLOWED_ORIGINS: 'https://pms.example.com,not-a-url,' }));
   assert.ok(config.allowedOrigins.includes('https://olitechpmspos.vercel.app'));
+  assert.ok(config.allowedOrigins.includes('https://olitechs.co.ke'));
   assert.ok(config.allowedOrigins.includes('https://pms.example.com'));
   assert.deepEqual(config.ignoredOrigins, ['not-a-url']);
 });

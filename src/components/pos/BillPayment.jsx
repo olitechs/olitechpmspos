@@ -448,7 +448,15 @@ export default function BillPayment({
           { duration: 10000 }
         );
       } else {
-        toast.warning('Payment completed, but the receipt did not print. Reprint it later from Receipts.');
+        // Keep the failure reason visible: "start the agent" and "allow this
+        // website in the agent" need different actions from the cashier.
+        const reason = result.friendlyError || result.summary?.message;
+        toast.warning(
+          reason
+            ? `Payment completed, but the receipt did not print. ${reason} Reprint it from Receipts once fixed.`
+            : 'Payment completed, but the receipt did not print. Reprint it later from Receipts.',
+          { duration: 10000 }
+        );
       }
       if (unlinkedStockItems.length) {
         const names = [...new Set(unlinkedStockItems.map(item => item.name || 'Unnamed item'))];

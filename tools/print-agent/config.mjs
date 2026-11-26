@@ -7,7 +7,7 @@ export const AGENT_VERSION = '2.2.1';
 export const SERVICE_ID = 'OliTechsPrintAgent';
 export const SERVICE_DISPLAY_NAME = 'OliTechs Print Agent';
 export const LOOPBACK_HOSTS = Object.freeze(['127.0.0.1', 'localhost', '::1', '[::1]']);
-export const DEFAULT_ALLOWED_ORIGINS = Object.freeze(['https://olitechpmspos.vercel.app']);
+export const DEFAULT_ALLOWED_ORIGINS = Object.freeze(['https://olitechpmspos.vercel.app', 'https://olitechs.co.ke']);
 export const DEFAULT_PORT = 8631;
 
 export class PrintAgentConfigError extends Error {
