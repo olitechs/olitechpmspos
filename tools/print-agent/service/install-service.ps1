@@ -62,6 +62,14 @@ function Test-ExactHttpOrigin {
   }
 }
 
+function ConvertTo-FileUrl {
+  param([Parameter(Mandatory = $true)][string]$Path)
+  # Node's ESM loader only accepts file:// URLs for absolute module paths on
+  # Windows. WinSW reads the rendered value from the generated service XML.
+  $fullPath = [System.IO.Path]::GetFullPath($Path)
+  return (New-Object System.Uri -ArgumentList $fullPath).AbsoluteUri
+}
+
 trap {
   Write-InstallFailure ("INSTALL ERROR: {0}" -f $_.Exception.Message)
   if ($script:InstallTranscriptStarted) {
@@ -167,7 +175,7 @@ $escape = [System.Security.SecurityElement]::Escape
 $xml = Get-Content -Raw -Path $TemplatePath
 $xml = $xml.Replace('{{NODE_EXE}}', $escape.Invoke($nodeExePath))
 $xml = $xml.Replace('{{AGENT_SCRIPT}}', $escape.Invoke($AgentScript))
-$xml = $xml.Replace('{{INSTRUMENT_SCRIPT}}', $escape.Invoke($InstrumentScript))
+$xml = $xml.Replace('{{INSTRUMENT_SCRIPT}}', $escape.Invoke((ConvertTo-FileUrl -Path $InstrumentScript)))
 $xml = $xml.Replace('{{WORKING_DIR}}', $escape.Invoke($RepoRoot))
 $xml = $xml.Replace('{{DATA_DIR}}', $escape.Invoke($DataDir))
 $xml = $xml.Replace('{{LOG_DIR}}', $escape.Invoke($LogDir))

@@ -75,8 +75,10 @@ test('a failed service installation is reported to staff, and pairing is skipped
   assert.match(iss, /ServiceInstallFailed := True/);
   assert.match(iss, /mbError, MB_OK/);
   assert.match(iss, /Printing will not work until this is fixed/);
-  assert.match(iss, /Check: ServiceInstalledOk/);
   assert.match(iss, /function ServiceInstalledOk\(\): Boolean/);
+  assert.match(iss, /Check: ShouldOfferPairing/, 'silent installs must not wait for the interactive pairing window');
+  assert.match(iss, /function ShouldOfferPairing\(\): Boolean/);
+  assert.match(iss, /\(not WizardSilent\) and ServiceInstalledOk/);
 });
 
 test('no installer file mentions a service-role key', async () => {
@@ -150,6 +152,19 @@ test('the installer payload mirrors the repository layout the agent imports from
   assert.match(build, /\[string\]\$AppOrigin/);
   assert.match(build, /\$publicConfig = @{ appOrigin = \$AppOrigin }/);
   assert.match(build, /Test-ExactHttpOrigin/);
+});
+
+test('runtime dependencies are staged outside the app so npm cannot recursively install the PMS project', async () => {
+  const build = await read('./installer/build-installer.ps1');
+
+  assert.ok(build.includes("$depsDir = Join-Path $DistRoot 'agent-runtime'"));
+  assert.ok(build.includes("Copy-Item -Path (Join-Path $AgentDir 'package.json') -Destination (Join-Path $depsDir 'package.json') -Force"));
+  assert.ok(build.includes('Push-Location $depsDir'));
+  assert.ok(build.includes('& $npm.Source install --omit=dev --no-audit --no-fund'));
+  assert.ok(build.includes("$selfLink = Join-Path $stagedModules 'olitechs-pms-pos'"));
+  assert.ok(build.includes('if (Test-Path $selfLink) { Remove-Item -Path $selfLink -Recurse -Force }'));
+  assert.ok(build.includes('Copy-Item -Path $stagedModules -Destination $agentModules -Recurse -Force'));
+  assert.ok(!build.includes('--prefix $agentDest'), 'npm must not install inside the staged app');
 });
 
 test('pairing configuration is injected as environment entries, never credentials', async () => {
