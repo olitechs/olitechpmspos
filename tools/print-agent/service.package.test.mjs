@@ -55,6 +55,14 @@ test('install script renders the template, sets SCM recovery and removes the leg
   assert.ok(!/Invoke-WebRequest[\s\S]*DownloadString/.test(script), 'the installer must not download and run code');
 });
 
+test('install logging uses the transcript instead of reopening the log file', async () => {
+  const script = await read('./service/install-service.ps1');
+  assert.match(script, /function Write-InstallLog/);
+  assert.match(script, /if \(\$script:InstallTranscriptStarted\)[\s\S]*?Write-Host \$line/);
+  const directOpens = script.match(/Out-File -FilePath \$InstallLogPath/g) || [];
+  assert.equal(directOpens.length, 1, 'only the no-transcript fallback may open the log directly');
+});
+
 test('support can add one trusted app origin to an installed service', async () => {
   const script = await read('./service/set-allowed-origin.ps1');
   assert.match(script, /\[Parameter\(Mandatory = \$true\)\]\[string\]\$Origin/);

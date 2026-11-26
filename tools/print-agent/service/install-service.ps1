@@ -25,9 +25,22 @@ try {
   # Transcript logging is best-effort; explicit failure records are still written below.
 }
 
+function Write-InstallLog {
+  param([string[]]$Lines)
+  foreach ($line in $Lines) {
+    if ($script:InstallTranscriptStarted) {
+      # Start-Transcript holds the log file open. Writing to the same path with
+      # Out-File would fail with a sharing violation and abort the installer.
+      Write-Host $line
+    } else {
+      try { $line | Out-File -FilePath $InstallLogPath -Append -Encoding utf8 } catch {}
+    }
+  }
+}
+
 function Write-InstallFailure {
   param([string]$Message)
-  try { $Message | Out-File -FilePath $InstallLogPath -Append -Encoding utf8 } catch {}
+  Write-InstallLog -Lines @("INSTALL ERROR: $Message")
 }
 
 function Invoke-CheckedNativeCommand {
@@ -40,7 +53,7 @@ function Invoke-CheckedNativeCommand {
   $output = @(& $FilePath @Arguments 2>&1)
   $exitCode = $LASTEXITCODE
   if ($output.Count -gt 0) {
-    $output | Out-File -FilePath $InstallLogPath -Append -Encoding utf8
+    Write-InstallLog -Lines $output
   }
   if ($exitCode -ne 0) {
     throw ("{0} (exit code {1}). See {2}." -f $FailureMessage, $exitCode, $InstallLogPath)
@@ -152,7 +165,7 @@ if ($existing) {
     $uninstallOutput = @(& $WrapperPath uninstall 2>&1)
     $uninstallExitCode = $LASTEXITCODE
     if ($uninstallOutput.Count -gt 0) {
-      $uninstallOutput | Out-File -FilePath $InstallLogPath -Append -Encoding utf8
+      Write-InstallLog -Lines $uninstallOutput
     }
     if ($uninstallExitCode -ne 0) {
       throw "Removing the previous Windows service failed (WinSW exit code $uninstallExitCode). See $InstallLogPath."
@@ -247,12 +260,12 @@ Copy-Item -Path $resolvedWinSW -Destination $WrapperPath -Force
 $winswOutput = @(& $WrapperPath install 2>&1)
 $winswExitCode = $LASTEXITCODE
 if ($winswOutput.Count -gt 0) {
-  $winswOutput | Out-File -FilePath $InstallLogPath -Append -Encoding utf8
+  Write-InstallLog -Lines $winswOutput
 }
 if ($winswExitCode -ne 0) {
   try {
     $serviceCheck = @(& sc.exe query $ServiceId 2>&1)
-    if ($serviceCheck.Count -gt 0) { $serviceCheck | Out-File -FilePath $InstallLogPath -Append -Encoding utf8 }
+    if ($serviceCheck.Count -gt 0) { Write-InstallLog -Lines $serviceCheck }
   } catch {}
   throw "Installing the Windows service failed (WinSW exit code $winswExitCode). See $InstallLogPath for the detailed installer log."
 }
@@ -260,7 +273,7 @@ if ($winswExitCode -ne 0) {
 # Service Control Manager recovery: restart after a crash with increasing delay.
 $scFailureOutput = @(sc.exe failure $ServiceId reset= 86400 actions= restart/5000/restart/15000/restart/60000 2>&1)
 $scFailureExitCode = $LASTEXITCODE
-if ($scFailureOutput.Count -gt 0) { $scFailureOutput | Out-File -FilePath $InstallLogPath -Append -Encoding utf8 }
+if ($scFailureOutput.Count -gt 0) { Write-InstallLog -Lines $scFailureOutput }
 if ($scFailureExitCode -ne 0) {
   throw "Configuring Windows service recovery failed (sc.exe exit code $scFailureExitCode). See $InstallLogPath."
 }
@@ -320,7 +333,6 @@ if ($healthy) {
   Write-Host 'Health:   the service is running but /health did not answer yet. Check the logs above.' -ForegroundColor Yellow
 }
 Write-Host ''
-try { Stop-Transcript | Out-Null } catch {}
 if ($script:InstallTranscriptStarted) {
   try { Stop-Transcript | Out-Null } catch {}
   $script:InstallTranscriptStarted = $false
