@@ -141,11 +141,20 @@ jobs:
 
       - name: Build installer
         shell: pwsh
+        env:
+          # Public configuration only. The anon key ships in the web app; the
+          # workstation gets its own scoped credential through pairing.
+          SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+          APP_ORIGIN: ${{ vars.PRINT_AGENT_APP_ORIGIN }}
         run: |
           $buildArgs = @('-NoProfile','-ExecutionPolicy','Bypass','-File','tools/print-agent/installer/build-installer.ps1',
             '-NodeZipPath','${{ steps.node.outputs.zip }}','-NodeSha256','${{ steps.node.outputs.sha256 }}',
             '-WinSWPath','${{ steps.winsw.outputs.path }}','-WinSWSha256','${{ steps.winsw.outputs.sha256 }}',
             '-InnoSetupPath','C:\Program Files (x86)\Inno Setup 6\ISCC.exe')
+          if ($env:SUPABASE_URL) { $buildArgs += @('-SupabaseUrl', $env:SUPABASE_URL) }
+          if ($env:SUPABASE_ANON_KEY) { $buildArgs += @('-SupabaseAnonKey', $env:SUPABASE_ANON_KEY) }
+          if ($env:APP_ORIGIN) { $buildArgs += @('-AppOrigin', $env:APP_ORIGIN) }
           if ('${{ inputs.version }}') { $buildArgs += @('-Version','${{ inputs.version }}') }
           if ('${{ steps.signing.outputs.thumbprint }}') { $buildArgs += @('-CertificateThumbprint','${{ steps.signing.outputs.thumbprint }}') }
           elseif ('${{ inputs.allow_unsigned }}' -eq 'true') { $buildArgs += '-AllowUnsigned' }

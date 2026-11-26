@@ -15,7 +15,22 @@ test('managers can display a single-use pairing code for another computer', asyn
   assert.match(source, /navigator\.clipboard\.writeText\(state\.code\)/);
   assert.match(source, /Expires in \$\{minutes\}/);
   assert.match(source, /single use/);
+  assert.match(source, /isWorkstationPaired/);
+  assert.match(source, /Agent connected/);
+  assert.match(source, /setPairingCode\(\(current\)=>\(\{ \.\.\.current, connected:true \}\)\)/);
   assert.doesNotMatch(source, /health\?\.reachable\s*&&[^\n]*Show pairing code/);
+});
+
+test('the printer health strip points staff to the signed installer and the exact app origin', async () => {
+  const source = await readFile(new URL('./SettingsPrinters.jsx', import.meta.url), 'utf8');
+  const healthCore = await readFile(new URL('../services/printerHealthCore.js', import.meta.url), 'utf8');
+
+  assert.doesNotMatch(source, /unsigned test build/);
+  assert.doesNotMatch(source, /Signed installer not yet available/);
+  assert.match(source, /Signed installer available/);
+  assert.match(source, /window\.location\.origin/);
+  assert.match(healthCore, /originAllowed === false/);
+  assert.match(healthCore, /allowed origins/);
 });
 
 test('property printer settings do not call an undeployed save RPC', async () => {

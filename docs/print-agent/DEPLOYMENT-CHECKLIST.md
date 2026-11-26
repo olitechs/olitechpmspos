@@ -96,7 +96,10 @@ Manual fallback on a Windows build machine, from `tools\print-agent\installer`:
 Or pass `-PfxPath` / `-PfxPassword` instead of the thumbprint. Output:
 `dist\installer\OliTechsPrintAgentSetup-2.2.0.exe`.
 
-- The version must match `AGENT_VERSION` in `tools/print-agent/config.mjs` (2.2.0).
+- The version must match `AGENT_VERSION` in `tools/print-agent/config.mjs` (2.2.1).
+- Set the repository variable `PRINT_AGENT_APP_ORIGIN` to the exact app origin;
+  the installer writes it to `PRINT_AGENT_ALLOWED_ORIGINS` so browser printing is
+  accepted after install.
 - Record the installer's SHA-256 in the release notes, and confirm
   `Get-AuthenticodeSignature` reports a valid signature and timestamp.
 - The script refuses to build an unsigned release. An `-AllowUnsigned` build is

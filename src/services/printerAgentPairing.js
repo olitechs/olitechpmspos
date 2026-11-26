@@ -69,7 +69,7 @@ export async function sendPairingCode({ agentUrl, code, fetchImpl = globalThis.f
 export async function pairWorkstation({ client, propertyId, agentUrl, agentName = 'POS computer', fetchImpl } = {}) {
   const pairing = await createPairingCode({ client, propertyId, agentName });
   const result = await sendPairingCode({ agentUrl, code: pairing.code, fetchImpl });
-  return { ...result, code: pairing.code };
+  return { ...result, code: pairing.code, credentialId: pairing.credentialId };
 }
 
 export async function listPairedWorkstations({ client, propertyId } = {}) {
@@ -77,6 +77,18 @@ export async function listPairedWorkstations({ client, propertyId } = {}) {
   const { data, error } = await client.rpc(LIST_RPC, { p_property_id: propertyId });
   if (error) throw error;
   return Array.isArray(data) ? data : [];
+}
+
+/**
+ * A generated code belongs to one credential row. Once that row has `paired_at`
+ * the code has been redeemed on the workstation, so the browser can stop
+ * showing a code the user may otherwise read out again.
+ */
+export function isWorkstationPaired(rows, credentialId) {
+  if (!credentialId) return false;
+  const wanted = String(credentialId);
+  return (Array.isArray(rows) ? rows : []).some((row) =>
+    row && String(row.id) === wanted && Boolean(row.paired_at) && !row.revoked_at);
 }
 
 /**

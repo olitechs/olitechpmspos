@@ -7,6 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const entry = fileURLToPath(new URL('./print-agent-v2.js', import.meta.url));
+const instrument = new URL('./instrument.mjs', import.meta.url).href;
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function waitFor(check, { timeoutMs = 15000, intervalMs = 100 } = {}) {
@@ -36,7 +37,7 @@ function agentEnv(dataDir) {
 }
 
 function startAgent(dataDir) {
-  const child = spawn(process.execPath, ['--import', fileURLToPath(new URL('./instrument.mjs', import.meta.url)), entry], {
+  const child = spawn(process.execPath, ['--import', instrument, entry], {
     env: agentEnv(dataDir),
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -68,7 +69,7 @@ function waitForExit(child, timeoutMs = 20000) {
   });
 }
 
-test('starts as a service, reports health and refuses untrusted browser origins', async (t) => {
+test('starts as a service, reports health and refuses untrusted printer origins', async (t) => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'olitechs-agent-'));
   const child = startAgent(dataDir);
   t.after(() => { if (child.exitCode === null) child.kill('SIGKILL'); });
@@ -96,10 +97,28 @@ test('starts as a service, reports health and refuses untrusted browser origins'
   assert.match(health.version, /^\d+\.\d+\.\d+$/);
   assert.ok(health.uptimeSeconds >= 0);
 
-  const blocked = await fetch(`${base}/health`, { headers: { Origin: 'https://evil.example' } });
+  const probed = await fetch(`${base}/health`, { headers: { Origin: 'https://evil.example' } });
+  assert.equal(probed.status, 200, 'the read-only health probe explains an origin mismatch');
+  const probedBody = await probed.json();
+  assert.equal(probedBody.ok, true);
+  assert.equal(probedBody.originAllowed, false);
+  assert.equal(probedBody.requestOrigin, 'https://evil.example');
+  assert.equal(probed.headers.get('access-control-allow-origin'), 'https://evil.example');
+
+  const blocked = await fetch(`${base}/discover`, { headers: { Origin: 'https://evil.example' } });
   assert.equal(blocked.status, 403);
   const blockedBody = await blocked.json();
   assert.equal(blockedBody.code, 'ORIGIN_NOT_ALLOWED');
+
+  const blockedPreflight = await fetch(`${base}/print`, {
+    method: 'OPTIONS',
+    headers: {
+      Origin: 'https://evil.example',
+      'Access-Control-Request-Method': 'POST',
+      'Access-Control-Request-Private-Network': 'true',
+    },
+  });
+  assert.equal(blockedPreflight.status, 403);
 
   const preflight = await fetch(`${base}/print`, {
     method: 'OPTIONS',
@@ -152,7 +171,7 @@ test('an occupied port produces a clear error instead of a silent half-start', a
   assert.ok(lock, `first agent should start. stderr: ${first.stderrText}`);
 
   const otherDir = fs.mkdtempSync(path.join(os.tmpdir(), 'olitechs-agent-'));
-  const conflicting = spawn(process.execPath, ['--import', fileURLToPath(new URL('./instrument.mjs', import.meta.url)), entry], {
+  const conflicting = spawn(process.execPath, ['--import', instrument, entry], {
     env: { ...agentEnv(otherDir), PRINT_AGENT_PORT: String(lock.port) },
     stdio: ['ignore', 'pipe', 'pipe'],
   });

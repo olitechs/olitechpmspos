@@ -132,6 +132,8 @@ and uninstall that keeps printer data.
 | Installer stops at "Installing the service…" | Service could not start | Check `%ProgramData%\OliTechs\PrintAgent\logs\agent.log` |
 | Pairing says the agent is not responding | Service stopped, or a firewall blocks loopback | `sc query OliTechsPrintAgent`, then read the log |
 | Pairing says unavailable | No Supabase URL/anon key in the build | Rebuild with `-SupabaseUrl`/`-SupabaseAnonKey` or a `.env` present |
+| Printer Settings says "Failed to fetch" but `/health` shows `ok:true` | The app origin is not on the workstation allowlist | Rebuild with `-AppOrigin "https://your-domain.example"`, or run `service\set-allowed-origin.ps1 -Origin "https://your-domain.example"` on the installed PC |
+| Printer Settings shows "does not trust this app address" | Same origin mismatch, now explained by the public health probe | Send the displayed `requestOrigin` to support; add only that exact trusted origin |
 | Two copies of a receipt print | An old logon task survived | The installer removes it; otherwise `uninstall-service.ps1` |
 
 ## Why the payload layout matters

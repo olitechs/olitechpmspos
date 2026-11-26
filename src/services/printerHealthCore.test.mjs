@@ -65,6 +65,19 @@ test('a healthy agent with an empty queue is calm', () => {
   assert.equal(summary.attention.length, 0);
 });
 
+test('a healthy agent that does not trust the app origin is explained, not hidden', () => {
+  const summary = summarizePrintHealth({
+    agent: { ...agentHealth, requestOrigin: 'https://hotel.example.com', originAllowed: false, allowedOrigins: ['https://olitechpmspos.vercel.app'] },
+    queue: null,
+  });
+  assert.equal(summary.reachable, true);
+  assert.equal(summary.originAllowed, false);
+  assert.equal(summary.tone, 'danger');
+  assert.match(summary.headline, /does not trust this app address/);
+  assert.match(summary.detail, /https:\/\/hotel\.example\.com/);
+  assert.match(summary.detail, /allowed origins/);
+});
+
 test('a waiting job is a warning, not a failure', () => {
   const summary = summarizePrintHealth({
     agent: agentHealth,

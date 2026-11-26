@@ -46,6 +46,22 @@ export function summarizePrintHealth({ agent = null, queue = null } = {}) {
     };
   }
 
+  // The probe is intentionally readable from any origin. When the app address
+  // is not on the workstation's allowlist, the agent is healthy but printer
+  // commands would still be refused: say so instead of "Failed to fetch".
+  if (agent.originAllowed === false) {
+    const origin = agent.requestOrigin || 'this app address';
+    return {
+      reachable: true,
+      originAllowed: false,
+      tone: 'danger',
+      headline: 'The print agent is running, but it does not trust this app address.',
+      detail: `It saw the request from ${origin}. Send that exact address to OliTechs support so it can be added to the Print Agent's allowed origins on this computer. Printer commands stay blocked until then; no job has been sent.`,
+      counts: null,
+      attention: [],
+    };
+  }
+
   const counts = queue?.counts || agent.queue || null;
   const items = Array.isArray(queue?.items) ? queue.items : [];
   const attention = items

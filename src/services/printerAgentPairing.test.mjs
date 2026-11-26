@@ -6,6 +6,7 @@ import {
   pairWorkstation,
   listPairedWorkstations,
   revokePairedWorkstation,
+  isWorkstationPaired,
   PAIRING_RPC,
 } from './printerAgentPairing.js';
 
@@ -90,6 +91,18 @@ test('one call pairs the computer end to end', async () => {
   assert.equal(result.ok, true);
   assert.equal(result.code, 'ABCD2345');
   assert.equal(client.calls[0].args.p_name, 'Bar PC');
+});
+
+test('a generated code is recognised as connected only when its credential is paired', () => {
+  const rows = [
+    { id: 'cred-1', name: 'Front desk PC', paired_at: null, revoked_at: null },
+    { id: 'cred-2', name: 'Bar PC', paired_at: '2026-11-26T10:00:00Z', revoked_at: null },
+    { id: 'cred-3', name: 'Old PC', paired_at: '2026-11-20T10:00:00Z', revoked_at: '2026-11-21T10:00:00Z' },
+  ];
+  assert.equal(isWorkstationPaired(rows, 'cred-1'), false);
+  assert.equal(isWorkstationPaired(rows, 'cred-2'), true);
+  assert.equal(isWorkstationPaired(rows, 'cred-3'), false);
+  assert.equal(isWorkstationPaired(rows, null), false);
 });
 
 test('workstations can be listed and unpaired', async () => {

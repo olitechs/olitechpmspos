@@ -33,6 +33,16 @@ test('install script renders the template, sets SCM recovery and removes the leg
   assert.ok(!/Invoke-WebRequest[\s\S]*DownloadString/.test(script), 'the installer must not download and run code');
 });
 
+test('support can add one trusted app origin to an installed service', async () => {
+  const script = await read('./service/set-allowed-origin.ps1');
+  assert.match(script, /\[Parameter\(Mandatory = \$true\)\]\[string\]\$Origin/);
+  assert.match(script, /Test-ExactHttpOrigin/);
+  assert.match(script, /PRINT_AGENT_ALLOWED_ORIGINS/);
+  assert.match(script, /Restart-Service -Name 'OliTechsPrintAgent'/);
+  assert.match(script, /health\.allowedOrigins/);
+  assert.ok(!/Remove-Item|Set-Service -StartupType Disabled/.test(script), 'the fix must not uninstall or disable the agent');
+});
+
 test('uninstall keeps printer data unless deletion is explicitly requested', async () => {
   const script = await read('./service/uninstall-service.ps1');
   assert.match(script, /\[switch\]\$RemoveData/);

@@ -4,6 +4,7 @@ param(
   [string]$NodeExe = '',
   [string]$SupabaseUrl = '',
   [string]$SupabaseAnonKey = '',
+  [string]$AppOrigin = '',
   [string]$AgentConfigPath = '',
   [switch]$SkipLegacyTaskCleanup
 )
@@ -45,6 +46,20 @@ function Invoke-CheckedNativeCommand {
     throw ("{0} (exit code {1}). See {2}." -f $FailureMessage, $exitCode, $InstallLogPath)
   }
   return $output
+}
+
+function Test-ExactHttpOrigin {
+  param([string]$Origin)
+  if (-not $Origin) { return $false }
+  try {
+    $uri = [Uri]$Origin
+    if ($uri.Scheme -notin @('http', 'https')) { return $false }
+    if ($uri.UserInfo -or $uri.Query -or $uri.Fragment) { return $false }
+    if ($uri.AbsolutePath -notin @('', '/')) { return $false }
+    return ($uri.AbsoluteUri.TrimEnd('/') -eq $Origin.Trim().TrimEnd('/'))
+  } catch {
+    return $false
+  }
 }
 
 trap {
@@ -162,22 +177,32 @@ $xml = $xml.Replace('{{LOG_DIR}}', $escape.Invoke($LogDir))
 # its own print credential through pairing. A service-role key is never installed
 # here, so a copied workstation cannot read another property's data.
 if (-not $AgentConfigPath) { $AgentConfigPath = Join-Path $RepoRoot 'agent-config.json' }
-if ((-not $SupabaseUrl -or -not $SupabaseAnonKey) -and (Test-Path $AgentConfigPath)) {
+if ((-not $SupabaseUrl -or -not $SupabaseAnonKey -or -not $AppOrigin) -and (Test-Path $AgentConfigPath)) {
   try {
     $agentConfig = Get-Content -Raw -Path $AgentConfigPath | ConvertFrom-Json
     if (-not $SupabaseUrl) { $SupabaseUrl = [string]$agentConfig.supabaseUrl }
     if (-not $SupabaseAnonKey) { $SupabaseAnonKey = [string]$agentConfig.supabaseAnonKey }
+    if (-not $AppOrigin) { $AppOrigin = [string]$agentConfig.appOrigin }
   } catch {
     Write-Host "Could not read $AgentConfigPath. Pairing will stay unavailable until the agent is configured." -ForegroundColor Yellow
   }
 }
+if (-not $AppOrigin) { $AppOrigin = 'https://olitechpmspos.vercel.app' }
+if (-not (Test-ExactHttpOrigin $AppOrigin)) {
+  throw "Invalid AppOrigin '$AppOrigin'. Pass an exact http(s) origin such as https://hotel.example.com (no path, query or trailing slash)."
+}
 
-$envEntries = ''
+$envLines = New-Object System.Collections.Generic.List[string]
 if ($SupabaseUrl -and $SupabaseAnonKey) {
   $escapedUrl = $escape.Invoke($SupabaseUrl)
   $escapedKey = $escape.Invoke($SupabaseAnonKey)
-  $envEntries = "  <env name=`"SUPABASE_URL`" value=`"$escapedUrl`"/>`r`n  <env name=`"VITE_SUPABASE_ANON_KEY`" value=`"$escapedKey`"/>"
+  $envLines.Add("  <env name=`"SUPABASE_URL`" value=`"$escapedUrl`"/>")
+  $envLines.Add("  <env name=`"VITE_SUPABASE_ANON_KEY`" value=`"$escapedKey`"/>")
 }
+$allowedOrigins = @('https://olitechpmspos.vercel.app', $AppOrigin) | Select-Object -Unique
+$escapedOrigins = $escape.Invoke(($allowedOrigins -join ','))
+$envLines.Add("  <env name=`"PRINT_AGENT_ALLOWED_ORIGINS`" value=`"$escapedOrigins`"/>")
+$envEntries = $envLines -join "`r`n"
 $xml = $xml.Replace('{{ENV_ENTRIES}}', $envEntries)
 Set-Content -Path $ConfigPath -Value $xml -Encoding UTF8
 
@@ -249,6 +274,7 @@ Write-Host "Service:  $ServiceDisplayName ($ServiceId)"
 Write-Host "Status:   $((Get-Service -Name $ServiceId).Status)"
 Write-Host "Accounts: runs as LocalSystem and starts with Windows, before anyone signs in"
 Write-Host "Endpoint: http://127.0.0.1:8631"
+Write-Host "App origin: $AppOrigin"
 Write-Host "Logs:     $LogDir"
 if ($SupabaseUrl -and $SupabaseAnonKey) {
   Write-Host 'Pairing:  available. Open OliTechs, Settings, Printers and press "Pair this computer".'
