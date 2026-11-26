@@ -28,6 +28,16 @@ test('the preload is a single --import=<url> argument so paths with spaces survi
   assert.doesNotMatch(xml, /--import \{\{INSTRUMENT_SCRIPT\}\}/);
 });
 
+test('XML comments contain no double hyphen, which WinSW rejects', async () => {
+  const xml = await read('./service/OliTechsPrintAgent.xml.template');
+  const comments = [...xml.matchAll(/<!--[\s\S]*?-->/g)].map((match) => match[0]);
+  assert.ok(comments.length > 0, 'the template must keep its explanatory comments');
+  for (const comment of comments) {
+    const body = comment.slice(4, -3);
+    assert.ok(!body.includes('--'), `invalid XML comment content: ${body}`);
+  }
+});
+
 test('install script renders the template, sets SCM recovery and removes the legacy task', async () => {
   const script = await read('./service/install-service.ps1');
   assert.match(script, /OliTechsPrintAgent\.xml\.template/);

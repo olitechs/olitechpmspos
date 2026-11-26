@@ -14,10 +14,11 @@
   <description>Prints Olitech PMS/POS receipts and kitchen tickets to LAN ESC/POS and Windows-installed printers.</description>
 
   <executable>{{NODE_EXE}}</executable>
-  <!-- Node's import preload needs a file URL on Windows. Use the --import=<url>
-       form: WinSW's command line splits `--import "file:///C:/Program%20Files/..."`
-       at the decoded space, so Node sees two arguments and exits immediately.
-       The main entry point stays a normal Windows path. -->
+  <!-- Node's import preload needs a file URL on Windows. Keep it in a single
+       argument with an equals sign: the older quoted two-argument form was
+       split at the decoded space in Program Files, so Node exited before the
+       health endpoint answered. The main entry point stays a normal Windows
+       path. -->
   <arguments>--import="{{INSTRUMENT_SCRIPT}}" "{{AGENT_SCRIPT}}"</arguments>
   <workingdirectory>{{WORKING_DIR}}</workingdirectory>
 
