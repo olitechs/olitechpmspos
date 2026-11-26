@@ -20,6 +20,14 @@ test('service definition starts with Windows and restarts after a failure', asyn
   assert.ok(!/<password|<username/i.test(xml), 'the service definition must not contain credentials');
 });
 
+test('the preload is a single --import=<url> argument so paths with spaces survive WinSW', async () => {
+  const xml = await read('./service/OliTechsPrintAgent.xml.template');
+  assert.match(xml, /<arguments>--import="\{\{INSTRUMENT_SCRIPT\}\}" "{{AGENT_SCRIPT}}"<\/arguments>/);
+  // A quoted separate argument is split at the space decoded from %20 when the
+  // install directory is "C:\Program Files\...", so Node exits before /health.
+  assert.doesNotMatch(xml, /--import \{\{INSTRUMENT_SCRIPT\}\}/);
+});
+
 test('install script renders the template, sets SCM recovery and removes the legacy task', async () => {
   const script = await read('./service/install-service.ps1');
   assert.match(script, /OliTechsPrintAgent\.xml\.template/);
