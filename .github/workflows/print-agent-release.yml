@@ -171,6 +171,14 @@ jobs:
             -InstallerPath $installer.FullName `
             -InnoSetupPath 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
 
+      - name: Upload Print Agent smoke diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: print-agent-smoke-diagnostics
+          path: ${{ runner.temp }}\olitechs-print-agent-smoke
+          if-no-files-found: ignore
+
       - name: Write SHA-256 checksums
         id: sums
         shell: pwsh

@@ -7,6 +7,62 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+$script:SmokeLogRoot = Join-Path $env:RUNNER_TEMP 'olitechs-print-agent-smoke'
+$script:DiagRoot = Join-Path $script:SmokeLogRoot 'diagnostics'
+$script:ServiceName = 'OliTechsPrintAgent'
+New-Item -ItemType Directory -Force -Path $script:DiagRoot | Out-Null
+
+function Copy-AndShow-Log {
+  param(
+    [string]$Path,
+    [string]$Label
+  )
+  if (-not $Path -or -not (Test-Path $Path)) {
+    Write-Host "--- $Label (missing) ---"
+    return
+  }
+  try {
+    $destination = Join-Path $script:DiagRoot ([IO.Path]::GetFileName($Path))
+    Copy-Item -Path $Path -Destination $destination -Force
+    Write-Host "--- ${Label}: $Path ---"
+    $lines = @(Get-Content -Path $Path -ErrorAction SilentlyContinue)
+    if ($lines.Count -gt 200) { $lines = @($lines | Select-Object -Last 200) }
+    foreach ($line in $lines) { Write-Host $line }
+  } catch {
+    Write-Host "--- $Label could not be read: $($_.Exception.Message) ---"
+  }
+}
+
+function Write-SmokeDiagnostics {
+  param([string]$Stage)
+  try {
+    Write-Host "=== Print Agent smoke diagnostics ($Stage) ==="
+    $query = @(& sc.exe query $script:ServiceName 2>&1)
+    $query | Set-Content -Path (Join-Path $script:DiagRoot 'sc-query.txt') -Encoding ascii
+    foreach ($line in $query) { Write-Host $line }
+    $service = Get-Service -Name $script:ServiceName -ErrorAction SilentlyContinue
+    if ($service) {
+      Write-Host "Get-Service: $($service.Name) $($service.Status)"
+    } else {
+      Write-Host 'Get-Service: not found'
+    }
+    $programDataLogs = Join-Path $env:ProgramData 'OliTechs\PrintAgent\logs'
+    $configPath = Join-Path $env:ProgramData 'OliTechs\PrintAgent\service\OliTechsPrintAgent.xml'
+    Copy-AndShow-Log -Path (Join-Path $programDataLogs 'install-service.log') -Label 'install-service.log'
+    Copy-AndShow-Log -Path (Join-Path $programDataLogs 'agent.log') -Label 'agent.log'
+    Copy-AndShow-Log -Path (Join-Path $programDataLogs 'OliTechsPrintAgent.wrapper.log') -Label 'wrapper.log'
+    Copy-AndShow-Log -Path (Join-Path $programDataLogs 'OliTechsPrintAgent.out.log') -Label 'wrapper.out.log'
+    Copy-AndShow-Log -Path (Join-Path $programDataLogs 'OliTechsPrintAgent.err.log') -Label 'wrapper.err.log'
+    Copy-AndShow-Log -Path $configPath -Label 'generated service XML'
+    foreach ($name in @('successful-install.log', 'successful-uninstall.log', 'forced-failure-install.log')) {
+      Copy-AndShow-Log -Path (Join-Path $script:SmokeLogRoot $name) -Label $name
+    }
+    Write-Host '=== End smoke diagnostics ==='
+  } catch {
+    Write-Host "Smoke diagnostics failed: $($_.Exception.Message)"
+  }
+}
+
 function Assert-Condition {
   param([bool]$Condition, [string]$Message)
   if (-not $Condition) { throw $Message }
@@ -22,7 +78,11 @@ function Wait-ForServiceState {
     Start-Sleep -Milliseconds 500
   } while ((Get-Date) -lt $deadline)
   $actual = Get-Service -Name $Name -ErrorAction SilentlyContinue
-  if ($actual) { throw "Service $Name did not reach '$ExpectedState'; current state: $($actual.Status)." }
+  if ($actual) {
+    Write-SmokeDiagnostics -Stage "wait for $ExpectedState (current: $($actual.Status))"
+    throw "Service $Name did not reach '$ExpectedState'; current state: $($actual.Status)."
+  }
+  Write-SmokeDiagnostics -Stage "wait for $ExpectedState (service absent)"
   throw "Service $Name did not reach '$ExpectedState' before timeout."
 }
 
@@ -47,8 +107,8 @@ $version = $Matches[1]
 $failureVersion = "$version-smoke-failure"
 $installDirectory = Join-Path $env:ProgramFiles 'OliTechs\Print Agent'
 $failureDirectory = Join-Path $env:ProgramFiles 'OliTechs\Print Agent Smoke Failure'
-$serviceName = 'OliTechsPrintAgent'
-$logRoot = Join-Path $env:RUNNER_TEMP 'olitechs-print-agent-smoke'
+$serviceName = $script:ServiceName
+$logRoot = $script:SmokeLogRoot
 New-Item -ItemType Directory -Force -Path $logRoot | Out-Null
 $successSetupLog = Join-Path $logRoot 'successful-install.log'
 $uninstallLog = Join-Path $logRoot 'successful-uninstall.log'
@@ -70,6 +130,7 @@ try {
 
   Write-Host 'Smoke test: silent install.' -ForegroundColor Cyan
   $installCode = Invoke-SilentSetup -Path $InstallerPath -InstallDirectory $installDirectory -LogPath $successSetupLog
+  Write-SmokeDiagnostics -Stage "after silent install (exit $installCode)"
   Assert-Condition ($installCode -eq 0) "Silent installation failed with exit code $installCode. See $successSetupLog."
   Wait-ForServiceState -Name $serviceName -ExpectedState 'Running'
 
@@ -107,6 +168,7 @@ try {
 
   Write-Host 'All Windows installer smoke tests passed.' -ForegroundColor Green
 } finally {
+  Write-SmokeDiagnostics -Stage 'cleanup'
   # Best-effort cleanup of the isolated failure fixture. Preserve ProgramData logs for CI diagnostics.
   $remaining = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
   if ($remaining) {
