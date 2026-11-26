@@ -395,7 +395,7 @@ export default function SettingsPrinters() {
 
     let saved;
     try {
-      saved = await printerDb.savePrinter({ propertyId, payload, id: editing.id || null });
+      saved = await printerSetupService.savePrinter({ propertyId, payload, id: editing.id || null });
     } catch (saveError) {
       return setError(saveError.message);
     }
@@ -407,13 +407,13 @@ export default function SettingsPrinters() {
     // so the card does not stay stuck on "Testing…" forever.
     const routingFailed = async (message) => {
       setEditing(current=>current?{...current,id:printerId}:current);
-      await printerDb.markPrinterFailed(printerId, propertyId, message).catch(()=>{});
+      await printerSetupService.markPrinterFailed(printerId, propertyId, message).catch(()=>{});
       await load(true).catch((refreshError)=>console.warn('[Printers] list refresh after a failed routing save did not complete', refreshError));
       setError(`Printer saved, but its routing could not be updated: ${message}`);
     };
     try {
-      await printerDb.clearPrinterAssignments(printerId, propertyId);
-      if (assignmentTypes.length) await printerDb.addPrinterAssignments(propertyId, printerId, assignmentTypes);
+      await printerSetupService.clearPrinterAssignments(printerId, propertyId);
+      if (assignmentTypes.length) await printerSetupService.addPrinterAssignments(propertyId, printerId, assignmentTypes);
     } catch (routingError) {
       await routingFailed(routingError.message);
       return;
@@ -493,7 +493,7 @@ export default function SettingsPrinters() {
   const remove = async id => {
     if (!window.confirm('Delete this printer and its routing assignments?')) return;
     try {
-      await printerDb.deletePrinter(id, propertyId);
+      await printerSetupService.deletePrinter(id, propertyId);
       setNotice('Printer removed.');
     } catch (e) {
       setError(e.message);
@@ -503,7 +503,7 @@ export default function SettingsPrinters() {
 
   const removeAssignment = async assignment => {
     try {
-      await printerDb.deleteAssignment(assignment.id, propertyId);
+      await printerSetupService.deleteAssignment(assignment.id, propertyId);
     } catch (e) {
       setError(e.message);
     }
@@ -515,7 +515,7 @@ export default function SettingsPrinters() {
     const exists=assignments.some(a=>a.printer_id===printerId && a.assignment_type===type);
     if (exists) return;
     try {
-      await printerDb.createAssignment({ propertyId, printerId, assignmentType:type });
+      await printerSetupService.createAssignment({ propertyId, printerId, assignmentType:type });
       setNotice('Printer routing updated.');
     } catch (e) {
       setError(e.message);

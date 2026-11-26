@@ -33,6 +33,19 @@ test('the printer health strip points staff to the signed installer and the exac
   assert.match(healthCore, /allowed origins/);
 });
 
+test('printer mutations use the imported service, not an undefined local alias', async () => {
+  const source = await readFile(new URL('./SettingsPrinters.jsx', import.meta.url), 'utf8');
+
+  assert.match(source, /import \{ printerSetupService \} from '@\/services\/printerSetupService'/);
+  assert.doesNotMatch(source, /\bprinterDb\b/, 'printerDb was removed during the service refactor and must not be called');
+  for (const method of [
+    'savePrinter', 'markPrinterFailed', 'clearPrinterAssignments', 'addPrinterAssignments',
+    'deletePrinter', 'deleteAssignment', 'createAssignment',
+  ]) {
+    assert.match(source, new RegExp(`printerSetupService\\.${method}\\(`), `${method} must go through the service`);
+  }
+});
+
 test('property printer settings do not call an undeployed save RPC', async () => {
   const source = await readFile(new URL('./SettingsPrinters.jsx', import.meta.url), 'utf8');
   const service = await readFile(new URL('../services/printerSetupService.js', import.meta.url), 'utf8');
