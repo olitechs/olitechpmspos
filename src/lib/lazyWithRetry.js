@@ -1,8 +1,16 @@
 import { lazy } from 'react';
 
 const RETRY_KEY_PREFIX = 'olitechs:lazy-import-retry:';
+// A stale deployment can leave an old marker in sessionStorage indefinitely.
+// Keep the loop guard, but allow another recovery attempt after a short cooldown.
+const RETRY_COOLDOWN_MS = 30_000;
 
-export function createRetryingImporter(importer, moduleId, browser = typeof window !== 'undefined' ? window : null) {
+export function createRetryingImporter(
+  importer,
+  moduleId,
+  browser = typeof window !== 'undefined' ? window : null,
+  now = () => Date.now(),
+) {
   const retryKey = RETRY_KEY_PREFIX + moduleId;
 
   return () => Promise.resolve()
@@ -22,11 +30,17 @@ export function createRetryingImporter(importer, moduleId, browser = typeof wind
 
       try {
         const storage = browser.sessionStorage;
-        // Only one automatic reload per module per tab session. If the same
-        // chunk is still missing after reload, let the ErrorBoundary show it
-        // instead of creating an infinite reload loop.
-        if (storage.getItem(retryKey) === '1') throw error;
-        storage.setItem(retryKey, '1');
+        const previousAttempt = Number(storage.getItem(retryKey));
+        const retryIsRecent = Number.isFinite(previousAttempt)
+          && previousAttempt > 0
+          && now() - previousAttempt < RETRY_COOLDOWN_MS;
+
+        // A recent failure means the page has already reloaded and the chunk
+        // is still unavailable. Show the ErrorBoundary instead of looping.
+        // An old marker is stale and must not block recovery from a later deploy.
+        if (retryIsRecent) throw error;
+
+        storage.setItem(retryKey, String(now()));
         browser.location.reload();
       } catch {
         // If session storage is unavailable, fail safely rather than risk
