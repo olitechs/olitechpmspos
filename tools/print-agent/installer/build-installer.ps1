@@ -120,8 +120,30 @@ Copy-Item -Path (Join-Path $AgentDir '*') -Destination $agentDest -Recurse -Forc
 $npm = Get-Command npm.cmd -ErrorAction SilentlyContinue
 if (-not $npm) { $npm = Get-Command npm -ErrorAction SilentlyContinue }
 if (-not $npm) { throw 'npm was not found. Install Node.js 20 or newer on the build computer before creating the Print Agent installer.' }
-& $npm.Source install --omit=dev --no-audit --no-fund --prefix $agentDest
-if ($LASTEXITCODE -ne 0) { throw "Installing Print Agent runtime dependencies failed (exit code $LASTEXITCODE)." }
+
+# Stage dependencies in an isolated directory. Running npm from the repository
+# root, or inside the staged app, can make npm treat the enclosing PMS project
+# as a dependency and recursively install node_modules/olitechs-pms-pos. That
+# produces paths too long for Inno Setup and bloats the installer.
+$depsDir = Join-Path $DistRoot 'agent-runtime'
+if (Test-Path $depsDir) { Remove-Item -Path $depsDir -Recurse -Force }
+New-Item -ItemType Directory -Force -Path $depsDir | Out-Null
+Copy-Item -Path (Join-Path $AgentDir 'package.json') -Destination (Join-Path $depsDir 'package.json') -Force
+Push-Location $depsDir
+try {
+  & $npm.Source install --omit=dev --no-audit --no-fund
+  if ($LASTEXITCODE -ne 0) { throw "Installing Print Agent runtime dependencies failed (exit code $LASTEXITCODE)." }
+} finally {
+  Pop-Location
+}
+$stagedModules = Join-Path $depsDir 'node_modules'
+if (-not (Test-Path $stagedModules)) { throw 'npm did not stage any runtime dependencies.' }
+$selfLink = Join-Path $stagedModules 'olitechs-pms-pos'
+if (Test-Path $selfLink) { Remove-Item -Path $selfLink -Recurse -Force }
+$agentModules = Join-Path $agentDest 'node_modules'
+if (Test-Path $agentModules) { Remove-Item -Path $agentModules -Recurse -Force }
+Copy-Item -Path $stagedModules -Destination $agentModules -Recurse -Force
+
 # Tests, docs and source patches have no place on a reception PC.
 Get-ChildItem -Path $agentDest -Filter '*.test.mjs' -File | Remove-Item -Force
 Get-ChildItem -Path $agentDest -Filter '*.patch' -File | Remove-Item -Force

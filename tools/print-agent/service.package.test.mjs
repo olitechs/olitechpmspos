@@ -30,6 +30,10 @@ test('install script renders the template, sets SCM recovery and removes the leg
   assert.match(script, /Start-Service -Name \$ServiceId/);
   assert.match(script, /Unregister-ScheduledTask -TaskName \$LegacyTaskName/);
   assert.match(script, /Invoke-RestMethod -Uri 'http:\/\/127\.0\.0\.1:8631\/health'/);
+  assert.match(script, /function ConvertTo-FileUrl/);
+  assert.match(script, /ConvertTo-FileUrl -Path \$InstrumentScript/);
+  assert.ok(script.includes("$xml.Replace('{{AGENT_SCRIPT}}', $escape.Invoke($AgentScript))"), 'the main entry point stays a Windows path');
+  assert.ok(!/ConvertTo-FileUrl -Path \$AgentScript/.test(script), 'the main entry point must not be rendered as a URL');
   assert.ok(!/Invoke-WebRequest[\s\S]*DownloadString/.test(script), 'the installer must not download and run code');
 });
 
