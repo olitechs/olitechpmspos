@@ -93,10 +93,12 @@ Type: filesandordirs; Name: "{app}"
 [Code]
 var
   ServiceInstallFailed: Boolean;
+  ServiceInstallExitCode: Integer;
 
 function InitializeSetup(): Boolean;
 begin
   ServiceInstallFailed := False;
+  ServiceInstallExitCode := 0;
   Result := True;
 end;
 
@@ -149,6 +151,20 @@ begin
   Result := not ServiceInstallFailed;
 end;
 
+{ In very silent mode Inno can swallow a CurStepChanged exception and still
+  return exit code 0. This hook is called whenever Setup would otherwise
+  report success, so it turns a known service-install failure into a non-zero
+  result that scripts and CI can detect. }
+function GetCustomSetupExitCode: Integer;
+begin
+  if (not ServiceInstallFailed) or (ServiceInstallExitCode = 0) then
+    Result := 0
+  else if ServiceInstallExitCode > 0 then
+    Result := ServiceInstallExitCode
+  else
+    Result := 1;
+end;
+
 { A silent install has nobody to answer the pairing window. The Start-menu entry
   remains available so staff can pair later. }
 function ShouldOfferPairing(): Boolean;
@@ -188,6 +204,7 @@ begin
   if not Exec('powershell.exe', Params, ExpandConstant('{app}'), SW_HIDE, ewWaitUntilTerminated, Code) then
   begin
     ServiceInstallFailed := True;
+    ServiceInstallExitCode := 1;
     ShowServiceInstallFailure('Windows could not launch the service installer.');
     exit;
   end;
@@ -196,6 +213,7 @@ begin
   if Code <> 0 then
   begin
     ServiceInstallFailed := True;
+    ServiceInstallExitCode := Code;
     ShowServiceInstallFailure('The service installer returned exit code ' + IntToStr(Code) + '.');
   end;
 end;
