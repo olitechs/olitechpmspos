@@ -117,6 +117,8 @@ test('inventory valuation requires the explicit cost permission for Storekeeper'
   assert.match(shell, /valuation: 'stores\.inventory\.valuation\.view'/);
   assert.match(inventoryOperations, /permissions\.codes\.has\('stores\.inventory\.valuation\.view'\)/);
   assert.match(dashboard, /resolvePermissions\(user\)\.codes\.has\('stores\.inventory\.valuation\.view'\)/);
+  assert.match(dashboard, /const canSeeCosts = Boolean\(user\?\.isPlatformOwner \|\| resolvePermissions\(user\)\.codes\.has\('stores\.inventory\.valuation\.view'\)\)/);
+  assert.doesNotMatch(dashboard, /\['store_manager', 'hotel_admin', 'super_admin'\]\.includes\(role\).*stores\.inventory\.valuation\.view/);
   assert.match(inventoryReports, /canViewValuation\?inventoryService\.getInventoryValuation/);
   assert.match(inventoryReports, /Inventory costs and valuation are restricted/);
 });
