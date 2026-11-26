@@ -3,7 +3,7 @@ import path from 'node:path';
 
 // Bumped when the agent's behaviour or configuration surface changes. The
 // service, the dashboard and diagnostics all report this same value.
-export const AGENT_VERSION = '2.2.0';
+export const AGENT_VERSION = '2.2.1';
 export const SERVICE_ID = 'OliTechsPrintAgent';
 export const SERVICE_DISPLAY_NAME = 'OliTechs Print Agent';
 export const LOOPBACK_HOSTS = Object.freeze(['127.0.0.1', 'localhost', '::1', '[::1]']);

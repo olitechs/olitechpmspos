@@ -7,6 +7,7 @@ import { fetchPrintHealth, retryPrintJob } from '@/services/printerHealthCore';
 import { fetchPrinterHistory } from '@/services/printerHistory';
 import { jobStatusLabel, jobTone, recentPrinterJobs, summarizeAllPrinters, tidyError } from '@/services/printerHistoryCore';
 import { printerSetupService } from '@/services/printerSetupService';
+import { isWorkstationPaired } from '@/services/printerAgentPairing';
 import { workstationPresence } from '@/services/printerAgentCredentialsCore';
 import { exportPrintDiagnostics } from '@/services/printerDiagnostics';
 import { getPrinterPrintSettings, savePrinterPrintSettings } from '@/services/printerPrintSettings';
@@ -112,7 +113,7 @@ export default function SettingsPrinters() {
   const [healthNotice,setHealthNotice] = useState('');
   const [pairing,setPairing] = useState({ loading:false, message:'' });
   const [workstations,setWorkstations] = useState({ loading:true, rows:[], message:'' });
-  const [pairingCode,setPairingCode] = useState({ loading:false, code:'', expiresAt:null, agentName:'POS computer', error:'' });
+  const [pairingCode,setPairingCode] = useState({ loading:false, code:'', credentialId:null, expiresAt:null, agentName:'POS computer', error:'', connected:false });
   const [diagnostics,setDiagnostics] = useState({ loading:false, message:'' });
   const [history,setHistory] = useState(null);
   const [historyLoading,setHistoryLoading] = useState(false);
@@ -144,7 +145,11 @@ export default function SettingsPrinters() {
     try {
       setHealth(await fetchPrintHealth(agentUrl));
     } catch (error) {
-      setHealth({ reachable:false, tone:'danger', headline:'The print agent is not reachable on this computer.', detail:error?.message || 'Start the OliTechs Print Agent, then check again.', counts:null, attention:[] });
+      const browserOrigin = typeof window === 'undefined' ? '' : window.location.origin;
+      const detail = error?.message === 'Failed to fetch' && browserOrigin
+        ? `The browser request was blocked. If http://127.0.0.1:8631/health works in a tab, this app is open from ${browserOrigin} and the agent does not trust that address yet. Send it to OliTechs support.`
+        : (error?.message || 'Start the OliTechs Print Agent, then check again.');
+      setHealth({ reachable:false, tone:'danger', headline:'The print agent is not reachable on this computer.', detail, counts:null, attention:[] });
     } finally {
       setHealthLoading(false);
     }
@@ -176,15 +181,15 @@ export default function SettingsPrinters() {
   // it into the installer dialog on the other computer. It is generated in the
   // cloud, so it does not need the agent on this browser's computer.
   const showPairingCode = async () => {
-    setPairingCode((current)=>({ ...current, loading:true, error:'', code:'' }));
+    setPairingCode((current)=>({ ...current, loading:true, error:'', code:'', credentialId:null, connected:false }));
     try {
       const result = await printerSetupService.createPairingCode({
         propertyId,
         agentName: String(pairingCode.agentName || '').trim() || 'POS computer',
       });
-      setPairingCode((current)=>({ ...current, loading:false, code:result.code, expiresAt:result.expiresAt, error:'' }));
+      setPairingCode((current)=>({ ...current, loading:false, code:result.code, credentialId:result.credentialId, expiresAt:result.expiresAt, error:'', connected:false }));
     } catch (error) {
-      setPairingCode((current)=>({ ...current, loading:false, code:'', expiresAt:null,
+      setPairingCode((current)=>({ ...current, loading:false, code:'', credentialId:null, expiresAt:null, connected:false,
         error: error?.message || 'Could not create a pairing code.' }));
     }
   };
@@ -203,6 +208,30 @@ export default function SettingsPrinters() {
   };
 
   useEffect(()=>{ refreshWorkstations(); },[propertyId]);
+
+  // The code is entered in the Windows pairing window, not in this browser, so
+  // only the cloud credential can tell us it succeeded. Watch that one row and
+  // hide the code as soon as it is redeemed.
+  useEffect(()=>{
+    if (!propertyId || !pairingCode.code || !pairingCode.credentialId || pairingCode.connected) return undefined;
+    let active = true;
+    const check = async () => {
+      try {
+        const rows = await printerSetupService.listPairedWorkstations({ propertyId });
+        if (!active) return;
+        const paired = rows.find((row)=>isWorkstationPaired([row], pairingCode.credentialId));
+        if (paired) {
+          setPairingCode((current)=>({ ...current, connected:true }));
+          setWorkstations({ loading:false, rows, message:`${paired.name || 'That computer'} is paired and ready to print.` });
+        }
+      } catch (_) {
+        // A transient cloud error must not clear a valid code; keep polling.
+      }
+    };
+    void check();
+    const timer = setInterval(()=>void check(), 3000);
+    return ()=>{ active=false; clearInterval(timer); };
+  },[propertyId, pairingCode.code, pairingCode.credentialId, pairingCode.connected]);
 
   const revokeWorkstation = async (row) => {
     if (!window.confirm(`Revoke "${row.name}"? That computer stops printing immediately and must be paired again.`)) return;
@@ -366,7 +395,7 @@ export default function SettingsPrinters() {
 
     let saved;
     try {
-      saved = await printerDb.savePrinter({ propertyId, payload, id: editing.id || null });
+      saved = await printerSetupService.savePrinter({ propertyId, payload, id: editing.id || null });
     } catch (saveError) {
       return setError(saveError.message);
     }
@@ -378,13 +407,13 @@ export default function SettingsPrinters() {
     // so the card does not stay stuck on "Testing…" forever.
     const routingFailed = async (message) => {
       setEditing(current=>current?{...current,id:printerId}:current);
-      await printerDb.markPrinterFailed(printerId, propertyId, message).catch(()=>{});
+      await printerSetupService.markPrinterFailed(printerId, propertyId, message).catch(()=>{});
       await load(true).catch((refreshError)=>console.warn('[Printers] list refresh after a failed routing save did not complete', refreshError));
       setError(`Printer saved, but its routing could not be updated: ${message}`);
     };
     try {
-      await printerDb.clearPrinterAssignments(printerId, propertyId);
-      if (assignmentTypes.length) await printerDb.addPrinterAssignments(propertyId, printerId, assignmentTypes);
+      await printerSetupService.clearPrinterAssignments(printerId, propertyId);
+      if (assignmentTypes.length) await printerSetupService.addPrinterAssignments(propertyId, printerId, assignmentTypes);
     } catch (routingError) {
       await routingFailed(routingError.message);
       return;
@@ -464,7 +493,7 @@ export default function SettingsPrinters() {
   const remove = async id => {
     if (!window.confirm('Delete this printer and its routing assignments?')) return;
     try {
-      await printerDb.deletePrinter(id, propertyId);
+      await printerSetupService.deletePrinter(id, propertyId);
       setNotice('Printer removed.');
     } catch (e) {
       setError(e.message);
@@ -474,7 +503,7 @@ export default function SettingsPrinters() {
 
   const removeAssignment = async assignment => {
     try {
-      await printerDb.deleteAssignment(assignment.id, propertyId);
+      await printerSetupService.deleteAssignment(assignment.id, propertyId);
     } catch (e) {
       setError(e.message);
     }
@@ -486,7 +515,7 @@ export default function SettingsPrinters() {
     const exists=assignments.some(a=>a.printer_id===printerId && a.assignment_type===type);
     if (exists) return;
     try {
-      await printerDb.createAssignment({ propertyId, printerId, assignmentType:type });
+      await printerSetupService.createAssignment({ propertyId, printerId, assignmentType:type });
       setNotice('Printer routing updated.');
     } catch (e) {
       setError(e.message);
@@ -538,7 +567,7 @@ export default function SettingsPrinters() {
         {error && <Alert type="error" text={error}/>}
 {agentError && <Alert type="error" text={agentError}/>}
         <PrintHealthStrip health={health} loading={healthLoading} notice={healthNotice} pairing={pairing} diagnostics={diagnostics} onRefresh={refreshHealth} onReprint={reprintJob} onPair={pairThisComputer} onDiagnostics={saveDiagnostics}/>
-        <PairAnotherComputer state={pairingCode} onChangeName={(name)=>setPairingCode((current)=>({ ...current, agentName:name }))} onGenerate={showPairingCode} onClose={()=>setPairingCode((current)=>({ ...current, code:'', expiresAt:null, error:'' }))}/>
+        <PairAnotherComputer state={pairingCode} onChangeName={(name)=>setPairingCode((current)=>({ ...current, agentName:name }))} onGenerate={showPairingCode} onClose={()=>setPairingCode((current)=>({ ...current, code:'', credentialId:null, expiresAt:null, error:'', connected:false }))}/>
         <PairedWorkstations data={workstations} onRefresh={refreshWorkstations} onRevoke={revokeWorkstation}/>
 {!!discovered.length && <div className="rounded-2xl border border-[var(--primary)] bg-primary-soft p-4"><div className="text-xs font-black uppercase tracking-wide text-primary-text">Network printers discovered</div><div className="mt-2 flex flex-wrap gap-2">{discovered.map(d=><button key={`${d.host}:${d.port}`} onClick={()=>{setEditing({...blank,connection_type:'network_ip',ip_address:d.host,port:d.port,assignmentTypes:[]});setDiscovered([]);}} className="rounded-xl border border-[var(--primary)] bg-surface px-3 py-2 text-xs font-bold text-primary-text hover:bg-primary-soft">{d.label}</button>)}</div></div>}
         {notice && <Alert type="success" text={notice}/>}
@@ -601,7 +630,7 @@ function PairAnotherComputer({state,onChangeName,onGenerate,onClose}) {
   // The code expires server-side after ten minutes; show the same clock so a
   // manager never reads out a code that has already lapsed.
   useEffect(()=>{
-    if (!state?.code) return undefined;
+    if (!state?.code || state?.connected) return undefined;
     setNow(Date.now());
     const timer = setInterval(()=>setNow(Date.now()), 1000);
     return ()=>clearInterval(timer);
@@ -637,7 +666,11 @@ function PairAnotherComputer({state,onChangeName,onGenerate,onClose}) {
 
     {state?.error && <div role="alert" className="mt-3 rounded-lg bg-[var(--danger-soft)] p-3 text-xs font-bold text-[var(--danger-text)]">{state.error}</div>}
 
-    {state?.code && <div className="mt-3 rounded-xl border border-[var(--primary)] bg-primary-soft p-4">
+    {state?.connected ? <div role="status" className="mt-3 rounded-xl border border-[var(--success)] bg-[var(--success-soft)] p-4">
+      <div className="flex items-center gap-2 text-sm font-bold text-[var(--success-text)]"><CheckCircle2 size={16}/> Agent connected</div>
+      <p className="mt-1 text-xs text-muted-foreground">{state.agentName || 'That computer'} is paired. The code has been used and is no longer shown. It can print queued jobs even when no browser is open.</p>
+      <button type="button" onClick={onClose} className="mt-2 rounded-lg border border-border bg-surface px-3 py-1.5 text-[11px] font-bold text-muted-foreground hover:bg-secondary">Done</button>
+    </div> : state?.code && <div className="mt-3 rounded-xl border border-[var(--primary)] bg-primary-soft p-4">
       <div className="text-[11px] font-black uppercase tracking-wide text-primary-text">Pairing code for {state.agentName || 'POS computer'}</div>
       <div className="mt-1 flex flex-wrap items-center gap-3">
         <span className={`select-all font-mono text-3xl font-black tracking-[0.25em] ${expired ? 'text-muted-foreground line-through' : 'text-foreground'}`}>{state.code}</span>
@@ -649,7 +682,7 @@ function PairAnotherComputer({state,onChangeName,onGenerate,onClose}) {
           ? 'This code has expired. Generate a new one.'
           : `Expires in ${minutes}:${String(seconds).padStart(2,'0')}. It can be used once.`}
       </p>
-      <p className="mt-1 text-[11px] text-muted-foreground">On that computer: Start menu → OliTechs Print Agent → Pair this computer (or the pairing step at the end of the installer), then enter this code.</p>
+      <p className="mt-1 text-[11px] text-muted-foreground">On that computer: Start menu → OliTechs Print Agent → Pair this computer (or the pairing step at the end of the installer), then enter this code. This panel updates to "Agent connected" as soon as the code is accepted.</p>
     </div>}
   </section>;
 }
@@ -701,7 +734,7 @@ function PrintHealthStrip({health,loading,notice,pairing,diagnostics,onRefresh,o
         </div>
         <div className="mt-1 text-sm font-semibold text-foreground">{loading ? 'Checking the print agent…' : (health?.headline || 'Checking the print agent…')}</div>
         {health?.detail && <div className="mt-1 max-w-2xl text-xs text-muted-foreground">{health.detail}</div>}
-        <div className="mt-2 max-w-2xl text-[11px] leading-5 text-muted-foreground">First time here? Download the Windows installer, double-click it, approve the Windows prompt, then return and choose Check agent. No terminal or commands are needed. <span className="font-semibold text-[var(--warning-text)]">This release is an unsigned test build; Windows may show an unknown-publisher warning.</span></div>
+        <div className="mt-2 max-w-2xl text-[11px] leading-5 text-muted-foreground">First time here? Download the signed Windows installer from OliTechs support, double-click it, approve the Windows prompt, then return and choose Check agent. No terminal or commands are needed. Windows shows OliTechs as the publisher.</div>
         {notice && <div className="mt-1 text-xs font-bold text-foreground">{notice}</div>}
         {health?.paired?.paired
           ? <div className="mt-1 text-[11px] font-semibold text-muted-foreground">Paired as {health.paired.agentName}. Queued jobs print even when no browser is open.</div>
@@ -719,7 +752,7 @@ function PrintHealthStrip({health,loading,notice,pairing,diagnostics,onRefresh,o
         </div>}
       </div>
       <div className="flex flex-wrap gap-2">
-        <span className="inline-flex items-center gap-2 rounded-xl border border-border bg-secondary px-3 py-2 text-xs font-bold text-muted-foreground" title="A signed customer installer will appear here after release validation.">Signed installer not yet available</span>
+        <span className="inline-flex items-center gap-2 rounded-xl border border-[var(--success)] bg-[var(--success-soft)] px-3 py-2 text-xs font-bold text-[var(--success-text)]" title="Ask OliTechs support for the signed Windows installer.">Signed installer available</span>
         <button onClick={onRefresh} disabled={loading} className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-bold text-foreground hover:bg-secondary disabled:opacity-50"><RefreshCw size={14}/>{loading?'Checking…':'Check agent'}</button>
         <button onClick={onDiagnostics} disabled={diagnostics?.loading || !health?.reachable} className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-bold text-foreground hover:bg-secondary disabled:opacity-50"><FileDown size={14}/>{diagnostics?.loading?'Preparing…':'Save diagnostics file'}</button>
       </div>

@@ -7,14 +7,17 @@ const read = (relative) => readFile(new URL(relative, import.meta.url), 'utf8');
 test('Print Agent supports Private Network Access only after origin validation', async () => {
   const source = await read('./server.mjs');
 
-  const originGuard = source.indexOf('if (!isAllowedOrigin(origin))');
+  const originGuard = source.indexOf('if (!isAllowedOrigin(origin, isPublicHealth))');
   const preflight = source.indexOf("if (req.method === 'OPTIONS')");
   assert.ok(originGuard >= 0 && preflight > originGuard, 'origin validation must run before preflight handling');
+  assert.ok(source.indexOf('const isPublicHealth') < originGuard, 'the read-only health exception must be decided before the guard');
 
   assert.match(source, /access-control-request-private-network/);
   assert.match(source, /'Access-Control-Allow-Private-Network': 'true'/);
   assert.match(source, /privateNetworkRequested\s*\?/);
   assert.match(source, /TRUSTED_ORIGINS/);
+  assert.match(source, /originAllowed: !origin \|\| isAllowedOrigin\(origin\)/);
+  assert.match(source, /requestOrigin: origin \|\| null/);
 });
 
 test('Print Agent keeps loopback binding and restricts raw printer endpoints', async () => {

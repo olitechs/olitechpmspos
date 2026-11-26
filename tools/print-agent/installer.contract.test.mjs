@@ -131,6 +131,11 @@ test('the Windows release workflow verifies inputs, signs, and refuses an unsign
   assert.match(workflow, /SHA256SUMS\.txt/);
   assert.match(workflow, /actions\/upload-artifact/);
   assert.match(workflow, /softprops\/action-gh-release/);
+  assert.match(workflow, /vars\.VITE_SUPABASE_URL/);
+  assert.match(workflow, /vars\.VITE_SUPABASE_ANON_KEY/);
+  assert.match(workflow, /vars\.PRINT_AGENT_APP_ORIGIN/);
+  assert.match(workflow, /'-SupabaseUrl', \$env:SUPABASE_URL/);
+  assert.match(workflow, /'-AppOrigin', \$env:APP_ORIGIN/);
   assert.ok(!/service_role/i.test(workflow), 'the release workflow must not handle a service-role key');
   assert.ok(!/BEGIN [A-Z ]*PRIVATE KEY/.test(workflow), 'no private key material may be committed');
 });
@@ -142,6 +147,9 @@ test('the installer payload mirrors the repository layout the agent imports from
   assert.match(build, /Join-Path \$RepoRoot 'src\\services\\escposJob\.js'/);
   assert.match(build, /Filter '\*\.test\.mjs'/);
   assert.match(build, /agent-config\.json/);
+  assert.match(build, /\[string\]\$AppOrigin/);
+  assert.match(build, /\$publicConfig = @{ appOrigin = \$AppOrigin }/);
+  assert.match(build, /Test-ExactHttpOrigin/);
 });
 
 test('pairing configuration is injected as environment entries, never credentials', async () => {
@@ -156,6 +164,9 @@ test('pairing configuration is injected as environment entries, never credential
   assert.match(install, /\$xml\.Replace\('\{\{ENV_ENTRIES\}\}', \$envEntries\)/);
   assert.match(install, /name=`"SUPABASE_URL`" value=`"\$escapedUrl`"/);
   assert.match(install, /VITE_SUPABASE_ANON_KEY/);
+  assert.match(install, /\[string\]\$AppOrigin/);
+  assert.match(install, /Test-ExactHttpOrigin/);
+  assert.match(install, /name=`"PRINT_AGENT_ALLOWED_ORIGINS`" value=`"\$escapedOrigins`"/);
   assert.ok(!/service_role_key/i.test(install), 'the workstation installer must not accept a service-role key');
   assert.match(install, /Pairing:  available/, 'the installer must tell staff how to pair');
 });

@@ -1,9 +1,18 @@
 [CmdletBinding()]
 param(
-    [string]$Root = (Split-Path -Parent $PSScriptRoot)
+    [string]$Root = ''
 )
 
 $ErrorActionPreference = 'Stop'
+if (-not $Root) {
+    if ($PSScriptRoot) {
+        $Root = Split-Path -Parent $PSScriptRoot
+    } elseif ($MyInvocation.MyCommand.Path) {
+        $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
+    } else {
+        $Root = (Get-Location).Path
+    }
+}
 $rootPath = [System.IO.Path]::GetFullPath($Root)
 $agentRoot = Join-Path $rootPath 'tools\print-agent'
 if (-not (Test-Path -LiteralPath $agentRoot -PathType Container)) {

@@ -517,7 +517,7 @@ async function acceptCloudJob(input) {
  * Deliberately reports only facts a dashboard or support engineer needs. No
  * printer addresses, credentials or configuration values are exposed.
  */
-function buildHealth() {
+function buildHealth(origin = '') {
   return {
     ok: true,
     service: 'OliTechs Local Print Agent',
@@ -529,6 +529,11 @@ function buildHealth() {
     startedAt: startedAtIso,
     uptimeSeconds: Math.round(process.uptime()),
     platform: process.platform,
+    // The health probe is readable from any browser origin so the app can
+    // explain an origin mismatch. Printing remains restricted to these values.
+    requestOrigin: origin || null,
+    originAllowed: !origin || isAllowedOrigin(origin),
+    allowedOrigins: [...TRUSTED_ORIGINS],
     queue: printQueue ? printQueue.counts() : null,
     paired: agentCredential
       ? { paired: true, agentName: agentCredential.agentName, propertyId: agentCredential.propertyId }
@@ -610,8 +615,9 @@ function json(res, status, body, extraHeaders = {}) {
 // request handler stays a plain function that is easy to exercise in tests.
 let TRUSTED_ORIGINS = new Set(['https://olitechpmspos.vercel.app']);
 
-function isAllowedOrigin(origin) {
+function isAllowedOrigin(origin, readOnlyHealth = false) {
   if (!origin) return true; // CLI / native local clients do not use browser CORS.
+  if (readOnlyHealth) return true; // Diagnostic probe only; it cannot print.
   if (TRUSTED_ORIGINS.has(origin)) return true;
   try {
     const parsed = new URL(origin);
@@ -642,24 +648,6 @@ function readBody(req) {
 
 const server = http.createServer(async (req, res) => {
   const origin = String(req.headers.origin || '');
-  if (!isAllowedOrigin(origin)) {
-    return json(res, 403, {
-      ok: false,
-      code: 'ORIGIN_NOT_ALLOWED',
-      message: 'This local Print Agent only accepts browser requests from the OliTechs app or localhost.',
-    });
-  }
-  if (origin) res.setHeader('Access-Control-Allow-Origin', origin);
-  if (req.method === 'OPTIONS') {
-    // Chromium sends a Private Network Access preflight when a public HTTPS
-    // app contacts this loopback service. Only approved origins reach here.
-    const privateNetworkRequested =
-      String(req.headers['access-control-request-private-network'] || '').toLowerCase() === 'true';
-    return json(res, 204, { ok: true }, privateNetworkRequested
-      ? { 'Access-Control-Allow-Private-Network': 'true' }
-      : {});
-  }
-
   const url = new URL(req.url || '/', `http://${HOST}:${PORT}`);
 
   // Backward-compatible aliases allow older desktop configurations that stored
@@ -698,6 +686,29 @@ const server = http.createServer(async (req, res) => {
   };
   const route = routeAliases[url.pathname] || url.pathname;
 
+  // /health is a read-only status probe. It is deliberately open to the exact
+  // browser origin so an untrusted app address gets a useful answer instead of
+  // a bare "Failed to fetch". Every route that can print or pair stays guarded.
+  const isPublicHealth = (req.method === 'GET' || req.method === 'OPTIONS') && route === '/health';
+  if (!isAllowedOrigin(origin, isPublicHealth)) {
+    return json(res, 403, {
+      ok: false,
+      code: 'ORIGIN_NOT_ALLOWED',
+      message: 'This Print Agent only accepts printer commands from an approved OliTechs app address or localhost. Open http://127.0.0.1:8631/health on this computer to see the exact address that must be allowed.',
+    });
+  }
+  if (origin) res.setHeader('Access-Control-Allow-Origin', origin);
+  if (req.method === 'OPTIONS') {
+    // Chromium sends a Private Network Access preflight when a public HTTPS
+    // app contacts this loopback service. Only approved origins reach here,
+    // apart from the read-only health probe above.
+    const privateNetworkRequested =
+      String(req.headers['access-control-request-private-network'] || '').toLowerCase() === 'true';
+    return json(res, 204, { ok: true }, privateNetworkRequested
+      ? { 'Access-Control-Allow-Private-Network': 'true' }
+      : {});
+  }
+
   const clientAddress = String(req.socket?.remoteAddress || 'local');
   const admission = limiter.check(clientAddress, rateLimitClass(route));
   if (!admission.allowed) {
@@ -709,7 +720,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'GET' && route === '/health') {
-    return json(res, 200, buildHealth());
+    return json(res, 200, buildHealth(origin));
   }
 
   if (req.method === 'GET' && route === '/discover') {

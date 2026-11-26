@@ -19,6 +19,7 @@
     "print-agent": "node --import ./tools/print-agent/instrument.mjs tools/print-agent/print-agent-v2.js",
     "print-agent:install": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/print-agent/install-windows.ps1",
     "print-agent:uninstall": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/print-agent/uninstall-windows.ps1",
+    "print-agent:allow-origin": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/print-agent/service/set-allowed-origin.ps1 -Origin",
     "print-agent:run": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/print-agent/run-windows.ps1",
     "print-agent:service:install": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/print-agent/service/install-service.ps1",
     "print-agent:service:uninstall": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/print-agent/service/uninstall-service.ps1",

@@ -10,6 +10,9 @@ param(
   [string]$InnoSetupPath = '',
   [string]$SupabaseUrl = '',
   [string]$SupabaseAnonKey = '',
+  # Exact browser origin allowed to send printer commands to the local agent.
+  # Keep the production default; pass a custom deployment origin when building.
+  [string]$AppOrigin = '',
   # Signing: provide either a certificate already installed in the store, or a
   # PFX. Without one the build only produces an internal, clearly marked unsigned
   # artifact.
@@ -42,6 +45,20 @@ if (-not $Version) {
   if ($agentVersionLine) { $Version = $agentVersionLine.Matches[0].Groups[1].Value } else { $Version = '0.0.0-dev' }
 }
 Write-Host "Building OliTechs Print Agent installer $Version" -ForegroundColor Cyan
+
+function Test-ExactHttpOrigin {
+  param([string]$Origin)
+  if (-not $Origin) { return $false }
+  try {
+    $uri = [Uri]$Origin
+    if ($uri.Scheme -notin @('http', 'https')) { return $false }
+    if ($uri.UserInfo -or $uri.Query -or $uri.Fragment) { return $false }
+    if ($uri.AbsolutePath -notin @('', '/')) { return $false }
+    return ($uri.AbsoluteUri.TrimEnd('/') -eq $Origin.Trim().TrimEnd('/'))
+  } catch {
+    return $false
+  }
+}
 
 function Resolve-Tool([string]$Explicit, [string[]]$Candidates, [string]$Label) {
   if ($Explicit) {
@@ -152,21 +169,26 @@ if ($nodeSignature.Status -ne 'Valid') {
 }
 
 # 4. Public cloud configuration, so pairing works without a terminal.
-if (-not $SupabaseUrl -or -not $SupabaseAnonKey) {
-  $envFile = Join-Path $RepoRoot '.env'
-  if (Test-Path $envFile) {
-    foreach ($line in Get-Content $envFile) {
-      if ($line -match '^\s*VITE_SUPABASE_URL\s*=\s*(.+)\s*$' -and -not $SupabaseUrl) { $SupabaseUrl = $Matches[1].Trim().Trim('"') }
-      if ($line -match '^\s*VITE_SUPABASE_ANON_KEY\s*=\s*(.+)\s*$' -and -not $SupabaseAnonKey) { $SupabaseAnonKey = $Matches[1].Trim().Trim('"') }
-    }
+$envFile = Join-Path $RepoRoot '.env'
+if (Test-Path $envFile) {
+  foreach ($line in Get-Content $envFile) {
+    if ($line -match '^\s*VITE_SUPABASE_URL\s*=\s*(.+)\s*$' -and -not $SupabaseUrl) { $SupabaseUrl = $Matches[1].Trim().Trim('"') }
+    if ($line -match '^\s*VITE_SUPABASE_ANON_KEY\s*=\s*(.+)\s*$' -and -not $SupabaseAnonKey) { $SupabaseAnonKey = $Matches[1].Trim().Trim('"') }
+    if ($line -match '^\s*(?:VITE_APP_ORIGIN|APP_ORIGIN)\s*=\s*(.+)\s*$' -and -not $AppOrigin) { $AppOrigin = $Matches[1].Trim().Trim('"') }
   }
 }
+if (-not $AppOrigin) { $AppOrigin = 'https://olitechpmspos.vercel.app' }
+if (-not (Test-ExactHttpOrigin $AppOrigin)) {
+  throw "Invalid -AppOrigin '$AppOrigin'. Pass an exact http(s) origin such as https://hotel.example.com (no path, query or trailing slash)."
+}
+$publicConfig = @{ appOrigin = $AppOrigin }
 if ($SupabaseUrl -and $SupabaseAnonKey) {
-  @{ supabaseUrl = $SupabaseUrl; supabaseAnonKey = $SupabaseAnonKey } |
-    ConvertTo-Json | Set-Content -Path (Join-Path $PayloadRoot 'agent-config.json') -Encoding UTF8
+  $publicConfig.supabaseUrl = $SupabaseUrl
+  $publicConfig.supabaseAnonKey = $SupabaseAnonKey
 } else {
   Write-Host 'Warning: no Supabase URL/anon key found. The installer will still work, but pairing stays unavailable until the agent is configured.' -ForegroundColor Yellow
 }
+$publicConfig | ConvertTo-Json | Set-Content -Path (Join-Path $PayloadRoot 'agent-config.json') -Encoding UTF8
 # A service-role key must never be staged: assert that nothing secret is in the payload.
 $leaked = Get-ChildItem -Path $PayloadRoot -Recurse -File | Select-String -Pattern 'SERVICE_ROLE|service_role' -SimpleMatch -ErrorAction SilentlyContinue
 if ($leaked) { throw 'A service-role reference was found in the payload. Workstations get their own credential through pairing; nothing else may be bundled.' }
