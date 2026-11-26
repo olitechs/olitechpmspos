@@ -12,7 +12,7 @@ test('property resolution keeps the membership foreign key and falls back to a d
   assert.ok(authService.includes(".from('properties')"));
   assert.ok(authService.includes(".eq('id', propertyId)"));
   assert.ok(authService.includes('property = propertyById || null'));
-  assert.ok(authService.includes('property,\n\t\tpropertyRole: membership?.role || null'));
+  assert.match(authService, /property,\r?\n[ \t]*propertyRole: membership\?\.role \|\| null/);
 });
 
 test('missing property screen offers a retry without forcing sign-out', () => {
