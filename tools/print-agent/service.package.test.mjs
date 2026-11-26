@@ -45,6 +45,20 @@ test('support can add one trusted app origin to an installed service', async () 
   assert.ok(!/Remove-Item|Set-Service -StartupType Disabled/.test(script), 'the fix must not uninstall or disable the agent');
 });
 
+test('the support script keeps previously allowed origins when adding one', async () => {
+  const script = await read('./service/set-allowed-origin.ps1');
+  assert.match(script, /existingValue -split ','/);
+  assert.match(script, /\$origins -notcontains \$value/);
+  assert.match(script, /\$origins -join ','/);
+  assert.doesNotMatch(script, /Service config now allows: https:\/\/olitechpmspos\.vercel\.app, \$Origin/);
+});
+
+test('a fresh install allows both www and apex app origins', async () => {
+  const script = await read('./service/install-service.ps1');
+  assert.match(script, /New-Object System\.UriBuilder\(\$candidate\)/);
+  assert.match(script, /StartsWith\('www\.'/);
+});
+
 test('uninstall keeps printer data unless deletion is explicitly requested', async () => {
   const script = await read('./service/uninstall-service.ps1');
   assert.match(script, /\[switch\]\$RemoveData/);

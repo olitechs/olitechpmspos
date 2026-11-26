@@ -30,9 +30,21 @@ if (-not $env:ProgramData) { throw 'The Windows ProgramData directory is not ava
 $ConfigPath = Join-Path $env:ProgramData 'OliTechs\PrintAgent\service\OliTechsPrintAgent.xml'
 if (-not (Test-Path $ConfigPath)) { throw "Print Agent service configuration not found: $ConfigPath" }
 
-$escaped = [System.Security.SecurityElement]::Escape($Origin)
-$entry = "  <env name=`"PRINT_AGENT_ALLOWED_ORIGINS`" value=`"$escaped`"/>"
 $current = Get-Content -Raw -Path $ConfigPath
+# Merge instead of replacing: hotels commonly open both the www and apex
+# address of the same site, and support may have added other exact origins.
+$existingValue = ''
+$existingEntry = [regex]::Match($current, '(?m)^[ \t]*<env name="PRINT_AGENT_ALLOWED_ORIGINS" value="([^"]*)"/>')
+if ($existingEntry.Success) {
+  $existingValue = [System.Security.SecurityElement]::Unescape($existingEntry.Groups[1].Value)
+}
+$origins = @()
+foreach ($item in (($existingValue -split ',') + @($Origin))) {
+  $value = $item.Trim()
+  if ($value -and ($origins -notcontains $value)) { $origins += $value }
+}
+$escaped = [System.Security.SecurityElement]::Escape(($origins -join ','))
+$entry = "  <env name=`"PRINT_AGENT_ALLOWED_ORIGINS`" value=`"$escaped`"/>"
 $updated = [regex]::Replace($current, '(?m)^[ \t]*<env name="PRINT_AGENT_ALLOWED_ORIGINS" value="[^"]*"/>\r?\n?', '')
 if (-not $updated.Contains('</service>')) { throw "The service configuration is missing its closing tag: $ConfigPath" }
 $updated = $updated.Replace('</service>', $entry + "`r`n</service>")
@@ -46,7 +58,7 @@ if (-not $health.ok) { throw 'The Print Agent restarted but /health did not repo
 
 Write-Host "Allowed app origin: $Origin" -ForegroundColor Green
 Write-Host "Agent version: $($health.version)" -ForegroundColor Green
-Write-Host "Service config now allows: https://olitechpmspos.vercel.app, $Origin" -ForegroundColor Green
+Write-Host "Service config now allows: $($origins -join ', ')" -ForegroundColor Green
 if ($health.allowedOrigins) {
   Write-Host "Agent reports allowed origins: $($health.allowedOrigins -join ', ')" -ForegroundColor Green
 }
