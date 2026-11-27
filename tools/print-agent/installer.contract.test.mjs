@@ -73,6 +73,9 @@ test('a failed service installation is reported to staff, and pairing is skipped
   assert.match(iss, /ewWaitUntilTerminated, Code/);
   assert.match(iss, /if Code <> 0 then/);
   assert.match(iss, /ServiceInstallFailed := True/);
+  assert.match(iss, /function GetCustomSetupExitCode: Integer/);
+  assert.match(iss, /if \(not ServiceInstallFailed\) or \(ServiceInstallExitCode = 0\) then/);
+  assert.match(iss, /Result := ServiceInstallExitCode/);
   assert.match(iss, /mbError, MB_OK/);
   assert.match(iss, /Printing will not work until this is fixed/);
   assert.match(iss, /function ServiceInstalledOk\(\): Boolean/);
@@ -206,4 +209,5 @@ test('the Windows release is gated on silent install, health, uninstall, and fai
   assert.match(smoke, /DForceServiceInstallFailure/);
   assert.match(smoke, /failureOutputRoot = Join-Path \$logRoot 'failure-build'/);
   assert.match(smoke, /failureCode -ne 0/);
+  assert.match(smoke, /\$global:LASTEXITCODE = 0/, 'cleanup diagnostics must not fail a passing smoke run');
 });

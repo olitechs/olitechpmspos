@@ -179,3 +179,8 @@ try {
   if (Test-Path $failureDirectory) { Remove-Item $failureDirectory -Recurse -Force -ErrorAction SilentlyContinue }
   if (Test-Path $installDirectory) { Remove-Item $installDirectory -Recurse -Force -ErrorAction SilentlyContinue }
 }
+
+# GitHub's pwsh wrapper propagates the last native command's exit code. Cleanup
+# diagnostics deliberately query an absent service, so reset the code only after
+# every assertion has passed. A thrown assertion skips this line and still fails.
+$global:LASTEXITCODE = 0
