@@ -143,7 +143,7 @@ This matrix was approved by the user on 2026-11-25 with the “Preserve ops, dro
 - `supabase/tests/phase1_stores_requisitions_contract.test.mjs` — reviewed; historical drift assertions left unchanged.
 - `supabase/tests/phase1_employee_management_contract.test.mjs` — reviewed; historical resolver assertions left unchanged.
 - `supabase/tests/storekeeper_operational_modules_contract.test.mjs` — reviewed; historical migration assertions left unchanged.
-- `supabase/tests/phase7_1_wastage_approval_runtime.sql` — update expected Storekeeper bundle and preserve wastage submission.
+- `supabase/tests/phase7_1_wastage_approval_runtime.sql` — reviewed; kept at Phase 7-only expectations because its disposable fixture does not apply Phase 3 migrations.
 - `src/data/modules/navArchitecture.test.js` — update split-role assertions.
 - `src/data/modules/navigationRouting.test.js` — update alias regex assertions.
 - `docs/STORES-WORKFLOWS.md` — Phase 3 section and role matrix.
