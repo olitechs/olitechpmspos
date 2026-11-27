@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createReportDefinition } from './reportDefinitions.js';
-import { createExcelBlob, createPdfBlob, reportFilename } from './reportDocumentEngine.js';
+import { createCsvBlob, createExcelBlob, createPdfBlob, reportFilename } from './reportDocumentEngine.js';
 import { readDocumentTheme } from '../../scripts/reportTheme.mjs';
 
 const THEME = await readDocumentTheme();
@@ -168,4 +168,33 @@ test('generated Excel uses a combined branded summary, formulas, dates, safe tex
   assert.equal(detail.getCell('A6').fill.fgColor.argb, 'FF101A35');
   assert.equal(detail.views[0].state, 'frozen');
   assert.equal(detail.pageSetup.printTitlesRow, '1:6');
+});
+
+test('generated CSV is BOM-prefixed, formula-safe and carries notes and truncation banners', async () => {
+  const definition = createReportDefinition({
+    key: 'csv-audit',
+    title: 'CSV Audit Report',
+    propertyName: 'Sample OliTechs Property',
+    period: { from: '2026-10-01', to: '2026-10-31' },
+    sections: [{
+      name: 'details',
+      title: 'Details',
+      columns: [
+        { key: 'name', label: 'Name', type: 'text' },
+        { key: 'amount', label: 'Amount', type: 'number', format: 'currency' },
+      ],
+      rows: [{ name: '=HYPERLINK("x","x")', amount: 12.5 }, { name: 'Café · already quoted "value"', amount: 7 }],
+    }],
+    notes: ['Report truncated: only the first 123 server-filtered rows are included. Narrow the date range.'],
+  });
+  const blob = await createCsvBlob(definition);
+  assert.equal(blob.type, 'text/csv;charset=utf-8;');
+  // Blob.text() strips a UTF-8 BOM, so verify the bytes directly.
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  assert.deepEqual([...bytes.slice(0, 3)], [0xEF, 0xBB, 0xBF], 'CSV must carry a UTF-8 BOM for Excel');
+  const text = new TextDecoder().decode(bytes.slice(3));
+  assert.match(text, /"'=HYPERLINK\(""x"",""x""\)"/, 'leading formulas must be neutralised');
+  assert.match(text, /Café · already quoted ""value""/, 'quotes and Unicode must survive');
+  assert.match(text, /Report truncated: only the first 123 server-filtered rows/);
+  assert.match(text, /Notes and limitations/);
 });

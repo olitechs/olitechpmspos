@@ -5,7 +5,8 @@ import { PmsProvider, usePms } from '@/data/PmsStore';
 import { useAuth } from '@/lib/AuthContext';
 import { hasPermissionCode } from '@/services/authService';
 import { packExportDataService, todayKenya } from '@/services/packExportDataService';
-import { downloadPackWorkbook, frontOfficeExportFilename, packExportBuilders } from '@/services/packExports';
+import { createPackWorkbookBlob, frontOfficeExportFilename, packExportBuilders } from '@/services/packExports';
+import { executeAuditedReportExport } from '@/services/reportExportService';
 import PackExcelExportButton from '@/components/shared/PackExcelExportButton';
 
 const keyOf = date => { const d=new Date(date); return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-'); };
@@ -42,13 +43,27 @@ function DashboardContent() {
   const occupancy = (n) => stats.rooms ? Math.round(n/stats.rooms*100) : 0;
   const exportFrontOfficeWorkbook = async () => {
     const extract = await packExportDataService.loadFrontOfficeExport(propertyId);
-    return downloadPackWorkbook(packExportBuilders.frontOffice, {
+    const workbookData = {
       ...extract,
       propertyName,
       currency,
       generatedAt: new Date(),
       reportDate,
-    }, frontOfficeExportFilename({ propertyName, date: reportDate }));
+    };
+    return executeAuditedReportExport({
+      definition: {
+        key: 'front-office-workbook',
+        title: 'Front Office Workbook',
+        filters: { scope: 'front office', report_type: 'workbook' },
+        sections: [],
+      },
+      format: 'xlsx',
+      userId: user?.id || user?.user_id || user?.staff?.user_id,
+      propertyId,
+      rowCount: (extract.reservations?.length || 0) + (extract.rooms?.length || 0) + (extract.folioCharges?.length || 0) + (extract.payments?.length || 0),
+      filename: frontOfficeExportFilename({ propertyName, date: reportDate }),
+      blobBuilder: async () => (await createPackWorkbookBlob(packExportBuilders.frontOffice, workbookData)).blob,
+    });
   };
   const Card = ({title,value,detail,icon:Icon,to,tone='teal'}) => <Link to={to} className="group min-w-0 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--focus)]"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="text-xs font-semibold text-[var(--text-muted)]">{title}</div><div className="mt-2 text-3xl font-bold tabular-nums text-[var(--text)]">{loading?'—':value}</div><div className="mt-1 text-xs text-[var(--text-muted)]">{detail}</div></div><span className={['rounded-lg p-2',tone==='orange'?'bg-[var(--warning-soft)] text-[var(--warning-text)]':tone==='green'?'bg-[var(--success-soft)] text-[var(--success-text)]':'bg-[var(--surface-2)] text-[var(--brand-primary)]'].join(' ')}><Icon size={19}/></span></div><div className="mt-3 flex items-center gap-1 text-xs font-semibold text-[var(--brand-primary)]">Open <ArrowRight size={13}/></div></Link>;
   return <div className="h-full overflow-y-auto bg-[var(--canvas)] p-4 sm:p-5 lg:p-6">

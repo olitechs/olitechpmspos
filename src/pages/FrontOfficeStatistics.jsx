@@ -3,6 +3,8 @@ import {Link,useParams} from 'react-router-dom';
 import {PmsProvider,usePms} from '@/data/PmsStore';
 import {useAuth} from '@/lib/AuthContext';
 import {supabase} from '@/lib/supabaseClient';
+import {createReportDefinition} from '@/services/reportDefinitions';
+import {executeAuditedReportExport} from '@/services/reportExportService';
 import {BarChart3,CalendarDays,Download,TrendingUp,Users,BedDouble,Wallet,ArrowUpRight} from 'lucide-react';
 
 const REPORTS={
@@ -20,6 +22,7 @@ function StatisticsContent(){
  const {report='occupancy'}=useParams(),{rooms=[],reservations=[],loading,error}=usePms();
  const {user}=useAuth(); const propertyId=user?.property?.id; const currency=user?.property?.currency||'KES';
  const [cancelledCount,setCancelledCount]=useState(0);
+ const [exportError,setExportError]=useState('');
  const [period,setPeriod]=useState('30');
  useEffect(()=>{let live=true;if(report!=='cancellations'||!propertyId)return()=>{live=false;};const from=new Date();from.setHours(0,0,0,0);from.setDate(from.getDate()-(Number(period)-1));const to=new Date();to.setHours(23,59,59,999);supabase.from('reservations').select('id',{count:'exact',head:true}).eq('property_id',propertyId).eq('status','cancelled').gte('arrival',dateKey(from)).lte('arrival',dateKey(to)).then(({count,error})=>{if(live&&!error)setCancelledCount(count||0);});return()=>{live=false;};},[report,propertyId,period]);
  const config=REPORTS[report]||REPORTS.occupancy;
@@ -49,11 +52,30 @@ function StatisticsContent(){
  [['Reservations',data.scoped.length,'Arrivals in selected period',Users],['Forward demand',data.upcoming.length,'Upcoming arrivals within selected window',CalendarDays],['Room nights',data.roomNights,'Selected period',BedDouble],['Occupancy',data.occupancy.toFixed(1)+'%','Selected period',BarChart3]];
  const groups=report==='channels'?data.grouped:report==='guest-origin'?data.origin:null;
  const rows=Object.entries(groups||{}).sort((a,b)=>b[1]-a[1]);
- const exportCsv=()=>{const lines=[['Metric','Value'],...cards.map(([k,v])=>[k,String(v)]),['Period days',String(days)],['Generated at',new Date().toISOString()]];const csv=lines.map(row=>row.map(v=>'"'+String(v).replaceAll('"','""')+'"').join(',')).join('\n');const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));const a=document.createElement('a');a.href=url;a.download='front-office-'+report+'-'+dateKey(now)+'.csv';a.click();URL.revokeObjectURL(url);};
+  const exportCsv=async()=>{
+   setExportError('');
+   const definition=createReportDefinition({
+    key:'front-office-statistics-'+report,
+    title:config.title+' summary',
+    propertyName:user?.property?.business_name||user?.property?.name||'OliTechs',
+    period:{from:dateKey(start),to:dateKey(end)},
+    filters:{period:'Last '+days+' days',report:config.title},
+    generatedBy:user?.full_name||user?.staff?.full_name||'Authorized user',
+    sections:[
+     {name:'summary',title:'Summary metrics',columns:[{key:'metric',label:'Metric',type:'text',width:30},{key:'value',label:'Value',type:'text',width:24},{key:'detail',label:'Basis',type:'text',width:42}],rows:cards.map(([metric,value,detail])=>({metric,value:String(value),detail}))},
+     {name:'breakdown',title:config.title+' breakdown',columns:[{key:'label',label:'Group',type:'text',width:32},{key:'count',label:'Count',type:'number',width:16}],rows:rows.map(([label,count])=>({label,count}))},
+    ],
+    notes:['Revenue figures are reservation-level estimates, not a substitute for settled folio, payment, POS or accounting reports.','Generated at '+new Date().toISOString()],
+   });
+   try {
+    await executeAuditedReportExport({definition,format:'csv',userId:user?.id||user?.user_id||user?.staff?.user_id,propertyId});
+   } catch (cause) { setExportError(cause?.message||'The summary export could not be completed.'); }
+  };
  return <div className="h-full overflow-y-auto bg-[var(--canvas)] p-4 sm:p-6"><div className="mx-auto max-w-7xl space-y-5">
   <header className="flex flex-wrap items-end justify-between gap-3"><div><div className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">Front Office / Statistics</div><h1 className="mt-1 text-2xl font-bold">{config.title}</h1><p className="mt-1 max-w-2xl text-sm text-[var(--text-muted)]">{config.description}</p></div><div className="flex flex-wrap gap-2"><select aria-label="Reporting period" value={period} onChange={e=>setPeriod(e.target.value)} className="h-10 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm"><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option><option value="365">Last 12 months</option></select><button onClick={exportCsv} className="inline-flex h-10 items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm"><Download size={15}/> Export summary</button></div></header>
   <nav className="flex gap-2 overflow-x-auto pb-1">{Object.entries(REPORTS).map(([key,item])=><Link key={key} to={'/frontoffice/statistics/'+key} className={'shrink-0 rounded-lg border px-3 py-2 text-xs font-semibold '+(key===report?'border-[var(--brand-primary)] bg-[var(--brand-primary)] text-[var(--on-primary)]':'border-[var(--border)] bg-[var(--surface)]')}>{item.title}</Link>)}</nav>
   {error&&<div role="alert" className="rounded-lg border border-[var(--danger)] bg-[var(--danger-soft)] p-3 text-sm">{error}</div>}
+  {exportError&&<div role="alert" className="rounded-lg border border-[var(--danger)] bg-[var(--danger-soft)] p-3 text-sm">{exportError}</div>}
   <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{cards.map(([label,value,detail,Icon])=><section key={label} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"><div className="flex items-center justify-between gap-2"><span className="text-xs font-semibold text-[var(--text-muted)]">{label}</span><Icon size={17} className="text-[var(--brand-primary)]"/></div><div className="mt-3 text-2xl font-bold tabular-nums">{loading?'—':value}</div><p className="mt-1 text-xs text-[var(--text-muted)]">{detail}</p></section>)}</div>
   {rows.length>0?<section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"><h2 className="font-semibold">{report==='channels'?'Reservations by source / channel':'Guests by recorded origin'}</h2><div className="mt-4 space-y-3">{rows.map(([label,count])=><div key={label}><div className="mb-1 flex justify-between gap-3 text-sm"><span className="truncate">{label}</span><b>{count}</b></div><div className="h-2 overflow-hidden rounded-full bg-[var(--surface-2)]"><div className="h-full rounded-full bg-[var(--brand-primary)]" style={{width:(count/Math.max(1,rows[0][1])*100)+'%'}}/></div></div>)}</div></section>:report==='channels'||report==='guest-origin'?<section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--text-muted)]">No source or origin details are recorded for reservations in this period. Add these details to reservation records to populate this report.</section>:null}
   {report==='forecast'&&<section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4"><h2 className="font-semibold">Upcoming arrivals</h2><div className="mt-3 divide-y divide-[var(--border)]">{data.upcoming.slice(0,30).map((r,i)=><div key={r.id||i} className="flex flex-wrap justify-between gap-2 py-3 text-sm"><span>{r.guestName||r.guest_name||'Guest'} · {r.roomNumber||r.room?.number||'Room not assigned'}</span><span className="text-[var(--text-muted)]">{dateKey(r.checkIn||r.arrival)}</span></div>)}{!data.upcoming.length&&<p className="py-4 text-sm text-[var(--text-muted)]">No upcoming arrivals in this window.</p>}</div></section>}

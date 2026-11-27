@@ -10,8 +10,17 @@ export function normalizeReportExportFilters(filters = {}) {
     }));
 }
 
+export const AUDITED_REPORT_FORMATS = new Set(['csv', 'xlsx', 'pdf']);
+
+export function countAuditedReportRows(definition = {}, format = 'pdf') {
+  const includeAllSections = format === 'csv' || format === 'xlsx';
+  return (Array.isArray(definition.sections) ? definition.sections : [])
+    .filter((section) => includeAllSections || section.pdf !== false)
+    .reduce((total, section) => total + (Array.isArray(section.rows) ? section.rows.length : 0), 0);
+}
+
 export function buildReportExportAuditEvent({ definition, format, rowCount: includedRowCount, delivery = 'download' }) {
-  if (!definition?.key || !['pdf', 'xlsx'].includes(format)) throw new Error('The report export audit event is incomplete.');
+  if (!definition?.key || !AUDITED_REPORT_FORMATS.has(format)) throw new Error('The report export audit event is incomplete.');
   const rowCount = Math.floor(Math.max(0, Math.min(1_000_000, Number(includedRowCount ?? definition.rowCount) || 0)));
   return {
     report_key: String(definition.key).slice(0, 80),

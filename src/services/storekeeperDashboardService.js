@@ -69,9 +69,9 @@ export const storekeeperDashboardService = {
         return data || [];
       }, []),
       readSection(errors, 'transfers', () => pagePropertyRows('stock_transfers', '*, from_location:inventory_locations!stock_transfers_from_location_id_fkey(name), to_location:inventory_locations!stock_transfers_to_location_id_fkey(name)', propertyId, shiftBack(today, 89), today, { limit: 1000 }), { rows: [], truncated: false }),
-      readSection(errors, 'salesToday', () => reportingService.getManagementReport(propertyId, today, today), null),
-      readSection(errors, 'salesWeek', () => reportingService.getManagementReport(propertyId, weekFrom, today), null),
-      readSection(errors, 'salesMonth', () => reportingService.getManagementReport(propertyId, monthFrom, today), null),
+      readSection(errors, 'salesToday', () => reportingService.getStoreSalesSnapshot(propertyId, today, today), null),
+      readSection(errors, 'salesWeek', () => reportingService.getStoreSalesSnapshot(propertyId, weekFrom, today), null),
+      readSection(errors, 'salesMonth', () => reportingService.getStoreSalesSnapshot(propertyId, monthFrom, today), null),
       readSection(errors, 'salesDetail', () => reportingService.getSalesDetail(propertyId, from, to), null),
       readSection(errors, 'salesTodayDetail', () => reportingService.getSalesDetail(propertyId, today, today), null),
       readSection(errors, 'salesItems', () => pagePropertyRows('pos_receipts', 'id,property_id,status,items,total,created_at', propertyId, from, to), { rows: [], truncated: false }),

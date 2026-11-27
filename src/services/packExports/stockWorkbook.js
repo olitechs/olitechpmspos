@@ -53,6 +53,32 @@ const ADJUSTMENT_REASONS = [
 const positionRange = (column) => `'Stock Position'!$${column}$${POSITION_START_ROW}:$${column}$${LAST_TEMPLATE_ROW}`;
 const movementRange = (column) => `'Stock Movements'!$${column}$${6}:$${column}$${LAST_TEMPLATE_ROW}`;
 
+// Cost and valuation columns are omitted entirely for roles without
+// stores.costs.view. Column letters stay stable for quantity/status lookups
+// that the Stock Card and Adjustment Form sheets share.
+const positionColumns = (includeCosts) => ({
+  includeCosts,
+  id: 1,
+  sku: 2,
+  product: 3,
+  category: 4,
+  unit: 5,
+  location: 6,
+  qty: 7,
+  min: 8,
+  max: 9,
+  cost: includeCosts ? 10 : null,
+  selling: includeCosts ? 11 : 10,
+  valueCost: includeCosts ? 12 : null,
+  valueSelling: includeCosts ? 13 : null,
+  margin: includeCosts ? 14 : null,
+  status: includeCosts ? 15 : 11,
+  flags: includeCosts ? 16 : 12,
+  last: includeCosts ? 16 : 12,
+});
+
+const includeCostsFrom = (data, options = {}) => options.includeCosts !== false && data?.includeCosts !== false;
+
 const sortProducts = (products) => [...products].sort((a, b) => {
   const category = safeText(a.category).toLowerCase().localeCompare(safeText(b.category).toLowerCase());
   if (category !== 0) return category;
@@ -74,43 +100,68 @@ const movementProductId = (movement) => movement.product_id || movement.product?
 
 const packSubtitle = (data) => `${data.propertyName || 'OliTechs'}  |  Generated ${generatedAtLabel(data.generatedAt)} from the OliTech database  |  Amounts in ${data.currency || PACK_CURRENCY}`;
 
-export const writeStockPositionSheet = (workbook, data) => {
+export const writeStockPositionSheet = (workbook, data, options = {}) => {
   const worksheet = workbook.addWorksheet('Stock Position');
   const products = sortProducts(data.products || []);
+  const columns = positionColumns(includeCostsFrom(data, options));
+  const letter = (key) => columnLetter(columns[key]);
 
   writeSheetTitle(worksheet, 'Stock position (all products)', packSubtitle(data));
-  writeNoteBox(worksheet, 3, 'Quantity is the system quantity on hand. Status and Data flags are formulas. Filter column O to see Out of stock / Low items. Add new products by copying the formulas in columns L-P down.', 16);
+  writeNoteBox(
+    worksheet,
+    3,
+    `Quantity is the system quantity on hand. Status and Data flags are formulas. Filter column ${letter('status')} to see Out of stock / Low items. Cost and valuation columns are included only with stores.costs.view.`,
+    columns.last,
+  );
   writeTableHeader(worksheet, 4, [
-    'ID', 'SKU', 'Product', 'Category', 'Unit', 'Location', 'Qty on hand', 'Min level', 'Max level', 'Cost price',
-    'Selling price', 'Stock value @ cost', 'Stock value @ selling', 'Margin %', 'Status', 'Data flags',
-  ], [10, 10, 34, 20, 8, 12, 11, 10, 10, 12, 12, 15, 15, 10, 14, 40]);
+    'ID', 'SKU', 'Product', 'Category', 'Unit', 'Location', 'Qty on hand', 'Min level', 'Max level',
+    ...(columns.includeCosts ? ['Cost price'] : []),
+    'Selling price',
+    ...(columns.includeCosts ? ['Stock value @ cost', 'Stock value @ selling', 'Margin %'] : []),
+    'Status', 'Data flags',
+  ], [
+    10, 10, 34, 20, 8, 12, 11, 10, 10,
+    ...(columns.includeCosts ? [12] : []),
+    12,
+    ...(columns.includeCosts ? [15, 15, 10] : []),
+    14, 40,
+  ]);
 
   products.forEach((product, index) => {
     const row = POSITION_START_ROW + index;
-    putCell(worksheet, row, 1, shortId(product.id));
-    putCell(worksheet, row, 2, safeText(product.sku));
-    putCell(worksheet, row, 3, safeText(product.name));
-    putCell(worksheet, row, 4, safeText(product.category));
-    putCell(worksheet, row, 5, safeText(product.unit));
-    putCell(worksheet, row, 6, safeText(product.location));
-    putCell(worksheet, row, 7, asNumber(product.current_stock), { format: QTY });
-    putCell(worksheet, row, 8, asNumber(product.min_stock), { format: QTY });
-    putCell(worksheet, row, 9, asNumber(product.max_stock), { format: QTY });
-    putCell(worksheet, row, 10, asNumber(product.cost_price), { format: NUM });
-    putCell(worksheet, row, 11, asNumber(product.selling_price), { format: NUM });
-    putCell(worksheet, row, 12, `=G${row}*J${row}`, { format: NUM });
-    putCell(worksheet, row, 13, `=G${row}*K${row}`, { format: NUM });
-    putCell(worksheet, row, 14, `=IF(AND(J${row}>0,K${row}>0),(K${row}-J${row})/K${row},"")`, { format: PCT });
-    putCell(worksheet, row, 15, `=IF(G${row}<=0,"Out of stock",IF(AND(H${row}>0,G${row}<H${row}),"Low","OK"))`);
-    putCell(worksheet, row, 16, `=TRIM(IF(J${row}=0,"No cost price. ","")&IF(K${row}=0,"No selling price. ","")&IF(H${row}=0,"No min level. ","")&IF(B${row}="","No SKU. ",""))`);
+    putCell(worksheet, row, columns.id, shortId(product.id));
+    putCell(worksheet, row, columns.sku, safeText(product.sku));
+    putCell(worksheet, row, columns.product, safeText(product.name));
+    putCell(worksheet, row, columns.category, safeText(product.category));
+    putCell(worksheet, row, columns.unit, safeText(product.unit));
+    putCell(worksheet, row, columns.location, safeText(product.location));
+    putCell(worksheet, row, columns.qty, asNumber(product.current_stock), { format: QTY });
+    putCell(worksheet, row, columns.min, asNumber(product.min_stock), { format: QTY });
+    putCell(worksheet, row, columns.max, asNumber(product.max_stock), { format: QTY });
+    if (columns.includeCosts) putCell(worksheet, row, columns.cost, asNumber(product.cost_price), { format: NUM });
+    putCell(worksheet, row, columns.selling, asNumber(product.selling_price), { format: NUM });
+    if (columns.includeCosts) {
+      putCell(worksheet, row, columns.valueCost, `=${letter('qty')}${row}*${letter('cost')}${row}`, { format: NUM });
+      putCell(worksheet, row, columns.valueSelling, `=${letter('qty')}${row}*${letter('selling')}${row}`, { format: NUM });
+      putCell(worksheet, row, columns.margin, `=IF(AND(${letter('cost')}${row}>0,${letter('selling')}${row}>0),(${letter('selling')}${row}-${letter('cost')}${row})/${letter('selling')}${row},"")`, { format: PCT });
+    }
+    putCell(worksheet, row, columns.status, `=IF(${letter('qty')}${row}<=0,"Out of stock",IF(AND(${letter('min')}${row}>0,${letter('qty')}${row}<${letter('min')}${row}),"Low","OK"))`);
+    const dataFlags = [
+      columns.includeCosts ? `IF(${letter('cost')}${row}=0,"No cost price. ","")` : null,
+      `IF(${letter('selling')}${row}=0,"No selling price. ","")`,
+      `IF(${letter('min')}${row}=0,"No min level. ","")`,
+      `IF(${letter('sku')}${row}="","No SKU. ","")`,
+    ].filter(Boolean).join('&');
+    putCell(worksheet, row, columns.flags, `=TRIM(${dataFlags})`);
   });
 
   const lastRow = Math.max(POSITION_START_ROW, POSITION_START_ROW + products.length - 1);
-  addCellRule(worksheet, `O${POSITION_START_ROW}:O${LAST_TEMPLATE_ROW}`, 'equal', '"Out of stock"', PACK_FILLS.red.fgColor.argb);
-  addCellRule(worksheet, `O${POSITION_START_ROW}:O${LAST_TEMPLATE_ROW}`, 'equal', '"Low"', PACK_FILLS.amber.fgColor.argb);
-  if (products.length) setAutoFilter(worksheet, 4, 1, lastRow, 16);
+  const statusRange = `${letter('status')}${POSITION_START_ROW}:${letter('status')}${LAST_TEMPLATE_ROW}`;
+  addCellRule(worksheet, statusRange, 'equal', '"Out of stock"', PACK_FILLS.red.fgColor.argb);
+  addCellRule(worksheet, statusRange, 'equal', '"Low"', PACK_FILLS.amber.fgColor.argb);
+  if (products.length) setAutoFilter(worksheet, 4, 1, lastRow, columns.last);
   finishSheet(worksheet, { freeze: 'D5' });
-  return { products, lastRow };
+  return { products, lastRow, columns };
 };
 
 export const writeStockMovementsSheet = (workbook, data) => {
@@ -189,16 +240,25 @@ export const writeStockCardSheet = (workbook, data) => {
   return { relevant, lastRow };
 };
 
-export const writeAdjustmentFormSheet = (workbook, data) => {
+export const writeAdjustmentFormSheet = (workbook, data, options = {}) => {
   const worksheet = workbook.addWorksheet('Adjustment Form');
   const products = sortProducts(data.products || []);
   const stockLocations = mainStoreMap(data.stockLocations);
+  const includeCosts = includeCostsFrom(data, options);
+  const costHeader = includeCosts ? 'Unit cost' : null;
+  const valueHeader = includeCosts ? 'Value of variance' : null;
+  const reasonColumn = includeCosts ? 10 : 8;
+  const notesColumn = includeCosts ? 11 : 9;
+  const adjustedByColumn = includeCosts ? 12 : 10;
+  const approvedByColumn = includeCosts ? 13 : 11;
 
   writeSheetTitle(worksheet, 'Stock adjustment form (count correction, damage, expiry, loss)', packSubtitle(data));
   const legend = [
     'HOW TO USE: fill the BLUE cells only. Everything else fills itself.',
     '1) Product ID: copy the 8-character ID from the Stock Position sheet (column A).   2) Counted qty: what is physically on the shelf.',
-    '3) Variance and Value of variance calculate automatically. Choose a Reason from the list. A manager signs the Approved by column before the system is changed.',
+    includeCosts
+      ? '3) Variance and Value of variance calculate automatically. Choose a Reason from the list. A manager signs the Approved by column before the system is changed.'
+      : '3) Variance calculates automatically. Cost and value columns are omitted because the current role cannot view costs. Choose a Reason from the list. A manager signs the Approved by column before the system is changed.',
     'The first row is an EXAMPLE (using a real product). Delete it before use.',
   ];
   legend.forEach((text, index) => {
@@ -207,7 +267,15 @@ export const writeAdjustmentFormSheet = (workbook, data) => {
     cell.font = index === 0 ? PACK_FONTS.bold : PACK_FONTS.subtitle;
   });
 
-  writeTableHeader(worksheet, 8, ['Date', 'Product ID', 'Product', 'Unit', 'System qty', 'Counted qty', 'Variance', 'Unit cost', 'Value of variance', 'Reason', 'Notes', 'Adjusted by', 'Approved by'], [12, 12, 32, 8, 11, 11, 11, 11, 15, 22, 28, 16, 16]);
+  writeTableHeader(worksheet, 8, [
+    'Date', 'Product ID', 'Product', 'Unit', 'System qty', 'Counted qty', 'Variance',
+    ...(includeCosts ? [costHeader, valueHeader] : []),
+    'Reason', 'Notes', 'Adjusted by', 'Approved by',
+  ], [
+    12, 12, 32, 8, 11, 11, 11,
+    ...(includeCosts ? [11, 15] : []),
+    22, 28, 16, 16,
+  ]);
 
   const firstRow = 9;
   const lastRow = firstRow + ADJUSTMENT_FORM_ROWS - 1;
@@ -219,14 +287,16 @@ export const writeAdjustmentFormSheet = (workbook, data) => {
     putCell(worksheet, row, 5, `=IF($B${row}="","",IFERROR(INDEX(${positionRange('G')},MATCH($B${row},${positionRange('A')},0)),""))`, { format: QTY });
     putInput(worksheet, row, 6, null, QTY);
     putCell(worksheet, row, 7, `=IF(OR($B${row}="",$F${row}="",$E${row}=""),"",$F${row}-$E${row})`, { format: QTY });
-    putCell(worksheet, row, 8, `=IF($B${row}="","",IFERROR(INDEX(${positionRange('J')},MATCH($B${row},${positionRange('A')},0)),0))`, { format: NUM });
-    putCell(worksheet, row, 9, `=IF($G${row}="","",$G${row}*$H${row})`, { format: NUM });
-    putInput(worksheet, row, 10, null);
-    putInput(worksheet, row, 11, null);
-    putInput(worksheet, row, 12, null);
-    putInput(worksheet, row, 13, null);
+    if (includeCosts) {
+      putCell(worksheet, row, 8, `=IF($B${row}="","",IFERROR(INDEX(${positionRange('J')},MATCH($B${row},${positionRange('A')},0)),0))`, { format: NUM });
+      putCell(worksheet, row, 9, `=IF($G${row}="","",$G${row}*$H${row})`, { format: NUM });
+    }
+    putInput(worksheet, row, reasonColumn, null);
+    putInput(worksheet, row, notesColumn, null);
+    putInput(worksheet, row, adjustedByColumn, null);
+    putInput(worksheet, row, approvedByColumn, null);
     worksheet.getCell(row, 6).dataValidation = { type: 'decimal', operator: 'greaterThanOrEqual', allowBlank: true, formulae: ['0'], errorTitle: 'Counted qty', error: 'Enter a number of 0 or more.' };
-    worksheet.getCell(row, 10).dataValidation = { type: 'list', allowBlank: true, formulae: [`"${ADJUSTMENT_REASONS.join(',')}"`] };
+    worksheet.getCell(row, reasonColumn).dataValidation = { type: 'list', allowBlank: true, formulae: [`"${ADJUSTMENT_REASONS.join(',')}"`] };
   }
 
   const example = products.find((product) => stockLocations.has(product.id) && asNumber(product.current_stock) > 0) || products[0];
@@ -236,17 +306,17 @@ export const writeAdjustmentFormSheet = (workbook, data) => {
     worksheet.getCell('B9').value = shortId(example.id);
     worksheet.getCell('F9').value = Math.max(asNumber(example.current_stock) - 2, 0);
     worksheet.getCell('F9').numFmt = QTY;
-    worksheet.getCell('J9').value = 'Damaged / broken';
-    worksheet.getCell('K9').value = 'EXAMPLE ROW - delete before use';
-    worksheet.getCell('L9').value = 'Storekeeper';
+    worksheet.getCell(9, reasonColumn).value = 'Damaged / broken';
+    worksheet.getCell(9, notesColumn).value = 'EXAMPLE ROW - delete before use';
+    worksheet.getCell(9, adjustedByColumn).value = 'Storekeeper';
   }
 
-  putCell(worksheet, lastRow + 1, 8, 'Total', { font: PACK_FONTS.bold, fill: PACK_FILLS.total });
+  putCell(worksheet, lastRow + 1, reasonColumn, 'Total', { font: PACK_FONTS.bold, fill: PACK_FILLS.total });
   putCell(worksheet, lastRow + 1, 7, `=SUM(G${firstRow}:G${lastRow})`, { format: QTY, font: PACK_FONTS.bold, fill: PACK_FILLS.total });
-  putCell(worksheet, lastRow + 1, 9, `=SUM(I${firstRow}:I${lastRow})`, { format: NUM, font: PACK_FONTS.bold, fill: PACK_FILLS.total });
+  if (includeCosts) putCell(worksheet, lastRow + 1, 9, `=SUM(I${firstRow}:I${lastRow})`, { format: NUM, font: PACK_FONTS.bold, fill: PACK_FILLS.total });
   addCellRule(worksheet, `G${firstRow}:G${lastRow}`, 'lessThan', '0', PACK_FILLS.red.fgColor.argb);
   finishSheet(worksheet, { freeze: 'A9' });
-  return { firstRow, lastRow };
+  return { firstRow, lastRow, includeCosts };
 };
 
 const writeAdjustmentsRecordedSheet = (workbook, data) => {
@@ -279,22 +349,28 @@ const writeAdjustmentsRecordedSheet = (workbook, data) => {
   finishSheet(worksheet, { freeze: 'A6' });
 };
 
-const writeStockSummarySheet = (workbook, data, cardLastRow) => {
+const writeStockSummarySheet = (workbook, data, cardLastRow, position) => {
   const worksheet = workbook.getWorksheet('Stock Summary') || workbook.addWorksheet('Stock Summary');
   const products = data.products || [];
   const categories = [...new Set(products.map((product) => safeText(product.category) || '(none)'))].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+  const columns = position?.columns || positionColumns(position?.includeCosts !== false);
+  const range = (key) => positionRange(columnLetter(columns[key]));
 
   writeSheetTitle(worksheet, 'Stock summary', packSubtitle(data));
   writeTableHeader(worksheet, 4, ['Measure', 'Value'], [40, 16, 16, 16, 18]);
   const measures = [
-    ['Products listed', `=COUNTA(${positionRange('C')})`, INT],
-    ['Products with stock on hand', `=COUNTIF(${positionRange('G')},">0")`, INT],
-    ['Out of stock', `=COUNTIF(${positionRange('O')},"Out of stock")`, INT],
-    ['Low (below minimum, still in stock)', `=COUNTIF(${positionRange('O')},"Low")`, INT],
-    [`Stock value at cost (${data.currency || PACK_CURRENCY})`, `=SUM(${positionRange('L')})`, NUM],
-    [`Stock value at selling price (${data.currency || PACK_CURRENCY})`, `=SUM(${positionRange('M')})`, NUM],
-    ['Products with no cost price', `=COUNTIFS(${positionRange('C')},"<>",${positionRange('J')},0)`, INT],
-    ['Products with no selling price', `=COUNTIFS(${positionRange('C')},"<>",${positionRange('K')},0)`, INT],
+    ['Products listed', `=COUNTA(${range('product')})`, INT],
+    ['Products with stock on hand', `=COUNTIF(${range('qty')},">0")`, INT],
+    ['Out of stock', `=COUNTIF(${range('status')},"Out of stock")`, INT],
+    ['Low (below minimum, still in stock)', `=COUNTIF(${range('status')},"Low")`, INT],
+    ...(columns.includeCosts
+      ? [
+        [`Stock value at cost (${data.currency || PACK_CURRENCY})`, `=SUM(${range('valueCost')})`, NUM],
+        [`Stock value at selling price (${data.currency || PACK_CURRENCY})`, `=SUM(${range('valueSelling')})`, NUM],
+        ['Products with no cost price', `=COUNTIFS(${range('product')},"<>",${range('cost')},0)`, INT],
+      ]
+      : []),
+    ['Products with no selling price', `=COUNTIFS(${range('product')},"<>",${range('selling')},0)`, INT],
     ['Stock received (ledger)', "='Stock Movements'!B3", QTY],
     ['Stock issued (ledger)', "='Stock Movements'!D3", QTY],
     ['Products where ledger does not explain system qty', `=COUNTIF('Stock Card'!M6:M${cardLastRow},"<>OK")`, INT],
@@ -305,27 +381,34 @@ const writeStockSummarySheet = (workbook, data, cardLastRow) => {
   });
 
   const blockStart = 5 + measures.length + 2;
+  const outOfStockColumn = columns.includeCosts ? 5 : 4;
   putLabel(worksheet, blockStart - 1, 1, 'By category');
-  writeTableHeader(worksheet, blockStart, ['Category', 'Products', 'Qty on hand', `Value @ cost (${data.currency || PACK_CURRENCY})`, 'Out of stock']);
+  writeTableHeader(worksheet, blockStart, [
+    'Category', 'Products', 'Qty on hand',
+    ...(columns.includeCosts ? [`Value @ cost (${data.currency || PACK_CURRENCY})`] : []),
+    'Out of stock',
+  ]);
   categories.forEach((category, index) => {
     const row = blockStart + 1 + index;
     putCell(worksheet, row, 1, category);
-    putCell(worksheet, row, 2, `=COUNTIF(${positionRange('D')},$A${row})`, { format: INT });
-    putCell(worksheet, row, 3, `=SUMIFS(${positionRange('G')},${positionRange('D')},$A${row})`, { format: QTY });
-    putCell(worksheet, row, 4, `=SUMIFS(${positionRange('L')},${positionRange('D')},$A${row})`, { format: NUM });
-    putCell(worksheet, row, 5, `=COUNTIFS(${positionRange('D')},$A${row},${positionRange('O')},"Out of stock")`, { format: INT });
+    putCell(worksheet, row, 2, `=COUNTIF(${range('category')},$A${row})`, { format: INT });
+    putCell(worksheet, row, 3, `=SUMIFS(${range('qty')},${range('category')},$A${row})`, { format: QTY });
+    if (columns.includeCosts) putCell(worksheet, row, 4, `=SUMIFS(${range('valueCost')},${range('category')},$A${row})`, { format: NUM });
+    putCell(worksheet, row, outOfStockColumn, `=COUNTIFS(${range('category')},$A${row},${range('status')},"Out of stock")`, { format: INT });
   });
   const categoryLast = blockStart + categories.length;
   putCell(worksheet, categoryLast + 1, 1, 'Total', { font: PACK_FONTS.bold, fill: PACK_FILLS.total });
-  [[2, INT], [3, QTY], [4, NUM], [5, INT]].forEach(([column, format]) => {
+  [[2, INT], [3, QTY], ...(columns.includeCosts ? [[4, NUM]] : []), [outOfStockColumn, INT]].forEach(([column, format]) => {
     putCell(worksheet, categoryLast + 1, column, `=SUM(${columnLetter(column)}${blockStart + 1}:${columnLetter(column)}${categoryLast})`, { format, font: PACK_FONTS.bold, fill: PACK_FILLS.total });
   });
   finishSheet(worksheet, { landscape: false });
 };
 
-const stockNotes = (data) => [
+const stockNotes = (data, includeCosts) => [
   `Source: OliTech database, products and stock movements for "${data.propertyName || 'OliTechs'}", exported ${generatedAtLabel(data.generatedAt)}.`,
-  'Stock value uses the cost and selling prices stored in the software. Where a price is missing, the workbook flags it and leaves the value at zero; nothing is estimated or filled in.',
+  includeCosts
+    ? 'Stock value uses the cost and selling prices stored in the software. Where a price is missing, the workbook flags it and leaves the value at zero; nothing is estimated or filled in.'
+    : 'Cost, stock-value and margin columns are omitted because the current role does not have stores.costs.view.',
   'Low = quantity below the minimum level while some stock remains. Out of stock = zero or negative quantity.',
   'The ledger (Stock Movements) contains only what the software recorded: purchases, POS sales, usage, transfers and adjustments that were actually posted.',
   'Stock Card compares Opening + Received - Issued with the system quantity and the Main Store record. Any difference is flagged.',
@@ -335,20 +418,22 @@ const stockNotes = (data) => [
 ];
 
 export function buildStockWorkbook(workbook, data = {}) {
+  const includeCosts = includeCostsFrom(data);
   workbook.addWorksheet('Stock Summary');
-  const position = writeStockPositionSheet(workbook, data);
+  const position = writeStockPositionSheet(workbook, data, { includeCosts });
   writeStockMovementsSheet(workbook, data);
   const card = writeStockCardSheet(workbook, data);
-  writeAdjustmentFormSheet(workbook, data);
+  writeAdjustmentFormSheet(workbook, data, { includeCosts });
   writeAdjustmentsRecordedSheet(workbook, data);
-  writeNotesSheet(workbook.addWorksheet('Notes'), 'Notes and assumptions', stockNotes(data));
-  writeStockSummarySheet(workbook, data, card.lastRow);
+  writeNotesSheet(workbook.addWorksheet('Notes'), 'Notes and assumptions', stockNotes(data, includeCosts));
+  writeStockSummarySheet(workbook, data, card.lastRow, position);
   return { sheetNames: workbook.worksheets.map((sheet) => sheet.name), position };
 }
 
 export function buildAdjustmentFormWorkbook(workbook, data = {}) {
-  writeStockPositionSheet(workbook, data);
-  writeAdjustmentFormSheet(workbook, data);
+  const includeCosts = includeCostsFrom(data);
+  writeStockPositionSheet(workbook, data, { includeCosts });
+  writeAdjustmentFormSheet(workbook, data, { includeCosts });
   return { sheetNames: workbook.worksheets.map((sheet) => sheet.name) };
 }
 

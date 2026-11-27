@@ -2,16 +2,19 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { CalendarDays, RefreshCw, TrendingUp, Hotel, ShoppingCart, ShieldCheck, BarChart3 } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
+import { hasPermissionCode } from '@/services/authService';
 import { reportingService } from '@/services/reportingService';
 import { buildManagementReportDefinition, buildSalesReportDefinition, buildSalesSummaryDefinition } from '@/services/reportDefinitions';
 import { packExportDataService } from '@/services/packExportDataService';
-import { downloadPackWorkbook, packExportBuilders, salesExportFilename } from '@/services/packExports';
+import { createPackWorkbookBlob, packExportBuilders, salesExportFilename } from '@/services/packExports';
+import { executeAuditedReportExport } from '@/services/reportExportService';
 import PackExcelExportButton from '@/components/shared/PackExcelExportButton';
 import DocumentExportMenu from '@/components/shared/DocumentExportMenu';
 import SalesBreakdown from '@/components/modules/SalesBreakdown';
 import { NAVY, TEAL_DARK, BORDER, SAND, SURFACE, MUTED } from '@/data/themePalette';
 
 const money = (value) => `KES ${Number(value || 0).toLocaleString('en-KE', { maximumFractionDigits: 0 })}`;
+const varianceMoney = (report, value) => (report?.reconciliation?.unavailable ? 'Unavailable' : money(value));
 const todayKenya = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Nairobi' }).format(new Date());
 
 function startOfMonth(date) { return `${date.slice(0, 8)}01`; }
@@ -42,6 +45,7 @@ export default function Reports() {
   const [tab, setTab] = useState('overview');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const canViewValuation = hasPermissionCode(user, 'stores.inventory.valuation.view');
 
   const load = async () => {
     if (!propertyId) return;
@@ -49,7 +53,7 @@ export default function Reports() {
     setLoading(true); setError('');
     try {
       const [management, salesDetail] = await Promise.all([
-        reportingService.getManagementReport(propertyId, from, to),
+        reportingService.getManagementReport(propertyId, from, to, { canViewValuation }),
         reportingService.getSalesDetail(propertyId, from, to),
       ]);
       setReport(management); setSales(salesDetail);
@@ -57,12 +61,12 @@ export default function Reports() {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { load(); }, [propertyId, from, to]);
+  useEffect(() => { load(); }, [propertyId, from, to, canViewValuation]);
 
   const daily = useMemo(() => sales?.daily || [], [sales]);
   const propertyName = user?.property?.business_name || user?.property?.name || 'OliTechs';
   const generatedBy = user?.full_name || user?.staff?.full_name || 'Authorized staff';
-  const managementDefinition = useMemo(() => report && sales ? buildManagementReportDefinition({ report, sales, from, to, propertyName, generatedBy }) : null, [report, sales, from, to, propertyName, generatedBy]);
+  const managementDefinition = useMemo(() => report && sales ? buildManagementReportDefinition({ report, sales, from, to, propertyName, generatedBy, canViewValuation }) : null, [report, sales, from, to, propertyName, generatedBy, canViewValuation]);
   const salesSummaryDefinition = useMemo(() => report && sales ? buildSalesSummaryDefinition({ report, sales, from, to, propertyName, generatedBy }) : null, [report, sales, from, to, propertyName, generatedBy]);
   const salesReportDefinition = useMemo(() => report && sales ? buildSalesReportDefinition({ report, sales, from, to, propertyName, generatedBy }) : null, [report, sales, from, to, propertyName, generatedBy]);
   const tabs = [
@@ -71,14 +75,28 @@ export default function Reports() {
 
   const exportSalesWorkbook = async () => {
     const extract = await packExportDataService.loadSalesExport(propertyId, from, to);
-    return downloadPackWorkbook(packExportBuilders.sales, {
+    const workbookData = {
       ...extract,
       propertyName,
       generatedAt: new Date(),
       currency: user?.property?.currency || 'KES',
       from,
       to,
-    }, salesExportFilename({ propertyName, from, to }));
+    };
+    return executeAuditedReportExport({
+      definition: {
+        key: 'sales-workbook',
+        title: 'Sales Workbook',
+        filters: { period: `${from} to ${to}`, report_type: 'sales' },
+        sections: [],
+      },
+      format: 'xlsx',
+      userId: user?.id || user?.user_id || user?.staff?.user_id,
+      propertyId,
+      rowCount: (extract.receipts?.length || 0) + (extract.adjustments?.length || 0) + (extract.voidItems?.length || 0),
+      filename: salesExportFilename({ propertyName, from, to }),
+      blobBuilder: async () => (await createPackWorkbookBlob(packExportBuilders.sales, workbookData)).blob,
+    });
   };
 
   return <div className="flex-1 overflow-y-auto p-4 sm:p-5 lg:p-6" style={{ background: SAND }}>
@@ -97,6 +115,11 @@ export default function Reports() {
       </div>
 
       {error && <div role="alert" className="mb-4 rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] p-3 text-sm text-[var(--danger-text)]">{error}</div>}
+      {report?.phase4bSource === 'legacy' || report?.reconciliation?.unavailable ? (
+        <div role="status" className="mb-4 rounded-xl border border-[var(--warning)] bg-[var(--warning-soft)] p-3 text-sm text-[var(--warning-text)]">
+          Corrected reconciliation SQL is not available on this database yet. Variance fields are marked unavailable until the Phase 4B migration is applied.
+        </div>
+      ) : null}
 
       <div className="mb-4 flex flex-wrap gap-2">{tabs.map(([key,label,Icon])=><button key={key} type="button" onClick={()=>setTab(key)} className="inline-flex min-h-10 items-center gap-2 rounded-xl px-3 text-xs font-medium" style={{ background: tab===key ? 'var(--primary)' : SURFACE, color: tab===key ? 'var(--primary-foreground)' : NAVY, border: `1px solid ${tab===key ? NAVY : BORDER}` }}><Icon size={14}/>{label}</button>)}</div>
 
@@ -112,6 +135,12 @@ export default function Reports() {
             <Stat label="Refunds" value={money(report.sales?.refunds)} sub={`${sales?.refunds?.reduce((a,x)=>a+Number(x.transactions||0),0) || 0} refunds`}/>
             <Stat label="Cash variance" value={money(report.cashier?.cash_variance)} sub={`${report.cashier?.closed_shifts || 0} closed shifts`} icon={ShieldCheck}/>
           </div>
+          <Section title="Financial reconciliation"><div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <Stat label="Room revenue variance" value={varianceMoney(report, report.reconciliation?.room_revenue_variance)} sub="Room folio revenue − room-attributed payments"/>
+            <Stat label="POS tax / discount variance" value={varianceMoney(report, report.reconciliation?.pos_tax_discount_variance)} sub="Posted total − (subtotal − discount + tax)"/>
+            <Stat label="Split tender variance" value={varianceMoney(report, report.reconciliation?.pos_split_tender_variance)} sub="Allocated − split receipt total"/>
+            <Stat label="Voids excluded" value={varianceMoney(report, report.reconciliation?.voids_excluded)} sub="Voided receipts outside POS net"/>
+          </div><p className="mt-3 text-xs" style={{color:MUTED}}>Room revenue is taken from non-reversed posted room folio lines. The variance compares it only with payments allocated to those lines or unallocated payments on room-only reservations; other posted folio payments are excluded and shown in the report. POS net is taken from posted receipts; voids, refunds, tax, discounts and split tender allocations are shown separately. Variances are never silently netted away.</p></Section>
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.35fr_1fr]">
             <Section title="Daily POS sales"><ResponsiveContainer width="100%" height={260}><LineChart data={daily}><XAxis dataKey="business_date" tick={{fontSize:10,fill:MUTED}}/><YAxis hide/><Tooltip formatter={(v)=>[money(v),'Revenue']}/><Line type="monotone" dataKey="revenue" stroke={TEAL_DARK} strokeWidth={3} dot={false}/></LineChart></ResponsiveContainer></Section>
             <Section title="Management controls"><div className="grid grid-cols-2 gap-3">{[['Open shifts',report.cashier?.open_shifts],['Closed shifts',report.cashier?.closed_shifts],['Stock movements',report.inventory?.stock_movements],['Transfers',report.inventory?.transfer_orders],['Arrivals',report.hotel?.arrivals],['Departures',report.hotel?.departures]].map(([k,v])=><div key={k} className="rounded-xl p-3" style={{background:SAND}}><div className="text-[11px] " style={{color:MUTED}}>{k}</div><div className="mt-1 font-mono text-lg font-medium" style={{color:NAVY}}>{Number(v||0).toLocaleString()}</div></div>)}</div></Section>
@@ -130,7 +159,7 @@ export default function Reports() {
 
         {tab==='hotel' && <div className="grid grid-cols-2 gap-3 md:grid-cols-4"><Stat label="Sellable rooms" value={report.hotel?.sellable_rooms}/><Stat label="Available room nights" value={report.hotel?.available_room_nights}/><Stat label="Occupied room nights" value={report.hotel?.occupied_room_nights}/><Stat label="Reservations" value={report.hotel?.reservations}/><Stat label="Arrivals" value={report.hotel?.arrivals}/><Stat label="Departures" value={report.hotel?.departures}/><Stat label="ADR" value={money(report.hotel?.adr)}/><Stat label="RevPAR" value={money(report.hotel?.revpar)}/><Stat label="Room revenue" value={money(report.hotel?.room_revenue)}/></div>}
 
-        {tab==='inventory' && <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6"><Stat label="Inventory valuation" value={money(report.inventory?.valuation)} sub="Current stock × cost"/><Stat label="Purchases" value={money(report.inventory?.purchases)} sub="Non-cancelled POs"/><Stat label="Consumption" value={Number(report.inventory?.consumption_qty||0).toLocaleString()} sub="Usage quantity"/><Stat label="Wastage" value={Number(report.inventory?.wastage_qty||0).toLocaleString()} sub="Recorded quantity"/><Stat label="Stock movements" value={report.inventory?.stock_movements}/><Stat label="Transfers" value={report.inventory?.transfer_orders}/></div>}
+        {tab==='inventory' && <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6"><Stat label="Inventory valuation" value={canViewValuation && report.inventory?.valuation_restricted !== true && report.inventory?.valuation != null ? money(report.inventory.valuation) : 'Restricted'} sub={canViewValuation && report.inventory?.valuation_restricted !== true ? 'Current stock × cost' : 'Requires stores.inventory.valuation.view'}/><Stat label="Purchases" value={money(report.inventory?.purchases)} sub="Non-cancelled POs"/><Stat label="Consumption" value={Number(report.inventory?.consumption_qty||0).toLocaleString()} sub="Usage quantity"/><Stat label="Wastage" value={Number(report.inventory?.wastage_qty||0).toLocaleString()} sub="Recorded quantity"/><Stat label="Stock movements" value={report.inventory?.stock_movements}/><Stat label="Transfers" value={report.inventory?.transfer_orders}/></div>}
 
         {tab==='controls' && <div className="grid grid-cols-2 gap-3 md:grid-cols-4"><Stat label="Open cashier shifts" value={report.cashier?.open_shifts}/><Stat label="Closed cashier shifts" value={report.cashier?.closed_shifts}/><Stat label="Cash variance" value={money(report.cashier?.cash_variance)}/><Stat label="Voids" value={money(report.sales?.voids)}/><Stat label="Refunds" value={money(report.sales?.refunds)}/><Stat label="Discounts" value={money(report.sales?.discounts)}/><Stat label="POS tax" value={money(report.sales?.pos_tax)}/><Stat label="POS net" value={money(report.sales?.pos_net)}/></div>}
       </>}

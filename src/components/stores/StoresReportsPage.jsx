@@ -8,8 +8,8 @@ import {
   buildStoresRequisitionRegisterDefinition,
   buildStoresIssueRegisterDefinition,
   buildStoresTransferRegisterDefinition,
-  formatReportValue,
 } from '@/services/reportDefinitions';
+import { executeAuditedReportExport } from '@/services/reportExportService';
 
 const FIELD = 'min-h-11 w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text)] focus:border-[var(--primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]';
 const PANEL = 'rounded-xl border border-[var(--border)] bg-[var(--surface)]';
@@ -28,43 +28,6 @@ function monthStart() {
   return new Date(date.getFullYear(), date.getMonth(), 1).toISOString().slice(0, 10);
 }
 
-function inRange(value, from, to) {
-  if (!value) return false;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return false;
-  const iso = date.toISOString().slice(0, 10);
-  if (from && iso < from) return false;
-  if (to && iso > to) return false;
-  return true;
-}
-
-function toCsv(definition) {
-  const lines = [];
-  for (const section of definition.sections) {
-    lines.push(section.columns.map((column) => `"${String(column.label).replaceAll('"', '""')}"`).join(','));
-    for (const row of section.rows) {
-      lines.push(section.columns.map((column) => {
-        const text = formatReportValue(row[column.key], column);
-        return `"${String(text).replaceAll('"', '""')}"`;
-      }).join(','));
-    }
-    lines.push('');
-  }
-  return lines.join('\r\n');
-}
-
-function downloadCsv(definition) {
-  const blob = new Blob([toCsv(definition)], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = `${definition.key}-${definition.period.from || 'all'}-${definition.period.to || 'all'}.csv`;
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  URL.revokeObjectURL(url);
-}
-
 export default function StoresReportsPage({ initialTab = 'requisitions' }) {
   const { user } = useAuth();
   const propertyId = user?.property?.id;
@@ -73,7 +36,10 @@ export default function StoresReportsPage({ initialTab = 'requisitions' }) {
   const [from, setFrom] = useState(monthStart());
   const [to, setTo] = useState(today());
   const [rows, setRows] = useState([]);
+  const [cap, setCap] = useState(500);
+  const [truncated, setTruncated] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -82,50 +48,66 @@ export default function StoresReportsPage({ initialTab = 'requisitions' }) {
 
   const load = useCallback(async () => {
     if (!propertyId) return;
+    if (from && to && from > to) {
+      setError('The start date must be on or before the end date.');
+      return;
+    }
     setLoading(true);
     setError('');
     try {
       const data = tab === 'requisitions'
-        ? await storesService.listRequisitions(propertyId, { limit: 500 })
+        ? await storesService.listRequisitionReport(propertyId, { from, to })
         : tab === 'transfers'
-          ? await storesService.listTransfers(propertyId, { limit: 500 })
-          : await storesService.listIssueNotes(propertyId, { limit: 500 });
+          ? await storesService.listTransferReport(propertyId, { from, to })
+          : await storesService.listIssueNoteReport(propertyId, { from, to });
       setRows(Array.isArray(data?.rows) ? data.rows : []);
+      setCap(Number(data?.cap) || 500);
+      setTruncated(Boolean(data?.truncated));
     } catch (err) {
       setError(err?.message || 'Unable to load this report.');
       setRows([]);
+      setTruncated(false);
     } finally {
       setLoading(false);
     }
-  }, [propertyId, tab]);
+  }, [propertyId, tab, from, to]);
 
   useEffect(() => { load(); }, [load]);
 
-  const filtered = useMemo(() => rows.filter((row) => {
-    const stamp = tab === 'requisitions' ? row.created_at : tab === 'transfers' ? row.created_at : row.issued_at;
-    return inRange(stamp, from, to);
-  }), [rows, tab, from, to]);
-
   const definition = useMemo(() => {
     const context = {
-      rows: filtered,
+      rows,
       from,
       to,
       propertyName: user?.property?.name || 'Property',
       generatedBy: user?.name || user?.email || 'Authorized user',
+      truncated,
+      cap,
     };
     if (tab === 'requisitions') return buildStoresRequisitionRegisterDefinition(context);
     if (tab === 'transfers') return buildStoresTransferRegisterDefinition(context);
     return buildStoresIssueRegisterDefinition(context);
-  }, [tab, filtered, from, to, user]);
+  }, [tab, rows, from, to, user, truncated, cap]);
 
-  const exportCsv = () => {
+  const exportCsv = async () => {
     if (!definition.sections[0]?.rows?.length) {
       toast.error('There is nothing to export for this period.');
       return;
     }
-    downloadCsv(definition);
-    toast.success('Report exported.');
+    setExporting(true);
+    try {
+      await executeAuditedReportExport({
+        definition,
+        format: 'csv',
+        userId: user?.id || user?.user_id || user?.staff?.user_id,
+        propertyId,
+      });
+      toast.success('Report exported and recorded in Audit Log.');
+    } catch (err) {
+      toast.error(err?.message || 'The CSV export could not be recorded.');
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -150,9 +132,10 @@ export default function StoresReportsPage({ initialTab = 'requisitions' }) {
             <button
               type="button"
               onClick={exportCsv}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-[var(--primary)] px-4 text-sm font-semibold text-[var(--primary-foreground)] hover:opacity-95"
+              disabled={exporting || loading}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-[var(--primary)] px-4 text-sm font-semibold text-[var(--primary-foreground)] hover:opacity-95 disabled:opacity-50"
             >
-              <Download size={16} /> Export CSV
+              <Download size={16} /> {exporting ? 'Recording export…' : 'Export CSV'}
             </button>
           </div>
         </div>
@@ -161,6 +144,12 @@ export default function StoresReportsPage({ initialTab = 'requisitions' }) {
           <div className="flex items-start gap-3 rounded-xl border border-[var(--danger)] bg-[var(--danger-soft)] px-4 py-3 text-sm text-[var(--danger-text)]" role="alert">
             <AlertCircle size={18} className="mt-0.5 shrink-0" />
             <span>{error}</span>
+          </div>
+        ) : null}
+
+        {truncated ? (
+          <div className={`${PANEL} border-[var(--warning)] bg-[var(--warning-soft)] px-4 py-3 text-sm text-[var(--warning-text)]`} role="status">
+            Report truncated: only the first {cap} server-filtered rows are included. Narrow the date range to include every matching record. This banner is included in CSV, Excel and PDF exports.
           </div>
         ) : null}
 

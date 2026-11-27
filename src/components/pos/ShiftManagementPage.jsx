@@ -30,7 +30,7 @@ export default function ShiftManagementPage({ propertyId, currentShift, loadErro
     setSummaryError('');
     try {
       const [report, tables] = await Promise.all([
-        shiftService.getShiftReport(currentShift.id),
+        shiftService.getShiftReport(currentShift.id, propertyId),
         shiftService.getOpenTables(propertyId),
       ]);
       setSummary(report);

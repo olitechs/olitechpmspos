@@ -94,7 +94,7 @@ export default function ShiftReceiptHistory({ propertyId, currentShift }) {
     setShiftReportPrinting(true);
     try {
       const [report, printers, assignments, settingsRow] = await Promise.all([
-        shiftService.getShiftReport(shiftId),
+        shiftService.getShiftReport(shiftId, propertyId),
         getPrinters(propertyId),
         getAssignments(propertyId),
         getPropertySettings(propertyId).catch(() => null),

@@ -4,6 +4,7 @@ import {
   aggregatePostedSalesReceipts,
   buildFolioStatementDefinition,
   buildFinalSettlementInvoiceDefinition,
+  buildManagementReportDefinition,
   buildMonthlySalesByCategoryDefinition,
   buildMonthlySalesByItemDefinition,
   buildMonthlySalesByShiftDefinition,
@@ -12,8 +13,16 @@ import {
   buildSalesSummaryDefinition,
   buildShiftReportDefinition,
   buildStockControlDefinition,
+  buildStoresIssueRegisterDefinition,
+  buildStoresRequisitionRegisterDefinition,
+  buildStoresTransferRegisterDefinition,
 } from './reportDefinitions.js';
-import { buildReportExportAuditEvent, normalizeReportExportFilters } from './reportExportAuditCore.js';
+import {
+  AUDITED_REPORT_FORMATS,
+  buildReportExportAuditEvent,
+  countAuditedReportRows,
+  normalizeReportExportFilters,
+} from './reportExportAuditCore.js';
 
 const period = { from: '2026-10-01', to: '2026-10-31', propertyName: 'Harbor View Hotel', generatedBy: 'Synthetic Test User' };
 const receipts = [
@@ -228,4 +237,95 @@ test('export audit metadata keeps safe filters only and records format, delivery
   assert.deepEqual(filters, { period: 'October', department: 'Bar, Kitchen', reservation: 'R-55', from: '2026-10-01' });
   const event = buildReportExportAuditEvent({ definition: { key: 'monthly-sales-by-item', rowCount: 999, filters }, format: 'pdf', rowCount: 12, delivery: 'print-preview' });
   assert.deepEqual(event, { report_key: 'monthly-sales-by-item', file_format: 'pdf', delivery: 'print-preview', row_count: 12, filters });
+});
+
+test('all report downloads use one audited format allowlist and count the rows actually included', () => {
+  assert.deepEqual([...AUDITED_REPORT_FORMATS].sort(), ['csv', 'pdf', 'xlsx']);
+  assert.throws(() => buildReportExportAuditEvent({ definition: { key: 'legacy-excel' }, format: 'xls' }), /incomplete/);
+  const definition = {
+    key: 'mixed-sections',
+    sections: [
+      { name: 'main', rows: [{ id: 1 }, { id: 2 }] },
+      { name: 'excel-only', pdf: false, rows: [{ id: 3 }] },
+    ],
+  };
+  assert.equal(countAuditedReportRows(definition, 'pdf'), 2);
+  assert.equal(countAuditedReportRows(definition, 'csv'), 3);
+  assert.equal(countAuditedReportRows(definition, 'xlsx'), 3);
+});
+
+const managementFixture = {
+  hotel: {
+    room_folio_revenue: 180000,
+    room_posted_payments: 175000,
+    room_revenue_variance: 5000,
+  },
+  sales: {
+    pos_gross: 50000,
+    pos_posted_total: 56500,
+    pos_tax: 1500,
+    discounts: 1000,
+    pos_net: 55500,
+    voids_excluded: 2500,
+    pos_split_tender_allocated: 54000,
+    pos_split_tender_variance: -2500,
+    pos_tax_discount_variance: 1000,
+  },
+  inventory: { valuation: 999999, purchases: 12000, valuation_restricted: true },
+  cashier: { open_shifts: 1, closed_shifts: 4, cash_variance: 50 },
+  reconciliation: {
+    room_revenue_variance: 5000,
+    pos_tax_discount_variance: 1000,
+    pos_split_tender_variance: -2500,
+    voids_excluded: 2500,
+  },
+};
+
+test('management report masks valuation unless the server confirms permission', () => {
+  const restricted = buildManagementReportDefinition({ report: managementFixture, sales: {}, ...period, canViewValuation: false });
+  assert.ok(!JSON.stringify(restricted).includes('999999'));
+  assert.ok(restricted.notes.some((note) => note.includes('withheld')));
+  assert.ok(!restricted.summary.some((row) => row.label === 'Inventory valuation'));
+  assert.ok(!restricted.sections.find((section) => section.name === 'inventory-kpis').rows.some((row) => row.value === 999999));
+
+  const serverRestricted = buildManagementReportDefinition({ report: managementFixture, sales: {}, ...period, canViewValuation: true });
+  assert.ok(!JSON.stringify(serverRestricted).includes('999999'), 'server mask must win over a stale client permission');
+
+  const allowedReport = { ...managementFixture, inventory: { ...managementFixture.inventory, valuation_restricted: false } };
+  const allowed = buildManagementReportDefinition({ report: allowedReport, sales: {}, ...period, canViewValuation: true });
+  assert.ok(allowed.summary.some((row) => row.label === 'Inventory valuation' && row.value === 999999));
+  assert.ok(allowed.sections.find((section) => section.name === 'inventory-kpis').rows.some((row) => row.metric === 'Valuation' && row.value === 999999));
+});
+
+test('management report exposes reconciliation variances and marks legacy data unavailable', () => {
+  const definition = buildManagementReportDefinition({ report: managementFixture, sales: {}, ...period });
+  const reconciliation = definition.sections.find((section) => section.name === 'reconciliation');
+  assert.deepEqual(reconciliation.rows.map((row) => [row.metric, row.value]), [
+    ['Room revenue variance', 5000],
+    ['Room payments excluded from variance', 0],
+    ['POS tax / discount variance', 1000],
+    ['POS split tender variance', -2500],
+    ['Voids excluded from POS net', 2500],
+  ]);
+  assert.ok(definition.notes.some((note) => note.includes('voided receipts are excluded')));
+  assert.ok(!definition.notes.some((note) => note.includes('not available on this database')));
+
+  const legacy = buildManagementReportDefinition({
+    report: { ...managementFixture, phase4bSource: 'legacy', reconciliation: { unavailable: true } },
+    sales: {},
+    ...period,
+  });
+  assert.ok(legacy.notes.some((note) => note.includes('Corrected reconciliation SQL is not available')));
+});
+
+test('Stores registers carry the explicit truncation banner into every exported format', () => {
+  const builders = [
+    buildStoresRequisitionRegisterDefinition,
+    buildStoresIssueRegisterDefinition,
+    buildStoresTransferRegisterDefinition,
+  ];
+  for (const builder of builders) {
+    const definition = builder({ rows: [{ id: 'one' }], ...period, truncated: true, cap: 123 });
+    assert.ok(definition.notes.some((note) => note.includes('first 123 server-filtered rows')), `${definition.key} missing truncation note`);
+  }
 });

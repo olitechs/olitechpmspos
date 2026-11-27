@@ -1,3 +1,5 @@
+import { formatReportValue } from './reportDefinitions.js';
+
 const REPORT_FONT_URL = '/fonts/olitechs-report-sans.ttf';
 const FONT_VFS_NAME = 'OliTechsReportSans.ttf';
 const FONT_FAMILY = 'OliTechsReportSans';
@@ -241,6 +243,26 @@ function addWorksheet(workbook, section, definition, theme, landscape) {
   return worksheet;
 }
 
+const csvCell = (value, column = {}) => `"${escapeSpreadsheetFormula(formatReportValue(value, column)).replaceAll('"', '""')}"`;
+
+export async function createCsvBlob(definition) {
+  const report = requireReport(definition);
+  const lines = [];
+  report.sections.filter((section) => section.excel !== false).forEach((section) => {
+    const columns = section.columns || [];
+    lines.push(columns.map((column) => csvCell(column.label)).join(','));
+    (Array.isArray(section.rows) ? section.rows : []).forEach((row) => {
+      lines.push(columns.map((column) => csvCell(row[column.key], column)).join(','));
+    });
+    lines.push('');
+  });
+  if (report.notes?.length) {
+    lines.push(csvCell('Notes and limitations'));
+    report.notes.forEach((note) => lines.push(csvCell(`• ${note}`)));
+  }
+  return new Blob([`\uFEFF${lines.join('\r\n')}`], { type: 'text/csv;charset=utf-8;' });
+}
+
 export async function createExcelBlob(definition, { theme: themeOverrides } = {}) {
   const report = requireReport(definition);
   const theme = resolveReportTheme(themeOverrides);
@@ -277,6 +299,16 @@ export async function createExcelBlob(definition, { theme: themeOverrides } = {}
       const metricFormat = row[2];
       if (metricFormat && metricFormat !== 'percent') excelRow.getCell(2).numFmt = excelNumberFormat(metricFormat);
       if (metricFormat === 'percent') excelRow.getCell(2).numFmt = excelNumberFormat('percent');
+    });
+  }
+  if (report.notes?.length) {
+    summarySheet.addRow([]);
+    const notesHeader = summarySheet.addRow(['Notes and limitations']);
+    notesHeader.font = { name: 'Aptos', bold: true, color: { argb: colorARGB(theme.white) } };
+    notesHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colorARGB(theme.navy) } };
+    report.notes.forEach((note) => {
+      const noteRow = summarySheet.addRow([escapeSpreadsheetFormula(`• ${safeReportText(note)}`)]);
+      noteRow.font = { name: 'Aptos', size: 9, color: { argb: colorARGB(theme.text) } };
     });
   }
   summarySheet.getColumn(1).width = 32;

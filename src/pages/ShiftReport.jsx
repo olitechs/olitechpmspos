@@ -94,7 +94,7 @@ export default function ShiftReport() {
     setReportError('');
     setReportLoading(true);
     try {
-      const report = await shiftService.getShiftReport(shift.id);
+      const report = await shiftService.getShiftReport(shift.id, propertyId);
       setSelectedReport(report);
     } catch (error) {
       setReportError(error.message || 'Could not load the shift report.');

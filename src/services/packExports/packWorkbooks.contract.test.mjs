@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import ExcelJS from 'exceljs';
 
 import { buildSalesWorkbook } from './salesWorkbook.js';
-import { buildStockWorkbook } from './stockWorkbook.js';
+import { buildAdjustmentFormWorkbook, buildStockWorkbook } from './stockWorkbook.js';
 import { buildFrontOfficeWorkbook } from './frontOfficeWorkbook.js';
 import { buildShiftWorkbook } from './shiftWorkbook.js';
 import {
@@ -184,6 +184,56 @@ test('stock workbook keeps status/variance formulas and the adjustment form cont
   const summary = workbook.getWorksheet('Stock Summary');
   assert.equal(summary.getCell('A5').value, 'Products listed');
   assert.match(formulaOf(summary.getCell('B5')), /COUNTA\('Stock Position'!\$C\$5:\$C\$2000\)/);
+});
+
+test('restricted stock workbooks omit cost and valuation columns entirely', () => {
+  const forbiddenHeaders = ['Cost price', 'Stock value @ cost', 'Stock value @ selling', 'Margin %', 'Unit cost', 'Value of variance', 'Value @ cost'];
+  const data = {
+    propertyName: 'OliTechs Demo Hotel',
+    currency: 'KES',
+    generatedAt: new Date('2026-11-11T09:00:00Z'),
+    includeCosts: false,
+    products: [
+      { id: 'prod-1111', sku: 'TEA-01', name: 'Tea Leaves', category: 'F&B', unit: 'kg', location: 'Main Store', current_stock: 12, min_stock: 5, max_stock: 40, cost_price: 12345.99, selling_price: 500 },
+    ],
+    movements: [],
+    stockLocations: [{ product_id: 'prod-1111', qty: 12, location_name: 'Main Store' }],
+    adjustments: [],
+  };
+
+  for (const builder of [buildStockWorkbook, buildAdjustmentFormWorkbook]) {
+    const workbook = build(builder, data);
+    const headers = [];
+    const cellText = [];
+    workbook.worksheets.forEach((sheet) => sheet.eachRow((row) => row.eachCell((cell) => {
+      if (typeof cell.value === 'string') {
+        headers.push(cell.value);
+        cellText.push(cell.value);
+        if (cell.value.formula) cellText.push(cell.value.formula);
+      } else if (typeof cell.value === 'number') cellText.push(String(cell.value));
+    })));
+    for (const header of forbiddenHeaders) assert.ok(!headers.includes(header), `${header} must not appear for a restricted role`);
+    assert.ok(!cellText.some((value) => value.includes('12345.99')), 'cost values must never be written');
+    assert.ok(cellText.some((value) => /stores\.costs\.view/.test(value)), 'the omission must be explained in the workbook');
+
+    const position = workbook.getWorksheet('Stock Position');
+    assert.equal(position.getCell(4, 10).value, 'Selling price');
+    assert.equal(position.getCell(4, 11).value, 'Status');
+    assert.equal(position.getCell(4, 12).value, 'Data flags');
+    assert.match(formulaOf(position.getCell('K5')), /Out of stock/);
+    assert.match(formulaOf(position.getCell('L5')), /No selling price/);
+    assert.doesNotMatch(formulaOf(position.getCell('L5')), /cost/i);
+
+    const form = workbook.getWorksheet('Adjustment Form');
+    assert.equal(form.getCell(8, 8).value, 'Reason');
+    assert.equal(form.getCell(8, 9).value, 'Notes');
+    assert.equal(form.getCell(8, 10).value, 'Adjusted by');
+    assert.equal(form.getCell(8, 11).value, 'Approved by');
+    assert.equal(form.getCell('H9').dataValidation.type, 'list');
+    assert.match(formulaOf(form.getCell('G9')), /\$F9-\$E9/);
+    assert.doesNotMatch(formulaOf(form.getCell('H9')), /\$G9\*\$H9/, 'no unit-cost formula without cost permission');
+    assert.doesNotMatch(formulaOf(form.getCell('I9')), /\$G9\*\$H9/, 'no value-of-variance formula without cost permission');
+  }
 });
 
 test('front office workbook keeps the register formulas and omits private guest data', () => {

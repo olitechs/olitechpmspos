@@ -3,7 +3,6 @@
 // ExcelJS is imported lazily so it never lands in the initial bundle. Builders
 // receive a workbook so they can be unit-tested in Node without a DOM.
 
-import { downloadBlob } from '@/services/reportDocumentEngine';
 import { buildSalesWorkbook } from './salesWorkbook.js';
 import { buildStockWorkbook, buildAdjustmentFormWorkbook } from './stockWorkbook.js';
 import { buildFrontOfficeWorkbook } from './frontOfficeWorkbook.js';
@@ -29,11 +28,9 @@ export async function createPackWorkbookBlob(builder, data = {}) {
   return { blob: new Blob([buffer], { type: PACK_EXCEL_MIME }), meta };
 }
 
-export async function downloadPackWorkbook(builder, data, filename) {
-  const { blob, meta } = await createPackWorkbookBlob(builder, data);
-  downloadBlob(blob, filename);
-  return { filename, sheetNames: meta.sheetNames || [] };
-}
+// Workbook downloads must go through executeAuditedReportExport so that every
+// delivered file has exactly one Audit Log row; createPackWorkbookBlob is the
+// only document builder exposed here.
 
 export const packExportBuilders = {
   sales: buildSalesWorkbook,

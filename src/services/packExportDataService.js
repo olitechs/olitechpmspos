@@ -52,35 +52,66 @@ const fetchPaged = async (table, { select = '*', propertyId, from, to, order = '
   return rows;
 };
 
-const fetchByIds = async (table, select, ids) => {
+const fetchByIds = async (table, select, ids, propertyId) => {
+  if (!propertyId) throw new Error('An active property is required to export reports.');
   if (!ids.length) return [];
   const rows = [];
   for (let index = 0; index < ids.length; index += ID_CHUNK) {
     const chunk = ids.slice(index, index + ID_CHUNK);
-    const { data, error } = await supabase.from(table).select(select).in('id', chunk);
-    if (error) throw new Error(`${table}: ${error.message}`);
+    const { data, error } = await supabase.from(table)
+      .select(select)
+      .eq('property_id', propertyId)
+      .in('id', chunk);
+    if (error) {
+      const wrapped = new Error(`${table}: ${error.message}`);
+      wrapped.code = error.code;
+      wrapped.cause = error;
+      throw wrapped;
+    }
     rows.push(...(data || []));
   }
   return rows;
 };
 
-const shiftNumbers = async (ids) => {
+const isLegacyShiftSchemaError = (error) => {
+  const code = String(error?.code || error?.cause?.code || '');
+  const message = String(error?.message || '');
+  if (code === '42P01' || code === '42703') return true;
+  return ['PGRST204', 'PGRST205'].includes(code) && /pos_shifts|shift_no/i.test(message);
+};
+
+const shiftNumbers = async (ids, propertyId) => {
   if (!ids.length) return [];
   try {
-    return await fetchByIds('pos_shifts', 'id,shift_no', ids);
-  } catch {
+    return await fetchByIds('pos_shifts', 'id,shift_no', ids, propertyId);
+  } catch (error) {
+    if (!isLegacyShiftSchemaError(error)) throw error;
     // Legacy deployments still keep drawer numbers on cashier_shifts.
-    return fetchByIds('cashier_shifts', 'id,shift_no', ids);
+    return fetchByIds('cashier_shifts', 'id,shift_no', ids, propertyId);
   }
 };
 
-const profileNames = async (ids) => {
+// profiles is intentionally not queried by ID alone: its RLS policy is
+// user-scoped and it has no property_id. staff_directory is property-scoped and
+// carries the same display fields the workbook needs.
+const profileNames = async (ids, propertyId) => {
+  if (!propertyId) throw new Error('An active property is required to export reports.');
   if (!ids.length) return [];
-  try {
-    return await fetchByIds('profiles', 'id,full_name,email', ids);
-  } catch {
-    return [];
+  const rows = [];
+  for (let index = 0; index < ids.length; index += ID_CHUNK) {
+    const chunk = ids.slice(index, index + ID_CHUNK);
+    const { data, error } = await supabase.from('staff_directory')
+      .select('user_id,full_name,email')
+      .eq('property_id', propertyId)
+      .in('user_id', chunk);
+    if (error) throw new Error(`staff_directory: ${error.message}`);
+    rows.push(...(data || []).map((person) => ({
+      id: person.user_id,
+      full_name: person.full_name,
+      email: person.email,
+    })));
   }
+  return rows;
 };
 
 export const packExportDataService = {
@@ -103,7 +134,7 @@ export const packExportDataService = {
       ...adjustments.map((adjustment) => adjustment.created_by).filter(Boolean),
       ...voidItems.map((item) => item.removed_by).filter(Boolean),
     ])];
-    const [shifts, profiles] = await Promise.all([shiftNumbers(shiftIds), profileNames(profileIds)]);
+    const [shifts, profiles] = await Promise.all([shiftNumbers(shiftIds, propertyId), profileNames(profileIds, propertyId)]);
 
     return { receipts, adjustments, voidItems, shifts, profiles };
   },
@@ -127,7 +158,7 @@ export const packExportDataService = {
 
     const stockLocationRows = stockLocations.map((row) => ({ ...row, location_name: row.location?.name || '' }));
     const profileIds = [...new Set(adjustments.map((adjustment) => adjustment.created_by).filter(Boolean))];
-    const profiles = await profileNames(profileIds);
+    const profiles = await profileNames(profileIds, propertyId);
     const nameById = new Map(profiles.map((profile) => [profile.id, profile.full_name || profile.email || '']));
     const adjustmentsWithUser = adjustments.map((adjustment) => ({
       ...adjustment,

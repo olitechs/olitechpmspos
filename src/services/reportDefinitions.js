@@ -732,20 +732,49 @@ export function buildShiftReportDefinition(report, { propertyName, generatedBy }
 }
 
 
-export function buildManagementReportDefinition({ report = {}, sales = {}, from, to, propertyName, generatedBy }) {
+const truncationNotes = ({ truncated = false, cap = 500 } = {}) => (truncated
+  ? [`Report truncated: only the first ${Number(cap) || 500} server-filtered rows are included. Narrow the date range to include every matching record.`]
+  : []);
+
+export function buildManagementReportDefinition({
+  report = {},
+  sales = {},
+  from,
+  to,
+  propertyName,
+  generatedBy,
+  canViewValuation = false,
+}) {
   const hotel = report?.hotel || {};
   const inventory = report?.inventory || {};
   const cashier = report?.cashier || {};
   const salesKpis = report?.sales || {};
+  const reconciliation = report?.reconciliation || {};
+  const showValuation = Boolean(canViewValuation)
+    && inventory.valuation_restricted !== true
+    && inventory.valuation !== null
+    && inventory.valuation !== undefined;
   const valueColumn = { key: 'value', label: 'Value', type: 'number', format: 'number', width: 18, align: 'right' };
   const moneyValueColumn = { ...valueColumn, format: 'currency', width: 22 };
+  const roomVariance = reconciliation.room_revenue_variance ?? hotel.room_revenue_variance ?? 0;
+  const taxDiscountVariance = reconciliation.pos_tax_discount_variance ?? salesKpis.pos_tax_discount_variance ?? 0;
+  const tenderVariance = reconciliation.pos_split_tender_variance ?? salesKpis.pos_split_tender_variance ?? 0;
   const summary = [
     metric('Room revenue', hotel.room_revenue, 'currency'),
+    metric('Room revenue variance', roomVariance, 'currency'),
     metric('POS net sales', salesKpis.pos_net, 'currency'),
-    metric('Inventory valuation', inventory.valuation, 'currency'),
+    metric('POS tender variance', tenderVariance, 'currency'),
+    ...(showValuation ? [metric('Inventory valuation', inventory.valuation, 'currency')] : []),
     metric('Open shifts', cashier.open_shifts),
     metric('Closed shifts', cashier.closed_shifts),
   ];
+  const notes = [
+    'Room revenue comes from non-reversed posted room folio lines. The variance compares it only with payments allocated to those room lines (or unallocated payments on room-only reservations); other posted folio payments are shown separately. POS net comes from posted receipts; voided receipts are excluded, and refunds, tax, discounts and split tender allocations are reported separately.',
+  ];
+  if (!showValuation) notes.push('Inventory valuation is withheld because the current role does not have stores.inventory.valuation.view.');
+  if (report?.phase4bSource === 'legacy' || reconciliation.unavailable) {
+    notes.push('Corrected reconciliation SQL is not available on this database yet; variance fields are marked unavailable until the Phase 4B migration is applied.');
+  }
   return createReportDefinition({
     key: 'management-report', title: 'Management Report',
     subtitle: 'PMS, POS, cashier and inventory KPIs from the selected Kenya business-date range',
@@ -753,24 +782,31 @@ export function buildManagementReportDefinition({ report = {}, sales = {}, from,
     sections: [
       { name: 'hotel-kpis', title: 'Hotel KPIs', columns: [textColumn('metric', 'Metric', 30), valueColumn], rows: [
         ['Sellable rooms', hotel.sellable_rooms], ['Available room nights', hotel.available_room_nights], ['Occupied room nights', hotel.occupied_room_nights],
-        ['Occupancy percent', hotel.occupancy_percent], ['Room revenue', hotel.room_revenue], ['ADR', hotel.adr], ['RevPAR', hotel.revpar],
+        ['Occupancy percent', hotel.occupancy_percent], ['Room revenue', hotel.room_revenue], ['Room folio revenue', hotel.room_folio_revenue ?? hotel.room_revenue],
+        ['Room-attributed payments', hotel.room_posted_payments], ['Room payments excluded from variance', hotel.room_payments_excluded_from_variance ?? 0], ['Room revenue variance', roomVariance], ['ADR', hotel.adr], ['RevPAR', hotel.revpar],
         ['Arrivals', hotel.arrivals], ['Departures', hotel.departures], ['Reservations', hotel.reservations],
       ].map(([label, value]) => ({ metric: label, value: toNumber(value) })) },
       { name: 'sales-kpis', title: 'POS Sales KPIs', columns: [textColumn('metric', 'Metric', 30), moneyValueColumn], rows: [
-        ['POS gross', salesKpis.pos_gross], ['POS tax', salesKpis.pos_tax], ['Discounts', salesKpis.discounts],
-        ['Refunds', salesKpis.refunds], ['Voids', salesKpis.voids], ['POS net', salesKpis.pos_net],
+        ['POS subtotal', salesKpis.pos_gross], ['POS posted total', salesKpis.pos_posted_total ?? salesKpis.pos_gross], ['POS tax', salesKpis.pos_tax], ['Discounts', salesKpis.discounts],
+        ['Refunds', salesKpis.refunds], ['Voids excluded', salesKpis.voids_excluded ?? salesKpis.voids], ['POS net', salesKpis.pos_net],
+        ['Tax / discount variance', taxDiscountVariance], ['Split tender allocated', salesKpis.pos_split_tender_allocated], ['Split tender variance', tenderVariance],
+      ].map(([label, value]) => ({ metric: label, value: toNumber(value) })) },
+      { name: 'reconciliation', title: 'Financial Reconciliation', columns: [textColumn('metric', 'Metric', 30), moneyValueColumn], rows: [
+        ['Room revenue variance', roomVariance], ['Room payments excluded from variance', hotel.room_payments_excluded_from_variance ?? 0], ['POS tax / discount variance', taxDiscountVariance],
+        ['POS split tender variance', tenderVariance], ['Voids excluded from POS net', reconciliation.voids_excluded ?? salesKpis.voids ?? 0],
       ].map(([label, value]) => ({ metric: label, value: toNumber(value) })) },
       { name: 'sales-by-department', title: 'Sales by Department', columns: [textColumn('department', 'Department', 28), sumColumn('qty', 'Quantity', 'quantity'), sumColumn('revenue', 'Revenue', 'currency', 22)], rows: (sales.departments || []).map((row) => ({ department: cleanText(row.department, 'Unassigned'), qty: toNumber(row.qty), revenue: toNumber(row.revenue) })) },
       { name: 'payment-methods', title: 'Payment Methods', columns: [textColumn('method', 'Payment type', 28), sumColumn('transactions', 'Transactions'), sumColumn('amount', 'Amount', 'currency', 22)], rows: (sales.payments || []).map((row) => ({ method: cleanText(row.method, 'Unspecified'), transactions: toNumber(row.transactions), amount: toNumber(row.amount) })) },
       { name: 'inventory-kpis', title: 'Inventory KPIs', columns: [textColumn('metric', 'Metric', 30), valueColumn], rows: [
-        ['Valuation', inventory.valuation], ['Purchases', inventory.purchases], ['Consumption quantity', inventory.consumption_qty],
+        ...(showValuation ? [['Valuation', inventory.valuation]] : []),
+        ['Purchases', inventory.purchases], ['Consumption quantity', inventory.consumption_qty],
         ['Wastage quantity', inventory.wastage_qty], ['Stock movements', inventory.stock_movements], ['Transfer orders', inventory.transfer_orders],
       ].map(([label, value]) => ({ metric: label, value: toNumber(value) })) },
       { name: 'cashier-controls', title: 'Cashier Controls', columns: [textColumn('metric', 'Metric', 30), valueColumn], rows: [
         ['Open shifts', cashier.open_shifts], ['Closed shifts', cashier.closed_shifts], ['Cash variance', cashier.cash_variance],
       ].map(([label, value]) => ({ metric: label, value: toNumber(value) })) },
     ],
-    notes: ['Values are limited to the live management and sales-detail RPC results for the active property. This report does not expand beyond the source queries.'],
+    notes,
   });
 }
 
@@ -780,7 +816,7 @@ export function buildManagementReportDefinition({ report = {}, sales = {}, from,
 
 const statusLabel = (value) => cleanText(value, 'unknown').replaceAll('_', ' ');
 
-export function buildStoresRequisitionRegisterDefinition({ rows = [], from = '', to = '', propertyName, generatedBy }) {
+export function buildStoresRequisitionRegisterDefinition({ rows = [], from = '', to = '', propertyName, generatedBy, truncated = false, cap = 500 }) {
   const data = (rows || []).map((row) => ({
     req_no: cleanText(row.req_no),
     status: statusLabel(row.status),
@@ -826,11 +862,14 @@ export function buildStoresRequisitionRegisterDefinition({ rows = [], from = '',
       ],
       rows: data,
     }],
-    notes: ['Quantities are shown in each line unit as entered; approved and issued totals are not converted to a common base unit.'],
+    notes: [
+      'Quantities are shown in each line unit as entered; approved and issued totals are not converted to a common base unit.',
+      ...truncationNotes({ truncated, cap }),
+    ],
   });
 }
 
-export function buildStoresIssueRegisterDefinition({ rows = [], from = '', to = '', propertyName, generatedBy }) {
+export function buildStoresIssueRegisterDefinition({ rows = [], from = '', to = '', propertyName, generatedBy, truncated = false, cap = 500 }) {
   const data = (rows || []).map((row) => ({
     issue_no: cleanText(row.issue_no),
     requisition_no: cleanText(row.requisition_no, 'Direct issue'),
@@ -876,7 +915,10 @@ export function buildStoresIssueRegisterDefinition({ rows = [], from = '', to = 
       ],
       rows: data,
     }],
-    notes: ['Cost values are deliberately excluded from this register. Costed issue details require the stores.costs.view permission.'],
+    notes: [
+      'Cost values are deliberately excluded from this register. Costed issue details require the stores.costs.view permission.',
+      ...truncationNotes({ truncated, cap }),
+    ],
   });
 }
 
@@ -884,7 +926,7 @@ export function buildStoresIssueRegisterDefinition({ rows = [], from = '', to = 
 // Stores transfer register and printable transfer note (Phase 2)
 // ---------------------------------------------------------------------------
 
-export function buildStoresTransferRegisterDefinition({ rows = [], from = '', to = '', propertyName, generatedBy }) {
+export function buildStoresTransferRegisterDefinition({ rows = [], from = '', to = '', propertyName, generatedBy, truncated = false, cap = 500 }) {
   const data = (rows || []).map((row) => ({
     transfer_no: cleanText(row.document_no, 'Unnumbered'),
     status: statusLabel(row.status),
@@ -936,6 +978,7 @@ export function buildStoresTransferRegisterDefinition({ rows = [], from = '', to
     notes: [
       'Quantities and costs are deliberately excluded from this register. Open a transfer note for line-level detail.',
       'An empty received timestamp means the transfer has not been confirmed.',
+      ...truncationNotes({ truncated, cap }),
     ],
   });
 }

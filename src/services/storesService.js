@@ -157,6 +157,26 @@ export const storesService = {
     });
   },
 
+  // Phase 4B report loaders filter dates on the server and return an explicit
+  // cap/truncation flag. The operational list methods above are unchanged.
+  listRequisitionReport(propertyId, { from = null, to = null, limit = 500 } = {}) {
+    return rpc('fn_phase4b_stores_requisitions', {
+      p_property_id: propertyId,
+      p_from: from,
+      p_to: to,
+      p_limit: limit,
+    });
+  },
+
+  listIssueNoteReport(propertyId, { from = null, to = null, limit = 500 } = {}) {
+    return rpc('fn_phase4b_stores_issue_notes', {
+      p_property_id: propertyId,
+      p_from: from,
+      p_to: to,
+      p_limit: limit,
+    });
+  },
+
   issueNoteDetail(propertyId, issueNoteId) {
     return rpc('fn_stores_issue_note_detail', {
       p_property_id: propertyId,
@@ -174,6 +194,15 @@ export const storesService = {
       p_overdue_only: overdueOnly,
       p_limit: limit,
       p_offset: offset,
+    });
+  },
+
+  listTransferReport(propertyId, { from = null, to = null, limit = 500 } = {}) {
+    return rpc('fn_phase4b_stores_transfers', {
+      p_property_id: propertyId,
+      p_from: from,
+      p_to: to,
+      p_limit: limit,
     });
   },
 

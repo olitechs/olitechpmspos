@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { ChevronDown, Download, FileSpreadsheet, FileText, Printer } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
-import { createExcelBlob, createPdfBlob, downloadBlob, openPdfPreview, reportFilename } from '@/services/reportDocumentEngine';
-import { reportExportAuditService } from '@/services/reportExportAuditService';
+import { executeAuditedReportExport } from '@/services/reportExportService';
 
 const ACTIONS = {
   pdf: { label: 'Download PDF', icon: FileText },
   excel: { label: 'Download Excel', icon: FileSpreadsheet },
+  csv: { label: 'Download CSV', icon: FileSpreadsheet },
   print: { label: 'Print PDF', icon: Printer },
 };
 
@@ -14,7 +14,7 @@ export default function DocumentExportMenu({
   definition,
   getDefinition,
   label = 'Export',
-  formats = ['pdf', 'excel', 'print'],
+  formats = ['pdf', 'excel', 'csv', 'print'],
   disabled = false,
   className = '',
   onError,
@@ -49,27 +49,22 @@ export default function DocumentExportMenu({
     try {
       const report = typeof getDefinition === 'function' ? await getDefinition((status) => setProgress(String(status || 'Loading report data…'))) : definition;
       if (!report?.key) throw new Error('Report data is not ready. Refresh the report and try again.');
-      setProgress(format === 'excel' ? 'Building Excel workbook…' : 'Building PDF…');
-      const blob = format === 'excel'
-        ? (excelBlobBuilder ? await excelBlobBuilder(report) : await createExcelBlob(report))
-        : await createPdfBlob(report);
-      const rowCount = (report.sections || [])
-        .filter((section) => format === 'excel' || section.pdf !== false)
-        .reduce((total, section) => total + (section.rows?.length || 0), 0);
-      setProgress('Recording Audit Log…');
+      const exportFormat = format === 'excel' ? 'xlsx' : format === 'print' ? 'pdf' : format;
+      setProgress(exportFormat === 'xlsx' ? 'Building Excel workbook…' : exportFormat === 'csv' ? 'Building CSV…' : 'Building PDF…');
       const userId = user?.id || user?.user_id || user?.staff?.user_id;
       const propertyId = user?.property?.id || user?.property_id;
-      await reportExportAuditService.record({
+      const result = await executeAuditedReportExport({
+        definition: report,
+        format: exportFormat,
         userId,
         propertyId,
-        definition: report,
-        format: format === 'excel' ? 'xlsx' : 'pdf',
-        rowCount,
         delivery: format === 'print' ? 'print-preview' : 'download',
+        printWindow,
+        blobBuilder: exportFormat === 'xlsx' && excelBlobBuilder
+          ? (activeDefinition) => excelBlobBuilder(activeDefinition)
+          : null,
       });
-      if (format === 'print') openPdfPreview(blob, printWindow);
-      else downloadBlob(blob, reportFilename(report, format === 'excel' ? 'xlsx' : 'pdf'));
-      setNotice(`${report.title} ${format === 'print' ? 'opened in print preview' : 'download started'}.`);
+      setNotice(`${report.title} ${format === 'print' ? 'opened in print preview' : `download started (${result.filename})`}.`);
     } catch (cause) {
       if (printWindow && !printWindow.closed) printWindow.close();
       const message = cause?.message || 'The report could not be exported.';

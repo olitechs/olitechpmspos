@@ -82,19 +82,22 @@ export const shiftService = {
     return data || [];
   },
 
-  async getShiftReport(shiftId) {
+  async getShiftReport(shiftId, propertyId) {
+    if (!propertyId) throw new Error('An active property is required to load a shift report.');
     const { data: rawShift, error: shiftError } = await supabase
       .from('cashier_shifts')
       .select('*')
+      .eq('property_id', propertyId)
       .eq('id', shiftId)
       .single();
     if (shiftError) throw new Error(shiftError.message);
+    if (rawShift?.property_id && rawShift.property_id !== propertyId) throw new Error('This shift belongs to another property.');
     const shift = normalizeCashierShift(rawShift);
 
     const { data: rows, error: rowsError } = await supabase
       .from('pos_receipts')
       .select('*')
-      .eq('property_id', shift.property_id)
+      .eq('property_id', propertyId)
       .eq('shift_id', shiftId)
       .order('created_at', { ascending: true });
     if (rowsError) throw new Error(rowsError.message);
@@ -110,7 +113,7 @@ export const shiftService = {
       const { data, error: allocationError } = await supabase
         .from('pos_receipt_payments')
         .select('receipt_id,payment_method,amount')
-        .eq('property_id', shift.property_id)
+        .eq('property_id', propertyId)
         .in('receipt_id', splitIds);
       if (allocationError) throw new Error(allocationError.message);
       allocations = data || [];
@@ -125,7 +128,7 @@ export const shiftService = {
       const { data, error: refundError } = await supabase
         .from('cashier_refunds')
         .select('receipt_id,amount,settlement_method,method')
-        .eq('property_id', shift.property_id)
+        .eq('property_id', propertyId)
         .in('receipt_id', postedIds);
       if (refundError) throw new Error(refundError.message);
       refunds = data || [];
@@ -143,7 +146,7 @@ export const shiftService = {
       const { data: staffRows, error: staffError } = await supabase
         .from('staff_directory')
         .select('user_id,full_name,email')
-        .eq('property_id', shift.property_id)
+        .eq('property_id', propertyId)
         .in('user_id', staffIds);
       if (staffError) throw new Error(staffError.message);
       staffNames = Object.fromEntries((staffRows || []).map((person) => [
@@ -263,7 +266,7 @@ export const shiftService = {
     });
   },
 
-  async printData(shiftId) {
-    return this.getShiftReport(shiftId);
+  async printData(shiftId, propertyId) {
+    return this.getShiftReport(shiftId, propertyId);
   },
 };

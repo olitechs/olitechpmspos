@@ -179,7 +179,8 @@ test('reports expose the transfer register and printable transfer note without c
 
   assert.match(reportsPage, /initialTab = 'requisitions'/);
   assert.match(reportsPage, /\['transfers', 'Transfers'\]/);
-  assert.match(reportsPage, /storesService\.listTransfers\(propertyId/);
+  assert.match(reportsPage, /storesService\.listTransferReport\(propertyId/, 'transfer reports must use the server-filtered Phase 4B RPC');
+  assert.match(reportsPage, /data\?\.truncated/);
   assert.match(reportsPage, /buildStoresTransferRegisterDefinition\(context\)/);
 });
 

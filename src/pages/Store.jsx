@@ -13,10 +13,11 @@ import DocumentExportMenu from '@/components/shared/DocumentExportMenu';
 import PackExcelExportButton from '@/components/shared/PackExcelExportButton';
 import { buildStockControlDefinition } from '@/services/reportDefinitions';
 import { packExportDataService, todayKenya } from '@/services/packExportDataService';
-import { adjustmentFormFilename, downloadPackWorkbook, stockExportFilename } from '@/services/packExports';
+import { adjustmentFormFilename, createPackWorkbookBlob, stockExportFilename } from '@/services/packExports';
 import { buildAdjustmentFormWorkbook, buildStockWorkbook } from '@/services/packExports/stockWorkbook.js';
+import { executeAuditedReportExport } from '@/services/reportExportService';
 import { Modal } from '@/components/store/SupplierList';
-import { getSessionStaff, normalizeStaffRole } from '@/services/authService';
+import { getSessionStaff, hasPermissionCode, normalizeStaffRole } from '@/services/authService';
 import StoreBarcodeLabels from '@/components/store/StoreBarcodeLabels';
 import CompositeItemEditor from '@/components/pos/CompositeItemEditor';
 import ProductVariantsEditor from '@/components/store/ProductVariantsEditor';
@@ -27,6 +28,15 @@ const TABS = [
   ['overview','Stock Overview'], ['products','Products'], ['suppliers','Suppliers'], ['purchases','Purchases / GRN'], ['usage','Stock Usage'], ['alerts','Alerts'], ['labels','Label Printing'],
 ];
 const ROLES = ['storekeeper','store_keeper','store_manager','fb_manager','general_manager','admin','owner','administrator','manager','front_office_manager','hotel_admin','super_admin'];
+const COST_FIELDS = new Set(['cost_price','unit_cost','stock_value','stock_value_at_cost','value_at_cost','total_cost','cost','valuation']);
+const stripCostFields = (row) => Object.fromEntries(Object.entries(row || {}).filter(([key]) => !COST_FIELDS.has(key)));
+const withoutCostData = (extract = {}) => ({
+  ...stripCostFields(extract),
+  products: (extract.products || []).map(stripCostFields),
+  movements: (extract.movements || []).map(stripCostFields),
+  stockLocations: (extract.stockLocations || []).map(stripCostFields),
+  adjustments: (extract.adjustments || []).map(stripCostFields),
+});
 
 export default function Store({ initialTab = 'overview' }) {
   const [searchParams] = useSearchParams();
@@ -38,7 +48,8 @@ export default function Store({ initialTab = 'overview' }) {
   const permissions = resolvePermissions(user);
   const allowed = permissions.codes.has('stores.access') || ROLES.includes(role) || user?.isPlatformOwner;
   const isFnbManager = role === 'fb_manager';
-  const showCost = permissions.codes.has('stores.stock.adjust') || ['storekeeper','store_keeper','store_manager','fb_manager','hotel_admin','super_admin','owner','admin','administrator','manager'].includes(role) || user?.isPlatformOwner;
+  const canViewCosts = hasPermissionCode(user, 'stores.costs.view') || permissions.codes.has('stores.costs.view');
+  const showCost = canViewCosts;
   const readOnly = role === 'front_office_manager';
   const canWrite = !readOnly && (permissions.codes.has('stores.stock.adjust') || ['storekeeper','store_keeper','store_manager','fb_manager','hotel_admin','super_admin','owner','admin','administrator','manager'].includes(role) || user?.isPlatformOwner);
   const [tab,setTab]=useState(routeTab);
@@ -77,7 +88,7 @@ export default function Store({ initialTab = 'overview' }) {
       inventoryService.listProducts(propertyId,{category:categoryFilter,location:reportLocation}),
       inventoryService.listMovementsForReport(propertyId,{from:reportFrom||undefined,to:reportTo||undefined,category:categoryFilter,location:reportLocation},count=>onProgress(`Loading stock movements · ${count.toLocaleString()} rows`)),
     ]);
-    const canIncludeCost=showCost&&(reportProducts.length===0||reportProducts.some(product=>product.cost_price!==null&&product.cost_price!==undefined));
+    const canIncludeCost=canViewCosts&&(reportProducts.length===0||reportProducts.some(product=>product.cost_price!==null&&product.cost_price!==undefined));
     return buildStockControlDefinition({products:reportProducts,movements:reportMovements,from:reportFrom,to:reportTo,category:categoryFilter,location:reportLocation,propertyName:user?.property?.business_name||user?.property?.name||'OliTechs',generatedBy:user?.full_name||user?.staff?.full_name||'Authorized staff',showCost:canIncludeCost});
   };
 
@@ -87,18 +98,43 @@ export default function Store({ initialTab = 'overview' }) {
     if(reportFrom&&reportTo&&reportFrom>reportTo) throw new Error('The stock report start date must be on or before the end date.');
     return packExportDataService.loadStockExport(propertyId,{from:reportFrom||undefined,to:reportTo||undefined,category:isFnbManager?'F&B':reportCategory,location:reportLocation});
   };
-  const exportStockWorkbook=async()=>{
+  const auditedWorkbookExport=async({key,title,filename,builder})=>{
     const extract=await loadStockExportData();
-    return downloadPackWorkbook(buildStockWorkbook,{...extract,propertyName,currency,generatedAt:new Date(),from:reportFrom||undefined,to:reportTo||undefined},stockExportFilename({propertyName,from:reportFrom||undefined,to:reportTo||undefined}));
+    const rowCount=(extract.products?.length||0)+(extract.movements?.length||0)+(extract.adjustments?.length||0)+(extract.stockLocations?.length||0);
+    const workbookData={
+      ...(canViewCosts?extract:withoutCostData(extract)),
+      propertyName,currency,generatedAt:new Date(),includeCosts:canViewCosts,
+      from:reportFrom||undefined,to:reportTo||undefined,
+    };
+    return executeAuditedReportExport({
+      definition:{
+        key,title,
+        filters:{period:reportFrom||reportTo?`${reportFrom||'start'} to ${reportTo||'end'}`:'all',scope:reportLocation!=='all'?reportLocation:'all locations',category:reportCategory!=='all'?reportCategory:'all categories',report_type:'workbook'},
+        sections:[],
+        notes:canViewCosts?[]:['Cost values are omitted because the current user does not have stores.costs.view.'],
+      },
+      format:'xlsx',
+      userId:user?.id||user?.user_id||user?.staff?.user_id,
+      propertyId,
+      rowCount,
+      filename,
+      blobBuilder:async()=>(await createPackWorkbookBlob(builder,workbookData)).blob,
+    });
   };
-  const exportAdjustmentForm=async()=>{
-    const extract=await loadStockExportData();
-    return downloadPackWorkbook(buildAdjustmentFormWorkbook,{...extract,propertyName,currency,generatedAt:new Date(),from:reportFrom||undefined,to:reportTo||undefined},adjustmentFormFilename({propertyName,date:reportTo||todayKenya()}));
-  };
+  const exportStockWorkbook=async()=>auditedWorkbookExport({
+    key:'stock-workbook',title:'Stock Workbook',
+    filename:stockExportFilename({propertyName,from:reportFrom||undefined,to:reportTo||undefined}),
+    builder:buildStockWorkbook,
+  });
+  const exportAdjustmentForm=async()=>auditedWorkbookExport({
+    key:'stock-adjustment-form',title:'Stock Adjustment Form',
+    filename:adjustmentFormFilename({propertyName,date:reportTo||todayKenya()}),
+    builder:buildAdjustmentFormWorkbook,
+  });
 
   return <div className="flex-1 min-h-0 overflow-y-auto bg-canvas p-4 lg:p-6">
     <div className="flex flex-wrap items-center justify-between gap-3 mb-5"><div><div className="flex items-center gap-2"><Package size={22}/><h1 className="text-2xl font-black">Store / Controls</h1>{isFnbManager&&<span className="text-[10px] font-black px-2 py-1 rounded-full bg-primary">F&B ONLY</span>}</div><p className="text-sm text-muted-foreground mt-1">Inventory, suppliers, purchasing, usage and stock alerts.</p></div><ImportExport products={filteredProducts} onImport={canWrite ? importRows : null}/></div>
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">{[['Total Products',stats.total,Boxes,'black'],['Low Stock',stats.low,AlertTriangle,'yellow'],['Out of Stock',stats.out,AlertTriangle,'red'],['Stock Value',readOnly?'Restricted':`KES ${stats.value.toLocaleString('en-KE')}`,FileSpreadsheet,'green']].map(([l,v,I,c])=><div key={l} className="bg-surface border-2 border-border rounded-2xl p-4"><div className="flex items-center justify-between"><span className="text-[10px] uppercase tracking-widest font-black">{l}</span><I size={17} className={c==='red'?'text-[var(--danger)]':c==='yellow'?'text-[var(--warning)]':c==='green'?'text-[var(--success)]':''}/></div><div className="text-2xl font-black mt-2">{v}</div></div>)}</div>
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">{[['Total Products',stats.total,Boxes,'black'],['Low Stock',stats.low,AlertTriangle,'yellow'],['Out of Stock',stats.out,AlertTriangle,'red'],['Stock Value',showCost?`KES ${stats.value.toLocaleString('en-KE')}`:'Restricted',FileSpreadsheet,'green']].map(([l,v,I,c])=><div key={l} className="bg-surface border-2 border-border rounded-2xl p-4"><div className="flex items-center justify-between"><span className="text-[10px] uppercase tracking-widest font-black">{l}</span><I size={17} className={c==='red'?'text-[var(--danger)]':c==='yellow'?'text-[var(--warning)]':c==='green'?'text-[var(--success)]':''}/></div><div className="text-2xl font-black mt-2">{v}</div></div>)}</div>
     <div className="flex gap-1 overflow-x-auto mb-4 bg-surface border-2 border-border rounded-xl p-1">{TABS.map(([id,label])=><button key={id} disabled={readOnly && ['purchases','usage'].includes(id)} onClick={()=>setTab(id)} className="px-4 py-2.5 rounded-lg text-xs font-black whitespace-nowrap" style={{background:tab===id?'var(--primary)':'var(--surface)',color:tab===id?'var(--on-primary)':'var(--text)'}}>{label}{id==='alerts'&&alerts.length>0?<span className="ml-1.5 rounded-full bg-[var(--danger)] text-[var(--status-not-paid-foreground)] px-1.5 py-0.5">{alerts.length}</span>:null}</button>)}</div>
     {error&&<div className="mb-4 rounded-xl bg-[var(--danger-soft)] border-2 border-[var(--danger)] text-[var(--danger-text)] p-3 text-sm font-bold">{error}</div>}
     {loading?<div className="p-12 text-center font-bold text-muted-foreground">Loading Store…</div>:<>
@@ -175,4 +211,4 @@ function ProductModal({value,suppliers,propertyId,fnbOnly=false,onClose,onSave})
 
 function PurchasePanel({propertyId,products,suppliers,onSaved}){const [supplierId,setSupplierId]=useState(''),[invoice,setInvoice]=useState(''),[date,setDate]=useState(new Date().toISOString().slice(0,10)),[lines,setLines]=useState([{productId:'',qty:1,costPrice:0}]);const update=(i,k,v)=>setLines(lines.map((l,n)=>n===i?{...l,[k]:v}:l));const save=async()=>{try{await inventoryService.createPurchase({propertyId,supplierId,invoiceNo:invoice,purchaseDate:date,lines});toast.success('GRN / stock in posted.');setLines([{productId:'',qty:1,costPrice:0}]);onSaved();}catch(e){toast.error(e.message);}};return <div className="bg-surface border-2 border-border rounded-2xl p-4"><div className="grid grid-cols-2 lg:grid-cols-3 gap-3"><label className="text-xs font-black">Supplier<select value={supplierId} onChange={e=>setSupplierId(e.target.value)} className="mt-1 w-full border-2 border-border rounded-lg px-3 py-2.5"><option value="">Select supplier</option>{suppliers.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label><label className="text-xs font-black">Invoice No.<input value={invoice} onChange={e=>setInvoice(e.target.value)} className="mt-1 w-full border-2 border-border rounded-lg px-3 py-2.5"/></label><label className="text-xs font-black">Date<input type="date" value={date} onChange={e=>setDate(e.target.value)} className="mt-1 w-full border-2 border-border rounded-lg px-3 py-2.5"/></label></div><div className="mt-5 space-y-2">{lines.map((l,i)=><div key={i} className="grid grid-cols-[1fr_100px_130px] gap-2"><select value={l.productId} onChange={e=>update(i,'productId',e.target.value)} className="border-2 border-border rounded-lg px-3 py-2"><option value="">Select product</option>{products.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select><input type="number" min="1" value={l.qty} onChange={e=>update(i,'qty',e.target.value)} className="border-2 border-border rounded-lg px-3 py-2" placeholder="Qty"/><input type="number" min="0" value={l.costPrice} onChange={e=>update(i,'costPrice',e.target.value)} className="border-2 border-border rounded-lg px-3 py-2" placeholder="Cost"/></div>)}</div><div className="flex gap-2 mt-4"><button onClick={()=>setLines([...lines,{productId:'',qty:1,costPrice:0}])} className="px-4 py-2 rounded-lg border-2 border-border font-black text-xs"><Plus size={14} className="inline"/> Add line</button><button onClick={save} className="px-5 py-2 rounded-lg bg-primary font-black text-xs">Post Stock In / GRN</button></div><div className="mt-6 border-t-2 border-border pt-4"><h3 className="font-black mb-2">Recent Purchases</h3><div className="text-xs text-muted-foreground">Use the Stock Movements tab below for the audit trail.</div></div></div>}
 
-function ReportBar({from,setFrom,to,setTo,category,setCategory,location,setLocation,getDefinition,onExportWorkbook,onExportAdjustmentForm,disabled}){return <div className="bg-surface border-2 border-border rounded-2xl p-4"><div className="flex items-center gap-2 mb-3"><ClipboardList size={17}/><h3 className="font-black">Stock Control report</h3></div><p className="mb-3 text-xs text-muted-foreground">Current stock position plus every matching movement in the selected date range. Exports stop with a clear error if source rows exceed the supported limit.</p><div className="flex flex-wrap items-center gap-2"><label className="sr-only" htmlFor="stock-report-from">Movement from</label><input id="stock-report-from" type="date" value={from} onChange={e=>setFrom(e.target.value)} className="border-2 border-border rounded-lg px-3 py-2 text-sm"/><label className="sr-only" htmlFor="stock-report-to">Movement to</label><input id="stock-report-to" type="date" value={to} onChange={e=>setTo(e.target.value)} className="border-2 border-border rounded-lg px-3 py-2 text-sm"/><label className="sr-only" htmlFor="stock-report-category">Category</label><select id="stock-report-category" value={category} onChange={e=>setCategory(e.target.value)} className="border-2 border-border rounded-lg px-3 py-2 text-sm"><option value="all">All Categories</option>{STORE_CATEGORIES.map(c=><option key={c}>{c}</option>)}</select><label className="sr-only" htmlFor="stock-report-location">Location</label><select id="stock-report-location" value={location} onChange={e=>setLocation(e.target.value)} className="border-2 border-border rounded-lg px-3 py-2 text-sm"><option value="all">All Locations</option>{STORE_LOCATIONS.map(item=><option key={item}>{item}</option>)}</select><DocumentExportMenu getDefinition={getDefinition} label="Export stock control" disabled={disabled}/><PackExcelExportButton label="Stock Excel (formulas)" run={onExportWorkbook} disabled={disabled}/><PackExcelExportButton label="Adjustment form" run={onExportAdjustmentForm} disabled={disabled}/></div></div>}
+function ReportBar({from,setFrom,to,setTo,category,setCategory,location,setLocation,getDefinition,onExportWorkbook,onExportAdjustmentForm,disabled}){return <div className="bg-surface border-2 border-border rounded-2xl p-4"><div className="flex items-center gap-2 mb-3"><ClipboardList size={17}/><h3 className="font-black">Stock Control report</h3></div><p className="mb-3 text-xs text-muted-foreground">Current stock position plus every matching movement in the selected date range. Exports stop with a clear error if source rows exceed the supported limit. Cost values are included only with stores.costs.view.</p><div className="flex flex-wrap items-center gap-2"><label className="sr-only" htmlFor="stock-report-from">Movement from</label><input id="stock-report-from" type="date" value={from} onChange={e=>setFrom(e.target.value)} className="border-2 border-border rounded-lg px-3 py-2 text-sm"/><label className="sr-only" htmlFor="stock-report-to">Movement to</label><input id="stock-report-to" type="date" value={to} onChange={e=>setTo(e.target.value)} className="border-2 border-border rounded-lg px-3 py-2 text-sm"/><label className="sr-only" htmlFor="stock-report-category">Category</label><select id="stock-report-category" value={category} onChange={e=>setCategory(e.target.value)} className="border-2 border-border rounded-lg px-3 py-2 text-sm"><option value="all">All Categories</option>{STORE_CATEGORIES.map(c=><option key={c}>{c}</option>)}</select><label className="sr-only" htmlFor="stock-report-location">Location</label><select id="stock-report-location" value={location} onChange={e=>setLocation(e.target.value)} className="border-2 border-border rounded-lg px-3 py-2 text-sm"><option value="all">All Locations</option>{STORE_LOCATIONS.map(item=><option key={item}>{item}</option>)}</select><DocumentExportMenu getDefinition={getDefinition} label="Export stock control" disabled={disabled}/><PackExcelExportButton label="Stock Excel (formulas)" run={onExportWorkbook} disabled={disabled}/><PackExcelExportButton label="Adjustment form" run={onExportAdjustmentForm} disabled={disabled}/></div></div>}
