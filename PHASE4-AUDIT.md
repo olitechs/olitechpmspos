@@ -173,7 +173,7 @@ No applied migration may be renamed or edited to make history look clean. Phase 
 ### 4A — Governance and baseline
 
 - Read-only applied-migration/function inventory for `0031`, `0032`, reporting, cashier, night audit, channel and stores migrations.
-- Add a governance note recording supersession chains and deployment order.
+- Governance note: `docs/audit/PHASE4_GOVERNANCE_BASELINE.md` records duplicate prefixes, static applyability blockers, function supersession chains, and staging/production preflight SQL.
 - No destructive migration edits.
 
 ### 4B — Reporting correctness and permission parity
