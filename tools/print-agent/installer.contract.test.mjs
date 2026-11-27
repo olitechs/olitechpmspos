@@ -209,4 +209,5 @@ test('the Windows release is gated on silent install, health, uninstall, and fai
   assert.match(smoke, /DForceServiceInstallFailure/);
   assert.match(smoke, /failureOutputRoot = Join-Path \$logRoot 'failure-build'/);
   assert.match(smoke, /failureCode -ne 0/);
+  assert.match(smoke, /\$global:LASTEXITCODE = 0/, 'cleanup diagnostics must not fail a passing smoke run');
 });
