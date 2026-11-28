@@ -18,6 +18,7 @@ import { usePms } from '@/data/PmsStore';
 import { useAuth } from '@/lib/AuthContext';
 import { hasPermissionCode } from '@/services/authService';
 import { pmsService } from '@/services/pmsService';
+import { getDashboardRoomStats } from './dashboardRoomStats';
 
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
@@ -30,6 +31,7 @@ const kes = (n) => `KES ${Number(n || 0).toLocaleString('en-KE')}`;
 
 const ROOM_GROUPS = [
   { key: 'occupied', label: 'Occupied', color: 'var(--stay-occupied)', statuses: ['occupied'] },
+  { key: 'booked', label: 'Booked', color: 'var(--primary)', statuses: ['booked'] },
   { key: 'available', label: 'Vacant clean', color: 'var(--room-clean)', statuses: ['available'] },
   { key: 'dirty', label: 'Vacant dirty', color: 'var(--room-dirty)', statuses: ['dirty', 'cleaning'] },
   { key: 'ooo', label: 'Out of order', color: 'var(--stay-closed)', statuses: ['maintenance', 'out_of_service', 'blocked'] },
@@ -210,20 +212,10 @@ export default function Dashboard({ onNavigateToPOS, onNavigateToRooms, onNaviga
   const reservations = pms?.reservations || [];
   const pmsLoading = !!pms?.loading;
 
-  const fo = useMemo(() => {
-    const counts = Object.fromEntries(ROOM_GROUPS.map((g) => [g.key, 0]));
-    rooms.forEach((room) => {
-      const group = ROOM_GROUPS.find((g) => g.statuses.includes(room.status));
-      if (group) counts[group.key] += 1;
-    });
-    const sellable = rooms.length - counts.ooo;
-    const occupancy = sellable > 0 ? Math.round((counts.occupied / sellable) * 100) : 0;
-    const arrivals = reservations.filter((r) => r.status === 'booked' && sameDay(r.arrival, today));
-    const departures = reservations.filter((r) => r.status === 'checked-in' && sameDay(r.departure, today));
-    const inHouse = reservations.filter((r) => r.status === 'checked-in');
-    const inHouseGuests = inHouse.reduce((sum, r) => sum + (Number(r.partySize) || 1), 0);
-    return { counts, sellable, occupancy, arrivals, departures, inHouse, inHouseGuests, total: rooms.length };
-  }, [rooms, reservations, today]);
+  const fo = useMemo(
+    () => getDashboardRoomStats(rooms, reservations, today),
+    [rooms, reservations, today]
+  );
 
   /* ---- POS figures ---- */
   const revenue = Number(summary?.total_revenue || 0);
@@ -297,7 +289,7 @@ export default function Dashboard({ onNavigateToPOS, onNavigateToRooms, onNaviga
             label="Occupancy"
             icon={BedDouble}
             value={dash(`${fo.occupancy}%`)}
-            sub={dash(`${fo.counts.occupied} of ${fo.sellable} rooms sold`)}
+            sub={dash(`${fo.soldToday} of ${fo.sellable} rooms sold`)}
             onClick={goRooms}
           />
           <Kpi
