@@ -59,16 +59,14 @@ test('auth-identity and audit surfaces are deliberately not write-guarded', () =
   }
 });
 
-test('the session carries the server-computed entitlement and defers when missing', () => {
+test('the session carries the server-computed entitlement and fails closed when verification is unavailable', () => {
   assert.match(authService, /fn_get_my_subscription_entitlement/i);
   assert.match(authService, /entitlement,?\s*\r?\n/);
   assert.match(authService, /entitlement: entitlementRow \|\| null|entitlement = entitlementRow \|\| null/i);
-  // Missing entitlement (older deployment) does not lock the session locally.
-  assert.match(authService, /if \(!ent \|\| typeof ent !== 'object'\) return false;/);
+  assert.match(authService, /state: 'unavailable',[\s\S]*?allowed: false,[\s\S]*?reason: 'entitlement_unavailable'/);
   assert.match(authService, /return ent\.allowed !== true;/);
   assert.match(authService, /if \(isSubscriptionBlocked\(user\)\) return false;\s*\r?\n\s*const pkg/);
 });
-
 test('renewal, billing and support paths stay reachable for a blocked property', () => {
   assert.match(authService, /export function isRenewalPath\(pathname\)/);
   assert.ok(
@@ -103,6 +101,19 @@ test('the suspension screen shows status details and keeps only renewal, billing
   assert.match(suspendedScreen, /Your data is preserved/i);
   // No operational navigation is rendered by the screen itself.
   assert.doesNotMatch(suspendedScreen, /Sidebar|TopAppNav|MAIN_NAV|BackOfficeLayout|POSLayout|StoresLayout/);
+});
+
+
+test('expired sign-in sessions land on the suspension screen and can request renewal by email', () => {
+  assert.match(appRoutes, /if\(isSubscriptionBlocked\(user\)\)return <SubscriptionSuspendedScreen\/>/);
+  assert.match(suspendedScreen, /pmsService\.requestSubscriptionRenewal\(user\.property\.id\)/);
+  assert.match(suspendedScreen, /Renew Subscription/);
+  assert.match(suspendedScreen, /info@olitechs\.co\.ke/);
+  assert.match(suspendedScreen, /olitech2025@gmail\.com/);
+  const edge = readFileSync(new URL('../functions/subscription-renewal-request/index.ts', import.meta.url), 'utf8');
+  assert.match(edge, /const RECIPIENTS = \['info@olitechs\.co\.ke', 'olitechs2025@gmail\.com'\]/);
+  assert.match(edge, /Only the property owner or administrator/);
+  assert.match(edge, /subscription_renewal_requests/);
 });
 
 test('the billing-only shell renders the subscription panel without workspace navigation', () => {
