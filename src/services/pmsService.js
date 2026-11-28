@@ -144,6 +144,24 @@ export const pmsService = {
 		if(data?.error) throw new Error(data.error);
 		return data||null;
 	},
+	// Public homepage demo enquiry. This intentionally uses a different Edge
+	// Function from the authenticated owner/admin subscription request flow.
+	async requestDemo(input) {
+		const payload=input||{};
+		const body={
+			full_name:payload.fullName||payload.full_name||null,
+			email:payload.email||null,
+			property_name:payload.propertyName||payload.property_name||null,
+			phone:payload.phone||null,
+			package_name:payload.packageName||payload.package_name||null,
+			billing_cycle:payload.billingCycle||payload.billing_cycle||null,
+			notes:payload.notes||null,
+		};
+		const {data,error}=await supabase.functions.invoke('public-demo-request',{body});
+		if(error) { let message=error.message || 'Could not send the demo request.'; try { const response=await error.context?.json(); message=response?.error || message; } catch {} throw new Error(message); }
+		if(data?.error) throw new Error(data.error);
+		return data||null;
+	},
 	async getSubscriptionAccess(propertyId,module) { const {data,error}=await supabase.rpc('fn_subscription_access',{p_property_id:propertyId,p_module:module}); if(error) throw new Error(error.message); return data||{allowed:false}; },
 	async upsertSubscription({propertyId,planCode,status,trialEndsAt=null,currentPeriodEndsAt=null,graceEndsAt=null,enabledModules=[]}) { const {data,error}=await supabase.rpc('fn_upsert_subscription',{p_property_id:propertyId,p_plan_code:planCode,p_status:status,p_trial_ends_at:trialEndsAt,p_current_period_ends_at:currentPeriodEndsAt,p_grace_ends_at:graceEndsAt,p_enabled_modules:enabledModules}); if(error) throw new Error(error.message); return data; },
 	async listSubscriptionEvents(propertyId) { const {data,error}=await supabase.from('subscription_events').select('*').eq('property_id',propertyId).order('created_at',{ascending:false}).limit(100); if(error) throw new Error(error.message); return data||[]; },

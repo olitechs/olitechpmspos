@@ -142,3 +142,6 @@ Adds the nullable `reservations.option_expires_at` timestamp, property-scoped RP
 
 ### 20261128173000 — Subscription request form
 Apply after `20261128060804_subscription_renewal_requests.sql` and before deploying the `subscription-renewal-request` Edge Function. Adds `request_kind`, `requested_package`, `billing_cycle`, `contact_phone`, and `request_notes` to the existing request table, plus the platform-owner-only `admin_list_subscription_requests()` RPC used by the admin inbox. The table remains service-role only; tenant RLS is not weakened. This is a forward, idempotent migration — do not rename or reorder already-applied migrations.
+
+### 20261128190000 — Public demo requests
+Apply after `20261128173000_subscription_request_form.sql` and before deploying the `public-demo-request` Edge Function. Adds a separate service-role-only `demo_requests` table for anonymous homepage enquiries and the platform-owner-only `admin_list_demo_requests()` RPC. The existing `subscription_renewal_requests` table and its owner/admin guard are unchanged. This is a forward, idempotent migration — do not rename or reorder already-applied migrations.

@@ -153,7 +153,7 @@ export default function SubscriptionRequestModal({
             </div>
           </DialogBody>
         ) : (
-          <form onSubmit={handleSubmit(onSubmit)} noValidate>
+          <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex min-h-0 flex-1 flex-col">
             <DialogBody className="space-y-4">
               <div className="rounded-xl border border-border bg-canvas p-3">
                 <p className="flex items-center gap-2 text-xs font-bold text-foreground">

@@ -219,3 +219,108 @@ test('an open tab revalidates the entitlement silently on focus, visibility and 
   );
   assert.ok(refreshBlock.includes('refreshUser') && !refreshBlock.includes('setIsLoadingAuth(true)'));
 });
+
+test('homepage demo CTAs open a public request form without weakening subscription requests', () => {
+  const home = readFileSync(new URL('../../src/pages/PublicHome.jsx', import.meta.url), 'utf8');
+  const modal = readFileSync(
+    new URL('../../src/components/subscription/PublicDemoRequestModal.jsx', import.meta.url),
+    'utf8',
+  );
+  const pmsService = readFileSync(new URL('../../src/services/pmsService.js', import.meta.url), 'utf8');
+  const platformService = readFileSync(new URL('../../src/services/platformService.js', import.meta.url), 'utf8');
+  const inbox = readFileSync(new URL('../../src/pages/admin/AdminSubscriptionRequests.jsx', import.meta.url), 'utf8');
+  const migration = readFileSync(new URL('../migrations/20261128190000_public_demo_requests.sql', import.meta.url), 'utf8');
+  const migrationReadme = readFileSync(new URL('../migrations/README.md', import.meta.url), 'utf8');
+  const edge = readFileSync(new URL('../functions/public-demo-request/index.ts', import.meta.url), 'utf8');
+  const subscriptionModal = readFileSync(
+    new URL('../../src/components/subscription/SubscriptionRequestModal.jsx', import.meta.url),
+    'utf8',
+  );
+
+  // Every public CTA opens the same modal; no CTA silently falls back to a
+  // contact link or the authenticated-only subscription form.
+  assert.match(home, /import PublicDemoRequestModal from '@\/components\/subscription\/PublicDemoRequestModal'/);
+  assert.match(home, /const \[demoOpen, setDemoOpen\] = useState\(false\)/);
+  assert.match(home, /const openDemo = \(\) => \{/);
+  assert.match(home, /<PublicDemoRequestModal open=\{demoOpen\} onOpenChange=\{setDemoOpen\} \/>/);
+  assert.match(home, /className="marketing-button" onClick=\{openDemo\}>Request a Demo/);
+  assert.match(home, /hero-actions[\s\S]*onClick=\{openDemo\}/);
+  assert.match(home, /<button type="button" onClick=\{openDemo\}>Talk to Our Team<\/button>/);
+  assert.match(home, /<button type="button"[\s\S]*onClick=\{openDemo\}>Let’s talk ↗<\/button>/);
+  assert.match(home, /final-cta-actions[\s\S]*<button type="button" onClick=\{openDemo\}>Request a Demo ↗/);
+  assert.match(home, /footer-inner[\s\S]*<button type="button" onClick=\{openDemo\}>Request a Demo/);
+  assert.match(home, /mobile-nav-panel[\s\S]*<button type="button" onClick=\{openDemo\}>Request a Demo/);
+  assert.doesNotMatch(home, /href="#contact"/);
+
+  // The public form is anonymous and independent from the owner/admin form.
+  assert.match(modal, /useForm/);
+  assert.match(modal, /zodResolver\(demoRequestSchema\)/);
+  assert.doesNotMatch(modal, /useAuth/);
+  assert.doesNotMatch(modal, /<SubscriptionRequestModal/);
+  assert.doesNotMatch(modal, /from '@\/components\/subscription\/SubscriptionRequestModal'/);
+  for (const field of ['fullName', 'email', 'propertyName', 'phone', 'packageName', 'billingCycle', 'notes']) {
+    assert.match(modal, new RegExp(field), `demo form field ${field}`);
+  }
+  assert.match(modal, /pmsService\.requestDemo\(\{/);
+  assert.match(subscriptionModal, /\['owner', 'admin'\]\.includes\(role\)/);
+  assert.match(subscriptionModal, /pmsService\.requestSubscriptionRenewal\(\{/);
+
+  assert.match(pmsService, /functions\.invoke\('public-demo-request'/);
+  assert.match(pmsService, /full_name:payload\.fullName/);
+  assert.match(pmsService, /property_name:payload\.propertyName/);
+  assert.match(pmsService, /package_name:payload\.packageName/);
+
+  // Public submissions cannot reuse the authenticated subscription guard.
+  assert.doesNotMatch(edge, /authHeader\.startsWith\('Bearer '\)/);
+  assert.doesNotMatch(edge, /Only the property owner or administrator/);
+  assert.match(edge, /Please enter your name\./);
+  assert.match(edge, /Enter a valid email address\./);
+  assert.match(edge, /Please enter your property or business name\./);
+  assert.match(edge, /from\('demo_requests'\)/);
+  assert.match(edge, /const RECIPIENTS = \['info@olitechs\.co\.ke', 'olitechs2025@gmail\.com'\]/);
+  assert.match(edge, /Idempotency-Key.*demo-request/);
+  assert.match(edge, /OliTechs platform inbox and \$\{RECIPIENTS\[0\]\}/);
+  assert.doesNotMatch(edge, /subscription_renewal_requests/);
+
+  assert.match(migration, /create table if not exists public\.demo_requests/i);
+  assert.match(migration, /enable row level security/i);
+  assert.match(migration, /revoke all on public\.demo_requests from public, anon, authenticated/i);
+  assert.match(migration, /grant all on public\.demo_requests to service_role/i);
+  assert.match(migration, /create or replace function public\.admin_list_demo_requests\(\)/i);
+  assert.match(migration, /where public\.is_platform_owner\(\)/i);
+  assert.match(migration, /grant execute on function public\.admin_list_demo_requests\(\) to authenticated/i);
+  assert.match(migration, /revoke execute on function public\.admin_list_demo_requests\(\) from anon, public/i);
+  assert.doesNotMatch(migration, /alter table public\.subscription_renewal_requests/i);
+  assert.match(migrationReadme, /20261128190000 — Public demo requests/);
+
+  assert.match(platformService, /rpc\('admin_list_demo_requests'\)/);
+  assert.match(inbox, /platformService\.listDemoRequests\(\)/);
+  assert.match(inbox, /Demo requests/);
+});
+
+test('request dialog forms keep the scrolling body inside the panel height', () => {
+  const subscriptionModal = readFileSync(
+    new URL('../../src/components/subscription/SubscriptionRequestModal.jsx', import.meta.url),
+    'utf8',
+  );
+  const demoModal = readFileSync(
+    new URL('../../src/components/subscription/PublicDemoRequestModal.jsx', import.meta.url),
+    'utf8',
+  );
+  const dialog = readFileSync(new URL('../../src/components/ui/dialog.jsx', import.meta.url), 'utf8');
+  const styles = readFileSync(new URL('../../src/index.css', import.meta.url), 'utf8');
+  const scrollFormClass = /<form onSubmit=\{handleSubmit\(onSubmit\)\} noValidate className="flex min-h-0 flex-1 flex-col">/;
+
+  // The form is a direct flex child of the panel. Without min-h-0/flex-1 the
+  // form keeps its content height, the panel clips it, and the body cannot
+  // scroll on short viewports.
+  assert.match(subscriptionModal, scrollFormClass);
+  assert.match(demoModal, scrollFormClass);
+  assert.match(dialog, /cn\("modal-panel font-body/);
+  assert.match(dialog, /cn\("modal-body scroll-shadow-y/);
+  assert.match(dialog, /cn\("modal-footer/);
+  assert.match(styles, /\.modal-panel\s*\{[\s\S]*?display:\s*flex;[\s\S]*?flex-direction:\s*column;[\s\S]*?max-height:\s*calc\(100dvh[\s\S]*?overflow:\s*hidden;/);
+  assert.match(styles, /\.modal-body\s*\{[\s\S]*?min-height:\s*0;[\s\S]*?flex:\s*1 1 auto;[\s\S]*?overflow-y:\s*auto;/);
+  assert.match(styles, /\.modal-header\s*\{\s*flex:\s*0 0 auto;/);
+  assert.match(styles, /\.modal-footer\s*\{\s*flex:\s*0 0 auto;/);
+});
