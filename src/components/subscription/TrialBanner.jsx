@@ -8,6 +8,22 @@ import { breakdownRemaining, formatSubscriptionDate } from '@/lib/subscriptionCo
 const URGENT_SECONDS = 48 * 60 * 60;
 const TICK_MS = 60_000;
 
+function plural(value, unit) {
+  return `${value} ${unit}${value === 1 ? '' : 's'}`;
+}
+
+function humanRemaining({ days, hours, minutes }) {
+  if (days > 0) return hours > 0 ? `${plural(days, 'day')}, ${plural(hours, 'hour')}` : plural(days, 'day');
+  if (hours > 0) return minutes > 0 ? `${plural(hours, 'hour')}, ${plural(minutes, 'minute')}` : plural(hours, 'hour');
+  return plural(minutes, 'minute');
+}
+
+function planTitle(value) {
+  const name = String(value || 'professional').replaceAll('_', ' ').trim();
+  const titled = name.replace(/\b\w/g, (letter) => letter.toUpperCase());
+  return `OliTechs ${titled}`;
+}
+
 // Persistent trial countdown. It only presents the server entitlement; the
 // database remains authoritative for whether the workspace is allowed.
 export default function TrialBanner() {
@@ -41,11 +57,17 @@ export default function TrialBanner() {
 
   const remaining = breakdownRemaining(seconds);
   const urgent = seconds <= URGENT_SECONDS;
-  const label = remaining.days > 0
+  const pillLabel = remaining.days > 0
     ? `${remaining.days}d ${remaining.hours}h left`
     : remaining.hours > 0
       ? `${remaining.hours}h ${remaining.minutes}m left`
       : `${remaining.minutes}m left`;
+  const title = urgent
+    ? `Trial expires in ${humanRemaining(remaining)}!`
+    : `Free Trial — ${humanRemaining(remaining)} remaining`;
+  const description = urgent
+    ? 'Act now — after expiry all POS, PMS and billing features will be locked.'
+    : `Your trial of ${planTitle(ent.plan_code || user?.subscription?.plan_code)} ends on ${formatSubscriptionDate(trialEndsAt)}. Subscribe now to keep all your data.`;
   const canManageBilling = user?.isPlatformOwner
     || ['owner', 'admin'].includes(String(user?.propertyRole || '').toLowerCase());
 
@@ -61,24 +83,23 @@ export default function TrialBanner() {
     >
       <span className="inline-flex items-center gap-2 font-bold">
         {urgent ? <LockKeyhole size={15} aria-hidden="true" /> : <Clock3 size={15} aria-hidden="true" />}
-        {urgent ? 'Trial expires soon' : 'Free trial'}
+        {title}
       </span>
-      <span className="min-w-0 flex-1">
-        Your Professional trial ends on <strong>{formatSubscriptionDate(trialEndsAt)}</strong>.
-        {urgent ? ' Subscribe now to avoid interruption.' : ' Subscribe before it ends to keep every module.'}
-      </span>
+      <span className="min-w-0 flex-1">{description}</span>
       <span className={[
         'rounded-full px-2.5 py-1 font-bold',
-        urgent ? 'bg-[var(--danger)] text-[var(--white)]' : 'bg-[var(--warning)] text-[var(--white)]',
+        urgent
+          ? 'animate-pulse bg-[var(--danger)] text-[var(--white)] motion-reduce:animate-none'
+          : 'bg-[var(--warning)] text-[var(--white)]',
       ].join(' ')}>
-        {label}
+        {pillLabel}
       </span>
       {canManageBilling ? (
         <Link
           to="/backoffice/settings/billing"
           className="rounded-md bg-[var(--brand-primary)] px-3 py-1.5 font-bold text-[var(--white)] hover:opacity-90"
         >
-          {urgent ? 'Subscribe now' : 'Upgrade now'}
+          {urgent ? 'Subscribe Now' : 'Upgrade Now'}
         </Link>
       ) : (
         <span className="font-semibold">Ask your administrator to renew</span>
