@@ -5,7 +5,7 @@ import { pmsService } from '@/services/pmsService';
 import { posService } from '@/services/posService';
 import { printOrderByCategory } from '@/services/printService';
 import { getPrinters, getAssignments, printVoidTicket } from '@/services/printService';
-import { NAVY, NAVY2, BORDER_DARK, SAND } from '@/data/themePalette';
+import { NAVY, NAVY2, BORDER_DARK, SAND, MUTED_DARK } from '@/data/themePalette';
 
 const STATUS_CONFIG = {
   new: { color: 'var(--primary)', bg: 'var(--primary-soft)', label: 'New' },
@@ -13,6 +13,7 @@ const STATUS_CONFIG = {
   ready: { color: 'var(--warning-text)', bg: 'var(--warning-soft)', label: 'Ready' },
   served: { color: 'var(--success-text)', bg: 'var(--success-soft)', label: 'Served' },
 };
+
 const NEXT_STATUS = { new: 'preparing', preparing: 'ready', ready: 'served' };
 
 function formatTime(ts) {
@@ -42,7 +43,6 @@ export default function KitchenDisplay() {
     const timer = window.setInterval(() => setNow(Date.now()), 30000);
     return () => window.clearInterval(timer);
   }, []);
-
 
   useEffect(() => {
     if (!propertyId || tab !== 'voids') return;
@@ -157,72 +157,72 @@ export default function KitchenDisplay() {
         </div>
       ) : (
         <>
-      {orders.length === 0 && (
-        <div className="rounded-2xl border p-8 text-center" style={{ borderColor: BORDER_DARK, background: NAVY2 }}>
-          <div className="text-sm font-bold text-foreground">No active kitchen orders</div>
-          <div className="text-xs mt-1" style={{ color: MUTED_DARK }}>
-            Orders fired from POS will appear here after the persistent KDS migration is applied.
-          </div>
-        </div>
-      )}
+          {orders.length === 0 && (
+            <div className="rounded-2xl border p-8 text-center" style={{ borderColor: BORDER_DARK, background: NAVY2 }}>
+              <div className="text-sm font-bold text-foreground">No active kitchen orders</div>
+              <div className="text-xs mt-1" style={{ color: MUTED_DARK }}>
+                Orders fired from POS will appear here after the persistent KDS migration is applied.
+              </div>
+            </div>
+          )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {orders.filter((o) => o && o.status !== 'served').map((order) => {
-          const st = STATUS_CONFIG[order.status] || STATUS_CONFIG.new;
-          const areas = [...new Set((order.orderLines || []).map((item) => item.center).filter(Boolean))];
-          const ageMinutes = order.firedAt ? Math.max(0, Math.floor((now - order.firedAt) / 60000)) : 0;
-          return (
-            <div key={order.id} className="rounded-2xl overflow-hidden flex flex-col" style={{ background: NAVY2, border: `2px solid ${st.color}`, fontFamily: '"Courier New", Courier, monospace' }}>
-              <div className="px-4 py-3" style={{ background: st.bg, borderBottom: `1px dashed ${st.color}55` }}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm font-bold text-foreground">{order.orderNumber || order.id}</div>
-                    <div className="text-xs" style={{ color: MUTED_DARK }}>
-                      {areas.join(' · ') || 'Kitchen'} · <span className="font-bold text-foreground">Table {order.tableNumber || '—'}</span>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {orders.filter((o) => o && o.status !== 'served').map((order) => {
+              const st = STATUS_CONFIG[order.status] || STATUS_CONFIG.new;
+              const areas = [...new Set((order.orderLines || []).map((item) => item.center).filter(Boolean))];
+              const ageMinutes = order.firedAt ? Math.max(0, Math.floor((now - order.firedAt) / 60000)) : 0;
+              return (
+                <div key={order.id} className="rounded-2xl overflow-hidden flex flex-col" style={{ background: NAVY2, border: `2px solid ${st.color}`, fontFamily: '"Courier New", Courier, monospace' }}>
+                  <div className="px-4 py-3" style={{ background: st.bg, borderBottom: `1px dashed ${st.color}55` }}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-sm font-bold text-foreground">{order.orderNumber || order.id}</div>
+                        <div className="text-xs" style={{ color: MUTED_DARK }}>
+                          {areas.join(' · ') || 'Kitchen'} · <span className="font-bold text-foreground">Table {order.tableNumber || '—'}</span>
+                        </div>
+                      </div>
+                      <span className="px-2 py-0.5 rounded text-xs font-bold" style={{ background: st.bg, color: st.color, border: `1px solid ${st.color}` }}>{st.label}</span>
+                    </div>
+                    <div className="flex justify-between text-xs mt-1" style={{ color: MUTED_DARK }}>
+                      <span>{order.waiter || 'POS'}</span>
+                      <span className="font-mono">{formatTime(order.firedAt)} · {ageMinutes}m</span>
                     </div>
                   </div>
-                  <span className="px-2 py-0.5 rounded text-xs font-bold" style={{ background: st.bg, color: st.color, border: `1px solid ${st.color}` }}>{st.label}</span>
-                </div>
-                <div className="flex justify-between text-xs mt-1" style={{ color: MUTED_DARK }}>
-                  <span>{order.waiter || 'POS'}</span>
-                  <span className="font-mono">{formatTime(order.firedAt)} · {ageMinutes}m</span>
-                </div>
-              </div>
 
-              <div className="flex-1 px-4 py-2">
-                {(order.orderLines || []).map((item, i) => (
-                  <div key={i} className="flex items-center gap-2 py-1.5" style={{ borderBottom: `1px solid ${BORDER_DARK}` }}>
-                    <span className="text-xs font-mono font-bold w-4 text-center" style={{ color: st.color }}>{item.qty}×</span>
-                    <span className="flex-1 text-xs" style={{ color: SAND }}>{item.name}</span>
-                    {item.center && <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: st.bg, color: st.color, fontSize: '10px' }}>{item.center}</span>}
+                  <div className="flex-1 px-4 py-2">
+                    {(order.orderLines || []).map((item, i) => (
+                      <div key={i} className="flex items-center gap-2 py-1.5" style={{ borderBottom: `1px solid ${BORDER_DARK}` }}>
+                        <span className="text-xs font-mono font-bold w-4 text-center" style={{ color: st.color }}>{item.qty}×</span>
+                        <span className="flex-1 text-xs" style={{ color: SAND }}>{item.name}</span>
+                        {item.center && <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: st.bg, color: st.color, fontSize: '10px' }}>{item.center}</span>}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
 
-              {NEXT_STATUS[order.status] && (
-                <div className="px-4 pb-3 pt-1 space-y-2">
-                  {canApproveVoid && (
-                    <button
-                      onClick={() => { setRefireOrder(order); setRefireReason(''); setRefireError(''); }}
-                      className="w-full py-2 rounded-xl text-xs font-bold border"
-                      style={{ borderColor: st.color, color: st.color, background: 'transparent' }}
-                    >
-                      Re-fire Ticket
-                    </button>
+                  {NEXT_STATUS[order.status] && (
+                    <div className="px-4 pb-3 pt-1 space-y-2">
+                      {canApproveVoid && (
+                        <button
+                          onClick={() => { setRefireOrder(order); setRefireReason(''); setRefireError(''); }}
+                          className="w-full py-2 rounded-xl text-xs font-bold border"
+                          style={{ borderColor: st.color, color: st.color, background: 'transparent' }}
+                        >
+                          Re-fire Ticket
+                        </button>
+                      )}
+                      <button
+                        onClick={() => updateKitchenOrderStatus(order.id, NEXT_STATUS[order.status]).catch((error) => setVoidError(error?.message || 'Unable to update production status.'))}
+                        className="w-full py-2.5 rounded-xl text-xs font-bold"
+                        style={{ background: st.color, color: NAVY }}
+                      >
+                        Mark as {STATUS_CONFIG[NEXT_STATUS[order.status]].label} →
+                      </button>
+                    </div>
                   )}
-                  <button
-                    onClick={() => updateKitchenOrderStatus(order.id, NEXT_STATUS[order.status]).catch((error) => setVoidError(error?.message || 'Unable to update production status.'))}
-                    className="w-full py-2.5 rounded-xl text-xs font-bold"
-                    style={{ background: st.color, color: NAVY }}
-                  >
-                    Mark as {STATUS_CONFIG[NEXT_STATUS[order.status]].label} →
-                  </button>
                 </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+              );
+            })}
+          </div>
         </>
       )}
       {refireOrder && (
