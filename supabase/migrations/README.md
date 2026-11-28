@@ -139,3 +139,23 @@ The migration also retains the property/room advisory transaction lock in `fn_ch
 
 ### 20261108100000 — Room Planner 24-hour option expiry
 Adds the nullable `reservations.option_expires_at` timestamp, property-scoped RPCs for creating, confirming and reconciling options, and audit events for option lifecycle changes. Optioned reservations expire 24 hours after creation; editing does not restart the deadline. Expired options are marked cancelled and release their rooms when the planner loads, while it remains open, or before room-availability checks. Check-in requires explicit confirmation. Apply this additive migration before using Optioned bookings.
+
+### 20261128133000 - Stores cost-centre RPC schema-cache repair
+Apply after `20261127120000_phase4b_reporting_permission_and_reconciliation.sql` when PostgREST reports `Could not find the function public.fn_stores_list_cost_centres(p_property_id) in the schema cache`. This forward-only migration reasserts the canonical Phase 1 function body, keeps `EXECUTE` limited to `authenticated`, and sends `NOTIFY pgrst, 'reload schema';`. It is idempotent and does not edit or renumber the applied Phase 1 migration.
+
+Verify after applying:
+
+```sql
+select p.oid is not null as function_exists
+from pg_proc p
+where p.pronamespace = 'public'::regnamespace
+  and p.proname = 'fn_stores_list_cost_centres';
+
+select has_function_privilege(
+  'authenticated',
+  'public.fn_stores_list_cost_centres(uuid)',
+  'execute'
+) as authenticated_can_execute;
+```
+
+`authenticated_can_execute` must be `true`. Do not grant this RPC to `anon` or `PUBLIC`.
