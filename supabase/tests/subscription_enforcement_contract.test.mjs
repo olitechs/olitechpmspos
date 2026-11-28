@@ -138,7 +138,7 @@ test('expired sign-in sessions land on the suspension screen and can request ren
   assert.match(suspendedScreen, /pmsService\.requestSubscriptionRenewal\(user\.property\.id\)/);
   assert.match(suspendedScreen, /Renew Subscription/);
   assert.match(suspendedScreen, /info@olitechs\.co\.ke/);
-  assert.match(suspendedScreen, /olitech2025@gmail\.com/);
+  assert.match(suspendedScreen, /olitechs2025@gmail\.com/);
   const edge = readFileSync(new URL('../functions/subscription-renewal-request/index.ts', import.meta.url), 'utf8');
   assert.match(edge, /const RECIPIENTS = \['info@olitechs\.co\.ke', 'olitechs2025@gmail\.com'\]/);
   assert.match(edge, /Only the property owner or administrator/);

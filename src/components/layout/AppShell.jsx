@@ -12,6 +12,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { getSessionStaff, normalizeStaffRole, hasPermissionCode } from '@/services/authService';
 import TopAppNav from './TopAppNav';
 import BrandLogo from '@/components/ui/BrandLogo';
+import TrialBanner from '@/components/subscription/TrialBanner';
 
 const FRONT_ICONS = {
   dashboard: LayoutDashboard, 'room-planner': BedDouble, rooms: BedDouble,
@@ -124,6 +125,7 @@ export default function AppShell({ workspace = 'backoffice' }) {
   return (
     <div className="app-frame flex min-h-0 flex-col overflow-hidden bg-[var(--bg)] text-[var(--text)]">
       <TopAppNav workspace={workspace} />
+      <TrialBanner />
       <div className="flex min-h-0 flex-1">
         {workspace !== 'pos' && mobileOpen && <button type="button" aria-label="Close navigation" onClick={() => setMobileOpen(false)} className="fixed inset-0 z-[var(--z-dropdown)] bg-[var(--overlay-scrim)] md:hidden" />}
         {workspace !== 'pos' && <aside className={[

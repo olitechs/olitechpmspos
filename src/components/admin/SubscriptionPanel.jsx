@@ -4,7 +4,7 @@ import{useAuth}from'@/lib/AuthContext';
 import{pmsService}from'@/services/pmsService';
 import{employeeService}from'@/services/employeeService';
 import{SUBSCRIPTION_SUPPORT_EMAILS,evaluateSubscriptionAccess,subscriptionRenewalMailto}from'@/lib/subscriptionAccess';
-import{formatSubscriptionDate}from'@/lib/subscriptionCountdown';
+import{formatSubscriptionDate,breakdownRemaining}from'@/lib/subscriptionCountdown';
 
 const STATUS={
  trial:{label:'Trial',className:'bg-[var(--warning-soft)] text-[var(--warning-text)] border-[var(--warning)]'},
@@ -26,6 +26,12 @@ const MODULE_LABELS={
  booking_engine:'Booking Engine',channels:'Channel Manager',reports:'Reports',
  kitchen:'Kitchen Display',payments:'Payments',
 };
+
+const PLAN_CARDS=[
+ {id:'standard',name:'Standard',description:'Core PMS and POS for a single property.',modules:['Front Office','POS']},
+ {id:'premium',name:'Premium',description:'Expanded operations, inventory and reporting.',modules:['Front Office','POS','Back Office','Stores']},
+ {id:'professional',name:'Professional',description:'Full platform capability and advanced controls.',modules:['Front Office','POS','Back Office','Stores']},
+];
 
 function formatDate(value){
  if(!value)return'—';
@@ -96,6 +102,13 @@ export default function SubscriptionPanel(){
   periodEndsAt:formatSubscriptionDate(access.periodEndsAt||overview.current_period_ends_at),
   graceEndsAt:formatSubscriptionDate(access.graceEndsAt||overview.grace_ends_at),
  });
+ const trialEndsAt=overview.trial_ends_at||null;
+ const trialSeconds=trialEndsAt?Math.max(0,Math.floor((new Date(trialEndsAt).getTime()-Date.now())/1000)):null;
+ const trialRemaining=trialSeconds===null?null:breakdownRemaining(trialSeconds);
+ const trialWindow=7*86400;
+ const trialUsedPercent=trialSeconds===null?0:Math.min(100,Math.max(0,Math.round(((trialWindow-Math.min(trialSeconds,trialWindow))/trialWindow)*100)));
+ const isTrial=computedState==='trial'||computedState==='expiring_soon'||String(status)==='trial';
+ const currentPlan=String(plan||'').toLowerCase();
 
  return <div className="flex-1 overflow-y-auto p-4 md:p-6" style={{background:'var(--canvas)'}}>
    <div className="mx-auto max-w-5xl space-y-5">
@@ -120,6 +133,22 @@ export default function SubscriptionPanel(){
          <div><div className="font-bold text-foreground">Subscription managed by OliTechs Platform Admin</div><p className="mt-1 text-xs leading-5 text-muted-foreground">This screen is read-only for hotel users. Package, status, modules, billing dates and limits are controlled centrally.</p></div>
        </div>
      </div>
+
+     {isTrial&&trialEndsAt&&<section className="rounded-3xl border border-[var(--warning)] bg-[var(--warning-soft)] p-5 text-[var(--warning-text)]">
+       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+         <div>
+           <h2 className="font-black">7-day Professional trial</h2>
+           <p className="mt-1 text-xs">Your trial ends on <b>{formatDate(trialEndsAt)}</b>. Subscribe before it ends to keep every module.</p>
+         </div>
+         <span className="rounded-full bg-[var(--warning)] px-3 py-1 text-xs font-black text-[var(--white)]">
+           {trialRemaining.days>0?`${trialRemaining.days}d ${trialRemaining.hours}h left`:`${trialRemaining.hours}h ${trialRemaining.minutes}m left`}
+         </span>
+       </div>
+       <div className="mt-4 h-2 overflow-hidden rounded-full bg-[var(--surface)]/70" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={trialUsedPercent} aria-label="Trial days used">
+         <div className="h-full rounded-full bg-[var(--brand-primary)]" style={{width:`${trialUsedPercent}%`}}/>
+       </div>
+       <div className="mt-2 flex justify-between text-xs"><span>{trialUsedPercent}% of the trial used</span><span>{Math.max(0,7-trialRemaining.days)} of 7 days used</span></div>
+     </section>}
 
      <section className="rounded-3xl border border-border bg-surface p-5">
        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -158,6 +187,24 @@ export default function SubscriptionPanel(){
          </div>
        </section>
      </div>
+
+     <section className="rounded-3xl border border-border bg-surface p-5">
+       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+         <div><h2 className="font-black text-foreground">Available plans</h2><p className="mt-1 text-xs text-muted-foreground">Packages are assigned by the OliTechs Platform Admin. Request a change by email.</p></div>
+         <a href={renewalHref} className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-border bg-surface px-4 py-2 text-xs font-bold text-foreground"><RefreshCw size={14}/> Subscribe / Renew by email</a>
+       </div>
+       <div className="mt-4 grid gap-3 md:grid-cols-3">
+         {PLAN_CARDS.map(card=>{
+           const current=currentPlan===card.id;
+           return <div key={card.id} className={'rounded-2xl border p-4 '+(current?'border-[var(--brand-primary)] bg-[var(--brand-primary)]/5':'border-border bg-canvas')}>
+             <div className="flex items-center justify-between gap-2"><h3 className="font-black capitalize text-foreground">{card.name}</h3>{current&&<span className="rounded-full bg-[var(--brand-primary)] px-2.5 py-1 text-[10px] font-black text-[var(--white)]">CURRENT</span>}</div>
+             <p className="mt-2 text-xs text-muted-foreground">{card.description}</p>
+             <ul className="mt-3 space-y-1 text-xs text-muted-foreground">{card.modules.map(module=><li key={module} className="flex items-center gap-1.5"><CheckCircle2 size={12} className="text-[var(--success-text)]"/>{module}</li>)}</ul>
+             {!current&&<a href={renewalHref} className="mt-4 inline-flex text-xs font-bold text-[var(--brand-primary)]">Request {card.name}</a>}
+           </div>;
+         })}
+       </div>
+     </section>
 
      <section className="rounded-3xl border border-border bg-surface p-5">
        <div className="flex items-center justify-between gap-3"><div><h2 className="font-black text-foreground">Enabled modules</h2><p className="mt-1 text-xs text-muted-foreground">Modules explicitly enabled for this property.</p></div><span className="rounded-full bg-secondary px-3 py-1 text-xs font-bold">{modules.length} enabled</span></div>
