@@ -1,0 +1,65 @@
+name: Phase 4C night audit PostgreSQL runtime
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/20261128120000_phase4c_night_audit_boundary.sql'
+      - 'supabase/tests/fixtures/phase4c_night_audit_base.sql'
+      - 'supabase/tests/phase4c_night_audit_runtime.sql'
+      - '.github/workflows/phase4c-night-audit-runtime.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/20261128120000_phase4c_night_audit_boundary.sql'
+      - 'supabase/tests/fixtures/phase4c_night_audit_base.sql'
+      - 'supabase/tests/phase4c_night_audit_runtime.sql'
+      - '.github/workflows/phase4c-night-audit-runtime.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  night-audit-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: oli_night_audit_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d oli_night_audit_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+
+      - name: Build disposable production-shape fixture
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d oli_night_audit_test -v ON_ERROR_STOP=1 -f supabase/tests/fixtures/phase4c_night_audit_base.sql
+
+      - name: Apply Phase 4C-1 migration to disposable database
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d oli_night_audit_test -v ON_ERROR_STOP=1 -f supabase/migrations/20261128120000_phase4c_night_audit_boundary.sql
+
+      - name: Run reconciliation, replay, override and audit runtime assertions
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d oli_night_audit_test -v ON_ERROR_STOP=1 -f supabase/tests/phase4c_night_audit_runtime.sql

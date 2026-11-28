@@ -67,6 +67,8 @@ export const PERMISSION_CODES = [
   { code: 'back_office.employees.manage', workspace: 'backoffice', label: 'Manage employees, departments and permissions', sensitive: true },
   { code: 'back_office.billing.manage', workspace: 'backoffice', label: 'View subscription and licence billing', sensitive: false },
   { code: 'back_office.items.manage', workspace: 'backoffice', label: 'Manage catalogue items, categories, modifiers and discounts', sensitive: true },
+  { code: 'nightaudit.run', workspace: 'backoffice', label: 'Run and close the nightly audit', sensitive: true },
+  { code: 'nightaudit.override', workspace: 'backoffice', label: 'Override a blocked night audit reconciliation', sensitive: true },
   { code: 'pos.menu.manage', workspace: 'pos', label: 'Manage POS menu and pricing', sensitive: true },
 ];
 
