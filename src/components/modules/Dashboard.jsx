@@ -26,7 +26,6 @@ import { getDashboardRoomStats } from './dashboardRoomStats';
 
 const TZ = 'Africa/Nairobi';
 const dayKey = (d) => new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(d); // YYYY-MM-DD
-const sameDay = (value, key) => String(value || '').slice(0, 10) === key;
 const kes = (n) => `KES ${Number(n || 0).toLocaleString('en-KE')}`;
 
 const ROOM_GROUPS = [
