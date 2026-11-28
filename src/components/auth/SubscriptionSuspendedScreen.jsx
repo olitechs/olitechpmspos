@@ -36,13 +36,17 @@ export default function SubscriptionSuspendedScreen() {
     }
   };
 
-  const heading = state === 'grace_period'
+  const heading = state === 'unavailable'
+    ? 'Subscription status could not be verified.'
+    : state === 'grace_period'
     ? 'Your subscription has expired. You are currently in the grace period.'
     : state === 'suspended' || state === 'cancelled'
       ? 'Your property access is currently suspended.'
       : 'Your OliTechs subscription has expired.';
 
-  const detail = state === 'grace_period'
+  const detail = state === 'unavailable'
+    ? 'Operational access is locked until OliTechs can verify the subscription status. Please retry later or contact support.'
+    : state === 'grace_period'
     ? 'Your property can still operate during the configured grace period, but renewal is required to continue after it ends.'
     : 'Your property\'s access to operational modules has been temporarily suspended because the subscription and grace period have ended. Your data is preserved.';
 
