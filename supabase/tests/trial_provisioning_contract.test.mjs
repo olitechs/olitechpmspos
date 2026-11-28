@@ -82,23 +82,49 @@ test('the banner is hidden outside a trial and urgent under 48 hours', () => {
   assert.match(banner, /warning-soft/);
 });
 
+test('the banner uses the approved countdown copy and billing CTA', () => {
+  assert.match(banner, /Free Trial — /);
+  assert.match(banner, /remaining/);
+  assert.match(banner, /Trial expires in /);
+  assert.match(banner, /Upgrade Now/);
+  assert.match(banner, /Subscribe Now/);
+});
+
 test('the banner sends owners and admins to the billing route', () => {
   assert.match(banner, /to="\/backoffice\/settings\/billing"/);
   assert.match(banner, /canManageBilling/);
   assert.match(banner, /'owner', 'admin'/);
 });
 
-test('the billing panel shows trial stats, progress and existing plan cards', () => {
-  assert.match(panel, /7-day Professional trial/);
+test('the billing panel shows the approved current-plan preview', () => {
+  assert.match(panel, /Billing &amp; Subscription/);
+  assert.match(panel, /Current Plan/);
+  assert.match(panel, /FREE TRIAL/);
+  assert.match(panel, /Trial started/);
   assert.match(panel, /Trial ends/);
+  assert.match(panel, /Days left/);
+  assert.match(panel, /Hours left/);
+  assert.match(panel, /Properties/);
+  assert.match(panel, /TRIAL_DAYS=7;/);
+  assert.match(panel, /of \{TRIAL_DAYS\} trial days used/);
   assert.match(panel, /role="progressbar"/);
+  assert.match(panel, /View Plans/);
+  assert.match(panel, /1 \/ \$\{TRIAL_PROPERTY_ALLOWANCE\}/);
+});
+
+test('the billing panel shows the approved four-plan grid and billing toggle', () => {
+  assert.match(panel, /Available Plans/);
+  assert.match(panel, /Billing Cycle:/);
+  assert.match(panel, /Save 20%/);
   assert.match(panel, /PLAN_CARDS/);
-  assert.match(panel, /Available plans/);
-  for (const plan of ['standard', 'premium', 'professional']) {
+  for (const plan of ['starter', 'standard', 'professional', 'enterprise']) {
     assert.match(panel, new RegExp(`id:'${plan}'`), `plan card ${plan}`);
   }
-  assert.doesNotMatch(panel, /id:'starter'/);
-  assert.doesNotMatch(panel, /id:'enterprise'/);
+  assert.match(panel, /monthly:3500,annual:2800/);
+  assert.match(panel, /monthly:7000,annual:5600/);
+  assert.match(panel, /monthly:14000,annual:11200/);
+  assert.match(panel, /properties:'Unlimited'/);
+  assert.doesNotMatch(panel, /id:'premium'/);
 });
 
 test('renewal requests reach both support addresses', () => {
