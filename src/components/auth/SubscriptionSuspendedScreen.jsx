@@ -66,7 +66,7 @@ export default function SubscriptionSuspendedScreen() {
           </div>
           <div className="rounded-xl border border-[var(--border)] p-3">
             <dt className="text-xs font-medium text-muted-foreground">Package</dt>
-            <dd className="mt-0.5 font-semibold capitalize">{user?.property?.package || ent.package || '—'}</dd>
+            <dd className="mt-0.5 font-semibold capitalize">{ent.plan_code || ent.package || user?.property?.package || '—'}</dd>
           </div>
           <div className="rounded-xl border border-[var(--border)] p-3">
             <dt className="text-xs font-medium text-muted-foreground">Subscription expiry</dt>
@@ -112,7 +112,7 @@ export default function SubscriptionSuspendedScreen() {
           {requestStatus?.notification_status === 'sent' && (
             <p className="mt-3 flex items-start gap-2 text-sm text-[var(--success-text)]">
               <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-              Your renewal request has been emailed to info@olitechs.co.ke and olitech2025@gmail.com. The platform team must confirm renewal before access is restored.
+              Your renewal request has been emailed to info@olitechs.co.ke and olitechs2025@gmail.com. The platform team must confirm renewal before access is restored.
             </p>
           )}
           {requestError && <p role="alert" className="mt-3 text-sm text-[var(--danger-text)]">{requestError}</p>}
