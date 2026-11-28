@@ -268,7 +268,7 @@ test('health reports the queue so support can see stuck jobs', async (t) => {
   assert.ok(health.queue);
   assert.equal(health.queue.printed, 1);
   assert.equal(health.queue.total, 1);
-  assert.equal(health.version, '2.2.1');
+  assert.equal(health.version, '2.2.3');
 });
 
 test('a queue entry can be reprinted deliberately and refuses a second copy of a printed job', async (t) => {
