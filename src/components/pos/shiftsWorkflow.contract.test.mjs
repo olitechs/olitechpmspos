@@ -76,13 +76,17 @@ test('past shifts can be reprinted from POS and from Back Office', () => {
 });
 
 test('the printed closing report shows sales before discount, discounts, VAT and total', () => {
+  const templates = read('../../services/printTemplates.js');
   assert.match(shiftCore, /salesBeforeDiscount \+= Number\(receipt\.subtotal \|\| 0\)/);
   assert.match(shiftCore, /discountsTotal \+= Number\(receipt\.discount_amount \|\| 0\)/);
   assert.match(shiftCore, /vatTotal \+= Number\(receipt\.vat \|\| 0\)/);
-  assert.match(printService, /Sales before discount: KES/);
-  assert.match(printService, /Discounts: - KES/);
-  assert.match(printService, /VAT: KES/);
-  assert.match(printService, /Total sales \(incl\. VAT\): KES/);
+  // The thermal report is built from those same figures, formatted as KSh.
+  assert.match(templates, /'KSh ' \+ roundReceiptMoney\(value\)/);
+  assert.match(templates, /shiftMoneyRows\('Gross Sales', grossSales/);
+  assert.match(templates, /shiftMoneyRows\('Discounts', discounts/);
+  assert.match(templates, /shiftMoneyRows\('VAT \/ tax', vatTotal/);
+  assert.match(templates, /shiftMoneyRows\('Net Sales', netSales/);
+  assert.match(printService, /buildShiftReportText\(report/);
   // 58mm paper is honoured by the shared printer pipeline.
   assert.match(printService, /paper === '58mm' \? 360 : 540/);
 });

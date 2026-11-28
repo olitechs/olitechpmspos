@@ -64,7 +64,7 @@ export default function KitchenDisplay() {
       const dedicated = collect(type);
       const targets = dedicated.length ? dedicated : collect(fallback);
       if (!targets.length) throw new Error('No Kitchen/Bar printer is assigned for void slips.');
-      const results = await Promise.all(targets.map(printer => printVoidTicket(printer,{propertyId,voidId:v.id,tableNo:v.table_number,waiterName:v.waiter,checkNo:v.check_no||v.order_number,item:v.item_name,removedQty:v.removed_qty,originalQty:v.original_qty,newQty:v.new_qty,reason:v.reason,removedBy:v.removed_by_name,timestamp:v.created_at,category:v.category})));
+      const results = await Promise.all(targets.map(printer => printVoidTicket(printer,{propertyId,voidId:v.id,voidNumber:v.void_number,tableNo:v.table_number,waiterName:v.waiter,orderNumber:v.order_number||v.check_no,orderCreatedAt:v.order_created_at||null,item:v.item_name,modifiers:v.modifiers||[],note:v.note||v.prep_note||'',removedQty:v.removed_qty,originalQty:v.original_qty,newQty:v.new_qty,reason:v.reason,removedBy:v.removed_by_name,approvedByName:v.approved_by_name||'',approvedAt:v.approved_at||null,managerSignature:v.manager_signature||'',timestamp:v.created_at,category:v.category})));
       if (results.some(r=>r.outcome==='uncertain')) throw new Error('The void slip may already have printed. Check the paper before reprinting it.');
       if (!results.some(r=>r.ok)) throw new Error('Void reprint failed.');
       setVoids(await pmsService.listVoidedItems(propertyId));

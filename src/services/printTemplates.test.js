@@ -5,6 +5,9 @@ import {
   getUnsentOrderLines,
   buildUnsettledReceiptText,
   buildFinalReceiptText,
+  buildShiftReportText,
+  buildShiftPreviewText,
+  buildVoidTicketText,
   getPrinterColumns,
   getOrderTicketColumns,
   thermalTextToHtml,
@@ -249,6 +252,134 @@ test('long order-ticket names, modifiers and kitchen notes are preserved within 
   }
   assert.ok(output.split('\n').every(line => line.length <= 30), 'every physical line fits safe 58mm paper width');
   assert.match(output, /#ORD-058/);
+});
+
+test('shift closing report follows the requested section hierarchy with KSh money', () => {
+  const settings = { property_name: 'Visiwa Beach Resort', address_line1: 'Watamu', phone: '+254700000000' };
+  const data = {
+    settings,
+    shift: {
+      id: 'shift-1',
+      shift_no: 'SH-014',
+      date: '2026-11-28',
+      opened_at: '2026-11-28T06:00:00.000Z',
+      closed_at: '2026-11-28T15:00:00.000Z',
+      opening_cash: 10000,
+      terminal_name: 'POS 2',
+    },
+    openedBy: 'Amina',
+    closedBy: 'Grace',
+    payments: {
+      cash: { amount: 13350 },
+      card: { amount: 121550 },
+      mpesa: { amount: 19750 },
+      bank: { amount: 0 },
+      room_charge: { amount: 0 },
+      other: { amount: 0 },
+    },
+    grossPayments: { cash: { amount: 13350 } },
+    refundsByMethod: { cash: 0 },
+    salesBeforeDiscount: 269900,
+    discountsTotal: 11500,
+    refundsTotal: 0,
+    totalSales: 258400,
+    vatTotal: 0,
+    categories: { food: { amount: 94350, qty: 20 }, drinks: { amount: 9400, qty: 12 } },
+    expectedCash: 23350,
+    voidedOrders: [],
+    countedCash: 23350,
+    variance: 0,
+  };
+  const output = stripEscPos(buildShiftReportText(data, {
+    printer: { paper_width: '80mm' },
+    settings,
+    copyLabel: 'CASHIER COPY',
+    now: new Date('2026-11-28T15:05:00.000Z'),
+  }));
+  assert.match(output, /SHIFT CLOSING REPORT/);
+  assert.match(output, /Visiwa Beach Resort/);
+  assert.match(output, /Watamu/);
+  assert.match(output, /\+254700000000/);
+  assert.match(output, /Terminal: POS 2/);
+  assert.match(output, /Starting Cash\s+KSh 10,000\.00/);
+  assert.match(output, /Cash Payments\s+KSh 13,350\.00/);
+  assert.match(output, /Expected Cash Amount\s+KSh 23,350\.00/);
+  assert.match(output, /Gross Sales\s+KSh 269,900\.00/);
+  assert.match(output, /Discounts\s+KSh 11,500\.00/);
+  assert.match(output, /Net Sales\s+KSh 258,400\.00/);
+  assert.match(output, /Cash\s+KSh 13,350\.00/);
+  assert.match(output, /Card\s+KSh 121,550\.00/);
+  assert.match(output, /M-Pesa\s+KSh 19,750\.00/);
+  assert.match(output, /Restaurant\s+KSh 94,350\.00/);
+  assert.match(output, /Bar \/ Drinks\s+KSh 9,400\.00/);
+  assert.match(output, /Generated/);
+  assert.match(output, /Manager verification/);
+  assert.ok(output.split('\n').every(line => line.length <= 46), 'every 80mm line fits the safe printable width');
+});
+
+test('shift report prints room and SPA departments only when the ledger supplies them', () => {
+  const output = stripEscPos(buildShiftReportText({
+    shift: { shift_no: 'SH-015', opening_cash: 5000 },
+    departments: { room: 94350, spa_services: 9400 },
+    expectedCash: 5000,
+  }, { printer: { paper_width: '58mm' } }));
+  assert.match(output, /Room\s+KSh 94,350\.00/);
+  assert.match(output, /SPA Services\s+KSh 9,400\.00/);
+  assert.ok(output.split('\n').every(line => line.length <= 30), 'every 58mm line fits the safe printable width');
+});
+
+test('live shift preview keeps pre-close wording and excludes closing reconciliation', () => {
+  const output = stripEscPos(buildShiftPreviewText({
+    shift: { shift_no: 'SH-OPEN', opening_cash: 4000, opened_at: '2026-11-28T06:00:00.000Z' },
+    payments: { cash: { amount: 1200 } },
+    expectedCash: 5200,
+  }, { printer: { paper_width: '58mm' } }));
+  assert.match(output, /PRE-CLOSE - SHIFT STILL OPEN/);
+  assert.match(output, /LIVE SHIFT SUMMARY/);
+  assert.match(output, /Expected Cash in Drawer\s+KSh 5,200\.00/);
+  assert.doesNotMatch(output, /SHIFT CLOSING REPORT/);
+  assert.doesNotMatch(output, /CASH COUNTED|CASH VARIANCE/);
+  assert.ok(output.split('\n').every(line => line.length <= 30));
+});
+
+test('void ticket is a recognisable control document with partial-void detail', () => {
+  const output = stripEscPos(buildVoidTicketText({
+    propertyName: 'Visiwa Beach Resort',
+    orderNumber: 'ORD-123',
+    voidNumber: 'V-000014',
+    tableNo: 'T-04',
+    waiterName: 'Amina',
+    removedBy: 'Grace',
+    approvedByName: 'Manager Otieno',
+    orderCreatedAt: '2026-11-28T10:00:00.000Z',
+    timestamp: '2026-11-28T10:35:00.000Z',
+    item: 'Grilled Fish',
+    modifiers: [{ name: 'No chilli' }],
+    note: 'Sauce separate',
+    removedQty: 1,
+    originalQty: 3,
+    newQty: 2,
+    reason: 'Wrong table',
+    originalTotal: 4500,
+    category: 'food',
+  }, {
+    printer: { paper_width: '58mm' },
+    settings: { property_name: 'Visiwa Beach Resort' },
+  }));
+  assert.match(output, /VOID ORDER/);
+  assert.match(output, /NOT A COMPLETED SALE/);
+  assert.match(output, /#ORD-123/);
+  assert.match(output, /Void Ref: V-000014/);
+  assert.match(output, /Order by: Amina/);
+  assert.match(output, /Void by: Grace/);
+  assert.match(output, /Authorised by: Manager Otieno/);
+  assert.match(output, /1 x Grilled Fish/);
+  assert.match(output, /No chilli/);
+  assert.match(output, /Sauce separate/);
+  assert.match(output, /Qty voided 1 \| Original 3 \|\s+Remaining 2/);
+  assert.match(output, /Original total\s+KSh 4,500\.00/);
+  assert.doesNotMatch(output, /AMOUNT PAID|RECEIPT NO|PAYMENT METHOD/);
+  assert.ok(output.split('\n').every(line => line.length <= 30), 'every 58mm void line fits the safe printable width');
 });
 
 test('HTML fallback renders fixed-width plain text with the canonical print colors', () => {
