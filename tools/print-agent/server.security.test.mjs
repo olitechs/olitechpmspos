@@ -25,6 +25,8 @@ test('Print Agent keeps loopback binding and restricts raw printer endpoints', a
   const config = await read('./config.mjs');
 
   assert.match(source, /let HOST = '127\.0\.0\.1'/);
+  assert.match(source, /DEFAULT_ALLOWED_ORIGINS/);
+  assert.match(source, /new Set\(DEFAULT_ALLOWED_ORIGINS\)/);
   assert.match(config, /PRINT_AGENT_HOST \|\| '127\.0\.0\.1'/);
   assert.match(source, /const ALLOWED_PORTS = new Set\(\[9100, 9101, 9102\]\)/);
   assert.match(source, /function validEndpoint\(host, port\)/);

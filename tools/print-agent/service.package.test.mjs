@@ -72,6 +72,8 @@ test('support can add one trusted app origin to an installed service', async () 
   assert.match(script, /The allowed-origin entry was not saved/);
   assert.match(script, /Service config now allows/);
   assert.match(script, /health\.allowedOrigins/);
+  assert.match(script, /New-Object System\.UriBuilder\(\$Origin\)/);
+  assert.match(script, /StartsWith\('www\.'/);
   assert.ok(!/Remove-Item|Set-Service -StartupType Disabled/.test(script), 'the fix must not uninstall or disable the agent');
 });
 
@@ -86,8 +88,17 @@ test('the support script keeps previously allowed origins when adding one', asyn
   assert.doesNotMatch(script, /Service config now allows: https:\/\/olitechpmspos\.vercel\.app, \$Origin/);
 });
 
-test('a fresh install allows both www and apex app origins', async () => {
+test('a fresh install allows every production app origin and both www/apex variants', async () => {
   const script = await read('./service/install-service.ps1');
+  for (const origin of [
+    'https://olitechpmspos.vercel.app',
+    'https://www.olitechpmspos.vercel.app',
+    'https://olitechs.co.ke',
+    'https://www.olitechs.co.ke',
+    'https://app.olitechs.co.ke',
+  ]) {
+    assert.ok(script.includes(`'${origin}'`), `installer must always allow ${origin}`);
+  }
   assert.match(script, /New-Object System\.UriBuilder\(\$candidate\)/);
   assert.match(script, /StartsWith\('www\.'/);
 });
