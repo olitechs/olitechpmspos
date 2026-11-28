@@ -47,9 +47,9 @@ export function agentBaseCandidates(value) {
 export function localAgentUnavailableMessage({ origin = '', originReachable = false } = {}) {
   if (originReachable) {
     const target = origin ? ` ${origin}` : ' this website';
-    return `The local print agent is running but has not allowed${target}. Add this website's exact address to the agent's allowed origins under Settings → Printers, then retry.`;
+    return `The local print agent is running but has not allowed${target}. Ask OliTechs support to add that exact address to this computer's Print Agent allowed origins, then retry.`;
   }
-  return 'The local print agent could not be reached. Start the OliTechs Print Agent on this workstation and make sure this website is allowed under Settings → Printers.';
+  return 'The local print agent could not be reached. Start the OliTechs Print Agent on this workstation; if it is already running, ask OliTechs support to allow this website\'s exact address.';
 }
 
 /**

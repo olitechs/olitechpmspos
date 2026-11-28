@@ -40,8 +40,30 @@ if ($existingEntry.Success) {
   # WebUtility.HtmlDecode covers the XML entities Escape() can write here.
   $existingValue = [System.Net.WebUtility]::HtmlDecode($existingEntry.Groups[1].Value)
 }
+# Add the www/apex twin as well. Staff and support often paste one variant
+# while the browser uses the other; both are exact origins of the same site.
+$requestedOrigins = @($Origin)
+try {
+  $uri = [Uri]$Origin
+  if ($uri.Scheme -in @('http', 'https')) {
+    $builder = New-Object System.UriBuilder($Origin)
+    if ($builder.Host.StartsWith('www.', [System.StringComparison]::OrdinalIgnoreCase)) {
+      $builder.Host = $builder.Host.Substring(4)
+    } else {
+      $builder.Host = 'www.' + $builder.Host
+    }
+    $builder.Path = ''
+    $builder.Query = ''
+    $builder.Fragment = ''
+    $variant = $builder.Uri.AbsoluteUri.TrimEnd('/')
+    if ($variant -and ($requestedOrigins -notcontains $variant)) { $requestedOrigins += $variant }
+  }
+} catch {
+  # The origin was already validated; keep it even if the twin cannot be built.
+}
+
 $origins = @()
-foreach ($item in (($existingValue -split ',') + @($Origin))) {
+foreach ($item in (($existingValue -split ',') + $requestedOrigins)) {
   $value = $item.Trim()
   if ($value -and ($origins -notcontains $value)) { $origins += $value }
 }

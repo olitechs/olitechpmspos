@@ -40,7 +40,7 @@ For `POST /print`, send `host` and `port` plus either `text` or `escposBase64` (
 
 ## Browser origin security
 
-The agent is bound to loopback and rejects printer commands from untrusted browser origins. The production app origin `https://olitechpmspos.vercel.app` is allowed, as are localhost origins for development. A custom deployment must be added as an exact origin.
+The agent is bound to loopback and rejects printer commands from untrusted browser origins. The official production hosts `https://olitechpmspos.vercel.app`, `https://olitechs.co.ke`, `https://www.olitechs.co.ke` and `https://app.olitechs.co.ke` are allowed, as are localhost origins for development. A custom deployment must be added as an exact origin. These origins cover every local-agent print path: final receipts, shift reports, food/drinks orders, kitchen and bar void slips, and the cash drawer pulse.
 
 `GET /health` is deliberately readable from any browser origin so Printer Settings can explain a mismatch instead of showing only "Failed to fetch". Its JSON includes `requestOrigin`, `originAllowed`, and `allowedOrigins`. Only `GET`/`OPTIONS /health` are public; `/print`, `/pair`, `/discover`, `/queue` and every other route stay allowlisted.
 
@@ -57,16 +57,16 @@ For the Windows service installer, pass the same value at build time so every wo
 ./tools/print-agent/installer/build-installer.ps1 -AppOrigin "https://your-approved-domain.example"
 ```
 
-The release workflow reads `PRINT_AGENT_APP_ORIGIN` (and the public `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`) from repository variables. For an already installed service, run the support script from the installed agent folder (or the repository checkout). It updates the service XML and restarts the service:
+The release workflow reads `PRINT_AGENT_APP_ORIGIN` (and the public `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`) from repository variables. For an already installed service, run the support script from the installed agent folder (or the repository checkout). It updates the service XML, adds the matching `www`/apex variant, and restarts the service. If staff opened the app at `https://olitechs.co.ke`, use that exact address:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File tools\print-agent\service\set-allowed-origin.ps1 -Origin "https://your-approved-domain.example"
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\print-agent\service\set-allowed-origin.ps1 -Origin "https://olitechs.co.ke"
 ```
 
 The underlying entry in `%ProgramData%\OliTechs\PrintAgent\service\OliTechsPrintAgent.xml` is:
 
 ```xml
-<env name="PRINT_AGENT_ALLOWED_ORIGINS" value="https://your-approved-domain.example" />
+<env name="PRINT_AGENT_ALLOWED_ORIGINS" value="https://olitechs.co.ke,https://www.olitechs.co.ke" />
 ```
 
 Do not expose the agent on a LAN interface or add arbitrary origins. A page on an allowed origin can send jobs to the workstation printers, so only exact company-controlled app origins belong here. Browsers cannot open raw TCP connections to printer port 9100 directly, so network printing must pass through this local service.

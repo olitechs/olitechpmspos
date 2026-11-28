@@ -3,11 +3,21 @@ import path from 'node:path';
 
 // Bumped when the agent's behaviour or configuration surface changes. The
 // service, the dashboard and diagnostics all report this same value.
-export const AGENT_VERSION = '2.2.1';
+export const AGENT_VERSION = '2.2.2';
 export const SERVICE_ID = 'OliTechsPrintAgent';
 export const SERVICE_DISPLAY_NAME = 'OliTechs Print Agent';
 export const LOOPBACK_HOSTS = Object.freeze(['127.0.0.1', 'localhost', '::1', '[::1]']);
-export const DEFAULT_ALLOWED_ORIGINS = Object.freeze(['https://olitechpmspos.vercel.app', 'https://olitechs.co.ke']);
+// The production app is served from several official OliTechs hosts. Receipts,
+// shift reports, kitchen/bar orders and the cash drawer all use the same local
+// agent, so every supported host must be trusted or printing fails with
+// LOCAL_AGENT_ORIGIN_NOT_ALLOWED.
+export const DEFAULT_ALLOWED_ORIGINS = Object.freeze([
+  'https://olitechpmspos.vercel.app',
+  'https://www.olitechpmspos.vercel.app',
+  'https://olitechs.co.ke',
+  'https://www.olitechs.co.ke',
+  'https://app.olitechs.co.ke',
+]);
 export const DEFAULT_PORT = 8631;
 
 export class PrintAgentConfigError extends Error {

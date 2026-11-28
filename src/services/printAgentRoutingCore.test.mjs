@@ -28,7 +28,7 @@ test('an unreachable agent gets an actionable start-and-allow message', () => {
   const failure = describeAgentFailure({ origin: 'https://olitechs.co.ke', originReachable: false });
   assert.equal(failure.code, AGENT_UNAVAILABLE_CODE);
   assert.match(failure.message, /Start the OliTechs Print Agent/);
-  assert.match(failure.message, /Settings → Printers/);
+  assert.match(failure.message, /ask OliTechs support to allow this website/);
 });
 
 test('a running agent that rejects the origin is not reported as stopped', () => {

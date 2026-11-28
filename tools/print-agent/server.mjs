@@ -4,7 +4,7 @@ import net from 'node:net';
 import fs from 'node:fs';
 import { URL } from 'node:url';
 import { spawn } from 'node:child_process';
-import { loadConfig, AGENT_VERSION } from './config.mjs';
+import { loadConfig, AGENT_VERSION, DEFAULT_ALLOWED_ORIGINS } from './config.mjs';
 import { createLogger, createConsoleLogger } from './logger.mjs';
 import { createDurableQueue, classifyPrintError } from './queue.mjs';
 import { createJobClaimer } from './claim.mjs';
@@ -613,7 +613,7 @@ function json(res, status, body, extraHeaders = {}) {
 
 // Replaced from configuration at startup. Kept as a module-level set so the
 // request handler stays a plain function that is easy to exercise in tests.
-let TRUSTED_ORIGINS = new Set(['https://olitechpmspos.vercel.app']);
+let TRUSTED_ORIGINS = new Set(DEFAULT_ALLOWED_ORIGINS);
 
 function isAllowedOrigin(origin, readOnlyHealth = false) {
   if (!origin) return true; // CLI / native local clients do not use browser CORS.

@@ -220,7 +220,16 @@ if ($SupabaseUrl -and $SupabaseAnonKey) {
   $envLines.Add("  <env name=`"SUPABASE_URL`" value=`"$escapedUrl`"/>")
   $envLines.Add("  <env name=`"VITE_SUPABASE_ANON_KEY`" value=`"$escapedKey`"/>")
 }
-$allowedOrigins = @('https://olitechpmspos.vercel.app')
+# Every officially supported app host writes to the same local print agent.
+# Receipts, shift summaries, kitchen/bar orders and the cash drawer all fail
+# with LOCAL_AGENT_ORIGIN_NOT_ALLOWED if the exact browser origin is missing.
+$allowedOrigins = @(
+  'https://olitechpmspos.vercel.app',
+  'https://www.olitechpmspos.vercel.app',
+  'https://olitechs.co.ke',
+  'https://www.olitechs.co.ke',
+  'https://app.olitechs.co.ke'
+)
 # Staff may open the app with or without "www". Both are exact origins of the
 # same site, so allow both variants instead of failing print requests with a
 # CORS error that looks like a dead agent.
