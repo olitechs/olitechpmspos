@@ -39,7 +39,8 @@ import PublicSignUp from "@/pages/PublicSignUp";
 import TermsPage from "@/pages/TermsPage";
 import PrivacyPage from "@/pages/PrivacyPage";
 import { getDefaultApp, normalizeAppRole, MAIN_NAV } from "@/data/modules/navArchitecture";
-import { canUseApp, canAccessPath, isSubscriptionBlocked, isRenewalPath, getSessionStaff, normalizeStaffRole } from "@/services/authService";
+import { canUseApp, canAccessPath, isRenewalPath, getSessionStaff, normalizeStaffRole } from "@/services/authService";
+import { isSubscriptionLockout } from "@/lib/subscriptionAccess";
 import SubscriptionSuspendedScreen, { SubscriptionBillingOnlyScreen } from "@/components/auth/SubscriptionSuspendedScreen";
 import BackOfficeLayout from "@/components/layout/BackOfficeLayout";
 import FrontOfficeLayout from "@/components/layout/FrontOfficeLayout";
@@ -135,14 +136,15 @@ function AuthLoading(){
   </main>;
 }
 function appRole(user){const s=getSessionStaff();const raw=s?.role||user?.staff?.role||user?.propertyRole||user?.role;return normalizeAppRole(normalizeStaffRole(raw));}
-function PublicRoute(){const {user,isLoadingAuth,isLoadingPublicSettings}=useAuth();if((isLoadingAuth&&!user)||isLoadingPublicSettings)return <AuthLoading/>;if(user){if(user?.isPlatformOwner)return <Navigate to="/admin" replace/>;if(isSubscriptionBlocked(user))return <SubscriptionSuspendedScreen/>;const allowed=MAIN_NAV.find(item=>canUseApp(user,item.id));return allowed?<Navigate to={allowed.path} replace/>:<PendingApproval/>;}return <Outlet/>;}
+function PublicRoute(){const {user,isLoadingAuth,isLoadingPublicSettings}=useAuth();if((isLoadingAuth&&!user)||isLoadingPublicSettings)return <AuthLoading/>;if(user){if(user?.isPlatformOwner)return <Navigate to="/admin" replace/>;if(isSubscriptionLockout(user))return <SubscriptionSuspendedScreen/>;const allowed=MAIN_NAV.find(item=>canUseApp(user,item.id));return allowed?<Navigate to={allowed.path} replace/>:<PendingApproval/>;}return <Outlet/>;}
 function ProtectedRoute({app,children}){const {user,isLoadingAuth,isLoadingPublicSettings}=useAuth();if((isLoadingAuth&&!user)||isLoadingPublicSettings)return <AuthLoading/>;if(!user)return <Navigate to="/signin" replace/>;if(user?.isPlatformOwner)return <Navigate to="/admin" replace/>;
-// Phase 4: a blocked subscription entitlement replaces every operational
+// Phase 4: an expired/suspended/cancelled property replaces every operational
 // workspace across all four workspaces (backoffice/frontoffice/pos/stores)
-// with the suspension screen. Only the renewal/billing/support paths remain
-// reachable. Direct URL navigation is covered here; the database triggers and
-// RLS cover direct API calls, so hiding screens is not the enforcement.
-if(isSubscriptionBlocked(user)){return isRenewalPath(window.location.pathname)?<SubscriptionBillingOnlyScreen/>:<SubscriptionSuspendedScreen/>;}
+// with the lockout screen. Only the renewal/billing/support paths remain
+// reachable. Pending/onboarding properties still use PendingApproval. Direct
+// URL navigation is covered here; the database triggers and RLS cover direct
+// API calls, so hiding screens is not the enforcement.
+if(isSubscriptionLockout(user)){return isRenewalPath(window.location.pathname)?<SubscriptionBillingOnlyScreen/>:<SubscriptionSuspendedScreen/>;}
 if(!canUseApp(user,app)){const allowed=MAIN_NAV.find(item=>canUseApp(user,item.id));return allowed?<Navigate to={allowed.path} replace/>:<PendingApproval/>;}if(!canAccessPath(user,window.location.pathname))return <Navigate to={'/'+app} replace/>;const property=user?.property;const full=property?.status==='active'&&property?.package&&property.package!=='none';if(!full)return <PendingApproval/>;return children||<Outlet/>;}
 function BackOfficeStorePage({tab="overview"}){return <Store initialTab={tab}/>;}
 function BackOfficeReportPage({kind}){if(kind==="sales")return <Reports/>;if(kind==="inventory")return <InventoryReports/>;return <ModuleStatusPage title={kind==="employees"?"Employee Report":"Reports"} description="This report is not yet implemented as a dedicated reporting workflow. Open Timecards for attendance records." module={kind || "reports"} back="/backoffice"/>;}
