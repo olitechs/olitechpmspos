@@ -601,7 +601,11 @@ function startQueueWorker() {
 
 function json(res, status, body, extraHeaders = {}) {
   res.writeHead(status, {
-    'Access-Control-Allow-Headers': 'content-type',
+    // The app used to send X-Idempotency-Key as a custom header. If it is not
+    // listed here, the browser rejects the preflight and reports a misleading
+    // "origin not allowed" even though the origin is trusted. Keep both so old
+    // and new web bundles can print.
+    'Access-Control-Allow-Headers': 'content-type, x-idempotency-key',
     'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
     'Content-Type': 'application/json; charset=utf-8',
     'Cache-Control': 'no-store',

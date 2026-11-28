@@ -11,7 +11,11 @@ test('the app sends its print job id to the agent as an idempotency key', async 
   const printService = await read('../../src/services/printService.js');
 
   assert.match(printService, /const agentOptions = \{ idempotencyKey: job\?\.id \|\| null \};/);
-  assert.match(printService, /'X-Idempotency-Key': idempotencyKey/);
+  // The key is carried in the JSON body, not a custom CORS header. Older
+  // agents only allow `content-type` in their preflight, so a custom header
+  // makes the browser reject the request before it reaches the printer.
+  assert.match(printService, /\.\.\.\(idempotencyKey \? \{ idempotencyKey \} : \{\}\)/);
+  assert.doesNotMatch(printService, /'X-Idempotency-Key':/);
   assert.match(printService, /directTcpPrint\(printer, propertyId, text, 'print', finalThermalBase64, agentOptions\)/);
   assert.match(printService, /directWindowsPrint\(printer, propertyId, text, 'print', finalThermalBase64, agentOptions\)/);
 });
@@ -21,6 +25,9 @@ test('the agent reads that key and journals an attempt before printing', async (
 
   assert.match(server, /req\.headers\['x-idempotency-key'\]/);
   assert.match(server, /body\?\.idempotencyKey/);
+  // Legacy web bundles still send the custom header, so the preflight must
+  // allow it even though the current app sends the key in the body.
+  assert.match(server, /'Access-Control-Allow-Headers': 'content-type, x-idempotency-key'/);
 
   const attempt = server.indexOf('printQueue.markAttempt(job.id)');
   const delivery = server.indexOf('await deliverQueuedJob(job)');

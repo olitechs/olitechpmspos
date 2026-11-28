@@ -170,10 +170,11 @@ async function localAgentRequest(printer, propertyId, path, text = '', escposBas
       try {
         const response = await fetch(base + candidate, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(idempotencyKey ? { 'X-Idempotency-Key': idempotencyKey } : {}),
-          },
+          // The idempotency key travels in the JSON body; the agent reads it
+          // there. Sending it as a custom header forces x-idempotency-key into
+          // the CORS preflight, which older agents reject, so the browser
+          // blocks the request and the failure looks like a disallowed origin.
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
           signal: controller.signal,
         });
