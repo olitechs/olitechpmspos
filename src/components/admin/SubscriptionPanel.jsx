@@ -7,6 +7,11 @@ import{employeeService}from'@/services/employeeService';
 const STATUS={
  trial:{label:'Trial',className:'bg-[var(--warning-soft)] text-[var(--warning-text)] border-[var(--warning)]'},
  active:{label:'Active',className:'bg-[var(--success-soft)] text-[var(--success-text)] border-[var(--success)]'},
+ expired:{label:'Expired',className:'bg-[var(--danger-soft)] text-[var(--danger-text)] border-[var(--danger)]'},
+ expiring_soon:{label:'Expiring soon',className:'bg-[var(--warning-soft)] text-[var(--warning-text)] border-[var(--warning)]'},
+ grace_period:{label:'Grace period',className:'bg-[var(--warning-soft)] text-[var(--warning-text)] border-[var(--warning)]'},
+ manually_extended:{label:'Manually extended',className:'bg-[var(--success-soft)] text-[var(--success-text)] border-[var(--success)]'},
+ unavailable:{label:'Verification unavailable',className:'bg-[var(--danger-soft)] text-[var(--danger-text)] border-[var(--danger)]'},
  past_due:{label:'Past due',className:'bg-[var(--warning-soft)] text-[var(--warning-text)] border-[var(--warning)]'},
  suspended:{label:'Suspended',className:'bg-[var(--danger-soft)] text-[var(--danger-text)] border-[var(--danger)]'},
  cancelled:{label:'Cancelled',className:'bg-secondary text-muted-foreground border-border'},
@@ -44,6 +49,7 @@ function Stat({icon:Icon,label,value,sub}){
 export default function SubscriptionPanel(){
  const{user}=useAuth();
  const[overview,setOverview]=useState(null);
+ const[entitlement,setEntitlement]=useState(null);
  const[loading,setLoading]=useState(true);
  const[error,setError]=useState('');
  const[licence,setLicence]=useState(null);
@@ -51,7 +57,7 @@ export default function SubscriptionPanel(){
 
  const load=useCallback(async()=>{
    setLoading(true);setError('');
-   try{setOverview(await pmsService.getMySubscriptionOverview())}
+   try{const [nextOverview,nextEntitlement]=await Promise.all([pmsService.getMySubscriptionOverview(),pmsService.getMySubscriptionEntitlement()]);setOverview(nextOverview);setEntitlement(nextEntitlement)}
    catch(e){setError(e?.message||'Unable to load subscription details.')}
    finally{setLoading(false)}
  },[]);
@@ -75,7 +81,7 @@ export default function SubscriptionPanel(){
  if(!overview)return <div className="p-5"><div className="max-w-2xl rounded-2xl border border-border bg-surface p-8 text-center"><Building2 className="mx-auto text-muted-foreground"/><h2 className="mt-3 font-black text-foreground">No property assigned</h2><p className="mt-1 text-sm text-muted-foreground">Your account is not currently assigned to a hotel/property. Contact your administrator.</p></div></div>;
 
  const modules=Array.isArray(overview.enabled_modules)?overview.enabled_modules:[];
- const status=overview.subscription_status||'trial';
+ const status=entitlement?.state||overview.subscription_status||'trial';
  const plan=overview.plan_code||overview.property_package||'Not configured';
  const roomLimit=overview.room_limit||'Not configured';
  const userLimit=overview.user_limit||'Not configured';
