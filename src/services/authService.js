@@ -13,6 +13,7 @@
 
 import { supabase } from '@/lib/supabaseClient';
 import { canAccessApp, normalizeAppRole, getPackageModules } from '@/data/modules/navArchitecture';
+import { isSubscriptionBlockedForUser } from '@/lib/subscriptionAccess';
 
 export const STAFF_ROLES = [
   'super_admin','hotel_admin','front_office_manager','receptionist','front_desk',
@@ -79,12 +80,12 @@ const APP_WORKSPACE = { pos: 'pos', frontoffice: 'frontoffice', stores: 'store',
 // Phase 4: a blocked entitlement (expired, suspended, cancelled, pending…)
 // removes every operational workspace. Platform owners always keep full
 // access. Once a property is resolved, entitlement lookup failures are
-// represented as an explicit unavailable/blocked state (fail closed).
+// represented as an explicit unavailable state; the shared resolver only
+// treats that state as blocking when explicit billing dates have elapsed, so a
+// schema-cache blip cannot lock every legacy property out at once.
 export function isSubscriptionBlocked(user) {
   if (!user || user.isPlatformOwner) return false;
-  const ent = user.entitlement;
-  if (!ent || typeof ent !== 'object') return false;
-  return ent.allowed !== true;
+  return isSubscriptionBlockedForUser(user);
 }
 
 // The only paths an owner of a blocked property may still reach: renewal,
@@ -341,7 +342,8 @@ async function loadCurrentUserDetails() {
 		if (subscriptionError) console.error('[authService] subscription lookup failed:', subscriptionError.message);
 		subscription = subscriptionRow || null;
 		// Server-computed entitlement. A lookup failure is caught below and
-		// becomes an explicit blocked/unavailable state rather than fail-open.
+		// becomes an explicit unavailable state; the shared resolver narrows
+		// that outage to explicit elapsed billing dates.
 		try {
 			const { data: entitlementRow, error: entitlementError } = await supabase.rpc('fn_get_my_subscription_entitlement');
 			if (entitlementError) throw entitlementError;

@@ -3,6 +3,8 @@ import{Building2,CalendarDays,CheckCircle2,CreditCard,RefreshCw,ShieldCheck,User
 import{useAuth}from'@/lib/AuthContext';
 import{pmsService}from'@/services/pmsService';
 import{employeeService}from'@/services/employeeService';
+import{SUBSCRIPTION_SUPPORT_EMAILS,evaluateSubscriptionAccess,subscriptionRenewalMailto}from'@/lib/subscriptionAccess';
+import{formatSubscriptionDate}from'@/lib/subscriptionCountdown';
 
 const STATUS={
  trial:{label:'Trial',className:'bg-[var(--warning-soft)] text-[var(--warning-text)] border-[var(--warning)]'},
@@ -85,6 +87,15 @@ export default function SubscriptionPanel(){
  const plan=overview.plan_code||overview.property_package||'Not configured';
  const roomLimit=overview.room_limit||'Not configured';
  const userLimit=overview.user_limit||'Not configured';
+ const access=evaluateSubscriptionAccess(user);
+ const computedState=access.state||'expired';
+ const datesElapsed=['server_dates','subscription_dates'].includes(access.source);
+ const renewalHref=subscriptionRenewalMailto({
+  propertyName:overview.property_name||'',propertyId:overview.property_id||propertyId||'',
+  packageName:plan,state:computedState,
+  periodEndsAt:formatSubscriptionDate(access.periodEndsAt||overview.current_period_ends_at),
+  graceEndsAt:formatSubscriptionDate(access.graceEndsAt||overview.grace_ends_at),
+ });
 
  return <div className="flex-1 overflow-y-auto p-4 md:p-6" style={{background:'var(--canvas)'}}>
    <div className="mx-auto max-w-5xl space-y-5">
@@ -109,6 +120,18 @@ export default function SubscriptionPanel(){
          <div><div className="font-bold text-foreground">Subscription managed by OliTechs Platform Admin</div><p className="mt-1 text-xs leading-5 text-muted-foreground">This screen is read-only for hotel users. Package, status, modules, billing dates and limits are controlled centrally.</p></div>
        </div>
      </div>
+
+     <section className="rounded-3xl border border-border bg-surface p-5">
+       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+         <div className="min-w-0">
+           <h2 className="font-black text-foreground">Computed access status</h2>
+           <p className="mt-1 text-xs text-muted-foreground">Stored status: <b className="capitalize text-foreground">{status.replaceAll('_',' ')}</b> · Computed status: <b className="capitalize text-foreground">{computedState.replace(/_/g,' ')}</b></p>
+           {datesElapsed&&<p className="mt-2 text-xs text-[var(--danger-text)]">A stored <b>active</b> status does not override elapsed subscription or grace dates. Operational access is locked.</p>}
+           <p className="mt-2 text-xs text-muted-foreground">Subscribe or renew by emailing <b className="text-foreground">{SUBSCRIPTION_SUPPORT_EMAILS.join(' and ')}</b>.</p>
+         </div>
+         <a href={renewalHref} className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-border bg-surface px-4 py-2 text-xs font-bold text-foreground"><RefreshCw size={14}/> Subscribe / Renew by email</a>
+       </div>
+     </section>
 
      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
        <Stat icon={CreditCard} label="Assigned package" value={String(plan).replaceAll('_',' ')} sub="Platform assignment"/>

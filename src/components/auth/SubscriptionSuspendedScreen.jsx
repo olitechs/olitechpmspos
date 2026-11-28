@@ -5,22 +5,47 @@ import { useAuth } from '@/lib/AuthContext';
 import SubscriptionPanel from '@/components/admin/SubscriptionPanel';
 import { pmsService } from '@/services/pmsService';
 import { formatSubscriptionDate, describeRemaining } from '@/lib/subscriptionCountdown';
+import {
+  SUBSCRIPTION_SUPPORT_EMAILS,
+  evaluateSubscriptionAccess,
+  subscriptionRenewalMailto,
+} from '@/lib/subscriptionAccess';
 
-// Full-page subscription suspension screen (Phase 4/6).
+// Full-page subscription lockout screen.
 //
-// Rendered by ProtectedRoute for every blocked entitlement across all four
-// workspaces. Operational navigation and actions are intentionally absent —
-// the owner keeps exactly the renewal, billing and support routes.
-// The server-computed entitlement remains authoritative; this screen only
-// presents the values the database returned.
+// Rendered by PublicRoute/ProtectedRoute for expired, suspended or cancelled
+// properties across all four workspaces. Operational navigation and actions
+// are intentionally absent — the owner keeps only renewal, billing and support.
+// The database entitlement is authoritative; this screen shows the computed
+// decision beside the stored status so an expired row marked `active` is
+// unambiguous.
 export default function SubscriptionSuspendedScreen() {
   const { user, logout } = useAuth();
   const ent = user?.entitlement || {};
-  const state = String(ent.state || 'expired');
+  const access = evaluateSubscriptionAccess(user);
+  const state = access.state || 'expired';
   const graceSeconds = Number(ent.seconds_of_grace_remaining || 0);
   const [requesting, setRequesting] = useState(false);
   const [requestStatus, setRequestStatus] = useState(null);
   const [requestError, setRequestError] = useState('');
+
+  const storedStatus = ent.subscription_status
+    || user?.subscription?.status
+    || user?.subscription?.subscription_status
+    || user?.property?.status
+    || '—';
+  const periodEndsAt = access.periodEndsAt || ent.period_ends_at;
+  const graceEndsAt = access.graceEndsAt || ent.grace_ends_at;
+  const datesElapsed = ['server_dates', 'subscription_dates'].includes(access.source);
+
+  const renewalHref = subscriptionRenewalMailto({
+    propertyName: user?.property?.name || user?.property?.business_name || '',
+    propertyId: user?.property?.id || '',
+    packageName: user?.property?.package || ent.plan_code || ent.package || '',
+    state,
+    periodEndsAt: formatSubscriptionDate(periodEndsAt),
+    graceEndsAt: formatSubscriptionDate(graceEndsAt),
+  });
 
   const requestRenewal = async () => {
     if (!user?.property?.id || requesting || requestStatus?.notification_status === 'sent') return;
@@ -48,7 +73,9 @@ export default function SubscriptionSuspendedScreen() {
     ? 'Operational access is locked until OliTechs can verify the subscription status. Please retry later or contact support.'
     : state === 'grace_period'
     ? 'Your property can still operate during the configured grace period, but renewal is required to continue after it ends.'
-    : 'Your property\'s access to operational modules has been temporarily suspended because the subscription and grace period have ended. Your data is preserved.';
+    : datesElapsed
+      ? 'Your subscription and grace period have ended. Operational access is locked until the subscription is renewed. Your data is preserved.'
+      : 'Your property\'s access to operational modules has been temporarily suspended because the subscription and grace period have ended. Your data is preserved.';
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[var(--canvas)] px-4 py-10 text-[var(--text)]">
@@ -74,30 +101,47 @@ export default function SubscriptionSuspendedScreen() {
           </div>
           <div className="rounded-xl border border-[var(--border)] p-3">
             <dt className="text-xs font-medium text-muted-foreground">Subscription expiry</dt>
-            <dd className="mt-0.5 font-semibold">{formatSubscriptionDate(ent.period_ends_at)}</dd>
+            <dd className="mt-0.5 font-semibold">{formatSubscriptionDate(periodEndsAt)}</dd>
           </div>
           <div className="rounded-xl border border-[var(--border)] p-3">
             <dt className="text-xs font-medium text-muted-foreground">Grace period ends</dt>
             <dd className="mt-0.5 font-semibold">
-              {formatSubscriptionDate(ent.grace_ends_at)}
+              {formatSubscriptionDate(graceEndsAt)}
               {graceSeconds > 0 && <span className="ml-1 font-normal text-muted-foreground">({describeRemaining(graceSeconds)} remaining)</span>}
             </dd>
           </div>
-          <div className="rounded-xl border border-[var(--border)] p-3 sm:col-span-2">
-            <dt className="text-xs font-medium text-muted-foreground">Current status</dt>
+          <div className="rounded-xl border border-[var(--border)] p-3">
+            <dt className="text-xs font-medium text-muted-foreground">Computed access status</dt>
             <dd className="mt-0.5 font-semibold capitalize">{state.replace(/_/g, ' ')}</dd>
           </div>
+          <div className="rounded-xl border border-[var(--border)] p-3">
+            <dt className="text-xs font-medium text-muted-foreground">Stored subscription status</dt>
+            <dd className="mt-0.5 font-semibold capitalize">{String(storedStatus).replaceAll('_', ' ')}</dd>
+          </div>
         </dl>
+
+        {datesElapsed && (
+          <p className="mt-4 rounded-xl border border-[var(--warning)] bg-[var(--warning-soft)] p-3 text-xs leading-5 text-[var(--warning-text)]">
+            A stored <strong>active</strong> status does not override the subscription expiry and grace dates. The elapsed dates are authoritative.
+          </p>
+        )}
 
         <div className="mt-6 rounded-xl border border-[var(--border)] bg-[var(--brand-primary)]/5 p-4 text-sm">
           <p className="font-semibold">To restore access</p>
           <ol className="mt-1 list-decimal space-y-0.5 pl-5 text-muted-foreground">
-            <li>Open Billing &amp; Subscriptions and confirm the renewal with the OliTechs platform team.</li>
+            <li>Send a renewal request or email OliTechs at {SUBSCRIPTION_SUPPORT_EMAILS.join(' and ')}.</li>
             <li>Once the platform confirms the renewal, access is restored automatically — no data is lost.</li>
           </ol>
+          <a
+            href={renewalHref}
+            className="mt-3 inline-flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-semibold hover:bg-[var(--canvas)]"
+          >
+            <Mail className="h-4 w-4" aria-hidden="true" />
+            Subscribe / Renew by email
+          </a>
         </div>
 
-        <div className="mt-6 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+        <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="font-semibold">Need to renew your subscription?</p>
@@ -130,13 +174,6 @@ export default function SubscriptionSuspendedScreen() {
             <RefreshCw className="h-4 w-4" aria-hidden="true" />
             Open Billing &amp; Subscriptions
           </Link>
-          <a
-            href="mailto:support@olitechs.com?subject=Subscription%20renewal"
-            className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] px-4 py-2 text-sm font-semibold hover:bg-[var(--surface)]"
-          >
-            <LifeBuoy className="h-4 w-4" aria-hidden="true" />
-            Contact support
-          </a>
           <button
             type="button"
             onClick={() => logout?.()}
@@ -156,7 +193,13 @@ export default function SubscriptionSuspendedScreen() {
 // and support access WITHOUT operational navigation being rendered.
 export function SubscriptionBillingOnlyScreen() {
   const { user, logout } = useAuth();
-  const state = String(user?.entitlement?.state || 'expired');
+  const state = evaluateSubscriptionAccess(user).state || 'expired';
+  const renewalHref = subscriptionRenewalMailto({
+    propertyName: user?.property?.name || user?.property?.business_name || '',
+    propertyId: user?.property?.id || '',
+    packageName: user?.property?.package || '',
+    state,
+  });
   return (
     <main className="flex min-h-screen flex-col bg-[var(--canvas)] text-[var(--text)]">
       <header className="flex h-14 items-center gap-3 border-b border-[var(--border)] bg-[var(--surface)] px-4 sm:px-6">
@@ -167,11 +210,11 @@ export function SubscriptionBillingOnlyScreen() {
         </span>
         <div className="ml-auto flex items-center gap-3">
           <a
-            href="mailto:support@olitechs.com?subject=Subscription%20renewal"
+            href={renewalHref}
             className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-semibold hover:bg-[var(--surface)]"
           >
             <LifeBuoy className="h-4 w-4" aria-hidden="true" />
-            Support
+            Subscribe / Renew
           </a>
           <button
             type="button"

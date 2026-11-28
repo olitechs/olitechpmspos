@@ -21,6 +21,14 @@ const suspendedScreen = readFileSync(
   new URL('../../src/components/auth/SubscriptionSuspendedScreen.jsx', import.meta.url),
   'utf8',
 );
+const subscriptionAccess = readFileSync(
+  new URL('../../src/lib/subscriptionAccess.js', import.meta.url),
+  'utf8',
+);
+const subscriptionPanel = readFileSync(
+  new URL('../../src/components/admin/SubscriptionPanel.jsx', import.meta.url),
+  'utf8',
+);
 
 test('a generic row guard raises for blocked properties and exempts system contexts', () => {
   assert.match(guards, /function public\.fn_assert_property_row_operational\(\)/i);
@@ -59,13 +67,20 @@ test('auth-identity and audit surfaces are deliberately not write-guarded', () =
   }
 });
 
-test('the session carries the server-computed entitlement and fails closed when verification is unavailable', () => {
+test('the session carries the entitlement and narrows outages to elapsed dates', () => {
   assert.match(authService, /fn_get_my_subscription_entitlement/i);
   assert.match(authService, /entitlement,?\s*\r?\n/);
   assert.match(authService, /entitlement: entitlementRow \|\| null|entitlement = entitlementRow \|\| null/i);
   assert.match(authService, /state: 'unavailable',[\s\S]*?allowed: false,[\s\S]*?reason: 'entitlement_unavailable'/);
-  assert.match(authService, /return ent\.allowed !== true;/);
+  assert.match(authService, /import \{ isSubscriptionBlockedForUser \} from '@\/lib\/subscriptionAccess';/);
+  assert.match(authService, /return isSubscriptionBlockedForUser\(user\);/);
   assert.match(authService, /if \(isSubscriptionBlocked\(user\)\) return false;\s*\r?\n\s*const pkg/);
+  assert.match(subscriptionAccess, /export function evaluateSubscriptionAccess\(user, referenceTime = Date\.now\(\)\)/);
+  assert.match(subscriptionAccess, /reported === 'unavailable'/);
+  assert.match(subscriptionAccess, /source: 'server_dates'/);
+  assert.match(subscriptionAccess, /source: 'subscription_dates'/);
+  assert.match(subscriptionAccess, /source: 'legacy_missing_expiry'/);
+  assert.match(subscriptionAccess, /entitlement\.allowed === true && ALLOWED_STATES\.has\(reported\)/);
 });
 test('renewal, billing and support paths stay reachable for a blocked property', () => {
   assert.match(authService, /export function isRenewalPath\(pathname\)/);
@@ -79,33 +94,47 @@ test('renewal, billing and support paths stay reachable for a blocked property',
   );
 });
 
-test('every protected workspace renders the suspension screen for a blocked entitlement', () => {
+test('lockout renders across protected and public routes while pending stays on approval', () => {
   // The gate runs before the workspace/role checks so no workspace bypasses it.
-  const gate = appRoutes.indexOf('isSubscriptionBlocked(user)');
+  const gate = appRoutes.indexOf('isSubscriptionLockout(user)');
   const canUseGate = appRoutes.indexOf('if(!canUseApp(user,app))');
-  assert.ok(gate > -1 && canUseGate > -1 && gate < canUseGate, 'entitlement gate must run before workspace checks');
-  assert.match(appRoutes, /isSubscriptionBlocked\(user\)\)\{return isRenewalPath\(window\.location\.pathname\)\?<SubscriptionBillingOnlyScreen\/>:<SubscriptionSuspendedScreen\/>;\}/);
+  assert.ok(gate > -1 && canUseGate > -1 && gate < canUseGate, 'lockout gate must run before workspace checks');
+  assert.match(appRoutes, /isSubscriptionLockout\(user\)\)\{return isRenewalPath\(window\.location\.pathname\)\?<SubscriptionBillingOnlyScreen\/>:<SubscriptionSuspendedScreen\/>;\}/);
+  assert.match(appRoutes, /if\(isSubscriptionLockout\(user\)\)return <SubscriptionSuspendedScreen\/>;/);
+  assert.match(appRoutes, /return allowed\?<Navigate to=\{allowed\.path\} replace\/>:<PendingApproval\/>;/);
+  assert.match(appRoutes, /import \{ isSubscriptionLockout \} from "@\/lib\/subscriptionAccess";/);
   assert.match(appRoutes, /import SubscriptionSuspendedScreen, \{ SubscriptionBillingOnlyScreen \}/);
+  assert.match(subscriptionAccess, /if \(normaliseState\(firstValue\(user\?\.property\?\.status, user\?\.propertyStatus\)\) === 'pending'\) return false;/);
   // All four workspaces remain behind the same guard.
   for (const workspace of ['backoffice', 'frontoffice', 'stores', 'pos']) {
     assert.match(appRoutes, new RegExp(`<Route element=\\{<ProtectedRoute app="${workspace}"\\/>\\}>`));
   }
 });
 
-test('the suspension screen shows status details and keeps only renewal, billing and support actions', () => {
+test('the lockout screen shows computed/stored status and both renewal emails', () => {
   assert.match(suspendedScreen, /to="\/backoffice\/settings\/billing"/);
-  assert.match(suspendedScreen, /mailto:support@olitechs\.com/);
-  assert.match(suspendedScreen, /formatSubscriptionDate\(ent\.period_ends_at\)/);
-  assert.match(suspendedScreen, /formatSubscriptionDate\(ent\.grace_ends_at\)/);
+  assert.match(suspendedScreen, /SUBSCRIPTION_SUPPORT_EMAILS\.join\(' and '\)/);
+  assert.match(suspendedScreen, /subscriptionRenewalMailto\(\{/);
+  assert.match(suspendedScreen, /formatSubscriptionDate\(periodEndsAt\)/);
+  assert.match(suspendedScreen, /formatSubscriptionDate\(graceEndsAt\)/);
   assert.match(suspendedScreen, /describeRemaining\(graceSeconds\)/);
+  assert.match(suspendedScreen, /Computed access status/);
+  assert.match(suspendedScreen, /Stored subscription status/);
+  assert.match(suspendedScreen, /does not override the subscription expiry and grace dates/);
   assert.match(suspendedScreen, /Your data is preserved/i);
+  assert.doesNotMatch(suspendedScreen, /mailto:support@olitechs\.com/);
+  assert.match(subscriptionAccess, /info@olitechs\.co\.ke', 'olitechs2025@gmail\.com/);
+  assert.match(subscriptionPanel, /SUBSCRIPTION_SUPPORT_EMAILS\.join\(' and '\)/);
+  assert.match(subscriptionPanel, /Computed access status/);
+  assert.match(subscriptionPanel, /does not override elapsed subscription or grace dates/);
+  assert.match(subscriptionPanel, /subscriptionRenewalMailto\(\{/);
   // No operational navigation is rendered by the screen itself.
   assert.doesNotMatch(suspendedScreen, /Sidebar|TopAppNav|MAIN_NAV|BackOfficeLayout|POSLayout|StoresLayout/);
 });
 
 
 test('expired sign-in sessions land on the suspension screen and can request renewal by email', () => {
-  assert.match(appRoutes, /if\(isSubscriptionBlocked\(user\)\)return <SubscriptionSuspendedScreen\/>/);
+  assert.match(appRoutes, /if\(isSubscriptionLockout\(user\)\)return <SubscriptionSuspendedScreen\/>/);
   assert.match(suspendedScreen, /pmsService\.requestSubscriptionRenewal\(user\.property\.id\)/);
   assert.match(suspendedScreen, /Renew Subscription/);
   assert.match(suspendedScreen, /info@olitechs\.co\.ke/);
