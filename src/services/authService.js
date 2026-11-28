@@ -349,6 +349,13 @@ async function loadCurrentUserDetails() {
 			entitlement = entitlementRow || null;
 		} catch (entitlementError) {
 			console.error('[authService] entitlement lookup failed:', entitlementError?.message);
+			// Fail closed: an unavailable entitlement service must never grant
+			// an operational session by silently treating the subscription as active.
+			entitlement = {
+				state: 'unavailable',
+				allowed: false,
+				reason: 'entitlement_unavailable',
+			};
 		}
 		// Employee permission resolution is server-side (fn_employee_permission_
 		// summary). Older deployments without the employee-management migration
