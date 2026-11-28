@@ -11,6 +11,12 @@
 
 BEGIN;
 
+-- Ensure the private Stores schema exists on installations that predate the
+-- dedicated stock_internal foundation. Browser roles cannot access this schema.
+CREATE SCHEMA IF NOT EXISTS stock_internal;
+REVOKE ALL ON SCHEMA stock_internal FROM PUBLIC, anon, authenticated;
+GRANT USAGE ON SCHEMA stock_internal TO service_role;
+
 -- ---------------------------------------------------------------------------
 -- 1. Private posting context consumed by the default-location trigger
 -- ---------------------------------------------------------------------------
@@ -661,9 +667,9 @@ BEGIN
     AND location_id = p_from_location_id
   FOR UPDATE;
 
-  IF v_from_qty < p_qty THEN
+  IF NOT FOUND OR v_from_qty IS NULL OR v_from_qty < p_qty THEN
     RAISE EXCEPTION 'Insufficient stock at source location (available %, required %)',
-      v_from_qty, p_qty;
+      COALESCE(v_from_qty, 0), p_qty;
   END IF;
 
   UPDATE public.product_stock_locations
