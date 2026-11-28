@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { Clock3, LockKeyhole } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { evaluateSubscriptionAccess } from '@/lib/subscriptionAccess';
 import { breakdownRemaining, formatSubscriptionDate } from '@/lib/subscriptionCountdown';
+import SubscriptionRequestModal from '@/components/subscription/SubscriptionRequestModal';
 
 const URGENT_SECONDS = 48 * 60 * 60;
 const TICK_MS = 60_000;
@@ -35,6 +35,7 @@ export default function TrialBanner() {
     && ['trial', 'expiring_soon'].includes(access.state)
     && Boolean(trialEndsAt);
   const [now, setNow] = useState(() => Date.now());
+  const [requestOpen, setRequestOpen] = useState(false);
 
   useEffect(() => {
     if (!isTrial) return undefined;
@@ -68,10 +69,10 @@ export default function TrialBanner() {
   const description = urgent
     ? 'Act now — after expiry all POS, PMS and billing features will be locked.'
     : `Your trial of ${planTitle(ent.plan_code || user?.subscription?.plan_code)} ends on ${formatSubscriptionDate(trialEndsAt)}. Subscribe now to keep all your data.`;
-  const canManageBilling = user?.isPlatformOwner
-    || ['owner', 'admin'].includes(String(user?.propertyRole || '').toLowerCase());
+  const canManageBilling = ['owner', 'admin'].includes(String(user?.propertyRole || '').toLowerCase());
 
   return (
+    <>
     <div
       role="status"
       className={[
@@ -95,15 +96,25 @@ export default function TrialBanner() {
         {pillLabel}
       </span>
       {canManageBilling ? (
-        <Link
-          to="/backoffice/settings/billing"
+        <button
+          type="button"
+          onClick={() => setRequestOpen(true)}
           className="rounded-md bg-[var(--brand-primary)] px-3 py-1.5 font-bold text-[var(--white)] hover:opacity-90"
         >
           {urgent ? 'Subscribe Now' : 'Upgrade Now'}
-        </Link>
+        </button>
       ) : (
         <span className="font-semibold">Ask your administrator to renew</span>
       )}
     </div>
+    {canManageBilling && (
+      <SubscriptionRequestModal
+        open={requestOpen}
+        onOpenChange={setRequestOpen}
+        requestKind={urgent ? 'subscribe' : 'upgrade'}
+        packageName={ent.plan_code || user?.subscription?.plan_code || 'professional'}
+      />
+    )}
+    </>
   );
 }

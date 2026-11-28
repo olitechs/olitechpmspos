@@ -127,7 +127,23 @@ export const pmsService = {
 	// The database evaluator is authoritative; the client never computes access.
 	async getMySubscriptionEntitlement() { const {data,error}=await supabase.rpc('fn_get_my_subscription_entitlement'); if(error) throw new Error(error.message); return data||null; },
 	async getMySubscriptionOverview() { const {data,error}=await supabase.rpc('fn_get_my_subscription_overview'); if(error) throw new Error(error.message); return Array.isArray(data) ? (data[0] || null) : data; },
-	async requestSubscriptionRenewal(propertyId) { const {data,error}=await supabase.functions.invoke('subscription-renewal-request',{body:{property_id:propertyId}}); if(error) { let message=error.message || 'Could not send renewal request.'; try { const payload=await error.context?.json(); message=payload?.error || message; } catch {} throw new Error(message); } if(data?.error) throw new Error(data.error); return data || null; },
+	async requestSubscriptionRenewal(input) {
+		// Accept a bare property id for the legacy renewal caller and a structured
+		// payload from the shared subscribe/upgrade/renew form.
+		const payload=typeof input==='string'?{propertyId:input}:(input||{});
+		const body={
+			property_id:payload.propertyId||payload.property_id,
+			request_kind:payload.requestKind||payload.request_kind||'renewal',
+			package_name:payload.packageName||payload.package_name||null,
+			billing_cycle:payload.billingCycle||payload.billing_cycle||null,
+			phone:payload.phone||null,
+			notes:payload.notes||null,
+		};
+		const {data,error}=await supabase.functions.invoke('subscription-renewal-request',{body});
+		if(error) { let message=error.message || 'Could not send the subscription request.'; try { const response=await error.context?.json(); message=response?.error || message; } catch {} throw new Error(message); }
+		if(data?.error) throw new Error(data.error);
+		return data||null;
+	},
 	async getSubscriptionAccess(propertyId,module) { const {data,error}=await supabase.rpc('fn_subscription_access',{p_property_id:propertyId,p_module:module}); if(error) throw new Error(error.message); return data||{allowed:false}; },
 	async upsertSubscription({propertyId,planCode,status,trialEndsAt=null,currentPeriodEndsAt=null,graceEndsAt=null,enabledModules=[]}) { const {data,error}=await supabase.rpc('fn_upsert_subscription',{p_property_id:propertyId,p_plan_code:planCode,p_status:status,p_trial_ends_at:trialEndsAt,p_current_period_ends_at:currentPeriodEndsAt,p_grace_ends_at:graceEndsAt,p_enabled_modules:enabledModules}); if(error) throw new Error(error.message); return data; },
 	async listSubscriptionEvents(propertyId) { const {data,error}=await supabase.from('subscription_events').select('*').eq('property_id',propertyId).order('created_at',{ascending:false}).limit(100); if(error) throw new Error(error.message); return data||[]; },
