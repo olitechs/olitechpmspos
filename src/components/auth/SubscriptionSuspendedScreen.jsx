@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, LifeBuoy, LogOut, RefreshCw } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, LifeBuoy, LogOut, Mail, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import SubscriptionPanel from '@/components/admin/SubscriptionPanel';
+import { pmsService } from '@/services/pmsService';
 import { formatSubscriptionDate, describeRemaining } from '@/lib/subscriptionCountdown';
 
 // Full-page subscription suspension screen (Phase 4/6).
@@ -17,6 +18,23 @@ export default function SubscriptionSuspendedScreen() {
   const ent = user?.entitlement || {};
   const state = String(ent.state || 'expired');
   const graceSeconds = Number(ent.seconds_of_grace_remaining || 0);
+  const [requesting, setRequesting] = useState(false);
+  const [requestStatus, setRequestStatus] = useState(null);
+  const [requestError, setRequestError] = useState('');
+
+  const requestRenewal = async () => {
+    if (!user?.property?.id || requesting || requestStatus?.notification_status === 'sent') return;
+    setRequesting(true);
+    setRequestError('');
+    try {
+      const result = await pmsService.requestSubscriptionRenewal(user.property.id);
+      setRequestStatus(result);
+    } catch (error) {
+      setRequestError(error?.message || 'Could not send the renewal request. Please contact OliTechs support.');
+    } finally {
+      setRequesting(false);
+    }
+  };
 
   const heading = state === 'grace_period'
     ? 'Your subscription has expired. You are currently in the grace period.'
@@ -73,6 +91,31 @@ export default function SubscriptionSuspendedScreen() {
             <li>Open Billing &amp; Subscriptions and confirm the renewal with the OliTechs platform team.</li>
             <li>Once the platform confirms the renewal, access is restored automatically — no data is lost.</li>
           </ol>
+        </div>
+
+        <div className="mt-6 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-semibold">Need to renew your subscription?</p>
+              <p className="mt-1 text-xs text-muted-foreground">Send a renewal request directly to the OliTechs Platform team.</p>
+            </div>
+            <button
+              type="button"
+              onClick={requestRenewal}
+              disabled={requesting || requestStatus?.notification_status === 'sent'}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-[var(--brand-primary)] px-4 py-2.5 text-sm font-semibold text-[var(--white)] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {requesting ? <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Mail className="h-4 w-4" aria-hidden="true" />}
+              {requesting ? 'Sending request…' : requestStatus?.notification_status === 'sent' ? 'Request sent' : 'Renew Subscription'}
+            </button>
+          </div>
+          {requestStatus?.notification_status === 'sent' && (
+            <p className="mt-3 flex items-start gap-2 text-sm text-[var(--success-text)]">
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              Your renewal request has been emailed to info@olitechs.co.ke and olitech2025@gmail.com. The platform team must confirm renewal before access is restored.
+            </p>
+          )}
+          {requestError && <p role="alert" className="mt-3 text-sm text-[var(--danger-text)]">{requestError}</p>}
         </div>
 
         <div className="mt-6 flex flex-wrap items-center gap-3">
