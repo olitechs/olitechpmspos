@@ -90,10 +90,12 @@ test('the banner uses the approved countdown copy and billing CTA', () => {
   assert.match(banner, /Subscribe Now/);
 });
 
-test('the banner sends owners and admins to the billing route', () => {
-  assert.match(banner, /to="\/backoffice\/settings\/billing"/);
+test('the banner opens the request form for owners and admins only', () => {
+  assert.match(banner, /<SubscriptionRequestModal/);
+  assert.match(banner, /requestKind=\{urgent \? 'subscribe' : 'upgrade'\}/);
   assert.match(banner, /canManageBilling/);
   assert.match(banner, /'owner', 'admin'/);
+  assert.doesNotMatch(banner, /<Link/);
 });
 
 test('the billing panel shows the approved current-plan preview', () => {
@@ -127,8 +129,12 @@ test('the billing panel shows the approved four-plan grid and billing toggle', (
   assert.doesNotMatch(panel, /id:'premium'/);
 });
 
-test('renewal requests reach both support addresses', () => {
+test('subscription requests are submitted through the form to both support addresses', () => {
   assert.match(access, /SUBSCRIPTION_SUPPORT_EMAILS = \['info@olitechs\.co\.ke', 'olitechs2025@gmail\.com'\]/);
-  assert.match(access, /mailto:\$\{SUBSCRIPTION_SUPPORT_EMAILS\.join\(','\)\}/);
-  assert.match(panel, /renewalHref/);
+  assert.match(panel, /<SubscriptionRequestModal/);
+  assert.match(panel, /Send subscription request/);
+  assert.match(panel, /openRequest\('renewal',plan\)/);
+  assert.match(panel, /openRequest\(currentPlan===card\.id\?'renewal':'upgrade',card\.id\)/);
+  assert.doesNotMatch(panel, /subscriptionRenewalMailto/);
+  assert.doesNotMatch(panel, /href=\{renewalHref/);
 });

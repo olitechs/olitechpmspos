@@ -6,8 +6,9 @@ import{
 import{useAuth}from'@/lib/AuthContext';
 import{pmsService}from'@/services/pmsService';
 import{employeeService}from'@/services/employeeService';
-import{SUBSCRIPTION_SUPPORT_EMAILS,evaluateSubscriptionAccess,subscriptionRenewalMailto}from'@/lib/subscriptionAccess';
+import{SUBSCRIPTION_SUPPORT_EMAILS,evaluateSubscriptionAccess}from'@/lib/subscriptionAccess';
 import{formatSubscriptionDate,breakdownRemaining}from'@/lib/subscriptionCountdown';
+import SubscriptionRequestModal from '@/components/subscription/SubscriptionRequestModal';
 
 const STATUS={
   trial:{label:'Free trial',className:'bg-[var(--warning-soft)] text-[var(--warning-text)] border-[var(--warning)]'},
@@ -104,6 +105,8 @@ export default function SubscriptionPanel(){
   const[licence,setLicence]=useState(null);
   const[billingCycle,setBillingCycle]=useState('monthly');
   const[now,setNow]=useState(()=>Date.now());
+  const[requestModal,setRequestModal]=useState(null);
+  const openRequest=(kind,packageName)=>setRequestModal({kind,packageName});
   const propertyId=user?.property?.id;
 
   const load=useCallback(async()=>{
@@ -164,16 +167,7 @@ export default function SubscriptionPanel(){
   const urgentTrial=trialSeconds!==null&&trialSeconds<=TRIAL_URGENT_SECONDS;
   const isTrial=computedState==='trial'||computedState==='expiring_soon'||String(status)==='trial';
   const currentPlan=String(plan||'').toLowerCase();
-  const canManageBilling=user?.isPlatformOwner||['owner','admin'].includes(String(user?.propertyRole||overview.property_role||'').toLowerCase());
-  const renewalHrefFor=(packageName)=>subscriptionRenewalMailto({
-    propertyName:overview.property_name||'',
-    propertyId:overview.property_id||propertyId||'',
-    packageName:packageName||plan,
-    state:computedState,
-    periodEndsAt:formatSubscriptionDate(access.periodEndsAt||overview.current_period_ends_at||trialEndsAt),
-    graceEndsAt:formatSubscriptionDate(access.graceEndsAt||overview.grace_ends_at),
-  });
-  const renewalHref=renewalHrefFor(formatTrialPlan(plan));
+  const canManageBilling=['owner','admin'].includes(String(user?.propertyRole||overview.property_role||'').toLowerCase());
 
   return <div className="flex-1 overflow-y-auto bg-canvas p-4 md:p-6">
     <div className="mx-auto max-w-5xl space-y-5">
@@ -241,7 +235,7 @@ export default function SubscriptionPanel(){
 
         <div className="mt-5 flex flex-wrap gap-2">
           {canManageBilling
-            ?<a href={renewalHref} className="inline-flex items-center gap-2 rounded-xl bg-[var(--brand-primary)] px-4 py-2.5 text-sm font-bold text-[var(--white)] hover:opacity-90"><RefreshCw size={15} aria-hidden="true"/> Renew / Subscribe</a>
+            ?<button type="button" onClick={()=>openRequest('renewal',plan)} className="inline-flex items-center gap-2 rounded-xl bg-[var(--brand-primary)] px-4 py-2.5 text-sm font-bold text-[var(--white)] hover:opacity-90"><RefreshCw size={15} aria-hidden="true"/> Renew / Subscribe</button>
             :<span className="inline-flex items-center rounded-xl border border-border bg-canvas px-4 py-2.5 text-sm font-semibold text-muted-foreground">Ask your administrator to renew</span>}
           <a href="#plans" className="inline-flex items-center gap-2 rounded-xl border border-[var(--brand-primary)] px-4 py-2.5 text-sm font-bold text-[var(--brand-primary)] hover:bg-[var(--brand-primary)]/5"><Package size={15} aria-hidden="true"/> View Plans</a>
         </div>
@@ -253,9 +247,11 @@ export default function SubscriptionPanel(){
             <h2 className="font-black text-foreground">Computed access status</h2>
             <p className="mt-1 text-xs text-muted-foreground">Stored status: <b className="capitalize text-foreground">{String(status).replaceAll('_',' ')}</b> · Computed status: <b className="capitalize text-foreground">{computedState.replace(/_/g,' ')}</b></p>
             {datesElapsed&&<p className="mt-2 text-xs text-[var(--danger-text)]">A stored <b>active</b> status does not override elapsed subscription or grace dates. Operational access is locked.</p>}
-            <p className="mt-2 text-xs text-muted-foreground">Subscribe or renew by emailing <b className="text-foreground">{SUBSCRIPTION_SUPPORT_EMAILS.join(' and ')}</b>.</p>
+            <p className="mt-2 text-xs text-muted-foreground">Requests are reviewed by <b className="text-foreground">{SUBSCRIPTION_SUPPORT_EMAILS.join(' and ')}</b> before access changes.</p>
           </div>
-          <a href={renewalHref} className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-border bg-surface px-4 py-2 text-xs font-bold text-foreground"><Mail size={14} aria-hidden="true"/> Subscribe / Renew by email</a>
+          {canManageBilling
+            ?<button type="button" onClick={()=>openRequest(access.blocked?'renewal':'subscribe',plan)} className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-border bg-surface px-4 py-2 text-xs font-bold text-foreground"><Mail size={14} aria-hidden="true"/> Send subscription request</button>
+            :<span className="shrink-0 rounded-xl border border-border bg-canvas px-4 py-2 text-xs font-bold text-muted-foreground">Administrator only</span>}
         </div>
       </section>
 
@@ -332,7 +328,7 @@ export default function SubscriptionPanel(){
               </ul>
               {isCurrent
                 ?<span className="mt-4 inline-flex items-center justify-center rounded-xl border border-border bg-surface px-3 py-2 text-xs font-bold text-muted-foreground">{cta}</span>
-                :<a href={renewalHrefFor(card.name)} className="mt-4 inline-flex items-center justify-center gap-1 rounded-xl bg-[var(--brand-primary)] px-3 py-2 text-xs font-bold text-[var(--white)] hover:opacity-90">{cta}<ArrowRight size={13} aria-hidden="true"/></a>}
+                :<button type="button" onClick={()=>openRequest(currentPlan===card.id?'renewal':'upgrade',card.id)} className="mt-4 inline-flex items-center justify-center gap-1 rounded-xl bg-[var(--brand-primary)] px-3 py-2 text-xs font-bold text-[var(--white)] hover:opacity-90">{cta}<ArrowRight size={13} aria-hidden="true"/></button>}
             </div>;
           })}
         </div>
@@ -397,6 +393,13 @@ export default function SubscriptionPanel(){
       </section>}
 
       <div className="flex justify-end"><button onClick={load} className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-4 py-2 text-xs font-bold text-foreground"><RefreshCw size={14} aria-hidden="true"/> Refresh subscription</button></div>
+      <SubscriptionRequestModal
+        open={Boolean(requestModal)}
+        onOpenChange={(next)=>{if(!next)setRequestModal(null)}}
+        requestKind={requestModal?.kind||'subscribe'}
+        packageName={requestModal?.packageName||plan}
+        billingCycle={billingCycle}
+      />
     </div>
   </div>;
 }

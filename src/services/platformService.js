@@ -74,6 +74,12 @@ export const platformService = {
 		return data || [];
 	},
 
+	async listSubscriptionRequests() {
+		const { data, error } = await supabase.rpc('admin_list_subscription_requests');
+		if (error) throw new Error(error.message);
+		return data || [];
+	},
+
 	// Build dashboard figures from the same admin_list_properties RPC that
 	// powers the working Properties screen. This keeps the dashboard from
 	// failing when PostgREST has not exposed the optional aggregate RPC in

@@ -111,10 +111,10 @@ test('lockout renders across protected and public routes while pending stays on 
   }
 });
 
-test('the lockout screen shows computed/stored status and both renewal emails', () => {
+test('the lockout screen shows computed/stored status and the renewal request form', () => {
   assert.match(suspendedScreen, /to="\/backoffice\/settings\/billing"/);
   assert.match(suspendedScreen, /SUBSCRIPTION_SUPPORT_EMAILS\.join\(' and '\)/);
-  assert.match(suspendedScreen, /subscriptionRenewalMailto\(\{/);
+  assert.match(suspendedScreen, /<SubscriptionRequestModal/);
   assert.match(suspendedScreen, /formatSubscriptionDate\(periodEndsAt\)/);
   assert.match(suspendedScreen, /formatSubscriptionDate\(graceEndsAt\)/);
   assert.match(suspendedScreen, /describeRemaining\(graceSeconds\)/);
@@ -127,22 +127,74 @@ test('the lockout screen shows computed/stored status and both renewal emails', 
   assert.match(subscriptionPanel, /SUBSCRIPTION_SUPPORT_EMAILS\.join\(' and '\)/);
   assert.match(subscriptionPanel, /Computed access status/);
   assert.match(subscriptionPanel, /does not override elapsed subscription or grace dates/);
-  assert.match(subscriptionPanel, /subscriptionRenewalMailto\(\{/);
+  assert.match(subscriptionPanel, /<SubscriptionRequestModal/);
   // No operational navigation is rendered by the screen itself.
   assert.doesNotMatch(suspendedScreen, /Sidebar|TopAppNav|MAIN_NAV|BackOfficeLayout|POSLayout|StoresLayout/);
 });
 
 
-test('expired sign-in sessions land on the suspension screen and can request renewal by email', () => {
+test('expired sign-in sessions land on the suspension screen and open the renewal form', () => {
   assert.match(appRoutes, /if\(isSubscriptionLockout\(user\)\)return <SubscriptionSuspendedScreen\/>/);
-  assert.match(suspendedScreen, /pmsService\.requestSubscriptionRenewal\(user\.property\.id\)/);
+  assert.match(suspendedScreen, /<SubscriptionRequestModal/);
   assert.match(suspendedScreen, /Renew Subscription/);
-  assert.match(suspendedScreen, /info@olitechs\.co\.ke/);
-  assert.match(suspendedScreen, /olitechs2025@gmail\.com/);
+  assert.match(suspendedScreen, /SUBSCRIPTION_SUPPORT_EMAILS\.join\(' and '\)/);
+  assert.doesNotMatch(suspendedScreen, /pmsService\.requestSubscriptionRenewal\(user\.property\.id\)/);
+  assert.doesNotMatch(suspendedScreen, /subscriptionRenewalMailto/);
   const edge = readFileSync(new URL('../functions/subscription-renewal-request/index.ts', import.meta.url), 'utf8');
   assert.match(edge, /const RECIPIENTS = \['info@olitechs\.co\.ke', 'olitechs2025@gmail\.com'\]/);
   assert.match(edge, /Only the property owner or administrator/);
   assert.match(edge, /subscription_renewal_requests/);
+});
+
+test('subscription request form submissions reach the platform inbox and info@', () => {
+  const modal = readFileSync(new URL('../../src/components/subscription/SubscriptionRequestModal.jsx', import.meta.url), 'utf8');
+  const pmsService = readFileSync(new URL('../../src/services/pmsService.js', import.meta.url), 'utf8');
+  const platformService = readFileSync(new URL('../../src/services/platformService.js', import.meta.url), 'utf8');
+  const migration = readFileSync(new URL('../migrations/20261128173000_subscription_request_form.sql', import.meta.url), 'utf8');
+  const migrationReadme = readFileSync(new URL('../migrations/README.md', import.meta.url), 'utf8');
+  const adminRoute = readFileSync(new URL('../../src/lib/AdminRoute.jsx', import.meta.url), 'utf8');
+  const adminLayout = readFileSync(new URL('../../src/pages/admin/AdminLayout.jsx', import.meta.url), 'utf8');
+  const inbox = readFileSync(new URL('../../src/pages/admin/AdminSubscriptionRequests.jsx', import.meta.url), 'utf8');
+  const edge = readFileSync(new URL('../functions/subscription-renewal-request/index.ts', import.meta.url), 'utf8');
+
+  assert.match(modal, /useForm/);
+  assert.match(modal, /zodResolver\(requestSchema\)/);
+  for (const field of ['packageName', 'billingCycle', 'phone', 'notes']) {
+    assert.match(modal, new RegExp(field), `form field ${field}`);
+  }
+  assert.match(modal, /\['owner', 'admin'\]\.includes\(role\)/);
+  assert.match(modal, /pmsService\.requestSubscriptionRenewal\(\{/);
+  assert.match(pmsService, /request_kind:payload\.requestKind/);
+  assert.match(pmsService, /package_name:payload\.packageName/);
+  assert.match(pmsService, /billing_cycle:payload\.billingCycle/);
+  assert.match(pmsService, /phone:payload\.phone/);
+  assert.match(pmsService, /notes:payload\.notes/);
+
+  assert.match(migration, /ADD COLUMN IF NOT EXISTS request_kind/i);
+  assert.match(migration, /ADD COLUMN IF NOT EXISTS requested_package/i);
+  assert.match(migration, /ADD COLUMN IF NOT EXISTS billing_cycle/i);
+  assert.match(migration, /ADD COLUMN IF NOT EXISTS contact_phone/i);
+  assert.match(migration, /ADD COLUMN IF NOT EXISTS request_notes/i);
+  assert.match(migration, /create or replace function public\.admin_list_subscription_requests\(\)/i);
+  assert.match(migration, /where public\.is_platform_owner\(\)/i);
+  assert.match(migration, /grant execute on function public\.admin_list_subscription_requests\(\) to authenticated/i);
+  assert.match(migration, /revoke execute on function public\.admin_list_subscription_requests\(\) from anon, public/i);
+  assert.match(migrationReadme, /20261128173000 — Subscription request form/);
+  assert.match(migrationReadme, /table remains service-role only/i);
+
+  assert.match(platformService, /rpc\('admin_list_subscription_requests'\)/);
+  assert.match(inbox, /platformService\.listSubscriptionRequests\(\)/);
+  assert.match(appRoutes, /<Route path="\/admin\/subscription-requests" element=\{<AdminSubscriptionRequests\/>\}\/>/);
+  assert.match(adminRoute, /'\/admin\/subscription-requests'/);
+  assert.match(adminLayout, /label: 'Subscription Requests'/);
+
+  assert.match(edge, /request_kind/);
+  assert.match(edge, /billing_cycle/);
+  assert.match(edge, /contact_phone/);
+  assert.match(edge, /request_notes/);
+  assert.match(edge, /admin\/subscription-requests/);
+  assert.match(edge, /Only the property owner or administrator/);
+  assert.doesNotMatch(edge, /if \(!expired\(subscription\)\)/);
 });
 
 test('the billing-only shell renders the subscription panel without workspace navigation', () => {

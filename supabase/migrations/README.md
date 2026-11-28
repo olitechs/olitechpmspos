@@ -139,3 +139,6 @@ The migration also retains the property/room advisory transaction lock in `fn_ch
 
 ### 20261108100000 — Room Planner 24-hour option expiry
 Adds the nullable `reservations.option_expires_at` timestamp, property-scoped RPCs for creating, confirming and reconciling options, and audit events for option lifecycle changes. Optioned reservations expire 24 hours after creation; editing does not restart the deadline. Expired options are marked cancelled and release their rooms when the planner loads, while it remains open, or before room-availability checks. Check-in requires explicit confirmation. Apply this additive migration before using Optioned bookings.
+
+### 20261128173000 — Subscription request form
+Apply after `20261128060804_subscription_renewal_requests.sql` and before deploying the `subscription-renewal-request` Edge Function. Adds `request_kind`, `requested_package`, `billing_cycle`, `contact_phone`, and `request_notes` to the existing request table, plus the platform-owner-only `admin_list_subscription_requests()` RPC used by the admin inbox. The table remains service-role only; tenant RLS is not weakened. This is a forward, idempotent migration — do not rename or reorder already-applied migrations.
