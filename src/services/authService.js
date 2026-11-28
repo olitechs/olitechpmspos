@@ -78,8 +78,8 @@ const APP_WORKSPACE = { pos: 'pos', frontoffice: 'frontoffice', stores: 'store',
 
 // Phase 4: a blocked entitlement (expired, suspended, cancelled, pending…)
 // removes every operational workspace. Platform owners always keep full
-// access. A missing entitlement (older deployment before the engine
-// migration) defers to the database instead of locking sessions out locally.
+// access. Once a property is resolved, entitlement lookup failures are
+// represented as an explicit unavailable/blocked state (fail closed).
 export function isSubscriptionBlocked(user) {
   if (!user || user.isPlatformOwner) return false;
   const ent = user.entitlement;
@@ -340,9 +340,8 @@ async function loadCurrentUserDetails() {
 		const { data: subscriptionRow, error: subscriptionError } = await supabase.rpc('fn_get_subscription', { p_property_id: propertyId });
 		if (subscriptionError) console.error('[authService] subscription lookup failed:', subscriptionError.message);
 		subscription = subscriptionRow || null;
-		// Server-computed entitlement. Older deployments without the engine
-		// simply leave `entitlement` null; every consumer treats a missing
-		// value as "defer to the database" instead of blocking locally.
+		// Server-computed entitlement. A lookup failure is caught below and
+		// becomes an explicit blocked/unavailable state rather than fail-open.
 		try {
 			const { data: entitlementRow, error: entitlementError } = await supabase.rpc('fn_get_my_subscription_entitlement');
 			if (entitlementError) throw entitlementError;
