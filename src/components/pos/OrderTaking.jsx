@@ -289,17 +289,24 @@ export default function OrderTaking({ table, orderLines, setOrderLines, onSendTo
           const results = await Promise.all(targets.map(printer => printVoidTicket(printer, {
             propertyId,
             voidId: voidRow.id,
+            voidNumber: voidRow.void_number,
             tableNo: tableLabel(table),
             waiterName: store.getSession(table.id)?.waiter || '',
-            checkNo: orderNumber,
+            orderNumber,
+            orderCreatedAt: table.created_at || table.createdAt || null,
             item: voidRow.item_name,
+            modifiers: removeTarget.line?.modifiers || [],
+            note: removeTarget.line?.prepNote || removeTarget.line?.notes || '',
             removedQty: voidRow.removed_qty,
             originalQty: voidRow.original_qty,
             newQty: voidRow.new_qty,
             reason: voidRow.reason,
             removedBy: voidRow.removed_by_name || staffName,
+            approvedByName: voidRow.approved_by_name || '',
+            managerSignature: voidRow.manager_signature || '',
             timestamp: voidRow.created_at,
             category: voidRow.category,
+            settings,
           })));
           if (results.some(r => r.outcome === 'uncertain')) setRemoveError('Item voided. The void slip may already have printed — check the paper before reprinting it.');
           else if (!results.some(r => r.ok)) setRemoveError('Item voided, but the void slip did not print. Check the assigned printer.');

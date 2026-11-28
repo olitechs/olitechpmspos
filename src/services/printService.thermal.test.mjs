@@ -98,15 +98,49 @@ test('unsettled receipt uses two feed lines and a full cut', async () => {
 
 test('live shift preview is a separate pre-close thermal report with no closing cash variance', async () => {
   const service = await read('./printService.js');
+  const templates = await read('./printTemplates.js');
   assert.match(service, /export async function printShiftPreview/);
-  const start = service.indexOf('function shiftPreviewHtml');
-  const end = service.indexOf('export async function printShiftPreview', start);
-  const preview = service.slice(start, end);
-  assert.match(preview, /PRE-CLOSE/);
-  assert.match(preview, /SHIFT STILL OPEN/);
-  assert.match(preview, /LIVE SHIFT SUMMARY/);
-  assert.match(preview, /EXPECTED CASH IN DRAWER/);
-  assert.doesNotMatch(preview, /CASH COUNTED|CASH VARIANCE|SHIFT CLOSING REPORT/);
+  const reportStart = templates.indexOf('export function buildShiftReportText');
+  const previewStart = templates.indexOf('export function buildShiftPreviewText');
+  assert.ok(reportStart >= 0 && previewStart > reportStart);
+  const builder = templates.slice(reportStart, previewStart);
+  assert.match(builder, /PRE-CLOSE - SHIFT STILL OPEN/);
+  assert.match(builder, /LIVE SHIFT SUMMARY/);
+  assert.match(builder, /Expected Cash in Drawer/);
+  assert.match(builder, /preview \? 'STILL OPEN'/);
+  assert.match(builder, /if \(!preview && data\.countedCash/);
+  const dispatch = service.slice(
+    service.indexOf('export async function printShiftPreview'),
+    service.indexOf('export async function printShiftReport'),
+  );
+  assert.match(dispatch, /jobType: 'shift_preview'/);
+  assert.match(dispatch, /buildShiftPreviewText\(report, \{ printer, settings \}\)/);
+  assert.match(dispatch, /thermalText,/);
+  assert.match(dispatch, /thermalBase64,/);
+  assert.match(dispatch, /feedLinesBeforeCut: 3/);
+});
+
+test('void slips and closing reports send thermal text plus logo-bearing ESC/POS bytes', async () => {
+  const service = await read('./printService.js');
+  const voidStart = service.indexOf('export async function printVoidTicket');
+  const voidEnd = service.indexOf('function receiptHtml', voidStart);
+  assert.ok(voidStart >= 0 && voidEnd > voidStart);
+  const voidBlock = service.slice(voidStart, voidEnd);
+  assert.match(voidBlock, /buildVoidTicketText\(data, \{ printer, settings, center: data\.category \}\)/);
+  assert.match(voidBlock, /buildLogoEscPosBase64/);
+  assert.match(voidBlock, /thermalText, thermalBase64/);
+  assert.match(voidBlock, /jobType:'void'/);
+  assert.match(voidBlock, /outcome === 'uncertain' \? 'pending' : 'failed'/);
+
+  const reportStart = service.indexOf('export async function printShiftReport');
+  const reportEnd = service.indexOf('export async function listFnbPrintJobs', reportStart);
+  assert.ok(reportStart >= 0 && reportEnd > reportStart);
+  const reportBlock = service.slice(reportStart, reportEnd);
+  assert.match(reportBlock, /buildShiftReportText\(report/);
+  assert.match(reportBlock, /buildLogoEscPosBase64\(settings\.logo_url/);
+  assert.match(reportBlock, /thermalText,thermalBase64,printSettings/);
+  assert.match(reportBlock, /feedLinesBeforeCut: 3/);
+  assert.doesNotMatch(service, /shiftPreviewHtml|shiftReportHtml|voidTicketHtml/);
 });
 
 test('successful shift closure prompts for the final thermal report and allows retry', async () => {

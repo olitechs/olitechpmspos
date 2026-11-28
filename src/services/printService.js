@@ -1,7 +1,7 @@
 import { getPrinterPrintSettings } from '@/services/printerPrintSettings';
 import { testConnection as testBrowserPrinterConnection, pairUsbDevice, pairBluetoothDevice, pairSerialDevice, sendPrintJob as sendBrowserPrintJob, buildTestPageText, PrinterStatus } from '@/services/printerService';
 import { supabase } from '@/lib/supabaseClient';
-import { buildOrderTicketText, buildUnsettledReceiptText, buildFinalReceiptText, toEscPosPayload, thermalTextToHtml } from '@/services/printTemplates';
+import { buildOrderTicketText, buildUnsettledReceiptText, buildFinalReceiptText, buildShiftReportText, buildShiftPreviewText, buildVoidTicketText, toEscPosPayload, thermalTextToHtml } from '@/services/printTemplates';
 import { getPrintColor } from '@/utils/printTheme';
 import { classifyAgentPrintOutcome, copiesToPrint, durableJobStatus, outcomeAffectsConnection, summarizePrintOutcomes } from '@/services/printOutcomeCore';
 import { planDepartmentTickets, printersForDepartment } from '@/services/printDepartmentRoutingCore';
@@ -563,30 +563,20 @@ export async function printOrderByCategory(order) {
 }
 
 
-function voidTicketHtml(data) {
-  const area = String(data.category || '').toLowerCase() === 'drinks' ? 'BAR' : 'KITCHEN';
-  const stamp = data.timestamp ? new Date(data.timestamp).toLocaleString('en-KE', { dateStyle: 'medium', timeStyle: 'short' }) : new Date().toLocaleString('en-KE', { dateStyle: 'medium', timeStyle: 'short' });
-  const voidFill = getPrintColor('--print-void');
-  const voidText = getPrintColor('--print-void-foreground');
-  return `<div class="receipt">
-    <div style="background:${voidFill};color:${voidText};padding:10px 4px;text-align:center;font-size:18px;font-weight:900;line-height:1.15">!!! VOID / CANCELLATION !!!<br><span style="font-size:13px">${esc(area)}</span></div>
-    <div class="divider"></div>
-    <div class="bold">Table: ${esc(data.tableNo || '—')} &nbsp;&nbsp; Waiter: ${esc(data.waiterName || '—')}</div>
-    <div>Date: ${esc(stamp)}</div>
-    <div>Check No: ${esc(data.checkNo || '—')}</div>
-    <div class="divider"></div>
-    <div class="bold" style="font-size:14px">VOID ITEM:</div>
-    <div style="margin-top:6px;font-size:13px;font-weight:800">- ${esc(data.item || 'Item')} x ${esc(data.removedQty)}</div>
-    <div style="margin-top:3px">Qty Removed: <b>${esc(data.removedQty)}</b></div>
-    <div>Reason: <b>${esc(data.reason || 'Not specified')}</b></div>
-    <div>Removed by: <b>${esc(data.removedBy || '—')}</b></div>
-    <div>Original: <b>${esc(data.originalQty)}</b> -&gt; Removed: <b>${esc(data.removedQty)}</b> -&gt; Remaining: <b>${esc(data.newQty)}</b></div>
-    <div class="divider"></div>
-    <div class="center bold" style="font-size:10px">CUSTOMER COPY? NO - ${esc(area)} CONTROL ONLY</div>
-    <div class="center bold" style="font-size:10px;margin-top:4px">Cashier Copy - Keep for Audit</div>
-    <div class="divider"></div>
-    <div class="footer bold">Requires Manager Signature __________________</div>
-  </div>`;
+async function loadPrintSettings(propertyId) {
+  if (!propertyId) return {};
+  try {
+    const { data, error } = await supabase
+      .from('property_settings')
+      .select('*')
+      .eq('property_id', propertyId)
+      .maybeSingle();
+    if (error) throw error;
+    return data || {};
+  } catch (error) {
+    console.warn('[printService] property settings unavailable; using print defaults', error);
+    return {};
+  }
 }
 
 function refundTicketHtml(data = {}) {
@@ -614,10 +604,15 @@ export async function printRefundSlip(printer, data = {}) {
 export async function printVoidTicket(printer, data = {}) {
   if (!printer) return { ok:false, friendlyError:'Void printer not configured.' };
   const propertyId = data.propertyId;
+  const settings = data.settings || await loadPrintSettings(propertyId);
+  const thermalText = buildVoidTicketText(data, { printer, settings, center: data.category });
+  const thermalBase64 = await buildLogoEscPosBase64(settings.logo_url, printer, thermalText, {
+    printSettings: getPrinterPrintSettings(printer),
+  });
   const result = await printToPrinter(
     printer,
-    voidTicketHtml(data),
-    { propertyId, jobType:'void', copyType:'control', assignmentType:data.category === 'drinks' ? 'void_drinks_orders' : 'void_food_orders', payload:{voidId:data.voidId||null,voidNumber:data.voidNumber||null}, title:`VOID / CANCELLATION - ${String(data.category || 'food').toUpperCase()}` }
+    thermalTextToHtml(thermalText),
+    { propertyId, jobType:'void', copyType:'control', assignmentType:data.category === 'drinks' ? 'void_drinks_orders' : 'void_food_orders', payload:{voidId:data.voidId||null,voidNumber:data.voidNumber||data.void_number||null}, title:`VOID ORDER - ${String(data.category || 'food').toUpperCase()}`, thermalText, thermalBase64 }
   );
 
   if (data.voidId && propertyId) {
@@ -1037,28 +1032,9 @@ export async function printReceipt(type, inputData = {}) {
   return { ok: summary.ok, outcome: summary.outcome, summary, results };
 }
 
-function shiftReportHtml(data, copyLabel) {
-  const p = data.payments || {};
-  const money = (n) => Number(n || 0).toLocaleString('en-KE',{minimumFractionDigits:2});
-  const row = (label, key) => `<div style="display:flex;justify-content:space-between;gap:8px"><span>${esc(label)}</span><span>${money(p[key]?.amount)} (${esc(p[key]?.count || 0)} receipts)</span></div>`;
-  const grossRow = (label, key) => '<div style="display:flex;justify-content:space-between;gap:8px"><span>'+esc(label)+'</span><span>'+money(data.grossPayments?.[key]?.amount)+'</span></div>';
-  const refundRow = (label, key) => '<div style="display:flex;justify-content:space-between;gap:8px"><span>'+esc(label)+'</span><span>- '+money(data.refundsByMethod?.[key])+'</span></div>';
-  const stamp = data.shift?.closed_at ? new Date(data.shift.closed_at).toLocaleString('en-KE',{dateStyle:'medium',timeStyle:'short'}) : new Date().toLocaleString('en-KE',{dateStyle:'medium',timeStyle:'short'});
-  return `<div class="receipt"><div class="copy">${esc(copyLabel)}</div>${data.settings?.logo_url ? `<img class="logo" src="${esc(data.settings.logo_url)}">` : ''}<div class="center bold">${esc(data.settings?.property_name || data.propertyName || 'OliTechs PMS + POS')}</div><div class="center">${esc(data.settings?.address_line1 || '')}<br>${esc(data.settings?.address_line2 || '')}<br>${esc(data.settings?.phone || '')}</div><div class="divider"></div><div class="center bold" style="font-size:15px">SHIFT CLOSING REPORT</div><div>Shift No: <b>${esc(data.shift?.shift_no)}</b></div><div>Date: ${esc(new Date(data.shift?.date+'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}))}</div><div>Opened by: ${esc(data.openedBy || 'Staff')}</div><div>Opened at: ${esc(data.shift?.opened_at ? new Date(data.shift.opened_at).toLocaleTimeString('en-KE',{hour:'2-digit',minute:'2-digit'}) : '—')}</div><div>Closed by: ${esc(data.closedBy || 'Staff')}</div><div>Closed at: ${esc(stamp)}</div><div class="divider"></div><div class="bold">OPENING CASH (Float): KES ${money(data.shift?.opening_cash)}</div><div>NET CASH SALES: KES ${money(p.cash?.amount)}</div><div class="section">SALES</div><div>Sales before discount: KES ${money(data.salesBeforeDiscount)}</div><div>Discounts: - KES ${money(data.discountsTotal)}</div><div>VAT: KES ${money(data.vatTotal)}</div><div>Total sales (incl. VAT): KES ${money(data.totalSales)}</div><div class="section">GROSS TENDERS</div>${grossRow('Cash','cash')}${grossRow('M-Pesa','mpesa')}${grossRow('Card Payment','card')}${grossRow('Bank Transfer','bank')}${grossRow('Room Charge','room_charge')}${grossRow('Other','other')}<div class="section">REFUNDS BY METHOD</div>${refundRow('Cash Refunds','cash')}${refundRow('M-Pesa Refunds','mpesa')}${refundRow('Card Refunds','card')}${refundRow('Bank Refunds','bank')}${refundRow('Room Charge Refunds','room_charge')}${refundRow('Other Refunds','other')}<div class="section">NET SALES BY METHOD</div>${row('Cash','cash')}${row('M-Pesa','mpesa')}${row('Card Payment','card')}${row('Bank Transfer','bank')}${row('Room Charge','room_charge')}${row('Other','other')}<div>GROSS SALES: KES ${money(data.grossSales)}</div><div>REFUNDS: - KES ${money(data.refundsTotal)}</div><div>VOIDED RECEIPTS: ${esc(data.voidedOrders?.length || 0)} · KES ${money(data.voidedValue)}</div><div class="total">NET SALES: KES ${money(data.totalSales)}</div><div>TOTAL RECEIPTS: ${esc(data.totalTransactions || 0)}</div><div>GUESTS DINED / COVERS: ${esc(data.totalCovers || 0)}</div><div>ITEMS SOLD (QTY): ${esc(data.itemsSold || 0)}</div><div class="section">ITEM CATEGORY SUMMARY (GROSS)</div><div style="display:flex;justify-content:space-between"><span>Food (${esc(data.categories?.food?.qty || 0)} items)</span><span>KES ${money(data.categories?.food?.amount)}</span></div><div style="display:flex;justify-content:space-between"><span>Drinks (${esc(data.categories?.drinks?.qty || 0)} items)</span><span>KES ${money(data.categories?.drinks?.amount)}</span></div><div class="divider"></div><div class="bold">NET CASH EXPECTED IN DRAWER: KES ${money(data.expectedCash)}</div><div>Cash Entered: KES ${money(data.countedCash)}</div><div>Variance: KES ${money(data.variance)}</div><div>Room Charges Total: KES ${money(p.room_charge?.amount)}</div><div class="divider"></div><div class="footer">Thank you<br>Shift closed at ${esc(stamp)}<br>Generated by OliTechs PMS + POS</div><div class="right bold" style="font-size:9px">Report ID: ${esc(data.reportId || ('RPT-'+String(data.shift?.id || '').slice(0,8).toUpperCase()))}</div><div class="divider"></div><div style="margin-top:10px">Cashier Signature: __________________</div><div style="margin-top:12px">Manager Signature: __________________</div></div>`;
-}
-
-function shiftPreviewHtml(data) {
-  const p = data.payments || {};
-  const money = (n) => Number(n || 0).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const row = (label, key) => `<div style="display:flex;justify-content:space-between;gap:8px"><span>${esc(label)}</span><span>${money(p[key]?.amount)}</span></div>`;
-  const openedAt = data.shift?.opened_at
-    ? new Date(data.shift.opened_at).toLocaleString('en-KE', { dateStyle: 'medium', timeStyle: 'short' })
-    : '—';
-  const businessDate = data.shift?.date
-    ? new Date(data.shift.date + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-    : '—';
-  return `<div class="receipt"><div class="copy">PRE-CLOSE · SHIFT STILL OPEN</div>${data.settings?.logo_url ? `<img class="logo" src="${esc(data.settings.logo_url)}">` : ''}<div class="center bold">${esc(data.settings?.property_name || data.propertyName || 'OliTechs PMS + POS')}</div><div class="center">${esc(data.settings?.address_line1 || '')}<br>${esc(data.settings?.address_line2 || '')}<br>${esc(data.settings?.phone || '')}</div><div class="divider"></div><div class="center bold" style="font-size:15px">LIVE SHIFT SUMMARY</div><div>Shift No: <b>${esc(data.shift?.shift_no || '—')}</b></div><div>Business date: ${esc(businessDate)}</div><div>Opened by: ${esc(data.openedBy || 'Staff')}</div><div>Opened at: ${esc(openedAt)}</div><div class="divider"></div><div class="bold">OPENING CASH FLOAT: KES ${money(data.shift?.opening_cash)}</div><div class="section">PAYMENT SUMMARY</div>${row('Cash','cash')}${row('M-Pesa','mpesa')}${row('Card','card')}${row('Bank transfer','bank')}${row('Room charge','room_charge')}${row('Other','other')}<div class="divider"></div><div>GROSS SALES: KES ${money(data.grossSales)}</div><div>REFUNDS: - KES ${money(data.refundsTotal)}</div><div>VOIDED RECEIPTS: ${esc(data.voidedOrders?.length || 0)} · KES ${money(data.voidedValue)}</div><div class="total">NET SALES TO DATE: KES ${money(data.totalSales)}</div><div>TOTAL RECEIPTS: ${esc(data.totalTransactions || 0)}</div><div>GUEST COVERS: ${esc(data.totalCovers || 0)}</div><div>ITEMS SOLD: ${esc(data.itemsSold || 0)}</div><div class="section">ITEM CATEGORY SUMMARY</div><div style="display:flex;justify-content:space-between"><span>Food · ${esc(data.categories?.food?.qty || 0)} items</span><span>KES ${money(data.categories?.food?.amount)}</span></div><div style="display:flex;justify-content:space-between"><span>Drinks · ${esc(data.categories?.drinks?.qty || 0)} items</span><span>KES ${money(data.categories?.drinks?.amount)}</span></div><div class="divider"></div><div class="bold">EXPECTED CASH IN DRAWER: KES ${money(data.expectedCash)}</div><div class="divider"></div><div class="center bold">NOT A CLOSING REPORT</div><div class="footer">This shift remains open. Totals may change as more sales are posted.<br>Printed ${esc(new Date().toLocaleString('en-KE',{dateStyle:'medium',timeStyle:'short'}))}</div></div>`;
-}
+// Shift reports are rendered by the shared width-aware thermal builders in
+// printTemplates.js. The HTML passed to printToPrinter is only the browser
+// preview of that same fixed-width text.
 
 // A property can assign shift reports to more than one printer (cashier desk,
 // accounts office, ...). Every assigned destination must receive the report;
@@ -1081,15 +1057,23 @@ const SHIFT_REPORT_COPIES = [
 export async function printShiftPreview(shiftData, printerOrPrinters) {
   const printers = normalizePrinters(printerOrPrinters);
   if (!printers.length) return { ok: false, friendlyError: 'Shift report printer not configured.' };
+  const settings = shiftData.settings || await loadPrintSettings(shiftData.propertyId);
+  const report = { ...shiftData, settings };
   const results = [];
   for (const printer of printers) {
-    results.push(await printToPrinter(printer, shiftPreviewHtml(shiftData), {
+    const printSettings = getPrinterPrintSettings(printer, { feedLinesBeforeCut: 3 });
+    const thermalText = buildShiftPreviewText(report, { printer, settings });
+    const thermalBase64 = await buildLogoEscPosBase64(settings.logo_url, printer, thermalText, { printSettings });
+    results.push(await printToPrinter(printer, thermalTextToHtml(thermalText), {
       propertyId: shiftData.propertyId,
       jobType: 'shift_preview',
       copyType: 'pre_close',
       assignmentType: 'shift_reports',
       payload: { shiftId: shiftData.shift?.id || null, preview: true },
       title: 'Live Shift Summary',
+      thermalText,
+      thermalBase64,
+      printSettings,
     }));
   }
   const summary = summarizePrintOutcomes(results);
@@ -1101,6 +1085,8 @@ export async function printShiftReport(shiftData, printerOrPrinters) {
   if (!printers.length) return {ok:false,friendlyError:'Shift report printer not configured.'};
   const propertyId=shiftData.propertyId;
   const shiftId=shiftData.shift?.id||null;
+  const settings = shiftData.settings || await loadPrintSettings(propertyId);
+  const report = { ...shiftData, settings };
   // One assigned printer keeps the cashier + manager pair. With more than one
   // destination each printer receives a single copy, alternating the labels so
   // the cashier copy and the manager/accountant copy are still both produced.
@@ -1115,7 +1101,10 @@ export async function printShiftReport(shiftData, printerOrPrinters) {
     // copy that already reached this printer.
     const done = forceReprint || !shiftId ? [] : await confirmedCopies({propertyId, jobType:'shift_report', shiftId, printerId:copy.printer.id});
     if (done.includes(copy.copyType)) { skippedExisting += 1; continue; }
-    results.push(await printToPrinter(copy.printer,shiftReportHtml(shiftData,copy.label),{propertyId,jobType:'shift_report',copyType:copy.copyType,assignmentType:'shift_reports',payload:{shiftId},title:'Shift Closing Report'}));
+    const printSettings = getPrinterPrintSettings(copy.printer, { feedLinesBeforeCut: 3 });
+    const thermalText = buildShiftReportText(report, { printer: copy.printer, settings, copyLabel: copy.label });
+    const thermalBase64 = await buildLogoEscPosBase64(settings.logo_url, copy.printer, thermalText, { printSettings });
+    results.push(await printToPrinter(copy.printer, thermalTextToHtml(thermalText), {propertyId,jobType:'shift_report',copyType:copy.copyType,assignmentType:'shift_reports',payload:{shiftId},title:'Shift Closing Report',thermalText,thermalBase64,printSettings}));
   }
   if (!results.length) {
     // Nothing was sent because every copy is already on paper. Reporting a
