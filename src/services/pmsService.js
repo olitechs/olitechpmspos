@@ -664,7 +664,22 @@ export const pmsService = {
 		return data || {};
 	},
 
-	async runNightAudit({ propertyId, notes }) {
+	async runNightAudit({ propertyId, notes, requestKey, businessDate, overrideReason, overrideGrantId }) {
+		// Canonical Phase 4C close carries a stable request key and reconciliation
+		// override evidence. Older callers without a key keep the legacy RPC so
+		// an un-migrated database still works during deployment.
+		if (requestKey) {
+			const { data, error } = await supabase.rpc('fn_phase4c_run_night_audit', {
+				p_property_id: propertyId,
+				p_request_key: requestKey,
+				p_business_date: businessDate || null,
+				p_notes: notes || null,
+				p_override_reason: overrideReason || null,
+				p_override_grant_id: overrideGrantId || null,
+			});
+			if (error) throw new Error(error.message);
+			return data;
+		}
 		const { data, error } = await supabase.rpc('fn_run_night_audit', { p_property_id: propertyId, p_notes: notes || null });
 		if (error) throw new Error(error.message);
 		return data;
